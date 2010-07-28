@@ -1,0 +1,22 @@
+{application, rscrpt,
+ [
+  {description, "Resource Reporter"}
+  ,{vsn, "0.1"}
+  ,{registered, []}
+  ,{applications, [
+		   kernel
+		   ,stdlib
+		   ,os_mon
+		  ]}
+  ,{modules, [
+	      rscrpt
+	      ,rscrpt_app
+	      ,rscrpt_sup
+	      ,rscrpt_logger
+	      ,rscrpt_fsevt
+	      ,rscrpt_reporter
+	      ,rscrpt_fsbox
+	     ]}
+  ,{mod, { rscrpt_app, []}}
+  ,{env, []}
+ ]}.

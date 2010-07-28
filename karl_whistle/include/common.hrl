@@ -1,0 +1,3 @@
+-define(DEBUG(Format, Args), error_logger:info_msg(Format, Args)).
+-define(INFO(Format, Args), error_logger:info_msg(Format, Args)).
+-define(WARN(Format, Args), error_logger:warning_msg(Format, Args)). 
