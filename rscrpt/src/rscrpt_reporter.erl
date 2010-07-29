@@ -9,8 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(rscrpt_reporter).
 
--include("../include/amqp_client.hrl").
--include("../include/common.hrl").
+-include("../include/amqp_client/include/amqp_client.hrl").
 
 -behaviour(gen_server).
 
@@ -164,21 +163,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-send_msg(Msg, State) ->
+send_msg(Msg, #state{ticket=Ticket,exchange=Exchange,channel=Channel}) ->
     %% Create a basic publish command
     BasicPublish = #'basic.publish'{
-        ticket = State#state.ticket,
-        exchange = ?EXCHANGE,
-        routing_key = thing_to_binary(To),
-        mandatory = false,
-        immediate = false
-    },
+      ticket = Ticket,
+      exchange = Exchange,
+      mandatory = false,
+      immediate = false
+     },
 
     %% Add the message to the publish, converting to binary
     AmqpMsg = #'amqp_msg'{
-        payload = thing_to_binary(Msg)
-    },
+      payload = term_to_binary(Msg)
+     },
 
     %% execute the publish command
-    ?DEBUG("~p amqp_broadcast_dispatcher publish to ~p: ~p~n", [self(), BasicPublish#'basic.publish'.routing_key, AmqpMsg#'amqp_msg'.payload]),
-    amqp_channel:cast(State#state.channel, BasicPublish, AmqpMsg).
+    format_log(info, "~p amqp_broadcast_dispatcher publish to ~p: ~p~n", [self(), BasicPublish, AmqpMsg]),
+    amqp_channel:call(Channel, BasicPublish, AmqpMsg).

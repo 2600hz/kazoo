@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(amqp_manager).
 
+-compile(export_all).
+
 -include("../include/amqp_client.hrl").
 -include("../include/common.hrl").
 
@@ -53,18 +55,17 @@ stop() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
-    %%receive after 5000 -> ok end,
+get_options() ->
+    #'amqp_params'{
+      port=5672
+      ,host="fs1.voicebus.net"
+     }.
 
+init([]) ->
     %% Start a connection to the AMQP broker server
-    Options = #amqp_params{
-        username = <<"guest">>, %% fs_toolkit_cfg:get([amqp_params, username]),
-        password = <<"guest">>, %% fs_toolkit_cfg:get([amqp_params, password]),
-        host = "fs1.voicebus.net", %% fs_toolkit_cfg:get([amqp_params, host]),
-        port = 5672, %%fs_toolkit_cfg:get([amqp_params, port]),
-        virtual_host = <<"/">> %% fs_toolkit_cfg:get([amqp_params, virtual_host])
-    },
-    ?DEBUG("~p open connection to ~p~n", [self(), Options#amqp_params.host]),
+    Options = get_options(),
+
+    ?DEBUG("~p open connection to ~p~n", [self(), Options]),
     Connection = amqp_connection:start_network_link(Options),
 
     process_flag(trap_exit, true),
