@@ -9,20 +9,24 @@
 %%%-------------------------------------------------------------------
 -module(rscrpt_reporter).
 
+-include("../include/amqp_client.hrl").
+-include("../include/common.hrl").
+
 -behaviour(gen_server).
 
 -import(rscrpt_logger, [log/2, format_log/3]).
 
 %% API
--export([start_link/0, report/1]).
+-export([start_link/0, send_report/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-record(state, {channel, ticket, tag, exchange}).
 
--record(state, {}).
+-define(SERVER, ?MODULE).
+-define(EXCHANGE, <<"resource">>).
 
 %%%===================================================================
 %%% API
@@ -38,7 +42,7 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-report(Rpt) ->
+send_report(Rpt) ->
     gen_server:call(?MODULE, {report, Rpt}).
 
 %%%===================================================================
@@ -57,8 +61,28 @@ report(Rpt) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    
-    {ok, #state{}}.
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+    process_flag(trap_exit, true),
+
+    Exchange = #'exchange.declare'{
+      ticket = Ticket,
+      exchange = ?EXCHANGE,
+      type = <<"fanout">>,
+      passive = false,
+      durable = false,
+      auto_delete=false,
+      internal = false,
+      nowait = false,
+      arguments = []
+     },
+    amqp_channel:call(Channel, Exchange),
+
+    %% If the registration was sucessful, then consumer will be notified
+    receive
+        #'basic.consume_ok'{consumer_tag = Tag} -> ok
+    end,
+
+    {ok, #state{channel = Channel, ticket = Ticket, tag = Tag, exchange=Exchange}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -78,6 +102,9 @@ handle_call({report, Rpt}, _From, State) ->
     Box = rscrpt_fsbox:get_box_update(),
     Msg = lists:concat([Box, Rpt]),
     format_log(info, "reporter: Send Msg: ~p~n", [Msg]),
+
+    send_msg(Msg, State),
+
     {reply, ok, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -137,3 +164,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+send_msg(Msg, State) ->
+    %% Create a basic publish command
+    BasicPublish = #'basic.publish'{
+        ticket = State#state.ticket,
+        exchange = ?EXCHANGE,
+        routing_key = thing_to_binary(To),
+        mandatory = false,
+        immediate = false
+    },
+
+    %% Add the message to the publish, converting to binary
+    AmqpMsg = #'amqp_msg'{
+        payload = thing_to_binary(Msg)
+    },
+
+    %% execute the publish command
+    ?DEBUG("~p amqp_broadcast_dispatcher publish to ~p: ~p~n", [self(), BasicPublish#'basic.publish'.routing_key, AmqpMsg#'amqp_msg'.payload]),
+    amqp_channel:cast(State#state.channel, BasicPublish, AmqpMsg).

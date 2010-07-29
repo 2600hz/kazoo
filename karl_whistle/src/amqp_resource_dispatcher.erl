@@ -35,7 +35,6 @@ start_link() ->
 start() ->
     gen_server:start({local, ?SERVER}, ?MODULE, [], []).
 
-
 publish(Message, To) ->
     gen_server:cast(?SERVER, {publish, Message, To}).
 
