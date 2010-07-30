@@ -19,7 +19,11 @@ get_box_update() ->
     Memory = get_memory_update(),
     Disk = get_disk_update(),
     Cpu = get_cpu_update(),
-    lists:concat([Memory, Disk, Cpu]).
+    Nic = get_nic_update(),
+    lists:concat([Memory, Disk, Cpu, Nic]).
+
+get_nic_update() ->
+    [{hostname, net_adm:localhost()}].
 
 get_cpu_update() ->
     [{cpu_avg_1, cpu_sup:avg1()}

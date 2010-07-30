@@ -5,4 +5,5 @@
               {applications,[kernel,stdlib]},
               {mod,{rscmgr_app,[]}},
               {env,[]},
-              {modules,[rscmgr_app,rscmgr_sup]}]}.
+              {modules,[amqp_manager,rscmgr,rscmgr_app,rscmgr_deps,
+                        rscmgr_logger,rscmgr_res,rscmgr_sup]}]}.
