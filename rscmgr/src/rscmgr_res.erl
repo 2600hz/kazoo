@@ -2,7 +2,10 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Consume resource messages off the Resource queue
+%%% Consume resource report messages off the Resource Xc
+%%% Update internal list of known resources
+%%% Filter list based on resource requested and return sublist of
+%%% matching resources.
 %%% @end
 %%% Created : 29 Jul 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
@@ -176,10 +179,16 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 %% take in any incoming amqp messages and distribute
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     State1 = case Props#'P_basic'.content_type of
-		 <<"text/xml">> -> log(info, xml), %notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
-				   State;
-		 <<"text/plain">> -> log(info, text), %notify(State#state.consumers, Props, binary_to_list(Payload));
-				     State;
+		 <<"text/xml">> ->
+		     log(info, xml),
+		     %%notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
+		     State;
+		 <<"text/plain">> ->
+		     log(info, text),
+		     %%notify(State#state.consumers, Props, binary_to_list(Payload));
+		     State;
+		 <<"erlang/term">> ->
+		     update_known_resources(State, binary_to_term(Payload));
 		 undefined ->
 		     try binary_to_term(Payload) of
 			 Term -> update_known_resources(State, Term)

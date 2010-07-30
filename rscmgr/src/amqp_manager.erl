@@ -238,4 +238,3 @@ close_all_channels([{_Pid, Channel, _Ticket, MRef} | T]) ->
     erlang:demonitor(MRef),
 
     close_all_channels(T).
-

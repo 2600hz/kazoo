@@ -2,30 +2,31 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Receives reports from the freeSWITCH socket and forwards them to
-%%% the queue
+%%% Maintain a queue on the Broadcast Xc for apps requesting resources
+%%% Ask rscmgr_res for list of servers based on requested type and
+%%% return list toTargeted Xc.AppQueueId
 %%% @end
-%%% Created : 27 Jul 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 30 Jul 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(rscrpt_reporter).
+-module(rscmgr_req).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 
 -behaviour(gen_server).
 
--import(rscrpt_logger, [log/2, format_log/3]).
+-import(rscmgr_logger, [log/2, format_log/3]).
 
 %% API
--export([start_link/0, send_report/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_message/2,
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--record(state, {channel, ticket, tag, exchange}).
-
 -define(SERVER, ?MODULE).
--define(EXCHANGE, <<"resource">>).
+-define(EXCHANGE, <<"broadcast">>).
+
+-record(state, {channel, connection, ticket, queue, tag}).
 
 %%%===================================================================
 %%% API
@@ -40,9 +41,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-send_report(Rpt) ->
-    gen_server:cast(?MODULE, {report, Rpt}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -61,7 +59,7 @@ send_report(Rpt) ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    format_log(info, "Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
+    format_log(info, "RSCMGR_REQ: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
 
     process_flag(trap_exit, true),
 
@@ -77,9 +75,46 @@ init([]) ->
       arguments = []
      },
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
-    format_log(info, "Creating or accessing Exchange ~p~n", [Exchange]),
+    format_log(info, "RSCMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
 
-    {ok, #state{channel=Channel, ticket=Ticket, exchange=Exchange}}.
+    Queue = list_to_binary(["resource." | net_adm:localhost()]),
+    QueueDeclare = #'queue.declare'{
+      ticket = Ticket,
+      queue = Queue,
+      passive = false,
+      durable = false,
+      exclusive = true,
+      auto_delete = true,
+      nowait = false,
+      arguments = []
+     },
+    #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
+
+    %% Bind the queue to an exchange
+    QueueBind = #'queue.bind'{
+      ticket = Ticket,
+      queue = Queue,
+      exchange = ?EXCHANGE,
+      routing_key = <<"#">>,
+      nowait = false,
+      arguments = []
+     },
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
+
+    %% Register a consumer to listen to the queue
+    BasicConsume = #'basic.consume'{
+      ticket = Ticket,
+      queue = Queue,
+      consumer_tag = Queue,
+      no_local = false,
+      no_ack = true,
+      exclusive = true,
+      nowait = false
+     },
+    #'basic.consume_ok'{consumer_tag = Tag}
+        = amqp_channel:subscribe(Channel, BasicConsume, self()),
+
+    {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,27 +144,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({report, Rpt}, #state{channel=Channel,ticket=Ticket}=State) ->
-    Box = rscrpt_fsbox:get_box_update(),
-    Msg = lists:concat([Box, Rpt]),
-    Pm = publish_message(proplist_to_binary(Msg), Ticket, Channel),
-    format_log(info, "sent_msg: ~p pm: ~p~n", [Msg, Pm]),
-    {noreply, State};
-handle_cast(Msg, State) ->
-    format_log(info, "uncaught cast msg ~p~n", [Msg]),
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling MQ messages
-%%
-%% @spec handle_info(Msg, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_message(_Msg, State) ->
+handle_cast(_Msg, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -142,7 +157,41 @@ handle_message(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
+%% cleanly exit if we have been asked to exit
+handle_info({'EXIT', _Pid, Reason}, State) ->
+    {stop, Reason, State};
+%% take in any incoming amqp messages and distribute
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    case Props#'P_basic'.content_type of
+	<<"text/xml">> ->
+	    log(info, xml),
+	    %%notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
+	    State;
+	<<"text/plain">> ->
+	    log(info, text),
+	    %%notify(State#state.consumers, Props, binary_to_list(Payload));
+	    State;
+	<<"application/json">> ->
+	    log(info, json),
+	    State;
+	<<"erlang/term">> ->
+	    log(info, erlang_term),
+	    State;
+	undefined ->
+	    log(info, undefined),
+	    try binary_to_term(Payload) of
+		_Term -> State
+	    catch
+		_:_ -> State
+	    end;
+	_ContentType ->
+	    format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
+	    State
+    end,
+    {noreply, State};
+%% catch all so we dont loose state
+handle_info(Unhandled, State) ->
+    format_log(info, "~p unknown info request: ~p~n", [self(), Unhandled]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -173,21 +222,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-publish_message(Msg, Ticket, Channel) ->
-    %% Create a basic publish command
-    BasicPublish = #'basic.publish'{
-      ticket = Ticket
-      ,exchange = ?EXCHANGE
-      ,mandatory = false
-      ,immediate = false
-    },
-
-    %% Add the message to the publish, converting to binary
-    AmqpMsg = #'amqp_msg'{payload = Msg,
-			  props=#'P_basic'{content_type= <<"erlang/term">>}},
-
-    %% execute the publish command
-    amqp_channel:call(Channel, BasicPublish, AmqpMsg).
-
-proplist_to_binary(L) ->
-    term_to_binary(L).

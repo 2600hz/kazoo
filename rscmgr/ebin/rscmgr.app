@@ -6,4 +6,4 @@
               {mod,{rscmgr_app,[]}},
               {env,[]},
               {modules,[amqp_manager,rscmgr,rscmgr_app,rscmgr_deps,
-                        rscmgr_logger,rscmgr_res,rscmgr_sup]}]}.
+                        rscmgr_logger,rscmgr_req,rscmgr_res,rscmgr_sup]}]}.
