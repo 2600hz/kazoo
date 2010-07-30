@@ -70,23 +70,27 @@ send_cmd(Cmd) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    log(info, "Starting FS Event Socket Listener"),
     Hostname = "localhost",
     Port = 8021,
     Auth = "ClueCon",
 
-    {ok, FsSock} = gen_tcp:connect(Hostname, Port, [list, {active, false}]),
-    inet:setopts(FsSock, [{packet, line}]),
-    log(info, ["Opened FreeSWITCH event socket to ", Hostname]),
-
-    ok = gen_tcp:send(FsSock, lists:concat(["auth ", Auth, "\n\n"])),
-    ok = gen_tcp:send(FsSock, "events plain all\n\n"),
-    lists:foreach(fun(Evt) ->
-			  gen_tcp:send(FsSock, lists:concat(["filter Event-Name ", Evt, "\n\n"]))
-		  end, ?DEFAULT_EVENTS),
-    spawn(fun() -> reader_loop(FsSock, [], 0) end),
-    {ok, #state{fs_sock=FsSock
-		,events=?DEFAULT_EVENTS
-	       }}.
+    Socket = case gen_tcp:connect(Hostname, Port, [list, {active, false}]) of
+		 {ok, FsSock} ->
+		     inet:setopts(FsSock, [{packet, line}]),
+		     log(info, ["Opened FreeSWITCH event socket to ", Hostname]),
+		     ok = gen_tcp:send(FsSock, lists:concat(["auth ", Auth, "\n\n"])),
+		     ok = gen_tcp:send(FsSock, "events plain all\n\n"),
+		     lists:foreach(fun(Evt) ->
+					   gen_tcp:send(FsSock, lists:concat(["filter Event-Name ", Evt, "\n\n"]))
+				   end, ?DEFAULT_EVENTS),
+		     spawn(fun() -> reader_loop(FsSock, [], 0) end),
+		     FsSock;
+		 {error, Reason} ->
+		     format_log(error, "Unable to open socket: ~p~n", [Reason]),
+		     undefined
+	     end,
+    {ok, #state{fs_sock=Socket, events=?DEFAULT_EVENTS}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,6 +106,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(_Call, _From, #state{fs_sock=undefined}=State) ->
+    {reply, socket_not_up, State};
 handle_call({add_event, Evt}, _From, #state{events=Es}=State) ->
     rscrpt_fsevt:send_cmd(lists:concat(["filter Event-Name ", Evt])),
     {reply, ok, State#state{events=[Evt|Es]}};

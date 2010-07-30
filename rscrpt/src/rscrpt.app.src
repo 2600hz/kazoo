@@ -1,6 +1,6 @@
 {application, rscrpt,
  [
-  {description, "Resource Reporter"}
+  {description, "freeSWITCH Resource Reporter"}
   ,{vsn, "0.1"}
   ,{registered, []}
   ,{applications, [
@@ -10,12 +10,15 @@
 		  ]}
   ,{modules, [
 	      rscrpt
+	      ,rscrpt_deps
 	      ,rscrpt_app
 	      ,rscrpt_sup
 	      ,rscrpt_logger
 	      ,rscrpt_fsevt
 	      ,rscrpt_reporter
 	      ,rscrpt_fsbox
+	      ,rscrpt_mochiweb_util
+	      ,ampq_manager
 	     ]}
   ,{mod, { rscrpt_app, []}}
   ,{env, []}

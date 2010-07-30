@@ -9,8 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(rscrpt_fsbox).
 
--compile(export_all).
-
 -import(rscrpt_logger, [log/2, format_log/3]).
 
 %% API

@@ -120,11 +120,6 @@ init([]) ->
     #'basic.consume_ok'{consumer_tag = Tag}
         = amqp_channel:subscribe(Channel, BasicConsume, self()),
 
-    %% If the registration was sucessful, then consumer will be notified
-    receive
-        #'basic.consume_ok'{consumer_tag = Tag} -> ok
-    end,
-
     ?INFO("~p amqp_broadcast_dispatcher init complete!~n", [self()]),
 
     {ok, #state{channel = Channel, ticket = Ticket, tag = Tag, queue = Queue}}.

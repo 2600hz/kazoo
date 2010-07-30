@@ -19,7 +19,7 @@
 -export([start_link/0, send_report/1]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_message/2,
 	 terminate/2, code_change/3]).
 
 -record(state, {channel, ticket, tag, exchange}).
@@ -42,7 +42,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 send_report(Rpt) ->
-    gen_server:call(?MODULE, {report, Rpt}).
+    gen_server:cast(?MODULE, {report, Rpt}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -61,6 +61,8 @@ send_report(Rpt) ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+    format_log(info, "Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
+
     process_flag(trap_exit, true),
 
     Exchange = #'exchange.declare'{
@@ -74,14 +76,10 @@ init([]) ->
       nowait = false,
       arguments = []
      },
-    amqp_channel:call(Channel, Exchange),
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
+    format_log(info, "Creating or accessing Exchange ~p~n", [Exchange]),
 
-    %% If the registration was sucessful, then consumer will be notified
-    receive
-        #'basic.consume_ok'{consumer_tag = Tag} -> ok
-    end,
-
-    {ok, #state{channel = Channel, ticket = Ticket, tag = Tag, exchange=Exchange}}.
+    {ok, #state{channel=Channel, ticket=Ticket, exchange=Exchange}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -97,14 +95,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({report, Rpt}, _From, State) ->
-    Box = rscrpt_fsbox:get_box_update(),
-    Msg = lists:concat([Box, Rpt]),
-    format_log(info, "reporter: Send Msg: ~p~n", [Msg]),
-
-    send_msg(Msg, State),
-
-    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -119,7 +109,27 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast({report, Rpt}, State) ->
+    Box = rscrpt_fsbox:get_box_update(),
+    Msg = lists:concat([Box, Rpt]),
+    bunnyc:async_publish(report, "resource.update", proplist_to_binary(Msg)),
+    format_log(info, "sent_msg: ~p~n", [Msg]),
+    {noreply, State};
+handle_cast(Msg, State) ->
+    format_log(info, "uncaught msg ~p~n", [Msg]),
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling MQ messages
+%%
+%% @spec handle_info(Msg, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_message(_Msg, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -163,20 +173,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-send_msg(Msg, #state{ticket=Ticket,exchange=Exchange,channel=Channel}) ->
-    %% Create a basic publish command
-    BasicPublish = #'basic.publish'{
-      ticket = Ticket,
-      exchange = Exchange,
-      mandatory = false,
-      immediate = false
-     },
+thing_to_binary(X) when is_binary(X) -> X;
+thing_to_binary(X) when is_list(X) -> list_to_binary(X);
+thing_to_binary(X) when is_integer(X) -> <<X>>;
+thing_to_binary(X) when is_float(X) -> <<X/float>>;
+thing_to_binary(X) when is_atom(X) -> atom_to_binary('Erlang', latin1).
 
-    %% Add the message to the publish, converting to binary
-    AmqpMsg = #'amqp_msg'{
-      payload = term_to_binary(Msg)
-     },
-
-    %% execute the publish command
-    format_log(info, "~p amqp_broadcast_dispatcher publish to ~p: ~p~n", [self(), BasicPublish, AmqpMsg]),
-    amqp_channel:call(Channel, BasicPublish, AmqpMsg).
+proplist_to_binary(L) ->
+    term_to_binary(L).

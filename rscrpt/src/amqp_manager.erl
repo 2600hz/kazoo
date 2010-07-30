@@ -9,7 +9,7 @@
 
 -compile(export_all).
 
--include("deps/rabbitmq-erlang-client/dist/amqp_client/include/amqp_client.hrl").
+-include("../include/amqp_client/include/amqp_client.hrl").
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,

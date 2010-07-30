@@ -1,10 +1,10 @@
 {application,rscrpt,
-             [{description,"Resource Reporter"},
+             [{description,"freeSWITCH Resource Reporter"},
               {vsn,"0.1"},
               {registered,[]},
               {applications,[kernel,stdlib,os_mon]},
-              {modules,[amqp_manager,rscrpt,rscrpt_app,rscrpt_deps,
-                        rscrpt_fsbox,rscrpt_fsevt,rscrpt_logger,
+              {modules,[amqp_manager,rscrpt,rscrpt_app,rscrpt_bunny,
+                        rscrpt_deps,rscrpt_fsbox,rscrpt_fsevt,rscrpt_logger,
                         rscrpt_mochiweb_util,rscrpt_reporter,rscrpt_sup]},
               {mod,{rscrpt_app,[]}},
               {env,[]}]}.
