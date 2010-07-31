@@ -1,12 +1,13 @@
 {application, rscrpt,
  [
   {description, "freeSWITCH Resource Reporter"}
-  ,{vsn, "0.1"}
+  ,{vsn, "0.3"}
   ,{registered, []}
   ,{applications, [
 		   kernel
 		   ,stdlib
 		   ,os_mon
+		   ,amqp
 		  ]}
   ,{modules, [
 	      rscrpt

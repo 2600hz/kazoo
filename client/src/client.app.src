@@ -1,0 +1,20 @@
+{application, client,
+ [
+  {description, ""}
+  ,{vsn, "1"}
+  ,{registered, []}
+  ,{modules, [
+	      client
+	      ,client_app
+	      ,client_sup
+	      ,client_req
+	      ,client_logger
+	      ,amqp_manager
+	     ]}
+  ,{applications, [
+		   kernel
+		   ,stdlib
+                  ]}
+  ,{mod, { client_app, []}}
+  ,{env, []}
+ ]}.

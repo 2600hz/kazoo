@@ -1,5 +1,4 @@
-
--module(rscmgr_sup).
+-module(client_sup).
 
 -behaviour(supervisor).
 
@@ -26,9 +25,6 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   , [
-	      ?CHILD(rscmgr_res, worker)
-	      ,?CHILD(rscmgr_req, worker)
+	      ?CHILD(client_req, worker)
 	     ]
-	 }
-    }.
-
+	 } }.

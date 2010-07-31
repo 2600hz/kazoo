@@ -17,6 +17,7 @@ start_link() ->
     rscmgr_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
+    ensure_started(amqp),
     rscmgr_sup:start_link().
 
 %% @spec start() -> ok
@@ -25,6 +26,7 @@ start() ->
     rscmgr_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
+    ensure_started(amqp),
     application:start(rscmgr).
 
 %% @spec stop() -> ok

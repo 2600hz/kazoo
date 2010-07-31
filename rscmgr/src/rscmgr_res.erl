@@ -99,11 +99,12 @@ init([]) ->
         ticket = Ticket,
         queue = Queue,
         exchange = ?EXCHANGE,
-        routing_key = <<"#">>,
+        routing_key = Queue,
         nowait = false,
         arguments = []
     },
     #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
+    format_log(info, "RSCMGR_RES Bound ~p to ~p~n", [Queue, ?EXCHANGE]),
 
     %% Register a consumer to listen to the queue
     BasicConsume = #'basic.consume'{
@@ -138,19 +139,13 @@ handle_call({get_resource, Type}, _From, #state{known=Known}=State) ->
     %% simple filtration for now; eventually support more ways to narrow list
     %% like geo-location and other criteria
     %% maybe a chain of filters that whittle the list down
+    format_log(info, "Pre-filter of ~p Known: ~p~n", [Type, Known]),
     RightTypes = lists:filter(fun({_H, Props}) ->
 				      SupportedTypes = proplists:get_value(resource_types, Props, []),
+				      format_log(info, "SupTypes for ~p: ~p~n", [_H, SupportedTypes]),
 				      lists:member(Type, SupportedTypes)
 			      end, Known),
-    Resource = case length(RightTypes) of
-		   0 -> [];
-		   1 ->
-		       hd(RightTypes);
-		   C ->
-		       %% eventually use a weighting function to return these
-		       lists:nth(crypto:rand_uniform(1, C), RightTypes)
-	       end,
-    {reply, Resource, State};
+    {reply, proplists:get_keys(RightTypes), State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.

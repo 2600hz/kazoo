@@ -1,31 +1,30 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Maintain a queue on the Broadcast Xc for apps requesting resources
-%%% Ask rscmgr_res for list of servers based on requested type and
-%%% return list toTargeted Xc.AppQueueId
+%%% Simulate a client making requests to Rabbit and listening for
+%%% responses.
 %%% @end
-%%% Created : 30 Jul 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 30 Jul 2010 by James Aimonetti <>
 %%%-------------------------------------------------------------------
--module(rscmgr_req).
+-module(client_req).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 
 -behaviour(gen_server).
 
--import(proplists, [get_value/2, get_value/3]).
--import(rscmgr_logger, [log/2, format_log/3]).
+-import(client_logger, [log/2, format_log/3]).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, req_resource/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE).
--define(EXCHANGE, <<"broadcast">>).
+-define(SERVER, ?MODULE). 
+-define(PUB_EXCHANGE, <<"broadcast">>).
+-define(SUB_EXCHANGE, <<"targeted">>).
 
 -record(state, {channel, connection, ticket, queue, tag}).
 
@@ -42,6 +41,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+req_resource() ->
+    gen_server:call(?MODULE, req_resource).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -64,10 +66,11 @@ init([]) ->
 
     process_flag(trap_exit, true),
 
+    %% create my queue for others to send me messages
     Exchange = #'exchange.declare'{
       ticket = Ticket,
-      exchange = ?EXCHANGE,
-      type = <<"fanout">>,
+      exchange = ?SUB_EXCHANGE,
+      type = <<"direct">>,
       passive = false,
       durable = false,
       auto_delete=false,
@@ -78,7 +81,7 @@ init([]) ->
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
     format_log(info, "RSCMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
 
-    Queue = list_to_binary([?EXCHANGE, $. | net_adm:localhost()]),
+    Queue = list_to_binary([?SUB_EXCHANGE | ".erl_client"]),
     QueueDeclare = #'queue.declare'{
       ticket = Ticket,
       queue = Queue,
@@ -95,13 +98,12 @@ init([]) ->
     QueueBind = #'queue.bind'{
       ticket = Ticket,
       queue = Queue,
-      exchange = ?EXCHANGE,
-      routing_key = <<"#">>,
+      exchange = ?SUB_EXCHANGE,
+      routing_key = Queue,
       nowait = false,
       arguments = []
      },
     #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
-    format_log(info, "RSCMGR_REQ Bound ~p to ~p~n", [Queue, ?EXCHANGE]),
 
     %% Register a consumer to listen to the queue
     BasicConsume = #'basic.consume'{
@@ -115,6 +117,14 @@ init([]) ->
      },
     #'basic.consume_ok'{consumer_tag = Tag}
         = amqp_channel:subscribe(Channel, BasicConsume, self()),
+
+    %% If the registration was sucessful, then consumer will be notified
+    receive
+        #'basic.consume_ok'{consumer_tag = Tag} -> log(info, "CLIENT_REQ: receive ok");
+	O -> format_log(info, "CLIENT_REQ: receive not ok ~p~n", [O])
+    after
+	1000 -> log(info, "CLIENT_REQ: timed out")
+    end,
 
     {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue}}.
 
@@ -132,7 +142,36 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(req_resource, _From, #state{channel=Channel, ticket=Ticket, queue=Queue}=State) ->
+    BasicPublish = #'basic.publish'{
+      ticket = Ticket
+      ,exchange = ?PUB_EXCHANGE
+      ,mandatory = false
+      ,immediate = false
+    },
+
+    Msg = [{request_id, 1234}
+	   ,{resp_queue_id, Queue} % (app.id)
+	   ,{app, erl_client}
+	   ,{action, request}
+	   ,{category, resource}
+	   ,{type, channel} % | message | media,
+	   ,{command, find}
+	   ,{respond_type, direct}
+	   ,{respond_to, Queue}
+	  ],
+
+    %% Add the message to the publish, converting to binary
+    AmqpMsg = #'amqp_msg'{payload = list_to_binary(mochijson2:encode({struct, Msg})),
+			  props=#'P_basic'{content_type= <<"application/json">>}},
+
+    %% execute the publish command
+    Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
+
+    format_log(info, "Sent on Channel ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n", [Channel, AmqpMsg, BasicPublish, Res]),
+    {reply, ok, State};
 handle_call(_Request, _From, State) ->
+    format_log(info, "CLIENT_REQ: Unknown Call - Req: ~p~n", [_Request]),
     Reply = ok,
     {reply, Reply, State}.
 
@@ -147,6 +186,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
+    format_log(info, "CLIENT_REQ: Unknown cast Msg: ~p~n", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -159,42 +199,33 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-%% cleanly exit if we have been asked to exit
 handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};
-%% receive resource requests from Apps
+%% take in any incoming amqp messages and distribute
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    format_log(info, "Headers: ~p~nPayload: ~p~n", [Props, Payload]),
-    case Props#'P_basic'.content_type of
-	<<"text/xml">> ->
-	    log(info, xml),
-	    %%notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
-	    State;
-	<<"text/plain">> ->
-	    log(info, text),
-	    %%notify(State#state.consumers, Props, binary_to_list(Payload));
-	    State;
-	<<"application/json">> ->
-	    process_json_req(State, binary_to_list(Payload)),
-	    State;
-	<<"erlang/term">> ->
-	    log(info, erlang_term),
-	    State;
-	undefined ->
-	    log(info, undefined),
-	    try binary_to_term(Payload) of
-		_Term -> State
-	    catch
-		_:_ -> State
-	    end;
-	_ContentType ->
-	    format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
-	    State
-    end,
-    {noreply, State};
-%% catch all so we dont loose state
-handle_info(Unhandled, State) ->
-    format_log(info, "RSCMGR_REQ ~p unknown info request: ~p~n", [self(), Unhandled]),
+    format_log(info, "CLIENT_REQ: Headers: ~p~nPayload: ~p~n", [Props, Payload]),
+    State1 = case Props#'P_basic'.content_type of
+		 <<"text/xml">> ->
+		     log(info, xml),
+		     %%notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
+		     State;
+		 <<"text/plain">> ->
+		     log(info, text),
+		     %%notify(State#state.consumers, Props, binary_to_list(Payload));
+		     State;
+		 <<"application/json">> ->
+		     log(info, json),
+		     {struct, Json} = mochijson2:decode(binary_to_list(Payload)),
+		     format_log(info, "CLIENT_REQ: JSON: ~p~n", [Json]),
+		     State;
+		 _ContentType ->
+		     format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
+		     State
+	     end,
+    format_log(info, "Received ~p~n", [Payload]),
+    {noreply, State1};
+handle_info(Info, State) ->
+    format_log(info, "CLIENT_REQ: Unknown Info: ~p~n", [Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -225,55 +256,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-process_json_req(State, Json) ->
-    {struct, Prop} = mochijson2:decode(Json),
-    process_req(get_value(<<"action">>, Prop)
-		,get_value(<<"category">>, Prop)
-		,get_value(<<"type">>, Prop)
-		,get_value(<<"command">>, Prop), State, Prop).
-
-%% process_req(Action, Category, Type, Command, State, Prop)
-%%
-%% process a Find Channel Resource Request
-process_req(<<"request">>, <<"resource">>, <<"channel">>, <<"find">>,
-	    #state{channel=Channel, ticket=Ticket}, Prop) ->
-    L = rscmgr_res:get_resource(channel),
-
-    Msg = [{request_id, get_value(<<"request_id">>, Prop)}
-	   ,{rscmgr_id, net_adm:localhost()}
-	   ,{app, rscmgr}
-	   ,{action, response}
-	   ,{category, resource}
-	   ,{type, channel}
-	   ,{command, find}
-	   ,{available_servers, L}
-	  ],
-
-    Xc = get_value(<<"resp_exchange_id">>, Prop, <<"targeted">>),
-    Q = get_value(<<"resp_queue_id">>, Prop),
-    send_resp(Channel, Ticket, Xc, Q, Msg);
-process_req(Act, Cat, Type, Cmd, State, Prop) ->
-    format_log(info, "Unknown Request: A: ~p Cat: ~p T: ~p Cmd: ~p~nRaw Props: ~p~n"
-	       ,[Act, Cat, Type, Cmd, Prop]),
-    State.
-
-%% Msg should be a Proplist
-send_resp(Channel, Ticket, Exchange, Queue, Msg) ->
-    BasicPublish = #'basic.publish'{
-      ticket = Ticket
-      ,exchange = Exchange
-      ,routing_key = Queue
-      ,mandatory = false
-      ,immediate = false
-    },
-
-    %% Add the message to the publish, converting to binary
-    AmqpMsg = #'amqp_msg'{payload = list_to_binary(mochijson2:encode({struct, Msg})),
-			  props=#'P_basic'{content_type= <<"application/json">>}},
-
-    %% execute the publish command
-    Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
-
-    format_log(info, "Sent Resp on Channel ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n"
-	       ,[Channel, AmqpMsg, BasicPublish, Res]),
-    Res.
