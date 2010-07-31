@@ -137,7 +137,7 @@ handle_cast({process_event, Evt}, #state{events=Es, active_channels=Active}=Stat
     case lists:member(proplists:get_value(event_name, Evt), Es) of
 	true -> rscrpt_reporter:send_report(
 		  [{active_channels, State1#state.active_channels}
-		   ,{resource_type, freeswitch}
+		   ,{resource_types, [message]}
 		   | Evt]
 		 );
 	false -> ok

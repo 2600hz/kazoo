@@ -498,7 +498,7 @@ class AMQPConnection extends AbstractChannel
         $ch = $this->input->read_octet();
         if($ch != 0xCE)
             throw new Exception(sprintf("Framing error, unexpected byte: %x", $ch));
-        
+
         return array($frame_type, $channel, $payload);
     }
 

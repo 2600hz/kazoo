@@ -2,9 +2,7 @@
 
 require_once('amqp.inc');
 
-
 class voiptester {
-
   protected $connection = NULL;
 
   protected $channel = NULL;
@@ -32,66 +30,51 @@ class voiptester {
     }
   }
 
-  public function requestResorce($type, $minQuantity, $maxQuanity, $timeout = 10, $options = array()) {
-    $options += array(
-		      'min_quantity' => $minQuantity,
-		      'max_quanity' => $maxQuanity,
-		      'codec' => NULL,
-		      'priority' => 'normal',
-		      'id' => uniqid()
-		      );
+  public function requestResource($type) {
+    $payload = array('request-id' => uniqid()
+		     ,'resp-exchange-id' => 'targeted'
+		     ,'resp-queue-id' => 'rscmgr_req_testerQ'
+		     ,'app' => 'rscmgr_req_tester'
+		     ,'action' => 'request'
+		     ,'category' => 'resource'
+		     ,'type'  => $type // 'channel' | message | media,
+		     ,'command' => 'find'
+		     );
 
     // Ensure that the exchanges exists, create if not
+    // send request to
     $this->channel->exchange_declare('broadcast', 'fanout', false, false, false);
+    // receive resp from
     $this->channel->exchange_declare('targeted', 'direct', false, false, false);
 
     // Create an anonymous direct queue for this request
-    $replyQueue = $this->channel->queue_declare();
+    $replyQueue = $this->channel->queue_declare('rscmgr_req_testerQ');
     $this->channel->queue_bind($replyQueue[0], 'targeted', $replyQueue[0]);
 
     // Create a consumer for this anonymous queue to collect the replies
-    $consumerTag = $this->channel->basic_consume($replyQueue[0], $options['id'], false, false, false, false, array($this, 'request_resource_reply'));
+    $consumerTag = $this->channel->basic_consume($replyQueue[0], $payload['request-id']
+						 ,false, false, false, false
+						 ,array($this, 'request_resource_reply'));
 
-    // Send the requestResorce message
-    $msg = new DomDocument('1.0');
-    $root = $msg->createElement('request_resorce');
-    $root = $msg->appendChild($root);
-
-    $request = $msg->createElement($type);
-    $root->appendChild($request);
-
-    foreach ($options as $k => $v) {
-      $param = $msg->createAttribute($k);
-      $request->appendChild($param);
-      
-      $value = $msg->createTextNode($v);
-      $param->appendChild($value);
-    }
-
-    $msg = new AMQPMessage($msg->saveXML(), array('content_type' => 'text/xml', 'reply_to' => $replyQueue[0]));
-    $this->channel->basic_publish($msg, 'broadcast');
+    $msg = new AMQPMessage(json_encode($payload), array('content_type' => 'application/json'
+							,'reply_to' => $replyQueue[0]));
+    print_r($msg);
+    echo 'Hey, basic_publish: ', $this->channel->basic_publish($msg, 'broadcast'), "\n";
 
     // wait for the replies
     $start = time();
+    $timeout = 1000;
+
     while(count($this->channel->callbacks)) {
+      echo 'call wait', "\n";
       $this->channel->wait();
-      $avaliable = 0;
-      if (!empty($this->accumulator[$options['id']])) {
-	foreach($this->accumulator[$options['id']] as $reply) {
-	  $avaliable += $reply['avaliable'];
-	}
-      }
-      if ($avaliable == $maxQuanity) {
-	echo "WOOT! Found the resources we requested!\n";
-	print_r($this->accumulator);
-	break;
-      }
       if (!empty($timeout) && (time() - $start) > $timeout) {
 	echo "We are not waiting any longer... you got what you got...\n";
-	print_r($this->accumulator);
 	break;
       }
     }
+
+    return;
 
     $this->channel->basic_cancel($consumerTag);
 
@@ -154,19 +137,9 @@ class voiptester {
 
     $this->channel->basic_ack($deliveryTag);
 
-    $reply = new SimpleXMLElement($body);
-
-    foreach($reply->children() as $resource) {
-      $result = array(
-		      'avaliable' => (string)$resource['avaliable'],
-		      'cost' => (string)$resource['cost'],
-		      'hostname' => (string)$resource['hostname'],
-		      );
-
-      foreach ($resource->children() as $child) {
-	$result['contact'] = (array)$child;
-      }
-      $this->accumulator[(string)$resource['id']][] = $result;
-    }
+    echo 'rrr ', print_r($msg);
   }
 }
+
+$toolkit = new voiptester('fs1.voicebus.net');
+$toolkit->requestResource('channels', 1, 1);

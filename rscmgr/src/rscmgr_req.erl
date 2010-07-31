@@ -77,7 +77,7 @@ init([]) ->
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
     format_log(info, "RSCMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
 
-    Queue = list_to_binary(["resource." | net_adm:localhost()]),
+    Queue = net_adm:localhost(),
     QueueDeclare = #'queue.declare'{
       ticket = Ticket,
       queue = Queue,
@@ -160,7 +160,7 @@ handle_cast(_Msg, State) ->
 %% cleanly exit if we have been asked to exit
 handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};
-%% take in any incoming amqp messages and distribute
+%% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     case Props#'P_basic'.content_type of
 	<<"text/xml">> ->
@@ -188,6 +188,7 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
 	    format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
 	    State
     end,
+    format_log(info, "Headers: ~p~nPayload: ~p~n", [Props, Payload]),
     {noreply, State};
 %% catch all so we dont loose state
 handle_info(Unhandled, State) ->

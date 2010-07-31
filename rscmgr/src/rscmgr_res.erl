@@ -135,14 +135,19 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({get_resource, Type}, _From, #state{known=Known}=State) ->
+    %% simple filtration for now; eventually support more ways to narrow list
+    %% like geo-location and other criteria
+    %% maybe a chain of filters that whittle the list down
     RightTypes = lists:filter(fun({_H, Props}) ->
-				      Type =:= proplists:get_value(resource_type, Props)
+				      SupportedTypes = proplists:get_value(resource_types, Props, []),
+				      lists:member(Type, SupportedTypes)
 			      end, Known),
     Resource = case length(RightTypes) of
 		   0 -> [];
 		   1 ->
 		       hd(RightTypes);
 		   C ->
+		       %% eventually use a weighting function to return these
 		       lists:nth(crypto:rand_uniform(1, C), RightTypes)
 	       end,
     {reply, Resource, State};
