@@ -1,32 +1,32 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Reports the freeSWITCH resource status to a queue.
-%%% Listens on the fS Event Socket for events, parses them, and sends
-%%% a well-formed payload to the resources queue.
+%%% Recv a request to spin up a call.
+%%% Get Callid back.
+%%% Create two queues, one in CallCtlXc, one in CallEvtXc, with the 
+%%% queue name Callid
 %%% @end
-%%% Created : 26 Jul 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 31 Jul 2010 by James Aimonetti <>
 %%%-------------------------------------------------------------------
--module(rscrpt_fsevt).
+-module(callmgr_fs).
 
 -behaviour(gen_server).
 
--compile(export_all).
-
--import(rscrpt_logger, [log/2, format_log/3]).
+-import(callmgr_logger, [log/2, format_log/3]).
 
 %% API
--export([start_link/0, stop/0, send_cmd/1, add_event/1, del_event/1]).
+-export([start_link/0, originate/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE).
--define(DEFAULT_EVENTS, ["HEARTBEAT", "CHANNEL_CREATE", "CHANNEL_DESTROY"]).
+-include("../../include/fs.hrl").
 
--record(state, {fs_sock, events=[], active_channels=0}).
+-define(SERVER, ?MODULE). 
+
+-record(state, {fs=#fs_conn{}}).
 
 %%%===================================================================
 %%% API
@@ -42,17 +42,11 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-stop() ->
-    gen_server:cast(?MODULE, stop).
-
-add_event(Evt) ->
-    gen_server:call(?MODULE, {add_event, Evt}).
-
-del_event(Evt) ->
-    gen_server:call(?MODULE, {del_event, Evt}).
-
-send_cmd(Cmd) ->
-    gen_server:call(?MODULE, {send_cmd, Cmd}).
+%% effective_caller_id_{name, number}
+%% Receiver is probably the Queue id of the 3rd-party app, but this
+%% module doesn't care about this. Just passes it back with the callid
+originate(Name, Num, Receiver) ->
+    gen_server:cast(?MODULE, {originate, Name, Num, Receiver}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -70,27 +64,25 @@ send_cmd(Cmd) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    log(info, "Starting FS Event Socket Listener"),
-    Hostname = "localhost",
-    Port = 8021,
-    Auth = "ClueCon",
+    FS = #fs_conn{},
+    format_log(info, "CALLMGR_FS(~p): Starting FS Event Socket Listener~n", [self()]),
+    Hostname = FS#fs_conn.host,
+    Port = FS#fs_conn.port,
+    Auth = FS#fs_conn.auth,
 
     Socket = case gen_tcp:connect(Hostname, Port, [list, {active, false}]) of
 		 {ok, FsSock} ->
 		     inet:setopts(FsSock, [{packet, line}]),
-		     log(info, ["Opened FreeSWITCH event socket to ", Hostname]),
+		     format_log(info, "CALLMGR_FS: Opened FreeSWITCH event socket to ~p~n", [Hostname]),
+		     clear_socket(FsSock),
 		     ok = gen_tcp:send(FsSock, lists:concat(["auth ", Auth, "\n\n"])),
-		     ok = gen_tcp:send(FsSock, "events plain all\n\n"),
-		     lists:foreach(fun(Evt) ->
-					   gen_tcp:send(FsSock, lists:concat(["filter Event-Name ", Evt, "\n\n"]))
-				   end, ?DEFAULT_EVENTS),
-		     spawn(fun() -> reader_loop(FsSock, [], 0) end),
+		     clear_socket(FsSock),
 		     FsSock;
 		 {error, Reason} ->
 		     format_log(error, "Unable to open socket: ~p~n", [Reason]),
 		     undefined
 	     end,
-    {ok, #state{fs_sock=Socket, events=?DEFAULT_EVENTS}}.
+    {ok, #state{fs=FS#fs_conn{socket=Socket}}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,18 +98,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Call, _From, #state{fs_sock=undefined}=State) ->
-    {reply, socket_not_up, State};
-handle_call({add_event, Evt}, _From, #state{events=Es}=State) ->
-    rscrpt_fsevt:send_cmd(lists:concat(["filter Event-Name ", Evt])),
-    {reply, ok, State#state{events=[Evt|Es]}};
-handle_call({del_event, Evt}, _From, #state{events=Es}=State) ->
-    rscrpt_fsevt:send_cmd(lists:concat(["filter delete Event-Name ", Evt])),
-    {reply, ok, State#state{events=lists:delete(Evt,Es)}};
-handle_call({send_cmd, Cmd}, _From, #state{fs_sock=FsSock}=State) ->
-    format_log(info, "Sending cmd: ~p~n", [Cmd]),
-    ok = gen_tcp:send(FsSock, lists:concat([Cmd, "\n\n"])),
-    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -132,20 +112,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({process_event, Evt}, #state{events=Es, active_channels=Active}=State) ->
-    State1 = State#state{active_channels=update_active(Active, Evt)},
-    case lists:member(proplists:get_value(event_name, Evt), Es) of
-	true -> rscrpt_reporter:send_report(
-		  [{active_channels, State1#state.active_channels}
-		   ,{resource_types, [channel]}
-		   | Evt]
-		 );
-	false -> ok
-    end,
-    {noreply, State1};
-handle_cast(stop, #state{fs_sock=FsSock}=State) ->
-    gen_tcp:close(FsSock),
-    {stop, normal, State};
+handle_cast({originate, Name, Num, Receiver}, #state{fs=Fs}=State) ->
+    originate(Fs, Name, Num, Receiver),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -173,8 +142,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{fs_sock=FsSock}) ->
-    gen_tcp:close(FsSock),
+terminate(_Reason, _State) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -191,24 +159,43 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+originate(Fs, Name, Num, Receiver) when is_integer(Num) ->
+    originate(Fs, Name, integer_to_list(Num), Receiver);
+originate(Fs, Name, Num, Receiver) ->
+    Cmd = lists:concat(["api originate {effective_caller_id_name="
+	   ,Name,"}{effective_caller_id_number="
+	   ,Num,"}sofia/gateway/proxy1.switchfreedom.com/+14158867905 &park\n\n"
+	  ]),
+    format_log(info, "CALLMGR_FS: Sending to Originate CMD: ~p~n", [Cmd]),
+    ok = gen_tcp:send(Fs#fs_conn.socket, Cmd),
+    %clear_socket(Fs#fs_conn.socket), % we'll get a api/response first
+    %log(info, "CALLMGR_FS: Cleared custom command from socket"),
+    spawn(fun() -> get_uuid(Fs, Receiver) end).
+
+reader_loop(Socket) ->
+    reader_loop(Socket, [], 0).
+
 reader_loop(Socket, Headers, ContentLength) ->
+    log(info, "CALLMGR_FS: reader_loop called."),
     case gen_tcp:recv(Socket, 0) of
         {ok, "\n"} ->
             %% End of message. Parse
-            %log(info, ["COMPLETE HEADER: ", Headers]),
+	    %%log(info, ["COMPLETE HEADER: ", Headers]),
 
             case ContentLength > 0 of
 		true ->
 		    inet:setopts(Socket, [{packet, raw}]),
 		    {ok, Body} = gen_tcp:recv(Socket, ContentLength),
 		    inet:setopts(Socket, [{packet, line}]),
-		    %log(info, [" COMPLETE DATA: ", Body]),
-		    parse_data(proplists:get_value("Content-Type", Headers), Headers, Body);
-		_ -> ok
-            end,
-
-            reader_loop(Socket, [], 0);
+		    %%log(info, [" COMPLETE DATA: ", Body]),
+		    extract_uuid(proplists:get_value("Content-Type", Headers), Body);
+		_ ->
+		    format_log(info, "CALLMGR_FS: No body. Headers: ~p~nTrying again to get ID~n", [Headers]),
+		    reader_loop(Socket, [], 0)
+            end;
         {ok, Data} ->
+            log(info, ["Received a line: ", Data]),
+
             %% Parse the line
 	    KV = split(Data),
 	    {K, V} = KV,
@@ -222,44 +209,78 @@ reader_loop(Socket, Headers, ContentLength) ->
             end,
 
             reader_loop(Socket, [KV | Headers], Length);
-        {error, closed} ->
-            ok
+        {error, closed}=Err ->
+            Err
     end.
 
-parse_data("text/event-plain", _Headers, Body) ->
-    process_event(event_to_proplist(Body));
-parse_data("command/reply", Headers, Body) ->
-    format_log(info, "Command reply: ~p~nCommand data: ~p~n", [Headers, Body]);
-parse_data("api/response", Headers, Body) ->
-    format_log(info, "API response: ~p~nAPI data: ~p~n", [Headers, Body]);
-parse_data(ContentType, _Headers, _Body) ->
-    format_log(warning, "Unused Content-Type: ~p~n", [ContentType]).
+clear_socket(Socket) ->
+    clear_socket(Socket, [], 0).
 
+clear_socket(Socket, Data, ContentLength) ->
+    log(info, "CALLMGR_FS: clear_socket called"),
+    case gen_tcp:recv(Socket, 0) of
+        {ok, "\n"} ->
+            %% End of message. Parse
+	    %%log(info, ["COMPLETE HEADER: ", Headers]),
 
-event_to_proplist(Str) ->
-    L = string:tokens(Str, "\n"),
-    lists:map(fun(S) -> [K, V0] = string:tokens(S, ":"),
-			V1 = string:strip(V0, left, $ ),
-			{V2, []} = mochiweb_util:parse_qs_value(V1),
-			{K, V2}
-	      end, L).
+            case ContentLength > 0 of
+		true ->
+		    inet:setopts(Socket, [{packet, raw}]),
+		    {ok, _Body} = gen_tcp:recv(Socket, ContentLength),
+		    format_log(info, "CALLMGR_FS: Clear. Data: ~p~nBody: ~p~n", [Data, _Body]),
+		    inet:setopts(Socket, [{packet, line}]);
+		_ ->
+		    format_log(info, "CALLMGR_FS: Clear: No body. Data: ~p~n", [Data]),
+		    inet:setopts(Socket, [{packet, line}])
+            end;
+        {ok, Datum} ->
+            %% Parse the line
+	    format_log(info, "CALLMGR_FS: Clear-line: Data: ~p~n", [Datum]),
+	    KV = split(Datum),
+	    {K, V} = KV,
 
-process_event(Evt) ->
-    format_log(info, "Event-Name: ~p~n", [proplists:get_value("Event-Name", Evt)]),
-    gen_server:cast(?MODULE, {process_event, format_event(Evt, [])}).
+            %% Is this a content-length string? If so, we'll need to gather extra data later
+            case K =:= "Content-Length" of
+		true ->
+		    Length = list_to_integer(V);
+		_ ->
+		    Length = ContentLength
+            end,
 
-%% make keys we want atoms
-format_event([], Msg) -> lists:reverse(Msg);
-format_event([{"Event-Name", V} | KVs], Msg) ->
-    format_event(KVs, [{event_name, V} | Msg]);
-format_event([{"Core-UUID", V} | KVs], Msg) ->
-    format_event(KVs, [{core_uuid, V} | Msg]);
-format_event([{"Event-Date-GMT", V} | KVs], Msg) ->
-    format_event(KVs, [{event_date_gmt, V} | Msg]);
-format_event([{"Caller-Username", V} | KVs], Msg) ->
-    format_event(KVs, [{caller_username, V} | Msg]);
-format_event([_|KVs], Msg) ->
-    format_event(KVs, Msg).
+            clear_socket(Socket, [KV | Data], Length);
+        {error, closed}=Err ->
+            Err;
+	Other ->
+	    format_log(info, "CALLMGR_FS: get_tcp:recv Unexpected: ~p~n", [Other]),
+	    {error, unexpected}
+    end.
+
+get_uuid(Fs, Receiver) ->
+    CallId = reader_loop(Fs#fs_conn.socket),
+    format_log(info, "CALLMGR_FS: Got ~p off the socket~nSending back to Q: ~p~n", [CallId, Receiver]),
+    create_ctl_evt_mgrs(Fs, CallId),
+    callmgr_req:recv_callid(CallId, Receiver).
+
+create_ctl_evt_mgrs(Fs, CallId) ->
+    %% todo - register these processes with the server so they can be supervised
+    format_log(info, "CALLMGR_FS: starting evt and ctl mgrs for CallId: ~p~n", [CallId]),
+    _CtlRes = spawn(callmgr_ctl, start_link, [Fs, CallId]),
+    format_log(info, "CALLMGR_FS: started callmgr_ctl(~p)~n", [_CtlRes]),
+    _EvtRes = spawn(callmgr_evt, start_link, [Fs, CallId]),
+    format_log(info, "CALLMGR_FS: started callmgr_evt(~p)~n", [_EvtRes]),
+    ok.
+
+extract_uuid("api/response", [$+,$O,$K,$ | ID]) ->
+    clean_endline(lists:reverse(ID));
+extract_uuid("api/response", [$\n,$+,$O,$K,$ | ID]) ->
+    clean_endline(lists:reverse(ID));
+extract_uuid(_ResponseType, _Body) ->
+    format_log(info, "CALLMGR_FS: Failed to extract UUID. ResType: ~p Body: ~p||~n"
+	       ,[_ResponseType, _Body]),
+    {error, bad_response}.
+
+clean_endline([$\n | Ls]) -> clean_endline(Ls);
+clean_endline(Ls) -> lists:reverse(Ls).
 
 %% Takes K: V\n and returns {K, V}
 split(Data) ->
@@ -270,10 +291,3 @@ split(Data) ->
 	     _ -> lists:map(fun(S) -> string:strip(S, right, $\n) end, V)
 	 end,
     {K, V1}.
-
-update_active(Active, Evt) ->
-    update_count(proplists:get_value(event_name, Evt), Active).
-
-update_count("CHANNEL_CREATE", Active) -> Active+1;
-update_count("CHANNEL_DESTROY", Active) -> Active-1;
-update_count(_, Active) -> Active.

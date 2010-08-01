@@ -4,7 +4,7 @@
               {registered,[]},
               {applications,[kernel,stdlib,os_mon,amqp]},
               {modules,[rscrpt,rscrpt_app,rscrpt_deps,rscrpt_fsbox,
-                        rscrpt_fsevt,rscrpt_logger,rscrpt_mochiweb_util,
-                        rscrpt_reporter,rscrpt_sup]},
+                        rscrpt_fsevt,rscrpt_logger,rscrpt_reporter,
+                        rscrpt_sup]},
               {mod,{rscrpt_app,[]}},
               {env,[]}]}.

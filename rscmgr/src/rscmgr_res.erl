@@ -145,7 +145,8 @@ handle_call({get_resource, Type}, _From, #state{known=Known}=State) ->
 				      format_log(info, "SupTypes for ~p: ~p~n", [_H, SupportedTypes]),
 				      lists:member(Type, SupportedTypes)
 			      end, Known),
-    {reply, proplists:get_keys(RightTypes), State};
+    Queues = lists:map(fun(H) -> ["callmgr." | H] end, proplists:get_keys(RightTypes)),
+    {reply, Queues, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.

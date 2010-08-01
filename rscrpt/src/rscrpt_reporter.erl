@@ -61,7 +61,7 @@ send_report(Rpt) ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    format_log(info, "Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
+    format_log(info, "RSCRPT_REPORTER: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
 
     process_flag(trap_exit, true),
 
@@ -77,7 +77,7 @@ init([]) ->
       arguments = []
      },
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
-    format_log(info, "Creating or accessing Exchange ~p~n", [Exchange]),
+    format_log(info, "RSCRPT_REPORTER: Accessing Exchange ~p~n", [Exchange]),
 
     {ok, #state{channel=Channel, ticket=Ticket, exchange=Exchange}}.
 
@@ -112,8 +112,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({report, Rpt}, #state{channel=Channel,ticket=Ticket}=State) ->
     Box = rscrpt_fsbox:get_box_update(),
     Msg = lists:concat([Box, Rpt]),
-    Pm = publish_message(proplist_to_binary(Msg), Ticket, Channel),
-    format_log(info, "sent_msg: ~p pm: ~p~n", [Msg, Pm]),
+    publish_message(proplist_to_binary(Msg), Ticket, Channel),
     {noreply, State};
 handle_cast(Msg, State) ->
     format_log(info, "uncaught cast msg ~p~n", [Msg]),

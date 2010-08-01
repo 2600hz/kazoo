@@ -14,9 +14,10 @@
 -behaviour(gen_server).
 
 -import(client_logger, [log/2, format_log/3]).
+-import(proplists, [get_value/2, get_value/3]).
 
 %% API
--export([start_link/0, req_resource/0]).
+-export([start_link/0, req_resource/0, start_script/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -26,7 +27,7 @@
 -define(PUB_EXCHANGE, <<"broadcast">>).
 -define(SUB_EXCHANGE, <<"targeted">>).
 
--record(state, {channel, connection, ticket, queue, tag}).
+-record(state, {channel, connection, ticket, queue, tag, callid}).
 
 %%%===================================================================
 %%% API
@@ -44,6 +45,9 @@ start_link() ->
 
 req_resource() ->
     gen_server:call(?MODULE, req_resource).
+
+start_script(CallId) ->
+    gen_server:cast(?MODULE, {start_script, CallId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -185,6 +189,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({start_script, CallId}, State) ->
+    Cmds = [lists:concat(["api uuid_broadcast "
+			  ,CallId
+			  ," /home/james/local/freeswitch/sounds/music/8000/danza-espanola-op-37-h-142-xii-arabesca.wav"
+			 ])
+	    %,lists:concat(["api uuid_kill ", CallId])
+	   ],
+    lists:foreach(fun(Cmd) -> send_cmd(State, CallId, Cmd) end, Cmds),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     format_log(info, "CLIENT_REQ: Unknown cast Msg: ~p~n", [_Msg]),
     {noreply, State}.
@@ -202,8 +215,11 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};
 %% take in any incoming amqp messages and distribute
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    format_log(info, "CLIENT_REQ: Headers: ~p~nPayload: ~p~n", [Props, Payload]),
+handle_info({{#'basic.return'{}, #amqp_msg{props = _Properties}}}=_Returned, State) ->
+    format_log(info, "CLIENT_REQ: Returned: ~p~n", [_Returned]),
+    {noreply, State};
+handle_info({_Ignore, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    format_log(info, "CLIENT_REQ: Headers: ~p~nPayload: ~p~nIgnore: ~p~n", [Props, Payload, _Ignore]),
     State1 = case Props#'P_basic'.content_type of
 		 <<"text/xml">> ->
 		     log(info, xml),
@@ -215,9 +231,9 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
 		     State;
 		 <<"application/json">> ->
 		     log(info, json),
-		     {struct, Json} = mochijson2:decode(binary_to_list(Payload)),
-		     format_log(info, "CLIENT_REQ: JSON: ~p~n", [Json]),
-		     State;
+		     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+		     format_log(info, "CLIENT_REQ: JSON: ~p~n", [Prop]),
+		     process_msg(State, get_route(Prop), Prop);
 		 _ContentType ->
 		     format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
 		     State
@@ -256,3 +272,82 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%% Get params into proplist, then call me
+% process_msg(State, {Action, Category, Type, Command}, Proplist)
+process_msg(State, {<<"response">>
+		   ,<<"resource">>
+		   ,<<"channel">>
+		   ,<<"setup">>}, Prop) ->
+    CallId = get_value(<<"callid">>, Prop),
+    consume_call_evts(State, CallId),
+    start_script(CallId),
+    State#state{callid=CallId};
+process_msg(State, {
+	      <<"response">>
+		  ,<<"resource">>
+		  ,<<"channel">>
+		  ,<<"find">>
+	     }, Prop) ->
+    spin_up_calls(State, get_value(<<"available_servers">>, Prop, [])),
+    State;
+process_msg(State, Route, Prop) ->
+    format_log(info, "CLIENT_REQ: Unhandled Route: ~p~nProp: ~p~n", [Route, Prop]),
+    State.
+
+spin_up_calls(_State, []) -> ok;
+spin_up_calls(#state{channel=Channel, ticket=Ticket, queue=Queue}=State, [H|Hs]) ->
+    Msg = [{request_id, 2345}
+	   ,{resp_queue_id, Queue}
+	   ,{app, erl_client}
+	   ,{action, request}
+	   ,{category, resource}
+	   ,{type, channel}
+	   ,{command, setup}
+	   ,{respond_type, direct}
+	   ,{respond_to, Queue}
+	   ,{call, {struct, [{from, ["erl_client_name", 444]}, {to, 555}, {via, 666}]}}
+	   ,{tenant_id, 9876}],
+    HQ = list_to_binary(["targeted." | H]),
+    {BasicPublish, AmqpMsg} = amqp_util:targeted_publish(Ticket
+							 ,HQ
+							 ,list_to_binary(mochijson2:encode({struct, Msg}))
+							 ,<<"application/json">>
+							),
+
+    %% execute the publish command
+    Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
+
+    format_log(info, "CLIENT_REQ: Spinup on Host ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n"
+	       ,[HQ, AmqpMsg, BasicPublish, Res]),
+    spin_up_calls(State, Hs).
+
+send_cmd(#state{channel=Channel, ticket=Ticket}, CallId, Cmd) ->
+    format_log(info, "Client: Cmd: ~p~nEncoded: ~p~nPayload: ~p~n", [Cmd, mochijson2:encode(Cmd), list_to_binary(mochijson2:encode(Cmd))]),
+    {Pub, AmqpMsg} = amqp_util:callctl_publish(Ticket
+					       ,CallId
+					       ,list_to_binary(mochijson2:encode(Cmd))
+					       ,<<"application/json">>),
+    %% execute the publish command
+    _Res = amqp_channel:call(Channel, Pub, AmqpMsg),
+    format_log(info, "CLIENT_REQ: Sent Msg ~p to ~p~nRes: ~p~n", [AmqpMsg, Pub, _Res]),
+    ok.
+
+consume_call_evts(#state{channel=Channel, ticket=Ticket}, CallId) ->
+    QueueDeclare = amqp_util:new_callevt_queue(Ticket, CallId),
+    #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
+
+    %% Bind the queue to an exchange
+    QueueBind = amqp_util:bind_q_to_callevt(Ticket, Queue, Queue),
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
+
+    %% Register a consumer to listen to the queue
+    BC = amqp_util:callevt_consume(Ticket, CallId),
+    format_log(info, "CLIENT_REQ: Consume callevt.~p events~nBC: ~p~n", [CallId, BC]),
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BC, self()).
+
+get_route(Prop) ->
+    {get_value(<<"action">>, Prop)
+     ,get_value(<<"category">>, Prop)
+     ,get_value(<<"type">>, Prop)
+     ,get_value(<<"command">>, Prop)
+    }.

@@ -90,9 +90,12 @@ handle_call({open_channel, Pid}, _From, State) ->
 
         false ->
             %% Open an AMQP channel to access our realm
-            %?DEBUG("~p open channel for ~p~n", [self(), Pid]),
-
+	    io:format("AMQP(~p): Open channel for ~p~n", [self(), Pid]),
             Channel = amqp_connection:open_channel(Connection),
+
+	    %% if a message is returned, we need to handle it
+	    _Res = amqp_channel:register_return_handler(Channel, Pid),
+	    io:format("AMQP(~p): Registered return handler on ch: ~p for pid: ~p Res: ~p~n", [self(), Channel, Pid, _Res]),
 
             Access = #'access.request'{
                 realm = <<"/data">>, %% fs_toolkit_cfg:get([amqp_access, realm]),
@@ -105,7 +108,6 @@ handle_call({open_channel, Pid}, _From, State) ->
 
             case amqp_channel:call(Channel, Access) of
                 #'access.request_ok'{ticket = Ticket} ->
-
                     MRef = erlang:monitor(process, Pid),
                     {reply,
                         {ok, Channel, Ticket},
@@ -117,7 +119,6 @@ handle_call({open_channel, Pid}, _From, State) ->
                     {reply, {error, Fail}, State}
             end
     end;
-
 handle_call({close_channel, Pid}, _From, State) ->
     #state{connection = Connection, channels = Channels} = State,
 
@@ -146,6 +147,7 @@ handle_call({close_channel, Pid}, _From, State) ->
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
+    io:format("AMQP: Unhandled call: ~p~n", [_Request]),
     {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
@@ -165,10 +167,9 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, State) ->
     #state{connection = Connection, channels = Channels} = State,
-    %?DEBUG("~p informed ~p down: ~p~n", [self(), Pid, Reason]),
+    io:format("AMQP(~p): informed ~p down: ~p~n", [self(), Pid, _Reason]),
 
     case lists:keysearch(Pid, 1, Channels) of
-
         {value, {Pid, Channel, _Ticket, MRef}} ->
 
             %?DEBUG("~p close channel for ~p~n", [self(), Pid]),
@@ -190,7 +191,12 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason}, State) ->
     end;
 
 handle_info({'EXIT', _Pid, Reason}, State) ->
-    {stop, Reason, State}.
+    io:format("AMQP(~p): EXIT from Pid: ~p for ~p~n", [self(), _Pid, Reason]),
+    {stop, Reason, State};
+handle_info(_Info, State) ->
+    io:format("AMQP(~p): Unknown Info: ~p~n", [self(), _Info]),
+    {noreply, State}.
+
 
 % handle_info(Msg, State) ->
 %   %?DEBUG("~p unhandled info: ~p~n", [self(), Msg]),
