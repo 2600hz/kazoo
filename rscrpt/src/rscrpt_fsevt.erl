@@ -46,13 +46,13 @@ stop() ->
     gen_server:cast(?MODULE, stop).
 
 add_event(Evt) ->
-    gen_server:call(?MODULE, {add_event, Evt}).
+    gen_server:cast(?MODULE, {add_event, Evt}).
 
 del_event(Evt) ->
-    gen_server:call(?MODULE, {del_event, Evt}).
+    gen_server:cast(?MODULE, {del_event, Evt}).
 
 send_cmd(Cmd) ->
-    gen_server:call(?MODULE, {send_cmd, Cmd}).
+    gen_server:cast(?MODULE, {send_cmd, Cmd}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -108,16 +108,6 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call(_Call, _From, #state{fs_sock=undefined}=State) ->
     {reply, socket_not_up, State};
-handle_call({add_event, Evt}, _From, #state{events=Es}=State) ->
-    rscrpt_fsevt:send_cmd(lists:concat(["filter Event-Name ", Evt])),
-    {reply, ok, State#state{events=[Evt|Es]}};
-handle_call({del_event, Evt}, _From, #state{events=Es}=State) ->
-    rscrpt_fsevt:send_cmd(lists:concat(["filter delete Event-Name ", Evt])),
-    {reply, ok, State#state{events=lists:delete(Evt,Es)}};
-handle_call({send_cmd, Cmd}, _From, #state{fs_sock=FsSock}=State) ->
-    format_log(info, "Sending cmd: ~p~n", [Cmd]),
-    ok = gen_tcp:send(FsSock, lists:concat([Cmd, "\n\n"])),
-    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -132,6 +122,16 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({add_event, Evt}, #state{events=Es}=State) ->
+    rscrpt_fsevt:send_cmd(lists:concat(["filter Event-Name ", Evt])),
+    {noreply, State#state{events=[Evt|Es]}};
+handle_cast({del_event, Evt}, #state{events=Es}=State) ->
+    rscrpt_fsevt:send_cmd(lists:concat(["filter delete Event-Name ", Evt])),
+    {noreply, State#state{events=lists:delete(Evt,Es)}};
+handle_cast({send_cmd, Cmd}, #state{fs_sock=FsSock}=State) ->
+    format_log(info, "Sending cmd: ~p~n", [Cmd]),
+    ok = gen_tcp:send(FsSock, lists:concat([Cmd, "\n\n"])),
+    {noreply, State};
 handle_cast({process_event, Evt}, #state{events=Es, active_channels=Active}=State) ->
     State1 = State#state{active_channels=update_active(Active, Evt)},
     case lists:member(proplists:get_value(event_name, Evt), Es) of

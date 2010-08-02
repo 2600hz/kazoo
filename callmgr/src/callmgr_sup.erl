@@ -28,6 +28,7 @@ init([]) ->
 	   , [
 	      ?CHILD(callmgr_req, worker)
 	      ,?CHILD(callmgr_fs, worker)
+	      ,?CHILD(callmgr_fsdemo, worker)
 	     ]
 	 }
     }.
