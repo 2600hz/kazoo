@@ -266,26 +266,21 @@ evt_loop(Socket) ->
     evt_loop(Socket, [], 0).
 
 evt_loop(Socket, Headers, ContentLength) ->
-    %log(info, "CALLMGR_FSDEMO: evt_loop called."),
     case gen_tcp:recv(Socket, 0) of
         {ok, "\n"} ->
-            %% End of message. Parse
-	    %%log(info, ["COMPLETE HEADER: ", Headers]),
-
             case ContentLength > 0 of
 		true ->
 		    inet:setopts(Socket, [{packet, raw}]),
 		    {ok, Body} = gen_tcp:recv(Socket, ContentLength),
 		    inet:setopts(Socket, [{packet, line}]),
-		    format_log(info, "CALLMGR_FSDEMO: With Body, Headers: ~p~n", [Headers]),
+		    %format_log(info, "CALLMGR_FSDEMO: With Body, Headers: ~p~n", [Headers]),
 		    process_evt(proplists:get_value("Content-Type", Headers), event_to_proplist(Body));
 		_ ->
-		    format_log(info, "CALLMGR_FSDEMO: No body. Headers: ~p~n", [Headers])
+		    %format_log(info, "CALLMGR_FSDEMO: No body. Headers: ~p~n", [Headers]),
+		    ok
             end,
 	    evt_loop(Socket, [], 0);
         {ok, Data} ->
-            %log(info, ["Received a line: ", Data]),
-
             %% Parse the line
 	    KV = split(Data),
 	    {K, V} = KV,

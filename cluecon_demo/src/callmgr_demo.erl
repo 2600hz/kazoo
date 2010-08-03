@@ -88,19 +88,19 @@ init(UUID) ->
 
 loop(UUID, FinalStep, []) ->
     Cmd = lists:concat(proplists:get_value(cmd, FinalStep)),
-    callmgr_logger:format_log(info, "DEMO(~p): loop final for UUID ~p~nCmd ~p~nEvt: ~p~n", [self(), UUID, Cmd]),
+    callmgr_logger:format_log(info, "DEMO(~p): loop final for UUID ~p~nCmd ~p~n~n", [self(), UUID, Cmd]),
     callmgr_fsdemo:exec_cmd(UUID, Cmd);
 loop(UUID, Step, Steps) ->
     Cmd = lists:concat(proplists:get_value(cmd, Step)),
     Evt = proplists:get_value(evt, Step),
-    callmgr_logger:format_log(info, "DEMO(~p): loop entered for UUID ~p~nCmd ~p~nEvt: ~p~n", [self(), UUID, Cmd, Evt]),
+    callmgr_logger:format_log(info, "DEMO(~p): loop entered for UUID ~p~nCmd ~p~nEvt: ~p~n", [self(), UUID, Cmd, proplists:get_value("Event-Name", Evt)]),
     callmgr_fsdemo:exec_cmd(UUID, Cmd),
     wait(UUID, Evt, Steps).
 
 wait(UUID, Evt, Steps) ->
     receive
 	{event_exec_completed, Evt1} ->
-	    callmgr_logger:format_log(info, "DEMO(~p): RecvEvtExecCompleted~n", [self()]),
+	    %callmgr_logger:format_log(info, "DEMO(~p): RecvEvtExecCompleted~n", [self()]),
 	    case lists:all(fun({K,V}) -> 
 				   proplists:get_value(K, Evt1) == V
 			   end, Evt) of
@@ -110,7 +110,7 @@ wait(UUID, Evt, Steps) ->
 		    wait(UUID, Evt, Steps)
 	    end;
 	{event_destroy, UUID} ->
-	    callmgr_logger:format_log(info, "DEMO(~p): Closing down~n", [self()]),
+	    callmgr_logger:format_log(info, "DEMO(~p): Closing down UUID: ~p~n", [self(), UUID]),
 	    ok;
 	_Evt ->
 	    callmgr_logger:format_log(info, "DEMO(~p): Unknown Event: ~p~n", [self(), _Evt]),
