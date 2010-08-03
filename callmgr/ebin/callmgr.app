@@ -7,4 +7,5 @@
               {env,[]},
               {modules,[callmgr,callmgr_app,callmgr_ctl,callmgr_demo,
                         callmgr_deps,callmgr_evt,callmgr_fs,callmgr_fsdemo,
-                        callmgr_logger,callmgr_req,callmgr_sup]}]}.
+                        callmgr_inbound,callmgr_logger,callmgr_req,
+                        callmgr_sup,freeswitch]}]}.

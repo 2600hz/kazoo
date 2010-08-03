@@ -2,32 +2,31 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Maintain a queue on the Broadcast Xc for apps requesting resources
-%%% Ask rscmgr_res for list of servers based on requested type and
-%%% return list toTargeted Xc.AppQueueId
+%%% Receive requests from the BroadcastXc for inbound call control,
+%%% things like listening for a call being parked.
 %%% @end
-%%% Created : 30 Jul 2010 by James Aimonetti <james@2600hz.com>
+%%% Created :  2 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(rscmgr_req).
+-module(callmgr_inbound).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
+-include("../../include/fs.hrl").
 
 -behaviour(gen_server).
 
 -import(proplists, [get_value/2, get_value/3]).
--import(rscmgr_logger, [log/2, format_log/3]).
+-import(callmgr_logger, [log/2, format_log/3]).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, event_received/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE).
--define(EXCHANGE, <<"broadcast">>).
+-define(SERVER, ?MODULE). 
 
--record(state, {channel, ticket, queue, tag}).
+-record(state, {channel, ticket, queue, tag, fs=#fs_conn{}, reg_events=[]}).
 
 %%%===================================================================
 %%% API
@@ -42,6 +41,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+event_received(Evt) ->
+    gen_server:cast(?MODULE, {event_received, Evt}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -60,29 +62,34 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    format_log(info, "RSCMGR_REQ: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
+    format_log(info, "CALLMGR_INBND: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
 
     process_flag(trap_exit, true),
 
     Exchange = amqp_util:broadcast_exchange(Ticket),
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
-    format_log(info, "RSCMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
+    format_log(info, "CALLMGR_INBND: Accessing Exchange ~p~n", [Exchange]),
 
-    Queue = list_to_binary([?EXCHANGE, $. | net_adm:localhost()]),
+    Queue = list_to_binary([#'exchange.declare'.exchange, ".callmgr_inbound.", net_adm:localhost()]),
     QueueDeclare = amqp_util:new_queue(Ticket, Queue),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
 
     %% Bind the queue to an exchange
     QueueBind = amqp_util:bind_q_to_broadcast(Ticket, Queue),
     #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
-    format_log(info, "RSCMGR_REQ Bound ~p to ~p~n", [Queue, ?EXCHANGE]),
+    format_log(info, "CALLMGR_INBND Bound ~p to ~p~n", [Queue, #'exchange.declare'.exchange]),
 
     %% Register a consumer to listen to the queue
     BasicConsume = amqp_util:basic_consume(Ticket, Queue),
     #'basic.consume_ok'{consumer_tag = Tag}
         = amqp_channel:subscribe(Channel, BasicConsume, self()),
 
-    {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue}}.
+    format_log(info, "CALLMGR_INBND(~p): Starting FS Event Socket Listener~n", [self()]),
+    Fs = freeswitch:new_fs_socket(#fs_conn{}),
+
+    freeswitch:read_loop(Fs#fs_conn.socket, fun callmgr_inbound:process_socket_evt/2),
+
+    {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue, fs=Fs}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -112,6 +119,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({event_received, _Evt}, State) ->
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -125,21 +134,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-%% cleanly exit if we have been asked to exit
 handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    format_log(info, "Headers: ~p~nPayload: ~p~n", [Props, Payload]),
+    format_log(info, "CALLMGR_INBND(~p): Headers: ~p~nPayload: ~p~n", [self(), Props, Payload]),
     case Props#'P_basic'.content_type of
-	<<"text/xml">> ->
-	    log(info, xml),
-	    %%notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
-	    State;
-	<<"text/plain">> ->
-	    log(info, text),
-	    %%notify(State#state.consumers, Props, binary_to_list(Payload));
-	    State;
 	<<"application/json">> ->
 	    process_json_req(State, binary_to_list(Payload)),
 	    State;
@@ -154,13 +154,13 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
 		_:_ -> State
 	    end;
 	_ContentType ->
-	    format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
+	    format_log(info, "CALLMGR_INBND(~p): recieved unknown msg type: ~p~n", [self(), _ContentType]),
 	    State
     end,
     {noreply, State};
 %% catch all so we dont loose state
 handle_info(Unhandled, State) ->
-    format_log(info, "RSCMGR_REQ ~p unknown info request: ~p~n", [self(), Unhandled]),
+    format_log(info, "CALLMGR_INBND(~p): unknown info request: ~p~n", [self(), Unhandled]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -200,24 +200,25 @@ process_json_req(State, Json) ->
 
 %% process_req(Action, Category, Type, Command, State, Prop)
 %%
-%% process a Find Channel Resource Request
-process_req(<<"request">>, <<"resource">>, <<"channel">>, <<"find">>,
-	    #state{channel=Channel, ticket=Ticket}, Prop) ->
-    L = rscmgr_res:get_resource(channel),
+%% process a register Channel_Park Event Request
+process_req(<<"request">>, <<"event">>, <<"CHANNEL_PARK">>, <<"register">>,
+	    #state{fs=Fs, reg_events=Reged}=State, Prop) ->
+    %% see if app has reged with event already
+    Resp_queue_id = binary_to_list(get_value(<<"resp_queue_id">>, Prop)),
+    RegKey = lists:concat(["CHANNEL_PARK:", Resp_queue_id]),
+    Reged1 = case get_value(RegKey, Reged) of
+		 undefined ->
+		     [{RegKey, Resp_queue_id} | Reged];
+		 Resp_queue_id ->
+		     Reged;
+		 _Alt_queue_id ->
+		     [{RegKey, Resp_queue_id} | proplists:delete(RegKey, Reged)]
+	     end,
 
-    Msg = [{request_id, get_value(<<"request_id">>, Prop)}
-	   ,{rscmgr_id, net_adm:localhost()}
-	   ,{app, rscmgr}
-	   ,{action, response}
-	   ,{category, resource}
-	   ,{type, channel}
-	   ,{command, find}
-	   ,{available_servers, L}
-	  ],
+    %% Add listening event to event socket
+    freeswitch:send_cmd(Fs#fs_conn.socket, "event plain CHANNEL_PARK\n\n"),
+    State#state{reg_events=Reged1};
 
-    Xc = get_value(<<"resp_exchange_id">>, Prop, <<"targeted">>),
-    Q = get_value(<<"resp_queue_id">>, Prop),
-    send_resp(Channel, Ticket, Xc, Q, Msg);
 process_req(Act, Cat, Type, Cmd, State, Prop) ->
     format_log(info, "Unknown Request: A: ~p Cat: ~p T: ~p Cmd: ~p~nRaw Props: ~p~n"
 	       ,[Act, Cat, Type, Cmd, Prop]),
@@ -238,3 +239,10 @@ send_resp(Channel, Ticket, Exchange, Queue, Msg) ->
     format_log(info, "Sent Resp on Channel ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n"
 	       ,[Channel, AmqpMsg, BasicPublish, Res]),
     Res.
+
+process_socket_evt({ok, Headers, Body}) ->
+    process_evt(get_value("Content-type", Headers), Body).
+
+process_evt("text/event-plain", Body) ->
+    Evt = freeswitch:event_to_proplist(Body),
+    callmgr_inbound:event_received(Evt).
