@@ -1,0 +1,12 @@
+{application, callmgr,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { callmgr_app, []}},
+  {env, []}
+ ]}.
