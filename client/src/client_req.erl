@@ -17,7 +17,7 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 %% API
--export([start_link/0, req_resource/0, start_script/1]).
+-export([start_link/0, req_resource/0, start_script/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -46,8 +46,8 @@ start_link() ->
 req_resource() ->
     gen_server:call(?MODULE, req_resource).
 
-start_script(CallId) ->
-    gen_server:cast(?MODULE, {start_script, CallId}).
+start_script(CallId, ReqId) ->
+    gen_server:cast(?MODULE, {start_script, CallId, ReqId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -70,65 +70,21 @@ init([]) ->
 
     process_flag(trap_exit, true),
 
-    %% create my queue for others to send me messages
-    Exchange = #'exchange.declare'{
-      ticket = Ticket,
-      exchange = ?SUB_EXCHANGE,
-      type = <<"direct">>,
-      passive = false,
-      durable = false,
-      auto_delete=false,
-      internal = false,
-      nowait = false,
-      arguments = []
-     },
+    Exchange = amqp_util:targeted_exchange(Ticket),
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
-    format_log(info, "RSCMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
+    format_log(info, "CALLMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
 
-    Queue = list_to_binary([?SUB_EXCHANGE | ".erl_client"]),
-    QueueDeclare = #'queue.declare'{
-      ticket = Ticket,
-      queue = Queue,
-      passive = false,
-      durable = false,
-      exclusive = true,
-      auto_delete = true,
-      nowait = false,
-      arguments = []
-     },
+    QueueDeclare = amqp_util:new_targeted_queue(Ticket, lists:flatten(["erl_client.", new_request_id()])),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
 
     %% Bind the queue to an exchange
-    QueueBind = #'queue.bind'{
-      ticket = Ticket,
-      queue = Queue,
-      exchange = ?SUB_EXCHANGE,
-      routing_key = Queue,
-      nowait = false,
-      arguments = []
-     },
+    QueueBind = amqp_util:bind_q_to_targeted(Ticket, Queue, Queue),
     #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
 
     %% Register a consumer to listen to the queue
-    BasicConsume = #'basic.consume'{
-      ticket = Ticket,
-      queue = Queue,
-      consumer_tag = Queue,
-      no_local = false,
-      no_ack = true,
-      exclusive = true,
-      nowait = false
-     },
+    BasicConsume = amqp_util:basic_consume(Ticket, Queue),
     #'basic.consume_ok'{consumer_tag = Tag}
         = amqp_channel:subscribe(Channel, BasicConsume, self()),
-
-    %% If the registration was sucessful, then consumer will be notified
-    receive
-        #'basic.consume_ok'{consumer_tag = Tag} -> log(info, "CLIENT_REQ: receive ok");
-	O -> format_log(info, "CLIENT_REQ: receive not ok ~p~n", [O])
-    after
-	1000 -> log(info, "CLIENT_REQ: timed out")
-    end,
 
     {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue}}.
 
@@ -147,32 +103,24 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(req_resource, _From, #state{channel=Channel, ticket=Ticket, queue=Queue}=State) ->
-    BasicPublish = #'basic.publish'{
-      ticket = Ticket
-      ,exchange = ?PUB_EXCHANGE
-      ,mandatory = false
-      ,immediate = false
-    },
-
-    Msg = [{request_id, 1234}
-	   ,{resp_queue_id, Queue} % (app.id)
+    Msg = [{request_id, new_request_id()}
+	   ,{resp_queue_id, Queue}
 	   ,{app, erl_client}
 	   ,{action, request}
 	   ,{category, resource}
-	   ,{type, channel} % | message | media,
+	   ,{type, channel}
 	   ,{command, find}
 	   ,{respond_type, direct}
 	   ,{respond_to, Queue}
 	  ],
 
-    %% Add the message to the publish, converting to binary
-    AmqpMsg = #'amqp_msg'{payload = list_to_binary(mochijson2:encode({struct, Msg})),
-			  props=#'P_basic'{content_type= <<"application/json">>}},
-
+    {BasicPublish, AmqpMsg} = amqp_util:broadcast_publish(Ticket
+							  , list_to_binary(mochijson2:encode({struct, Msg}))
+							  , <<"application/json">>),
     %% execute the publish command
     Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
 
-    format_log(info, "Sent on Channel ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n", [Channel, AmqpMsg, BasicPublish, Res]),
+    format_log(info, "CLIENT_REQ: Sent on Channel ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n", [Channel, AmqpMsg, BasicPublish, Res]),
     {reply, ok, State};
 handle_call(_Request, _From, State) ->
     format_log(info, "CLIENT_REQ: Unknown Call - Req: ~p~n", [_Request]),
@@ -189,14 +137,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({start_script, CallId}, State) ->
-    Cmds = [lists:concat(["api uuid_broadcast "
-			  ,CallId
-			  ," /home/james/local/freeswitch/sounds/music/8000/danza-espanola-op-37-h-142-xii-arabesca.wav"
-			 ])
-	    %,lists:concat(["api uuid_kill ", CallId])
-	   ],
-    lists:foreach(fun(Cmd) -> send_cmd(State, CallId, Cmd) end, Cmds),
+handle_cast({start_script, CallId, ReqId}, State) ->
+    send_cmd(State, CallId, ReqId, lists:concat(["api uuid_kill ", CallId])),
     {noreply, State};
 handle_cast(_Msg, State) ->
     format_log(info, "CLIENT_REQ: Unknown cast Msg: ~p~n", [_Msg]),
@@ -219,7 +161,6 @@ handle_info({{#'basic.return'{}, #amqp_msg{props = _Properties}}}=_Returned, Sta
     format_log(info, "CLIENT_REQ: Returned: ~p~n", [_Returned]),
     {noreply, State};
 handle_info({_Ignore, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    format_log(info, "CLIENT_REQ: Headers: ~p~nPayload: ~p~nIgnore: ~p~n", [Props, Payload, _Ignore]),
     State1 = case Props#'P_basic'.content_type of
 		 <<"text/xml">> ->
 		     log(info, xml),
@@ -230,18 +171,16 @@ handle_info({_Ignore, #amqp_msg{props = Props, payload = Payload}}, State) ->
 		     %%notify(State#state.consumers, Props, binary_to_list(Payload));
 		     State;
 		 <<"application/json">> ->
-		     log(info, json),
 		     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-		     format_log(info, "CLIENT_REQ: JSON: ~p~n", [Prop]),
+		     format_log(info, "CLIENT_REQ recv: JSON: ~p~n", [Prop]),
 		     process_msg(State, get_route(Prop), Prop);
 		 _ContentType ->
 		     format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
 		     State
 	     end,
-    format_log(info, "Received ~p~n", [Payload]),
     {noreply, State1};
 handle_info(Info, State) ->
-    format_log(info, "CLIENT_REQ: Unknown Info: ~p~n", [Info]),
+    format_log(info, "CLIENT_REQ: Recv Unknown Info: ~p~n", [Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -275,12 +214,37 @@ code_change(_OldVsn, State, _Extra) ->
 %% Get params into proplist, then call me
 % process_msg(State, {Action, Category, Type, Command}, Proplist)
 process_msg(State, {<<"response">>
+		    ,<<"event">>
+		    ,EvtName
+		    ,<<"report">>}, Prop) ->
+    format_log(info, "CLIENT_REQ: Evt Received: ~p~n", [EvtName]),
+    client_stats:resp_evt(get_value(<<"callid">>, Prop), EvtName),
+    State;
+process_msg(State, {<<"response">>
 		   ,<<"resource">>
 		   ,<<"channel">>
 		   ,<<"setup">>}, Prop) ->
+    %% stat tracking - call originated
+    ReqId = get_value(<<"request_id">>, Prop, []),
+    client_stats:resp_callid(ReqId),
+
     CallId = get_value(<<"callid">>, Prop),
     consume_call_evts(State, CallId),
-    start_script(CallId),
+    start_script(CallId, ReqId),
+    State#state{callid=CallId};
+process_msg(State, {<<"response">>
+		   ,<<"resource">>
+		   ,<<"channel">>
+		   ,<<"setup_loopback">>}, Prop) ->
+    %% stat tracking - call originated
+    ReqId = get_value(<<"request_id">>, Prop, []),
+    CallId = get_value(<<"callid">>, Prop),
+
+    client_stats:resp_callid(ReqId),
+    client_stats:link_reqid_callid(ReqId, CallId),
+
+    consume_call_evts(State, CallId),
+    start_script(CallId, ReqId),
     State#state{callid=CallId};
 process_msg(State, {
 	      <<"response">>
@@ -296,13 +260,13 @@ process_msg(State, Route, Prop) ->
 
 spin_up_calls(_State, []) -> ok;
 spin_up_calls(#state{channel=Channel, ticket=Ticket, queue=Queue}=State, [H|Hs]) ->
-    Msg = [{request_id, 2345}
+    Msg = [{request_id, new_request_id()}
 	   ,{resp_queue_id, Queue}
 	   ,{app, erl_client}
 	   ,{action, request}
 	   ,{category, resource}
 	   ,{type, channel}
-	   ,{command, setup}
+	   ,{command, setup_loopback}
 	   ,{respond_type, direct}
 	   ,{respond_to, Queue}
 	   ,{call, {struct, [{from, ["erl_client_name", 444]}, {to, 555}, {via, 666}]}}
@@ -316,20 +280,35 @@ spin_up_calls(#state{channel=Channel, ticket=Ticket, queue=Queue}=State, [H|Hs])
 
     %% execute the publish command
     Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
+    client_stats:req_callid(get_value(request_id, Msg)),
 
     format_log(info, "CLIENT_REQ: Spinup on Host ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n"
 	       ,[HQ, AmqpMsg, BasicPublish, Res]),
     spin_up_calls(State, Hs).
 
-send_cmd(#state{channel=Channel, ticket=Ticket}, CallId, Cmd) ->
-    format_log(info, "Client: Cmd: ~p~nEncoded: ~p~nPayload: ~p~n", [Cmd, mochijson2:encode(Cmd), list_to_binary(mochijson2:encode(Cmd))]),
+send_cmd(#state{channel=Channel, ticket=Ticket, queue=Queue}, CallId, ReqId, Cmd) ->
+    format_log(info, "CLIENT_REQ: Send Cmd: ~p~n", [Cmd]),
+
+    Msg = [{request_id, ReqId}
+	   ,{resp_queue_id, Queue}
+	   ,{app, erl_client}
+	   ,{action, request}
+	   ,{category, callcontrol}
+	   ,{type, command}
+	   ,{command, execute}
+	   ,{execute, Cmd}
+	   ,{respond_type, direct}
+	   ,{respond_to, Queue}
+	  ],
+
     {Pub, AmqpMsg} = amqp_util:callctl_publish(Ticket
 					       ,CallId
-					       ,list_to_binary(mochijson2:encode(Cmd))
+					       ,list_to_binary(mochijson2:encode({struct, Msg}))
 					       ,<<"application/json">>),
     %% execute the publish command
     _Res = amqp_channel:call(Channel, Pub, AmqpMsg),
-    format_log(info, "CLIENT_REQ: Sent Msg ~p to ~p~nRes: ~p~n", [AmqpMsg, Pub, _Res]),
+    client_stats:req_cmd(CallId, Cmd),
+    format_log(info, "CLIENT_REQ: Sent Cmd ~p at ~p: ~n", [get_value(execute, Msg), erlang:now()]),
     ok.
 
 consume_call_evts(#state{channel=Channel, ticket=Ticket}, CallId) ->
@@ -342,8 +321,8 @@ consume_call_evts(#state{channel=Channel, ticket=Ticket}, CallId) ->
 
     %% Register a consumer to listen to the queue
     BC = amqp_util:callevt_consume(Ticket, CallId),
-    format_log(info, "CLIENT_REQ: Consume callevt.~p events~nBC: ~p~n", [CallId, BC]),
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BC, self()).
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BC, self()),
+    format_log(info, "CLIENT_REQ: Consume callevt.~p events BC: ~p at ~p~n", [CallId, BC, erlang:now()]).
 
 get_route(Prop) ->
     {get_value(<<"action">>, Prop)
@@ -351,3 +330,17 @@ get_route(Prop) ->
      ,get_value(<<"type">>, Prop)
      ,get_value(<<"command">>, Prop)
     }.
+
+%% borrowed from couchbeam_util, which borrowed from couch
+new_request_id() ->
+    to_hex(crypto:rand_bytes(16)).
+
+to_hex([]) ->
+    [];
+to_hex(Bin) when is_binary(Bin) ->
+    to_hex(binary_to_list(Bin));
+to_hex([H|T]) ->
+    [to_digit(H div 16), to_digit(H rem 16) | to_hex(T)].
+
+to_digit(N) when N < 10 -> $0 + N;
+to_digit(N)             -> $a + N-10.

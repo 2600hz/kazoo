@@ -2,4 +2,4 @@
 
 
 cd `dirname $0`
-exec erl -heart -detached -pa $PWD/ebin -pa $PWD/deps/*/ebin -boot start_sasl -sname rscrpt -s rscrpt
+exec erl -heart -detached -setcookie ClueCon -pa $PWD/ebin -pa $PWD/deps/*/ebin -boot start_sasl -name rscrpt -s rscrpt

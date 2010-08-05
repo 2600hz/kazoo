@@ -143,7 +143,14 @@ send_event(Prop, State) ->
     send_event(get_value(<<"Event-Name">>, Prop), Prop, State).
 
 send_event(_, Prop, State) ->
-    Msg = [{event_name, get_value("Event-Name", Prop)}],
+    Msg = [{app, callmgr_evt}
+	   ,{action, response}
+	   ,{category, event}
+	   ,{type, get_value("Event-Name", Prop)}
+	   ,{command, report}
+	   ,{event_name, get_value("Event-Name", Prop)}
+	   ,{callid, get_value("Unique-ID", Prop)}
+	  ],
     send_event_to_queue(Msg, State).
 
 send_event_to_queue(Msg, #state{channel=Channel, ticket=Ticket, queue=Queue}) ->

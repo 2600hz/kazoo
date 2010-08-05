@@ -210,6 +210,11 @@ code_change(_OldVsn, State, _Extra) ->
 process_req({<<"request">>
 	     ,<<"resource">>
 	     ,<<"channel">>
+	     ,<<"setup_loopback">>}, Prop) ->
+    callmgr_fs:originate_loopback(Prop);
+process_req({<<"request">>
+	     ,<<"resource">>
+	     ,<<"channel">>
 	     ,<<"setup">>}, Prop) ->
     {struct, CallInfo} = get_value(<<"call">>, Prop),
     case get_value(<<"from">>, CallInfo, ["NoName", 0]) of
@@ -230,12 +235,12 @@ send_callid(#state{channel=Channel, ticket=Ticket}, Prop, Callid) ->
     Exchange = get_value(<<"resp_exchange_id">>, Prop, <<"targeted">>),
     Queue = get_value(<<"resp_queue_id">>, Prop),
 
-    Msg = [{request_id, 2345}
+    Msg = [{request_id, get_value(<<"request_id">>, Prop)}
 	   ,{app, callmgr_req}
 	   ,{action, response}
 	   ,{category, resource}
 	   ,{type, channel}
-	   ,{command, setup}
+	   ,{command, setup_loopback}
 	   ,{callid, Callid}
 	  ],
 

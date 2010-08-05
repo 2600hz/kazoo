@@ -16,7 +16,7 @@
 
 -export([callevt_consume/2, callctl_consume/2]).
 
--export([new_callevt_queue/2, new_callctl_queue/2]).
+-export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2]).
 
 -export([new_queue/2, basic_consume/2, basic_publish/4, basic_publish/5]).
 
@@ -67,6 +67,8 @@ callevt_publish(Ticket, CallId, Payload, ContentType) ->
 broadcast_publish(Ticket, Payload) ->
     targeted_publish(Ticket, Payload, undefined).
 
+broadcast_publish(Ticket, Payload, ContentType) when is_list(ContentType) ->
+    broadcast_publish(Ticket, Payload, list_to_binary(ContentType));
 broadcast_publish(Ticket, Payload, ContentType) ->
     basic_publish(Ticket, ?EXCHANGE_BROADCAST, <<"#">>, Payload, ContentType).
 
@@ -85,17 +87,22 @@ broadcast_exchange(Ticket) ->
 
 %% A generic Exchange maker
 new_exchange(Ticket, Exchange, Type) ->
+    new_exchange(Ticket, Exchange, Type, []).
+new_exchange(Ticket, Exchange, Type, Options) ->
     #'exchange.declare'{
 	      ticket = Ticket
 	      ,exchange = Exchange
 	      ,type = Type
-	      ,passive = false
-	      ,durable = false
-	      ,auto_delete=false
-	      ,internal = false
-	      ,nowait = false
-	      ,arguments = []
+	      ,passive = get_value(passive, Options, false)
+	      ,durable = get_value(durable, Options, false)
+	      ,auto_delete = get_value(auto_delete, Options, false)
+	      ,internal = get_value(internal, Options, false)
+	      ,nowait = get_value(nowait, Options, false)
+	      ,arguments = get_value(arguments, Options, [])
 	     }.
+
+new_targeted_queue(Ticket, QueueName) ->
+    new_queue(Ticket, lists:concat([binary_to_list(?EXCHANGE_TARGETED), ".", QueueName])).
 
 new_callevt_queue(Ticket, CallId) ->
     new_queue(Ticket

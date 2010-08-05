@@ -1,32 +1,29 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
+%%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Recv a request to spin up a call.
-%%% Get Callid back.
-%%% Create two queues, one in CallCtlXc, one in CallEvtXc, with the 
-%%% queue name Callid
+%%% Track statistics for a client requester
 %%% @end
-%%% Created : 31 Jul 2010 by James Aimonetti <>
+%%% Created :  4 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(callmgr_fs).
+-module(client_stats).
 
 -behaviour(gen_server).
 
--import(callmgr_logger, [log/2, format_log/3]).
-
 %% API
--export([start_link/0, originate/3, originate_loopback/1]).
+-export([start_link/0, req_callid/1, req_cmd/2]).
+-export([resp_callid/1, resp_evt/2]).
+-export([link_reqid_callid/2]).
+
+-export([get_report/0, get_summary/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--include("../../include/fs.hrl").
-
 -define(SERVER, ?MODULE). 
 
--record(state, {fs=#fs_conn{}}).
+-record(state, {events=[], links=[]}).
 
 %%%===================================================================
 %%% API
@@ -42,15 +39,27 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-%% effective_caller_id_{name, number}
-%% Receiver is probably the Queue id of the 3rd-party app, but this
-%% module doesn't care about this. Just passes it back with the callid
-originate(Name, Num, Receiver) ->
-    gen_server:cast(?MODULE, {originate, Name, Num, Receiver}).
+link_reqid_callid(ReqId, CallId) ->
+    gen_server:cast(?MODULE, {link, ReqId, CallId}).
 
-originate_loopback(Receiver) ->
-    gen_server:cast(?MODULE, {originate_loopback, Receiver}).
+req_callid(ReqId) ->
+    gen_server:cast(?MODULE, {start, ReqId}),
+    gen_server:cast(?MODULE, {req_callid, ReqId}).
 
+req_cmd(ReqId, Cmd) ->
+    gen_server:cast(?MODULE, {{req_cmd, Cmd}, ReqId}).
+
+resp_callid(ReqId) ->
+    gen_server:cast(?MODULE, {resp_callid, ReqId}).
+
+resp_evt(ReqId, Evt) ->
+    gen_server:cast(?MODULE, {{resp_evt, Evt}, ReqId}).
+
+get_report() ->
+    gen_server:call(?MODULE, get_report).
+
+get_summary() ->
+    gen_server:call(?MODULE, get_summary).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -68,9 +77,7 @@ originate_loopback(Receiver) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    format_log(info, "CALLMGR_FS(~p): Starting FS Event Socket Listener~n", [self()]),
-    FS = freeswitch:new_fs_socket(#fs_conn{}),
-    {ok, #state{fs=FS}}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -86,6 +93,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(get_report, _From, #state{events=Evts, links=Links}=State) ->
+    {reply, generate_report(Evts, Links), State};
+handle_call(get_summary, _From, #state{events=Evts, links=Links}=State) ->
+    {reply, generate_summary(Evts, Links), State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -100,12 +111,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({originate, Name, Num, Receiver}, #state{fs=Fs}=State) ->
-    originate(Fs, Name, Num, Receiver),
-    {noreply, State};
-handle_cast({originate_loopback, Receiver}, #state{fs=Fs}=State) ->
-    originate_loopback(Fs, Receiver),
-    {noreply, State};
+handle_cast({link, ReqId, CallId}, #state{links=Links}=State) ->
+    {noreply, State#state{links=[{ReqId, CallId}, {CallId, ReqId} | Links]}};
+handle_cast({Event, ReqId}, #state{events=Evts}=State) ->
+    {noreply, State#state{events=[{ReqId, {Event, erlang:now()}} | Evts]}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -150,57 +159,48 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-originate_loopback(Fs, Receiver) ->
-    Cmd = "api originate loopback/wait &park\n\n",
-    format_log(info, "CALLMGR_FS: Sending Originate loopback on socket ~p CMD: ~p~n", [Fs#fs_conn.socket, Cmd]),
-    ok = gen_tcp:send(Fs#fs_conn.socket, Cmd),
-    spawn(fun() -> get_uuid(Fs, Receiver) end).
-    
-originate(Fs, Name, Num, Receiver) when is_integer(Num) ->
-    originate(Fs, Name, integer_to_list(Num), Receiver);
-originate(Fs, Name, Num, Receiver) ->
-    Cmd = lists:concat(["api originate {effective_caller_id_name="
-	   ,Name,"}{effective_caller_id_number="
-	   ,Num,"}sofia/gateway/proxy1.switchfreedom.com/+14158867905 &park\n\n"
-	  ]),
-    format_log(info, "CALLMGR_FS: Sending to Originate CMD: ~p~n", [Cmd]),
-    ok = gen_tcp:send(Fs#fs_conn.socket, Cmd),
-    spawn(fun() -> get_uuid(Fs, Receiver) end).
 
-get_uuid(Fs, Receiver) ->
-    case freeswitch:read_socket(Fs#fs_conn.socket) of
-	{ok, _H, []} -> get_uuid(Fs, Receiver);
-	{ok, Headers, Body} ->
-	    format_log(info, "CALLMGR_FS: Socket read H: ~p B: ~p~n", [Headers, Body]),
-	    case extract_uuid(proplists:get_value("Content-Type", Headers), Body) of
-		{error, bad_response} -> get_uuid(Fs, Receiver);
-		CallId ->
-		    format_log(info, "CALLMGR_FS: Got ~p off the socket~nSending back to Q: ~p~n", [CallId, Receiver]),
-		    create_ctl_evt_mgrs(Fs, CallId),
-		    callmgr_req:recv_callid(CallId, Receiver)
-	    end;
-	_Other ->
-	    format_log(info, "CALLMGR_FS: get_uuid:read_socket() return unexpected: ~p~n", _Other),
-	    get_uuid(Fs, Receiver)
-    end.
+generate_summary(Evts, Links) ->
+    Rpt = generate_report(Evts, Links),
+    CallIds = proplists:get_keys(Rpt),
+    lists:foldl(fun(CallId, Res) ->
+			[{CallId, lists:max(
+				    lists:map(fun({T,_}) -> T end
+					      ,proplists:get_all_values(CallId, Rpt)
+					     ))} | Res]
+		end, [], CallIds).
 
-create_ctl_evt_mgrs(Fs, CallId) ->
-    %% todo - register these processes with the server so they can be supervised
-    format_log(info, "CALLMGR_FS: starting evt and ctl mgrs for CallId: ~p~n", [CallId]),
-    _CtlRes = callmgr_ctl:start_link(Fs, CallId), %spawn(callmgr_ctl, start_link, [Fs, CallId]),
-    format_log(info, "CALLMGR_FS: started callmgr_ctl(~p)~n", [_CtlRes]),
-    _EvtRes = callmgr_evt:start_link(Fs, CallId), %spawn(callmgr_evt, start_link, [Fs, CallId]),
-    format_log(info, "CALLMGR_FS: started callmgr_evt(~p)~n", [_EvtRes]),
-    ok.
+%% generate_report([{ReqId, {Evt, Timestamp}}]) -> [{CallId, Tdiff(milli), Evt}]
+%% ReqId, for events, is the CallId.
+generate_report(Evts, Links) ->
+    Converted = convert_reqids_to_callids(Evts, Links),
 
-extract_uuid("api/response", [$+,$O,$K,$ | ID]) ->
-    clean_endline(lists:reverse(ID));
-extract_uuid("api/response", [$\n,$+,$O,$K,$ | ID]) ->
-    clean_endline(lists:reverse(ID));
-extract_uuid(_ResponseType, _Body) ->
-    format_log(info, "CALLMGR_FS: Failed to extract UUID. ResType: ~p Body: ~p||~n"
-	       ,[_ResponseType, _Body]),
-    {error, bad_response}.
+    StartTimes = find_start_times(Converted),
 
-clean_endline([$\n | Ls]) -> clean_endline(Ls);
-clean_endline(Ls) -> lists:reverse(Ls).
+    Res = lists:foldl(fun({CallId, {Evt, Tstamp}}, Res) ->
+			      Start = proplists:get_value(CallId, StartTimes),
+			      case Start of
+				  undefined -> io:format("CallId ~p Evt: ~p Tstamp ~p~n", [CallId, Evt, Tstamp]),
+					       Res;
+				  _ -> [{CallId, {timer:now_diff(Tstamp, Start) div 1000, Evt}} | Res]
+			      end
+		      end, [], lists:reverse(Converted)),
+    lists:reverse(Res).
+
+%% creates a proplist of [{callid, tstamp}] of start events
+find_start_times(Evts) ->
+    lists:foldl(fun({CallId, {start, Tstamp}}, Starts) ->
+			[{CallId, Tstamp} | Starts];
+		   (_, Starts) -> Starts
+		end, [], Evts).
+
+convert_reqids_to_callids(Evts, Links) ->
+    lists:map(fun({ReqId, {start, _Tstamp}=Evt}) ->
+		      {proplists:get_value(ReqId, Links), Evt};
+		 ({ReqId, {req_callid, _Tstamp}=Evt}) ->
+		      {proplists:get_value(ReqId, Links), Evt};
+		 ({ReqId, {resp_callid, _Tstamp}=Evt}) ->
+		      {proplists:get_value(ReqId, Links), Evt};
+		 (Other) ->
+		      Other
+	      end, Evts).

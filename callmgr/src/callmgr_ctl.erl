@@ -19,24 +19,20 @@
 -record(state, {fs, callid, channel, ticket, tag, queue}).
 
 start_link(Fs, CallId) ->
-    proc_lib:spawn_link(callmgr_ctl, init, [self(), Fs, CallId]).
+    proc_lib:start_link(callmgr_ctl, init, [self(), Fs, CallId]).
 
-init(_From, Fs, CallId) ->
-    case do_init(Fs, CallId) of
+init(From, Fs, CallId) ->
+    case do_init(CallId, Fs) of
 	{ok, State} ->
+	    proc_lib:init_ack(From, self()),
 	    cmd_loop(State);
 	{error, Reason} ->
 	    exit(Reason)
     end.
 
-do_init(Fs, CallId) ->
+do_init(CallId, Fs) ->
     {Channel, Ticket, Tag, Queue} = start_queue(CallId),
-    case start_socket(Fs) of
-	{error, _Reason}=Err -> Err;
-	Fs1 ->
-	    format_log(info, "CALLMGR_CTL(~p): Started socket and queue for callId: ~p~n", [self(), CallId]),
-	    {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue, fs=Fs1, callid=CallId}}
-    end.
+    {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue, callid=CallId, fs=start_socket(Fs)}}.
 
 start_socket(#fs_conn{host=H, port=P, auth=A}=Fs) ->
     format_log(info, "CALLMGR_CTL(~p): Starting FS Event Socket Listener", [self()]),
@@ -49,7 +45,7 @@ start_socket(#fs_conn{host=H, port=P, auth=A}=Fs) ->
 	    Fs#fs_conn{socket=FsSock};
 	{error, Reason}=Err ->
 	    format_log(error, "CALLMGR_CTL(~p): Unable to open socket: ~p~n", [self(), Reason]),
-	    Err
+	    throw(Err)
     end.
 
 start_queue(CallId) ->
@@ -74,6 +70,7 @@ start_queue(CallId) ->
     BasicConsume = amqp_util:callctl_consume(Ticket, CallId),
     #'basic.consume_ok'{consumer_tag = Tag}
         = amqp_channel:subscribe(Channel, BasicConsume, self()),
+    format_log(info, "CALLMGR_CTL(~p): BC: ~p at ~p~n", [self(), BasicConsume, erlang:now()]),
 
     %% Channel, Ticket, Tag, Queue
     {Channel, Ticket, Tag, Queue}.
@@ -82,16 +79,19 @@ cmd_loop(#state{fs=Fs}=State) ->
     receive
 	{#'basic.deliver'{}, #amqp_msg{props = Prop, payload = Payload}} ->
 	    format_log(info, "CALLMGR_CTL(~p): Recv Header: ~p~nPayload: ~p~n", [self(), Prop, binary_to_list(Payload)]),
-	    run_cmd(Fs#fs_conn.socket, prepare_payload(Payload)),
-	    cmd_loop(State);
+	    Fs1 = process_msg(Fs, Prop#'P_basic'.content_type, Payload),
+	    cmd_loop(State#state{fs=Fs1});
 	Other ->
 	    format_log(info, "CALLMGR_CTL(~p): Recv Other: ~p~n", [self(), Other]),
 	    cmd_loop(State)
     end.
 
-prepare_payload(Payload) ->
-    lists:concat([mochijson2:decode(binary_to_list(Payload)), "\n\n"]).
+process_msg(Fs, <<"application/json">>, Payload) ->
+    {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
+    Cmd = [proplists:get_value(<<"execute">>, Msg), "\n\n"],
+    run_cmd(Fs, Cmd).
 
-run_cmd(Socket, Cmd) ->
+run_cmd(#fs_conn{socket=Socket}=Fs, Cmd) ->
     format_log(info, "CALLMGR_CTL(~p): Run Cmd ||~p||~n", [self(), Cmd]),
-    ok = gen_tcp:send(Socket, Cmd).
+    ok = gen_tcp:send(Socket, Cmd),
+    Fs.

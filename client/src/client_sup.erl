@@ -25,6 +25,7 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   , [
-	      ?CHILD(client_req, worker)
+	      ?CHILD(client_stats, worker)
+	      ,?CHILD(client_req, worker)
 	     ]
 	 } }.
