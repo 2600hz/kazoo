@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(rscrpt_fsbox).
 
--import(rscrpt_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 
 %% API
 -export([get_box_update/0]).

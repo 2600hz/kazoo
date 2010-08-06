@@ -19,7 +19,7 @@ init(UUID) ->
 	    [{cmd, ["sendmsg ", UUID, "\n"
 		    ,"call-command: execute\n"
 		    ,"execute-app-name: playback\n"
-		    ,"execute-app-arg: /usr/local/freeswitch/sounds/en/us/callie/ivr/8000/ivr-save_review_record.wav\n\n"
+		    ,"execute-app-arg: /usr/local/freeswitch/sounds/en/us/callie/voicemail/8000/vm-record_message.wav\n\n"
 		   ]}
 	     %% Wait on this to continue
 	     ,{evt, [{"Event-Name", "CHANNEL_EXECUTE_COMPLETE"}

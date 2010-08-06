@@ -14,7 +14,7 @@
 
 -compile(export_all).
 
--import(rscrpt_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 
 %% API
 -export([start_link/0, stop/0, send_cmd/1, add_event/1, del_event/1]).
