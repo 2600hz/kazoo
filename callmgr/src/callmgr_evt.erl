@@ -9,23 +9,23 @@
 %%%-------------------------------------------------------------------
 -module(callmgr_evt).
 
--export([start_link/2, init/3]).
+-export([start_link/3, init/4]).
 
--import(callmgr_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("../../include/fs.hrl").
 
--record(state, {fs, callid, channel, ticket, tag, queue}).
+-record(state, {fs, callid, channel, ticket, tag, queue, ctl_pid}).
 
-start_link(Fs, CallId) ->
-    proc_lib:spawn_link(callmgr_evt, init, [self(), Fs, CallId]).
+start_link(Fs, CallId, CtlPid) ->
+    proc_lib:spawn_link(callmgr_evt, init, [self(), Fs, CallId, CtlPid]).
 
-init(_From, Fs, CallId) ->
+init(_From, Fs, CallId, CtlPid) ->
     case do_init(Fs, CallId) of
 	{ok, State} ->
-	    evt_loop(State, [], 0);
+	    evt_loop(State#state{ctl_pid=CtlPid});
 	{error, Reason} ->
 	    exit(Reason)
     end.
@@ -39,21 +39,17 @@ do_init(Fs, CallId) ->
 	    {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue, fs=Fs1, callid=CallId}}
     end.
 
-start_socket(#fs_conn{host=H, port=P, auth=A}=Fs, CallId) ->
-    %format_log(info, "CALLMGR_EVT(~p): Starting FS Event Socket Listener", [self()]),
-
-    case gen_tcp:connect(H, P, [list, {active, false}]) of
-	{ok, FsSock} ->
-	    inet:setopts(FsSock, [{packet, line}]),
-	    %format_log(info, "CALLMGR_EVT(~p): Opened FreeSWITCH event socket to ~p~n", [self(), H]),
-	    ok = gen_tcp:send(FsSock, lists:concat(["auth ", A, "\n\n"])),
-	    ok = gen_tcp:send(FsSock, "events plain all\n\n"),
-	    ok = gen_tcp:send(FsSock, lists:concat(["filter Unique-ID ", CallId, "\n\n"])),
-	    Fs#fs_conn{socket=FsSock};
-	{error, _Reason}=Err ->
-	    %format_log(error, "CALLMGR_EVT(~p): Unable to open socket: ~p~n", [self(), _Reason]),
-	    Err
-    end.
+start_socket(#fs_conn{socket=undefined}=Fs, CallId) ->
+    Fs1 = freeswitch:new_fs_socket(Fs),
+    format_log(info, "CALLMGR_EVT(~p): Starting FS Event Socket Listener on Port: ~p~n", [self(), Fs1#fs_conn.socket]),
+    filter_events(Fs1#fs_conn.socket, CallId),
+    Fs1;
+start_socket(Fs, CallId) ->
+    Fs1 = freeswitch:new_fs_socket(Fs),
+    format_log(info, "CALLMGR_EVT(~p): Starting FS Event Socket Listener on Port: ~p (was ~p)~n"
+	       ,[self(), Fs1#fs_conn.socket, Fs#fs_conn.socket]),
+    filter_events(Fs1#fs_conn.socket, CallId),
+    Fs1.
 
 start_queue(CallId) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
@@ -77,78 +73,43 @@ start_queue(CallId) ->
     %% Channel, Ticket, Tag, Queue -> Tag currently unused
     {Channel, Ticket, undefined, Queue}.
 
-evt_loop(#state{fs=(#fs_conn{socket=Socket}), callid=CallId}=State, Headers, ContentLength) ->
-    case gen_tcp:recv(Socket, 0) of
-        {ok, "\n"} ->
-            %% End of message. Parse
-	    %%log(info, ["COMPLETE HEADER: ", Headers]),
-
-            case ContentLength > 0 of
-		true ->
-		    inet:setopts(Socket, [{packet, raw}]),
-		    {ok, Body} = gen_tcp:recv(Socket, ContentLength),
-		    inet:setopts(Socket, [{packet, line}]),
-		    Body1 = string:strip(Body, right, $\n),
-		    %%%format_log(info, "CALLMGR_EVT(~p): Headers: ~p~nEvt: ~p~n", [self(), Headers, Body1]),
-		    process_evt(proplists:get_value("Content-Type", Headers), Body1, State);
-		false ->
-		    ok
-	    end,
-	    evt_loop(State, [], 0);
-        {ok, Data} ->
-	    %% Parse the line
-	    KV = split(Data),
-	    {K, V} = KV,
-
-            %% Is this a content-length string? If so, we'll need to gather extra data later
-            case K =:= "Content-Length" of
-		true ->
-		    Length = list_to_integer(V);
-		false ->
-		    Length = ContentLength
-            end,
-
-            evt_loop(State, [KV | Headers], Length);
-        {error, closed} ->
-            case do_init(State#state.fs, CallId) of
-		{error, Error} -> exit(Error);
-		{ok, State1} -> evt_loop(State1, 0, [])
+evt_loop(#state{fs=(#fs_conn{socket=Socket})=Fs, callid=CallId}=State) ->
+    case freeswitch:read_socket(Socket, 5000) of
+	{ok, H, B} ->
+	    B1 = string:strip(B, right, $\n),
+	    process_evt(proplists:get_value("Content-Type", H), B1, State),
+	    am_i_up(State);
+	{error, timeout} ->
+	    am_i_up(State);
+	{error, Reason} ->
+	    case start_socket(Fs, CallId) of
+		{error, Reason1} ->
+		    stop(State),
+		    throw({Reason, Reason1});
+		Fs1 ->
+		    am_i_up(State#state{fs=Fs1})
 	    end
     end.
 
-%% Takes K: V\n and returns {K, V}
-split(Data) ->
-    [K | V] = string:tokens(Data, ": "),
-    V1 = case length(V) of
-	     0 -> "";
-	     1 -> string:strip(hd(V), right, $\n);
-	     _ -> lists:map(fun(S) -> string:strip(S, right, $\n) end, V)
-	 end,
-    {K, V1}.
-
 process_evt("text/event-plain", EvtStr, State) ->
-    send_event(event_to_proplist(EvtStr), State);
+    Evt = freeswitch:event_to_proplist(EvtStr),
+    send_event(Evt, State);
+process_evt("api/response", EvtStr, State) ->
+    am_i_up_resp(EvtStr, State);
 process_evt(CT, _, _) ->
     format_log(info, "CALLMGR_EVT(~p): Unhandled content-type: ~p~n", [self(), CT]).
-
-event_to_proplist(Str) ->
-    L = string:tokens(Str, "\n"),
-    lists:map(fun(S) -> [K, V0] = string:tokens(S, ":"),
-			V1 = string:strip(V0, left, $ ),
-			{V2, []} = mochiweb_util:parse_qs_value(V1),
-			{K, V2}
-	      end, L).
 
 send_event(Prop, State) ->
     send_event(get_value(<<"Event-Name">>, Prop), Prop, State).
 
 send_event(_, Prop, State) ->
+    EvtName = get_value("Event-Name", Prop),
     Msg = [{app, callmgr_evt}
 	   ,{action, response}
 	   ,{category, event}
-	   ,{type, get_value("Event-Name", Prop)}
+	   ,{type, EvtName}
 	   ,{command, report}
-	   ,{event_name, get_value("Event-Name", Prop)}
+	   ,{event_name, EvtName}
 	   ,{callid, get_value("Unique-ID", Prop)}
 	  ],
     send_event_to_queue(Msg, State).
@@ -159,10 +120,45 @@ send_event_to_queue(Msg, #state{channel=Channel, ticket=Ticket, queue=Queue}) ->
 							,list_to_binary(mochijson2:encode({struct, Msg}))
 							,<<"application/json">>
 						       ),
-
     %% execute the publish command
-    Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
+    amqp_channel:call(Channel, BasicPublish, AmqpMsg).
 
-    %format_log(info, "CALLMGR_EVT(~p): Sent Evt to Channel ~p~nEvt: ~p~nTo: ~p~nRes: ~p~n"
-    %,[self(), Channel, AmqpMsg, BasicPublish, Res]),
-    Res.
+am_i_up(State) ->
+    receive
+	{'EXIT', _Pid, normal} ->
+	    %% FS.UUID exiting, ignore
+	    am_i_up_socket(State);
+	{'EXIT', _Pid, _Reason} ->
+	    format_log(error, "CALLMGR_EVT(~p): Exit caught from ~p: ~p~n", [self(), _Pid, _Reason]),
+	    stop(State)
+    after 100 ->
+	    am_i_up_socket(State)
+    end.
+
+am_i_up_socket(#state{fs=Fs, callid=CallId}=State) ->
+    case gen_tcp:send(Fs#fs_conn.socket, lists:flatten(["api uuid_exists ", CallId, "\n\n"])) of
+	ok ->
+	    evt_loop(State);
+	{error, closed} ->
+	    stop(State)
+    end.
+
+am_i_up_resp("false", State) ->
+    stop(State);
+am_i_up_resp(_, State) ->
+    evt_loop(State).
+
+stop(#state{fs=Fs, ctl_pid=Pid}) ->
+    gen_tcp:close(Fs#fs_conn.socket),
+
+    amqp_manager:close_channel(self()),
+
+    Pid ! close,
+    format_log(info, "CALLMGR_EVT(~p): Stopping, sent close to ~p~n", [self(), Pid]),
+    stopped.
+
+filter_events(FsSock, CallId) ->
+    ok = gen_tcp:send(FsSock, "events plain all\n\n"),
+    freeswitch:clear_socket(FsSock),
+    ok = gen_tcp:send(FsSock, lists:concat(["filter Unique-ID ", CallId, "\n\n"])),
+    freeswitch:clear_socket(FsSock).

@@ -7,6 +7,9 @@
 -export([new_fs_socket/1, clear_socket/1, read_socket/1, read_loop/2
 	,send_cmd/2, event_to_proplist/1]).
 
+%% with timeouts
+-export([clear_socket/2, read_socket/2, read_loop/3]).
+
 %% new_fs_socket(#fs_conn{}) -> #fs_conn{}
 new_fs_socket(#fs_conn{host=H, port=P, auth=A}=Fs) ->
     Fs#fs_conn{socket= case gen_tcp:connect(H, P, [list, {active, false}]) of
@@ -29,16 +32,20 @@ send_cmd(Socket, Cmd) ->
     ok = gen_tcp:send(Socket, Cmd1).
 
 %% read_socket(Socket) -> {ok, Headers, Body} | {error, Reason}
+%% read_socket(Socket, Timeout) -> {ok, Headers, Body} | {error, Reason}
 read_socket(Socket) ->
-    read_socket(Socket, [], 0).
+    read_socket(Socket, [], 0, infinity).
 
-read_socket(Socket, Headers, ContentLength) ->
-    case gen_tcp:recv(Socket, 0) of
+read_socket(Socket, Timeout) ->
+    read_socket(Socket, [], 0, Timeout).
+
+read_socket(Socket, Headers, ContentLength, Timeout) ->
+    case gen_tcp:recv(Socket, 0, Timeout) of
         {ok, "\n"} ->
             case ContentLength > 0 of
 		true ->
 		    inet:setopts(Socket, [{packet, raw}]),
-		    {ok, Body} = gen_tcp:recv(Socket, ContentLength),
+		    {ok, Body} = gen_tcp:recv(Socket, ContentLength, Timeout),
 		    inet:setopts(Socket, [{packet, line}]),
 		    {ok, Headers, Body};
 		_ ->
@@ -57,23 +64,27 @@ read_socket(Socket, Headers, ContentLength) ->
 		    Length = ContentLength
             end,
 
-            read_socket(Socket, [KV | Headers], Length);
+            read_socket(Socket, [KV | Headers], Length, Timeout);
 	Other ->
 	    Other
     end.
 
-%% clear(Socket) -> ok | {error, Reason}.
+%% clear_socket(Socket) -> ok | {error, Reason}.
+%% clear_socket(Socket, Timeout) -> ok | {error, Reason}
 %% clears the next FS socket message but doesn't return it
 clear_socket(Socket) ->
-    clear_socket(Socket, [], 0).
+    clear_socket(Socket, [], 0, infinity).
 
-clear_socket(Socket, Data, ContentLength) ->
-    case gen_tcp:recv(Socket, 0) of
+clear_socket(Socket, Timeout) ->
+    clear_socket(Socket, [], 0, Timeout).
+
+clear_socket(Socket, Data, ContentLength, Timeout) ->
+    case gen_tcp:recv(Socket, 0, Timeout) of
         {ok, "\n"} ->
             case ContentLength > 0 of
 		true ->
 		    inet:setopts(Socket, [{packet, raw}]),
-		    {ok, _Body} = gen_tcp:recv(Socket, ContentLength),
+		    {ok, _Body} = gen_tcp:recv(Socket, ContentLength, Timeout),
 		    inet:setopts(Socket, [{packet, line}]);
 		_ ->
 		    inet:setopts(Socket, [{packet, line}])
@@ -89,30 +100,34 @@ clear_socket(Socket, Data, ContentLength) ->
 		    Length = ContentLength
             end,
 
-            clear_socket(Socket, [KV | Data], Length);
+            clear_socket(Socket, [KV | Data], Length, Timeout);
 	Other ->
 	    Other
     end.
 
 %% read_loop(Socket, Fun/1)
+%% read_loop(Socket, Fun/1, Timeout)
 %% Fun will be called with {ok, Headers, Body} or {error, Reason}
 %% and reader loop will go back to blocking on the socket
 read_loop(Socket, F) ->
-    reader_loop(Socket, F, [], 0).
+    reader_loop(Socket, F, [], 0, infinity).
 
-reader_loop(Socket, Fun, Headers, ContentLength) ->
-    case gen_tcp:recv(Socket, 0) of
+read_loop(Socket, F, Timeout) ->
+    reader_loop(Socket, F, [], 0, Timeout).
+
+reader_loop(Socket, Fun, Headers, ContentLength, Timeout) ->
+    case gen_tcp:recv(Socket, 0, Timeout) of
         {ok, "\n"} ->
             case ContentLength > 0 of
 		true ->
 		    inet:setopts(Socket, [{packet, raw}]),
-		    {ok, Body} = gen_tcp:recv(Socket, ContentLength),
+		    {ok, Body} = gen_tcp:recv(Socket, ContentLength, Timeout),
 		    inet:setopts(Socket, [{packet, line}]),
 		    Fun({ok, Headers, Body});
 		_ ->
 		    Fun({ok, Headers, []})
             end,
-	    reader_loop(Socket, Fun, [], 0);
+	    reader_loop(Socket, Fun, [], 0, Timeout);
         {ok, Data} ->
             %% Parse the line
 	    KV = split(Data),
@@ -124,7 +139,7 @@ reader_loop(Socket, Fun, Headers, ContentLength) ->
 			 false -> ContentLength
 		     end,
 
-            reader_loop(Socket, Fun, [KV | Headers], Length);
+            reader_loop(Socket, Fun, [KV | Headers], Length, Timeout);
         Err ->
             Fun(Err)
     end.

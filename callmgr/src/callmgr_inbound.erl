@@ -15,7 +15,7 @@
 -behaviour(gen_server).
 
 -import(proplists, [get_value/2, get_value/3]).
--import(callmgr_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 
 %% API
 -export([start_link/0, event_received/1]).

@@ -13,7 +13,8 @@
 
 -behaviour(gen_server).
 
--import(callmgr_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
+-import(proplists, [get_value/2, get_value/3]).
 
 %% API
 -export([start_link/0, originate/3, originate_loopback/1]).
@@ -152,9 +153,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 originate_loopback(Fs, Receiver) ->
     Cmd = "api originate loopback/wait &park\n\n",
-    format_log(info, "CALLMGR_FS: Sending Originate loopback on socket ~p CMD: ~p~n", [Fs#fs_conn.socket, Cmd]),
-    ok = gen_tcp:send(Fs#fs_conn.socket, Cmd),
-    spawn(fun() -> get_uuid(Fs, Receiver) end).
+    spawn(fun() -> get_uuid(Cmd, freeswitch:new_fs_socket(Fs), Receiver) end).
     
 originate(Fs, Name, Num, Receiver) when is_integer(Num) ->
     originate(Fs, Name, integer_to_list(Num), Receiver);
@@ -163,33 +162,41 @@ originate(Fs, Name, Num, Receiver) ->
 	   ,Name,"}{effective_caller_id_number="
 	   ,Num,"}sofia/gateway/proxy1.switchfreedom.com/+14158867905 &park\n\n"
 	  ]),
-    format_log(info, "CALLMGR_FS: Sending to Originate CMD: ~p~n", [Cmd]),
-    ok = gen_tcp:send(Fs#fs_conn.socket, Cmd),
-    spawn(fun() -> get_uuid(Fs, Receiver) end).
+    spawn(fun() -> get_uuid(Cmd, freeswitch:new_fs_socket(Fs), Receiver) end).
 
+get_uuid(Cmd, Fs, Receiver) ->
+    format_log(info, "CALLMGR_FS.UUID(~p): Cmd ~p on sock ~p~n", [self(), Cmd, Fs#fs_conn.socket]),
+    ok = gen_tcp:send(Fs#fs_conn.socket, Cmd),
+    get_uuid(Fs, Receiver).
 get_uuid(Fs, Receiver) ->
+    format_log(info, "CALLMGR_FS.UUID(~p) Sock: ~p~n", [self(), Fs#fs_conn.socket]),
     case freeswitch:read_socket(Fs#fs_conn.socket) of
-	{ok, _H, []} -> get_uuid(Fs, Receiver);
+	{ok, _H, []} ->
+	    format_log(error, "CALLMGR_FS.UUID(~p) Empty B. H: ~p~n", [self(), _H]),
+	    get_uuid(Fs, Receiver);
 	{ok, Headers, Body} ->
 	    format_log(info, "CALLMGR_FS: Socket read H: ~p B: ~p~n", [Headers, Body]),
-	    case extract_uuid(proplists:get_value("Content-Type", Headers), Body) of
-		{error, bad_response} -> get_uuid(Fs, Receiver);
+	    case extract_uuid(get_value("Content-Type", Headers), Body) of
+		{error, bad_response} ->
+		    format_log(error, "CALLMGR_FS.UUID(~p): Bad UUID body ~p~nExiting~n", [self(), Body]);
 		CallId ->
-		    format_log(info, "CALLMGR_FS: Got ~p off the socket~nSending back to Q: ~p~n", [CallId, Receiver]),
+		    io:format("CALLMGR_FS.UUID(~p): UUID: ~p~n", [self(), CallId]),
 		    create_ctl_evt_mgrs(Fs, CallId),
 		    callmgr_req:recv_callid(CallId, Receiver)
 	    end;
+	{error, ealready} ->
+	    get_uuid(Fs, Receiver);
 	_Other ->
-	    format_log(info, "CALLMGR_FS: get_uuid:read_socket() return unexpected: ~p~n", _Other),
+	    format_log(error, "CALLMGR_FS.UUID(~p): get_uuid:read_socket() return unexpected: ~p~n", [self(), _Other]),
 	    get_uuid(Fs, Receiver)
     end.
 
 create_ctl_evt_mgrs(Fs, CallId) ->
     %% todo - register these processes with the server so they can be supervised
-    format_log(info, "CALLMGR_FS: starting evt and ctl mgrs for CallId: ~p~n", [CallId]),
-    _CtlRes = callmgr_ctl:start_link(Fs, CallId), %spawn(callmgr_ctl, start_link, [Fs, CallId]),
-    format_log(info, "CALLMGR_FS: started callmgr_ctl(~p)~n", [_CtlRes]),
-    _EvtRes = callmgr_evt:start_link(Fs, CallId), %spawn(callmgr_evt, start_link, [Fs, CallId]),
+    format_log(info, "CALLMGR_FS(~p): starting evt and ctl mgrs for CallId: ~p~n", [self(), CallId]),
+    CtlPid = callmgr_ctl:start_link(Fs, CallId), %spawn(callmgr_ctl, start_link, [Fs, CallId]),
+    format_log(info, "CALLMGR_FS: started callmgr_ctl(~p)~n", [CtlPid]),
+    _EvtRes = callmgr_evt:start_link(Fs, CallId, CtlPid), %spawn(callmgr_evt, start_link, [Fs, CallId]),
     format_log(info, "CALLMGR_FS: started callmgr_evt(~p)~n", [_EvtRes]),
     ok.
 

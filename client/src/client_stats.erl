@@ -15,7 +15,7 @@
 -export([resp_callid/1, resp_evt/2]).
 -export([link_reqid_callid/2]).
 
--export([get_report/0, get_summary/0]).
+-export([get_report/0, get_summary/0, reset/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -61,6 +61,9 @@ get_report() ->
 get_summary() ->
     gen_server:call(?MODULE, get_summary).
 
+reset() ->
+    gen_server:call(?MODULE, reset).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -93,6 +96,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(reset, _From, _State) ->
+    {reply, ok, #state{}};
 handle_call(get_report, _From, #state{events=Evts, links=Links}=State) ->
     {reply, generate_report(Evts, Links), State};
 handle_call(get_summary, _From, #state{events=Evts, links=Links}=State) ->
@@ -112,9 +117,14 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({link, ReqId, CallId}, #state{links=Links}=State) ->
-    {noreply, State#state{links=[{ReqId, CallId}, {CallId, ReqId} | Links]}};
-handle_cast({Event, ReqId}, #state{events=Evts}=State) ->
-    {noreply, State#state{events=[{ReqId, {Event, erlang:now()}} | Evts]}};
+    {noreply, State#state{links=[{ReqId, CallId} | Links]}};
+handle_cast({start=Event, CallId}, #state{events=Evts}=State) ->
+    {noreply, State#state{events=[{CallId, {Event, erlang:now()}} | Evts]}};
+handle_cast({{resp_evt, "CHANNEL_HANGUP"}=Event, CallId}, #state{events=Evts}=State) ->
+    {noreply, State#state{events=[{CallId, {Event, erlang:now()}} | Evts]}};
+%%handle_cast({Event, ReqId}, #state{events=Evts}=State) ->
+%%    {noreply, State};
+%%{noreply, State#state{events=[{ReqId, {Event, erlang:now()}} | Evts]}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -161,38 +171,38 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 generate_summary(Evts, Links) ->
-    Rpt = generate_report(Evts, Links),
-    CallIds = proplists:get_keys(Rpt),
-    lists:foldl(fun(CallId, Res) ->
-			[{CallId, lists:max(
-				    lists:map(fun({T,_}) -> T end
-					      ,proplists:get_all_values(CallId, Rpt)
-					     ))} | Res]
-		end, [], CallIds).
+    Converted = convert_reqids_to_callids(Evts, Links),
+
+    CallIds = proplists:get_keys(Converted),
+    lists:map(fun(CallId) ->
+		      StartTime = get_start_time(CallId, Converted),
+		      EndTime = get_end_time(CallId, Converted),
+		      {CallId, timer:now_diff(EndTime, StartTime) div 1000}
+	      end, CallIds).
+
+get_start_time(CallId, Converted) ->
+    Vals = proplists:get_all_values(CallId, Converted),
+    case proplists:get_value(start, Vals) of
+	undefined ->
+	    io:format("Undefined start time for CID: ~p Vs: ~p~n", [CallId, Vals]),
+	    erlang:now();
+	 S -> S
+    end.
+
+get_end_time(CallId, Converted) ->
+    Vals = proplists:get_all_values(CallId, Converted),
+    proplists:get_value({resp_evt, "CHANNEL_HANGUP"}, Vals).
 
 %% generate_report([{ReqId, {Evt, Timestamp}}]) -> [{CallId, Tdiff(milli), Evt}]
 %% ReqId, for events, is the CallId.
 generate_report(Evts, Links) ->
     Converted = convert_reqids_to_callids(Evts, Links),
 
-    StartTimes = find_start_times(Converted),
-
     Res = lists:foldl(fun({CallId, {Evt, Tstamp}}, Res) ->
-			      Start = proplists:get_value(CallId, StartTimes),
-			      case Start of
-				  undefined -> io:format("CallId ~p Evt: ~p Tstamp ~p~n", [CallId, Evt, Tstamp]),
-					       Res;
-				  _ -> [{CallId, {timer:now_diff(Tstamp, Start) div 1000, Evt}} | Res]
-			      end
+			      Start = get_start_time(CallId, Converted),
+			      [{CallId, {timer:now_diff(Tstamp, Start) div 1000, Evt}} | Res]
 		      end, [], lists:reverse(Converted)),
     lists:reverse(Res).
-
-%% creates a proplist of [{callid, tstamp}] of start events
-find_start_times(Evts) ->
-    lists:foldl(fun({CallId, {start, Tstamp}}, Starts) ->
-			[{CallId, Tstamp} | Starts];
-		   (_, Starts) -> Starts
-		end, [], Evts).
 
 convert_reqids_to_callids(Evts, Links) ->
     lists:map(fun({ReqId, {start, _Tstamp}=Evt}) ->

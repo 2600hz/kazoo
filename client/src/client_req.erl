@@ -13,11 +13,11 @@
 
 -behaviour(gen_server).
 
--import(client_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
 %% API
--export([start_link/0, req_resource/0, start_script/2]).
+-export([start_link/0, req_resource/0, req_resource/1, start_script/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,7 +27,7 @@
 -define(PUB_EXCHANGE, <<"broadcast">>).
 -define(SUB_EXCHANGE, <<"targeted">>).
 
--record(state, {channel, connection, ticket, queue, tag, callid}).
+-record(state, {channel, connection, ticket, queue, tag, callid, spinup=1}).
 
 %%%===================================================================
 %%% API
@@ -45,6 +45,9 @@ start_link() ->
 
 req_resource() ->
     gen_server:call(?MODULE, req_resource).
+
+req_resource(X) ->
+    gen_server:cast(?MODULE, {req_resource, X}).
 
 start_script(CallId, ReqId) ->
     gen_server:cast(?MODULE, {start_script, CallId, ReqId}).
@@ -118,10 +121,8 @@ handle_call(req_resource, _From, #state{channel=Channel, ticket=Ticket, queue=Qu
 							  , list_to_binary(mochijson2:encode({struct, Msg}))
 							  , <<"application/json">>),
     %% execute the publish command
-    Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
-
-    format_log(info, "CLIENT_REQ: Sent on Channel ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n", [Channel, AmqpMsg, BasicPublish, Res]),
-    {reply, ok, State};
+    amqp_channel:call(Channel, BasicPublish, AmqpMsg),
+    {reply, ok, State#state{spinup=1}};
 handle_call(_Request, _From, State) ->
     format_log(info, "CLIENT_REQ: Unknown Call - Req: ~p~n", [_Request]),
     Reply = ok,
@@ -137,6 +138,24 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({req_resource, X},#state{channel=Channel, ticket=Ticket, queue=Queue}=State) ->
+    Msg = [{request_id, new_request_id()}
+	   ,{resp_queue_id, Queue}
+	   ,{app, erl_client}
+	   ,{action, request}
+	   ,{category, resource}
+	   ,{type, channel}
+	   ,{command, find}
+	   ,{respond_type, direct}
+	   ,{respond_to, Queue}
+	  ],
+
+    {BasicPublish, AmqpMsg} = amqp_util:broadcast_publish(Ticket
+							  , list_to_binary(mochijson2:encode({struct, Msg}))
+							  , <<"application/json">>),
+    %% execute the publish command
+    amqp_channel:call(Channel, BasicPublish, AmqpMsg),
+    {noreply, State#state{spinup=X}};
 handle_cast({start_script, CallId, ReqId}, State) ->
     send_cmd(State, CallId, ReqId, lists:concat(["api uuid_kill ", CallId])),
     {noreply, State};
@@ -162,17 +181,9 @@ handle_info({{#'basic.return'{}, #amqp_msg{props = _Properties}}}=_Returned, Sta
     {noreply, State};
 handle_info({_Ignore, #amqp_msg{props = Props, payload = Payload}}, State) ->
     State1 = case Props#'P_basic'.content_type of
-		 <<"text/xml">> ->
-		     log(info, xml),
-		     %%notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
-		     State;
-		 <<"text/plain">> ->
-		     log(info, text),
-		     %%notify(State#state.consumers, Props, binary_to_list(Payload));
-		     State;
 		 <<"application/json">> ->
 		     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-		     format_log(info, "CLIENT_REQ recv: JSON: ~p~n", [Prop]),
+		     %format_log(info, "CLIENT_REQ recv: JSON: ~p~n", [Prop]),
 		     process_msg(State, get_route(Prop), Prop);
 		 _ContentType ->
 		     format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType]),
@@ -218,7 +229,14 @@ process_msg(State, {<<"response">>
 		    ,EvtName
 		    ,<<"report">>}, Prop) ->
     format_log(info, "CLIENT_REQ: Evt Received: ~p~n", [EvtName]),
-    client_stats:resp_evt(get_value(<<"callid">>, Prop), EvtName),
+    case get_value(<<"callid">>, Prop) of
+	CID when is_binary(CID) ->
+	    client_stats:resp_evt(binary_to_list(CID), EvtName);
+	CID when is_list(CID) ->
+	    client_stats:resp_evt(CID, EvtName);
+	_Other ->
+	    format_log(error, "CLIENT_REQ: Failed to get CallId. Got ~p~n", [_Other])
+    end,
     State;
 process_msg(State, {<<"response">>
 		   ,<<"resource">>
@@ -246,20 +264,17 @@ process_msg(State, {<<"response">>
     consume_call_evts(State, CallId),
     start_script(CallId, ReqId),
     State#state{callid=CallId};
-process_msg(State, {
-	      <<"response">>
-		  ,<<"resource">>
-		  ,<<"channel">>
-		  ,<<"find">>
-	     }, Prop) ->
-    spin_up_calls(State, get_value(<<"available_servers">>, Prop, [])),
-    State;
+process_msg(State, {<<"response">>
+		    ,<<"resource">>
+		    ,<<"channel">>
+		    ,<<"find">>}, Prop) ->
+    spin_up_calls(State, get_value(<<"available_servers">>, Prop, []));
 process_msg(State, Route, Prop) ->
     format_log(info, "CLIENT_REQ: Unhandled Route: ~p~nProp: ~p~n", [Route, Prop]),
     State.
 
-spin_up_calls(_State, []) -> ok;
-spin_up_calls(#state{channel=Channel, ticket=Ticket, queue=Queue}=State, [H|Hs]) ->
+spin_up_calls(State, []) -> State#state{spinup=1};
+spin_up_calls(#state{channel=Channel, ticket=Ticket, queue=Queue, spinup=N}=State, [H|Hs]) ->
     Msg = [{request_id, new_request_id()}
 	   ,{resp_queue_id, Queue}
 	   ,{app, erl_client}
@@ -284,7 +299,13 @@ spin_up_calls(#state{channel=Channel, ticket=Ticket, queue=Queue}=State, [H|Hs])
 
     format_log(info, "CLIENT_REQ: Spinup on Host ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n"
 	       ,[HQ, AmqpMsg, BasicPublish, Res]),
-    spin_up_calls(State, Hs).
+
+    case N > 1 of
+	true ->
+	    spin_up_calls(State#state{spinup=N-1}, lists:concat([Hs, [H]]));
+	false ->
+	    State#state{spinup=1}
+    end.
 
 send_cmd(#state{channel=Channel, ticket=Ticket, queue=Queue}, CallId, ReqId, Cmd) ->
     format_log(info, "CLIENT_REQ: Send Cmd: ~p~n", [Cmd]),

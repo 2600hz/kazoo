@@ -15,7 +15,7 @@
 -behaviour(gen_server).
 
 -import(proplists, [get_value/2, get_value/3]).
--import(rscmgr_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 
 %% API
 -export([start_link/0]).
@@ -59,7 +59,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+    Res = amqp_manager:open_channel(self()),
+    format_log(info, "RSCMGR_REQ: Open returned ~p~n", [Res]),
+    {ok, Channel, Ticket} = Res,
     format_log(info, "RSCMGR_REQ: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
 
     process_flag(trap_exit, true),
@@ -68,14 +70,14 @@ init([]) ->
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
     format_log(info, "RSCMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
 
-    Queue = list_to_binary([?EXCHANGE, $. | net_adm:localhost()]),
+    Queue = list_to_binary(["broadcast." | net_adm:localhost()]),
     QueueDeclare = amqp_util:new_queue(Ticket, Queue),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
 
     %% Bind the queue to an exchange
     QueueBind = amqp_util:bind_q_to_broadcast(Ticket, Queue),
     #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
-    format_log(info, "RSCMGR_REQ Bound ~p to ~p~n", [Queue, ?EXCHANGE]),
+    format_log(info, "RSCMGR_REQ Bound ~p to ~p~n", [Queue, "broadcast"]),
 
     %% Register a consumer to listen to the queue
     BasicConsume = amqp_util:basic_consume(Ticket, Queue),

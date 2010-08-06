@@ -22,10 +22,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(rscmgr_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 
 -define(SERVER, ?MODULE).
--define(EXCHANGE, <<"resource">>).
 
 -record(state, {known=[], channel, connection, ticket, queue, tag}).
 
@@ -67,57 +66,24 @@ init([]) ->
 
     process_flag(trap_exit, true),
 
-    Exchange = #'exchange.declare'{
-      ticket = Ticket,
-      exchange = ?EXCHANGE,
-      type = <<"fanout">>,
-      passive = false,
-      durable = false,
-      auto_delete=false,
-      internal = false,
-      nowait = false,
-      arguments = []
-     },
+    Exchange = amqp_util:resource_exchange(Ticket),
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
-    format_log(info, "RSCMGR_RES: Creating or accessing Exchange ~p~n", [Exchange]),
+    format_log(info, "RSCMGR_RES: Accessing Exchange ~p~n", [Exchange]),
 
-    Queue = list_to_binary(["resource." | net_adm:localhost()]),
-    QueueDeclare = #'queue.declare'{
-        ticket = Ticket,
-        queue = Queue,
-        passive = false,
-        durable = false,
-        exclusive = true,
-        auto_delete = true,
-        nowait = false,
-        arguments = []
-    },
+    QueueDeclare = amqp_util:new_queue(Ticket, list_to_binary(["resource." | net_adm:localhost()])),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
+    format_log(info, "RSCMGR_RES: Declared Queue ~p~n", [Queue]),
 
     %% Bind the queue to an exchange
-    QueueBind = #'queue.bind'{
-        ticket = Ticket,
-        queue = Queue,
-        exchange = ?EXCHANGE,
-        routing_key = Queue,
-        nowait = false,
-        arguments = []
-    },
+    QueueBind = amqp_util:bind_q_to_resource(Ticket, Queue),
     #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
-    format_log(info, "RSCMGR_RES Bound ~p to ~p~n", [Queue, ?EXCHANGE]),
+    format_log(info, "RSCMGR_RES: Bound Queue ~p~n", [QueueBind]),
 
     %% Register a consumer to listen to the queue
-    BasicConsume = #'basic.consume'{
-      ticket = Ticket,
-      queue = Queue,
-      consumer_tag = Queue,
-      no_local = false,
-      no_ack = true,
-      exclusive = true,
-      nowait = false
-     },
+    BasicConsume = amqp_util:basic_consume(Ticket, Queue),
     #'basic.consume_ok'{consumer_tag = Tag}
         = amqp_channel:subscribe(Channel, BasicConsume, self()),
+    format_log(info, "RSCMGR_RES: Consuming from Queue ~p~n", [Queue]),
 
     {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue}}.
 
@@ -180,14 +146,6 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 %% take in any incoming amqp messages and distribute
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     State1 = case Props#'P_basic'.content_type of
-		 <<"text/xml">> ->
-		     log(info, xml),
-		     %%notify(State#state.consumers, Props, xmerl_scan:string(binary_to_list(Payload)));
-		     State;
-		 <<"text/plain">> ->
-		     log(info, text),
-		     %%notify(State#state.consumers, Props, binary_to_list(Payload));
-		     State;
 		 <<"erlang/term">> ->
 		     update_known_resources(State, binary_to_term(Payload));
 		 undefined ->

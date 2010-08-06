@@ -8,17 +8,20 @@
 -export([callctl_exchange/1, callctl_publish/3, callctl_publish/4]).
 -export([callevt_exchange/1, callevt_publish/3, callevt_publish/4]).
 -export([broadcast_exchange/1, broadcast_publish/2, broadcast_publish/3]).
+-export([resource_exchange/1, resource_publish/2, resource_publish/3]).
 
 -export([bind_q_to_targeted/2, bind_q_to_targeted/3]).
 -export([bind_q_to_callctl/2, bind_q_to_callctl/3]).
 -export([bind_q_to_callevt/2, bind_q_to_callevt/3]).
 -export([bind_q_to_broadcast/2, bind_q_to_broadcast/3]).
+-export([bind_q_to_resource/2, bind_q_to_resource/3]).
 
 -export([callevt_consume/2, callctl_consume/2]).
 
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2]).
+-export([delete_callevt_queue/2, delete_callctl_queue/2]).
 
--export([new_queue/2, basic_consume/2, basic_publish/4, basic_publish/5]).
+-export([new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5]).
 
 -define(EXCHANGE_TARGETED, <<"targeted">>).
 -define(TYPE_TARGETED, <<"direct">>).
@@ -31,6 +34,9 @@
 
 -define(EXCHANGE_BROADCAST, <<"broadcast">>).
 -define(TYPE_BROADCAST, <<"fanout">>).
+
+-define(EXCHANGE_RESOURCE, <<"resource">>).
+-define(TYPE_RESOURCE, <<"fanout">>).
 
 %% Publish Messages to a given Exchange.Queue
 targeted_publish(Ticket, Queue, Payload) ->
@@ -65,12 +71,21 @@ callevt_publish(Ticket, CallId, Payload, ContentType) ->
     basic_publish(Ticket, ?EXCHANGE_CALLEVT, list_to_binary(Route), Payload, ContentType).
 
 broadcast_publish(Ticket, Payload) ->
-    targeted_publish(Ticket, Payload, undefined).
+    broadcast_publish(Ticket, Payload, undefined).
 
 broadcast_publish(Ticket, Payload, ContentType) when is_list(ContentType) ->
     broadcast_publish(Ticket, Payload, list_to_binary(ContentType));
 broadcast_publish(Ticket, Payload, ContentType) ->
     basic_publish(Ticket, ?EXCHANGE_BROADCAST, <<"#">>, Payload, ContentType).
+
+
+resource_publish(Ticket, Payload) ->
+    resource_publish(Ticket, Payload, undefined).
+
+resource_publish(Ticket, Payload, ContentType) when is_list(ContentType) ->
+    resource_publish(Ticket, Payload, list_to_binary(ContentType));
+resource_publish(Ticket, Payload, ContentType) ->
+    basic_publish(Ticket, ?EXCHANGE_RESOURCE, <<"#">>, Payload, ContentType).
 
 %% Create (or access) an Exchange
 targeted_exchange(Ticket) ->
@@ -84,6 +99,9 @@ callevt_exchange(Ticket) ->
 
 broadcast_exchange(Ticket) ->
     new_exchange(Ticket, ?EXCHANGE_BROADCAST, ?TYPE_BROADCAST).
+
+resource_exchange(Ticket) ->
+    new_exchange(Ticket, ?EXCHANGE_RESOURCE, ?TYPE_RESOURCE).
 
 %% A generic Exchange maker
 new_exchange(Ticket, Exchange, Type) ->
@@ -107,12 +125,12 @@ new_targeted_queue(Ticket, QueueName) ->
 new_callevt_queue(Ticket, CallId) ->
     new_queue(Ticket
 	      ,lists:concat([binary_to_list(?EXCHANGE_CALLEVT), ".", CallId])
-	      ,[{exclusive, false}]).
+	      ,[{exclusive, false}, {auto_delete, true}]).
 
 new_callctl_queue(Ticket, CallId) ->
     new_queue(Ticket
 	      ,lists:concat([binary_to_list(?EXCHANGE_CALLCTL), ".", CallId])
-	      ,[{exclusive, false}, {auto_delete, false}]).
+	      ,[{exclusive, false}, {auto_delete, true}]).
 
 %% Declare a queue
 new_queue(Ticket, Queue) ->
@@ -130,6 +148,29 @@ new_queue(Ticket, Queue, Prop) ->
 	   ,nowait = get_value(nowait, Prop, false)
 	   ,arguments = get_value(arguments, Prop, [])
 	  }.
+
+delete_callevt_queue(Ticket, CallId) ->
+    delete_callevt_queue(Ticket, CallId, []).
+
+delete_callevt_queue(Ticket, CallId, Prop) ->
+    delete_queue(Ticket, lists:concat([binary_to_list(?EXCHANGE_CALLEVT), ".", CallId]), Prop).
+
+delete_callctl_queue(Ticket, CallId) ->
+    delete_callctl_queue(Ticket, CallId, []).
+
+delete_callctl_queue(Ticket, CallId, Prop) ->
+    delete_queue(Ticket, lists:concat([binary_to_list(?EXCHANGE_CALLCTL), ".", CallId]), Prop).
+
+delete_queue(Ticket, Queue) ->
+    delete_queue(Ticket, Queue, []).
+
+delete_queue(Ticket, Queue, Prop) ->
+    #'queue.delete'{ticket = Ticket
+		    ,queue=Queue
+		    ,if_unused = get_value(if_unused, Prop, false)
+		    ,if_empty = get_value(if_empty, Prop, false)
+		    ,nowait = get_value(nowait, Prop, false)
+		   }.
 
 %% Bind a Queue to an Exchange (with optional Routing Key)
 bind_q_to_targeted(Ticket, Queue) ->
@@ -155,6 +196,12 @@ bind_q_to_broadcast(Ticket, Queue) ->
 
 bind_q_to_broadcast(Ticket, Queue, Routing) ->
     bind_q_to_exchange(Ticket, Queue, Routing, ?EXCHANGE_BROADCAST).
+
+bind_q_to_resource(Ticket, Queue) ->
+    bind_q_to_resource(Ticket, Queue, <<"#">>).
+
+bind_q_to_resource(Ticket, Queue, Routing) ->
+    bind_q_to_exchange(Ticket, Queue, Routing, ?EXCHANGE_RESOURCE).
 
 %% generic binder
 bind_q_to_exchange(Ticket, Queue, Routing, Exchange) when is_list(Queue) ->

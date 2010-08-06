@@ -20,11 +20,11 @@
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 
--import(callmgr_logger, [log/2, format_log/3]).
+-import(logger, [log/2, format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
 %% API
--export([start_link/0, recv_callid/2]).
+-export([start_link/0, recv_callid/2, get_callids_served/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -33,7 +33,7 @@
 -define(SERVER, ?MODULE).
 -define(EXCHANGE, <<"targeted">>).
 
--record(state, {channel, connection, ticket, queue, tag}).
+-record(state, {channel, connection, ticket, queue, tag, callids=0}).
 
 %%%===================================================================
 %%% API
@@ -51,6 +51,9 @@ start_link() ->
 
 recv_callid(CallId, Prop) ->
     gen_server:cast(?MODULE, {recv_callid, CallId, Prop}).
+
+get_callids_served() ->
+    gen_server:call(?MODULE, get_callids_served).
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -106,6 +109,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(get_callids_served, _From, #state{callids=N}=State) ->
+    {reply, N, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -120,10 +125,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({recv_callid, CallId, Prop}, State) ->
+handle_cast({recv_callid, CallId, Prop}, #state{callids=N}=State) ->
     format_log(info, "CALLMGR_REQ: Recv CallId: ~p for ~p~n", [CallId, get_value(<<"resp_queue_id">>, Prop)]),
     send_callid(State, Prop, CallId),
-    {noreply, State};
+    {noreply, State#state{callids=N+1}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -252,8 +257,4 @@ send_callid(#state{channel=Channel, ticket=Ticket}, Prop, Callid) ->
 						     ),
 
     %% execute the publish command
-    Res = amqp_channel:call(Channel, BasicPublish, AmqpMsg),
-
-    format_log(info, "Sent Resp on Channel ~p~nMsg: ~p~nTo: ~p~nRes: ~p~n"
-	       ,[Channel, AmqpMsg, BasicPublish, Res]),
-    Res.
+    amqp_channel:call(Channel, BasicPublish, AmqpMsg).
