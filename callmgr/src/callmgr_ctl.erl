@@ -78,7 +78,8 @@ cmd_loop(#state{fs=Fs}=State) ->
 	    cmd_loop(State)
     end.
 
-stop(#state{fs=Fs, ticket=Ticket, channel=Channel, queue=Queue}) ->
+stop(#state{fs=Fs}) ->
+    format_log(info, "CALLMGR_CTL(~p): My Info at stop: ~p~n", [self(), erlang:process_info(self(), memory)]),
     gen_tcp:close(Fs#fs_conn.socket),
 
     amqp_manager:close_channel(self()),

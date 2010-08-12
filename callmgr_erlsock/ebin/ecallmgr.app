@@ -1,0 +1,11 @@
+{application,ecallmgr,
+             [{description,"Manage resource requests and interface with freeSWITCH"},
+              {vsn,"0.1"},
+              {registered,[]},
+              {applications,[kernel,stdlib,crypto,sasl,amqp]},
+              {mod,{ecallmgr_app,[ecallmgr,ecallmgr_app,ecallmgr_sup,
+                                  ecallmgr_deps,ecallmgr_req]}},
+              {env,[]},
+              {modules,[ecallmgr,ecallmgr_app,ecallmgr_call,ecallmgr_call_sup,
+                        ecallmgr_deps,ecallmgr_fsm,ecallmgr_req,ecallmgr_sup,
+                        freeswitch,logger]}]}.

@@ -2,20 +2,22 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Track statistics for a client requester
+%%% Receive requests off the queue for call initialization.
+%%% Spin up a call handler and hand off control.
 %%% @end
-%%% Created :  4 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 10 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(client_stats).
+-module(ecallmgr_req).
 
 -behaviour(gen_server).
 
-%% API
--export([start_link/0, req_callid/1, req_cmd/2]).
--export([resp_callid/1, resp_evt/2]).
--export([link_reqid_callid/2]).
+-include("../include/amqp_client/include/amqp_client.hrl").
 
--export([get_report/0, get_summary/0, reset/0]).
+-import(logger, [log/2, format_log/3]).
+-import(proplists, [get_value/2, get_value/3]).
+
+%% API
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -23,7 +25,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {events=[], links=[]}).
+-record(state, {channel, ticket, queue, tag, callids=0}).
 
 %%%===================================================================
 %%% API
@@ -38,31 +40,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-link_reqid_callid(ReqId, CallId) ->
-    gen_server:cast(?MODULE, {link, ReqId, CallId}).
-
-req_callid(ReqId) ->
-    gen_server:cast(?MODULE, {start, ReqId}),
-    gen_server:cast(?MODULE, {req_callid, ReqId}).
-
-req_cmd(ReqId, Cmd) ->
-    gen_server:cast(?MODULE, {{req_cmd, Cmd}, ReqId}).
-
-resp_callid(ReqId) ->
-    gen_server:cast(?MODULE, {resp_callid, ReqId}).
-
-resp_evt(ReqId, Evt) ->
-    gen_server:cast(?MODULE, {{resp_evt, Evt}, ReqId}).
-
-get_report() ->
-    gen_server:call(?MODULE, get_report).
-
-get_summary() ->
-    gen_server:call(?MODULE, get_summary).
-
-reset() ->
-    gen_server:call(?MODULE, reset).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -80,7 +57,28 @@ reset() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+    format_log(info, "ECALLMGR_REQ(~p): Channel open to MQ: ~p Ticket: ~p~n", [self(), Channel, Ticket]),
+
+    process_flag(trap_exit, true),
+
+    Exchange = amqp_util:targeted_exchange(Ticket),
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
+    format_log(info, "ECALLMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
+
+    QueueDeclare = amqp_util:new_targeted_queue(Ticket, ["callmgr." | net_adm:localhost()]),
+    #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
+
+    %% Bind the queue to an exchange
+    QueueBind = amqp_util:bind_q_to_targeted(Ticket, Queue, Queue),
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
+    format_log(info, "ECALLMGR_REQ Bound ~p~n", [Queue]),
+
+    %% Register a consumer to listen to the queue
+    BasicConsume = amqp_util:basic_consume(Ticket, Queue),
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BasicConsume, self()),
+
+    {ok, #state{channel=Channel, ticket=Ticket, queue=Queue}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,12 +94,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(reset, _From, _State) ->
-    {reply, ok, #state{}};
-handle_call(get_report, _From, #state{events=Evts, links=Links}=State) ->
-    {reply, generate_report(Evts, Links), State};
-handle_call(get_summary, _From, #state{events=Evts, links=Links}=State) ->
-    {reply, generate_summary(Evts, Links), State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -116,15 +108,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({link, ReqId, CallId}, #state{links=Links}=State) ->
-    {noreply, State#state{links=[{ReqId, CallId} | Links]}};
-handle_cast({start=Event, CallId}, #state{events=Evts}=State) ->
-    {noreply, State#state{events=[{CallId, {Event, erlang:now()}} | Evts]}};
-handle_cast({{resp_evt, "CHANNEL_HANGUP"}=Event, CallId}, #state{events=Evts}=State) ->
-    {noreply, State#state{events=[{CallId, {Event, erlang:now()}} | Evts]}};
-%%handle_cast({Event, ReqId}, #state{events=Evts}=State) ->
-%%    {noreply, State};
-%%{noreply, State#state{events=[{ReqId, {Event, erlang:now()}} | Evts]}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -138,6 +121,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', _Pid, Reason}, State) ->
+    format_log(error, "ECALLMGR_REQ(~p): Exit received from ~p for ~p~n", [self(), _Pid, Reason]),
+    {noreply, State};
+%%{stop, Reason, State};
+%% receive resource requests from Apps
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    handle_amqp_msg(Props#'P_basic'.content_type, Payload),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -169,56 +160,29 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+handle_amqp_msg(<<"application/json">>, Payload) ->
+    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "ECALLMGR_REQ(~p): Recv JSON: ~p~n", [self(), Prop]),
+    process_req(get_route(Prop), Prop);
+handle_amqp_msg(_ContentType, _Payload) ->
+    format_log(error, "ECALLMGR_REQ(~p): Unknown ContentType: ~p Payload: ~p~n", [self(), _ContentType, _Payload]).
 
-generate_summary(Evts, Links) ->
-    Converted = convert_reqids_to_callids(Evts, Links),
+process_req({<<"request">>, <<"resource">>, <<"channel">>, <<"setup">>}, Prop) ->
+    %% create and park a channel
+    ecallmgr_call_sup:start_call([{setup, Prop}]),
+    ok;
+process_req({<<"request">>, <<"resource">>, <<"channel">>, <<"setup_loopback">>}, Prop) ->
+    %% loopback
+    format_log(info, "ECALLMGR_REQ(~p): Setup Loopback~n", [self()]),
+    ecallmgr_app:start_call([{setup_loopback, Prop}]),
+    ok;
+process_req(_Route, _Prop) ->
+    format_log(error, "ECALLMGR_REQ(~p): Unhandled route ~p~n", [self(), _Route]).
 
-    CallIds = proplists:get_keys(Converted),
-    lists:map(fun(CallId) ->
-		      StartTime = get_start_time(CallId, Converted),
-		      EndTime = get_end_time(CallId, Converted),
-		      {CallId, timer:now_diff(EndTime, StartTime) div 1000}
-	      end, CallIds).
-
-get_start_time(CallId, Converted) ->
-    Vals = proplists:get_all_values(CallId, Converted),
-    case proplists:get_value(start, Vals) of
-	undefined ->
-	    io:format("Undefined start time for CID: ~p Vs: ~p~n", [CallId, Vals]),
-	    erlang:now();
-	 S -> S
-    end.
-
-get_end_time(CallId, Converted) ->
-    Vals = proplists:get_all_values(CallId, Converted),
-    case proplists:get_value({resp_evt, "CHANNEL_HANGUP"}, Vals) of
-	undefined ->
-	    io:format("Undefined end time for CID: ~p Vs: ~p~n", [CallId, Vals]),
-	    erlang:now();
-	E -> E
-    end.
-
-%% generate_report([{ReqId, {Evt, Timestamp}}]) -> [{CallId, Tdiff(milli), Evt}]
-%% ReqId, for events, is the CallId.
-generate_report(Evts, Links) ->
-    Converted = convert_reqids_to_callids(Evts, Links),
-
-    Res = lists:foldl(fun({CallId, {Evt, Tstamp}}, Res) ->
-			      Start = get_start_time(CallId, Converted),
-			      [{CallId, {timer:now_diff(Tstamp, Start) div 1000, Evt}} | Res]
-		      end, [], lists:reverse(Converted)),
-    lists:reverse(Res).
-
-convert_reqids_to_callids(Evts, Links) ->
-    lists:map(fun({undefined, Evt}) ->
-		      io:format("STATS: Missing callid for ~p~n", [Evt]),
-		      {undefined, {ignore, me}};
-		  ({ReqId, {start, _Tstamp}=Evt}) ->
-		      {proplists:get_value(ReqId, Links), Evt};
-		 ({ReqId, {req_callid, _Tstamp}=Evt}) ->
-		      {proplists:get_value(ReqId, Links), Evt};
-		 ({ReqId, {resp_callid, _Tstamp}=Evt}) ->
-		      {proplists:get_value(ReqId, Links), Evt};
-		 (Other) ->
-		      Other
-	      end, Evts).
+get_route(Prop) ->
+    {
+      get_value(<<"action">>, Prop)
+     ,get_value(<<"category">>, Prop)
+     ,get_value(<<"type">>, Prop)
+     ,get_value(<<"command">>, Prop)
+    }.

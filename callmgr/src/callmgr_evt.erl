@@ -149,6 +149,7 @@ am_i_up_resp(_, State) ->
     evt_loop(State).
 
 stop(#state{fs=Fs, ctl_pid=Pid}) ->
+    format_log(info, "CALLMGR_EVT(~p): My Info at stop: ~p~n", [self(), erlang:process_info(self(), memory)]),
     gen_tcp:close(Fs#fs_conn.socket),
 
     amqp_manager:close_channel(self()),

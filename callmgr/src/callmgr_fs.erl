@@ -189,7 +189,8 @@ get_uuid(Fs, Receiver) ->
 	_Other ->
 	    format_log(error, "CALLMGR_FS.UUID(~p): get_uuid:read_socket() return unexpected: ~p~n", [self(), _Other]),
 	    get_uuid(Fs, Receiver)
-    end.
+    end,
+    format_log(info, "CALLMGR_FS.UUID(~p): mem: ~p", [self(), erlang:process_info(self(), memory)]).
 
 create_ctl_evt_mgrs(Fs, CallId) ->
     %% todo - register these processes with the server so they can be supervised

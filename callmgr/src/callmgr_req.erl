@@ -33,7 +33,7 @@
 -define(SERVER, ?MODULE).
 -define(EXCHANGE, <<"targeted">>).
 
--record(state, {channel, connection, ticket, queue, tag, callids=0}).
+-record(state, {channel, connection, ticket, queue, callids=0}).
 
 %%%===================================================================
 %%% API
@@ -90,10 +90,10 @@ init([]) ->
 
     %% Register a consumer to listen to the queue
     BasicConsume = amqp_util:basic_consume(Ticket, Queue),
-    #'basic.consume_ok'{consumer_tag = Tag}
+    #'basic.consume_ok'{consumer_tag = _Tag}
         = amqp_channel:subscribe(Channel, BasicConsume, self()),
 
-    {ok, #state{channel=Channel, ticket=Ticket, tag=Tag, queue=Queue}}.
+    {ok, #state{channel=Channel, ticket=Ticket, queue=Queue}}.
 
 %%--------------------------------------------------------------------
 %% @private
