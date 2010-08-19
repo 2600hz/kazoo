@@ -6,6 +6,6 @@
               {mod,{ecallmgr_app,[ecallmgr,ecallmgr_app,ecallmgr_sup,
                                   ecallmgr_deps,ecallmgr_req]}},
               {env,[]},
-              {modules,[ecallmgr,ecallmgr_app,ecallmgr_call,ecallmgr_call_sup,
-                        ecallmgr_deps,ecallmgr_fsm,ecallmgr_req,ecallmgr_sup,
-                        freeswitch,logger]}]}.
+              {modules,[ecallmgr,ecallmgr_app,ecallmgr_auth,ecallmgr_call,
+                        ecallmgr_call_sup,ecallmgr_deps,ecallmgr_fsm,
+                        ecallmgr_req,ecallmgr_sup,freeswitch,logger]}]}.

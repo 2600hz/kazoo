@@ -23,6 +23,7 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 -define(SERVER, ?MODULE).
+-define(FS_NODE, list_to_atom(lists:flatten(["freeswitch@"| net_adm:localhost()]))).
 
 -record(amqp_state, {channel, ticket, evt_queue, ctl_queue}).
 -record(state, {callid, amqp=#amqp_state{}, ref}).
@@ -84,6 +85,8 @@ init([{Ref, [{setup, Opts}]}]) ->
 
     {ok, Amqp} = start_queues(CallId),
 
+    freeswitch:handlecall(?FS_NODE, CallId),
+
     send_callid(CallId, Amqp, Opts),
 
     {ok, #state{callid=CallId, ref=Ref, amqp=Amqp}};
@@ -92,9 +95,13 @@ init([{Ref, [{setup_loopback, Opts}]}]) ->
     {ok, [$+,$O,$K,$ | Callid]} = freeswitch:api(?FS_NODE, originate, "loopback/wait &park"),
     CallId = string:strip(Callid, right, $\n),
     format_log(info, "ECALLMGR_CALL(~p): Init.setup_loopback CallId: ~p~n", [self(), CallId]),
+
     {ok, Amqp} = start_queues(CallId),
 
+    freeswitch:handlecall(?FS_NODE, CallId),
+
     send_callid(CallId, Amqp, Opts),
+
     format_log(info, "ECALLMGR_CALL(~p): Init.setup_loopback done~n", [self()]),
 
     {ok, #state{callid=CallId, ref=Ref, amqp=Amqp}};
@@ -102,6 +109,7 @@ init([{Ref, [{callid, CallId, Opts}]}]) ->
     format_log(info, "ECALLMGR_CALL(~p): Init.callid with ~p~n", [self(), CallId]),
     {ok, Amqp} = start_queues(CallId),
     send_callid(CallId, Amqp, Opts),
+    freeswitch:handlecall(?FS_NODE, CallId),
     {ok, #state{callid=CallId, ref=Ref, amqp=Amqp}};
 init(_Args) ->
     format_log(error, "ECALLMGR_CALL(~p): Init: Unknown Args ~p~n", [self(), _Args]),
@@ -149,6 +157,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    format_log(error, "ECALLMGR_CALL(~p): Unhandled Info Message ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
