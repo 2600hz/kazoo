@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_user/2]).
+-export([start_link/0, lookup_user/2, send_fetch_response/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -19,25 +19,13 @@
 
 -import(proplists, [get_value/2, get_value/3]).
 
--define(SERVER, ?MODULE). 
--define(EMPTYRESPONSE, "<document type=\"freeswitch/xml\"></document>").
--define(REGISTERRESPONSE,
-"<document type=\"freeswitch/xml\">
-	<section name=\"directory\">
-		<domain name=\"~s\">
-			<user id=\"~s\">
-				<params>
-					<param name=\"a1-hash\" value=\"~s\"/>
-				</params>
-				<variables>
-					<variable name=\"user_context\" value=\"default\"/>
-				</variables>
-			</user>
-		</domain>
-	</section>
-</document>").
+-include("../include/amqp_client/include/amqp_client.hrl").
+-include("freeswitch_xml.hrl").
 
--record(state, {}).
+-define(SERVER, ?MODULE). 
+
+
+-record(state, {fs_node, channel, ticket}).
 
 %%%===================================================================
 %%% API
@@ -52,6 +40,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+send_fetch_response(ID, Response) ->
+    gen_server:cast(?MODULE, {send_fetch_response, ID, Response}).
 
 %% see lookup_user/2 after gen_server callbacks
 
@@ -73,15 +64,17 @@ start_link() ->
 init([]) ->
     process_flag(trap_exit, true),
     Node = list_to_atom(lists:concat(["freeswitch@", net_adm:localhost()])),
-    Opts = [],
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+    State = #state{fs_node=Node, channel=Channel, ticket=Ticket},
     case net_adm:ping(Node) of
 	pong ->
-	    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, lookup_user, Opts),
+	    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, lookup_user, State),
 	    link(Pid);
 	_ ->
 	    io:format("Unable to find ~p to talk to freeSWITCH~n", [Node])
     end,
-    {ok, #state{}}.
+
+    {ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,6 +104,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({send_fetch_response, ID, Response}, #state{fs_node=Node}=State) ->
+    freeswitch:fetch_reply(Node, ID, Response),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -160,15 +156,10 @@ lookup_user(Node, State) ->
     receive
 	{fetch, directory, "domain", "name", _Value, ID, [undefined | Data]} ->
 	    io:format("fetch directory: Id: ~p Data: ~p~n", [ID, Data]),
-	    User = get_value("user", Data),
-	    Domain = get_value("domain", Data),
-	    Hash = a1hash(User, Domain, "james"),
-	    Resp = lists:flatten(io_lib:format(?REGISTERRESPONSE, [Domain, User, Hash])),
-	    io:format("Sending resp: ~p~n", [Resp]),
-	    freeswitch:fetch_reply(Node, ID, Resp),
+	    spawn(fun() -> lookup_user(State, ID, Data) end),
 	    ?MODULE:lookup_user(Node, State);
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    io:format("fetch dir unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p, D: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
+	    io:format("fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p, D: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:lookup_user(Node, State);
 	{nodedown, Node} ->
@@ -179,10 +170,32 @@ lookup_user(Node, State) ->
 	    ?MODULE:lookup_user(Node, State)
     end.
 
+lookup_user(#state{fs_node=Node, channel=Channel, ticket=Ticket}=State, ID, Data) ->
+    %bind_q(Channel, Ticket, ID),
+    %% build req for rabbit
+    
+    %% put on wire to rabbit
+    %% recv resp from rabbit
+    User = get_value("user", Data),
+    Domain = get_value("domain", Data),
+    Pass = "james", %% lookup here, or timeout
+    %Hash = a1hash(User, Domain, Pass),
+    %%Resp = lists:flatten(io_lib:format(?REGISTERRESPONSE, [Domain, User, Hash])),
+    Resp = lists:flatten(io_lib:format(?REGISTER_NOPASS_RESPONSE, [Domain, User])),
+    io:format("LOOKUP_USER(~p): Sending resp: ~p~n", [self(), Resp]),
+    ?MODULE:send_fetch_response(ID, Resp).
+
+bind_q(Channel, Ticket, ID) ->
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
+    #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, ID)),
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:targeted_consume(Ticket, ID), self()).
+
+
 a1hash(User, Realm, Password) ->
     to_hex(erlang:md5(User++":"++Realm++":"++Password)).
 
 to_hex(Bin) when is_binary(Bin) ->
     to_hex(binary_to_list(Bin));
 to_hex(L) when is_list(L) ->
-    lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L]).
+    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
