@@ -83,7 +83,7 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({open_channel, _Pid}=Req, _From, #state{connection=undefined, options=Options}=State) ->
+handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined, options=Options}=State) ->
     Connection = case Options of
 		     undefined ->
 			 amqp_connection:start_network_link(get_options());
@@ -92,7 +92,7 @@ handle_call({open_channel, _Pid}=Req, _From, #state{connection=undefined, option
 		 end,
     format_log(info, "AMQP_MGR(~p): restart connection~n", [self()]),
     MRefConn = erlang:monitor(process, Connection),
-    handle_call(Req, _From, State#state{connection={Connection, MRefConn}});
+    handle_call(Req, From, State#state{connection={Connection, MRefConn}});
 handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn}, channels=Channels}=State) ->
     case lists:keysearch(Pid, 1, Channels) of
         %% This PID already has a channel, just return it
@@ -142,14 +142,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({close_channel, Pid}, #state{channels=Channels}=State) ->
     case lists:keysearch(Pid, 1, Channels) of
         {value, {Pid, Channel, _Ticket, MRef}} ->
-	    ChannelClose = #'channel.close'{
-	      reply_code = 200,
-	      reply_text = <<"Goodbye">>,
-	      class_id = 0,
-	      method_id = 0
-	     },
-
-            #'channel.close_ok'{} = amqp_channel:call(Channel, ChannelClose),
+            #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close()),
 
             erlang:demonitor(MRef),
 
@@ -170,26 +163,18 @@ handle_cast(_Msg, State) ->
 handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRefConn}}=State) ->
     format_log(error, "AMQP_MGR(~p): Conn ~p went down (~p)~n", [self(), Pid, Reason]),
     {stop, Reason, State};
-handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{connection={Connection,_MRefConn}, channels=Channels}=State) ->
+handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=State) ->
     case lists:keysearch(Pid, 1, Channels) of
         {value, {Pid, Channel, _Ticket, MRef}} ->
-            ChannelClose = #'channel.close'{
-	      reply_code = 200,
-	      reply_text = <<"Goodbye">>,
-	      class_id = 0,
-	      method_id = 0
-	     },
-            #'channel.close_ok'{} = amqp_channel:call(Channel, ChannelClose),
-
+            #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close()),
             NewChannels = lists:keydelete(Pid, 1, Channels),
-
             erlang:demonitor(MRef),
-
-            {noreply, #state{connection = Connection, channels = NewChannels}};
+            {noreply, #state{channels = NewChannels}};
         false ->
 	    {noreply, State}
     end;
 handle_info({'EXIT', _Pid, Reason}, State) ->
+    format_log(error, "AMQP_MGR(~p): EXIT received for ~p with reason ~p~n", [self(), _Pid, Reason]),
     {stop, Reason, State};
 handle_info(_Info, State) ->
     format_log(error, "AMQP_MGR(~p): Unhandled info req: ~p~nState: ~p~n", [self(), _Info, State]),
@@ -202,9 +187,11 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(Reason, S) ->
-    close_all_channels(S#state.channels),
-    ok = amqp_connection:close(S#state.connection, 200, <<"Goodbye">>),
+terminate(Reason, #state{connection=undefined}) ->
+    Reason;
+terminate(Reason, #state{connection={Conn, _MRefConn}, channels=Channels}) ->
+    close_all_channels(Channels),
+    ok = amqp_connection:close(Conn, 200, <<"Goodbye">>),
     Reason.
 
 %%--------------------------------------------------------------------

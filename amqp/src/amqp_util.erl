@@ -21,7 +21,8 @@
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2]).
 
--export([new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5]).
+-export([new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5
+	 , channel_close/0, channel_close/1, channel_close/2]).
 
 -define(EXCHANGE_TARGETED, <<"targeted">>).
 -define(TYPE_TARGETED, <<"direct">>).
@@ -52,11 +53,11 @@ callctl_publish(Ticket, CallId, Payload, ContentType) when is_binary(CallId) ->
     callctl_publish(Ticket, binary_to_list(CallId), Payload, ContentType);
 callctl_publish(Ticket, CallId, Payload, ContentType) ->
     Route = case string:str(CallId, binary_to_list(?EXCHANGE_CALLCTL)) of
-		0 -> lists:concat([binary_to_list(?EXCHANGE_CALLCTL), ".", CallId]);
-		_ -> CallId
+		0 -> list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]);
+		_ -> list_to_binary(CallId)
 	    end,
 
-    basic_publish(Ticket, ?EXCHANGE_CALLCTL, list_to_binary(Route), Payload, ContentType).
+    basic_publish(Ticket, ?EXCHANGE_CALLCTL, Route, Payload, ContentType).
 
 callevt_publish(Ticket, CallId, Payload) ->
     callevt_publish(Ticket, CallId, Payload, undefined).
@@ -65,19 +66,20 @@ callevt_publish(Ticket, CallId, Payload, ContentType) when is_binary(CallId) ->
     callevt_publish(Ticket, binary_to_list(CallId), Payload, ContentType);
 callevt_publish(Ticket, CallId, Payload, ContentType) ->
     Route = case string:str(CallId, binary_to_list(?EXCHANGE_CALLEVT)) of
-		0 -> lists:concat([binary_to_list(?EXCHANGE_CALLEVT), ".", CallId]);
-		_ -> CallId
+		0 -> list_to_binary([?EXCHANGE_CALLEVT, ".", CallId]);
+		_ -> list_to_binary(CallId)
 	    end,
-    basic_publish(Ticket, ?EXCHANGE_CALLEVT, list_to_binary(Route), Payload, ContentType).
+    basic_publish(Ticket, ?EXCHANGE_CALLEVT, Route, Payload, ContentType).
 
 broadcast_publish(Ticket, Payload) ->
     broadcast_publish(Ticket, Payload, undefined).
 
 broadcast_publish(Ticket, Payload, ContentType) when is_list(ContentType) ->
     broadcast_publish(Ticket, Payload, list_to_binary(ContentType));
+broadcast_publish(Ticket, Payload, ContentType) when is_list(Payload) ->
+    broadcast_publish(Ticket, list_to_binary(Payload), ContentType);
 broadcast_publish(Ticket, Payload, ContentType) ->
     basic_publish(Ticket, ?EXCHANGE_BROADCAST, <<"#">>, Payload, ContentType).
-
 
 resource_publish(Ticket, Payload) ->
     resource_publish(Ticket, Payload, undefined).
@@ -120,16 +122,16 @@ new_exchange(Ticket, Exchange, Type, Options) ->
 	     }.
 
 new_targeted_queue(Ticket, QueueName) ->
-    new_queue(Ticket, lists:concat([binary_to_list(?EXCHANGE_TARGETED), ".", QueueName])).
+    new_queue(Ticket, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])).
 
 new_callevt_queue(Ticket, CallId) ->
     new_queue(Ticket
-	      ,lists:concat([binary_to_list(?EXCHANGE_CALLEVT), ".", CallId])
+	      ,list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}]).
 
 new_callctl_queue(Ticket, CallId) ->
     new_queue(Ticket
-	      ,lists:concat([binary_to_list(?EXCHANGE_CALLCTL), ".", CallId])
+	      ,list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}]).
 
 %% Declare a queue
@@ -153,13 +155,13 @@ delete_callevt_queue(Ticket, CallId) ->
     delete_callevt_queue(Ticket, CallId, []).
 
 delete_callevt_queue(Ticket, CallId, Prop) ->
-    delete_queue(Ticket, lists:concat([binary_to_list(?EXCHANGE_CALLEVT), ".", CallId]), Prop).
+    delete_queue(Ticket, list_to_binary([?EXCHANGE_CALLEVT, ".", CallId]), Prop).
 
 delete_callctl_queue(Ticket, CallId) ->
     delete_callctl_queue(Ticket, CallId, []).
 
 delete_callctl_queue(Ticket, CallId, Prop) ->
-    delete_queue(Ticket, lists:concat([binary_to_list(?EXCHANGE_CALLCTL), ".", CallId]), Prop).
+    delete_queue(Ticket, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]), Prop).
 
 delete_queue(Ticket, Queue) ->
     delete_queue(Ticket, Queue, []).
@@ -221,9 +223,9 @@ bind_q_to_exchange(Ticket, Queue, Routing, Exchange) ->
 		 }.
 
 callevt_consume(Ticket, CallId) ->
-    basic_consume(Ticket, lists:concat([binary_to_list(?EXCHANGE_CALLEVT), ".", CallId])).
+    basic_consume(Ticket, list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])).
 callctl_consume(Ticket, CallId) ->
-    basic_consume(Ticket, lists:concat([binary_to_list(?EXCHANGE_CALLCTL), ".", CallId])).
+    basic_consume(Ticket, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])).
 
 %% create a consumer for a Queue
 basic_consume(Ticket, Queue) when is_list(Queue) ->
@@ -259,3 +261,19 @@ basic_publish(Ticket, Exchange, Queue, Payload, ContentType, Prop) ->
 			  ,props=#'P_basic'{content_type=ContentType}
 			 },
     {BasicPublish, AmqpMsg}.
+
+channel_close() ->
+    channel_close(<<"Goodbye">>).
+
+channel_close(Msg) when is_list(Msg) ->
+    channel_close(list_to_binary(Msg));
+channel_close(Msg) ->
+    channel_close(Msg, 200).
+
+channel_close(Msg, Code) ->
+    #'channel.close'{
+	       reply_code = Code,
+	       reply_text = Msg,
+	       class_id = 0,
+	       method_id = 0
+	      }.
