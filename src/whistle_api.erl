@@ -10,18 +10,20 @@
 -module(whistle_api).
 
 %% API
--export([auth_req/1]).
+-export([auth_req/1, auth_resp/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
-			  , <<"App-Name">>, <<"App-Version">>]).
+			      , <<"App-Name">>, <<"App-Version">>]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
 				  , <<"Geo-Location">>, <<"Access-Group">>
 				  , <<"Tenant-ID">>]).
 
 -define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
-			   , <<"Auth-User">>, <<"Auth-Domain">>]).
+			       , <<"Auth-User">>, <<"Auth-Domain">>]).
+
+-define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Pass">>]).
 
 -type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
 
@@ -38,12 +40,33 @@
 auth_req(Prop) ->
     case defaults(Prop) of
 	{error, _Reason}=Error ->
-	    io:format("Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    io:format("AuthReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
 	{Headers, Prop1} ->
 	    case update_required_headers(Prop1, ?AUTH_REQ_HEADERS, Headers) of
 		{error, _Reason} = Error ->
-		    io:format("Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?AUTH_REQ_HEADERS, Prop1]),
+		    io:format("AuthReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?AUTH_REQ_HEADERS, Prop1]),
+		    Error;
+		{Headers1, _Prop2} ->
+		    {ok, mochijson2:encode({struct, Headers1})}
+	    end
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Authentication Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(auth_resp/1 :: (Prop :: proplist()) -> {ok, string()} | {error, string()}).
+auth_resp(Prop) ->
+    case defaults(Prop) of
+	{error, _Reason}=Error ->
+	    io:format("AuthResp DefError: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    Error;
+	{Headers, Prop1} ->
+	    case update_required_headers(Prop1, ?AUTH_RESP_HEADERS, Headers) of
+		{error, _Reason} = Error ->
+		    io:format("AuthResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?AUTH_RESP_HEADERS, Prop]),
 		    Error;
 		{Headers1, _Prop2} ->
 		    {ok, mochijson2:encode({struct, Headers1})}
@@ -105,7 +128,14 @@ add_optional_headers(Prop, Fields, Headers) ->
 %% Checks Prop against a list of required headers, returns true | false
 -spec(has_all/2 :: (Prop :: proplist(), Headers :: list(binary())) -> boolean()).
 has_all(Prop, Headers) ->
-    lists:all(fun(Header) -> is_defined(Header, Prop) end, Headers).
+    lists:all(fun(Header) ->
+		      case is_defined(Header, Prop) of
+			  true -> true;
+			  false ->
+			      io:format("has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
+			      false
+		      end
+	      end, Headers).
 
 %% Checks Prop against a list of optional headers, returns true | false if at least one if found
 -spec(has_any/2 :: (Prop :: proplist(), Headers :: list(binary())) -> boolean()).

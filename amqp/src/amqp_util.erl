@@ -18,7 +18,7 @@
 
 -export([callevt_consume/2, callctl_consume/2]).
 
--export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2]).
+-export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2]).
 
 -export([new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5
@@ -123,6 +123,9 @@ new_exchange(Ticket, Exchange, Type, Options) ->
 
 new_targeted_queue(Ticket, QueueName) ->
     new_queue(Ticket, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])).
+
+new_broadcast_queue(Ticket, QueueName) ->
+    new_queue(Ticket, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName])).
 
 new_callevt_queue(Ticket, CallId) ->
     new_queue(Ticket
@@ -247,6 +250,9 @@ basic_publish(Ticket, Exchange, Queue, Payload) ->
     basic_publish(Ticket, Exchange, Queue, Payload, undefined).
 basic_publish(Ticket, Exchange, Queue, Payload, ContentType) ->
     basic_publish(Ticket, Exchange, Queue, Payload, ContentType, []).
+
+basic_publish(Ticket, Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
+    basic_publish(Ticket, Exchange, Queue, list_to_binary(Payload), ContentType, Prop);
 basic_publish(Ticket, Exchange, Queue, Payload, ContentType, Prop) ->
     BasicPublish = #'basic.publish'{
       ticket = Ticket

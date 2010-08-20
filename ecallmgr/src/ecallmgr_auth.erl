@@ -231,10 +231,9 @@ recv_response(ID) ->
 		    recv_response(ID)
 	    end;
 	Msg ->
-	    io:format("Received ~p off rabbit~n", [Msg])
-    after 1000 ->
-	    %% insert empty response
-	    %% ?MODLULE_send_fetch_response(ID, ?EMPTY_RESPONSE),
+	    io:format("Received ~p off rabbit~n", [Msg]),
+	    recv_response(ID)
+    after 4000 ->
 	    io:format("Failed to receive after 1000ms~n", []),
 	    timeout
     end.
