@@ -172,7 +172,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
     Domain = get_value(<<"Auth-Domain">>, Prop),
 
     %% do lookup
-    case User =:= <<"james">> andalso Domain =:= <<"192.168.1.147">> of
+    case User =:= <<"james">> andalso Domain =:= <<"192.168.19.111">> of
 	false ->
 	    io:format("User ~p@~p not found~n", [User, Domain]);
 	true ->
@@ -180,7 +180,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    Data = [{<<"App-Name">>, <<"responder_couch">>}
 		    ,{<<"App-Version">>, "0.1"}
-		    ,{<<"Auth-Pass">>, <<"james">>}
+		    ,{<<"Auth-Pass">>, <<"james1">>}
 		    ,{<<"Auth-Method">>, <<"password">>}
 		    ,{<<"Access-Group">>, <<"ignore">>}
 		    ,{<<"Tenant-ID">>, <<"ignore">>}

@@ -18,6 +18,7 @@
 	 terminate/2, code_change/3]).
 
 -import(proplists, [get_value/2, get_value/3]).
+-import(logger, [log/2, format_log/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
@@ -71,7 +72,7 @@ init([]) ->
 	    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, lookup_user, State),
 	    link(Pid);
 	_ ->
-	    io:format("Unable to find ~p to talk to freeSWITCH~n", [Node])
+	    format_log(error, "Unable to find ~p to talk to freeSWITCH~n", [Node])
     end,
     {ok, State}.
 
@@ -154,18 +155,23 @@ code_change(_OldVsn, State, _Extra) ->
 lookup_user(Node, State) ->
     receive
 	{fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]} ->
-	    io:format("fetch directory: Id: ~p~nData: ~p~n", [ID, Data]),
-	    spawn(fun() -> lookup_user(State, ID, Data) end),
+	    format_log(info, "fetch directory: Id: ~p~nData: ~p~n", [ID, Data]),
+	    case get_value(<<"Event-Name">>, Data) of
+		<<"REQUEST_PARAMS">> ->
+		    spawn(fun() -> lookup_user(State, ID, Data) end);
+		_Other ->
+		    format_log(info, "ECALLMGR_AUTH(~p): Ignoring event ~p~n", [self(), _Other])
+	    end,
 	    ?MODULE:lookup_user(Node, State);
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    io:format("fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p, D: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
+	    format_log(info, "fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:lookup_user(Node, State);
 	{nodedown, Node} ->
-	    io:format("Node we were serving XML search requests to exited", []),
+	    format_log(error, "Node we were serving XML search requests to exited", []),
 	    ok;
 	Other ->
-	    io:format("got other response: ~p", [Other]),
+	    format_log(info, "got other response: ~p", [Other]),
 	    ?MODULE:lookup_user(Node, State)
     end.
 
@@ -186,11 +192,12 @@ lookup_user(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Data) ->
 	     ,{<<"Auth-Pass">>, get_value(<<"password">>, Data, <<"">>)}
 	     | Data],
     {ok, JSON} = whistle_api:auth_req(Data0),
-    io:format("JSON REQ: ~s~n", [JSON]),
+    format_log(info, "JSON REQ: ~s~n", [JSON]),
 
     %% put on wire to rabbit
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
     amqp_channel:call(Channel, BP, AmqpMsg),
+    T1 = erlang:now(),
 
     %% recv resp from rabbit
     case recv_response(ID) of
@@ -203,16 +210,19 @@ lookup_user(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Data) ->
 		<<"password">> ->
 		    Hash = a1hash(User, Domain, get_value(<<"Auth-Pass">>, Prop)),
 		    Resp = lists:flatten(io_lib:format(?REGISTERRESPONSE, [Domain, User, Hash])),
-		    io:format("LOOKUP_USER(~p): Sending pass resp: ~p~n", [self(), Resp]),
+		    format_log(info, "LOOKUP_USER(~p): Sending pass resp: ~p (took ~pms)~n"
+			      ,[self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
 		    ?MODULE:send_fetch_response(ID, Resp);
 		<<"a1-hash">> ->
 		    Resp = lists:flatten(
 			     io_lib:format(?REGISTERRESPONSE, [Domain, User, get_value(<<"Auth-Pass">>, Prop)])
 			    ),
-		    io:format("LOOKUP_USER(~p): Sending hashed resp: ~p~n", [self(), Resp]),
+		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp: ~p (took ~pms)~n"
+			      , [self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
 		    ?MODULE:send_fetch_response(ID, Resp);
 		<<"ip">> ->
-		    io:format("LOOKUP_USER(~p): Unsupported auth by IP~n", [self()]),
+		    format_log(info, "LOOKUP_USER(~p): Unsupported auth by IP (took ~pms)~n"
+			      , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
 		    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE)
 	    end
     end.
@@ -222,26 +232,26 @@ recv_response(ID) ->
 	#'basic.consume_ok'{} ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
-	    io:format("Recv Content: ~p Payload: ~s~n", [Props#'P_basic'.content_type, binary_to_list(Payload)]),
+	    format_log(info, "Recv Content: ~p Payload: ~s~n", [Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    case get_value(<<"Msg-ID">>, Prop) of
 		ID -> Prop;
 		_BadId ->
-		    io:format("Recv Msg ~p when expecting ~p~n", [_BadId, ID]),
+		    format_log(info, "Recv Msg ~p when expecting ~p~n", [_BadId, ID]),
 		    recv_response(ID)
 	    end;
 	Msg ->
-	    io:format("Received ~p off rabbit~n", [Msg]),
+	    format_log(info, "Received ~p off rabbit~n", [Msg]),
 	    recv_response(ID)
     after 4000 ->
-	    io:format("Failed to receive after 1000ms~n", []),
+	    format_log(info, "Failed to receive after 4000ms~n", []),
 	    timeout
     end.
 
 get_sip_to(Data) ->
-    list_to_binary([get_value(<<"sip_to_user">>, Data), "@", get_value(<<"sip_to_host">>, Data)]).
+    list_to_binary([get_value(<<"sip_to_user">>, Data, ""), "@", get_value(<<"sip_to_host">>, Data, "")]).
 get_sip_from(Data) ->
-    list_to_binary([get_value(<<"sip_from_user">>, Data), "@", get_value(<<"sip_from_host">>, Data)]).
+    list_to_binary([get_value(<<"sip_from_user">>, Data, ""), "@", get_value(<<"sip_from_host">>, Data, "")]).
 
 bind_q(Channel, Ticket, ID) ->
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
