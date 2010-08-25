@@ -10,7 +10,8 @@
 -module(whistle_api).
 
 %% API
--export([auth_req/1, auth_resp/1]).
+-export([default_headers/5]).
+-export([auth_req/1, auth_resp/1, route_req/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
@@ -25,11 +26,28 @@
 
 -define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Pass">>]).
 
+-define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>]).
+
+-define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>, <<"Geo-Location">>
+					 ,<<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">> %%process | proxy | bypass
+					 , <<"Transcode">>, <<"Codecs">>, <<"Tenant-ID">>
+					 ,<<"Resource-Type">> %% MMS | SMS | audio | video | chat
+					 ,<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>]).
+
 -type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%% create the default header list
+-spec(default_headers/5 :: (ServerID :: binary(), EvtCat :: binary(), AppName :: binary(), AppVsn :: binary(), MsgId :: binary()) -> proplist()).
+default_headers(ServerID, EvtCat, AppName, AppVsn, MsgID) ->
+    [{<<"Server-ID">>, ServerID}
+     ,{<<"Event-Category">>, EvtCat}
+     ,{<<"App-Name">>, AppName}
+     ,{<<"App-Version">>, AppVsn}
+     ,{<<"Msg-ID">>, MsgID}].
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Request - see wiki
@@ -38,7 +56,14 @@
 %%--------------------------------------------------------------------
 -spec(auth_req/1 :: (Prop :: proplist()) -> {ok, string()} | {error, string()}).
 auth_req(Prop) ->
-    case defaults(Prop) of
+    Prop0 = [{<<"To">>, get_sip_to(Prop)}
+	     ,{<<"From">>, get_sip_from(Prop)}
+	     ,{<<"Orig-IP">>, get_orig_ip(Prop)}
+	     ,{<<"Auth-User">>, get_value(<<"user">>, Prop)}
+             ,{<<"Auth-Domain">>, get_value(<<"domain">>, Prop)}
+	     ,{<<"Auth-Pass">>, get_value(<<"password">>, Prop, <<"">>)}
+	     | Prop],
+    case defaults(Prop0) of
 	{error, _Reason}=Error ->
 	    io:format("AuthReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
@@ -70,6 +95,31 @@ auth_resp(Prop) ->
 		    Error;
 		{Headers1, _Prop2} ->
 		    {ok, mochijson2:encode({struct, Headers1})}
+	    end
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Dialplan Route Request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(route_req/1 :: (Prop :: proplist()) -> {ok, string()} | {error, string()}).
+route_req(Prop) ->
+    Prop0 = [{<<"To">>, get_sip_to(Prop)}
+	     ,{<<"From">>, get_sip_from(Prop)}
+	     | Prop],
+    case defaults(Prop0) of
+	{error, _Reason}=Error ->
+	    io:format("RouteReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    Error;
+	{Headers, Prop1} ->
+	    case update_required_headers(Prop1, ?ROUTE_REQ_HEADERS, Headers) of
+		{error, _Reason} = Error ->
+		    io:format("RouteReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_REQ_HEADERS, Prop1]),
+		    Error;
+		{Headers1, Prop2} ->
+		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_ROUTE_REQ_HEADERS, Headers1),
+		    {ok, mochijson2:encode({struct, Headers2})}
 	    end
     end.
 
@@ -141,3 +191,23 @@ has_all(Prop, Headers) ->
 -spec(has_any/2 :: (Prop :: proplist(), Headers :: list(binary())) -> boolean()).
 has_any(Prop, Headers) ->
     lists:any(fun(Header) -> is_defined(Header, Prop) end, Headers).
+
+%% retrieves the sip address for the 'to' field
+-spec(get_sip_to/1 :: (Prop :: proplist()) -> binary()).
+get_sip_to(Prop) ->
+    list_to_binary([get_value(<<"sip_to_user">>, Prop, get_value(<<"variable_sip_to_user">>, Prop, ""))
+		    , "@"
+		    , get_value(<<"sip_to_host">>, Prop, get_value(<<"variable_sip_to_host">>, Prop, ""))
+		   ]).
+
+%% retrieves the sip address for the 'from' field
+-spec(get_sip_from/1 :: (Prop :: proplist()) -> binary()).
+get_sip_from(Prop) ->
+    list_to_binary([
+		    get_value(<<"sip_from_user">>, Prop, get_value(<<"variable_sip_from_user">>, Prop, ""))
+		    ,"@"
+		    , get_value(<<"sip_from_host">>, Prop, get_value(<<"variable_sip_from_host">>, Prop, ""))
+		   ]).
+
+get_orig_ip(Prop) ->
+    get_value(<<"ip">>, Prop).

@@ -31,6 +31,7 @@ init([]) ->
 	 ?CHILD(ecallmgr_req, worker)
 	 ,?CHILD(ecallmgr_call_sup, supervisor)
 	 ,?CHILD(ecallmgr_auth, worker)
+	 ,?CHILD(ecallmgr_route, worker)
 	]
       }
     }.

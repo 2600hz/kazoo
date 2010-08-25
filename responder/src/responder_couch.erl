@@ -172,7 +172,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
     Domain = get_value(<<"Auth-Domain">>, Prop),
 
     %% do lookup
-    case User =:= <<"james">> andalso Domain =:= <<"192.168.19.111">> of
+    case User =:= <<"james">> andalso Domain =:= <<"work-lappy">> of
 	false ->
 	    io:format("User ~p@~p not found~n", [User, Domain]);
 	true ->
@@ -189,6 +189,32 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
 	    io:format("JSON REQ: ~s~n", [JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket)
     end;
+process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket}) ->
+    %% replace this with a couch lookup
+    case get_value(<<"To">>, Prop) of
+	<<"2345@work-lappy">> ->
+	    RespQ = get_value(<<"Server-ID">>, Prop),
+	    Data = [{<<"App-Name">>, <<"responder_couch">>}
+		    ,{<<"App-Version">>, "0.1"}
+		    ,{<<"Routes">>, [{struct, [{<<"Route">>, <<"sip:2345@work-lappy">>}
+					       ,{<<"Media">>, <<"process">>}
+					       ,{<<"Auth-User">>, <<"james">>}
+					       ,{<<"Auth-Pass">>, <<"james1">>}
+					       ,{<<"Weight">>, <<"100">>}
+					       ]}
+				     ,{struct, [{<<"Route">>, <<"sip:catchall@work-lappy">>}
+						,{<<"Media">>, <<"bypass">>}
+						,{<<"Auth-User">>, <<"james">>}
+						,{<<"Auth-Pass">>, <<"james1">>}
+						,{<<"Weight">>, <<"0">>}
+					       ]}
+				    ]
+		     }
+		    | Prop],
+	    {ok, JSON} = whistle_api:route_resp(lists:umerge([DefData, Data])),
+	    io:format("JSON REQ: ~s~n", [JSON]),
+	    send_resp(JSON, RespQ, Channel, Ticket)
+    ;
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 

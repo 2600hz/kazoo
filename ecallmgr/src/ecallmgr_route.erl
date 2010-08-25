@@ -2,20 +2,22 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Handles authentication requests on the FS instance by a device
+%%% Receive dialplan bindings, search for a match, and create call ctl
+%%% and evt queues
 %%% @end
-%%% Created : 17 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 24 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(ecallmgr_auth).
+-module(ecallmgr_route).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_user/2, send_fetch_response/2]).
+-export([start_link/0, lookup_dialplan/2, send_fetch_response/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
+
 
 -import(proplists, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -44,7 +46,7 @@ start_link() ->
 send_fetch_response(ID, Response) ->
     gen_server:cast(?MODULE, {send_fetch_response, ID, Response}).
 
-%% see lookup_user/2 after gen_server callbacks
+%% see lookup_dialplan/2 after gen_server callbacks
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,10 +71,10 @@ init([]) ->
     State = #state{fs_node=Node, channel=Channel, ticket=Ticket, app_vsn=list_to_binary(Vsn)},
     case net_adm:ping(Node) of
 	pong ->
-	    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, lookup_user, State),
+	    {ok, Pid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, lookup_dialplan, State),
 	    link(Pid);
 	_ ->
-	    format_log(error, "Unable to find ~p to talk to freeSWITCH~n", [Node])
+	    format_log(error, "RSC: Unable to find ~p to talk to freeSWITCH~n", [Node])
     end,
     {ok, State}.
 
@@ -151,69 +153,47 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-lookup_user(Node, State) ->
+lookup_dialplan(Node, State) ->
     receive
-	{fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]} ->
-	    format_log(info, "fetch directory: Id: ~p~nData: ~p~n", [ID, Data]),
+	{fetch, dialplan, _Tag, _Key, _Value, ID, [UUID | Data]} ->
+	    format_log(info, "ROUTE: fetch dialplan: Id: ~p UUID: ~p~nData: ~p~n", [ID, UUID, Data]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
-		    spawn(fun() -> lookup_user(State, ID, Data) end);
+		    spawn(fun() -> lookup_dialplan(State, ID, UUID, Data) end);
 		_Other ->
-		    format_log(info, "ECALLMGR_AUTH(~p): Ignoring event ~p~n", [self(), _Other])
+		    format_log(info, "ROUTE(~p): Ignoring event ~p~n", [self(), _Other])
 	    end,
-	    ?MODULE:lookup_user(Node, State);
+	    ?MODULE:lookup_dialplan(Node, State);
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
+	    format_log(info, "ROUTE: fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-	    ?MODULE:lookup_user(Node, State);
+	    ?MODULE:lookup_dialplan(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "Node we were serving XML search requests to exited", []),
+	    format_log(error, "ROUTE: Node we were serving XML search requests to exited", []),
 	    ok;
 	Other ->
-	    format_log(info, "got other response: ~p", [Other]),
-	    ?MODULE:lookup_user(Node, State)
+	    format_log(info, "ROUTE: got other response: ~p", [Other]),
+	    ?MODULE:lookup_dialplan(Node, State)
     end.
 
-lookup_user(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Data) ->
+lookup_dialplan(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, UUID, Data) ->
     Q = bind_q(Channel, Ticket, ID),
+    {_EvtQ, _CtlQ} = bind_channel_qs(Channel, Ticket, UUID),
 
-    %% build req for rabbit
-    DefProp = whistle_api:default_headers(Q, <<"directory">>, <<"ecallmgr">>, Vsn, ID),
-    {ok, JSON} = whistle_api:auth_req(lists:ukeymerge(1, DefProp, Data)),
+    DefProp = whistle_api:default_headers(Q, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
+    {ok, JSON} = whistle_api:route_req(lists:umerge( [DefProp, Data, [{<<"Call-ID">>, UUID}]] )),
     format_log(info, "JSON REQ: ~s~n", [JSON]),
 
-    %% put on wire to rabbit
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
     amqp_channel:call(Channel, BP, AmqpMsg),
-    T1 = erlang:now(),
 
-    %% recv resp from rabbit
     case recv_response(ID) of
 	timeout ->
+	    format_log(info, "ROUTE: recv route timeout~n", []),
 	    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE);
 	Prop ->
-	    User = get_value(<<"user">>, Data),
-	    Domain = get_value(<<"domain">>, Data),
-	    case get_value(<<"Auth-Method">>, Prop) of
-		<<"password">> ->
-		    Hash = a1hash(User, Domain, get_value(<<"Auth-Pass">>, Prop)),
-		    Resp = lists:flatten(io_lib:format(?REGISTERRESPONSE, [Domain, User, Hash])),
-		    format_log(info, "LOOKUP_USER(~p): Sending pass resp: ~p (took ~pms)~n"
-			      ,[self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, Resp);
-		<<"a1-hash">> ->
-		    Resp = lists:flatten(
-			     io_lib:format(?REGISTERRESPONSE, [Domain, User, get_value(<<"Auth-Pass">>, Prop)])
-			    ),
-		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp: ~p (took ~pms)~n"
-			      , [self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, Resp);
-		<<"ip">> ->
-		    format_log(info, "LOOKUP_USER(~p): Unsupported auth by IP (took ~pms)~n"
-			      , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE)
-	    end
+	    format_log(info, "Recv route info: ~p~n", [get_value(<<"Routes">>, Prop, "none")]),
+	    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE)
     end.
 
 recv_response(ID) ->
@@ -232,8 +212,8 @@ recv_response(ID) ->
 	Msg ->
 	    format_log(info, "Received ~p off rabbit~n", [Msg]),
 	    recv_response(ID)
-    after 4000 ->
-	    format_log(info, "Failed to receive after 4000ms~n", []),
+    after 2000 ->
+	    format_log(info, "Failed to receive after 2000ms~n", []),
 	    timeout
     end.
 
@@ -244,10 +224,16 @@ bind_q(Channel, Ticket, ID) ->
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
     Queue.
 
-a1hash(User, Realm, Password) ->
-    to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
+bind_channel_qs(Channel, Ticket, UUID) ->
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:callevt_exchange(Ticket)),
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:callctl_exchange(Ticket)),
 
-to_hex(Bin) when is_binary(Bin) ->
-    to_hex(binary_to_list(Bin));
-to_hex(L) when is_list(L) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+    #'queue.declare_ok'{queue = EvtQueue} = amqp_channel:call(Channel, amqp_util:new_callevt_queue(Ticket, UUID)),
+    #'queue.declare_ok'{queue = CtlQueue} = amqp_channel:call(Channel, amqp_util:new_callctl_queue(Ticket, UUID)),
+
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_callevt(Ticket, EvtQueue, EvtQueue)),
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_callctl(Ticket, CtlQueue, CtlQueue)),
+
+    %% separate process consumes the callctl messages
+    %%#'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
+    {EvtQueue, CtlQueue}.
