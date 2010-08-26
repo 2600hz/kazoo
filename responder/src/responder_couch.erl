@@ -62,17 +62,24 @@ init([]) ->
     format_log(info, "RSCMGR_REQ: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
 
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
 
-    #'queue.declare_ok'{queue = Queue} =
+    #'queue.declare_ok'{queue = BroadQueue} =
 	amqp_channel:call(Channel
-			  ,amqp_util:new_queue(Ticket, ["responder_couch.", net_adm:localhost()])),
+			  ,amqp_util:new_broadcast_queue(Ticket, ["responder_couch.", net_adm:localhost()])),
+
+    #'queue.declare_ok'{queue = TarQueue} =
+	amqp_channel:call(Channel
+			  ,amqp_util:new_targeted_queue(Ticket, ["responder_couch.", net_adm:localhost()])),
 
     %% Bind the queue to an exchange
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_broadcast(Ticket, Queue)),
-    format_log(info, "RSCMGR_REQ Bound ~p~n", [Queue]),
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, TarQueue)),
+    format_log(info, "RSCMGR_REQ Bound ~p and ~p~n", [BroadQueue, TarQueue]),
 
     %% Register a consumer to listen to the queue
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, BroadQueue), self()),
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, TarQueue), self()),
 
     {ok, #state{channel=Channel, ticket=Ticket}}.
 
@@ -172,7 +179,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
     Domain = get_value(<<"Auth-Domain">>, Prop),
 
     %% do lookup
-    case User =:= <<"james">> andalso Domain =:= <<"work-lappy">> of
+    case User =:= <<"james">> andalso Domain =:= <<"192.168.0.198">> of
 	false ->
 	    io:format("User ~p@~p not found~n", [User, Domain]);
 	true ->
@@ -192,29 +199,32 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
 process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket}) ->
     %% replace this with a couch lookup
     case get_value(<<"To">>, Prop) of
-	<<"2345@work-lappy">> ->
+	<<"james@192.168.0.198">> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    Data = [{<<"App-Name">>, <<"responder_couch">>}
 		    ,{<<"App-Version">>, "0.1"}
-		    ,{<<"Routes">>, [{struct, [{<<"Route">>, <<"sip:2345@work-lappy">>}
+		    ,{<<"Method">>, <<"bridge">>}
+		    ,{<<"Routes">>, [{struct, [{<<"Route">>, <<"sip:4158867900@pbx.switchfreedom.com">>}
 					       ,{<<"Media">>, <<"process">>}
-					       ,{<<"Auth-User">>, <<"james">>}
-					       ,{<<"Auth-Pass">>, <<"james1">>}
-					       ,{<<"Weight">>, <<"100">>}
+					       ,{<<"Auth-User">>, <<"dphone">>}
+					       ,{<<"Auth-Pass">>, <<"test1234">>}
+					       ,{<<"Weight-Cost">>, <<"100">>}
+					       ,{<<"Weight-Location">>, <<"0">>}
 					       ]}
 				     ,{struct, [{<<"Route">>, <<"sip:catchall@work-lappy">>}
 						,{<<"Media">>, <<"bypass">>}
 						,{<<"Auth-User">>, <<"james">>}
 						,{<<"Auth-Pass">>, <<"james1">>}
-						,{<<"Weight">>, <<"0">>}
+						,{<<"Weight-Cost">>, <<"0">>}
+						,{<<"Weight-Location">>, <<"0">>}
 					       ]}
 				    ]
 		     }
 		    | Prop],
-	    {ok, JSON} = whistle_api:route_resp(lists:umerge([DefData, Data])),
+	    {ok, JSON} = whistle_api:route_resp(Data),
 	    io:format("JSON REQ: ~s~n", [JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket)
-    ;
+    end;
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 

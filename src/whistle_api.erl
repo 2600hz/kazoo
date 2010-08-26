@@ -11,7 +11,7 @@
 
 %% API
 -export([default_headers/5]).
--export([auth_req/1, auth_resp/1, route_req/1]).
+-export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
@@ -33,6 +33,13 @@
 					 , <<"Transcode">>, <<"Codecs">>, <<"Tenant-ID">>
 					 ,<<"Resource-Type">> %% MMS | SMS | audio | video | chat
 					 ,<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>]).
+
+-define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
+
+-define(ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
+
+-define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+						,<<"Auth-Password">>, <<"Codec">>]).
 
 -type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
 
@@ -121,6 +128,43 @@ route_req(Prop) ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_ROUTE_REQ_HEADERS, Headers1),
 		    {ok, mochijson2:encode({struct, Headers2})}
 	    end
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Dialplan Route Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(route_resp/1 :: (Prop :: proplist()) -> {ok, string()} | {error, string()}).
+route_resp(Prop) ->
+    case defaults(Prop) of
+	{error, _Reason}=Error ->
+	    io:format("RouteResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    Error;
+	{Headers, Prop1} ->
+	    case update_required_headers(Prop1, ?ROUTE_RESP_HEADERS, Headers) of
+		{error, _Reason} = Error ->
+		    io:format("RouteResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_RESP_HEADERS, Prop1]),
+		    Error;
+		{Headers1, _Prop2} ->
+		    {ok, mochijson2:encode({struct, Headers1})}
+	    end
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Route within a Dialplan Route Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(route_resp_route/1 :: (Prop :: proplist()) -> {ok, string()} | {error, string()}).
+route_resp_route(Prop) ->
+    case update_required_headers(Prop, ?ROUTE_RESP_ROUTE_HEADERS, []) of
+	{error, _Reason} = Error ->
+	    io:format("RouteRespRoute Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_RESP_ROUTE_HEADERS, Prop]),
+	    Error;
+	{Headers0, Prop0} ->
+	    {Headers1, _Prop1} = update_optional_headers(Prop0, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, Headers0),
+	    {ok, mochijson2:encode({struct, Headers1})}
     end.
 
 %%%===================================================================

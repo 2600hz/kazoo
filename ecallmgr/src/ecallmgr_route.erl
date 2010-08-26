@@ -159,7 +159,7 @@ lookup_dialplan(Node, State) ->
 	    format_log(info, "ROUTE: fetch dialplan: Id: ~p UUID: ~p~nData: ~p~n", [ID, UUID, Data]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
-		    spawn(fun() -> lookup_dialplan(State, ID, UUID, Data) end);
+		    spawn(fun() -> lookup_dialplan(Node, State, ID, UUID, Data) end);
 		_Other ->
 		    format_log(info, "ROUTE(~p): Ignoring event ~p~n", [self(), _Other])
 	    end,
@@ -176,13 +176,13 @@ lookup_dialplan(Node, State) ->
 	    ?MODULE:lookup_dialplan(Node, State)
     end.
 
-lookup_dialplan(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, UUID, Data) ->
+lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, UUID, Data) ->
     Q = bind_q(Channel, Ticket, ID),
-    {_EvtQ, _CtlQ} = bind_channel_qs(Channel, Ticket, UUID),
+    CtlQ = bind_channel_qs(Channel, Ticket, UUID, Node),
 
     DefProp = whistle_api:default_headers(Q, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
     {ok, JSON} = whistle_api:route_req(lists:umerge( [DefProp, Data, [{<<"Call-ID">>, UUID}]] )),
-    format_log(info, "JSON REQ: ~s~n", [JSON]),
+    format_log(info, "ROUTE: JSON REQ: ~s~n", [JSON]),
 
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
     amqp_channel:call(Channel, BP, AmqpMsg),
@@ -190,10 +190,13 @@ lookup_dialplan(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, UUID, D
     case recv_response(ID) of
 	timeout ->
 	    format_log(info, "ROUTE: recv route timeout~n", []),
-	    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE);
+	    ?MODULE:send_fetch_response(ID, ?ROUTE_NOT_FOUND_RESPONSE);
 	Prop ->
-	    format_log(info, "Recv route info: ~p~n", [get_value(<<"Routes">>, Prop, "none")]),
-	    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE)
+	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop)),
+	    format_log(info, "ROUTE: Sending XML to FS: ~n~p~n", [Xml]),
+	    ?MODULE:send_fetch_response(ID, Xml),
+	    CtlProp = whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
+	    send_control_queue(Channel, Ticket, CtlProp, get_value(<<"Server-ID">>, Prop))
     end.
 
 recv_response(ID) ->
@@ -201,19 +204,19 @@ recv_response(ID) ->
 	#'basic.consume_ok'{} ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
-	    format_log(info, "Recv Content: ~p Payload: ~s~n", [Props#'P_basic'.content_type, binary_to_list(Payload)]),
+	    format_log(info, "ROUTE: Recv Content: ~p Payload: ~s~n", [Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    case get_value(<<"Msg-ID">>, Prop) of
 		ID -> Prop;
 		_BadId ->
-		    format_log(info, "Recv Msg ~p when expecting ~p~n", [_BadId, ID]),
+		    format_log(info, "ROUTE: Recv MsgID ~p when expecting ~p~n", [_BadId, ID]),
 		    recv_response(ID)
 	    end;
-	Msg ->
-	    format_log(info, "Received ~p off rabbit~n", [Msg]),
+	_Msg ->
+	    format_log(info, "ROUTE: Unexpected: received ~p off rabbit~n", [_Msg]),
 	    recv_response(ID)
-    after 2000 ->
-	    format_log(info, "Failed to receive after 2000ms~n", []),
+    after 4000 ->
+	    format_log(info, "ROUTE: Failed to receive after 4000ms~n", []),
 	    timeout
     end.
 
@@ -224,7 +227,9 @@ bind_q(Channel, Ticket, ID) ->
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
     Queue.
 
-bind_channel_qs(Channel, Ticket, UUID) ->
+%% creates the event and control queues for the call, spins up the event handler
+%% to pump messages to the queue, and returns the control queue
+bind_channel_qs(Channel, Ticket, UUID, Node) ->
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:callevt_exchange(Ticket)),
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:callctl_exchange(Ticket)),
 
@@ -234,6 +239,51 @@ bind_channel_qs(Channel, Ticket, UUID) ->
     #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_callevt(Ticket, EvtQueue, EvtQueue)),
     #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_callctl(Ticket, CtlQueue, CtlQueue)),
 
-    %% separate process consumes the callctl messages
-    %%#'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
-    {EvtQueue, CtlQueue}.
+    CtlPid = ecallmgr_call_control:start(Node, UUID, {Channel, Ticket, CtlQueue}),
+    ecallmgr_call_events:start(Node, UUID, {Channel, Ticket, EvtQueue}, CtlPid),
+    CtlQueue.
+
+send_control_queue(_Channel, _Ticket, _Q, undefined) ->
+    format_log(error, "ROUTE: Cannot send control Q(~p) to undefined server-id~n", [_Q]);
+send_control_queue(Channel, Ticket, CtlProp, AppQ) ->
+    Payload = [ { <<"Event-Name">>, <<"Call-Control-Queue">> } | CtlProp ],
+    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
+					      ,AppQ
+					      ,list_to_binary(mochijson2:encode({struct, Payload}))
+					      ,<<"application/json">>
+					     ),
+    %% execute the publish command
+    format_log(info, "ROUTE: Sending AppQ(~p) Payload:~n~p~n", [AppQ, Payload]),
+    amqp_channel:call(Channel, BP, AmqpMsg).
+
+%% Prop = Route Response
+generate_xml(<<"bridge">>, Routes) ->
+    format_log(info, "ROUTE: BRIDGEXML: Routes:~n~p~n", [Routes]),
+    %% format the Route based on protocol
+    {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
+					     Route = get_value(<<"Route">>, RouteProp), %% translate Route to FS-encoded URI
+					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
+							       <<"bypass">> -> "true";
+							       <<"process">> -> "false";
+							       _ -> "true" %% auto?
+							   end,
+					     ChannelVars = get_channel_vars(RouteProp),
+					     Ext = io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]),
+					     {Idx+1, [Ext | Acc]}
+				     end, {1, ""}, lists:reverse(Routes)),
+    format_log(info, "ROUTE: RoutesXML: ~s~n", [Extensions]),
+    lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
+generate_xml(_, _Prop) ->
+    ?ROUTE_PARK_RESPONSE.
+
+get_channel_vars(Prop) ->
+    Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
+    lists:flatten(["{", string:join(lists:map(fun binary_to_list/1, Vars), ","), "}"]).
+
+get_channel_vars({<<"Auth-User">>, V}, Vars) ->
+    [ list_to_binary(["sip_auth_username='", V, "'"]) | Vars];
+get_channel_vars({<<"Auth-Pass">>, V}, Vars) ->
+    [ list_to_binary(["sip_auth_password='", V, "'"]) | Vars];
+get_channel_vars({_K, _V}, Vars) ->
+    format_log(info, "ROUTE: Unknown channel var ~p::~p~n", [_K, _V]),
+    Vars.
