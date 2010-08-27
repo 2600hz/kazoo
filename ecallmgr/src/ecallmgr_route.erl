@@ -178,10 +178,14 @@ lookup_dialplan(Node, State) ->
 
 lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, UUID, Data) ->
     Q = bind_q(Channel, Ticket, ID),
-    CtlQ = bind_channel_qs(Channel, Ticket, UUID, Node),
+    {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
 
     DefProp = whistle_api:default_headers(Q, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
-    {ok, JSON} = whistle_api:route_req(lists:umerge( [DefProp, Data, [{<<"Call-ID">>, UUID}]] )),
+    {ok, JSON} = whistle_api:route_req(lists:umerge([DefProp, Data, [{<<"Call-ID">>, UUID}
+								     ,{<<"Event-Queue">>, EvtQ}
+								    ]
+						    ]
+						   )),
     format_log(info, "ROUTE: JSON REQ: ~s~n", [JSON]),
 
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
@@ -196,7 +200,9 @@ lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, U
 	    format_log(info, "ROUTE: Sending XML to FS: ~n~p~n", [Xml]),
 	    ?MODULE:send_fetch_response(ID, Xml),
 	    CtlProp = whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
-	    send_control_queue(Channel, Ticket, CtlProp, get_value(<<"Server-ID">>, Prop))
+	    send_control_queue(Channel, Ticket
+			       , [{<<"Call-ID">>, UUID} |  CtlProp]
+			       , get_value(<<"Server-ID">>, Prop), EvtQ)
     end.
 
 recv_response(ID) ->
@@ -241,20 +247,22 @@ bind_channel_qs(Channel, Ticket, UUID, Node) ->
 
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Channel, Ticket, CtlQueue}),
     ecallmgr_call_events:start(Node, UUID, {Channel, Ticket, EvtQueue}, CtlPid),
-    CtlQueue.
+    {EvtQueue, CtlQueue}.
 
-send_control_queue(_Channel, _Ticket, _Q, undefined) ->
+send_control_queue(_Channel, _Ticket, _Q, undefined, _EvtQ) ->
     format_log(error, "ROUTE: Cannot send control Q(~p) to undefined server-id~n", [_Q]);
-send_control_queue(Channel, Ticket, CtlProp, AppQ) ->
-    Payload = [ { <<"Event-Name">>, <<"Call-Control-Queue">> } | CtlProp ],
-    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
-					      ,AppQ
-					      ,list_to_binary(mochijson2:encode({struct, Payload}))
-					      ,<<"application/json">>
-					     ),
+send_control_queue(Channel, Ticket, CtlProp, AppQ, EvtQ) ->
+    Payload = [ {<<"Event-Name">>, <<"Call-Control">>}
+		,{<<"Event-Queue">>, EvtQ}
+		| CtlProp ],
+    {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket
+					       ,AppQ
+					       ,list_to_binary(mochijson2:encode({struct, Payload}))
+					       ,<<"application/json">>
+					      ),
     %% execute the publish command
-    format_log(info, "ROUTE: Sending AppQ(~p) Payload:~n~p~n", [AppQ, Payload]),
-    amqp_channel:call(Channel, BP, AmqpMsg).
+    format_log(info, "ROUTE: Sending AppQ(~p) AmqpMsg:~n~p~n", [AppQ, Payload]),
+    format_log(info, "ROUTE: AMQP Send of CallCtl ~p~n", [amqp_channel:call(Channel, BP, AmqpMsg)]).
 
 %% Prop = Route Response
 generate_xml(<<"bridge">>, Routes) ->

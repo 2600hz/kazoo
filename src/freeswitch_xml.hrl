@@ -53,10 +53,10 @@
 
 -define(ROUTE_PARK_RESPONSE,
 "<document type=\"freeswitch/xml\">
-  <section name\"dialplan\" description=\"Route Park Response\">
+  <section name=\"dialplan\" description=\"Route Park Response\">
     <context name=\"context_2\">
       <extension name=\"park\">
-        <condition field=\"true\" expression=\"true\">
+        <condition>
           <action application=\"park\" />
         </condition>
       </extension>

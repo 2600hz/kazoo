@@ -12,6 +12,7 @@
 %% API
 -export([default_headers/5]).
 -export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1]).
+-export([call_event/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
@@ -26,7 +27,7 @@
 
 -define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Pass">>]).
 
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>]).
+-define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Event-Queue">>]).
 
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>, <<"Geo-Location">>
 					 ,<<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">> %%process | proxy | bypass
@@ -40,6 +41,11 @@
 
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
 						,<<"Auth-Password">>, <<"Codec">>]).
+
+%% [{FreeSWITCH-App-Name, Whistle-App-Name}]
+-define(SUPPORTED_APPLICATIONS, [{<<"playback">>, <<"play">>}
+				 ,{<<"hangup">>, <<"hangup">>}
+				]).
 
 -type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
 
@@ -167,9 +173,36 @@ route_resp_route(Prop) ->
 	    {ok, mochijson2:encode({struct, Headers1})}
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Format a call event from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(call_event/1 :: (Prop :: proplist()) -> {ok, string()} | {error, string()}).
+call_event(Prop) ->
+    EventName = get_value(<<"Event-Name">>, Prop),
+    EventSpecific = event_specific(EventName, Prop),
+    [{<<"Event-Name">>, EventName}
+     ,{<<"Event-Date-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
+     ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
+     ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
+    | EventSpecific].
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).			       
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
+    case get_value(get_value(<<"Application">>, Prop), ?SUPPORTED_APPLICATIONS) of
+	undefined -> [];
+	AppName -> [{<<"Application-Name">>, AppName}
+		    ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop)}
+		    ]
+    end;
+event_specific(_Evt, _Prop) ->
+    io:format("WHISTLE_API: No event specific data for ~p~n", [_Evt]),
+    [].
+
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
 -spec(defaults/1 :: (Prop :: proplist()) -> {proplist(), proplist()} | {error, list()}).

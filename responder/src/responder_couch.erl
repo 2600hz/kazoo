@@ -25,7 +25,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {channel, ticket}).
+-record(state, {channel, ticket, my_queue}).
 
 %%%===================================================================
 %%% API
@@ -75,13 +75,15 @@ init([]) ->
     %% Bind the queue to an exchange
     #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
     #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, TarQueue)),
-    format_log(info, "RSCMGR_REQ Bound ~p and ~p~n", [BroadQueue, TarQueue]),
+    format_log(info, "RESPONDER Bound ~p and ~p~n", [BroadQueue, TarQueue]),
 
     %% Register a consumer to listen to the queue
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, BroadQueue), self()),
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, TarQueue), self()),
 
-    {ok, #state{channel=Channel, ticket=Ticket}}.
+    format_log(info, "RESPONDER: Consuming on B(~p) and T(~p)~n", [BroadQueue, TarQueue]),
+
+    {ok, #state{channel=Channel, ticket=Ticket, my_queue=TarQueue}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,18 +130,18 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    format_log(info, "Headers: ~p~nPayload: ~p~n", [Props, Payload]),
+    format_log(info, "RESPONDER: Recv Headers: ~p~nPayload: ~p~n", [Props, Payload]),
     case Props#'P_basic'.content_type of
 	<<"application/json">> ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    process_req(get_msg_type(Prop), Prop, State);
 	_ContentType ->
-	    format_log(info, "~p recieved unknown msg type: ~p~n", [self(), _ContentType])
+	    format_log(info, "RESPONDER: ~p recieved unknown msg type: ~p~n", [self(), _ContentType])
     end,
     {noreply, State};
 %% catch all so we dont loose state
-handle_info(Unhandled, State) ->
-    format_log(info, "RESP_COUCH(~p): unknown info request: ~p~n", [self(), Unhandled]),
+handle_info(_Unhandled, State) ->
+    format_log(info, "RESPONDER(~p): unknown info request: ~p~n", [self(), _Unhandled]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -174,7 +176,7 @@ code_change(_OldVsn, State, _Extra) ->
 get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
 
-process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket}) ->
+process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     User = get_value(<<"Auth-User">>, Prop),
     Domain = get_value(<<"Auth-Domain">>, Prop),
 
@@ -191,12 +193,13 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
 		    ,{<<"Auth-Method">>, <<"password">>}
 		    ,{<<"Access-Group">>, <<"ignore">>}
 		    ,{<<"Tenant-ID">>, <<"ignore">>}
+		    ,{<<"Server-ID">>, Q}
 		    | Prop],
 	    {ok, JSON} = whistle_api:auth_resp(Data),
-	    io:format("JSON REQ: ~s~n", [JSON]),
+	    io:format("RESPONDER: Directory JSON Resp: ~s~n", [JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket)
     end;
-process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket}) ->
+process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     %% replace this with a couch lookup
     case get_value(<<"To">>, Prop) of
 	<<"james@192.168.0.198">> ->
@@ -204,6 +207,7 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
 	    Data = [{<<"App-Name">>, <<"responder_couch">>}
 		    ,{<<"App-Version">>, "0.1"}
 		    ,{<<"Method">>, <<"bridge">>}
+		    ,{<<"Server-ID">>, Q}
 		    ,{<<"Routes">>, [{struct, [{<<"Route">>, <<"sip:4158867900@pbx.switchfreedom.com">>}
 					       ,{<<"Media">>, <<"process">>}
 					       ,{<<"Auth-User">>, <<"dphone">>}
@@ -222,12 +226,85 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
 		     }
 		    | Prop],
 	    {ok, JSON} = whistle_api:route_resp(Data),
-	    io:format("JSON REQ: ~s~n", [JSON]),
+	    io:format("RESPONDER: Dialplan JSON Resp: ~s~n", [JSON]),
+	    send_resp(JSON, RespQ, Channel, Ticket);
+	<<"parker@192.168.0.198">> ->
+	    RespQ = get_value(<<"Server-ID">>, Prop),
+	    Data = [{<<"App-Name">>, <<"responder_couch">>}
+		    ,{<<"App-Version">>, "0.1"}
+		    ,{<<"Method">>, <<"park">>}
+		    ,{<<"Server-ID">>, Q}
+		    ,{<<"Routes">>, []}
+		    | Prop],
+	    {ok, JSON} = whistle_api:route_resp(Data),
+	    io:format("RESPONDER: Dialplan JSON Resp: ~s~n", [JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket)
     end;
+process_req({<<"dialplan">>,<<"Call-Control">>}, Prop, State) ->
+    spawn(fun() -> auto_attendant(Prop, State) end);
 process_req(_MsgType, _Prop, _State) ->
-    io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
+    io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).	
 
 send_resp(JSON, RespQ, Channel, Ticket) ->
     {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, RespQ, JSON, <<"application/json">>),
     amqp_channel:call(Channel, BP, AmqpMsg).
+
+auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
+    UUID = get_value(<<"Call-ID">>, Prop),
+    Cmds = [ [{cmd, [{<<"Application-Name">>, <<"play">>}
+		     ,{<<"Call-ID">>, UUID}
+		     ,{<<"Filename">>, <<"voicemail/vm-record_message.wav">>}
+		     ]}
+	      ,{evt, [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+		      ,{<<"Application-Name">>, <<"play">>}
+		     ]}
+	     ]
+	     ,[{cmd, [{<<"Application-Name">>, <<"hangup">>}
+		     ,{<<"Call-ID">>, UUID}
+		     ]}
+	      ]],
+    DefProp = whistle_api:default_headers(Q, <<"Call-Control">>, <<"responder_couch">>, <<"0.1">>, UUID),
+    consume_events(Channel, Ticket, get_value(<<"Event-Queue">>, Prop)),
+    control_loop(get_value(<<"Server-ID">>, Prop), {Channel, Ticket}, Cmds, DefProp).
+
+control_loop(CtlQ, Amqp, [[{cmd, Cmd}]], DefProp) ->
+    format_log(info, "RESPONDER(~p): Final cmd:~n~p~n", [self(), Cmd]),
+    exec_cmd(Cmd, Amqp, CtlQ, DefProp);
+control_loop(CtlQ, Amqp, [ [{cmd, Cmd}, {evt, Evt}] | Cmds], DefProp) ->
+    format_log(info, "RESPONDER(~p): Exec cmd:~n~p~nWait for ~p~n", [self(), Cmd, Evt]),
+    exec_cmd(Cmd, Amqp, CtlQ, DefProp),
+    wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt).
+
+exec_cmd(Cmd, {Channel, Ticket}, CtlQ, DefProp) ->
+    Payload = mochijson2:encode({struct, lists:umerge([Cmd, DefProp])}),
+    {BP, AmqpMsg} = amqp_util:callctl_publish(Ticket, CtlQ, Payload, <<"application/json">>),
+    amqp_channel:call(Channel, BP, AmqpMsg).
+
+wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt) ->
+    receive
+	{_, #amqp_msg{props = _Props, payload = Payload}} ->
+	    format_log(info, "RESPONDER(~p): Evt recv:~n~p~n", [self(), Payload]),
+	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+
+	    case get_value(<<"Event-Name">>, Prop) of
+		<<"CHANNEL_DESTROY">> ->
+		    format_log(info, "RESPONDER(~p): Done~n", [self()]),
+		    done;
+		_EvtName ->
+		    case get_value(<<"Application-Name">>, Prop, missing) =:= get_value(<<"Application-Name">>, Evt) of
+			true -> %% what we've been waiting for
+			    format_log(info, "RESPONDER(~p): AppMsg: ~p~n", [self(), get_value(<<"Application-Response">>, Prop)]),
+			    control_loop(CtlQ, Amqp, Cmds, DefProp);
+			false ->
+			    wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt)
+		    end
+	    end;
+	_Evt ->
+	    format_log(info, "RESPONDER(~p): recv unhandled event: ~n~p~n", [self(), _Evt]),
+	    wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt)
+    end.
+
+consume_events(_Channel, _Ticket, undefined) ->
+    ok;
+consume_events(Channel, Ticket, EvtQ) ->
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, EvtQ), self()).

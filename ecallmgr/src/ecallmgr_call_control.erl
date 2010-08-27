@@ -28,7 +28,8 @@ loop(Node, UUID) ->
     receive
 	{#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~n~p~n", [Props#'P_basic'.content_type, Prop]),
+	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~n~p~n", [self(), Props#'P_basic'.content_type, Prop]),
+	    exec_cmd(Node, UUID, Prop, get_value(<<"Application-Name">>, Prop)),
 	    loop(Node, UUID);
 	#'basic.consume_ok'{} ->
 	    loop(Node, UUID);
@@ -38,3 +39,27 @@ loop(Node, UUID) ->
 	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [_Msg]),
 	    loop(Node, UUID)
     end.
+
+exec_cmd(Node, UUID, Prop, <<"play">>) ->
+    case get_value(<<"Call-ID">>, Prop) =:= UUID of
+	true ->
+	    F = binary_to_list(get_value(<<"Filename">>, Prop)),
+	    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+					    ,{"execute-app-name", "playback"}
+					    ,{"execute-app-arg", F}
+					   ]);
+	false ->
+	    format_log(error, "CONTROL(~p): Cmd Not for us:~n~p~n", [self(), Prop])
+    end;
+exec_cmd(Node, UUID, Prop, <<"hangup">>) ->
+    case get_value(<<"Call-ID">>, Prop) =:= UUID of
+	true ->
+	    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+					    ,{"execute-app-name", "hangup"}
+					    ,{"execute-app-arg", ""}
+					   ]);
+	false ->
+	    format_log(error, "CONTROL(~p): Cmd Not for us:~n~p~n", [self(), Prop])
+    end;
+exec_cmd(_Node, _UUID, _Prop, _App) ->
+    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
