@@ -28,8 +28,8 @@ init([]) ->
      ,{
        {one_for_one, 5, 10}
        ,[
-	 ?CHILD(ecallmgr_req, worker)
-	 ,?CHILD(ecallmgr_call_sup, supervisor)
+	 %%?CHILD(ecallmgr_req, worker)
+	 ?CHILD(ecallmgr_media_registry, worker)
 	 ,?CHILD(ecallmgr_auth, worker)
 	 ,?CHILD(ecallmgr_route, worker)
 	]

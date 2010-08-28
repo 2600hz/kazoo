@@ -32,6 +32,7 @@ loop(UUID, Amqp, CtlPid) ->
 	{call_event, {event, [ UUID | Data ] } } ->
 	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
 	    publish_msg(Amqp, Data),
+	    send_ctl_event(CtlPid, UUID, get_value(<<"Event-Name">>, Data)),
 	    loop(UUID, Amqp, CtlPid);
 	call_hangup ->
 	    format_log(info, "EVT(~p): Call Hangup~n", [self()]),
@@ -40,6 +41,12 @@ loop(UUID, Amqp, CtlPid) ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
 	    loop(UUID, Amqp, CtlPid)
     end.
+
+%% let the ctl process know a command finished executing
+send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>) ->
+    CtlPid ! {execute_complete, UUID};
+send_ctl_event(_CtlPid, _UUID, _Evt) ->
+    ok.
 
 publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
     DefProp = whistle_api:default_headers(EvtQueue, <<"Call-Event">>, <<"ecallmgr.event">>, <<"0.1">>

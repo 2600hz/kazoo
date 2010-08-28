@@ -251,36 +251,42 @@ send_resp(JSON, RespQ, Channel, Ticket) ->
 
 auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     UUID = get_value(<<"Call-ID">>, Prop),
-    Cmds = [ [{cmd, [{<<"Application-Name">>, <<"play">>}
-		     ,{<<"Call-ID">>, UUID}
-		     ,{<<"Filename">>, <<"voicemail/vm-record_message.wav">>}
-		     ]}
-	      ,{evt, [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-		      ,{<<"Application-Name">>, <<"play">>}
-		     ]}
-	     ]
-	     ,[{cmd, [{<<"Application-Name">>, <<"hangup">>}
-		     ,{<<"Call-ID">>, UUID}
-		     ]}
-	      ]],
+    Cmds = [ {<<"Application-Name">>, <<"queue">>}
+	     ,{<<"Call-ID">>, UUID}
+	     ,{<<"Commands">>, [
+				{struct, [{<<"Application-Name">>, <<"play">>}
+					  ,{<<"Call-ID">>, UUID}
+					  ,{<<"Filename">>, <<"voicemail/vm-record_message.wav">>}
+					 ]}
+				,{struct, [{<<"Application-Name">>, <<"play">>}
+					  ,{<<"Call-ID">>, UUID}
+					  ,{<<"Filename">>, <<"tone_stream://%(300,0,800)">>}
+					 ]}
+				,{struct, [{<<"Application-Name">>, <<"set">>}
+					  ,{<<"Call-ID">>, UUID}
+					  ,{<<"Application-Arg">>, <<"playback_terminators=#">>}
+					 ]}
+				,{struct, [{<<"Application-Name">>, <<"hangup">>}
+					   ,{<<"Call-ID">>, UUID}
+					  ]}
+			       ]
+	      }
+	   ],
+    Amqp = {Channel, Ticket},
     DefProp = whistle_api:default_headers(Q, <<"Call-Control">>, <<"responder_couch">>, <<"0.1">>, UUID),
     consume_events(Channel, Ticket, get_value(<<"Event-Queue">>, Prop)),
-    control_loop(get_value(<<"Server-ID">>, Prop), {Channel, Ticket}, Cmds, DefProp).
+    exec_cmd(lists:umerge([DefProp, Cmds]), Amqp, UUID),
+    control_loop(get_value(<<"Server-ID">>, Prop), Amqp).
 
-control_loop(CtlQ, Amqp, [[{cmd, Cmd}]], DefProp) ->
-    format_log(info, "RESPONDER(~p): Final cmd:~n~p~n", [self(), Cmd]),
-    exec_cmd(Cmd, Amqp, CtlQ, DefProp);
-control_loop(CtlQ, Amqp, [ [{cmd, Cmd}, {evt, Evt}] | Cmds], DefProp) ->
-    format_log(info, "RESPONDER(~p): Exec cmd:~n~p~nWait for ~p~n", [self(), Cmd, Evt]),
-    exec_cmd(Cmd, Amqp, CtlQ, DefProp),
-    wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt).
+control_loop(CtlQ, Amqp) ->
+    wait_for_evt(CtlQ, Amqp).
 
-exec_cmd(Cmd, {Channel, Ticket}, CtlQ, DefProp) ->
-    Payload = mochijson2:encode({struct, lists:umerge([Cmd, DefProp])}),
+exec_cmd(Cmd, {Channel, Ticket}, CtlQ) ->
+    Payload = mochijson2:encode({struct, Cmd}),
     {BP, AmqpMsg} = amqp_util:callctl_publish(Ticket, CtlQ, Payload, <<"application/json">>),
     amqp_channel:call(Channel, BP, AmqpMsg).
 
-wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt) ->
+wait_for_evt(CtlQ, Amqp) ->
     receive
 	{_, #amqp_msg{props = _Props, payload = Payload}} ->
 	    format_log(info, "RESPONDER(~p): Evt recv:~n~p~n", [self(), Payload]),
@@ -291,17 +297,13 @@ wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt) ->
 		    format_log(info, "RESPONDER(~p): Done~n", [self()]),
 		    done;
 		_EvtName ->
-		    case get_value(<<"Application-Name">>, Prop, missing) =:= get_value(<<"Application-Name">>, Evt) of
-			true -> %% what we've been waiting for
-			    format_log(info, "RESPONDER(~p): AppMsg: ~p~n", [self(), get_value(<<"Application-Response">>, Prop)]),
-			    control_loop(CtlQ, Amqp, Cmds, DefProp);
-			false ->
-			    wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt)
-		    end
+		    format_log(info, "RESPONDER(~p): Evt: ~p AppMsg: ~p~n"
+			       ,[self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
+		    wait_for_evt(CtlQ, Amqp)
 	    end;
 	_Evt ->
 	    format_log(info, "RESPONDER(~p): recv unhandled event: ~n~p~n", [self(), _Evt]),
-	    wait_for_evt(CtlQ, Amqp, Cmds, DefProp, Evt)
+	    wait_for_evt(CtlQ, Amqp)
     end.
 
 consume_events(_Channel, _Ticket, undefined) ->

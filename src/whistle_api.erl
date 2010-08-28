@@ -193,14 +193,16 @@ call_event(Prop) ->
 %%%===================================================================
 -spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).			       
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
-    case get_value(get_value(<<"Application">>, Prop), ?SUPPORTED_APPLICATIONS) of
-	undefined -> [];
+    Application = get_value(<<"Application">>, Prop),
+    case get_value(Application, ?SUPPORTED_APPLICATIONS) of
+	undefined ->
+	    io:format("WHISTLE_API: Didn't find ~p in supported~n", [Application]),
+	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
 	AppName -> [{<<"Application-Name">>, AppName}
 		    ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop)}
 		    ]
     end;
 event_specific(_Evt, _Prop) ->
-    io:format("WHISTLE_API: No event specific data for ~p~n", [_Evt]),
     [].
 
 %% Checks Prop for all default headers, throws error if one is missing

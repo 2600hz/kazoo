@@ -22,44 +22,48 @@ start(Node, UUID, Amqp) ->
 init(Node, UUID, {Channel, Ticket, CtlQueue}) ->
     BC = amqp_util:basic_consume(Ticket, CtlQueue),
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BC, self()),
-    loop(Node, UUID).
+    loop(Node, UUID, queue:new(), true).
 
-loop(Node, UUID) ->
+%% SendReady - whether FS is ready for the next command
+loop(Node, UUID, CmdQ, SendReady) ->
+    format_log(info, "CONTROL(~p): entered loop(~p)~n", [self(), SendReady]),
     receive
 	{#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~n~p~n", [self(), Props#'P_basic'.content_type, Prop]),
-	    exec_cmd(Node, UUID, Prop, get_value(<<"Application-Name">>, Prop)),
-	    loop(Node, UUID);
+	    case get_value(<<"Application-Name">>, Prop) of
+		<<"queue">> -> %% list of commands that need to be added
+		    CmdQ1 = lists:foldl(fun({struct, Cmd}, Q) -> queue:in(Cmd, Q) end, CmdQ, get_value(<<"Commands">>, Prop)),
+		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso SendReady =:= true of
+			true ->
+			    {{value, Cmd}, CmdQ2} = queue:out(CmdQ1),
+			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
+			    loop(Node, UUID, CmdQ2, false);
+			false ->
+			    loop(Node, UUID, CmdQ1, SendReady)
+		    end;
+		_AppName ->
+		    case queue:is_empty(CmdQ) andalso SendReady =:= true of
+			true ->
+			    ecallmgr_call_command:exec_cmd(Node, UUID, CmdQ),
+			    loop(Node, UUID, CmdQ, false);
+			false ->
+			    loop(Node, UUID, queue:in(Prop, CmdQ), SendReady)
+		    end
+	    end;
 	#'basic.consume_ok'{} ->
-	    loop(Node, UUID);
+	    loop(Node, UUID, CmdQ, SendReady);
+	{execute_complete, UUID} ->
+	    format_log(info, "CONTROL(~p): Received execute_complete~n", [self()]),
+	    case queue:out(CmdQ) of
+		{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, true);
+		{{value, Cmd}, CmdQ1} ->
+		    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
+		    loop(Node, UUID, CmdQ1, queue:is_empty(CmdQ1))
+	    end;
 	{hangup, UUID} ->
 	    format_log(info, "CONTROL(~p): Received hangup, exiting...~n", [self()]);
 	_Msg ->
 	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [_Msg]),
-	    loop(Node, UUID)
+	    loop(Node, UUID, CmdQ, SendReady)
     end.
-
-exec_cmd(Node, UUID, Prop, <<"play">>) ->
-    case get_value(<<"Call-ID">>, Prop) =:= UUID of
-	true ->
-	    F = binary_to_list(get_value(<<"Filename">>, Prop)),
-	    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-					    ,{"execute-app-name", "playback"}
-					    ,{"execute-app-arg", F}
-					   ]);
-	false ->
-	    format_log(error, "CONTROL(~p): Cmd Not for us:~n~p~n", [self(), Prop])
-    end;
-exec_cmd(Node, UUID, Prop, <<"hangup">>) ->
-    case get_value(<<"Call-ID">>, Prop) =:= UUID of
-	true ->
-	    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-					    ,{"execute-app-name", "hangup"}
-					    ,{"execute-app-arg", ""}
-					   ]);
-	false ->
-	    format_log(error, "CONTROL(~p): Cmd Not for us:~n~p~n", [self(), Prop])
-    end;
-exec_cmd(_Node, _UUID, _Prop, _App) ->
-    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
