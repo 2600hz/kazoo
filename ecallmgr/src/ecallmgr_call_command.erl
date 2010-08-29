@@ -53,7 +53,11 @@ exec_cmd(_Node, UUID, Prop, <<"store">>) ->
 	    case filelib:is_regular(File) andalso get_value(<<"Media-Transfer-Method">>, Prop) of
 		<<"stream">> ->
 		    %% stream file over AMQP
-		    spawn(fun() -> stream_over_amqp(File, Prop) end);
+		    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
+			       ,{<<"Media-Name">>, Name}
+			       ,{<<"Application-Name">>, <<"store">>}
+			      ],
+		    spawn(fun() -> stream_over_amqp(File, Prop, Headers) end);
 		<<"put">>=Verb ->
 		    %% stream file over HTTP PUT
 		    spawn(fun() -> stream_over_http(File, Verb, Prop) end);
@@ -75,7 +79,7 @@ exec_cmd(_Node, _UUID, _Prop, _App) ->
 get_media_path(Name) ->
     list_to_binary(["/tmp/", Name, ".wav"]).
 
-stream_over_amqp(File, Prop) ->
+stream_over_amqp(File, Prop, Headers) ->
     DestQ = case get_value(<<"Media-Transfer-Destination">>, Prop) of
 		undefined ->
 		    get_value(<<"Server-ID">>, Prop);
@@ -84,18 +88,23 @@ stream_over_amqp(File, Prop) ->
 		Q ->
 		    Q
 	    end,
-    stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}).
+    stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1).
 
 %% get a chunk of the file and send it in an AMQP message to the DestQ
-stream_over_amqp(DestQ, F, State) ->
+stream_over_amqp(DestQ, F, State, Headers, Seq) ->
     case F(State) of
 	{ok, Data, State1} ->
 	    %% send msg
-	    
+	    Msg = [{<<"Media-Content">>, Data}
+		   ,{<<"Media-Sequence-ID">>, Seq}
+		   | Headers],
 	    ecallmgr_amqp_publisher:publish(Msg, targeted, DestQ),
-	    stream_over_amqp(DestQ, F, State1);
+	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1);
 	eof ->
-	    %% send eof msg
+	    Msg = [{<<"Media-Content">>, <<"eof">>}
+		   ,{<<"Media-Sequence-ID">>, Seq}
+		   | Headers],
+	    ecallmgr_amqp_publisher:publish(Msg, targeted, DestQ),
 	    ok
     end.
 

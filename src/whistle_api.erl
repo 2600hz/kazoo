@@ -3,6 +3,11 @@
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Whistle API request and response helpers
+%%% Most API functions take a proplist, filter it against required headers
+%%% and optional headers, and return either the JSON string if all
+%%% required headers (default AND API-call-specific) are present, or an
+%%% error if some headers are missing.
+%%%
 %%% See http://corp.switchfreedom.com/mediawiki/index.php/API_Definition
 %%% @end
 %%% Created : 19 Aug 2010 by James Aimonetti <james@2600hz.com>
@@ -10,44 +15,13 @@
 -module(whistle_api).
 
 %% API
--export([default_headers/5]).
+-export([default_headers/5, error_resp/1]).
 -export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1]).
 -export([call_event/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
--define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
-			      , <<"App-Name">>, <<"App-Version">>]).
--define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
-				  , <<"Geo-Location">>, <<"Access-Group">>
-				  , <<"Tenant-ID">>]).
-
--define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
-			       , <<"Auth-User">>, <<"Auth-Domain">>]).
-
--define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Pass">>]).
-
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Event-Queue">>]).
-
--define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>, <<"Geo-Location">>
-					 ,<<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">> %%process | proxy | bypass
-					 , <<"Transcode">>, <<"Codecs">>, <<"Tenant-ID">>
-					 ,<<"Resource-Type">> %% MMS | SMS | audio | video | chat
-					 ,<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>]).
-
--define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
-
--define(ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
-
--define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-						,<<"Auth-Password">>, <<"Codec">>]).
-
-%% [{FreeSWITCH-App-Name, Whistle-App-Name}]
--define(SUPPORTED_APPLICATIONS, [{<<"playback">>, <<"play">>}
-				 ,{<<"hangup">>, <<"hangup">>}
-				]).
-
--type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
+-include("whistle_api.hrl").
 
 %%%===================================================================
 %%% API
@@ -187,6 +161,27 @@ call_event(Prop) ->
      ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
      ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
     | EventSpecific].
+
+%%--------------------------------------------------------------------
+%% @doc Format an error event
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(error_resp/1 :: (Prop :: proplist()) -> {ok, string()} | {error, string()}).
+error_resp(Prop) ->
+    case defaults(Prop) of
+	{error, _Reason}=Error ->
+	    io:format("ErrorResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    Error;
+	{Headers, Prop1} ->
+	    case update_required_headers(Prop1, ?ERROR_RESP_HEADERS, Headers) of
+		{error, _Reason} = Error ->
+		    io:format("ErrorResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ERROR_RESP_HEADERS, Prop1]),
+		    Error;
+		{Headers1, _Prop2} ->
+		    {ok, mochijson2:encode({struct, Headers1})}
+	    end
+    end.
 
 %%%===================================================================
 %%% Internal functions
