@@ -38,12 +38,15 @@ handle_req(Prop) ->
     case is_inbound(From) of
 	{true, CarrierInfo} ->
 	    %% tell ts_route to create a handler for From/To combo as an inbound call
+	    CustomerInfo = get_customer_info(To),
+	    ts_route:start_inbound_handler(To, From, CustomerInfo, CarrierInfo),
 	    %% return auth response
 	    response(CarrierInfo, Prop);
 	false ->
 	    case is_outbound(From) of
 		{true, CustomerInfo} ->
 		    %% tell ts_route to create a handler for From/To combo as an outbound call
+		    ts_route:start_outbound_handler(To, From, CustomerInfo),
 		    %% return auth response
 		    response(CustomerInfo, Prop);
 		false ->
@@ -63,6 +66,7 @@ is_inbound(From) ->
 -spec(is_outbound/1 :: (From :: binary()) -> {true, proplist()} | false).
 is_outbound(From) ->
     %% lookup in couch the From address to see if its a known customer
+    CustInfo = get_customer_info(From),
     %% return {true, CustomerInfo} or false
     false.
 
@@ -86,3 +90,8 @@ specific_response(403) ->
      ,{<<"Auth-Pass">>, <<"403 Forbidden">>}
      ,{<<"Access-Group">>, <<"ignore">>}
      ,{<<"Tenant-ID">>, <<"ignore">>}].
+
+-spec(get_customer_info/1 :: (Uri :: binary()) -> proplist()).
+get_customer_info(Uri) ->
+    %% couch lookup on Uri
+    [].
