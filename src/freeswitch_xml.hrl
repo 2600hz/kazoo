@@ -2,7 +2,7 @@
 
 %% not including dial string section so we can manually do the bridging
 %% or something like that (ask Darren).
--define(REGISTERRESPONSE,
+-define(REGISTER_HASH_RESPONSE,
 "<document type=\"freeswitch/xml\">
 	<section name=\"directory\">
 		<domain name=\"~s\">
@@ -15,7 +15,7 @@
 	</section>
 </document>").
 
--define(REGISTER_NOPASS_RESPONSE,
+-define(REGISTER_PASS_RESPONSE,
 "<document type=\"freeswitch/xml\">
 	<section name=\"directory\">
 		<domain name=\"~s\">
@@ -27,7 +27,6 @@
 		</domain>
 	</section>
 </document>").
-
 
 -define(ROUTE_BRIDGE_RESPONSE,
 "<document type=\"freeswitch/xml\">
@@ -60,6 +59,15 @@
           <action application=\"park\" />
         </condition>
       </extension>
+    </context>
+  </section>
+</document>").
+
+-define(ROUTE_ERROR_RESPONSE,
+"<document type=\"freeswitch/xml\">
+  <section name=\"dialplan\" description=\"Route Bridge Response\">
+    <context name=\"context_2\">
+      <action application=\"respond\" data=\"~s~s\" />
     </context>
   </section>
 </document>").

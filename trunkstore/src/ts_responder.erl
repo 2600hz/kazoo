@@ -2,19 +2,16 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Receive requests off the queue for call initialization.
-%%% Spin up a call handler and hand off control.
+%%% Trunk-Store responder waits for Auth and Route requests on the broadcast
+%%% Exchange, and delievers the requests to the corresponding handler.
+%%% TS responder also receives responses from the handlers and returns them
+%%% to the requester.
 %%% @end
-%%% Created : 10 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(ecallmgr_req).
+-module(ts_responder).
 
 -behaviour(gen_server).
-
--include("../include/amqp_client/include/amqp_client.hrl").
-
--import(logger, [log/2, format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
 
 %% API
 -export([start_link/0]).
@@ -23,9 +20,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-import(proplists, [get_value/2, get_value/3]).
+-import(logger, [log/2, format_log/3]).
+
+-include("../include/amqp_client/include/amqp_client.hrl").
+
 -define(SERVER, ?MODULE). 
 
--record(state, {channel, ticket, queue, tag, callids=0}).
+-record(state, {channel, ticket}).
 
 %%%===================================================================
 %%% API
@@ -58,27 +60,22 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    format_log(info, "ECALLMGR_REQ(~p): Channel open to MQ: ~p Ticket: ~p~n", [self(), Channel, Ticket]),
 
-    process_flag(trap_exit, true),
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
 
-    Exchange = amqp_util:targeted_exchange(Ticket),
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, Exchange),
-    format_log(info, "ECALLMGR_REQ: Accessing Exchange ~p~n", [Exchange]),
-
-    QueueDeclare = amqp_util:new_targeted_queue(Ticket, ["callmgr." | net_adm:localhost()]),
-    #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, QueueDeclare),
+    #'queue.declare_ok'{queue = BroadQueue} =
+	amqp_channel:call(Channel
+			  ,amqp_util:new_broadcast_queue(Ticket, ["ts_responder.", net_adm:localhost()])),
 
     %% Bind the queue to an exchange
-    QueueBind = amqp_util:bind_q_to_targeted(Ticket, Queue, Queue),
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, QueueBind),
-    format_log(info, "ECALLMGR_REQ Bound ~p~n", [Queue]),
+    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
+    format_log(info, "RESPONDER Bound ~p~n", [BroadQueue]),
 
     %% Register a consumer to listen to the queue
-    BasicConsume = amqp_util:basic_consume(Ticket, Queue),
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BasicConsume, self()),
+    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, BroadQueue), self()),
+    format_log(info, "TS_RESPONDER: Consuming on B(~p)~n", [BroadQueue]),
 
-    {ok, #state{channel=Channel, ticket=Ticket, queue=Queue}}.
+    {ok, #state{channel=Channel, ticket=Ticket}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -122,14 +119,21 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', _Pid, Reason}, State) ->
-    format_log(error, "ECALLMGR_REQ(~p): Exit received from ~p for ~p~n", [self(), _Pid, Reason]),
-    {noreply, State};
-%%{stop, Reason, State};
+    {stop, Reason, State};
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    handle_amqp_msg(Props#'P_basic'.content_type, Payload),
+    case Props#'P_basic'.content_type of
+	<<"application/json">> ->
+	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "TS_RESPONDER: Recv CT: ~p~nPayload: ~p~n", [Props#'P_basic'.content_type, Prop]),
+	    process_req(get_msg_type(Prop), Prop, State);
+	_ContentType ->
+	    format_log(info, "TS_RESPONDER: ~p recieved unknown msg type: ~p~n", [self(), _ContentType])
+    end,
     {noreply, State};
-handle_info(_Info, State) ->
+%% catch all so we dont loose state
+handle_info(_Unhandled, State) ->
+    format_log(info, "TS_RESPONDER(~p): unknown info request: ~p~n", [self(), _Unhandled]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -160,29 +164,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-handle_amqp_msg(<<"application/json">>, Payload) ->
-    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "ECALLMGR_REQ(~p): Recv JSON: ~p~n", [self(), Prop]),
-    process_req(get_route(Prop), Prop);
-handle_amqp_msg(_ContentType, _Payload) ->
-    format_log(error, "ECALLMGR_REQ(~p): Unknown ContentType: ~p Payload: ~p~n", [self(), _ContentType, _Payload]).
+get_msg_type(Prop) ->
+    { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
 
-process_req({<<"request">>, <<"resource">>, <<"channel">>, <<"setup">>}, Prop) ->
-    %% create and park a channel
-    ecallmgr_call_sup:start_call([{setup, Prop}]),
-    ok;
-process_req({<<"request">>, <<"resource">>, <<"channel">>, <<"setup_loopback">>}, Prop) ->
-    %% loopback
-    format_log(info, "ECALLMGR_REQ(~p): Setup Loopback~n", [self()]),
-    ecallmgr_app:start_call([{setup_loopback, Prop}]),
-    ok;
-process_req(_Route, _Prop) ->
-    format_log(error, "ECALLMGR_REQ(~p): Unhandled route ~p~n", [self(), _Route]).
+process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, State) ->
+    case ts_auth:handle_req(Prop) of
+	{ok, JSON} ->
+	    RespQ = get_value(<<"Server-ID">>, Prop),
+	    send_resp(JSON, RespQ, State);
+	{error, _Msg} ->
+	    format_log(error, "AUTH ERROR: ~p~n", [_Msg])
+    end;
+process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket}) ->
+    2;
+process_req({<<"dialplan">>,<<"Call-Control">>}, Prop, State) ->
+    3;
+process_req(_MsgType, _Prop, _State) ->
+    io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
-get_route(Prop) ->
-    {
-      get_value(<<"action">>, Prop)
-     ,get_value(<<"category">>, Prop)
-     ,get_value(<<"type">>, Prop)
-     ,get_value(<<"command">>, Prop)
-    }.
+send_resp(JSON, RespQ, #state{channel=Channel, ticket=Ticket}) ->
+    {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, RespQ, JSON, <<"application/json">>),
+    amqp_channel:call(Channel, BP, AmqpMsg).

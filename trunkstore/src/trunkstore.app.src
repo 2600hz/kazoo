@@ -2,12 +2,13 @@
   application
   ,trunkstore
   ,[
-    {description, ""}
+    {description, "Trunk Store Backend - Authentication and Routing"}
     ,{vsn, "0.1"}
     ,{registered, []}
     ,{applications, [
 		     kernel
 		     ,stdlib
+		     ,amqp
 		    ]
      }
     ,{mod, { trunkstore_app, []}}

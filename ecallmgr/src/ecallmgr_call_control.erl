@@ -33,7 +33,9 @@ loop(Node, UUID, CmdQ, SendReady) ->
 	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~n~p~n", [self(), Props#'P_basic'.content_type, Prop]),
 	    case get_value(<<"Application-Name">>, Prop) of
 		<<"queue">> -> %% list of commands that need to be added
-		    CmdQ1 = lists:foldl(fun({struct, Cmd}, Q) -> queue:in(Cmd, Q) end, CmdQ, get_value(<<"Commands">>, Prop)),
+		    CmdQ1 = lists:foldl(fun({struct, Cmd}, TmpQ) ->
+						queue:in(Cmd, TmpQ)
+					end, CmdQ, get_value(<<"Commands">>, Prop)),
 		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso SendReady =:= true of
 			true ->
 			    {{value, Cmd}, CmdQ2} = queue:out(CmdQ1),
@@ -45,7 +47,7 @@ loop(Node, UUID, CmdQ, SendReady) ->
 		_AppName ->
 		    case queue:is_empty(CmdQ) andalso SendReady =:= true of
 			true ->
-			    ecallmgr_call_command:exec_cmd(Node, UUID, CmdQ),
+			    ecallmgr_call_command:exec_cmd(Node, UUID, Prop),
 			    loop(Node, UUID, CmdQ, false);
 			false ->
 			    loop(Node, UUID, queue:in(Prop, CmdQ), SendReady)

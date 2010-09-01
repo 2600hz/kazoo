@@ -25,7 +25,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {fs_node, channel, ticket, app_vsn}).
+-record(state, {fs_node, channel, ticket, app_vsn, timer_ref}).
 
 %%%===================================================================
 %%% API
@@ -67,14 +67,8 @@ init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     State = #state{fs_node=Node, channel=Channel, ticket=Ticket, app_vsn=list_to_binary(Vsn)},
-    case net_adm:ping(Node) of
-	pong ->
-	    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, lookup_user, State),
-	    link(Pid);
-	_ ->
-	    format_log(error, "Unable to find ~p to talk to freeSWITCH~n", [Node])
-    end,
-    {ok, State}.
+    TRef = setup_fs_conn(Node, State),
+    {ok, State#state{timer_ref=TRef}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +114,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(find_fs_node, #state{fs_node=Node, timer_ref=TRef}=State) ->
+    timer:cancel(TRef),
+    TRef1 = setup_fs_conn(Node, State),
+    {noreply, State#state{timer_ref=TRef1}};
 handle_info(_Info, State) ->
+    format_log(info, "AUTH: Unhandled Info: ~p~n", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -158,7 +157,8 @@ lookup_user(Node, State) ->
 	    format_log(info, "fetch directory: Id: ~p~nData: ~p~n", [ID, Data]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
-		    spawn(fun() -> lookup_user(State, ID, Data) end);
+		    spawn(fun() -> lookup_user(State, ID, Data) end),
+		    ok;
 		_Other ->
 		    format_log(info, "ECALLMGR_AUTH(~p): Ignoring event ~p~n", [self(), _Other])
 	    end,
@@ -180,40 +180,13 @@ lookup_user(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Data) ->
 
     %% build req for rabbit
     DefProp = whistle_api:default_headers(Q, <<"directory">>, <<"ecallmgr">>, Vsn, ID),
-    {ok, JSON} = whistle_api:auth_req(lists:ukeymerge(1, DefProp, Data)),
-    format_log(info, "JSON REQ: ~s~n", [JSON]),
-
-    %% put on wire to rabbit
-    {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
-    amqp_channel:call(Channel, BP, AmqpMsg),
-    T1 = erlang:now(),
-
-    %% recv resp from rabbit
-    case recv_response(ID) of
-	timeout ->
-	    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE);
-	Prop ->
-	    User = get_value(<<"user">>, Data),
-	    Domain = get_value(<<"domain">>, Data),
-	    case get_value(<<"Auth-Method">>, Prop) of
-		<<"password">> ->
-		    Hash = a1hash(User, Domain, get_value(<<"Auth-Pass">>, Prop)),
-		    Resp = lists:flatten(io_lib:format(?REGISTERRESPONSE, [Domain, User, Hash])),
-		    format_log(info, "LOOKUP_USER(~p): Sending pass resp: ~p (took ~pms)~n"
-			      ,[self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, Resp);
-		<<"a1-hash">> ->
-		    Resp = lists:flatten(
-			     io_lib:format(?REGISTERRESPONSE, [Domain, User, get_value(<<"Auth-Pass">>, Prop)])
-			    ),
-		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp: ~p (took ~pms)~n"
-			      , [self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, Resp);
-		<<"ip">> ->
-		    format_log(info, "LOOKUP_USER(~p): Unsupported auth by IP (took ~pms)~n"
-			      , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE)
-	    end
+    case whistle_api:auth_req(lists:ukeymerge(1, DefProp, Data)) of
+	{ok, JSON} ->
+	    format_log(info, "JSON REQ: ~s~n", [JSON]),
+	    send_request(Channel, Ticket, JSON),
+	    handle_response(ID, Data);
+	{error, _Msg} ->
+	    format_log(error, "LOOKUP_USER(~p): Auth_Req API error ~p~n", [self(), _Msg])
     end.
 
 recv_response(ID) ->
@@ -251,3 +224,55 @@ to_hex(Bin) when is_binary(Bin) ->
     to_hex(binary_to_list(Bin));
 to_hex(L) when is_list(L) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+
+%% setup a connection to mod_erlang_event for dialplan requests,
+%% or setup a timer to query for the node and return the timer ref
+setup_fs_conn(Node, State) ->
+    case net_adm:ping(Node) of
+	pong ->
+	    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, lookup_user, State),
+	    link(Pid),
+	    undefined;
+	_ ->
+	    format_log(error, "ECALLMGR_AUTH: Unable to find ~p to talk to freeSWITCH~n", [Node]),
+	    {ok, T} = timer:send_interval(5000, find_fs_node),
+	    T
+    end.
+
+send_request(Channel, Ticket, JSON) ->
+    {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
+    amqp_channel:call(Channel, BP, AmqpMsg).
+
+handle_response(ID, Data) ->
+    T1 = erlang:now(),
+    %% recv resp from rabbit
+    case recv_response(ID) of
+	timeout ->
+	    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE);
+	Prop ->
+	    User = get_value(<<"user">>, Data),
+	    Domain = get_value(<<"domain">>, Data),
+	    case get_value(<<"Auth-Method">>, Prop) of
+		<<"password">> ->
+		    Hash = a1hash(User, Domain, get_value(<<"Auth-Pass">>, Prop)),
+		    Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash])),
+		    format_log(info, "LOOKUP_USER(~p): Sending pass resp: ~p (took ~pms)~n"
+			       ,[self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
+		    ?MODULE:send_fetch_response(ID, Resp);
+		<<"a1-hash">> ->
+		    Resp = lists:flatten(
+			     io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, get_value(<<"Auth-Pass">>, Prop)])
+			    ),
+		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp: ~p (took ~pms)~n"
+			       , [self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
+		    ?MODULE:send_fetch_response(ID, Resp);
+		<<"ip">> ->
+		    format_log(info, "LOOKUP_USER(~p): Unsupported auth by IP (took ~pms)~n"
+			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
+		    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE);
+		<<"error">> ->
+		    format_log(info, "LOOKUP_USER(~p): Auth by Error: ~p (took ~pms)~n"
+			       ,[self(), get_value(<<"Auth-Pass">>, Prop), timer:now_diff(erlang:now(), T1) div 1000]),
+		    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE)
+	    end
+    end.

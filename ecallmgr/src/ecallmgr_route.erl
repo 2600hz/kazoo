@@ -18,7 +18,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
-
 -import(proplists, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
@@ -27,7 +26,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {fs_node, channel, ticket, app_vsn}).
+-record(state, {fs_node, channel, ticket, app_vsn, timer_ref}).
 
 %%%===================================================================
 %%% API
@@ -69,14 +68,8 @@ init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     State = #state{fs_node=Node, channel=Channel, ticket=Ticket, app_vsn=list_to_binary(Vsn)},
-    case net_adm:ping(Node) of
-	pong ->
-	    {ok, Pid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, lookup_dialplan, State),
-	    link(Pid);
-	_ ->
-	    format_log(error, "RSC: Unable to find ~p to talk to freeSWITCH~n", [Node])
-    end,
-    {ok, State}.
+    TRef = setup_fs_conn(Node, State),
+    {ok, State#state{timer_ref=TRef}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -122,7 +115,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(find_fs_node, #state{fs_node=Node, timer_ref=TRef}=State) ->
+    timer:cancel(TRef),
+    TRef1 = setup_fs_conn(Node, State),
+    {noreply, State#state{timer_ref=TRef1}};
 handle_info(_Info, State) ->
+    format_log(info, "ROUTE: Unhandled Info: ~p~n", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -196,7 +194,7 @@ lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, U
 	    format_log(info, "ROUTE: recv route timeout~n", []),
 	    ?MODULE:send_fetch_response(ID, ?ROUTE_NOT_FOUND_RESPONSE);
 	Prop ->
-	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop)),
+	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop),
 	    format_log(info, "ROUTE: Sending XML to FS: ~n~p~n", [Xml]),
 	    ?MODULE:send_fetch_response(ID, Xml),
 	    CtlProp = whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
@@ -265,7 +263,7 @@ send_control_queue(Channel, Ticket, CtlProp, AppQ, EvtQ) ->
     format_log(info, "ROUTE: AMQP Send of CallCtl ~p~n", [amqp_channel:call(Channel, BP, AmqpMsg)]).
 
 %% Prop = Route Response
-generate_xml(<<"bridge">>, Routes) ->
+generate_xml(<<"bridge">>, Routes, _Prop) ->
     format_log(info, "ROUTE: BRIDGEXML: Routes:~n~p~n", [Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
@@ -281,8 +279,13 @@ generate_xml(<<"bridge">>, Routes) ->
 				     end, {1, ""}, lists:reverse(Routes)),
     format_log(info, "ROUTE: RoutesXML: ~s~n", [Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
-generate_xml(_, _Prop) ->
-    ?ROUTE_PARK_RESPONSE.
+generate_xml(<<"park">>, _Routes, _Prop) ->
+    ?ROUTE_PARK_RESPONSE;
+generate_xml(<<"error">>, _Routes, Prop) ->
+    ErrCode = get_value(<<"Route-Error-Code">>, Prop),
+    ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
+    format_log(info, "ROUTE: ErrorXML: ~s ~s~n", [ErrCode, ErrMsg]),
+    lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
 
 get_channel_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
@@ -295,3 +298,17 @@ get_channel_vars({<<"Auth-Pass">>, V}, Vars) ->
 get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "ROUTE: Unknown channel var ~p::~p~n", [_K, _V]),
     Vars.
+
+%% setup a connection to mod_erlang_event for dialplan requests,
+%% or setup a timer to query for the node and return the timer ref
+setup_fs_conn(Node, State) ->
+    case net_adm:ping(Node) of
+	pong ->
+	    {ok, Pid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, lookup_dialplan, State),
+	    link(Pid),
+	    undefined;
+	_ ->
+	    format_log(error, "ECALLMGR_ROUTE: Unable to find ~p to talk to freeSWITCH~n", [Node]),
+	    {ok, T} = timer:send_interval(5000, find_fs_node),
+	    T
+    end.

@@ -181,7 +181,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
     Domain = get_value(<<"Auth-Domain">>, Prop),
 
     %% do lookup
-    case User =:= <<"james">> andalso Domain =:= <<"192.168.0.198">> of
+    case User =:= <<"james">> andalso Domain =:= <<"192.168.1.17">> of
 	false ->
 	    io:format("User ~p@~p not found~n", [User, Domain]);
 	true ->
@@ -204,31 +204,31 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
     case get_value(<<"To">>, Prop) of
 	<<"james@192.168.0.198">> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
-	    Data = [{<<"App-Name">>, <<"responder_couch">>}
-		    ,{<<"App-Version">>, "0.1"}
-		    ,{<<"Method">>, <<"bridge">>}
-		    ,{<<"Server-ID">>, Q}
-		    ,{<<"Routes">>, [{struct, [{<<"Route">>, <<"sip:4158867900@pbx.switchfreedom.com">>}
+	    Route1 = whistle_api:route_resp_route([{<<"Route">>, <<"sip:4158867900@pbx.switchfreedom.com">>}
 					       ,{<<"Media">>, <<"process">>}
 					       ,{<<"Auth-User">>, <<"dphone">>}
 					       ,{<<"Auth-Pass">>, <<"test1234">>}
 					       ,{<<"Weight-Cost">>, <<"100">>}
 					       ,{<<"Weight-Location">>, <<"0">>}
-					       ]}
-				     ,{struct, [{<<"Route">>, <<"sip:catchall@work-lappy">>}
-						,{<<"Media">>, <<"bypass">>}
-						,{<<"Auth-User">>, <<"james">>}
-						,{<<"Auth-Pass">>, <<"james1">>}
-						,{<<"Weight-Cost">>, <<"0">>}
-						,{<<"Weight-Location">>, <<"0">>}
-					       ]}
-				    ]
-		     }
+					       ]),
+	    Route2 = whistle_api:route_resp_route([{<<"Route">>, <<"sip:catchall@work-lappy">>}
+						   ,{<<"Media">>, <<"bypass">>}
+						   ,{<<"Auth-User">>, <<"james">>}
+						   ,{<<"Auth-Pass">>, <<"james1">>}
+						   ,{<<"Weight-Cost">>, <<"0">>}
+						   ,{<<"Weight-Location">>, <<"0">>}
+						  ]),
+
+	    Data = [{<<"App-Name">>, <<"responder_couch">>}
+		    ,{<<"App-Version">>, "0.1"}
+		    ,{<<"Method">>, <<"bridge">>}
+		    ,{<<"Server-ID">>, Q}
+		    ,{<<"Routes">>, [{struct, Route1}, {struct, Route2}]}
 		    | Prop],
 	    {ok, JSON} = whistle_api:route_resp(Data),
 	    io:format("RESPONDER: Dialplan JSON Resp: ~s~n", [JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket);
-	<<"parker@192.168.0.198">> ->
+	<<"parker@192.168", _Rest/binary>> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    Data = [{<<"App-Name">>, <<"responder_couch">>}
 		    ,{<<"App-Version">>, "0.1"}
@@ -243,7 +243,7 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
 process_req({<<"dialplan">>,<<"Call-Control">>}, Prop, State) ->
     spawn(fun() -> auto_attendant(Prop, State) end);
 process_req(_MsgType, _Prop, _State) ->
-    io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).	
+    io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
 send_resp(JSON, RespQ, Channel, Ticket) ->
     {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, RespQ, JSON, <<"application/json">>),
@@ -257,15 +257,24 @@ auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
 				{struct, [{<<"Application-Name">>, <<"play">>}
 					  ,{<<"Call-ID">>, UUID}
 					  ,{<<"Filename">>, <<"voicemail/vm-record_message.wav">>}
+					  ,{<<"Playback-Terminators">>, ["#"]}
 					 ]}
+				,{struct, [{<<"Application-Name">>, <<"tone">>}
+					  ,{<<"Call-ID">>, UUID}
+					  ,{<<"Tones">>, {struct, [{<<"Frequencies">>, [800]}
+								   ,{<<"Duration-ON">>, 300}
+								   ,{<<"Duration-OFF">>, 0}
+								  ]}
+					   }
+					  ]}
+				,{struct, [{<<"Application-Name">>, <<"record">>}
+					   ,{<<"Call-ID">>, UUID}
+					   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
+					  ]}
 				,{struct, [{<<"Application-Name">>, <<"play">>}
-					  ,{<<"Call-ID">>, UUID}
-					  ,{<<"Filename">>, <<"tone_stream://%(300,0,800)">>}
-					 ]}
-				,{struct, [{<<"Application-Name">>, <<"set">>}
-					  ,{<<"Call-ID">>, UUID}
-					  ,{<<"Application-Arg">>, <<"playback_terminators=#">>}
-					 ]}
+					   ,{<<"Call-ID">>, UUID}
+					   ,{<<"Filename">>, list_to_binary(["recording-", UUID, ".wav"])}
+					  ]}
 				,{struct, [{<<"Application-Name">>, <<"hangup">>}
 					   ,{<<"Call-ID">>, UUID}
 					  ]}

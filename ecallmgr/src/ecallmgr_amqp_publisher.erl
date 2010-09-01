@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, publish/3]).
+-export([start_link/0, publish/3, publish_prop/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -36,9 +36,12 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-%% encodes Msg as JSON and sends it to Exchange.Queue
 publish(Msg, Exchange, Queue) ->
     gen_server:cast(?MODULE, {publish, Msg, Exchange, Queue}).
+
+%% encodes Msg as JSON and sends it to Exchange.Queue
+publish_prop(Prop, Exchange, Queue) ->
+    gen_server:cast(?MODULE, {publish_prop, Prop, Exchange, Queue}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -87,6 +90,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({publish_prop, Prop, Exchange, Queue}, #state{channel=Channel, ticket=Ticket}=State) ->
+    JSON = list_to_binary(mochijson2:encode({struct, Prop})),
+    {BP, AmqpMsg} = publish(Ticket, Exchange, Queue, JSON),
+    amqp_channel:call(Channel, BP, AmqpMsg),
+    {noreply, State};
 handle_cast({publish, Msg, Exchange, Queue}, #state{channel=Channel, ticket=Ticket}=State) ->
     {BP, AmqpMsg} = publish(Ticket, Exchange, Queue, Msg),
     amqp_channel:call(Channel, BP, AmqpMsg),
@@ -137,17 +145,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 publish(Ticket, targeted, Queue, Msg) ->
-    JSON = list_to_binary(mochijson2:encode({struct, Msg})),
-    amqp_util:targeted_publish(Ticket, Queue, JSON, <<"application/json">>);
+    amqp_util:targeted_publish(Ticket, Queue, Msg, <<"application/json">>);
 publish(Ticket, broadcast, _Queue, Msg) ->
-    JSON = list_to_binary(mochijson2:encode({struct, Msg})),
-    amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>);
+    amqp_util:broadcast_publish(Ticket, Msg, <<"application/json">>);
 publish(Ticket, callevt, Queue, Msg) ->
-    JSON = list_to_binary(mochijson2:encode({struct, Msg})),
-    amqp_util:callevt_publish(Ticket, Queue, JSON, <<"application/json">>);
+    amqp_util:callevt_publish(Ticket, Queue, Msg, <<"application/json">>);
 publish(Ticket, callctl, Queue, Msg) ->
-    JSON = list_to_binary(mochijson2:encode({struct, Msg})),
-    amqp_util:callctl_publish(Ticket, Queue, JSON, <<"application/json">>);
+    amqp_util:callctl_publish(Ticket, Queue, Msg, <<"application/json">>);
 publish(Ticket, resource, _Queue, Msg) ->
-    JSON = list_to_binary(mochijson2:encode({struct, Msg})),
-    amqp_util:resource_publish(Ticket, JSON, <<"application/json">>).
+    amqp_util:resource_publish(Ticket, Msg, <<"application/json">>).

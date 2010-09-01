@@ -14,22 +14,29 @@
 -import(logger, [log/2, format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
+-type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
+-type fd() :: tuple().
+-type io_device() :: pid() | fd().
+
+-spec(exec_cmd/3 :: (Node :: list(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 exec_cmd(Node, UUID, Prop) ->
     case get_value(<<"Call-ID">>, Prop) =:= UUID of
 	true -> exec_cmd(Node, UUID, Prop, get_value(<<"Application-Name">>, Prop));
 	false -> format_log(error, "CONTROL(~p): Cmd Not for us:~n~p~n", [self(), Prop])
     end.
 
+-spec(exec_cmd/4 :: (Node :: list(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> no_return()).
 exec_cmd(Node, UUID, Prop, <<"play">>) ->
     Tmp = get_value(<<"Filename">>, Prop),
     F = case ecallmgr_media_registry:is_registered(UUID, Tmp) of
 	    {true, GenName} -> get_media_path(GenName);
 	    false -> Tmp
 	end,
+    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
     format_log(info, "CONTROL(~p): CMD: Play F: ~p~n", [self(), F]),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
 				    ,{"execute-app-name", "playback"}
-					    ,{"execute-app-arg", F}
+				    ,{"execute-app-arg", F}
 				   ]);
 exec_cmd(Node, UUID, _Prop, <<"hangup">>) ->
     format_log(info, "CONTROL(~p): CMD: Hangup~n", [self()]),
@@ -38,9 +45,10 @@ exec_cmd(Node, UUID, _Prop, <<"hangup">>) ->
 				    ,{"execute-app-arg", ""}
 				   ]);
 exec_cmd(Node, UUID, Prop, <<"record">>) ->
-    format_log(info, "CONTROL(~p): CMD: Hangup~n", [self()]),
+    format_log(info, "CONTROL(~p): CMD: Record~n", [self()]),
     Name = get_value(<<"Media-Name">>, Prop),
     GenName = ecallmgr_media_registry:register_name(UUID, Name),
+    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
 				    ,{"execute-app-name", "record"}
 				    ,{"execute-app-arg", get_media_path(GenName)}
@@ -76,9 +84,11 @@ exec_cmd(_Node, UUID, Prop, <<"store">>) ->
 exec_cmd(_Node, _UUID, _Prop, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
 
+-spec(get_media_path/1 :: (Name :: binary()) -> string()).
 get_media_path(Name) ->
-    list_to_binary(["/tmp/", Name, ".wav"]).
+    binary_to_list(list_to_binary(["/tmp/", Name, ".wav"])).
 
+-spec(stream_over_amqp/3 :: (File :: list(), Prop :: proplist(), Headers :: proplist()) -> no_return()).
 stream_over_amqp(File, Prop, Headers) ->
     DestQ = case get_value(<<"Media-Transfer-Destination">>, Prop) of
 		undefined ->
@@ -91,6 +101,7 @@ stream_over_amqp(File, Prop, Headers) ->
     stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1).
 
 %% get a chunk of the file and send it in an AMQP message to the DestQ
+-spec(stream_over_amqp/5 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer()) -> no_return()).
 stream_over_amqp(DestQ, F, State, Headers, Seq) ->
     case F(State) of
 	{ok, Data, State1} ->
@@ -98,16 +109,19 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 	    Msg = [{<<"Media-Content">>, Data}
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
-	    ecallmgr_amqp_publisher:publish(Msg, targeted, DestQ),
+	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
+	    ecallmgr_amqp_publisher:publish(JSON, targeted, DestQ),
 	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1);
 	eof ->
 	    Msg = [{<<"Media-Content">>, <<"eof">>}
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
-	    ecallmgr_amqp_publisher:publish(Msg, targeted, DestQ),
-	    ok
+	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
+	    ecallmgr_amqp_publisher:publish(JSON, targeted, DestQ),
+	    eof
     end.
 
+-spec(stream_over_http/3 :: (File :: list(), Verb :: binary(), Prop :: proplist()) -> no_return()).
 stream_over_http(File, Verb, Prop) ->
     Url = binary_to_list(get_value(<<"Media-Transfer-Destination">>, Prop)),
     {struct, AddHeaders} = get_value(<<"Additional-Headers">>, Prop, {struct, []}),
@@ -115,18 +129,12 @@ stream_over_http(File, Verb, Prop) ->
 	       | lists:map(fun({K, V}) -> {binary_to_list(K), V} end, AddHeaders)],
     Method = list_to_atom(binary_to_list(Verb)),
     Body = {fun stream_file/1, {undefined, File}},
-    case ibrowse:send_req(Url, Headers, Method, Body) of
-	{ok, StatusCode, RespHeaders, RespBody} ->
-	    %% send response to Server-ID
-	    1;
-	{error, Reason} ->
-	    %% send to Server-ID
-	    2;
-	_Other ->
-	    %% ignore
-	    ok
-    end.
+    AppQ = get_value(<<"Server-ID">>, Prop),
+    Resp = ibrowse:send_req(Url, Headers, Method, Body),
+    {ok, JSON} = whistle_api:store_http_resp([{<<"Media-Transfer-Results">>, Resp} | Prop]),
+    ecallmgr_amqp_publisher:publish(JSON, targeted, AppQ).
 
+-spec(stream_file/1 :: ({undefined | io_device(), string()}) -> {ok, list(), tuple()} | eof).
 stream_file({undefined, File}) ->
     {ok, Iod} = file:open(File, [read, raw]),
     stream_file({Iod, File});
@@ -138,3 +146,19 @@ stream_file({Iod, _File}=State) ->
 	    file:close(Iod),
 	    eof
     end.
+
+-spec(set_terminators/3 :: (Node :: binary(), UUID :: binary(), Terminators :: undefined | binary()) -> no_return()).
+set_terminators(_Node, _UUID, undefined) ->
+    ok;
+set_terminators(Node, UUID, <<"">>) ->
+    format_log(info, "CONTROL(~p): Set Terminators: ~p~n", [self(), "none"]),
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+				    ,{"execute-app-name", "set"}
+				    ,{"execute-app-arg", "none"}
+				   ]);
+set_terminators(Node, UUID, Ts) ->
+    format_log(info, "CONTROL(~p): Set Terminators: ~p~n", [self(), Ts]),
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+				    ,{"execute-app-name", "set"}
+				    ,{"execute-app-arg", list_to_binary(["playback_terminators=", Ts])}
+				   ]).
