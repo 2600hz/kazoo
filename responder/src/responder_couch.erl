@@ -181,7 +181,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
     Domain = get_value(<<"Auth-Domain">>, Prop),
 
     %% do lookup
-    case User =:= <<"james">> andalso Domain =:= <<"192.168.1.17">> of
+    case User =:= <<"james">> of
 	false ->
 	    io:format("User ~p@~p not found~n", [User, Domain]);
 	true ->
@@ -256,8 +256,8 @@ auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
 	     ,{<<"Commands">>, [
 				{struct, [{<<"Application-Name">>, <<"play">>}
 					  ,{<<"Call-ID">>, UUID}
-					  ,{<<"Filename">>, <<"voicemail/vm-record_message.wav">>}
-					  ,{<<"Playback-Terminators">>, ["#"]}
+					  ,{<<"Media-Name">>, <<"voicemail/vm-record_message.wav">>}
+					  ,{<<"Terminators">>, ["#"]}
 					 ]}
 				,{struct, [{<<"Application-Name">>, <<"tone">>}
 					  ,{<<"Call-ID">>, UUID}
@@ -273,7 +273,17 @@ auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
 					  ]}
 				,{struct, [{<<"Application-Name">>, <<"play">>}
 					   ,{<<"Call-ID">>, UUID}
-					   ,{<<"Filename">>, list_to_binary(["recording-", UUID, ".wav"])}
+					   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
+					  ]}
+				,{struct, [{<<"Application-Name">>, <<"store">>}
+					   ,{<<"Call-ID">>, UUID}
+					   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
+					   ,{<<"Media-Transfer-Method">>, <<"put">>}
+					   ,{<<"Media-Transfer-Destination">>
+						 ,list_to_binary(["http://localhost:5984/trunkstore/recordings/"
+								  , "recording-", UUID, ".wav?rev=1-8e9b72c3c8a1be8fbf62c8ca5247a40f"])
+					    }
+					   ,{<<"Additional-Headers">>, {struct, [{"Content-Type", "audio/x-wav"}]}}
 					  ]}
 				,{struct, [{<<"Application-Name">>, <<"hangup">>}
 					   ,{<<"Call-ID">>, UUID}

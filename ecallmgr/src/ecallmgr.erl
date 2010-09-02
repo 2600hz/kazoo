@@ -10,6 +10,7 @@ start_link() ->
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(amqp),
+    ensure_started(ibrowse),
     ecallmgr_sup:start_link().
 
 %% @spec start() -> ok
@@ -19,6 +20,7 @@ start() ->
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(amqp),
+    ensure_started(ibrowse),
     application:start(ecallmgr).
 
 %% @spec stop() -> ok

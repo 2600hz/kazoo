@@ -42,9 +42,10 @@
 %% convert from FS-named applications to Whistle-named Dialplan applications
 -define(SUPPORTED_APPLICATIONS, [{<<"playback">>, <<"play">>}
 				 ,{<<"hangup">>, <<"hangup">>}
+				 ,{<<"record">>, <<"record">>}
 				]).
 
--define(CALL_EVENT_HEADERS, [<<"Event-Name">>, <<"Event-Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
+-define(CALL_EVENT_HEADERS, [<<"Event-Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Message">>]).
 
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).

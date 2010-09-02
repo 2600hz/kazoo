@@ -27,10 +27,10 @@ exec_cmd(Node, UUID, Prop) ->
 
 -spec(exec_cmd/4 :: (Node :: list(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> no_return()).
 exec_cmd(Node, UUID, Prop, <<"play">>) ->
-    Tmp = get_value(<<"Filename">>, Prop),
+    Tmp = get_value(<<"Media-Name">>, Prop),
     F = case ecallmgr_media_registry:is_registered(UUID, Tmp) of
 	    {true, GenName} -> get_media_path(GenName);
-	    false -> Tmp
+	    false -> binary_to_list(Tmp)
 	end,
     set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
     format_log(info, "CONTROL(~p): CMD: Play F: ~p~n", [self(), F]),
@@ -47,11 +47,16 @@ exec_cmd(Node, UUID, _Prop, <<"hangup">>) ->
 exec_cmd(Node, UUID, Prop, <<"record">>) ->
     format_log(info, "CONTROL(~p): CMD: Record~n", [self()]),
     Name = get_value(<<"Media-Name">>, Prop),
-    GenName = ecallmgr_media_registry:register_name(UUID, Name),
+    Path = get_media_path(ecallmgr_media_registry:register_name(UUID, Name)),
+    RecArg = binary_to_list(list_to_binary([Path, " "
+					    ,get_value(<<"Time-Limit">>, Prop, "20"), " "
+					    ,get_value(<<"Silence-Threshold">>, Prop, "200"), " "
+					    ,get_value(<<"Silence-Hits">>, Prop, "3")
+					   ])),
     set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
 				    ,{"execute-app-name", "record"}
-				    ,{"execute-app-arg", get_media_path(GenName)}
+				    ,{"execute-app-arg", RecArg}
 				   ]);
 exec_cmd(_Node, UUID, Prop, <<"store">>) ->
     Name = get_value(<<"Media-Name">>, Prop),
@@ -125,14 +130,24 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 stream_over_http(File, Verb, Prop) ->
     Url = binary_to_list(get_value(<<"Media-Transfer-Destination">>, Prop)),
     {struct, AddHeaders} = get_value(<<"Additional-Headers">>, Prop, {struct, []}),
-    Headers = [{<<"Content-Length">>, filelib:file_size(File)}
+    Headers = [{"Content-Length", filelib:file_size(File)}
 	       | lists:map(fun({K, V}) -> {binary_to_list(K), V} end, AddHeaders)],
     Method = list_to_atom(binary_to_list(Verb)),
     Body = {fun stream_file/1, {undefined, File}},
     AppQ = get_value(<<"Server-ID">>, Prop),
-    Resp = ibrowse:send_req(Url, Headers, Method, Body),
-    {ok, JSON} = whistle_api:store_http_resp([{<<"Media-Transfer-Results">>, Resp} | Prop]),
-    ecallmgr_amqp_publisher:publish(JSON, targeted, AppQ).
+    case ibrowse:send_req(Url, Headers, Method, Body) of
+	{ok, StatusCode, Headers, Body} ->
+	    {ok, JSON} = whistle_api:store_http_resp([{<<"Media-Transfer-Results">>
+							   ,{struct, [{<<"Status-Code">>, StatusCode}
+								      ,{<<"Headers">>, {struct, Headers}}
+								      ,{<<"Body">>, list_to_binary(Body)}
+								     ]}
+						      }
+						      | Prop]),
+	    ecallmgr_amqp_publisher:publish(JSON, targeted, AppQ);
+	{error, Error} ->
+	    format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error])
+    end.
 
 -spec(stream_file/1 :: ({undefined | io_device(), string()}) -> {ok, list(), tuple()} | eof).
 stream_file({undefined, File}) ->
@@ -157,8 +172,9 @@ set_terminators(Node, UUID, <<"">>) ->
 				    ,{"execute-app-arg", "none"}
 				   ]);
 set_terminators(Node, UUID, Ts) ->
-    format_log(info, "CONTROL(~p): Set Terminators: ~p~n", [self(), Ts]),
+    Terms = binary_to_list(list_to_binary(["playback_terminators=", Ts])),
+    format_log(info, "CONTROL(~p): Set Terminators: ~p~n", [self(), Terms]),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
 				    ,{"execute-app-name", "set"}
-				    ,{"execute-app-arg", list_to_binary(["playback_terminators=", Ts])}
+				    ,{"execute-app-arg", Terms}
 				   ]).

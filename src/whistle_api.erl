@@ -19,7 +19,7 @@
 -module(whistle_api).
 
 %% API
--export([default_headers/5]).
+-export([default_headers/5, extract_defaults/1]).
 
 %% Directory-related APIs
 -export([auth_req/1, auth_req_v/1, auth_resp/1, auth_resp_v/1
@@ -54,6 +54,14 @@ default_headers(ServerID, EvtCat, AppName, AppVsn, MsgID) ->
      ,{<<"App-Name">>, AppName}
      ,{<<"App-Version">>, AppVsn}
      ,{<<"Msg-ID">>, MsgID}].
+
+%%--------------------------------------------------------------------
+%% @doc Extract just the default headers from a message
+%% @end
+%%--------------------------------------------------------------------
+-spec(extract_defaults/1 :: (Prop :: proplist()) -> proplist()).
+extract_defaults(Prop) ->
+    lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Request - see wiki
@@ -193,18 +201,22 @@ route_resp_route_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(call_event/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 call_event(Prop) ->
-    EventName = get_value(<<"Event-Name">>, Prop),
-    EventSpecific = event_specific(EventName, Prop),
-
-    EvtProp = [{<<"Event-Name">>, EventName}
+    EvtName = get_value(<<"Event-Name">>, Prop),
+    EvtProp = [{<<"Event-Name">>, EvtName}
+	       ,{<<"Event-Category">>, get_value(<<"Event-Category">>, Prop)}
 	       ,{<<"Event-Timestamp">>, get_value(<<"Event-Timestamp">>, Prop)}
 	       ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
 	       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
-	       | EventSpecific],
+	       ,{<<"Server-ID">>, get_value(<<"Server-ID">>, Prop)}
+	       ,{<<"App-Name">>, get_value(<<"App-Name">>, Prop)}
+	       ,{<<"App-Version">>, get_value(<<"App-Name">>, Prop)}
+	       ,{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
+	       | event_specific(EvtName, Prop)
+	      ],
 
     case defaults(EvtProp) of
 	{error, _Reason}=Error ->
-	    io:format("CallEvt Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    io:format("CallEvt Defaults Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, EvtProp]),
 	    Error;
 	{Headers0, Prop0} ->
 	    case update_required_headers(Prop0, ?CALL_EVENT_HEADERS, Headers0) of
@@ -410,9 +422,10 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
 	undefined ->
 	    io:format("WHISTLE_API: Didn't find ~p in supported~n", [Application]),
 	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
-	AppName -> [{<<"Application-Name">>, AppName}
-		    ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop)}
-		    ]
+	AppName ->
+	    [{<<"Application-Name">>, AppName}
+	     ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop, <<"">>)}
+	    ]
     end;
 event_specific(_Evt, _Prop) ->
     [].

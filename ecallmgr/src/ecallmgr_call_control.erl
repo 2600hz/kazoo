@@ -33,8 +33,9 @@ loop(Node, UUID, CmdQ, SendReady) ->
 	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~n~p~n", [self(), Props#'P_basic'.content_type, Prop]),
 	    case get_value(<<"Application-Name">>, Prop) of
 		<<"queue">> -> %% list of commands that need to be added
+		    DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
 		    CmdQ1 = lists:foldl(fun({struct, Cmd}, TmpQ) ->
-						queue:in(Cmd, TmpQ)
+						queue:in(DefProp ++ Cmd, TmpQ)
 					end, CmdQ, get_value(<<"Commands">>, Prop)),
 		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso SendReady =:= true of
 			true ->

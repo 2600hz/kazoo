@@ -51,11 +51,16 @@ send_ctl_event(_CtlPid, _UUID, _Evt) ->
 publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
     DefProp = whistle_api:default_headers(EvtQueue, <<"Call-Event">>, <<"ecallmgr.event">>, <<"0.1">>
 					      , get_value(<<"Event-Date-Timestamp">>, Prop)),
-    Payload = lists:umerge([whistle_api:call_event(Prop), DefProp]),
-    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
-					      ,EvtQueue
-					      ,list_to_binary(mochijson2:encode({struct, Payload}))
-					      ,<<"application/json">>
-					     ),
-    %% execute the publish command
-    amqp_channel:call(Channel, BP, AmqpMsg).
+    Data = Prop ++ DefProp,
+    case whistle_api:call_event(Data) of
+	{ok, JSON} ->
+	    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
+						      ,EvtQueue
+						      ,list_to_binary(JSON)
+						      ,<<"application/json">>
+						     ),
+	    %% execute the publish command
+	    amqp_channel:call(Channel, BP, AmqpMsg);
+	{error, Msg} ->
+	    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
+    end.
