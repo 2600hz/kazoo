@@ -127,7 +127,10 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason}, Dict) ->
     {noreply, dict:filter(fun({Pid1, _CallID, _Name}, _Value) -> Pid =/= Pid1 end, Dict)};
 handle_info({'EXIT', Pid, _Reason}, Dict) ->
     format_log(info, "MEDIA_REG(~p): Pid ~p exited, Reason ~p, cleaning up...~n", [self(), Pid, _Reason]),
-    {noreply, dict:filter(fun({Pid1, _CallID, _Name}, _Value) -> Pid =/= Pid1 end, Dict)};
+    {noreply, dict:filter(fun({Pid1, _CallID, _Name}, _Value) ->
+				  format_log(info, "MEDIA_REG.filter P: ~p P1: ~p~n", [Pid, Pid1]),
+				  Pid =/= Pid1
+			  end, Dict)};
 handle_info(_Info, Dict) ->
     format_log(info, "MEDIA_REG(~p): Info Msg: ~p~n", [self(), _Info]),
     {noreply, Dict}.

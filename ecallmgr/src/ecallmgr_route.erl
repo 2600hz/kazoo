@@ -134,7 +134,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{channel=Channel}) ->
+    amqp_manager:close_channel(Channel),
     ok.
 
 %%--------------------------------------------------------------------

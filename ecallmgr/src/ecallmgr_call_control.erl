@@ -24,13 +24,16 @@ init(Node, UUID, {Channel, Ticket, CtlQueue}) ->
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BC, self()),
     loop(Node, UUID, queue:new(), undefined, CtlQueue).
 
-%% SendReady - whether FS is ready for the next command
+%% CurrApp is the Whistle Application that is currently running in FS (or undefined)
+%% the next command in CmdQ doesn't run until CurrApp translates to the Event Name
+%% passed from the Event queue on the {command_execute_complete, ...} message
 loop(Node, UUID, CmdQ, CurrApp, CtlQ) ->
     format_log(info, "CONTROL(~p): entered loop(~p)~n", [self(), CurrApp]),
     receive
 	{#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~n~p~n", [self(), Props#'P_basic'.content_type, Prop]),
+	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~p~n"
+		       ,[self(), Props#'P_basic'.content_type, get_value(<<"Application-Name">>, Prop)]),
 	    case get_value(<<"Application-Name">>, Prop) of
 		<<"queue">> -> %% list of commands that need to be added
 		    DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
@@ -57,9 +60,8 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ) ->
 	#'basic.consume_ok'{}=BC ->
 	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ);
-	{execute_complete, UUID, EvtData} ->
-	    format_log(info, "CONTROL(~p): CurrCmd: ~p~nReceived execute_complete~n~p~n", [self(), CurrApp, EvtData]),
-	    EvtName = get_value(<<"Application">>, EvtData),
+	{execute_complete, UUID, EvtName} ->
+	    format_log(info, "CONTROL(~p): CurrApp: ~p execute_complete: ~p~n", [self(), CurrApp, EvtName]),
 	    case whistle_api:convert_whistle_app_name(CurrApp) of
 		undefined ->
 		    loop(Node, UUID, CmdQ, CurrApp, CtlQ);
@@ -74,8 +76,8 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ) ->
 		    format_log(info, "CONTROL(~p): CurrApp: ~p Other: ~p~n", [self(), CurrApp, _OtherEvt]),
 		    loop(Node, UUID, CmdQ, CurrApp, CtlQ)
 	    end;
-	{execute, UUID, EvtData} ->
-	    format_log(info, "CONTROL(~p): CurrCmd: ~p~nReceived execute~n~p~n", [self(), CurrApp, EvtData]),
+	{execute, UUID, EvtName} ->
+	    format_log(info, "CONTROL(~p): CurrApp: ~p Received execute: ~p~n", [self(), CurrApp, EvtName]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ);
 	{hangup, UUID} ->
 	    ecallmgr_amqp:delete_queue(CmdQ),

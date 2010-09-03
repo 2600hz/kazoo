@@ -65,8 +65,7 @@ get_options() ->
 init([]) ->
     %% Start a connection to the AMQP broker server
     process_flag(trap_exit, true),
-    {Connection, MRefConn} = get_new_connection(),
-    {ok, #state{connection={Connection, MRefConn}, channels = []}}.
+    {ok, #state{connection=get_new_connection(), channels = []}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -78,9 +77,8 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined}=State) ->
-    {Connection, MRefConn} = get_new_connection(),
     format_log(info, "AMQP_MGR(~p): restart connection~n", [self()]),
-    handle_call(Req, From, State#state{connection={Connection, MRefConn}});
+    handle_call(Req, From, State#state{connection=get_new_connection()});
 handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn}, channels=Channels}=State) ->
     case lists:keysearch(Pid, 1, Channels) of
         %% This PID already has a channel, just return it
@@ -90,8 +88,8 @@ handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn
 
         false ->
             %% Open an AMQP channel to access our realm
-	    format_log(info, "AMQP_MGR(~p): Open channel for ~p~n", [self(), Pid]),
             Channel = amqp_connection:open_channel(Connection),
+	    format_log(info, "AMQP_MGR(~p): Open channel(~p) for ~p~n", [self(), Channel, Pid]),
 
 	    %% if a message is returned, we need to handle it
 	    amqp_channel:register_return_handler(Channel, Pid),
@@ -114,6 +112,7 @@ handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn
                     };
 
                 Fail ->
+		    format_log(error, "AMQP_MGR(~p): Failed to access Channel(~p): ~p~n", [self(), Channel, Fail]),
                     {reply, {error, Fail}, State}
             end
     end;
@@ -130,10 +129,13 @@ handle_call(_Request, _From, State) ->
 handle_cast({close_channel, Pid}, #state{channels=Channels}=State) ->
     case lists:keysearch(Pid, 1, Channels) of
         {value, {Pid, Channel, _Ticket, MRef}} ->
-            #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close()),
-
+	    case erlang:is_process_alive(Channel) of
+		true ->
+		    #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close());
+		false ->
+		    ok
+	    end,
             erlang:demonitor(MRef),
-
             {noreply, State#state{channels=lists:keydelete(Pid, 1, Channels)}};
         false ->
 	    {noreply, State}
@@ -148,16 +150,17 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRefConn}}=State) ->
+handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRefConn}, channels=Channels}=State) ->
     format_log(error, "AMQP_MGR(~p): Conn ~p went down (~p)~n", [self(), Pid, Reason]),
-    {stop, Reason, State};
+    close_all_channels(Channels),
+    {noreply, State#state{connection=get_new_connection(), channels=[]}};
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=State) ->
     format_log(error, "AMQP_MGR(~p): Channel ~p went down (~p)~n", [self(), Pid, _Reason]),
     case lists:keyfind(Pid, 1, Channels) of
         {value, {Pid, Channel, _Ticket, MRef}} ->
             case erlang:is_process_alive(Channel) of
 		true ->
-		    #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close());
+		    amqp_manager:close_channel(Channel);
 		false ->
 		    ok
 	    end,
@@ -199,15 +202,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 close_all_channels([]) -> ok;
 close_all_channels([{_Pid, Channel, _Ticket, MRef} | T]) ->
-    ChannelClose = #'channel.close'{
-      reply_code = 200,
-      reply_text = <<"Goodbye">>,
-      class_id = 0,
-      method_id = 0
-     },
-
-    amqp_channel:call(Channel, ChannelClose),
-    erlang:demonitor(MRef),
+    case  is_process_alive(Channel) of
+	true ->
+	    amqp_manager:close_channel(Channel),
+	    erlang:demonitor(MRef);
+	false ->
+	    ok
+    end,
     close_all_channels(T).
 
 get_new_connection() ->

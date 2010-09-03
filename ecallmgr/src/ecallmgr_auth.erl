@@ -68,6 +68,7 @@ init([]) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     State = #state{fs_node=Node, channel=Channel, ticket=Ticket, app_vsn=list_to_binary(Vsn)},
     TRef = setup_fs_conn(Node, State),
+    format_log(info, "AUTH(~p): Init state: ~p Tref: ~p~n", [self(), State, TRef]),
     {ok, State#state{timer_ref=TRef}}.
 
 %%--------------------------------------------------------------------
@@ -115,11 +116,12 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(find_fs_node, #state{fs_node=Node, timer_ref=TRef}=State) ->
+    format_log(info, "AUTH(~p): Find fs_node : ~p~n", [self(), Node]),
     timer:cancel(TRef),
     TRef1 = setup_fs_conn(Node, State),
     {noreply, State#state{timer_ref=TRef1}};
 handle_info(_Info, State) ->
-    format_log(info, "AUTH: Unhandled Info: ~p~n", [_Info]),
+    format_log(info, "AUTH(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -133,7 +135,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{channel=Channel}) ->
+    format_log(info, "AUTH(~p): terminate channel: ~p~n", [self(), Channel]),
+    amqp_manager:close_channel(Channel),
     ok.
 
 %%--------------------------------------------------------------------
@@ -154,24 +158,25 @@ code_change(_OldVsn, State, _Extra) ->
 lookup_user(Node, State) ->
     receive
 	{fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]} ->
-	    format_log(info, "fetch directory: Id: ~p~nData: ~p~n", [ID, Data]),
+	    format_log(info, "L/U(~p): fetch directory: Id: ~p~n", [self(), ID]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
 		    spawn(fun() -> lookup_user(State, ID, Data) end),
 		    ok;
 		_Other ->
-		    format_log(info, "ECALLMGR_AUTH(~p): Ignoring event ~p~n", [self(), _Other])
+		    format_log(info, "L/U(~p): Ignoring event ~p~n", [self(), _Other])
 	    end,
 	    ?MODULE:lookup_user(Node, State);
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
+	    format_log(info, "L/U(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n"
+		       ,[self(), _Section, _Something, _Key, _Value, ID]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:lookup_user(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "Node we were serving XML search requests to exited", []),
+	    format_log(error, "L/U(~p): Node we were serving XML search requests to exited", [self()]),
 	    ok;
 	Other ->
-	    format_log(info, "got other response: ~p", [Other]),
+	    format_log(info, "L/U(~p): got other response: ~p", [self(), Other]),
 	    ?MODULE:lookup_user(Node, State)
     end.
 
@@ -182,11 +187,11 @@ lookup_user(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Data) ->
     DefProp = whistle_api:default_headers(Q, <<"directory">>, <<"ecallmgr">>, Vsn, ID),
     case whistle_api:auth_req(lists:ukeymerge(1, DefProp, Data)) of
 	{ok, JSON} ->
-	    format_log(info, "JSON REQ: ~s~n", [JSON]),
+	    format_log(info, "L/U(~p): JSON AUTH_REQ: ~s~n", [self(), JSON]),
 	    send_request(Channel, Ticket, JSON),
 	    handle_response(ID, Data);
 	{error, _Msg} ->
-	    format_log(error, "LOOKUP_USER(~p): Auth_Req API error ~p~n", [self(), _Msg])
+	    format_log(error, "L/U(~p): Auth_Req API error ~p~n", [self(), _Msg])
     end.
 
 recv_response(ID) ->
@@ -194,19 +199,20 @@ recv_response(ID) ->
 	#'basic.consume_ok'{} ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
-	    format_log(info, "Recv Content: ~p Payload: ~s~n", [Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "L/U(~p): Recv Content: ~p EvtName: ~p~n"
+		       ,[self(), Props#'P_basic'.content_type, get_value(<<"Event-Name">>, Prop)]),
 	    case get_value(<<"Msg-ID">>, Prop) of
 		ID -> Prop;
 		_BadId ->
-		    format_log(info, "Recv Msg ~p when expecting ~p~n", [_BadId, ID]),
+		    format_log(info, "L/U(~p): Recv Msg ~p when expecting ~p~n", [self(), _BadId, ID]),
 		    recv_response(ID)
 	    end;
 	Msg ->
-	    format_log(info, "Received ~p off rabbit~n", [Msg]),
+	    format_log(info, "L/U(~p): Received ~p off rabbit~n", [self(), Msg]),
 	    recv_response(ID)
     after 4000 ->
-	    format_log(info, "Failed to receive after 4000ms~n", []),
+	    format_log(info, "L/U(~p): Failed to receive after 4000ms~n", [self()]),
 	    timeout
     end.
 
