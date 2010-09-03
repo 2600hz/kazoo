@@ -157,7 +157,7 @@ handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRe
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=State) ->
     format_log(error, "AMQP_MGR(~p): Channel ~p went down (~p)~n", [self(), Pid, _Reason]),
     case lists:keyfind(Pid, 1, Channels) of
-        {value, {Pid, Channel, _Ticket, MRef}} ->
+        {Pid, Channel, _Ticket, MRef} ->
             case erlang:is_process_alive(Channel) of
 		true ->
 		    amqp_manager:close_channel(Channel);
