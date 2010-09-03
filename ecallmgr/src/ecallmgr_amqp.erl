@@ -18,6 +18,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-import(logger, [format_log/3]).
+
 -define(SERVER, ?MODULE). 
 
 -record(state, {channel, ticket}).
@@ -95,15 +97,18 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({delete_queue, Q}, #state{channel=Channel, ticket=Ticket}=State) ->
     QD = amqp_util:queue_delete(Ticket, Q),
+    format_log(info, "ECALL_AMQP(~p): Delete Queue ~p~n", [self(), QD]),
     amqp_channel:call(Channel, QD),
     {noreply, State};
 handle_cast({publish_prop, Prop, Exchange, Queue}, #state{channel=Channel, ticket=Ticket}=State) ->
     JSON = list_to_binary(mochijson2:encode({struct, Prop})),
     {BP, AmqpMsg} = publish(Ticket, Exchange, Queue, JSON),
+    format_log(info, "ECALL_AMQP(~p): Pub Prop ~p~n", [self(), Prop]),
     amqp_channel:call(Channel, BP, AmqpMsg),
     {noreply, State};
 handle_cast({publish, Msg, Exchange, Queue}, #state{channel=Channel, ticket=Ticket}=State) ->
     {BP, AmqpMsg} = publish(Ticket, Exchange, Queue, Msg),
+    format_log(info, "ECALL_AMQP(~p): Pub ~p~n", [self(), Msg]),
     amqp_channel:call(Channel, BP, AmqpMsg),
     {noreply, State};
 handle_cast(_Msg, State) ->
@@ -120,6 +125,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    format_log(info, "ECALL_AMQP(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -134,8 +140,12 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{channel=Channel}) ->
-    amqp_manager:close_channel(Channel),
-    ok.
+    case erlang:is_process_alive(Channel) of
+	true ->
+	    amqp_manager:close_channel(Channel);
+	false ->
+	    ok
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -80,7 +80,7 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ) ->
 	    format_log(info, "CONTROL(~p): CurrApp: ~p Received execute: ~p~n", [self(), CurrApp, EvtName]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ);
 	{hangup, UUID} ->
-	    ecallmgr_amqp:delete_queue(CmdQ),
+	    ecallmgr_amqp:delete_queue(CtlQ),
 	    format_log(info, "CONTROL(~p): Received hangup, exiting...~n", [self()]);
 	_Msg ->
 	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [_Msg]),
