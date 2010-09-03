@@ -22,11 +22,11 @@ start(Node, UUID, Amqp) ->
 init(Node, UUID, {Channel, Ticket, CtlQueue}) ->
     BC = amqp_util:basic_consume(Ticket, CtlQueue),
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BC, self()),
-    loop(Node, UUID, queue:new(), true).
+    loop(Node, UUID, queue:new(), undefined, CtlQueue).
 
 %% SendReady - whether FS is ready for the next command
-loop(Node, UUID, CmdQ, SendReady) ->
-    format_log(info, "CONTROL(~p): entered loop(~p)~n", [self(), SendReady]),
+loop(Node, UUID, CmdQ, CurrApp, CtlQ) ->
+    format_log(info, "CONTROL(~p): entered loop(~p)~n", [self(), CurrApp]),
     receive
 	{#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
@@ -37,36 +37,50 @@ loop(Node, UUID, CmdQ, SendReady) ->
 		    CmdQ1 = lists:foldl(fun({struct, Cmd}, TmpQ) ->
 						queue:in(DefProp ++ Cmd, TmpQ)
 					end, CmdQ, get_value(<<"Commands">>, Prop)),
-		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso SendReady =:= true of
+		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso CurrApp =:= undefined of
 			true ->
 			    {{value, Cmd}, CmdQ2} = queue:out(CmdQ1),
 			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
-			    loop(Node, UUID, CmdQ2, false);
+			    loop(Node, UUID, CmdQ2, get_value(<<"Application-Name">>, Cmd), CtlQ);
 			false ->
-			    loop(Node, UUID, CmdQ1, SendReady)
+			    loop(Node, UUID, CmdQ1, CurrApp, CtlQ)
 		    end;
 		_AppName ->
-		    case queue:is_empty(CmdQ) andalso SendReady =:= true of
+		    case queue:is_empty(CmdQ) andalso CurrApp =:= undefined of
 			true ->
 			    ecallmgr_call_command:exec_cmd(Node, UUID, Prop),
-			    loop(Node, UUID, CmdQ, false);
+			    loop(Node, UUID, CmdQ, get_value(<<"Application-Name">>, Prop), CtlQ);
 			false ->
-			    loop(Node, UUID, queue:in(Prop, CmdQ), SendReady)
+			    loop(Node, UUID, queue:in(Prop, CmdQ), CurrApp, CtlQ)
 		    end
 	    end;
-	#'basic.consume_ok'{} ->
-	    loop(Node, UUID, CmdQ, SendReady);
-	{execute_complete, UUID} ->
-	    format_log(info, "CONTROL(~p): Received execute_complete~n", [self()]),
-	    case queue:out(CmdQ) of
-		{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, true);
-		{{value, Cmd}, CmdQ1} ->
-		    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
-		    loop(Node, UUID, CmdQ1, queue:is_empty(CmdQ1))
+	#'basic.consume_ok'{}=BC ->
+	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
+	    loop(Node, UUID, CmdQ, CurrApp, CtlQ);
+	{execute_complete, UUID, EvtData} ->
+	    format_log(info, "CONTROL(~p): CurrCmd: ~p~nReceived execute_complete~n~p~n", [self(), CurrApp, EvtData]),
+	    EvtName = get_value(<<"Application">>, EvtData),
+	    case whistle_api:convert_whistle_app_name(CurrApp) of
+		undefined ->
+		    loop(Node, UUID, CmdQ, CurrApp, CtlQ);
+		EvtName ->
+		    case queue:out(CmdQ) of
+			{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, undefined, CtlQ);
+			{{value, Cmd}, CmdQ1} ->
+			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
+			    loop(Node, UUID, CmdQ1, get_value(<<"Application-Name">>, Cmd), CtlQ)
+		    end;
+		_OtherEvt ->
+		    format_log(info, "CONTROL(~p): CurrApp: ~p Other: ~p~n", [self(), CurrApp, _OtherEvt]),
+		    loop(Node, UUID, CmdQ, CurrApp, CtlQ)
 	    end;
+	{execute, UUID, EvtData} ->
+	    format_log(info, "CONTROL(~p): CurrCmd: ~p~nReceived execute~n~p~n", [self(), CurrApp, EvtData]),
+	    loop(Node, UUID, CmdQ, CurrApp, CtlQ);
 	{hangup, UUID} ->
+	    ecallmgr_amqp:delete_queue(CmdQ),
 	    format_log(info, "CONTROL(~p): Received hangup, exiting...~n", [self()]);
 	_Msg ->
 	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [_Msg]),
-	    loop(Node, UUID, CmdQ, SendReady)
+	    loop(Node, UUID, CmdQ, CurrApp, CtlQ)
     end.

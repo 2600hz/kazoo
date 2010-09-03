@@ -6,9 +6,8 @@
               {mod,{ecallmgr_app,[ecallmgr,ecallmgr_app,ecallmgr_sup,
                                   ecallmgr_deps,ecallmgr_req]}},
               {env,[]},
-              {modules,[ecallmgr,ecallmgr_amqp_publisher,ecallmgr_app,
-                        ecallmgr_auth,ecallmgr_call_command,
-                        ecallmgr_call_control,ecallmgr_call_events,
-                        ecallmgr_call_sup,ecallmgr_deps,ecallmgr_fsm,
-                        ecallmgr_media_registry,ecallmgr_route,ecallmgr_sup,
-                        freeswitch,logger,whistle_api]}]}.
+              {modules,[ecallmgr,ecallmgr_amqp,ecallmgr_app,ecallmgr_auth,
+                        ecallmgr_call_command,ecallmgr_call_control,
+                        ecallmgr_call_events,ecallmgr_call_sup,ecallmgr_deps,
+                        ecallmgr_fsm,ecallmgr_media_registry,ecallmgr_route,
+                        ecallmgr_sup,freeswitch,logger,whistle_api]}]}.

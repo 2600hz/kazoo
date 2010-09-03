@@ -43,6 +43,8 @@
 -define(SUPPORTED_APPLICATIONS, [{<<"playback">>, <<"play">>}
 				 ,{<<"hangup">>, <<"hangup">>}
 				 ,{<<"record">>, <<"record">>}
+				 ,{<<"playback">>, <<"tone">>}
+				 ,{<<"park">>, <<"park">>}
 				]).
 
 -define(CALL_EVENT_HEADERS, [<<"Event-Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).

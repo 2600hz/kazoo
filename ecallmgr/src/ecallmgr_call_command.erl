@@ -86,8 +86,37 @@ exec_cmd(_Node, UUID, Prop, <<"store">>) ->
 	false ->
 	    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
     end;
+exec_cmd(Node, UUID, Prop, <<"tone">>) ->
+    format_log(info, "CONTROL(~p): Tone Prop: ~n~p~n", [self(), Prop]),
+    Tones = get_value(<<"Tones">>, Prop, {struct, []}),
+    FSTones = lists:map(fun({struct, Tone}) ->
+				Vol = case get_value(<<"Volume">>, Tone) of
+					  undefined -> [];
+					  %% need to map V (0-100) to FS values
+					  V -> list_to_binary(["v=", integer_to_list(V), ";"])
+				      end,
+				Repeat = case get_value(<<"Repeat">>, Tone) of
+					     undefined -> [];
+					     R -> list_to_binary(["l=", integer_to_list(R), ";"])
+					 end,
+				Freqs = string:join(lists:map(fun erlang:integer_to_list/1, get_value(<<"Frequencies">>, Tone)), ","),
+				On = integer_to_list(get_value(<<"Duration-ON">>, Tone)),
+				Off = integer_to_list(get_value(<<"Duration-OFF">>, Tone)),
+				binary_to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+			end, Tones),
+    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+    format_log(info, "CONTROL(~p): Tone stream : ~p~n", [self(), Arg]),
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+				    ,{"execute-app-name", "playback"}
+				    ,{"execute-app-arg", Arg}
+				   ]);
+    
 exec_cmd(_Node, _UUID, _Prop, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
+
+%%%===================================================================
+%%% Internal helper functions
+%%%===================================================================
 
 -spec(get_media_path/1 :: (Name :: binary()) -> string()).
 get_media_path(Name) ->
@@ -115,14 +144,14 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    ecallmgr_amqp_publisher:publish(JSON, targeted, DestQ),
+	    ecallmgr_amqp:publish(JSON, targeted, DestQ),
 	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1);
 	eof ->
 	    Msg = [{<<"Media-Content">>, <<"eof">>}
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    ecallmgr_amqp_publisher:publish(JSON, targeted, DestQ),
+	    ecallmgr_amqp:publish(JSON, targeted, DestQ),
 	    eof
     end.
 
@@ -137,16 +166,25 @@ stream_over_http(File, Verb, Prop) ->
     AppQ = get_value(<<"Server-ID">>, Prop),
     case ibrowse:send_req(Url, Headers, Method, Body) of
 	{ok, StatusCode, Headers, Body} ->
-	    {ok, JSON} = whistle_api:store_http_resp([{<<"Media-Transfer-Results">>
-							   ,{struct, [{<<"Status-Code">>, StatusCode}
-								      ,{<<"Headers">>, {struct, Headers}}
-								      ,{<<"Body">>, list_to_binary(Body)}
-								     ]}
-						      }
-						      | Prop]),
-	    ecallmgr_amqp_publisher:publish(JSON, targeted, AppQ);
+	    case whistle_api:store_http_resp([{<<"Media-Transfer-Results">>
+						   ,{struct, [{<<"Status-Code">>, StatusCode}
+							      ,{<<"Headers">>, {struct, Headers}}
+							      ,{<<"Body">>, list_to_binary(Body)}
+							     ]}
+					      }
+					      | Prop]) of
+		{ok, JSON} ->
+		    format_log(info, "CONTROL(~p): Ibrowse would have sent back ~p~n", [self(), JSON]);
+		    %ecallmgr_amqp:publish(JSON, targeted, AppQ);
+		{error, Msg} ->
+		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg]);
+		_Other ->
+		    format_log(error, "CONTROL(~p): ibrowse returned unexpected: ~p~n", [self(), _Other])
+	    end;
 	{error, Error} ->
-	    format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error])
+	    format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error]);
+	{ibrowse_req_id, ReqId} ->
+	    format_log(error, "CONTROL(~p): Ibrowse_req_id: ~p~n", [self(), ReqId])
     end.
 
 -spec(stream_file/1 :: ({undefined | io_device(), string()}) -> {ok, list(), tuple()} | eof).

@@ -33,6 +33,9 @@
 	 ,tones_req_tone/1, tones_req_tone_v/1, queue_req/1, queue_req_v/1
 	]).
 
+%% FS-specific routines
+-export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
+
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
 -include("whistle_api.hrl").
@@ -411,6 +414,22 @@ queue_req(Prop) ->
 -spec(queue_req_v/1 :: (Prop :: proplist()) -> boolean()).
 queue_req_v(Prop) ->
     has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?QUEUE_REQ_HEADERS).
+
+%% given a proplist of a FS event, return the Whistle-equivalent app name
+-spec(convert_fs_evt_name/1 :: (EvtName :: binary()) -> undefined | binary()).
+convert_fs_evt_name(EvtName) ->
+    case lists:keyfind(EvtName, 1, ?SUPPORTED_APPLICATIONS) of
+	false -> undefined;
+	{EvtName, AppName} -> AppName
+    end.
+
+%% given a Whistle Dialplan Application name, return the FS-equivalent event name
+-spec(convert_whistle_app_name/1 :: (AppName :: binary()) -> undefined | binary()).
+convert_whistle_app_name(AppName) ->
+    case lists:keyfind(AppName, 2, ?SUPPORTED_APPLICATIONS) of
+	false -> undefined;
+	{EvtName, AppName} -> EvtName
+    end.
 
 %%%===================================================================
 %%% Internal functions

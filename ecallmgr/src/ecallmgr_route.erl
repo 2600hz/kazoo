@@ -120,7 +120,7 @@ handle_info(find_fs_node, #state{fs_node=Node, timer_ref=TRef}=State) ->
     TRef1 = setup_fs_conn(Node, State),
     {noreply, State#state{timer_ref=TRef1}};
 handle_info(_Info, State) ->
-    format_log(info, "ROUTE: Unhandled Info: ~p~n", [_Info]),
+    format_log(info, "ROUTE(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -154,7 +154,7 @@ code_change(_OldVsn, State, _Extra) ->
 lookup_dialplan(Node, State) ->
     receive
 	{fetch, dialplan, _Tag, _Key, _Value, ID, [UUID | Data]} ->
-	    format_log(info, "ROUTE: fetch dialplan: Id: ~p UUID: ~p~nData: ~p~n", [ID, UUID, Data]),
+	    format_log(info, "ROUTE(~p): fetch dialplan: Id: ~p UUID: ~p~nData: ~p~n", [self(), ID, UUID, Data]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
 		    spawn(fun() -> lookup_dialplan(Node, State, ID, UUID, Data) end);
@@ -163,14 +163,14 @@ lookup_dialplan(Node, State) ->
 	    end,
 	    ?MODULE:lookup_dialplan(Node, State);
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "ROUTE: fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [_Section, _Something, _Key, _Value, ID, _Data]),
+	    format_log(info, "ROUTE(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [self(), _Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:lookup_dialplan(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "ROUTE: Node we were serving XML search requests to exited", []),
-	    ok;
+	    format_log(error, "ROUTE(~p): Node we were serving XML search requests to exited", [self()]),
+	    setup_fs_conn(Node, State);
 	Other ->
-	    format_log(info, "ROUTE: got other response: ~p", [Other]),
+	    format_log(info, "ROUTE(~p): got other response: ~p", [self(), Other]),
 	    ?MODULE:lookup_dialplan(Node, State)
     end.
 
@@ -184,18 +184,18 @@ lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, U
 								    ]
 						    ]
 						   )),
-    format_log(info, "ROUTE: JSON REQ: ~s~n", [JSON]),
+    format_log(info, "ROUTE(~p): JSON REQ: ~s~n", [self(), JSON]),
 
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
     amqp_channel:call(Channel, BP, AmqpMsg),
 
     case recv_response(ID) of
 	timeout ->
-	    format_log(info, "ROUTE: recv route timeout~n", []),
+	    format_log(info, "ROUTE(~p): recv route timeout~n", [self()]),
 	    ?MODULE:send_fetch_response(ID, ?ROUTE_NOT_FOUND_RESPONSE);
 	Prop ->
 	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop),
-	    format_log(info, "ROUTE: Sending XML to FS: ~n~p~n", [Xml]),
+	    format_log(info, "ROUTE(~p): Sending XML to FS: ~n~p~n", [self(), Xml]),
 	    ?MODULE:send_fetch_response(ID, Xml),
 	    CtlProp = whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
 	    send_control_queue(Channel, Ticket
@@ -208,19 +208,20 @@ recv_response(ID) ->
 	#'basic.consume_ok'{} ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
-	    format_log(info, "ROUTE: Recv Content: ~p Payload: ~s~n", [Props#'P_basic'.content_type, binary_to_list(Payload)]),
+	    format_log(info, "ROUTE(~p): Recv Content: ~p Payload: ~s~n"
+		       ,[self(), Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    case get_value(<<"Msg-ID">>, Prop) of
 		ID -> Prop;
 		_BadId ->
-		    format_log(info, "ROUTE: Recv MsgID ~p when expecting ~p~n", [_BadId, ID]),
+		    format_log(info, "ROUTE(~p): Recv MsgID ~p when expecting ~p~n", [self(), _BadId, ID]),
 		    recv_response(ID)
 	    end;
 	_Msg ->
-	    format_log(info, "ROUTE: Unexpected: received ~p off rabbit~n", [_Msg]),
+	    format_log(info, "ROUTE(~p): Unexpected: received ~p off rabbit~n", [self(), _Msg]),
 	    recv_response(ID)
     after 4000 ->
-	    format_log(info, "ROUTE: Failed to receive after 4000ms~n", []),
+	    format_log(info, "ROUTE(~p): Failed to receive after 4000ms~n", [self()]),
 	    timeout
     end.
 
@@ -248,7 +249,7 @@ bind_channel_qs(Channel, Ticket, UUID, Node) ->
     {EvtQueue, CtlQueue}.
 
 send_control_queue(_Channel, _Ticket, _Q, undefined, _EvtQ) ->
-    format_log(error, "ROUTE: Cannot send control Q(~p) to undefined server-id~n", [_Q]);
+    format_log(error, "ROUTE(~p): Cannot send control Q(~p) to undefined server-id~n", [self(), _Q]);
 send_control_queue(Channel, Ticket, CtlProp, AppQ, EvtQ) ->
     Payload = [ {<<"Event-Name">>, <<"Call-Control">>}
 		,{<<"Event-Queue">>, EvtQ}
@@ -259,12 +260,12 @@ send_control_queue(Channel, Ticket, CtlProp, AppQ, EvtQ) ->
 					       ,<<"application/json">>
 					      ),
     %% execute the publish command
-    format_log(info, "ROUTE: Sending AppQ(~p) AmqpMsg:~n~p~n", [AppQ, Payload]),
-    format_log(info, "ROUTE: AMQP Send of CallCtl ~p~n", [amqp_channel:call(Channel, BP, AmqpMsg)]).
+    format_log(info, "ROUTE(~p): Sending AppQ(~p) AmqpMsg:~n~p~n", [self(), AppQ, Payload]),
+    amqp_channel:call(Channel, BP, AmqpMsg).
 
 %% Prop = Route Response
 generate_xml(<<"bridge">>, Routes, _Prop) ->
-    format_log(info, "ROUTE: BRIDGEXML: Routes:~n~p~n", [Routes]),
+    format_log(info, "ROUTE(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
 					     Route = get_value(<<"Route">>, RouteProp), %% translate Route to FS-encoded URI
@@ -277,14 +278,14 @@ generate_xml(<<"bridge">>, Routes, _Prop) ->
 					     Ext = io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]),
 					     {Idx+1, [Ext | Acc]}
 				     end, {1, ""}, lists:reverse(Routes)),
-    format_log(info, "ROUTE: RoutesXML: ~s~n", [Extensions]),
+    format_log(info, "ROUTE(~p): RoutesXML: ~s~n", [self(), Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
 generate_xml(<<"park">>, _Routes, _Prop) ->
     ?ROUTE_PARK_RESPONSE;
 generate_xml(<<"error">>, _Routes, Prop) ->
     ErrCode = get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
-    format_log(info, "ROUTE: ErrorXML: ~s ~s~n", [ErrCode, ErrMsg]),
+    format_log(info, "ROUTE(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
 
 get_channel_vars(Prop) ->
@@ -296,7 +297,7 @@ get_channel_vars({<<"Auth-User">>, V}, Vars) ->
 get_channel_vars({<<"Auth-Pass">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_password='", V, "'"]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
-    format_log(info, "ROUTE: Unknown channel var ~p::~p~n", [_K, _V]),
+    format_log(info, "ROUTE(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
 %% setup a connection to mod_erlang_event for dialplan requests,
@@ -308,7 +309,7 @@ setup_fs_conn(Node, State) ->
 	    link(Pid),
 	    undefined;
 	_ ->
-	    format_log(error, "ECALLMGR_ROUTE: Unable to find ~p to talk to freeSWITCH~n", [Node]),
+	    format_log(error, "ROUTE(~p): Unable to find ~p to talk to freeSWITCH~n", [self(), Node]),
 	    {ok, T} = timer:send_interval(5000, find_fs_node),
 	    T
     end.

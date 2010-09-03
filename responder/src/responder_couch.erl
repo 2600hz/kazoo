@@ -252,6 +252,7 @@ send_resp(JSON, RespQ, Channel, Ticket) ->
 auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     UUID = get_value(<<"Call-ID">>, Prop),
     Cmds = [ {<<"Application-Name">>, <<"queue">>}
+	     ,{<<"Event-Name">>, <<"dialplan">>}
 	     ,{<<"Call-ID">>, UUID}
 	     ,{<<"Commands">>, [
 				{struct, [{<<"Application-Name">>, <<"play">>}
@@ -261,10 +262,12 @@ auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
 					 ]}
 				,{struct, [{<<"Application-Name">>, <<"tone">>}
 					  ,{<<"Call-ID">>, UUID}
-					  ,{<<"Tones">>, {struct, [{<<"Frequencies">>, [800]}
-								   ,{<<"Duration-ON">>, 300}
-								   ,{<<"Duration-OFF">>, 0}
-								  ]}
+					  ,{<<"Tones">>, [ {struct, [{<<"Frequencies">>, [800]}
+								     ,{<<"Duration-ON">>, 300}
+								     ,{<<"Duration-OFF">>, 0}
+								    ]
+							   }
+							 ]
 					   }
 					  ]}
 				,{struct, [{<<"Application-Name">>, <<"record">>}
@@ -275,16 +278,16 @@ auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
 					   ,{<<"Call-ID">>, UUID}
 					   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
 					  ]}
-				,{struct, [{<<"Application-Name">>, <<"store">>}
-					   ,{<<"Call-ID">>, UUID}
-					   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
-					   ,{<<"Media-Transfer-Method">>, <<"put">>}
-					   ,{<<"Media-Transfer-Destination">>
-						 ,list_to_binary(["http://localhost:5984/trunkstore/recordings/"
-								  , "recording-", UUID, ".wav?rev=1-8e9b72c3c8a1be8fbf62c8ca5247a40f"])
-					    }
-					   ,{<<"Additional-Headers">>, {struct, [{"Content-Type", "audio/x-wav"}]}}
-					  ]}
+				%,{struct, [{<<"Application-Name">>, <<"store">>}
+				%	   ,{<<"Call-ID">>, UUID}
+				%	   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
+				%	   ,{<<"Media-Transfer-Method">>, <<"put">>}
+				%	   ,{<<"Media-Transfer-Destination">>
+				%		 ,list_to_binary(["http://localhost:5984/trunkstore/recordings/"
+				%				  , "recording-", UUID, ".wav?rev=1-8e9b72c3c8a1be8fbf62c8ca5247a40f"])
+				%	    }
+				%	   ,{<<"Additional-Headers">>, {struct, [{"Content-Type", "audio/x-wav"}]}}
+				%	  ]}
 				,{struct, [{<<"Application-Name">>, <<"hangup">>}
 					   ,{<<"Call-ID">>, UUID}
 					  ]}
@@ -294,7 +297,7 @@ auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     Amqp = {Channel, Ticket},
     DefProp = whistle_api:default_headers(Q, <<"Call-Control">>, <<"responder_couch">>, <<"0.1">>, UUID),
     consume_events(Channel, Ticket, get_value(<<"Event-Queue">>, Prop)),
-    exec_cmd(lists:umerge([DefProp, Cmds]), Amqp, UUID),
+    exec_cmd(lists:umerge([DefProp, Cmds]), Amqp, get_value(<<"Server-ID">>, Prop)),
     control_loop(get_value(<<"Server-ID">>, Prop), Amqp).
 
 control_loop(CtlQ, Amqp) ->
@@ -302,6 +305,7 @@ control_loop(CtlQ, Amqp) ->
 
 exec_cmd(Cmd, {Channel, Ticket}, CtlQ) ->
     Payload = mochijson2:encode({struct, Cmd}),
+    format_log(info, "RESPONDER(~p): Sending ~p JSON ~s~n", [self(), CtlQ, Payload]),
     {BP, AmqpMsg} = amqp_util:callctl_publish(Ticket, CtlQ, Payload, <<"application/json">>),
     amqp_channel:call(Channel, BP, AmqpMsg).
 

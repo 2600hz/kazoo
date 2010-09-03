@@ -20,7 +20,7 @@
 %% API
 -export([start_link/0, start/0, open_channel/1, close_channel/1, stop/0]).
 
--record(state, {connection, channels, options}).
+-record(state, {connection, channels}).
 -define(SERVER, ?MODULE).
 
 %%====================================================================
@@ -64,15 +64,9 @@ get_options() ->
 
 init([]) ->
     %% Start a connection to the AMQP broker server
-    Options = get_options(),
-
     process_flag(trap_exit, true),
-
-    format_log(info, "AMQP_MGR(~p): open connection to ~p~n", [self(), Options]),
-    Connection = amqp_connection:start_network_link(Options),
-    MRefConn = erlang:monitor(process, Connection),
-
-    {ok, #state{connection={Connection, MRefConn}, channels = [], options=Options}}.
+    {Connection, MRefConn} = get_new_connection(),
+    {ok, #state{connection={Connection, MRefConn}, channels = []}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -83,15 +77,9 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined, options=Options}=State) ->
-    Connection = case Options of
-		     undefined ->
-			 amqp_connection:start_network_link(get_options());
-		     Options ->
-			 amqp_connection:start_network_link(Options)
-		 end,
+handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined}=State) ->
+    {Connection, MRefConn} = get_new_connection(),
     format_log(info, "AMQP_MGR(~p): restart connection~n", [self()]),
-    MRefConn = erlang:monitor(process, Connection),
     handle_call(Req, From, State#state{connection={Connection, MRefConn}});
 handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn}, channels=Channels}=State) ->
     case lists:keysearch(Pid, 1, Channels) of
@@ -164,12 +152,17 @@ handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRe
     format_log(error, "AMQP_MGR(~p): Conn ~p went down (~p)~n", [self(), Pid, Reason]),
     {stop, Reason, State};
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=State) ->
-    case lists:keysearch(Pid, 1, Channels) of
+    format_log(error, "AMQP_MGR(~p): Channel ~p went down (~p)~n", [self(), Pid, _Reason]),
+    case lists:keyfind(Pid, 1, Channels) of
         {value, {Pid, Channel, _Ticket, MRef}} ->
-            #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close()),
-            NewChannels = lists:keydelete(Pid, 1, Channels),
-            erlang:demonitor(MRef),
-            {noreply, #state{channels = NewChannels}};
+            case erlang:is_process_alive(Channel) of
+		true ->
+		    #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close());
+		false ->
+		    ok
+	    end,
+	    erlang:demonitor(MRef),
+	    {noreply, #state{channels = lists:keydelete(Pid, 1, Channels)}};
         false ->
 	    {noreply, State}
     end;
@@ -216,3 +209,9 @@ close_all_channels([{_Pid, Channel, _Ticket, MRef} | T]) ->
     amqp_channel:call(Channel, ChannelClose),
     erlang:demonitor(MRef),
     close_all_channels(T).
+
+get_new_connection() ->
+    format_log(info, "AMQP_MGR(~p): open connection~n", [self()]),
+    Connection = amqp_connection:start_network_link(get_options()),
+    MRefConn = erlang:monitor(process, Connection),
+    {Connection, MRefConn}.

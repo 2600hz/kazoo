@@ -32,6 +32,7 @@ init([]) ->
 	 ?CHILD(ecallmgr_media_registry, worker)
 	 ,?CHILD(ecallmgr_auth, worker)
 	 ,?CHILD(ecallmgr_route, worker)
+	 ,?CHILD(ecallmgr_amqp, worker)
 	]
       }
     }.

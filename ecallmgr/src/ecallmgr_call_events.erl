@@ -30,22 +30,31 @@ loop(UUID, Amqp, CtlPid) ->
 	    publish_msg(Amqp, Data),
 	    loop(UUID, Amqp, CtlPid);
 	{call_event, {event, [ UUID | Data ] } } ->
-	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
+	    case get_value(<<"Event-Name">>, Data) of
+		<<"CHANNEL_EXECUTE">> ->
+		    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p: ~p~n~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data), evt_data(Data)]);
+		<<"CHANNEL_EXECUTE_COMPLETE">> ->
+		    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p: ~p~n~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data), evt_data(Data)]);
+		_ ->
+		    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)])
+	    end,
 	    publish_msg(Amqp, Data),
-	    send_ctl_event(CtlPid, UUID, get_value(<<"Event-Name">>, Data)),
+	    send_ctl_event(CtlPid, UUID, get_value(<<"Event-Name">>, Data), Data),
 	    loop(UUID, Amqp, CtlPid);
 	call_hangup ->
-	    format_log(info, "EVT(~p): Call Hangup~n", [self()]),
-	    CtlPid ! {hangup, UUID};
+	    CtlPid ! {hangup, UUID},
+	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
 	    loop(UUID, Amqp, CtlPid)
     end.
 
 %% let the ctl process know a command finished executing
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>) ->
-    CtlPid ! {execute_complete, UUID};
-send_ctl_event(_CtlPid, _UUID, _Evt) ->
+send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Data) ->
+    CtlPid ! {execute_complete, UUID, evt_data(Data)};
+send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE">>, Data) ->
+    CtlPid ! {execute, UUID, evt_data(Data)};
+send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
 publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
@@ -64,3 +73,6 @@ publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
 	{error, Msg} ->
 	    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
     end.
+
+evt_data(Data) ->
+    lists:foldl(fun(K, Acc) ->[{K, get_value(K, Data)} | Acc] end, [], [<<"Application">>, <<"Application-Data">>, <<"Application-Response">>]).
