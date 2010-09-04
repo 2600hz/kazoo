@@ -46,6 +46,7 @@
 				 ,{<<"playback">>, <<"tone">>}
 				 ,{<<"park">>, <<"park">>}
 				 ,{<<"set">>, <<"set">>}
+				 ,{<<"answer">>, <<"answer">>}
 				]).
 
 -define(CALL_EVENT_HEADERS, [<<"Event-Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).

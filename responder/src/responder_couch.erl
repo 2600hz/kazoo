@@ -19,6 +19,7 @@
 	 terminate/2, code_change/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
+-include("apps.hrl").
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 -import(logger, [log/2, format_log/3]).
@@ -130,11 +131,12 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    format_log(info, "RESPONDER: Recv Headers: ~p~nPayload: ~p~n", [Props, Payload]),
     case Props#'P_basic'.content_type of
 	<<"application/json">> ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    process_req(get_msg_type(Prop), Prop, State);
+	    format_log(info, "RESPONDER(~p): Recv Headers: ~p~nPayload: ~p~n"
+		       , [self(), Props#'P_basic'.content_type, get_value(<<"Event-Category">>, Prop)]),
+	    spawn(fun() -> process_req(get_msg_type(Prop), Prop, State) end);
 	_ContentType ->
 	    format_log(info, "RESPONDER: ~p recieved unknown msg type: ~p~n", [self(), _ContentType])
     end,
@@ -181,7 +183,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
     Domain = get_value(<<"Auth-Domain">>, Prop),
 
     %% do lookup
-    case User =:= <<"james">> of
+    case User =:= <<"james">> orelse User =:= <<"sipp">> of
 	false ->
 	    io:format("User ~p@~p not found~n", [User, Domain]);
 	true ->
@@ -196,7 +198,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
 		    ,{<<"Server-ID">>, Q}
 		    | Prop],
 	    {ok, JSON} = whistle_api:auth_resp(Data),
-	    io:format("RESPONDER: Directory JSON Resp: ~s~n", [JSON]),
+	    io:format("RESPONDER(~p): Directory JSON Resp: ~s~n", [self(), JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket)
     end;
 process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
@@ -226,7 +228,7 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
 		    ,{<<"Routes">>, [{struct, Route1}, {struct, Route2}]}
 		    | Prop],
 	    {ok, JSON} = whistle_api:route_resp(Data),
-	    io:format("RESPONDER: Dialplan JSON Resp: ~s~n", [JSON]),
+	    io:format("RESPONDER(~p): Dialplan JSON Resp: ~s~n", [self(), JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket);
 	<<"parker@192.168", _Rest/binary>> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
@@ -237,13 +239,24 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
 		    ,{<<"Routes">>, []}
 		    | Prop],
 	    {ok, JSON} = whistle_api:route_resp(Data),
-	    io:format("RESPONDER: Dialplan JSON Resp: ~s~n", [JSON]),
+	    io:format("RESPONDER(~p): Dialplan JSON Resp: ~s~n", [self(), JSON]),
+	    send_resp(JSON, RespQ, Channel, Ticket);
+	<<"1234@192.168", _Rest/binary>> ->
+	    RespQ = get_value(<<"Server-ID">>, Prop),
+	    Data = [{<<"App-Name">>, <<"responder_couch">>}
+		    ,{<<"App-Version">>, "0.1"}
+		    ,{<<"Method">>, <<"park">>}
+		    ,{<<"Server-ID">>, Q}
+		    ,{<<"Routes">>, []}
+		    | Prop],
+	    {ok, JSON} = whistle_api:route_resp(Data),
+	    io:format("RESPONDER(~p): Dialplan JSON Resp: ~s~n", [self(), JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket)
     end;
 process_req({<<"dialplan">>,<<"Call-Control">>}, Prop, State) ->
     spawn(fun() -> auto_attendant(Prop, State) end);
 process_req(_MsgType, _Prop, _State) ->
-    io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
+    io:format("RESPONDER(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
 
 send_resp(JSON, RespQ, Channel, Ticket) ->
     {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, RespQ, JSON, <<"application/json">>),
@@ -251,49 +264,7 @@ send_resp(JSON, RespQ, Channel, Ticket) ->
 
 auto_attendant(Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     UUID = get_value(<<"Call-ID">>, Prop),
-    Cmds = [ {<<"Application-Name">>, <<"queue">>}
-	     ,{<<"Event-Name">>, <<"dialplan">>}
-	     ,{<<"Call-ID">>, UUID}
-	     ,{<<"Commands">>, [
-				{struct, [{<<"Application-Name">>, <<"play">>}
-					  ,{<<"Call-ID">>, UUID}
-					  ,{<<"Media-Name">>, <<"voicemail/vm-record_message.wav">>}
-					  ,{<<"Terminators">>, ["#"]}
-					 ]}
-				,{struct, [{<<"Application-Name">>, <<"tone">>}
-					  ,{<<"Call-ID">>, UUID}
-					  ,{<<"Tones">>, [ {struct, [{<<"Frequencies">>, [800]}
-								     ,{<<"Duration-ON">>, 300}
-								     ,{<<"Duration-OFF">>, 0}
-								    ]
-							   }
-							 ]
-					   }
-					  ]}
-				,{struct, [{<<"Application-Name">>, <<"record">>}
-					   ,{<<"Call-ID">>, UUID}
-					   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
-					  ]}
-				,{struct, [{<<"Application-Name">>, <<"play">>}
-					   ,{<<"Call-ID">>, UUID}
-					   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
-					  ]}
-				%,{struct, [{<<"Application-Name">>, <<"store">>}
-				%	   ,{<<"Call-ID">>, UUID}
-				%	   ,{<<"Media-Name">>, list_to_binary(["recording-", UUID, ".wav"])}
-				%	   ,{<<"Media-Transfer-Method">>, <<"put">>}
-				%	   ,{<<"Media-Transfer-Destination">>
-				%		 ,list_to_binary(["http://localhost:5984/trunkstore/recordings/"
-				%				  , "recording-", UUID, ".wav?rev=1-8e9b72c3c8a1be8fbf62c8ca5247a40f"])
-				%	    }
-				%	   ,{<<"Additional-Headers">>, {struct, [{"Content-Type", "audio/x-wav"}]}}
-				%	  ]}
-				,{struct, [{<<"Application-Name">>, <<"hangup">>}
-					   ,{<<"Call-ID">>, UUID}
-					  ]}
-			       ]
-	      }
-	   ],
+    Cmds = ?CLUECON_DEMO(UUID),
     Amqp = {Channel, Ticket},
     DefProp = whistle_api:default_headers(Q, <<"Call-Control">>, <<"responder_couch">>, <<"0.1">>, UUID),
     consume_events(Channel, Ticket, get_value(<<"Event-Queue">>, Prop)),
