@@ -104,6 +104,17 @@ exec_cmd(Node, UUID, Prop, <<"tone">>) ->
     send_cmd(Node, UUID, "playback", Arg);
 exec_cmd(Node, UUID, _Prop, <<"answer">>) ->
     send_cmd(Node, UUID, "answer", "");
+exec_cmd(Node, UUID, _Prop, <<"park">>) ->
+    send_cmd(Node, UUID, "park", "");
+exec_cmd(Node, UUID, Prop, <<"sleep">>) ->
+    send_cmd(Node, UUID, "sleep", integer_to_list(<<"Amount">>, Prop));
+exec_cmd(Node, UUID, Prop, <<"say">>) ->
+    Lang = get_value(<<"Language">>, Prop),
+    Type = get_value(<<"Type">>, Prop),
+    Method = get_value(<<"Method">>, Prop),
+    Txt = get_value(<<"Say-Text">>, Prop),
+    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
+    send_cmd(Node, UUID, "say", Arg);
 exec_cmd(Node, UUID, Prop, <<"bridge">>) ->
     set_timeout(Node, UUID, get_value(<<"Timeout">>, Prop)),
     set_bypass_media(Node, UUID, get_value(<<"Bypass-Media">>, Prop)),

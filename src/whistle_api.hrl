@@ -46,6 +46,9 @@
 				 ,{<<"playback">>, <<"tone">>}
 				 ,{<<"park">>, <<"park">>}
 				 ,{<<"set">>, <<"set">>}
+				 ,{<<"say">>, <<"say">>}
+				 ,{<<"sleep">>, <<"sleep">>}
+				 ,{<<"bridge">>, <<"bridge">>}
 				 ,{<<"answer">>, <<"answer">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				]).
