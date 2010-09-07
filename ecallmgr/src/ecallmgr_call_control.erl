@@ -30,10 +30,11 @@ init(Node, UUID, {Channel, Ticket, CtlQueue}) ->
 loop(Node, UUID, CmdQ, CurrApp, CtlQ) ->
     format_log(info, "CONTROL(~p): entered loop(~p)~n", [self(), CurrApp]),
     receive
-	{#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}} ->
+	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
+				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "CONTROL(~p): Recv Content ~p Data:~p~n"
-		       ,[self(), Props#'P_basic'.content_type, get_value(<<"Application-Name">>, Prop)]),
+	    format_log(info, "CONTROL(~p): Recv App Cmd:~p~n"
+		       ,[self(), get_value(<<"Application-Name">>, Prop)]),
 	    case get_value(<<"Application-Name">>, Prop) of
 		<<"queue">> -> %% list of commands that need to be added
 		    DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers

@@ -27,25 +27,25 @@ exec_cmd(Node, UUID, Prop) ->
 
 -spec(exec_cmd/4 :: (Node :: list(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> no_return()).
 exec_cmd(Node, UUID, Prop, <<"play">>) ->
-    Tmp = get_value(<<"Media-Name">>, Prop),
-    F = case ecallmgr_media_registry:is_registered(UUID, Tmp) of
-	    {true, GenName} -> get_media_path(GenName);
-	    false -> binary_to_list(Tmp)
-	end,
+    F = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
     set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
-    format_log(info, "CONTROL(~p): CMD: Play F: ~p~n", [self(), F]),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", "playback"}
-				    ,{"execute-app-arg", F}
-				   ]);
+    send_cmd(Node, UUID, "playback", F);
 exec_cmd(Node, UUID, _Prop, <<"hangup">>) ->
-    format_log(info, "CONTROL(~p): CMD: Hangup~n", [self()]),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", "hangup"}
-				    ,{"execute-app-arg", ""}
-				   ]);
+    send_cmd(Node, UUID, "hangup", "");
+exec_cmd(Node, UUID, Prop, <<"play_and_collect_digits">>) ->
+    Min = get_value(<<"Minimum-Digits">>, Prop),
+    Max = get_value(<<"Maximum-Digits">>, Prop),
+    Timeout = get_value(<<"Timeout">>, Prop),
+    Terminators = get_value(<<"Terminators">>, Prop),
+    Media = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
+    InvalidMedia = media_path(UUID, get_value(<<"Failed-Media-Name">>, Prop)),
+    Tries = get_value(<<"Media-Tries">>, Prop),
+    Regex = get_value(<<"Digits-Regex">>, Prop),
+    Storage = get_value(<<"Storage-Name">>, Prop, <<"ignore">>),
+    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " ",
+			   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
+    send_cmd(Node, UUID, "play_and_get_digits", Data);
 exec_cmd(Node, UUID, Prop, <<"record">>) ->
-    format_log(info, "CONTROL(~p): CMD: Record~n", [self()]),
     Name = get_value(<<"Media-Name">>, Prop),
     Path = get_media_path(ecallmgr_media_registry:register_name(UUID, Name)),
     RecArg = binary_to_list(list_to_binary([Path, " "
@@ -54,10 +54,7 @@ exec_cmd(Node, UUID, Prop, <<"record">>) ->
 					    ,get_value(<<"Silence-Hits">>, Prop, "3")
 					   ])),
     set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", "record"}
-				    ,{"execute-app-arg", RecArg}
-				   ]);
+    send_cmd(Node, UUID, "record", RecArg);
 exec_cmd(_Node, UUID, Prop, <<"store">>) ->
     Name = get_value(<<"Media-Name">>, Prop),
     case ecallmgr_media_registry:is_registered(UUID, Name) of
@@ -87,7 +84,6 @@ exec_cmd(_Node, UUID, Prop, <<"store">>) ->
 	    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
     end;
 exec_cmd(Node, UUID, Prop, <<"tone">>) ->
-    format_log(info, "CONTROL(~p): Tone~n", [self()]),
     Tones = get_value(<<"Tones">>, Prop, {struct, []}),
     FSTones = lists:map(fun({struct, Tone}) ->
 				Vol = case get_value(<<"Volume">>, Tone) of
@@ -105,19 +101,10 @@ exec_cmd(Node, UUID, Prop, <<"tone">>) ->
 				binary_to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
 			end, Tones),
     Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
-    format_log(info, "CONTROL(~p): Tone stream : ~p~n", [self(), Arg]),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", "playback"}
-				    ,{"execute-app-arg", Arg}
-				   ]);
+    send_cmd(Node, UUID, "playback", Arg);
 exec_cmd(Node, UUID, _Prop, <<"answer">>) ->
-    format_log(info, "CONTROL(~p): Answer~n", [self()]),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", "answer"}
-				    ,{"execute-app-arg", ""}
-				   ]);
+    send_cmd(Node, UUID, "answer", "");
 exec_cmd(Node, UUID, Prop, <<"bridge">>) ->
-    format_log(info, "CONTROL(~p): Bridge~n", [self()]),
     set_timeout(Node, UUID, get_value(<<"Timeout">>, Prop)),
     set_bypass_media(Node, UUID, get_value(<<"Bypass-Media">>, Prop)),
     set_eff_call_id_name(Node, UUID, get_value(<<"Outgoing-Caller-ID-Name">>, Prop)),
@@ -129,17 +116,23 @@ exec_cmd(Node, UUID, Prop, <<"bridge">>) ->
 		    end,
     DialStrings = lists:map(fun get_bridge_endpoint/1, get_value(<<"Endpoints">>, Prop)),
     BridgeCmd = string:join(DialStrings, DialSeparator),
-    format_log(info, "CONTROL(~p): BridgeCmd: ~p~n", [self(), BridgeCmd]),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", "bridge"}
-				    ,{"execute-app-arg", BridgeCmd}
-				   ]);
+    send_cmd(Node, UUID, "bridge", BridgeCmd);
 exec_cmd(_Node, _UUID, _Prop, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
 
 %%%===================================================================
 %%% Internal helper functions
 %%%===================================================================
+%% send the SendMsg proplist to the freeswitch node
+-spec(send_cmd/4 :: (Node :: binary(), UUID :: binary(), AppName :: string(), Args :: string()) -> no_return()).
+send_cmd(Node, UUID, AppName, Args) when is_binary(Args) ->
+    send_cmd(Node, UUID, AppName, binary_to_list(Args));
+send_cmd(Node, UUID, AppName, Args) ->
+    format_log(info, "CONTROL(~p): SendMsg: App: ~p Args: ~p~n", [self(), AppName, Args]),
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+				    ,{"execute-app-name", AppName}
+				    ,{"execute-app-arg", Args}
+				   ]).
 
 %% take an endpoint (/sofia/foo/bar), and optionally a caller id name and number
 %% and create the dial string ([origination_caller_id_name=Name,origination_caller_id_number=Num]Endpoint)
@@ -149,16 +142,23 @@ get_bridge_endpoint({struct, EndProp}) ->
     CIDNumber = get_value(<<"Caller-ID-Number">>, EndProp),
     EndPoint = get_value(<<"Endpoint">>, EndProp),
     EP = case {CIDName, CIDNumber} of
-		   {undefined, undefined} -> EndPoint;
-		   {undefined, Num} -> list_to_binary(["[origination_caller_id_number=", Num, "]", EndPoint]);
-		   {Name, undefined} -> list_to_binary(["[origination_caller_id_name=", Name, "]", EndPoint]);
-		   {Name, Num} ->
-		       list_to_binary(["[origination_caller_id_name=", Name
-				       , ",origination_caller_id_number=", Num, "]"
-				       ,EndPoint
-				      ])
-	       end,
+	     {undefined, undefined} -> EndPoint;
+	     {undefined, Num} -> list_to_binary(["[origination_caller_id_number=", Num, "]", EndPoint]);
+	     {Name, undefined} -> list_to_binary(["[origination_caller_id_name=", Name, "]", EndPoint]);
+	     {Name, Num} ->
+		 list_to_binary(["[origination_caller_id_name=", Name
+				 , ",origination_caller_id_number=", Num, "]"
+				 ,EndPoint
+				])
+	 end,
     binary_to_list(EP).
+
+-spec(media_path/2 :: (UUID :: binary(), Name :: binary()) -> list()).
+media_path(UUID, Name) ->
+    case ecallmgr_media_registry:is_registered(UUID, Name) of
+	{true, GenName} -> get_media_path(GenName);
+	false -> binary_to_list(Name)
+    end.
 
 -spec(get_media_path/1 :: (Name :: binary()) -> string()).
 get_media_path(Name) ->
@@ -273,18 +273,15 @@ set_timeout(Node, UUID, N) when is_integer(N) ->
     set_timeout(Node, UUID, integer_to_list(N));
 set_timeout(Node, UUID, N) ->
     Timeout = [ $c,$a,$l,$l,$_,$t,$i,$m,$e,$o,$u,$t,$= | N],
-    format_log(info, "CONTROL(~p): Timeout: ~p~n", [self(), Timeout]),
     set(Node, UUID, Timeout).
 
 -spec(set_terminators/3 :: (Node :: binary(), UUID :: binary(), Terminators :: undefined | binary()) -> no_return()).
 set_terminators(_Node, _UUID, undefined) ->
     ok;
 set_terminators(Node, UUID, <<"">>) ->
-    format_log(info, "CONTROL(~p): Set Terminators: ~p~n", [self(), "none"]),
     set(Node, UUID, "none");
 set_terminators(Node, UUID, Ts) ->
     Terms = binary_to_list(list_to_binary(["playback_terminators=", Ts])),
-    format_log(info, "CONTROL(~p): Set Terminators: ~p~n", [self(), Terms]),
     set(Node, UUID, Terms).
 
 -spec(set_ringback/3 :: (Node :: binary(), UUID :: binary(), RingBack :: undefined | binary()) -> no_return()).
@@ -292,12 +289,8 @@ set_ringback(_Node, _UUID, undefined) ->
     ok;
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=${", RingBack, "}"]),
-    format_log(info, "CONTROL(~p): Ringback: ~p~n", [RB]),
     set(Node, UUID, binary_to_list(RB)).
 
 -spec(set/3 :: (Node :: binary(), UUID :: binary(), Arg :: list()) -> no_return()).
 set(Node, UUID, Arg) ->
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", "set"}
-				    ,{"execute-app-arg", Arg}
-				   ]).
+    send_cmd(Node, UUID, "set", Arg).

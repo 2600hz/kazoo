@@ -47,6 +47,7 @@
 				 ,{<<"park">>, <<"park">>}
 				 ,{<<"set">>, <<"set">>}
 				 ,{<<"answer">>, <<"answer">>}
+				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				]).
 
 -define(CALL_EVENT_HEADERS, [<<"Event-Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).

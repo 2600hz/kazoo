@@ -30,8 +30,8 @@ loop(UUID, Amqp, CtlPid) ->
 	    publish_msg(Amqp, Data),
 	    loop(UUID, Amqp, CtlPid);
 	{call_event, {event, [ UUID | Data ] } } ->
-	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p: ~p~n"
-		       ,[self(), UUID, get_value(<<"Event-Name">>, Data)]),
+	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p~n"
+		       ,[self(), UUID, get_value(<<"Application">>, Data), get_value(<<"Event-Name">>, Data)]),
 	    publish_msg(Amqp, Data),
 	    send_ctl_event(CtlPid, UUID, get_value(<<"Event-Name">>, Data), get_value(<<"Application">>, Data)),
 	    loop(UUID, Amqp, CtlPid);
@@ -46,14 +46,12 @@ loop(UUID, Amqp, CtlPid) ->
 %% let the ctl process know a command finished executing
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
     CtlPid ! {execute_complete, UUID, AppName};
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE">>, AppName) ->
-    CtlPid ! {execute, UUID, AppName};
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
 publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
-    DefProp = whistle_api:default_headers(EvtQueue, <<"Call-Event">>, <<"ecallmgr.event">>, <<"0.1">>
-					      , get_value(<<"Event-Date-Timestamp">>, Prop)),
+    DefProp = whistle_api:default_headers(EvtQueue, <<"Call-Event">>, <<"ecallmgr.event">>
+					      ,<<"0.1">>, get_value(<<"Event-Date-Timestamp">>, Prop)),
     Data = Prop ++ DefProp,
     case whistle_api:call_event(Data) of
 	{ok, JSON} ->

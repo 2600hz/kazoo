@@ -93,5 +93,6 @@ specific_response(403) ->
 
 -spec(get_customer_info/1 :: (Uri :: binary()) -> proplist()).
 get_customer_info(Uri) ->
+    %% Use the LookUpIpAuth view
     %% couch lookup on Uri
     [].
