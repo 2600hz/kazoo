@@ -59,8 +59,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     application:start(amqp),
+    application:start(dynamic_compile),
+    application:start(log_roller),
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    format_log(info, "RSCMGR_REQ: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
+    format_log(info, "RESPONDER(~p): Channel open to MQ: ~p Ticket: ~p~n", [self(), Channel, Ticket]),
 
     amqp_channel:cast(Channel, amqp_util:broadcast_exchange(Ticket)),
     amqp_channel:cast(Channel, amqp_util:targeted_exchange(Ticket)),

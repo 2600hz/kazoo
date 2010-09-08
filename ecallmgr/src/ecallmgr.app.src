@@ -10,6 +10,7 @@
        ,crypto
        ,sasl
        ,amqp
+       ,log_roller
       ]}
    ,{mod, { ecallmgr_app
 	    ,[

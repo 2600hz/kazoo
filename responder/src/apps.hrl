@@ -6,15 +6,15 @@
 					  {struct, [{<<"Application-Name">>, <<"answer">>}
 						    ,{<<"Call-ID">>, UUID}
 						   ]}
-					  ,{struct, [{<<"Application-Name">>, <<"play">>}
-						     ,{<<"Call-ID">>, UUID}
-						     ,{<<"Media-Name">>, <<"voicemail/vm-record_message.wav">>}
-						     ,{<<"Terminators">>, ["#"]}
-						    ]}
+					  %,{struct, [{<<"Application-Name">>, <<"play">>}
+					%	     ,{<<"Call-ID">>, UUID}
+					%	     ,{<<"Media-Name">>, <<"voicemail/vm-record_message.wav">>}
+					%	     ,{<<"Terminators">>, ["#"]}
+					%	    ]}
 					  ,{struct, [{<<"Application-Name">>, <<"tone">>}
 						     ,{<<"Call-ID">>, UUID}
 						     ,{<<"Tones">>, [ {struct, [{<<"Frequencies">>, [800]}
-										,{<<"Duration-ON">>, 300}
+										,{<<"Duration-ON">>, 500}
 										,{<<"Duration-OFF">>, 0}
 									       ]
 								      }

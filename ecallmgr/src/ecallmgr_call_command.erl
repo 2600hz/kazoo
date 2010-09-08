@@ -139,7 +139,8 @@ exec_cmd(_Node, _UUID, _Prop, _App) ->
 send_cmd(Node, UUID, AppName, Args) when is_binary(Args) ->
     send_cmd(Node, UUID, AppName, binary_to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->
-    format_log(info, "CONTROL(~p): SendMsg: App: ~p Args: ~p~n", [self(), AppName, Args]),
+    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n"
+	       ,[self(), Node, UUID, AppName, Args]),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
 				    ,{"execute-app-name", AppName}
 				    ,{"execute-app-arg", Args}
