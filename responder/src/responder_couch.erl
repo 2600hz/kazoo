@@ -230,7 +230,7 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
 	    {ok, JSON} = whistle_api:route_resp(Data),
 	    io:format("RESPONDER(~p): Dialplan JSON Resp: ~s~n", [self(), JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket);
-	<<"parker@192.168", _Rest/binary>> ->
+	<<"parker@", _Rest/binary>> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    Data = [{<<"App-Name">>, <<"responder_couch">>}
 		    ,{<<"App-Version">>, "0.1"}
