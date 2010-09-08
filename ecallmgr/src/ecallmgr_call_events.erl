@@ -61,7 +61,7 @@ publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
 						      ,<<"application/json">>
 						     ),
 	    %% execute the publish command
-	    amqp_channel:call(Channel, BP, AmqpMsg);
+	    amqp_channel:cast(Channel, BP, AmqpMsg);
 	{error, Msg} ->
 	    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
     end.

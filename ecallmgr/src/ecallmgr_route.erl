@@ -188,7 +188,7 @@ lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, U
     format_log(info, "ROUTE(~p): JSON REQ: ~s~n", [self(), JSON]),
 
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
-    amqp_channel:call(Channel, BP, AmqpMsg),
+    amqp_channel:cast(Channel, BP, AmqpMsg),
 
     case recv_response(ID) of
 	timeout ->
@@ -227,23 +227,23 @@ recv_response(ID) ->
     end.
 
 bind_q(Channel, Ticket, ID) ->
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
+    amqp_channel:cast(Channel, amqp_util:targeted_exchange(Ticket)),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, ID)),
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
+    amqp_channel:cast(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
     Queue.
 
 %% creates the event and control queues for the call, spins up the event handler
 %% to pump messages to the queue, and returns the control queue
 bind_channel_qs(Channel, Ticket, UUID, Node) ->
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:callevt_exchange(Ticket)),
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:callctl_exchange(Ticket)),
+    amqp_channel:cast(Channel, amqp_util:callevt_exchange(Ticket)),
+    amqp_channel:cast(Channel, amqp_util:callctl_exchange(Ticket)),
 
     #'queue.declare_ok'{queue = EvtQueue} = amqp_channel:call(Channel, amqp_util:new_callevt_queue(Ticket, UUID)),
     #'queue.declare_ok'{queue = CtlQueue} = amqp_channel:call(Channel, amqp_util:new_callctl_queue(Ticket, UUID)),
 
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_callevt(Ticket, EvtQueue, EvtQueue)),
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_callctl(Ticket, CtlQueue, CtlQueue)),
+    amqp_channel:cast(Channel, amqp_util:bind_q_to_callevt(Ticket, EvtQueue, EvtQueue)),
+    amqp_channel:cast(Channel, amqp_util:bind_q_to_callctl(Ticket, CtlQueue, CtlQueue)),
 
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Channel, Ticket, CtlQueue}),
     ecallmgr_call_events:start(Node, UUID, {Channel, Ticket, EvtQueue}, CtlPid),
@@ -262,7 +262,7 @@ send_control_queue(Channel, Ticket, CtlProp, AppQ, EvtQ) ->
 					      ),
     %% execute the publish command
     format_log(info, "ROUTE(~p): Sending AppQ(~p) AmqpMsg:~n~p~n", [self(), AppQ, Payload]),
-    amqp_channel:call(Channel, BP, AmqpMsg).
+    amqp_channel:cast(Channel, BP, AmqpMsg).
 
 %% Prop = Route Response
 generate_xml(<<"bridge">>, Routes, _Prop) ->
@@ -306,6 +306,7 @@ get_channel_vars({_K, _V}, Vars) ->
 setup_fs_conn(Node, State) ->
     case net_adm:ping(Node) of
 	pong ->
+	    format_log(info, "ROUTE(~p): Found ~p~n", [self(), Node]),
 	    {ok, Pid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, lookup_dialplan, State),
 	    link(Pid),
 	    undefined;

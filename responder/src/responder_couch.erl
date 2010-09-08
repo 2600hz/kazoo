@@ -62,8 +62,8 @@ init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     format_log(info, "RSCMGR_REQ: Channel open to MQ: ~p Ticket: ~p~n", [Channel, Ticket]),
 
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
+    amqp_channel:cast(Channel, amqp_util:broadcast_exchange(Ticket)),
+    amqp_channel:cast(Channel, amqp_util:targeted_exchange(Ticket)),
 
     #'queue.declare_ok'{queue = BroadQueue} =
 	amqp_channel:call(Channel
@@ -74,8 +74,8 @@ init([]) ->
 			  ,amqp_util:new_targeted_queue(Ticket, ["responder_couch.", net_adm:localhost()])),
 
     %% Bind the queue to an exchange
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, TarQueue)),
+    amqp_channel:cast(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
+    amqp_channel:cast(Channel, amqp_util:bind_q_to_targeted(Ticket, TarQueue)),
     format_log(info, "RESPONDER Bound ~p and ~p~n", [BroadQueue, TarQueue]),
 
     %% Register a consumer to listen to the queue

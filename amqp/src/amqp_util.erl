@@ -117,25 +117,27 @@ new_exchange(Ticket, Exchange, Type, Options) ->
 	      ,durable = get_value(durable, Options, false)
 	      ,auto_delete = get_value(auto_delete, Options, false)
 	      ,internal = get_value(internal, Options, false)
-	      ,nowait = get_value(nowait, Options, false)
+	      ,nowait = get_value(nowait, Options, true)
 	      ,arguments = get_value(arguments, Options, [])
 	     }.
 
 new_targeted_queue(Ticket, QueueName) ->
-    new_queue(Ticket, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])).
+    new_queue(Ticket, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])
+	      ,[{nowait, false}]).
 
 new_broadcast_queue(Ticket, QueueName) ->
-    new_queue(Ticket, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName])).
+    new_queue(Ticket, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName])
+	      ,[{nowait, false}]).
 
 new_callevt_queue(Ticket, CallId) ->
     new_queue(Ticket
 	      ,list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
-	      ,[{exclusive, false}, {auto_delete, true}]).
+	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 new_callctl_queue(Ticket, CallId) ->
     new_queue(Ticket
 	      ,list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
-	      ,[{exclusive, false}, {auto_delete, true}]).
+	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 %% Declare a queue
 new_queue(Ticket, Queue) ->
@@ -150,7 +152,7 @@ new_queue(Ticket, Queue, Prop) ->
 	   ,durable = get_value(durable, Prop, false)
 	   ,exclusive = get_value(exclusive, Prop, true)
 	   ,auto_delete = get_value(auto_delete, Prop, true)
-	   ,nowait = get_value(nowait, Prop, false)
+	   ,nowait = get_value(nowait, Prop, true)
 	   ,arguments = get_value(arguments, Prop, [])
 	  }.
 
@@ -174,7 +176,7 @@ delete_queue(Ticket, Queue, Prop) ->
 		    ,queue=Queue
 		    ,if_unused = get_value(if_unused, Prop, false)
 		    ,if_empty = get_value(if_empty, Prop, false)
-		    ,nowait = get_value(nowait, Prop, false)
+		    ,nowait = get_value(nowait, Prop, true)
 		   }.
 
 %% Bind a Queue to an Exchange (with optional Routing Key)
@@ -221,7 +223,7 @@ bind_q_to_exchange(Ticket, Queue, Routing, Exchange) ->
 		   ,queue = Queue
 		   ,exchange = Exchange
 		   ,routing_key = Routing
-		   ,nowait = false
+		   ,nowait = true
 		   ,arguments = []
 		 }.
 
@@ -293,5 +295,5 @@ queue_delete(Ticket, Queue, Prop) ->
 	      ,queue=Queue
 	      ,if_unused=get_value(if_unused, Prop, false)
 	      ,if_empty = get_value(if_empty, Prop, false)
-	      ,nowait = get_value(nowait, Prop, false)
+	      ,nowait = get_value(nowait, Prop, true)
 	     }.
