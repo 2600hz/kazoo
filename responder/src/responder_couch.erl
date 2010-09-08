@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {channel, ticket, my_queue}).
+-record(state, {channel, ticket, my_queue, b_queue}).
 
 %%%===================================================================
 %%% API
@@ -86,7 +86,7 @@ init([]) ->
 
     format_log(info, "RESPONDER: Consuming on B(~p) and T(~p)~n", [BroadQueue, TarQueue]),
 
-    {ok, #state{channel=Channel, ticket=Ticket, my_queue=TarQueue}}.
+    {ok, #state{channel=Channel, ticket=Ticket, my_queue=TarQueue, b_queue=BroadQueue}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,7 +159,12 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{channel=Channel, ticket=Ticket, my_queue=TQ, b_queue=BQ}) ->
+    TQD = amqp_util:queue_delete(Ticket, TQ),
+    amqp_channel:cast(Channel, TQD),
+
+    BQD = amqp_util:queue_delete(Ticket, BQ),
+    amqp_channel:cast(Channel, BQD),
     ok.
 
 %%--------------------------------------------------------------------
@@ -206,7 +211,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
 process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     %% replace this with a couch lookup
     case get_value(<<"To">>, Prop) of
-	<<"james@192.168.0.198">> ->
+	<<"james@", _Rest/binary>> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    Route1 = whistle_api:route_resp_route([{<<"Route">>, <<"sip:4158867900@pbx.switchfreedom.com">>}
 					       ,{<<"Media">>, <<"process">>}

@@ -224,7 +224,7 @@ bind_q(Channel, Ticket, ID) ->
     Queue.
 
 a1hash(User, Realm, Password) ->
-    format_log(info, "AUTH(~p): a1hashing ~p:~p:~p~n", [User, Realm, Password]),
+    format_log(info, "AUTH(~p): a1hashing ~p:~p:~p~n", [self(), User, Realm, Password]),
     to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 to_hex(Bin) when is_binary(Bin) ->
