@@ -107,7 +107,7 @@ exec_cmd(Node, UUID, _Prop, <<"answer">>) ->
 exec_cmd(Node, UUID, _Prop, <<"park">>) ->
     send_cmd(Node, UUID, "park", "");
 exec_cmd(Node, UUID, Prop, <<"sleep">>) ->
-    send_cmd(Node, UUID, "sleep", integer_to_list(<<"Amount">>, Prop));
+    send_cmd(Node, UUID, "sleep", integer_to_list(get_value(<<"Amount">>, Prop)));
 exec_cmd(Node, UUID, Prop, <<"say">>) ->
     Lang = get_value(<<"Language">>, Prop),
     Type = get_value(<<"Type">>, Prop),

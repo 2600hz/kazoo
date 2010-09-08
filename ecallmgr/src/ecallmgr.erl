@@ -11,6 +11,8 @@ start_link() ->
     ensure_started(crypto),
     ensure_started(amqp),
     ensure_started(ibrowse),
+    ensure_started(dynamic_compile),
+    ensure_started(log_roller),
     ecallmgr_sup:start_link().
 
 %% @spec start() -> ok
@@ -21,6 +23,8 @@ start() ->
     ensure_started(crypto),
     ensure_started(amqp),
     ensure_started(ibrowse),
+    ensure_started(dynamic_compile),
+    ensure_started(log_roller),
     application:start(ecallmgr).
 
 %% @spec stop() -> ok
