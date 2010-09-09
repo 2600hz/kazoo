@@ -39,6 +39,7 @@ loop(UUID, Amqp, CtlPid) ->
 	    loop(UUID, Amqp, CtlPid);
 	call_hangup ->
 	    CtlPid ! {hangup, UUID},
+	    remove_queue(Amqp),
 	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
@@ -50,6 +51,11 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
     CtlPid ! {execute_complete, UUID, AppName};
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
+
+remove_queue({Channel, Ticket, EvtQueue}) ->
+    QD = amqp_util:queue_delete(Ticket, EvtQueue),
+    format_log(info, "EVT(~p): Delete Queue ~p~n", [self(), QD]),
+    amqp_channel:cast(Channel, QD).
 
 publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
     case lists:member(get_value(<<"Event-Name">>, Prop), ?FS_EVENTS) of
@@ -65,7 +71,7 @@ publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
 							      ,<<"application/json">>
 							     ),
 		    %% execute the publish command
-		    amqp_channel:cast(Channel, BP, AmqpMsg);
+		    amqp_channel:call(Channel, BP, AmqpMsg);
 		{error, Msg} ->
 		    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
 	    end;

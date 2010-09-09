@@ -194,7 +194,10 @@ lookup_user(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Data) ->
 	{ok, JSON} ->
 	    format_log(info, "L/U(~p): JSON AUTH_REQ: ~s~n", [self(), JSON]),
 	    send_request(Channel, Ticket, JSON),
-	    handle_response(ID, Data);
+	    handle_response(ID, Data),
+	    QD = amqp_util:queue_delete(Ticket, Q),
+	    format_log(info, "L/U(~p): Delete Queue ~p~n", [self(), QD]),
+	    amqp_channel:cast(Channel, QD);
 	{error, _Msg} ->
 	    format_log(error, "L/U(~p): Auth_Req API error ~p~n", [self(), _Msg])
     end.
