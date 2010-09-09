@@ -63,7 +63,8 @@ send_fetch_response(ID, Response) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    Node = list_to_atom(lists:concat(["freeswitch@", net_adm:localhost()])),
+    %Node = list_to_atom(lists:concat(["freeswitch@", net_adm:localhost()])),
+    Node = 'freeswitch@fs1.voicebus.net',
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     State = #state{fs_node=Node, channel=Channel, ticket=Ticket, app_vsn=list_to_binary(Vsn)},

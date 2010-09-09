@@ -211,7 +211,7 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, #state{channel=Channe
 process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket, my_queue=Q}) ->
     %% replace this with a couch lookup
     case get_value(<<"To">>, Prop) of
-	<<"james@", _Rest/binary>> ->
+	<<"james", _Rest/binary>> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    Route1 = whistle_api:route_resp_route([{<<"Route">>, <<"sip:4158867900@pbx.switchfreedom.com">>}
 					       ,{<<"Media">>, <<"process">>}
@@ -248,7 +248,7 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel,
 	    {ok, JSON} = whistle_api:route_resp(Data),
 	    io:format("RESPONDER(~p): Dialplan JSON Resp: ~s~n", [self(), JSON]),
 	    send_resp(JSON, RespQ, Channel, Ticket);
-	<<"1234@192.168", _Rest/binary>> ->
+	<<"2222@", _Rest/binary>> ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    Data = [{<<"App-Name">>, <<"responder_couch">>}
 		    ,{<<"App-Version">>, "0.1"}

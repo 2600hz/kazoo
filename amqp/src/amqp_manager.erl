@@ -59,7 +59,7 @@ stop() ->
 get_options() ->
     #'amqp_params'{
       port=5672
-      ,host="fs1.voicebus.net"
+      ,host="fs2.voicebus.net"
      }.
 
 init([]) ->
