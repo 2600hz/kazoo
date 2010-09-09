@@ -68,4 +68,6 @@
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Filename">>]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Playback-Terminators">>]).
 
+-define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>]).
+
 -type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs

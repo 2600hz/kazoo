@@ -11,6 +11,8 @@
 
 -export([start/4, init/4]).
 
+-include("whistle_api.hrl").
+
 -import(logger, [log/2, format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
@@ -50,18 +52,23 @@ send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
 publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
-    DefProp = whistle_api:default_headers(EvtQueue, <<"Call-Event">>, <<"ecallmgr.event">>
-					      ,<<"0.1">>, get_value(<<"Event-Date-Timestamp">>, Prop)),
-    Data = Prop ++ DefProp,
-    case whistle_api:call_event(Data) of
-	{ok, JSON} ->
-	    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
-						      ,EvtQueue
-						      ,list_to_binary(JSON)
-						      ,<<"application/json">>
-						     ),
-	    %% execute the publish command
-	    amqp_channel:cast(Channel, BP, AmqpMsg);
-	{error, Msg} ->
-	    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
+    case lists:member(get_value(<<"Event-Name">>, Prop), ?FS_EVENTS) of
+	true ->
+	    DefProp = whistle_api:default_headers(EvtQueue, <<"Call-Event">>, <<"ecallmgr.event">>
+						      ,<<"0.1">>, get_value(<<"Event-Date-Timestamp">>, Prop)),
+	    Data = Prop ++ DefProp,
+	    case whistle_api:call_event(Data) of
+		{ok, JSON} ->
+		    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
+							      ,EvtQueue
+							      ,list_to_binary(JSON)
+							      ,<<"application/json">>
+							     ),
+		    %% execute the publish command
+		    amqp_channel:cast(Channel, BP, AmqpMsg);
+		{error, Msg} ->
+		    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
+	    end;
+	false ->
+	    ok
     end.
