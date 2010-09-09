@@ -160,7 +160,7 @@ code_change(_OldVsn, State, _Extra) ->
 lookup_dialplan(Node, State) ->
     receive
 	{fetch, dialplan, _Tag, _Key, _Value, ID, [UUID | Data]} ->
-	    format_log(info, "ROUTE(~p): fetch dialplan: Id: ~p UUID: ~p~nData: ~p~n", [self(), ID, UUID, Data]),
+	    format_log(info, "ROUTE(~p): fetch dialplan: Id: ~p UUID: ~p~n", [self(), ID, UUID]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
 		    spawn(fun() -> lookup_dialplan(Node, State, ID, UUID, Data) end);
@@ -207,7 +207,8 @@ lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, U
 	    send_control_queue(Channel, Ticket
 			       , [{<<"Call-ID">>, UUID} |  CtlProp]
 			       , get_value(<<"Server-ID">>, Prop), EvtQ)
-    end.
+    end,
+    ecallmgr_amqp:delete_queue(Q).
 
 recv_response(ID) ->
     receive

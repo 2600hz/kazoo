@@ -7,8 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(amqp_manager).
 
--compile(export_all).
-
 -include("../include/amqp_client/include/amqp_client.hrl").
 
 -import(logger, [log/2, format_log/3]).
