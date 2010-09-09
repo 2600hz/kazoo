@@ -119,8 +119,12 @@ handle_info(find_fs_node, #state{fs_node=Node, timer_ref=TRef}=State) ->
     timer:cancel(TRef),
     TRef1 = setup_fs_conn(Node, State),
     {noreply, State#state{timer_ref=TRef1}};
+handle_info({'EXIT', Channel, noconnection}, #state{channel=Channel}=State) ->
+    format_log(error, "ROUTE(~p): Channel(~p) went down~n", [self(), Channel]),
+    {ok, Channel1, Ticket1} = amqp_manager:open_channel(self()),
+    {noreply, State#state{channel=Channel1, ticket=Ticket1}};
 handle_info(_Info, State) ->
-    format_log(info, "ROUTE(~p): Unhandled Info: ~p~n", [self(), _Info]),
+    format_log(info, "ROUTE(~p): Unhandled Info: ~p~nState: ~p~n", [self(), _Info, State]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
