@@ -11,7 +11,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_user/2, send_fetch_response/2]).
+-export([start_link/0, add_fs_node/1, rm_fs_node/1]).
+-export([fetch_user/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -25,7 +26,9 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {fs_node, channel, ticket, app_vsn, timer_ref}).
+%% fs_nodes = [{FSNode, HandlerPid}]
+-record(auth_state, {fs_nodes=[]}).
+-record(handler_state, {fs_node, channel, ticket, app_vsn, lookups=[]}).
 
 %%%===================================================================
 %%% API
@@ -41,8 +44,11 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-send_fetch_response(ID, Response) ->
-    gen_server:cast(?MODULE, {send_fetch_response, ID, Response}).
+add_fs_node(Node) ->
+    gen_server:call(?MODULE, {add_fs_node, Node}).
+
+rm_fs_node(Node) ->
+    gen_server:call(?MODULE, {rm_fs_node, Node}).
 
 %% see lookup_user/2 after gen_server callbacks
 
@@ -63,14 +69,7 @@ send_fetch_response(ID, Response) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    %Node = list_to_atom(lists:concat(["freeswitch@", net_adm:localhost()])),
-    Node = 'freeswitch@fs1.voicebus.net',
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    State = #state{fs_node=Node, channel=Channel, ticket=Ticket, app_vsn=list_to_binary(Vsn)},
-    TRef = setup_fs_conn(Node, State),
-    format_log(info, "AUTH(~p): Init state: ~p Tref: ~p~n", [self(), State, TRef]),
-    {ok, State#state{timer_ref=TRef}}.
+    {ok, #auth_state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -85,10 +84,44 @@ init([]) ->
 %%                                   {stop, Reason, Reply, State} |
 %%                                   {stop, Reason, State}
 %% @end
+%% #auth_state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+handle_call({add_fs_node, Node}, _From, #auth_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, _HandlerPid} ->
+	    format_log(info, "AUTH(~p): handler(~p) known for ~p~n", [self(), _HandlerPid, Node]),
+	    {reply, {error, node_is_known}, State};
+	false ->
+	    case net_adm:ping(Node) of
+		pong ->
+		    HPid = setup_fs_conn(Node),
+		    link(HPid),
+		    format_log(info, "AUTH(~p): Starting handler(~p) for ~p~n", [self(), HPid, Node]),
+		    {reply, ok, State#auth_state{fs_nodes=[{Node, HPid} | Nodes]}};
+		pang ->
+		    format_log(error, "AUTH(~p): ~p not responding~n", [self(), Node]),
+		    {reply, {error, no_connection}, State}
+	    end
+    end;
+handle_call({rm_fs_node, Node}, _From, #auth_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, HPid} ->
+	    case erlang:is_process_alive(HPid) of
+		true ->
+		    HPid ! shutdown,
+		    format_log(info, "AUTH(~p): Shutting down handler ~p for ~p~n", [self(), HPid, Node]),
+		    {reply, ok, State#auth_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
+		false ->
+		    format_log(error, "AUTH(~p): Handler ~p already down for ~p~n", [self(), HPid, Node]),
+		    {reply, {error, node_down}, State}
+	    end;
+	false ->
+	    format_log(error, "AUTH(~p): No handler for ~p~n", [self(), Node]),
+	    {reply, {error, no_node}, State}
+    end;
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    format_log(error, "AUTH(~p): Unhandled call ~p~n", [self(), _Request]),
+    {reply, {error, unhandled_request}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,9 +133,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({send_fetch_response, ID, Response}, #state{fs_node=Node}=State) ->
-    freeswitch:fetch_reply(Node, ID, Response),
-    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -116,15 +146,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(find_fs_node, #state{fs_node=Node, timer_ref=TRef}=State) ->
-    format_log(info, "AUTH(~p): Find fs_node : ~p~n", [self(), Node]),
-    timer:cancel(TRef),
-    TRef1 = setup_fs_conn(Node, State),
-    {noreply, State#state{timer_ref=TRef1}};
-handle_info({'EXIT', Channel, noconnection}, #state{channel=Channel}=State) ->
-    format_log(error, "Auth(~p): Channel(~p) went down~n", [self(), Channel]),
-    {ok, Channel1, Ticket1} = amqp_manager:open_channel(self()),
-    {noreply, State#state{channel=Channel1, ticket=Ticket1}};
 handle_info(_Info, State) ->
     format_log(info, "AUTH(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -140,9 +161,13 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{channel=Channel}) ->
-    format_log(info, "AUTH(~p): terminate channel: ~p~n", [self(), Channel]),
-    amqp_manager:close_channel(Channel),
+terminate(_Reason, #auth_state{fs_nodes=Nodes}) ->
+    Self = self(),
+    format_log(error, "AUTH(~p): terminating: ~p~n", [Self, _Reason]),
+    lists:foreach(fun({_FSNode, HPid}) ->
+			  format_log(error, "AUTH(~p): terminate handler: ~p(~p)~n", [Self, HPid, _FSNode]),
+			  HPid ! shutdown
+		  end, Nodes),
     ok.
 
 %%--------------------------------------------------------------------
@@ -160,47 +185,79 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-lookup_user(Node, State) ->
+fetch_user(Node, #handler_state{channel=undefined, ticket=undefined}=State) ->
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+    fetch_user(Node, State#handler_state{channel=Channel, ticket=Ticket});
+fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
     receive
 	{fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]} ->
-	    format_log(info, "L/U(~p): fetch directory: Id: ~p~n", [self(), ID]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
-		    spawn(fun() -> lookup_user(State, ID, Data) end),
-		    ok;
+		    Self = self(),
+		    LookupPid = spawn(fun() -> lookup_user(State, ID, Self, Data) end),
+		    link(LookupPid),
+		    format_log(info, "Fetch_user(~p): fetch directory: Id: ~p Lookup ~p~n", [self(), ID, LookupPid]),
+		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, erlang:now()} | LUs]});
 		_Other ->
-		    format_log(info, "L/U(~p): Ignoring event ~p~n", [self(), _Other])
-	    end,
-	    ?MODULE:lookup_user(Node, State);
+		    format_log(info, "Fetch_user(~p): Ignoring event ~p~n", [self(), _Other]),
+		    ?MODULE:fetch_user(Node, State)
+	    end;
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "L/U(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n"
+	    format_log(info, "Fetch_user(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n"
 		       ,[self(), _Section, _Something, _Key, _Value, ID]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-	    ?MODULE:lookup_user(Node, State);
+	    ?MODULE:fetch_user(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "L/U(~p): Node we were serving XML search requests to exited", [self()]),
+	    format_log(error, "Fetch_user(~p): Node we were serving XML search requests to exited", [self()]),
 	    ok;
+	{xml_response, ID, XML} ->
+	    format_log(info, "Fetch_user(~p): Received XML for ID ~p~n", [self(), ID]),
+	    freeswitch:fetch_reply(Node, ID, XML),
+	    ?MODULE:fetch_user(Node, State);
+	{'EXIT', Channel, noconnection} ->
+	    {ok, Channel1, Ticket1} = amqp_manager:open_channel(self()),
+	    format_log(error, "Fetch_user(~p): Channel(~p) went down; replaced with ~p~n", [self(), Channel, Channel1]),
+	    ?MODULE:fetch_user(Node, State#handler_state{channel=Channel1, ticket=Ticket1});
+	shutdown ->
+	    lists:foreach(fun({Pid,_StartTime}) ->
+				  case erlang:is_process_alive(Pid) of
+				      true -> Pid ! shutdown;
+				      false -> ok
+				  end
+			  end, LUs),
+	    format_log(error, "Fetch_user(~p): shutting down~n", [self()]);
+	{lookup_finished, LookupPid} ->
+	    case get_value(LookupPid, LUs) of
+		StartTime when is_tuple(StartTime) ->
+		    format_log(info, "Fetch_user(~p): lookup (~p) finished in ~p ms~n"
+			       ,[self(), LookupPid, timer:now_diff(erlang:now(), StartTime) div 1000]),
+		    ?MODULE:fetch_user(Node, State#handler_state{lookups=proplists:delete(LookupPid, LUs)});
+		undefined ->
+		    format_log(error, "Fetch_user(~p): unknown lookup ~p~n", [self(), LookupPid]),
+		    ?MODULE:fetch_user(Node, State)
+	    end;
 	Other ->
-	    format_log(info, "L/U(~p): got other response: ~p", [self(), Other]),
-	    ?MODULE:lookup_user(Node, State)
+	    format_log(info, "Fetch_user(~p): got other response: ~p", [self(), Other]),
+	    ?MODULE:fetch_user(Node, State)
     end.
 
-lookup_user(#state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Data) ->
+lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, FetchPid, Data) ->
     Q = bind_q(Channel, Ticket, ID),
 
     %% build req for rabbit
     DefProp = whistle_api:default_headers(Q, <<"directory">>, <<"ecallmgr">>, Vsn, ID),
     case whistle_api:auth_req(lists:ukeymerge(1, DefProp, Data)) of
 	{ok, JSON} ->
-	    format_log(info, "L/U(~p): JSON AUTH_REQ: ~s~n", [self(), JSON]),
+	    format_log(info, "L/U(~p): Sending JSON over Channel(~p)~n", [self(), Channel]),
 	    send_request(Channel, Ticket, JSON),
-	    handle_response(ID, Data),
+	    handle_response(ID, Data, FetchPid),
 	    QD = amqp_util:queue_delete(Ticket, Q),
-	    format_log(info, "L/U(~p): Delete Queue ~p~n", [self(), QD]),
+	    format_log(info, "L/U(~p): Delete Queue ~p~n", [self(), Q]),
 	    amqp_channel:cast(Channel, QD);
 	{error, _Msg} ->
 	    format_log(error, "L/U(~p): Auth_Req API error ~p~n", [self(), _Msg])
-    end.
+    end,
+    FetchPid ! {lookup_finished, self()}.
 
 recv_response(ID) ->
     receive
@@ -216,6 +273,8 @@ recv_response(ID) ->
 		    format_log(info, "L/U(~p): Recv Msg ~p when expecting ~p~n", [self(), _BadId, ID]),
 		    recv_response(ID)
 	    end;
+	shutdown ->
+	    shutdown;
 	Msg ->
 	    format_log(info, "L/U(~p): Received ~p off rabbit~n", [self(), Msg]),
 	    recv_response(ID)
@@ -242,28 +301,25 @@ to_hex(L) when is_list(L) ->
 
 %% setup a connection to mod_erlang_event for dialplan requests,
 %% or setup a timer to query for the node and return the timer ref
-setup_fs_conn(Node, State) ->
-    case net_adm:ping(Node) of
-	pong ->
-	    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, lookup_user, State),
-	    link(Pid),
-	    undefined;
-	_ ->
-	    format_log(error, "ECALLMGR_AUTH: Unable to find ~p to talk to freeSWITCH~n", [Node]),
-	    {ok, T} = timer:send_interval(5000, find_fs_node),
-	    T
-    end.
+setup_fs_conn(Node) ->
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn)},
+    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_user, HState),
+    Pid.
 
 send_request(Channel, Ticket, JSON) ->
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
     amqp_channel:cast(Channel, BP, AmqpMsg).
 
-handle_response(ID, Data) ->
+handle_response(ID, Data, FetchPid) ->
     T1 = erlang:now(),
     %% recv resp from rabbit
     case recv_response(ID) of
+	shutdown ->
+	    format_log(error, "L/U(~p): Shutting down for ID ~p~n", [self(), ID]),
+	    shutdown;
 	timeout ->
-	    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE);
+	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
 	Prop ->
 	    User = get_value(<<"user">>, Data),
 	    Domain = get_value(<<"domain">>, Data),
@@ -271,23 +327,23 @@ handle_response(ID, Data) ->
 		<<"password">> ->
 		    Hash = a1hash(User, Domain, get_value(<<"Auth-Pass">>, Prop)),
 		    Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash])),
-		    format_log(info, "LOOKUP_USER(~p): Sending pass resp: ~p (took ~pms)~n"
-			       ,[self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, Resp);
+		    format_log(info, "LOOKUP_USER(~p): Sending pass resp (took ~pms)~n"
+			       ,[self(), timer:now_diff(erlang:now(), T1) div 1000]),
+		    FetchPid ! {xml_response, ID, Resp};
 		<<"a1-hash">> ->
 		    Resp = lists:flatten(
 			     io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, get_value(<<"Auth-Pass">>, Prop)])
 			    ),
-		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp: ~p (took ~pms)~n"
-			       , [self(), Resp, timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, Resp);
+		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp (took ~pms)~n"
+			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
+		    FetchPid ! {xml_response, ID, Resp};
 		<<"ip">> ->
 		    format_log(info, "LOOKUP_USER(~p): Unsupported auth by IP (took ~pms)~n"
 			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE);
+		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
 		<<"error">> ->
 		    format_log(info, "LOOKUP_USER(~p): Auth by Error: ~p (took ~pms)~n"
 			       ,[self(), get_value(<<"Auth-Pass">>, Prop), timer:now_diff(erlang:now(), T1) div 1000]),
-		    ?MODULE:send_fetch_response(ID, ?EMPTYRESPONSE)
+		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE}
 	    end
     end.
