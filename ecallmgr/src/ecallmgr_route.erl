@@ -12,7 +12,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_dialplan/2, send_fetch_response/2]).
+-export([start_link/0, add_fs_node/1, rm_fs_node/1]).
+-export([fetch_route/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -26,7 +27,8 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {fs_node, channel, ticket, app_vsn, timer_ref}).
+-record(route_state, {fs_nodes=[]}).
+-record(handler_state, {fs_node, channel, ticket, app_vsn, lookups=[]}).
 
 %%%===================================================================
 %%% API
@@ -42,10 +44,11 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-send_fetch_response(ID, Response) ->
-    gen_server:cast(?MODULE, {send_fetch_response, ID, Response}).
+add_fs_node(Node) ->
+    gen_server:call(?MODULE, {add_fs_node, Node}).
 
-%% see lookup_dialplan/2 after gen_server callbacks
+rm_fs_node(Node) ->
+    gen_server:call(?MODULE, {rm_fs_node, Node}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -64,13 +67,7 @@ send_fetch_response(ID, Response) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    %Node = list_to_atom(lists:concat(["freeswitch@", net_adm:localhost()])),
-    Node = 'freeswitch@fs1.voicebus.net',
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    State = #state{fs_node=Node, channel=Channel, ticket=Ticket, app_vsn=list_to_binary(Vsn)},
-    TRef = setup_fs_conn(Node, State),
-    {ok, State#state{timer_ref=TRef}}.
+    {ok, #route_state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -85,7 +82,41 @@ init([]) ->
 %%                                   {stop, Reason, Reply, State} |
 %%                                   {stop, Reason, State}
 %% @end
+%% #route_state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+handle_call({add_fs_node, Node}, _From, #route_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, _HandlerPid} ->
+	    format_log(info, "ROUTE(~p): handler(~p) known for ~p~n", [self(), _HandlerPid, Node]),
+	    {reply, {error, node_is_known}, State};
+	false ->
+	    case net_adm:ping(Node) of
+		pong ->
+		    HPid = setup_fs_conn(Node),
+		    link(HPid),
+		    format_log(info, "Route(~p): Starting handler(~p) for ~p~n", [self(), HPid, Node]),
+		    {reply, ok, State#route_state{fs_nodes=[{Node, HPid} | Nodes]}};
+		pang ->
+		    format_log(error, "Route(~p): ~p not responding~n", [self(), Node]),
+		    {reply, {error, no_connection}, State}
+	    end
+    end;
+handle_call({rm_fs_node, Node}, _From, #route_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, HPid} ->
+	    case erlang:is_process_alive(HPid) of
+		true ->
+		    HPid ! shutdown,
+		    format_log(info, "ROUTE(~p): Shutting down handler ~p for ~p~n", [self(), HPid, Node]),
+		    {reply, ok, State#route_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
+		false ->
+		    format_log(error, "ROUTE(~p): Handler ~p already down for ~p~n", [self(), HPid, Node]),
+		    {reply, {error, node_down}, State}
+	    end;
+	false ->
+	    format_log(error, "ROUTE(~p): No handler for ~p~n", [self(), Node]),
+	    {reply, {error, no_node}, State}
+    end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -100,9 +131,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({send_fetch_response, ID, Response}, #state{fs_node=Node}=State) ->
-    freeswitch:fetch_reply(Node, ID, Response),
-    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -116,14 +144,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(find_fs_node, #state{fs_node=Node, timer_ref=TRef}=State) ->
-    timer:cancel(TRef),
-    TRef1 = setup_fs_conn(Node, State),
-    {noreply, State#state{timer_ref=TRef1}};
-handle_info({'EXIT', Channel, noconnection}, #state{channel=Channel}=State) ->
-    format_log(error, "ROUTE(~p): Channel(~p) went down~n", [self(), Channel]),
-    {ok, Channel1, Ticket1} = amqp_manager:open_channel(self()),
-    {noreply, State#state{channel=Channel1, ticket=Ticket1}};
 handle_info(_Info, State) ->
     format_log(info, "ROUTE(~p): Unhandled Info: ~p~nState: ~p~n", [self(), _Info, State]),
     {noreply, State}.
@@ -139,8 +159,13 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{channel=Channel}) ->
-    amqp_manager:close_channel(Channel),
+terminate(_Reason, #route_state{fs_nodes=Nodes}) ->
+    Self = self(),
+    format_log(error, "ROUTE(~p): terminating: ~p~n", [Self, _Reason]),
+    lists:foreach(fun({_FSNode, HPid}) ->
+			  format_log(error, "ROUTE(~p): terminate handler: ~p(~p)~n", [Self, HPid, _FSNode]),
+			  HPid ! shutdown
+		  end, Nodes),
     ok.
 
 %%--------------------------------------------------------------------
@@ -157,78 +182,106 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-lookup_dialplan(Node, State) ->
+fetch_route(Node, #handler_state{channel=undefined, ticket=undefined}=State) ->
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+    fetch_route(Node, State#handler_state{channel=Channel, ticket=Ticket});
+fetch_route(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
     receive
 	{fetch, dialplan, _Tag, _Key, _Value, ID, [UUID | Data]} ->
-	    format_log(info, "ROUTE(~p): fetch dialplan: Id: ~p UUID: ~p~n", [self(), ID, UUID]),
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
-		    spawn(fun() -> lookup_dialplan(Node, State, ID, UUID, Data) end);
+		    Self = self(),
+		    LookupPid = spawn(fun() -> lookup_route(Node, State, ID, UUID, Self, Data) end),
+		    link(LookupPid),
+		    format_log(info, "FETCH_ROUTE(~p): fetch route: Id: ~p UUID: ~p Lookup: ~p~n"
+			       ,[self(), ID, UUID, LookupPid]),
+		    ?MODULE:fetch_route(Node, State#handler_state{lookups=[{LookupPid, erlang:now()}|LUs]});
 		_Other ->
-		    format_log(info, "ROUTE(~p): Ignoring event ~p~n", [self(), _Other])
-	    end,
-	    ?MODULE:lookup_dialplan(Node, State);
+		    format_log(info, "FETCH_ROUTE(~p): Ignoring event ~p~n", [self(), _Other]),
+		    ?MODULE:fetch_route(Node, State)
+	    end;
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "ROUTE(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [self(), _Section, _Something, _Key, _Value, ID, _Data]),
+	    format_log(info, "FETCH_ROUTE(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [self(), _Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-	    ?MODULE:lookup_dialplan(Node, State);
+	    ?MODULE:fetch_route(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "ROUTE(~p): Node we were serving XML search requests to exited", [self()]),
-	    setup_fs_conn(Node, State);
+	    format_log(error, "FETCH_ROUTE(~p): Node ~p exited", [self(), Node]),
+	    ok;
+	{xml_response, ID, XML} ->
+	    format_log(info, "FETCH_ROUTE(~p): Received XML for ID ~p~n", [self(), ID]),
+	    freeswitch:fetch_reply(Node, ID, XML),
+	    ?MODULE:fetch_route(Node, State);
+	{'EXIT', Channel, noconnection} ->
+	    {ok, Channel1, Ticket1} = amqp_manager:open_channel(self()),
+	    format_log(error, "FETCH_ROUTE(~p): Channel(~p) went down; replaced with ~p~n", [self(), Channel, Channel1]),
+	    ?MODULE:fetch_route(Node, State#handler_state{channel=Channel1, ticket=Ticket1});
+	shutdown ->
+	    lists:foreach(fun({Pid,_StartTime}) ->
+				  case erlang:is_process_alive(Pid) of
+				      true -> Pid ! shutdown;
+				      false -> ok
+				  end
+			  end, LUs),
+	    format_log(error, "FETCH_ROUTE(~p): shutting down~n", [self()]);
+	{lookup_finished, LookupPid} ->
+	    case get_value(LookupPid, LUs) of
+		StartTime when is_tuple(StartTime) ->
+		    format_log(info, "FETCH_ROUTE(~p): lookup (~p) finished in ~p ms~n"
+			       ,[self(), LookupPid, timer:now_diff(erlang:now(), StartTime) div 1000]),
+		    ?MODULE:fetch_route(Node, State#handler_state{lookups=proplists:delete(LookupPid, LUs)});
+		undefined ->
+		    format_log(error, "FETCH_ROUTE(~p): unknown lookup ~p~n", [self(), LookupPid]),
+		    ?MODULE:fetch_route(Node, State)
+	    end;
 	Other ->
-	    format_log(info, "ROUTE(~p): got other response: ~p", [self(), Other]),
-	    ?MODULE:lookup_dialplan(Node, State)
+	    format_log(info, "FETCH_ROUTE(~p): got other response: ~p", [self(), Other]),
+	    ?MODULE:fetch_route(Node, State)
     end.
 
-lookup_dialplan(Node, #state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, UUID, Data) ->
+lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=HState, ID, UUID, FetchPid, Data) ->
     Q = bind_q(Channel, Ticket, ID),
     {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
 
     DefProp = whistle_api:default_headers(Q, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
-    {ok, JSON} = whistle_api:route_req(lists:umerge([DefProp, Data, [{<<"Call-ID">>, UUID}
-								     ,{<<"Event-Queue">>, EvtQ}
-								    ]
-						    ]
-						   )),
-    format_log(info, "ROUTE(~p): JSON REQ: ~s~n", [self(), JSON]),
-
-    {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
-    amqp_channel:cast(Channel, BP, AmqpMsg),
-
-    case recv_response(ID) of
-	timeout ->
-	    format_log(info, "ROUTE(~p): recv route timeout~n", [self()]),
-	    ?MODULE:send_fetch_response(ID, ?ROUTE_NOT_FOUND_RESPONSE);
-	Prop ->
-	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop),
-	    format_log(info, "ROUTE(~p): Sending XML to FS: ~n~p~n", [self(), Xml]),
-	    ?MODULE:send_fetch_response(ID, Xml),
-	    CtlProp = whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
-	    send_control_queue(Channel, Ticket
-			       , [{<<"Call-ID">>, UUID} |  CtlProp]
-			       , get_value(<<"Server-ID">>, Prop), EvtQ)
+    case whistle_api:route_req(lists:umerge([DefProp, Data, [{<<"Call-ID">>, UUID}
+							     ,{<<"Event-Queue">>, EvtQ}
+							    ]
+					    ]
+					   )) of
+	{ok, JSON} ->
+	    format_log(info, "L/U-R(~p): Sending JSON over Channel(~p)~n", [self(), Channel]),
+	    send_request(Channel, Ticket, JSON),
+	    handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid),
+	    ecallmgr_amqp:delete_queue(Q);
+	{error, _Msg} ->
+	    format_log(error, "L/U-R(~p): Route Req API error ~p~n", [self(), _Msg])
     end,
-    ecallmgr_amqp:delete_queue(Q).
+    FetchPid ! {lookup_finished, self()}.
+
+send_request(Channel, Ticket, JSON) ->
+    {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
+    amqp_channel:cast(Channel, BP, AmqpMsg).
 
 recv_response(ID) ->
     receive
 	#'basic.consume_ok'{} ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
-	    format_log(info, "ROUTE(~p): Recv Content: ~p Payload: ~s~n"
+	    format_log(info, "L/U-R(~p): Recv Content: ~p Payload: ~s~n"
 		       ,[self(), Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    case get_value(<<"Msg-ID">>, Prop) of
 		ID -> Prop;
 		_BadId ->
-		    format_log(info, "ROUTE(~p): Recv MsgID ~p when expecting ~p~n", [self(), _BadId, ID]),
+		    format_log(info, "L/U-R(~p): Recv MsgID ~p when expecting ~p~n", [self(), _BadId, ID]),
 		    recv_response(ID)
 	    end;
+	shutdown -> shutdown;
 	_Msg ->
-	    format_log(info, "ROUTE(~p): Unexpected: received ~p off rabbit~n", [self(), _Msg]),
+	    format_log(info, "L/U-R(~p): Unexpected: received ~p off rabbit~n", [self(), _Msg]),
 	    recv_response(ID)
     after 4000 ->
-	    format_log(info, "ROUTE(~p): Failed to receive after 4000ms~n", [self()]),
+	    format_log(info, "L/U-R(~p): Failed to receive after 4000ms~n", [self()]),
 	    timeout
     end.
 
@@ -267,12 +320,12 @@ send_control_queue(Channel, Ticket, CtlProp, AppQ, EvtQ) ->
 					       ,<<"application/json">>
 					      ),
     %% execute the publish command
-    format_log(info, "ROUTE(~p): Sending AppQ(~p) AmqpMsg:~n~p~n", [self(), AppQ, Payload]),
+    format_log(info, "L/U-R(~p): Sending AppQ(~p) the control Q~n", [self(), AppQ]),
     amqp_channel:cast(Channel, BP, AmqpMsg).
 
 %% Prop = Route Response
 generate_xml(<<"bridge">>, Routes, _Prop) ->
-    format_log(info, "ROUTE(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
+    format_log(info, "L/U-R(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
 					     Route = get_value(<<"Route">>, RouteProp), %% translate Route to FS-encoded URI
@@ -285,14 +338,14 @@ generate_xml(<<"bridge">>, Routes, _Prop) ->
 					     Ext = io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]),
 					     {Idx+1, [Ext | Acc]}
 				     end, {1, ""}, lists:reverse(Routes)),
-    format_log(info, "ROUTE(~p): RoutesXML: ~s~n", [self(), Extensions]),
+    format_log(info, "L/U-R(~p): RoutesXML: ~s~n", [self(), Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
 generate_xml(<<"park">>, _Routes, _Prop) ->
     ?ROUTE_PARK_RESPONSE;
 generate_xml(<<"error">>, _Routes, Prop) ->
     ErrCode = get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
-    format_log(info, "ROUTE(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
+    format_log(info, "L/U-R(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
 
 get_channel_vars(Prop) ->
@@ -309,15 +362,27 @@ get_channel_vars({_K, _V}, Vars) ->
 
 %% setup a connection to mod_erlang_event for dialplan requests,
 %% or setup a timer to query for the node and return the timer ref
-setup_fs_conn(Node, State) ->
-    case net_adm:ping(Node) of
-	pong ->
-	    format_log(info, "ROUTE(~p): Found ~p~n", [self(), Node]),
-	    {ok, Pid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, lookup_dialplan, State),
-	    link(Pid),
-	    undefined;
-	_ ->
-	    format_log(error, "ROUTE(~p): Unable to find ~p to talk to freeSWITCH~n", [self(), Node]),
-	    {ok, T} = timer:send_interval(5000, find_fs_node),
-	    T
+setup_fs_conn(Node) ->
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn)},
+    {ok, Pid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, fetch_route, HState),
+    Pid.
+
+handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, FetchPid) ->
+    T1 = erlang:now(),
+    case recv_response(ID) of
+	shutdown ->
+	    format_log(error, "L/U-R(~p): Shutting down for ID ~p~n", [self(), ID]),
+	    shutdown;
+	timeout ->
+	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE};
+	Prop ->
+	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop),
+	    format_log(info, "L/U-R(~p): Sending XML to FS(~p) took ~pms ~n"
+		       ,[self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
+	    FetchPid ! {xml_response, ID, Xml},
+	    CtlProp = whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"ecallmgr">>, Vsn, UUID),
+	    send_control_queue(Channel, Ticket
+			       , [{<<"Call-ID">>, UUID} |  CtlProp]
+			       , get_value(<<"Server-ID">>, Prop), EvtQ)
     end.

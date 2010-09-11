@@ -29,7 +29,7 @@ init(Node, UUID, {Channel, Ticket, CtlQueue}) ->
 %% the next command in CmdQ doesn't run until CurrApp translates to the Event Name
 %% passed from the Event queue on the {command_execute_complete, ...} message
 loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
-    format_log(info, "CONTROL(~p): entered loop(~p)~n", [self(), CurrApp]),
+    format_log(info, "CONTROL(~p): entered loop(~p)~nUUID: ~p~n", [self(), CurrApp, UUID]),
     receive
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
@@ -83,7 +83,8 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT);
 	{hangup, UUID} ->
 	    ecallmgr_amqp:delete_queue(CtlQ),
-	    format_log(info, "CONTROL(~p): Received hangup, exiting (Duration: ~p)...~n", [self(), timer:now_diff(erlang:now(), StartT)]);
+	    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
+		       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]);
 	_Msg ->
 	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [_Msg]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT)

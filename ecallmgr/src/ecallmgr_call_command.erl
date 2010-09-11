@@ -20,9 +20,10 @@
 
 -spec(exec_cmd/3 :: (Node :: list(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 exec_cmd(Node, UUID, Prop) ->
-    case get_value(<<"Call-ID">>, Prop) =:= UUID of
+    DestID = get_value(<<"Call-ID">>, Prop),
+    case DestID =:= UUID of
 	true -> exec_cmd(Node, UUID, Prop, get_value(<<"Application-Name">>, Prop));
-	false -> format_log(error, "CONTROL(~p): Cmd Not for us:~n~p~n", [self(), Prop])
+	false -> format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID])
     end.
 
 -spec(exec_cmd/4 :: (Node :: list(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> no_return()).

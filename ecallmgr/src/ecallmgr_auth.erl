@@ -50,8 +50,6 @@ add_fs_node(Node) ->
 rm_fs_node(Node) ->
     gen_server:call(?MODULE, {rm_fs_node, Node}).
 
-%% see lookup_user/2 after gen_server callbacks
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -208,7 +206,7 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:fetch_user(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "Fetch_user(~p): Node we were serving XML search requests to exited", [self()]),
+	    format_log(error, "Fetch_user(~p): Node ~p exited", [self(), Node]),
 	    ok;
 	{xml_response, ID, XML} ->
 	    format_log(info, "Fetch_user(~p): Received XML for ID ~p~n", [self(), ID]),
