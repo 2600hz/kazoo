@@ -61,19 +61,19 @@ start_link() ->
 init([]) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
 
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
+    amqp_channel:cast(Channel, amqp_util:broadcast_exchange(Ticket)),
 
     #'queue.declare_ok'{queue = BroadQueue} =
 	amqp_channel:call(Channel
 			  ,amqp_util:new_broadcast_queue(Ticket, ["ts_responder.", net_adm:localhost()])),
 
     %% Bind the queue to an exchange
-    #'queue.bind_ok'{} = amqp_channel:call(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
-    format_log(info, "RESPONDER Bound ~p~n", [BroadQueue]),
+    amqp_channel:cast(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
+    format_log(info, "TS_RESPONDER(~p): Bound ~p~n", [self(), BroadQueue]),
 
     %% Register a consumer to listen to the queue
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, BroadQueue), self()),
-    format_log(info, "TS_RESPONDER: Consuming on B(~p)~n", [BroadQueue]),
+    format_log(info, "TS_RESPONDER(~p): Consuming on B(~p)~n", [self(), BroadQueue]),
 
     {ok, #state{channel=Channel, ticket=Ticket}}.
 
@@ -125,10 +125,10 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     case Props#'P_basic'.content_type of
 	<<"application/json">> ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "TS_RESPONDER: Recv CT: ~p~nPayload: ~p~n", [Props#'P_basic'.content_type, Prop]),
-	    process_req(get_msg_type(Prop), Prop, State);
+	    format_log(info, "TS_RESPONDER(~p): Recv CT: ~p~nPayload: ~p~n", [self(), Props#'P_basic'.content_type, Prop]),
+	    spawn(fun() -> process_req(get_msg_type(Prop), Prop, State) end);
 	_ContentType ->
-	    format_log(info, "TS_RESPONDER: ~p recieved unknown msg type: ~p~n", [self(), _ContentType])
+	    format_log(info, "TS_RESPONDER(~p): recieved unknown msg type: ~p~n", [self(), _ContentType])
     end,
     {noreply, State};
 %% catch all so we dont loose state

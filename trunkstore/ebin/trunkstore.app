@@ -5,5 +5,6 @@
               {applications,[kernel,stdlib,amqp]},
               {mod,{trunkstore_app,[]}},
               {env,[]},
-              {modules,[logger,trunkstore_app,trunkstore_sup,ts_auth,
-                        ts_responder,ts_route,whistle_api]}]}.
+              {modules,[logger,trunkstore,trunkstore_app,trunkstore_deps,
+                        trunkstore_sup,ts_auth,ts_couch,ts_responder,ts_route,
+                        whistle_api]}]}.

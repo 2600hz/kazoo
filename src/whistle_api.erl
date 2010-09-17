@@ -50,13 +50,14 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec(default_headers/5 :: (ServerID :: binary(), EvtCat :: binary(), AppName :: binary(), AppVsn :: binary(), MsgId :: binary()) -> proplist()).
-default_headers(ServerID, EvtCat, AppName, AppVsn, MsgID) ->
+-spec(default_headers/5 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary(), AppName :: binary(), AppVsn :: binary()) -> proplist()).
+default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     [{<<"Server-ID">>, ServerID}
      ,{<<"Event-Category">>, EvtCat}
+     ,{<<"Event-Name">>, EvtName}
      ,{<<"App-Name">>, AppName}
      ,{<<"App-Version">>, AppVsn}
-     ,{<<"Msg-ID">>, MsgID}].
+    ].
 
 %%--------------------------------------------------------------------
 %% @doc Extract just the default headers from a message

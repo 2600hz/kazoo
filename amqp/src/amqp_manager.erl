@@ -78,12 +78,11 @@ handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined}=State) 
     format_log(info, "AMQP_MGR(~p): restart connection~n", [self()]),
     handle_call(Req, From, State#state{connection=get_new_connection()});
 handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn}, channels=Channels}=State) ->
-    case lists:keysearch(Pid, 1, Channels) of
+    case lists:keyfind(Pid, 1, Channels) of
         %% This PID already has a channel, just return it
-        {value, {_Pid, Channel, Ticket, _MRef}} ->
+        {_Pid, Channel, Ticket, _MRef} ->
 	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p~n", [self(), Pid, Channel, Ticket]),
             {reply, {ok, Channel, Ticket}, State};
-
         false ->
             %% Open an AMQP channel to access our realm
             Channel = amqp_connection:open_channel(Connection),
@@ -125,8 +124,8 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 handle_cast({close_channel, Pid}, #state{channels=Channels}=State) ->
-    case lists:keysearch(Pid, 1, Channels) of
-        {value, {Pid, Channel, _Ticket, MRef}} ->
+    case lists:keyfind(Pid, 1, Channels) of
+        {Pid, Channel, _Ticket, MRef} ->
 	    case erlang:is_process_alive(Channel) of
 		true ->
 		    #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close());
