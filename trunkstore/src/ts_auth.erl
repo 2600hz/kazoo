@@ -75,11 +75,27 @@ handle_req(Prop) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(is_inbound/1 :: (From :: binary()) -> {true, proplist()} | false).
-is_inbound(_From) ->
-    %% lookup in couch the From address to see if its a known carrier
-    %% return {true, CarrierInfo} or false
-    false.
+-spec(is_inbound/1 :: (Domain :: binary()) -> boolean()).
+is_inbound(Domain) ->
+    IP = find_ip(Domain),
+    Options = [{"key", IP}],
+    format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
+    case ts_couch:has_view(?TS_DB, ?TS_VIEW_CARRIERIP) andalso
+	ts_couch:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
+	false ->
+	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
+		       ,[self(), ?TS_VIEW_CARRIERIP, Domain, IP]),
+	    false;
+	[] ->
+	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
+	    false;
+	[{ViewProp} | _Rest] ->
+	    format_log(info, "TS_AUTH(~p): Carrier found for ~p(~p)~n~p~n", [self(), Domain, IP, ViewProp]),
+	    true;
+	_Else ->
+	    format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
+	    false
+    end.
 
 -spec(lookup_user/2 :: (Name :: binary(), Domain :: binary()) -> proplist() | {error, string()}).
 lookup_user(Name, Domain) ->
@@ -120,7 +136,7 @@ lookup_user(Name) ->
 	    {error, "Unexpeced error in lookup_user/1"}
     end.
 
--spec(response/2 :: (RespData :: proplist(), Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(response/2 :: (RespData :: proplist() | integer(), Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 response(ViewInfo, Prop) ->
     Data = lists:umerge(specific_response(ViewInfo), Prop),
     whistle_api:auth_resp(Data).

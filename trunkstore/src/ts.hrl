@@ -8,3 +8,4 @@
 
 -define(TS_VIEW_IPAUTH, "LookUpIPAuth/LookUpIPAuth").
 -define(TS_VIEW_USERAUTH, "LookUpUserAuth/LookUpUserAuth").
+-define(TS_VIEW_CARRIERIP, "LookUpCarrierIP/LookUpCarrierIP").

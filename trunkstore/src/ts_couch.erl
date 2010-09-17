@@ -109,6 +109,7 @@ get_results(DbName, DesignDoc, ViewOptions) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec(init/1 :: (Args :: list()) -> tuple() | ignore).
 init([]) ->
     process_flag(trap_exit, true),
     {ok, #state{connection=get_new_connection()}}.
@@ -269,7 +270,7 @@ handle_call({db_info, DbName}, {From, _Ref}, #state{connection={Conn,_MRefConn},
 	    case open_db(Conn, DbName, From, State) of
 		{ok, DbPid, State1} ->
 		    {reply, couchbeam_db:info(DbPid), State1};
-		{error, _Reason}=Err ->
+		{error, _Reason, _State1}=Err ->
 		    {reply, Err, State}
 	    end
     end;
@@ -380,7 +381,7 @@ close_all_views(Vs) ->
 			  end
 		  end, Vs).
 
--spec(get_new_connection/1 :: (Params :: list()) -> {pid(), reference()}).
+-spec(get_new_connection/1 :: (Params :: tuple()) -> {pid(), reference()}).
 get_new_connection() ->
     get_new_connection(?COUCH_PARAMS).
 get_new_connection(Params) ->
