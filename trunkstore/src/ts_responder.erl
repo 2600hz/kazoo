@@ -184,4 +184,5 @@ process_req(_MsgType, _Prop, _State) ->
 
 send_resp(JSON, RespQ, #state{channel=Channel, ticket=Ticket}) ->
     {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, RespQ, JSON, <<"application/json">>),
+    format_log(info, "TS_RESPONDER(~p): Sending to ~p~n~p~n", [self(), RespQ, JSON]),
     amqp_channel:call(Channel, BP, AmqpMsg).

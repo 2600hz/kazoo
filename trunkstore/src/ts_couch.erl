@@ -178,8 +178,8 @@ handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
 		    case open_view(DP, DesignDoc, From, State1) of
 			{ok, ViewPid, State2} ->
 			    Res = couchbeam_view:fetch(ViewPid, ViewOptions),
-			    format_log(info, "TS_COUCH(~p): get_results ViewPid created ~p.~nFetch returned ~p~n"
-				       ,[self(), ViewPid, Res]),
+			    format_log(info, "TS_COUCH(~p): get_results ViewPid created ~p.~n"
+				       ,[self(), ViewPid]),
 			    case Res of
 				{ok, {Json}} -> {reply, get_value(<<"rows">>, Json), State2};
 				_ -> {reply, [], State2}
@@ -190,8 +190,8 @@ handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
 		    end;
 		ViewPid ->
 		    Res = couchbeam_view:fetch(ViewPid, ViewOptions),
-		    format_log(info, "TS_COUCH(~p): get_results ViewPid found ~p.~nFetch returned ~p~n"
-			       ,[self(), ViewPid, Res]),
+		    format_log(info, "TS_COUCH(~p): get_results ViewPid found ~p.~n"
+			       ,[self(), ViewPid]),
 		    case Res of
 			{ok, {Json}} -> {reply, get_value(<<"rows">>, Json), State1};
 			_ -> {reply, [], State1}
@@ -356,6 +356,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(close_all_databases/1 :: (DBs :: list()) -> no_return()).
 close_all_databases(DBs) ->
     lists:foreach(fun({{_ProcessPid, DbName}, DbPid, MRef}) ->
 			  case is_process_alive(DbPid) of
@@ -367,6 +368,7 @@ close_all_databases(DBs) ->
 			  end
 		  end, DBs).
 
+-spec(close_all_views/1 :: (Vs :: list()) -> no_return()).
 close_all_views(Vs) ->
     lists:foreach(fun({_Key, ViewPid, MRef}) ->
 			  case is_process_alive(ViewPid) of
@@ -378,6 +380,7 @@ close_all_views(Vs) ->
 			  end
 		  end, Vs).
 
+-spec(get_new_connection/1 :: (Params :: list()) -> {pid(), reference()}).
 get_new_connection() ->
     get_new_connection(?COUCH_PARAMS).
 get_new_connection(Params) ->

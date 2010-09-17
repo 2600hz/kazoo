@@ -42,25 +42,19 @@ handle_req(Prop) ->
 		   false ->
 		       lookup_user(FromUser, FromDomain)
 	       end,
+    Defaults = [{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)} | 
+		whistle_api:default_headers(<<>>
+					    ,get_value(<<"Event-Category">>, Prop)
+					    ,get_value(<<"Event-Name">>, Prop)
+					    ,?APP_NAME
+					    ,?APP_VERSION)],
     case ViewInfo of
-	{error, Reason}=Err ->
+	{error, Reason} ->
 	    format_log(error, "TS_AUTH(~p): Unable to proceed because ~p~n", [self(), Reason]),
-	    Err;
+	    response(500, Defaults);
 	[] ->
-	    Defaults = [{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)} | 
-			whistle_api:default_headers(<<>>
-						    ,get_value(<<"Event-Category">>, Prop)
-						    ,get_value(<<"Event-Name">>, Prop)
-						    ,?APP_NAME
-						    ,?APP_VERSION)],
 	    response(403, Defaults);
 	_ ->
-	    Defaults = [{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)} | 
-			whistle_api:default_headers(<<>>
-						    ,get_value(<<"Event-Category">>, Prop)
-						    ,get_value(<<"Event-Name">>, Prop)
-						    ,?APP_NAME
-						    ,?APP_VERSION)],
 	    response(ViewInfo, Defaults)
     end.
 
@@ -126,6 +120,11 @@ specific_response(ViewInfo) when is_list(ViewInfo) ->
      ,{<<"Auth-Method">>, get_value(<<"AuthMethod">>, Info)}
      ,{<<"Access-Group">>, get_value(<<"Access-Group">>, Info, <<"ignore">>)}
      ,{<<"Tenant-ID">>, get_value(<<"Tenant-ID">>, Info, <<"ignore">>)}];
+specific_response(500) ->
+    [{<<"Auth-Method">>, <<"error">>}
+     ,{<<"Auth-Pass">>, <<"500 Internal Error">>}
+     ,{<<"Access-Group">>, <<"ignore">>}
+     ,{<<"Tenant-ID">>, <<"ignore">>}];
 specific_response(403) ->
     [{<<"Auth-Method">>, <<"error">>}
      ,{<<"Auth-Pass">>, <<"403 Forbidden">>}
