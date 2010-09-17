@@ -2,31 +2,41 @@
 
 %% not including dial string section so we can manually do the bridging
 %% or something like that (ask Darren).
+%% [Domain, User, Hash, ChannelVars]
 -define(REGISTER_HASH_RESPONSE,
 "<document type=\"freeswitch/xml\">
-	<section name=\"directory\">
-		<domain name=\"~s\">
-			<user id=\"~s\">
-				<params>
-					<param name=\"a1-hash\" value=\"~s\"/>
-				</params>
-			</user>
-		</domain>
-	</section>
+  <section name=\"directory\">
+    <domain name=\"~s\">
+      <user id=\"~s\">
+        <params>
+	  <param name=\"a1-hash\" value=\"~s\"/>
+	</params>
+        <variables>
+          ~s
+        </variables>
+      </user>
+    </domain>
+  </section>
 </document>").
-
+%% [Domain, User, Password, ChannelVars]
 -define(REGISTER_PASS_RESPONSE,
 "<document type=\"freeswitch/xml\">
-	<section name=\"directory\">
-		<domain name=\"~s\">
-			<user id=\"~s\">
-				<params>
-					<param name=\"password\" value=\"\"/>
-				</params>
-			</user>
-		</domain>
-	</section>
+  <section name=\"directory\">
+    <domain name=\"~s\">
+      <user id=\"~s\">
+        <params>
+          <param name=\"password\" value=\"\"/>
+        </params>
+        <variables>
+          ~s
+        </variables>
+      </user>
+    </domain>
+  </section>
 </document>").
+
+%% create a list of these params to inject into the REGISTER_*_RESPONSE
+-define(REGISTER_CHANNEL_PARAM, "          <variable name=\"~s\" value=\"~s\" />~n").
 
 -define(ROUTE_BRIDGE_RESPONSE,
 "<document type=\"freeswitch/xml\">

@@ -250,7 +250,7 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
 					    ]
 					   )) of
 	{ok, JSON} ->
-	    format_log(info, "L/U-R(~p): Sending JSON over Channel(~p)~n", [self(), Channel]),
+	    format_log(info, "L/U-R(~p): Sending RouteReq JSON over Channel(~p)~n", [self(), Channel]),
 	    send_request(Channel, Ticket, JSON),
 	    handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid),
 	    ecallmgr_amqp:delete_queue(Q);

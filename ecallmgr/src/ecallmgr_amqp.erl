@@ -97,7 +97,6 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({delete_queue, Q}, #state{channel=Channel, ticket=Ticket}=State) ->
     QD = amqp_util:queue_delete(Ticket, Q),
-    format_log(info, "ECALL_AMQP(~p): Delete Queue ~p~n", [self(), QD]),
     amqp_channel:cast(Channel, QD),
     {noreply, State};
 handle_cast({publish_prop, Prop, Exchange, Queue}, #state{channel=Channel, ticket=Ticket}=State) ->

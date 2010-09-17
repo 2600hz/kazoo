@@ -1,3 +1,7 @@
+%% We pass Application custom channel variables with our own prefix
+%% When an event occurs, we include all prefixed vars in the API message
+-define(CHANNEL_VAR_PREFIX, "ecallmgr_").
+
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
 			      , <<"App-Name">>, <<"App-Version">>]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
@@ -8,11 +12,12 @@
 			       , <<"Auth-User">>, <<"Auth-Domain">>]).
 
 -define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Pass">>]).
+-define(OPTIONAL_AUTH_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
 
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Event-Queue">>]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>, <<"Geo-Location">>
 					 ,<<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">> %%process | proxy | bypass
-					 , <<"Transcode">>, <<"Codecs">>, <<"Tenant-ID">>
+					 , <<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
 					 ,<<"Resource-Type">> %% MMS | SMS | audio | video | chat
 					 ,<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>]).
 
@@ -54,7 +59,7 @@
 				]).
 
 -define(CALL_EVENT_HEADERS, [<<"Event-Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
--define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Message">>]).
+-define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Message">>, <<"Custom-Channel-Vars">>]).
 
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
 -define(OPTIONAL_TONES_REQ_HEADERS, []).

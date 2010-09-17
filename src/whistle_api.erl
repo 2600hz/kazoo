@@ -115,8 +115,9 @@ auth_resp(Prop) ->
 		{error, _Reason} = Error ->
 		    io:format("AuthResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?AUTH_RESP_HEADERS, Prop]),
 		    Error;
-		{Headers1, _Prop2} ->
-		    {ok, mochijson2:encode({struct, Headers1})}
+		{Headers1, Prop2} ->
+		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_AUTH_RESP_HEADERS, Headers1),
+		    {ok, mochijson2:encode({struct, Headers2})}
 	    end
     end.
 
@@ -134,7 +135,13 @@ route_req(Prop) ->
     Prop0 = [{<<"To">>, get_sip_to(Prop)}
 	     ,{<<"From">>, get_sip_from(Prop)}
 	     | Prop],
-    case defaults(Prop0) of
+
+    Prop0_1 = case custom_channel_vars(Prop) of
+		  [] -> Prop0;
+		  CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | Prop0]
+	      end,
+
+    case defaults(Prop0_1) of
 	{error, _Reason}=Error ->
 	    io:format("RouteReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
@@ -205,7 +212,9 @@ route_resp_route_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(call_event/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 call_event(Prop) ->
+    EvtName = get_value(<<"Event-Name">>, Prop),
     EvtProp = [{<<"Event-Category">>, get_value(<<"Event-Category">>, Prop)}
+	       ,{<<"Event-Name">>, EvtName}
 	       ,{<<"Event-Timestamp">>, get_value(<<"Event-Timestamp">>, Prop)}
 	       ,{<<"Event-Date-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
 	       ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
@@ -214,10 +223,14 @@ call_event(Prop) ->
 	       ,{<<"App-Name">>, get_value(<<"App-Name">>, Prop)}
 	       ,{<<"App-Version">>, get_value(<<"App-Name">>, Prop)}
 	       ,{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
-	       | event_specific(get_value(<<"Event-Name">>, Prop), Prop)
+	       | event_specific(EvtName, Prop)
 	      ],
+    EvtProp1 = case custom_channel_vars(Prop) of
+		   [] -> EvtProp;
+		   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp]
+	       end,
 
-    case defaults(EvtProp) of
+    case defaults(EvtProp1) of
 	{error, _Reason}=Error ->
 	    io:format("CallEvt Defaults Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, EvtProp]),
 	    Error;
@@ -434,7 +447,17 @@ convert_whistle_app_name(AppName) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).			       
+
+%% Extract custom channel variables to include in the event
+-spec(custom_channel_vars/1 :: (Prop :: proplist()) -> proplist()).
+custom_channel_vars(Prop) ->
+    Custom = lists:filter(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, _Key/binary>>, _V}) -> true;
+			     (_) -> false
+			  end, Prop),
+    lists:map(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}) -> {Key, V} end, Custom).
+			 
+
+-spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
     Application = get_value(<<"Application">>, Prop),
     case get_value(Application, ?SUPPORTED_APPLICATIONS) of

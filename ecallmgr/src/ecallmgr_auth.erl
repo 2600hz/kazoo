@@ -23,6 +23,7 @@
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
+-include("whistle_api.hrl").
 
 -define(SERVER, ?MODULE). 
 
@@ -325,13 +326,16 @@ handle_response(ID, Data, FetchPid) ->
 	    case get_value(<<"Auth-Method">>, Prop) of
 		<<"password">> ->
 		    Hash = a1hash(User, Domain, get_value(<<"Auth-Pass">>, Prop)),
-		    Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash])),
+		    ChannelParams = get_channel_params(Prop),
+		    Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])),
 		    format_log(info, "LOOKUP_USER(~p): Sending pass resp (took ~pms)~n"
 			       ,[self(), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, Resp};
 		<<"a1-hash">> ->
+		    Hash = get_value(<<"Auth-Pass">>, Prop),
+		    ChannelParams = get_channel_params(Prop),
 		    Resp = lists:flatten(
-			     io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, get_value(<<"Auth-Pass">>, Prop)])
+			     io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])
 			    ),
 		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp (took ~pms)~n"
 			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
@@ -346,3 +350,20 @@ handle_response(ID, Data, FetchPid) ->
 		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE}
 	    end
     end.
+
+get_channel_params(Prop) ->
+    CV0 = case get_value(<<"Tenant-ID">>, Prop) of
+	      undefined -> [];
+	      TID -> [io_lib:format(?REGISTER_CHANNEL_PARAM
+				    ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID])]
+	  end,
+    CV1 = case get_value(<<"Access-Group">>, Prop) of
+    	      undefined -> CV0;
+	      AG -> [io_lib:format(?REGISTER_CHANNEL_PARAM
+				   ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG]) | CV0]
+	  end,
+    {struct, Custom} = get_value(<<"Custom-Channel-Vars">>, Prop, {struct, []}),
+    lists:foldl(fun({K,V}, CV) ->
+			[io_lib:format(?REGISTER_CHANNEL_PARAM
+				       ,[list_to_binary([?CHANNEL_VAR_PREFIX, K]), V]) | CV]
+		end, CV1, Custom).
