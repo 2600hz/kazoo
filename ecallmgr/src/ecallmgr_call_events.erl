@@ -58,10 +58,12 @@ remove_queue({Channel, Ticket, EvtQueue}) ->
     amqp_channel:cast(Channel, QD).
 
 publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
-    case lists:member(get_value(<<"Event-Name">>, Prop), ?FS_EVENTS) of
+    EvtName = get_value(<<"Event-Name">>, Prop),
+    case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
-	    DefProp = whistle_api:default_headers(EvtQueue, <<"Call-Event">>, <<"ecallmgr.event">>
-						      ,<<"0.1">>, get_value(<<"Event-Date-Timestamp">>, Prop)),
+	    DefProp = [{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)} |
+		       whistle_api:default_headers(EvtQueue, <<"Call-Event">>, EvtName, <<"ecallmgr.event">>
+						      ,<<"0.1">>)],
 	    Data = Prop ++ DefProp,
 	    case whistle_api:call_event(Data) of
 		{ok, JSON} ->

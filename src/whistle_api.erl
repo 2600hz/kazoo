@@ -205,17 +205,16 @@ route_resp_route_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(call_event/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 call_event(Prop) ->
-    EvtName = get_value(<<"Event-Name">>, Prop),
-    EvtProp = [{<<"Event-Name">>, EvtName}
-	       ,{<<"Event-Category">>, get_value(<<"Event-Category">>, Prop)}
+    EvtProp = [{<<"Event-Category">>, get_value(<<"Event-Category">>, Prop)}
 	       ,{<<"Event-Timestamp">>, get_value(<<"Event-Timestamp">>, Prop)}
+	       ,{<<"Event-Date-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
 	       ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
 	       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
 	       ,{<<"Server-ID">>, get_value(<<"Server-ID">>, Prop)}
 	       ,{<<"App-Name">>, get_value(<<"App-Name">>, Prop)}
 	       ,{<<"App-Version">>, get_value(<<"App-Name">>, Prop)}
 	       ,{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
-	       | event_specific(EvtName, Prop)
+	       | event_specific(get_value(<<"Event-Name">>, Prop), Prop)
 	      ],
 
     case defaults(EvtProp) of

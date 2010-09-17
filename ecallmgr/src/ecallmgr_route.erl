@@ -242,7 +242,8 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
     Q = bind_q(Channel, Ticket, ID),
     {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
 
-    DefProp = whistle_api:default_headers(Q, <<"dialplan">>, <<"ecallmgr">>, Vsn, ID),
+    DefProp = [{<<"Msg-ID">>, ID} |
+	       whistle_api:default_headers(Q, <<"dialplan">>, <<"routing">>, <<"ecallmgr">>, Vsn)],
     case whistle_api:route_req(lists:umerge([DefProp, Data, [{<<"Call-ID">>, UUID}
 							     ,{<<"Event-Queue">>, EvtQ}
 							    ]
@@ -381,7 +382,8 @@ handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{channel=Channel, ticket=Tic
 	    format_log(info, "L/U-R(~p): Sending XML to FS(~p) took ~pms ~n"
 		       ,[self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},
-	    CtlProp = whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"ecallmgr">>, Vsn, UUID),
+	    CtlProp = [{<<"Msg-ID">>, UUID} |
+	    whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"control">>, <<"ecallmgr">>, Vsn)],
 	    send_control_queue(Channel, Ticket
 			       , [{<<"Call-ID">>, UUID} |  CtlProp]
 			       , get_value(<<"Server-ID">>, Prop), EvtQ)
