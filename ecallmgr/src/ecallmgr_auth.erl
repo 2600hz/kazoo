@@ -244,8 +244,8 @@ lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Fet
     Q = bind_q(Channel, Ticket, ID),
 
     %% build req for rabbit
-    DefProp = [{<<"Msg-ID">>, ID} |
-	       whistle_api:default_headers(Q, <<"directory">>, <<"authenticate">>, <<"ecallmgr.auth">>, Vsn)],
+    DefProp = [{<<"Msg-ID">>, ID}
+	       | whistle_api:default_headers(Q, <<"directory">>, <<"authenticate">>, <<"ecallmgr.auth">>, Vsn)],
     case whistle_api:auth_req(lists:ukeymerge(1, DefProp, Data)) of
 	{ok, JSON} ->
 	    format_log(info, "L/U(~p): Sending JSON over Channel(~p)~n", [self(), Channel]),

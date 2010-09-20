@@ -20,8 +20,6 @@
 -import(proplists, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
--type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -32,18 +30,16 @@
 %%--------------------------------------------------------------------
 -spec(handle_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 handle_req(Prop) ->
-    [FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
-    [ToUser, ToDomain] = binary:split(get_value(<<"To">>, Prop), <<"@">>),
-
-    format_log(info, "TS_AUTH(~p): From: ~p ~p To: ~p ~p~n", [self(), FromUser, FromDomain, ToUser, ToDomain]),
+    [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
+    {AuthU, AuthD} = {get_value(<<"Auth-User">>, Prop), get_value(<<"Auth-Domain">>, Prop)},
 
     ViewInfo = case is_inbound(FromDomain) of
 		   true ->
 		       Direction = <<"inbound">>,
-		       lookup_user(ToUser, ToDomain);
+		       lookup_user(AuthU, AuthD);
 		   false ->
 		       Direction = <<"outbound">>,
-		       lookup_user(FromUser, FromDomain)
+		       lookup_user(AuthU, AuthD)
 	       end,
 
     Defaults = [{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
@@ -61,7 +57,7 @@ handle_req(Prop) ->
 	    case Direction of
 		<<"inbound">> ->
 		    %% send urgent email or alert for Phantom Number
-		    format_log(error, "TS_AUTH(~p): Alert! ~p@~p was routed to us~n", [self(), ToUser, ToDomain]);
+		    format_log(error, "TS_AUTH(~p): Alert! ~p@~p was routed to us~n", [self(), AuthU, AuthD]);
 		<<"outbound">> ->
 		    %% unauthed user trying to make calls, alert
 		    format_log(error, "TS_AUTH(~p): Sending a 403 ~p~n", [self()])

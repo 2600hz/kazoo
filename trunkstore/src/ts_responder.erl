@@ -173,11 +173,17 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, State) ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    send_resp(JSON, RespQ, State);
 	{error, _Msg} ->
-	    format_log(error, "AUTH ERROR: ~p~n", [_Msg])
+	    format_log(error, "AUTH(~p) ERROR: ~p~n", [self(), _Msg])
     end;
-process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{channel=Channel, ticket=Ticket}) ->
-    2;
-process_req({<<"dialplan">>,<<"Call-Control">>}, Prop, State) ->
+process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, State) ->
+    case ts_route:handle_req(Prop) of
+	{ok, JSON} ->
+	    RespQ = get_value(<<"Server-ID">>, Prop),
+	    send_resp(JSON, RespQ, State);
+	{error, _Msg} ->
+	    format_log(error, "ROUTE(~p) ERROR: ~p~n", [self(), _Msg])
+    end;
+process_req({<<"dialplan">>,<<"Call-Control">>}, _Prop, _State) ->
     3;
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).

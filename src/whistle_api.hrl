@@ -10,6 +10,7 @@
 
 -define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
 			       , <<"Auth-User">>, <<"Auth-Domain">>]).
+-define(OPTIONAL_AUTH_REQ_HEADERS, []).
 
 -define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Pass">>]).
 -define(OPTIONAL_AUTH_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
@@ -19,7 +20,9 @@
 					 ,<<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">> %%process | proxy | bypass
 					 , <<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
 					 ,<<"Resource-Type">> %% MMS | SMS | audio | video | chat
-					 ,<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>]).
+					 ,<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
+					 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+				    ]).
 
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>]).

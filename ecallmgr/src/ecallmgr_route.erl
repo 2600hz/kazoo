@@ -242,8 +242,10 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
     Q = bind_q(Channel, Ticket, ID),
     {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
 
-    DefProp = [{<<"Msg-ID">>, ID} |
-	       whistle_api:default_headers(Q, <<"dialplan">>, <<"routing">>, <<"ecallmgr">>, Vsn)],
+    DefProp = [{<<"Msg-ID">>, ID}
+	       ,{<<"Caller-ID-Name">>, get_value(<<"Caller-Caller-ID-Name">>, Data)}
+	       ,{<<"Caller-ID-Number">>, get_value(<<"Caller-Caller-ID-Number">>, Data)}
+	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"routing">>, <<"ecallmgr">>, Vsn)],
     case whistle_api:route_req(lists:umerge([DefProp, Data, [{<<"Call-ID">>, UUID}
 							     ,{<<"Event-Queue">>, EvtQ}
 							    ]
