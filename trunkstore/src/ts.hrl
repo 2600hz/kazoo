@@ -24,6 +24,7 @@
 	  ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
+	  ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
 	  ,server_id = <<>> :: binary()                  % Server of the DID
 	  ,failover = [] :: proplist()                   % Failover information
 	  ,e911 = [] :: proplist()                       % E911 info for the DID, if configured

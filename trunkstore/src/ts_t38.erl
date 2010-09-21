@@ -15,5 +15,7 @@
 
 -spec(process_flags/1 :: (Flags :: tuple()) -> tuple()).
 
-process_flags(#route_flags{fax=[]}=Flags) ->
-    Flags.
+process_flags(#route_flags{ fax = [] } = Flags) ->
+    Flags;
+process_flags(F) ->
+    F.

@@ -32,10 +32,10 @@ handle_req(ApiProp) ->
 	    {error, "Empty Custom Vars"};
 	{struct, CCVs} ->
 	    case get_value(<<"Direction">>, CCVs) of
-		<<"outbound">> ->
-		    outbound_handler(ApiProp);
-		<<"inbound">> ->
-		    inbound_handler(ApiProp)
+		<<"outbound">>=D ->
+		    outbound_handler([{<<"Direction">>, D} | ApiProp]);
+		<<"inbound">>=D ->
+		    inbound_handler([{<<"Direction">>, D} | ApiProp])
 	    end
     end.
 
@@ -63,27 +63,28 @@ outbound_handler(Prop) ->
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), Did, ViewProp]),
 	    {struct, Value} = mochijson2:decode(get_value(<<"value">>, ViewProp)),
 	    {struct, DidOptions} = get_value(<<"DID_Opts">>, Value),
-	    process_routing(DidOptions, Prop);
+	    process_routing(outbound_features(set_flags(DidOptions, Prop)), Prop);
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
     end.
 
--spec(process_routing/2 :: (DidProp :: proplist(), ApiProp :: proplist()) -> {ok, iolist()} | {error, string()}).
-process_routing(DidProp, ApiProp) ->
-    Flags = outbound_features(set_flags(DidProp, ApiProp)),
+-spec(process_routing/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> {ok, iolist()} | {error, string()}).
+process_routing(Flags, ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Flags set after outbound: ~p~n", [self(), Flags]),
     case ts_credit:check(Flags) of
 	{ok, Flags1} ->
 	    %% call may proceed
 	    1;
 	{error, Error} ->
-	    %% play recording about being out of credit
-	    2
+	    format_log(error, "TS_ROUTE(~p): Credit Error ~p~n", [self(), Error]),
+	    JSON = no_credit, %% create response to play error msg
+	    {ok, JSON}
     end,
     {error, "Thus far and no farther"}.
 
 outbound_features(Flags) ->
+    format_log(info, "TS_ROUTE(~p): B4 FLags ~p~n", [self(), Flags#route_flags.fax]),
     Features = [ts_e911, ts_t38],
     lists:foldl(fun(Mod, Flags0) ->
 			Mod:process_flags(Flags0)
@@ -111,13 +112,14 @@ set_flags(DidProp, ApiProp) ->
 	     ,to_domain = ToDomain
 	     ,from_user = FromUser
 	     ,from_domain = FromDomain
+	     ,direction = get_value(<<"Direction">>, ApiProp)
 	     ,failover = FailOpts
 	     ,callerid = {get_value(<<"CName">>, CallerIDOpts, ""), get_value(<<"CNum">>, CallerIDOpts, "")}
 	     ,e911 = E911
 	     ,payphone = (get_value(<<"PayPhoneAccess">>, Opts) =:= 1)
+	     %,fax = []
 	     %,callerid_default
 	     %,e911_default
-	     %,fax
 	     %,flat_rate_enabled
 	     %,codecs = [] :: list()
 	    }.
