@@ -98,15 +98,6 @@ set_flags(DidProp, ApiProp) ->
     {struct, CallerIDOpts} = get_value(<<"CallerID">>, DidProp, {struct, []}),
     {struct, Opts} = get_value(<<"Options">>, DidProp),
 
-    E911 = case get_value(<<"E911">>, Opts) of
-	       undefined -> [];
-	       false -> [];
-	       0 -> [];
-	       1 ->
-		   {struct, E911Opts} = get_value(<<"E911_Info">>, DidProp, {struct, []}),
-		   E911Opts
-	   end,
-
     #route_flags{
 	     to_user = ToUser
 	     ,to_domain = ToDomain
@@ -115,12 +106,10 @@ set_flags(DidProp, ApiProp) ->
 	     ,direction = get_value(<<"Direction">>, ApiProp)
 	     ,failover = FailOpts
 	     ,callerid = {get_value(<<"CName">>, CallerIDOpts, ""), get_value(<<"CNum">>, CallerIDOpts, "")}
-	     ,e911 = E911
 	     ,payphone = (get_value(<<"PayPhoneAccess">>, Opts) =:= 1)
 	     %,fax = []
 	     %,callerid_default
-	     %,e911_default
-	     %,flat_rate_enabled
+	     %,flat_rate_enabled -> number of flat rate trunks available
 	     %,codecs = [] :: list()
 	    }.
 

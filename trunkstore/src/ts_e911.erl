@@ -19,14 +19,10 @@
 %%  - Resort to Server-wide E911
 %%  - Resort to DID CallerID
 %%  - Resort to Server CallerID
-process_flags(#route_flags{to_user = <<"911">>, e911=[], e911_default=[], callerid={}, callerid_default=Def}=Flags) ->
-    Flags#route_flags{e911=Def};
-process_flags(#route_flags{to_user = <<"911">>, e911=[], e911_default=[], callerid=Def}=Flags) ->
-    Flags#route_flags{e911=Def};
-process_flags(#route_flags{to_user = <<"911">>, e911=[], e911_default=Def}=Flags) ->
-    Flags#route_flags{e911=Def};
-process_flags(#route_flags{to_user = <<"911">>}=Flags) ->
+process_flags(#route_flags{to_user = <<"911">>, callerid_e911={}}=Flags) ->
     Flags;
+process_flags(#route_flags{to_user = <<"911">>, callerid_e911=E911}=Flags) ->
+    Flags#route_flags{callerid=E911};
 %% Not a 911 Call
 process_flags(Flags) ->
     Flags.

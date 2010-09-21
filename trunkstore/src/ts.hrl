@@ -13,8 +13,7 @@
 -define(TS_VIEW_CARRIERIP, "LookUpCarrierIP/LookUpCarrierIP").
 
 %% couch params for the routing table and its views
--define(TS_ROUTE_DB, "ts_route").
--define(TS_VIEW_RATES, "LookupFinancials/LookupRates").
+-define(TS_RATES_DOC, "rates").
 
 % just want to deal with binary K/V pairs
 -type proplist() :: list(tuple(binary(), binary())) | [].
@@ -26,13 +25,21 @@
           ,from_domain = <<>> :: binary()
 	  ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
 	  ,server_id = <<>> :: binary()                  % Server of the DID
+          ,credit_available = 0.0 :: float()             % How much credit is left on the account/server/DID
 	  ,failover = [] :: proplist()                   % Failover information
-	  ,e911 = [] :: proplist()                       % E911 info for the DID, if configured
-	  ,e911_default = [] :: proplist()               % E911 info for server
 	  ,payphone = false :: boolean()
 	  ,callerid = {} :: tuple()                      % Name and Number for Caller ID
-          ,callerid_default = {} :: tuple()              % Name and Number for Caller ID for the server
+          ,callerid_e911 = {} :: tuple()                 % CallerID for E911 calls
+          ,callerid_default = {} :: tuple()              % Override Name and Number for Caller ID
 	  ,fax = [] :: proplist()                        % Fax properties
 	  ,flat_rate_enabled = false :: boolean()        % is this a flat-rate eligible call
-          ,codecs = [] :: list()                         % what codecs to use (Fax(t38) mostly)
+          ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
+	  ,inbound_rate = 0.0 :: float()                 % rate for the inbound leg
+	  ,inbound_rate_increment = 60 :: integer()      % time, in sec, to bill per
+          ,inbound_rate_minimum = 60 :: integer()        % time, in sec, to bill as a minimum
+	  ,inbound_surcharge = 0.0 :: float()            % rate to charge up front
+	  ,outbound_rate = 0.0 :: float()                % rate for the outbound leg
+	  ,outbound_rate_increment = 60 :: integer()     % time, in sec, to bill per
+          ,outbound_rate_minimum = 60 :: integer()       % time, in sec, to bill as a minimum
+	  ,outbound_surcharge = 0.0 :: float()           % rate to charge up front
 	 }).

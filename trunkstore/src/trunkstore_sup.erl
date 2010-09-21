@@ -28,5 +28,6 @@ init([]) ->
 	   , [
 	      ?CHILD(ts_couch, worker)
 	      ,?CHILD(ts_responder, worker)
+	      ,?CHILD(ts_credit, worker)
 	     ]} }.
 

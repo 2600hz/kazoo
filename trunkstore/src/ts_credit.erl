@@ -8,31 +8,249 @@
 %%%-------------------------------------------------------------------
 -module(ts_credit).
 
--export([check/1]).
-
--import(logger, [format_log/3]).
--import(proplists, [get_value/2]).
+-behaviour(gen_server).
 
 -include("ts.hrl").
 
+%% API
+-export([start_link/0, check/1, force_rate_refresh/0]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+	 terminate/2, code_change/3]).
+
+-define(SERVER, ?MODULE).
+-define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
+
+-import(logger, [format_log/3]).
+-import(proplists, [get_value/2, get_value/3]).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
 check(Flags) ->
-    Rate = 0,
-    Options = [],
-    case ts_couch:has_view(?TS_DB, ?TS_VIEW_RATES) andalso
-	ts_couch:get_results(?TS_DB, ?TS_VIEW_RATES, Options) of
-	false ->
-	    format_log(error, "TS_CREDIT(~p): No ~p view found while looking up ~p~n"
-		       ,[self(), ?TS_VIEW_RATES]),
-	    {error, "No DIDLOOKUP view"};
+    gen_server:call(?MODULE, {check, Flags}).
+
+force_rate_refresh() ->
+    ?MODULE ! refresh,
+    ok.
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([]) ->
+    timer:send_interval(?REFRESH_RATE, refresh),
+    case get_current_rates() of
+	{ok, Rates} ->
+	    {ok, Rates};
+	{error, _Err} ->
+	    format_log(error, "TS_CREDIT(~p): Error getting rates: ~p~n", [self(), _Err]),
+	    {ok, []}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(Req, _From, []=R) ->
+    format_log(info, "TS_CREDIT(~p): No rate information for Req ~p~n", [self(), Req]),
+    {reply, no_rate_information, R};
+handle_call({check, Flags}, _From, Rates) ->
+    format_log(info, "TS_CREDIT(~p): Flags ~p~nRates: ~p~n", [self(), Flags, Rates]),
+    {reply, set_rate_flags(Flags, Rates), Rates}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info(refresh, OldRates) ->
+    case get_current_rates() of
+	{ok, Rates} ->
+	    {noreply, Rates};
+	{error, _Err} ->
+	    format_log(error, "TS_CREDIT(~p): Error getting rates: ~p~n", [self(), _Err]),
+	    {noreply, OldRates}
+    end;
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+get_current_rates() ->
+    case ts_couch:open_doc(?TS_DB, ?TS_RATES_DOC) of
+	not_found ->
+	    format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
+	    {error, "No matching rates"};
 	[] ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
-	[{ViewProp} | _Rest] ->
-	    format_log(info, "TS_CREDIT(~p): Rates found for~n~p~n", [self(), ViewProp]),
-	    {struct, Rates} = mochijson2:decode(get_value(<<"value">>, ViewProp)),
-	    {ok, Flags};
-	_Else ->
-	    format_log(error, "TS_CREDIT(~p): Got something unexpected~n~p~n", [self(), _Else]),
-	    {error, "Unexpected error in credit check"}
+	{Rates} ->
+	    format_log(info, "TS_CREDIT(~p): Rates found for~n~p~n", [self(), Rates]),
+	    {ok, lists:map(fun process_rates/1, Rates)}
     end.
 
+process_rates({<<"_id">>, _}=ID) ->
+    ID;
+process_rates({<<"_rev">>, _}=Rev) ->
+    Rev;
+process_rates({RouteName, {RouteOptions}}) ->
+    RoutesRegexStrs = get_value(<<"routes">>, RouteOptions, []),
+    {Options} = get_value(<<"options">>, RouteOptions, {[]}),
+    RouteRegexs = lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs),
+    ROs0 = proplists:delete(<<"routes">>, RouteOptions),
+    ROs1 = proplists:delete(<<"options">>, ROs0),
+    {RouteName, [{<<"routes">>, RouteRegexs}
+		 ,{<<"options">>, Options}
+		 | ROs1]}.
+
+set_rate_flags(Flags, Rates) ->
+    Dir = Flags#route_flags.direction,
+    Rates0 = lists:filter(fun(Rate) ->
+				  User = case Dir of
+					     <<"inbound">> -> Flags#route_flags.to_user;
+					     <<"outbound">> -> Flags#route_flags.from_user
+					 end,
+				  lists:member(Dir, get_value(<<"direction">>, Rate)) andalso
+				      lists:any(fun(Regex) ->
+							re:match(User, Regex) =/= nomatch
+						end, get_value(<<"routes">>, Rate))
+			  end, Rates),
+
+    %% Filter on Options
+    Rates1 = lists:filter(fun(Rate) -> options_match(Flags, Rate) end, Rates0),
+
+    RateToUse = hd(Rates1),
+
+    case Flags#route_flags.flat_rate_enabled of
+	true ->
+	    set_flat_flags(Flags, Dir);
+	false ->
+	    Flags0 = set_rate_flags(Flags, Dir, RateToUse),
+	    case has_credit(Flags0, Dir) of
+		true ->
+		    Flags0;
+		false ->
+		    %% Raise Holy Hell, or play music saying no credit
+		    %% returns us to ts_responder to catch the error
+		    erlang:error({lacking_credit, Flags0})
+	    end
+    end.
+
+%% can they be on the phone for at least a minute?
+has_credit(Flags, <<"inbound">>) ->
+    Flags#route_flags.credit_available > (Flags#route_flags.inbound_rate * Flags#route_flags.inbound_rate_minimum);
+has_credit(Flags, <<"outbound">>) ->
+    Flags#route_flags.credit_available > (Flags#route_flags.outbound_rate * Flags#route_flags.outbound_rate_minimum).
+
+set_rate_flags(Flags, <<"inbound">>, RateToUse) ->
+    Flags#route_flags{
+      inbound_rate = get_value(<<"rate_cost">>, RateToUse)
+      ,inbound_rate_increment = get_value(<<"rate_increment">>, RateToUse)
+      ,inbound_rate_minimum = get_value(<<"rate_minimum">>, RateToUse)
+      ,inbound_surcharge = get_value(<<"rate_surcharge">>, RateToUse)
+     };
+set_rate_flags(Flags, <<"outbound">>, RateToUse) ->
+    Flags#route_flags{
+      outbound_rate = get_value(<<"rate_cost">>, RateToUse)
+      ,outbound_rate_increment = get_value(<<"rate_increment">>, RateToUse)
+      ,outbound_rate_minimum = get_value(<<"rate_minimum">>, RateToUse)
+      ,outbound_surcharge = get_value(<<"rate_surcharge">>, RateToUse)
+     }.
+
+set_flat_flags(Flags, <<"inbound">>) ->
+    Flags#route_flags{
+      inbound_rate = 0.0
+      ,inbound_rate_increment = 0
+      ,inbound_rate_minimum = 0
+      ,inbound_surcharge = 0.0
+     };
+set_flat_flags(Flags, <<"outbound">>) ->
+    Flags#route_flags{
+      outbound_rate = 0.0
+      ,outbound_rate_increment = 0
+      ,outbound_rate_minimum = 0
+      ,outbound_surcharge = 0.0
+     }.
+
+%% match options set in Flags to options available in Rate
+%% All options set in Flags must be set in Rate to be usable
+options_match(Rate, Flags) ->
+    true.
