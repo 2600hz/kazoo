@@ -359,6 +359,10 @@ get_channel_vars({<<"Auth-User">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_username='", V, "'"]) | Vars];
 get_channel_vars({<<"Auth-Pass">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_password='", V, "'"]) | Vars];
+get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
+    Codecs = lists:map(fun binary_to_list/1, Cs),
+    CodecStr = string:join(Codecs, ","),
+    [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "ROUTE(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
