@@ -91,7 +91,7 @@ auth_req(Prop) ->
 		    io:format("AuthReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?AUTH_REQ_HEADERS, Prop1]),
 		    Error;
 		{Headers1, _Prop2} ->
-		    {ok, mochijson2:encode({struct, Headers1})}
+		    headers_to_json(Headers1)
 	    end
     end.
 
@@ -117,7 +117,7 @@ auth_resp(Prop) ->
 		    Error;
 		{Headers1, Prop2} ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_AUTH_RESP_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -152,7 +152,7 @@ route_req(Prop) ->
 		    Error;
 		{Headers1, Prop2} ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_ROUTE_REQ_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -171,13 +171,14 @@ route_resp(Prop) ->
 	{error, _Reason}=Error ->
 	    io:format("RouteResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?ROUTE_RESP_HEADERS, Headers) of
+	{Headers0, Prop0} ->
+	    case update_required_headers(Prop0, ?ROUTE_RESP_HEADERS, Headers0) of
 		{error, _Reason} = Error ->
-		    io:format("RouteResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_RESP_HEADERS, Prop1]),
+		    io:format("RouteResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_RESP_HEADERS, Prop0]),
 		    Error;
-		{Headers1, _Prop2} ->
-		    {ok, mochijson2:encode({struct, Headers1})}
+		{Headers1, Prop1} ->
+		    {Headers2, _Prop2} = update_optional_headers(Prop1, ?OPTIONAL_ROUTE_RESP_HEADERS, Headers1),
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -241,7 +242,7 @@ call_event(Prop) ->
 		    Error;
 		{Headers1, Prop1} ->
 		    {Headers2, _Prop2} = update_optional_headers(Prop1, ?OPTIONAL_CALL_EVENT_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -266,7 +267,7 @@ error_resp(Prop) ->
 		    io:format("ErrorResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ERROR_RESP_HEADERS, Prop1]),
 		    Error;
 		{Headers1, _Prop2} ->
-		    {ok, mochijson2:encode({struct, Headers1})}
+		    headers_to_json(Headers1)
 	    end
     end.
 
@@ -292,7 +293,7 @@ store_req(Prop) ->
 		    Error;
 		{Headers1, Prop2} ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_STORE_REQ_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -319,7 +320,7 @@ store_amqp_resp(Prop) ->
 		    Error;
 		{Headers1, Prop2} ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_STORE_AMQP_RESP_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -346,7 +347,7 @@ store_http_resp(Prop) ->
 		    Error;
 		{Headers1, Prop2} ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_STORE_HTTP_RESP_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -373,7 +374,7 @@ tones_req(Prop) ->
 		    Error;
 		{Headers1, Prop2} ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_TONES_REQ_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -420,7 +421,7 @@ queue_req(Prop) ->
 		    Error;
 		{Headers1, Prop2} ->
 		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_QUEUE_REQ_HEADERS, Headers1),
-		    {ok, mochijson2:encode({struct, Headers2})}
+		    headers_to_json(Headers2)
 	    end
     end.
 
@@ -447,6 +448,16 @@ convert_whistle_app_name(AppName) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> {ok, iolist()} | {error, string()}).
+headers_to_json(HeadersProp) ->
+    try
+	JSON = mochijson2:encode({struct, HeadersProp}),
+	{ok, JSON}
+    catch
+	throw:E -> {error, io_lib:format("WHISTLE TO_JSON THROW ERROR: ~s~n~p", [E, HeadersProp])};
+	error:E -> {error, io_lib:format("WHISTLE TO_JSON ERROR: ~s~n~p", [E, HeadersProp])};
+	exit:E -> {error, io_lib:format("WHISTLE TO_JSON EXIT ERROR: ~s~n~p", [E, HeadersProp])}
+    end.
 
 %% Extract custom channel variables to include in the event
 -spec(custom_channel_vars/1 :: (Prop :: proplist()) -> proplist()).

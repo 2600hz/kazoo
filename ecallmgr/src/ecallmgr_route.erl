@@ -357,8 +357,18 @@ get_channel_vars(Prop) ->
 
 get_channel_vars({<<"Auth-User">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_username='", V, "'"]) | Vars];
-get_channel_vars({<<"Auth-Pass">>, V}, Vars) ->
+get_channel_vars({<<"Auth-Password">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_password='", V, "'"]) | Vars];
+get_channel_vars({<<"Caller-ID-Name">>, V}, Vars) ->
+    [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
+get_channel_vars({<<"Caller-ID-Number">>, V}, Vars) ->
+    [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
+get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
+    [ <<"sip_cid_type=none">> | Vars];
+get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
+    [ <<"sip_cid_type=rpid">> | Vars];
+get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
+    [ <<"sip_cid_type=pid">> | Vars];
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     Codecs = lists:map(fun binary_to_list/1, Cs),
     CodecStr = string:join(Codecs, ","),
