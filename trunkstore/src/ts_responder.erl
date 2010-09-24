@@ -27,7 +27,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {channel, ticket}).
+-record(state, {channel, ticket, broad_q}).
 
 %%%===================================================================
 %%% API
@@ -75,7 +75,7 @@ init([]) ->
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, BroadQueue), self()),
     format_log(info, "TS_RESPONDER(~p): Consuming on B(~p)~n", [self(), BroadQueue]),
 
-    {ok, #state{channel=Channel, ticket=Ticket}}.
+    {ok, #state{channel=Channel, ticket=Ticket, broad_q = BroadQueue}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,7 +147,9 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{channel=Channel, ticket=Ticket, broad_q=Q}) ->
+    QD = amqp_util:queue_delete(Ticket, Q),
+    amqp_channel:cast(Channel, QD),
     ok.
 
 %%--------------------------------------------------------------------
@@ -173,25 +175,16 @@ process_req({<<"directory">>, <<"REQUEST_PARAMS">>}, Prop, State) ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    send_resp(JSON, RespQ, State);
 	{error, _Msg} ->
-	    format_log(error, "AUTH(~p) ERROR: ~p~n", [self(), _Msg])
+	    format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
     end;
 process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, State) ->
-    try
-	case ts_route:handle_req(Prop) of
-	    {ok, JSON} ->
-		RespQ = get_value(<<"Server-ID">>, Prop),
-		send_resp(JSON, RespQ, State);
-	    {error, _Msg} ->
-		format_log(error, "ROUTE(~p) ERROR: ~p~n", [self(), _Msg])
-	end
-    catch
-	error:{lacking_credit, Flags} ->
-	    %% create JSON for playing message
-	    format_log(error, "TS_RESPONDER(~p): Dialplan Req errored out for lacking credit~nFlags: ~p~n"
-		       ,[self(), Flags]),
-	    ok
+    case ts_route:handle_req(Prop) of
+	{ok, JSON} ->
+	    RespQ = get_value(<<"Server-ID">>, Prop),
+	    send_resp(JSON, RespQ, State);
+	{error, _Msg} ->
+	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~p~n", [self(), _Msg])
     end;
-	    
 process_req({<<"dialplan">>,<<"Call-Control">>}, _Prop, _State) ->
     3;
 process_req(_MsgType, _Prop, _State) ->

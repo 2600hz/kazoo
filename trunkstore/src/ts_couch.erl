@@ -159,7 +159,6 @@ handle_call({count, DbName, DesignDoc, ViewOptions}, {From, _Ref}
     end;
 handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
 	    ,#state{connection={Conn,_MRefConn}, databases=DBs, views=Vs}=State) ->
-    format_log(info, "TS_COUCH(~p): get_results ~p ~p ~p~n", [self(), DbName, DesignDoc, ViewOptions]),
     {DP, State1} = case find_db_pid(DBs, DbName, From) of
 		       nopid ->
 			   case open_db(Conn, DbName, From, State) of
@@ -171,7 +170,6 @@ handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
 		       DbPid ->
 			   {DbPid, State}
 		   end,
-    format_log(info, "TS_COUCH(~p): get_results DP ~p~n", [self(), DP]),
     case DP of
 	Pid when is_pid(Pid) ->
 	    case find_view_pid(Vs, DesignDoc, From) of
@@ -179,8 +177,7 @@ handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
 		    case open_view(DP, DesignDoc, From, State1) of
 			{ok, ViewPid, State2} ->
 			    Res = couchbeam_view:fetch(ViewPid, ViewOptions),
-			    format_log(info, "TS_COUCH(~p): get_results ViewPid created ~p.~n"
-				       ,[self(), ViewPid]),
+			    format_log(info, "TS_COUCH(~p): get_results fetched from ~p.~n", [self(), ViewPid]),
 			    case Res of
 				{ok, {Json}} -> {reply, get_value(<<"rows">>, Json), State2};
 				_ -> {reply, [], State2}
@@ -191,8 +188,7 @@ handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
 		    end;
 		ViewPid ->
 		    Res = couchbeam_view:fetch(ViewPid, ViewOptions),
-		    format_log(info, "TS_COUCH(~p): get_results ViewPid found ~p.~n"
-			       ,[self(), ViewPid]),
+		    format_log(info, "TS_COUCH(~p): get_results fetched from ~p.~n", [self(), ViewPid]),
 		    case Res of
 			{ok, {Json}} -> {reply, get_value(<<"rows">>, Json), State1};
 			_ -> {reply, [], State1}
@@ -204,8 +200,7 @@ handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
     end;
 handle_call({has_view, DbName, DesignDoc}, {From, _Ref}
 	    ,#state{connection={Conn,_MRefConn}, databases=DBs, views=Vs}=State) ->
-    format_log(info, "TS_COUCH(~p): has_view ~p ~p~n"
-	       ,[self(), DbName, DesignDoc]),
+    format_log(info, "TS_COUCH(~p): has_view ~p ~p~n", [self(), DbName, DesignDoc]),
     {DP, State1} = case find_db_pid(DBs, DbName, From) of
 		       nopid ->
 			   case open_db(Conn, DbName, From, State) of
@@ -217,7 +212,6 @@ handle_call({has_view, DbName, DesignDoc}, {From, _Ref}
 		       DbPid ->
 			   {DbPid, State}
 		   end,
-    format_log(info, "TS_COUCH(~p): has_view DBPid ~p~n", [self(), DP]),
     case DP of
 	Pid when is_pid(Pid) ->
 	    case find_view_pid(Vs, DesignDoc, From) of
@@ -395,7 +389,6 @@ get_new_connection(Params) ->
 open_db(Conn, DbName, From, #state{databases=DBs}=State) ->
     case couchbeam_db:open_or_create(Conn, DbName) of
 	DbPid when is_pid(DbPid) ->
-	    format_log(info, "TS_COUCH(~p): Created DbPid(~p : ~p) for ~p~n", [self(), DbName, DbPid, From]),
 	    MRef = erlang:monitor(process, DbPid),
 	    {ok, DbPid, State#state{databases=[ {{From, DbName}, DbPid, MRef} | DBs]}};
 	{ok, Error} ->
@@ -420,8 +413,6 @@ open_view(DbPid, DesignDoc, From, #state{views=Vs}=State) ->
     case couchbeam_db:view(DbPid, DesignDoc) of
 	ViewPid when is_pid(ViewPid) ->
 	    MRef = erlang:monitor(process, ViewPid),
-	    format_log(info, "TS_COUCH(~p): Created ViewPid(~p : ~p) for ~p~n"
-		       ,[self(), DesignDoc, ViewPid, From]),
 	    {ok, ViewPid, State#state{views=[ {{From, DesignDoc}, ViewPid, MRef} | Vs]}};
 	{ok, Error} ->
 	    format_log(error, "TS_COUCH(~p): Unable to create ~p(~p)~n", [self(), DesignDoc, Error]),

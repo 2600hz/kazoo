@@ -14,6 +14,7 @@
 
 %% couch params for the routing table and its views
 -define(TS_RATES_DOC, "rates").
+-define(TS_CARRIERS_DOC, "carriers").
 
 % just want to deal with binary K/V pairs
 -type proplist() :: list(tuple(binary(), binary())) | [].

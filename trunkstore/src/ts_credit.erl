@@ -89,7 +89,6 @@ handle_call(Req, _From, []=R) ->
     format_log(info, "TS_CREDIT(~p): No rate information for Req ~p~n", [self(), Req]),
     {reply, no_rate_information, R};
 handle_call({check, Flags}, _From, Rates) ->
-    format_log(info, "TS_CREDIT(~p): Flags ~p~nRates: ~p~n", [self(), Flags, Rates]),
     {reply, set_rate_flags(Flags, Rates), Rates}.
 
 %%--------------------------------------------------------------------
@@ -163,7 +162,7 @@ get_current_rates() ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
 	{Rates} ->
-	    format_log(info, "TS_CREDIT(~p): Rates found for~n~p~n", [self(), Rates]),
+	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
 	    {ok, lists:map(fun process_rates/1, Rates)}
     end.
 
@@ -174,43 +173,45 @@ process_rates({<<"_rev">>, _}=Rev) ->
 process_rates({RouteName, {RouteOptions}}) ->
     RoutesRegexStrs = get_value(<<"routes">>, RouteOptions, []),
     {Options} = get_value(<<"options">>, RouteOptions, {[]}),
-    RouteRegexs = lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs),
     ROs0 = proplists:delete(<<"routes">>, RouteOptions),
-    ROs1 = proplists:delete(<<"options">>, ROs0),
-    {RouteName, [{<<"routes">>, RouteRegexs}
+    {RouteName, [{<<"routes">>, lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs)}
 		 ,{<<"options">>, Options}
-		 | ROs1]}.
+		 | proplists:delete(<<"options">>, ROs0)]}.
 
 set_rate_flags(Flags, Rates) ->
     Dir = Flags#route_flags.direction,
-    Rates0 = lists:filter(fun(Rate) ->
+    Rates0 = proplists:delete(<<"_rev">>, proplists:delete(<<"_id">>, Rates)),
+    Rates1 = lists:filter(fun({_RateName, RateData}) ->
 				  User = case Dir of
-					     <<"inbound">> -> Flags#route_flags.to_user;
-					     <<"outbound">> -> Flags#route_flags.from_user
+					     <<"outbound">> -> Flags#route_flags.to_user;
+					     <<"inbound">> -> Flags#route_flags.from_user
 					 end,
-				  lists:member(Dir, get_value(<<"direction">>, Rate)) andalso
+				  lists:member(Dir, get_value(<<"direction">>, RateData)) andalso
 				      lists:any(fun(Regex) ->
-							re:match(User, Regex) =/= nomatch
-						end, get_value(<<"routes">>, Rate))
-			  end, Rates),
+							re:run(User, Regex) =/= nomatch
+						end, get_value(<<"routes">>, RateData))
+			  end, Rates0),
+    %% Filter on Options - All flag options must be in Rate options
+    Rates2 = lists:filter(fun({_RateName, RateData}) -> options_match(Flags, RateData) end, Rates1),
 
-    %% Filter on Options
-    Rates1 = lists:filter(fun(Rate) -> options_match(Flags, Rate) end, Rates0),
+    {RateName, RateData} = hd(Rates2),
+    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
-    RateToUse = hd(Rates1),
+    %% trunks available in flags (flat_rate_enabled) and the carrier has flatrate available as well
+    UseFlatRate = Flags#route_flags.flat_rate_enabled andalso get_value(<<"flatrate">>, RateData, false),
 
-    case Flags#route_flags.flat_rate_enabled of
+    case UseFlatRate of
 	true ->
-	    set_flat_flags(Flags, Dir);
+	    {ok, set_flat_flags(Flags, Dir)};
 	false ->
-	    Flags0 = set_rate_flags(Flags, Dir, RateToUse),
+	    Flags0 = set_rate_flags(Flags, Dir, RateData),
 	    case has_credit(Flags0, Dir) of
 		true ->
-		    Flags0;
+		    {ok, Flags0};
 		false ->
 		    %% Raise Holy Hell, or play music saying no credit
 		    %% returns us to ts_responder to catch the error
-		    erlang:error({lacking_credit, Flags0})
+		    {error, lacking_credit}
 	    end
     end.
 
@@ -220,29 +221,33 @@ has_credit(Flags, <<"inbound">>) ->
 has_credit(Flags, <<"outbound">>) ->
     Flags#route_flags.credit_available > (Flags#route_flags.outbound_rate * Flags#route_flags.outbound_rate_minimum).
 
-set_rate_flags(Flags, <<"inbound">>, RateToUse) ->
+set_rate_flags(Flags, <<"inbound">>=In, RateData) ->
+    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateData]),
     Flags#route_flags{
-      inbound_rate = get_value(<<"rate_cost">>, RateToUse)
-      ,inbound_rate_increment = get_value(<<"rate_increment">>, RateToUse)
-      ,inbound_rate_minimum = get_value(<<"rate_minimum">>, RateToUse)
-      ,inbound_surcharge = get_value(<<"rate_surcharge">>, RateToUse)
+      inbound_rate = get_value(<<"rate_cost">>, RateData)
+      ,inbound_rate_increment = get_value(<<"rate_increment">>, RateData)
+      ,inbound_rate_minimum = get_value(<<"rate_minimum">>, RateData)
+      ,inbound_surcharge = get_value(<<"rate_surcharge">>, RateData)
      };
-set_rate_flags(Flags, <<"outbound">>, RateToUse) ->
+set_rate_flags(Flags, <<"outbound">>=Out, RateData) ->
+    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateData]),
     Flags#route_flags{
-      outbound_rate = get_value(<<"rate_cost">>, RateToUse)
-      ,outbound_rate_increment = get_value(<<"rate_increment">>, RateToUse)
-      ,outbound_rate_minimum = get_value(<<"rate_minimum">>, RateToUse)
-      ,outbound_surcharge = get_value(<<"rate_surcharge">>, RateToUse)
+      outbound_rate = get_value(<<"rate_cost">>, RateData)
+      ,outbound_rate_increment = get_value(<<"rate_increment">>, RateData)
+      ,outbound_rate_minimum = get_value(<<"rate_minimum">>, RateData)
+      ,outbound_surcharge = get_value(<<"rate_surcharge">>, RateData)
      }.
 
-set_flat_flags(Flags, <<"inbound">>) ->
+set_flat_flags(Flags, <<"inbound">>=In) ->
+    format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [In]),
     Flags#route_flags{
       inbound_rate = 0.0
       ,inbound_rate_increment = 0
       ,inbound_rate_minimum = 0
       ,inbound_surcharge = 0.0
      };
-set_flat_flags(Flags, <<"outbound">>) ->
+set_flat_flags(Flags, <<"outbound">>=Out) ->
+    format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [Out]),
     Flags#route_flags{
       outbound_rate = 0.0
       ,outbound_rate_increment = 0
@@ -252,5 +257,5 @@ set_flat_flags(Flags, <<"outbound">>) ->
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
-options_match(Rate, Flags) ->
+options_match(_Rate, _Flags) ->
     true.
