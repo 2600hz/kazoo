@@ -61,11 +61,25 @@ publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
-	    DefProp = [{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)} |
-		       whistle_api:default_headers(EvtQueue, <<"Call-Event">>, EvtName, <<"ecallmgr.event">>
-						      ,<<"0.1">>)],
-	    Data = Prop ++ DefProp,
-	    case whistle_api:call_event(Data) of
+	    EvtProp = [{<<"Event-Category">>, get_value(<<"Event-Category">>, Prop)}
+		       ,{<<"Event-Name">>, EvtName}
+		       ,{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
+		       ,{<<"Event-Timestamp">>, get_value(<<"Event-Timestamp">>, Prop)}
+		       ,{<<"Event-Date-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
+		       ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
+		       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
+		       ,{<<"Server-ID">>, get_value(<<"Server-ID">>, Prop)}
+		       ,{<<"App-Name">>, get_value(<<"App-Name">>, Prop)}
+		       ,{<<"App-Version">>, get_value(<<"App-Name">>, Prop)}
+		       | event_specific(EvtName, Prop)
+		      ] ++
+		whistle_api:default_headers(EvtQueue, <<"Call-Event">>, EvtName, <<"ecallmgr.event">>, <<"0.1">>),
+	    EvtProp1 = case ecallmgr_util:custom_channel_vars(Prop) of
+			   [] -> EvtProp;
+			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp]
+		       end,
+
+	    case whistle_api:call_event(EvtProp1) of
 		{ok, JSON} ->
 		    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
 							      ,EvtQueue
@@ -80,3 +94,18 @@ publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
 	false ->
 	    ok
     end.
+
+-spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
+    Application = get_value(<<"Application">>, Prop),
+    case get_value(Application, ?SUPPORTED_APPLICATIONS) of
+	undefined ->
+	    io:format("WHISTLE_API: Didn't find ~p in supported~n", [Application]),
+	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
+	AppName ->
+	    [{<<"Application-Name">>, AppName}
+	     ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop, <<"">>)}
+	    ]
+    end;
+event_specific(_Evt, _Prop) ->
+    [].

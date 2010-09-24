@@ -24,6 +24,7 @@
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
+-include("whistle_api.hrl").
 
 -define(SERVER, ?MODULE). 
 
@@ -242,15 +243,21 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
     Q = bind_q(Channel, Ticket, ID),
     {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
 
+    Custom = case ecallmgr_util:custom_channel_vars(Data) of
+		 [] -> [];
+		 CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | Data]
+	     end,
+
     DefProp = [{<<"Msg-ID">>, ID}
 	       ,{<<"Caller-ID-Name">>, get_value(<<"Caller-Caller-ID-Name">>, Data)}
 	       ,{<<"Caller-ID-Number">>, get_value(<<"Caller-Caller-ID-Number">>, Data)}
+	       ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
+	       ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
 	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"routing">>, <<"ecallmgr">>, Vsn)],
-    case whistle_api:route_req(lists:umerge([DefProp, Data, [{<<"Call-ID">>, UUID}
-							     ,{<<"Event-Queue">>, EvtQ}
-							    ]
-					    ]
-					   )) of
+    case whistle_api:route_req(lists:umerge([DefProp, Data, Custom, [{<<"Call-ID">>, UUID}
+								     ,{<<"Event-Queue">>, EvtQ}
+								    ]
+					    ])) of
 	{ok, JSON} ->
 	    format_log(info, "L/U-R(~p): Sending RouteReq JSON over Channel(~p)~n", [self(), Channel]),
 	    send_request(Channel, Ticket, JSON),

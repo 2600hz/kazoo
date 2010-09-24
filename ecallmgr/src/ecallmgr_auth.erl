@@ -85,39 +85,12 @@ init([]) ->
 %% @end
 %% #auth_state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
-handle_call({add_fs_node, Node}, _From, #auth_state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	{Node, _HandlerPid} ->
-	    format_log(info, "AUTH(~p): handler(~p) known for ~p~n", [self(), _HandlerPid, Node]),
-	    {reply, {error, node_is_known}, State};
-	false ->
-	    case net_adm:ping(Node) of
-		pong ->
-		    HPid = setup_fs_conn(Node),
-		    link(HPid),
-		    format_log(info, "AUTH(~p): Starting handler(~p) for ~p~n", [self(), HPid, Node]),
-		    {reply, ok, State#auth_state{fs_nodes=[{Node, HPid} | Nodes]}};
-		pang ->
-		    format_log(error, "AUTH(~p): ~p not responding~n", [self(), Node]),
-		    {reply, {error, no_connection}, State}
-	    end
-    end;
-handle_call({rm_fs_node, Node}, _From, #auth_state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	{Node, HPid} ->
-	    case erlang:is_process_alive(HPid) of
-		true ->
-		    HPid ! shutdown,
-		    format_log(info, "AUTH(~p): Shutting down handler ~p for ~p~n", [self(), HPid, Node]),
-		    {reply, ok, State#auth_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
-		false ->
-		    format_log(error, "AUTH(~p): Handler ~p already down for ~p~n", [self(), HPid, Node]),
-		    {reply, {error, node_down}, State}
-	    end;
-	false ->
-	    format_log(error, "AUTH(~p): No handler for ~p~n", [self(), Node]),
-	    {reply, {error, no_node}, State}
-    end;
+handle_call({add_fs_node, Node}, _From, State) ->
+    {Resp, State1} = add_fs_node(Node, State),
+    {reply, Resp, State1};
+handle_call({rm_fs_node, Node}, _From, State) ->
+    {Resp, State1} = rm_fs_node(Node, State),
+    {reply, Resp, State1};
 handle_call(_Request, _From, State) ->
     format_log(error, "AUTH(~p): Unhandled call ~p~n", [self(), _Request]),
     {reply, {error, unhandled_request}, State}.
@@ -145,6 +118,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', HPid, Reason}, #auth_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(HPid, 2, Nodes) of
+	{Node, HPid} ->
+	    format_log(error, "AUTH(~p): Received EXIT(~p) for ~p, restarting...~n", [self(), Reason, HPid]),
+	    {_, State1} = rm_fs_node(Node, State),
+	    {_, State2} = add_fs_node(Node, State1),
+	    {noreply, State2};
+	false ->
+	    format_log(error, "AUTH(~p): Received EXIT(~p) for unknown ~p~n", [self(), Reason, HPid]),
+	    {noreply, State}
+    end;
 handle_info(_Info, State) ->
     format_log(info, "AUTH(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -183,6 +167,41 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(add_fs_node/2 :: (Node :: atom(), State :: tuple()) -> {ok, tuple()} | {{error, atom()}, tuple()}).
+add_fs_node(Node, #auth_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, _HandlerPid} ->
+	    format_log(info, "AUTH(~p): handler(~p) known for ~p~n", [self(), _HandlerPid, Node]),
+	    {{error, node_is_known}, State};
+	false ->
+	    case net_adm:ping(Node) of
+		pong ->
+		    HPid = setup_fs_conn(Node),
+		    link(HPid),
+		    format_log(info, "AUTH(~p): Starting handler(~p) for ~p~n", [self(), HPid, Node]),
+		    {ok, State#auth_state{fs_nodes=[{Node, HPid} | Nodes]}};
+		pang ->
+		    format_log(error, "AUTH(~p): ~p not responding~n", [self(), Node]),
+		    {{error, no_connection}, State}
+	    end
+    end.
+
+rm_fs_node(Node, #auth_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, HPid} ->
+	    case erlang:is_process_alive(HPid) of
+		true ->
+		    HPid ! shutdown,
+		    format_log(info, "AUTH(~p): Shutting down handler ~p for ~p~n", [self(), HPid, Node]),
+		    {{ok, Node}, State#auth_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
+		false ->
+		    format_log(error, "AUTH(~p): Handler ~p already down for ~p~n", [self(), HPid, Node]),
+		    {{error, handler_down, Node}, State#auth_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}}
+	    end;
+	false ->
+	    format_log(error, "AUTH(~p): No handler for ~p~n", [self(), Node]),
+	    {{error, no_node, Node}, State}
+    end.
 
 fetch_user(Node, #handler_state{channel=undefined, ticket=undefined}=State) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
@@ -244,16 +263,19 @@ lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Fet
     Q = bind_q(Channel, Ticket, ID),
 
     %% build req for rabbit
-    DefProp = [{<<"Msg-ID">>, ID}
-	       | whistle_api:default_headers(Q, <<"directory">>, <<"authenticate">>, <<"ecallmgr.auth">>, Vsn)],
-    case whistle_api:auth_req(lists:ukeymerge(1, DefProp, Data)) of
+    Prop = [{<<"Msg-ID">>, ID}
+	    ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
+	    ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
+	    ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
+	    ,{<<"Auth-User">>, get_value(<<"user">>, Data, get_value(<<"Auth-User">>, Data))}
+	    ,{<<"Auth-Domain">>, get_value(<<"domain">>, Data, get_value(<<"Auth-Domain">>, Data))}
+	    | whistle_api:default_headers(Q, <<"directory">>, <<"auth_req">>, <<"ecallmgr.auth">>, Vsn)],
+    case whistle_api:auth_req(Prop) of
 	{ok, JSON} ->
-	    format_log(info, "L/U(~p): Sending JSON over Channel(~p)~n", [self(), Channel]),
+	    format_log(info, "L/U(~p): Sending JSON over Channel(~p)~n~s~n", [self(), Channel, JSON]),
 	    send_request(Channel, Ticket, JSON),
 	    handle_response(ID, Data, FetchPid),
-	    QD = amqp_util:queue_delete(Ticket, Q),
-	    format_log(info, "L/U(~p): Delete Queue ~p~n", [self(), Q]),
-	    amqp_channel:cast(Channel, QD);
+	    amqp_channel:cast(Channel, amqp_util:queue_delete(Ticket, Q));
 	{error, _Msg} ->
 	    format_log(error, "L/U(~p): Auth_Req API error ~p~n", [self(), _Msg])
     end,
@@ -268,7 +290,13 @@ recv_response(ID) ->
 	    format_log(info, "L/U(~p): Recv Content: ~p EvtName: ~p~n"
 		       ,[self(), Props#'P_basic'.content_type, get_value(<<"Event-Name">>, Prop)]),
 	    case get_value(<<"Msg-ID">>, Prop) of
-		ID -> Prop;
+		ID ->
+		    case whistle_api:auth_resp_v(Prop) of
+			true -> Prop;
+			false ->
+			    format_log(error, "L/U.auth(~p): Invalid Auth Resp~n~p~n", [self(), Prop]),
+			    invalid_auth_resp
+		    end;
 		_BadId ->
 		    format_log(info, "L/U(~p): Recv Msg ~p when expecting ~p~n", [self(), _BadId, ID]),
 		    recv_response(ID)
@@ -320,19 +348,21 @@ handle_response(ID, Data, FetchPid) ->
 	    shutdown;
 	timeout ->
 	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
+	invalid_auth_resp ->
+	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
 	Prop ->
 	    User = get_value(<<"user">>, Data),
 	    Domain = get_value(<<"domain">>, Data),
 	    case get_value(<<"Auth-Method">>, Prop) of
 		<<"password">> ->
-		    Hash = a1hash(User, Domain, get_value(<<"Auth-Pass">>, Prop)),
+		    Hash = a1hash(User, Domain, get_value(<<"Auth-Password">>, Prop)),
 		    ChannelParams = get_channel_params(Prop),
 		    Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])),
 		    format_log(info, "LOOKUP_USER(~p): Sending pass resp (took ~pms)~n"
 			       ,[self(), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, Resp};
 		<<"a1-hash">> ->
-		    Hash = get_value(<<"Auth-Pass">>, Prop),
+		    Hash = get_value(<<"Auth-Password">>, Prop),
 		    ChannelParams = get_channel_params(Prop),
 		    Resp = lists:flatten(
 			     io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])
@@ -346,7 +376,7 @@ handle_response(ID, Data, FetchPid) ->
 		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
 		<<"error">> ->
 		    format_log(info, "LOOKUP_USER(~p): Auth by Error: ~p (took ~pms)~n"
-			       ,[self(), get_value(<<"Auth-Pass">>, Prop), timer:now_diff(erlang:now(), T1) div 1000]),
+			       ,[self(), get_value(<<"Auth-Password">>, Prop), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE}
 	    end
     end.
