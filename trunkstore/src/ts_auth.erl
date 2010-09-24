@@ -145,8 +145,9 @@ response(ViewInfo, Prop) ->
 specific_response(ViewInfo) when is_list(ViewInfo) ->
     {AuthProp} = get_value(<<"value">>, ViewInfo),
     {Info} = get_value(<<"auth">>, AuthProp),
-    [{<<"Auth-Pass">>, get_value(<<"AuthPassword">>, Info)}
+    [{<<"Auth-Password">>, get_value(<<"AuthPassword">>, Info)}
      ,{<<"Auth-Method">>, get_value(<<"AuthMethod">>, Info)}
+     ,{<<"Event-Name">>, <<"auth_resp">>}
      ,{<<"Access-Group">>, get_value(<<"Access-Group">>, Info, <<"ignore">>)}
      ,{<<"Tenant-ID">>, get_value(<<"Tenant-ID">>, Info, <<"ignore">>)}
      ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Custom1Key">>, <<"Custom1Value">>}]}}

@@ -9,7 +9,7 @@
 -module(ts_route).
 
 %% API
--export([handle_req/1]).
+-export([handle_req/2]).
 
 -import(proplists, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -22,8 +22,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec(handle_req/1 :: (ApiProp :: proplist()) -> {ok, iolist()} | {error, string()}).
-handle_req(ApiProp) ->
+-spec(handle_req/2 :: (ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+handle_req(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Prop: ~p~n", [self(), ApiProp]),
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
@@ -33,21 +33,21 @@ handle_req(ApiProp) ->
 	{struct, CCVs} ->
 	    case get_value(<<"Direction">>, CCVs) of
 		<<"outbound">>=D ->
-		    outbound_handler([{<<"Direction">>, D} | ApiProp]);
+		    outbound_handler([{<<"Direction">>, D} | ApiProp], ServerID);
 		<<"inbound">>=D ->
-		    inbound_handler([{<<"Direction">>, D} | ApiProp])
+		    inbound_handler([{<<"Direction">>, D} | ApiProp], ServerID)
 	    end
     end.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(inbound_handler/1 :: (ApiProp :: list()) -> {ok, iolist()} | {error, string()}).
-inbound_handler(Prop) ->
+-spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+inbound_handler(Prop, ServerID) ->
     {error, "Inbound handler not implemented"}.
 
--spec(outbound_handler/1 :: (ApiProp :: list()) -> {ok, iolist()} | {error, string()}).
-outbound_handler(Prop) ->
+-spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+outbound_handler(Prop, ServerID) ->
     Did = get_value(<<"Caller-ID-Number">>, Prop),
     Options = [{"keys", [Did, get_value(<<"Caller-ID-Name">>, Prop)]}],
     case ts_couch:has_view(?TS_DB, ?TS_VIEW_DIDLOOKUP) andalso
