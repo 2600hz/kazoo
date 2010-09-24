@@ -2,18 +2,79 @@
 %% When an event occurs, we include all prefixed vars in the API message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 
+%%% *_HEADERS defines a list of Keys that must exist in every message of type *
+%%% (substitute AUTH_REQ, AUTH_RESP, etc, for *).
+%%%
+%%% OPTIONAL_*_HEADERS defines a list of Keys that will be included in the final
+%%% message if included in the passed in Proplist.
+%%%
+%%% *_VALUES defines a proplist of {Key, Value} pairs where Key is either in 
+%%% *_HEADERS or OPTIONAL_*_HEADERS, and Value is either a singular value or a list
+%%% of values that the resulting message can have, given Key.
+%%% If Value is not a list, a direct match is required to validate;
+%%% if Value is a list of singular values, the set value must be a member of the Value list
+%%%
+%%% *_TYPES defines a proplist of {Key, Type} pairs where Key is either in
+%%% *_HEADERS or OPTIONAL_*_HEADERS, and Type defines a function that validates a passed in value
+%%% is an appropriate type for the given Key, returning a boolean. If Key is not in the passed-in
+%%% message, true is returned without running the Type fun.
+%%% @spec Type :: function(Value :: any()) -> boolean()
+%%%
+%%% All messages MUST include the DEFAULT_HEADERS list.
+
+%% Default Headers - http://corp.switchfreedom.com/mediawiki/index.php/General_Concepts
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
 			      , <<"App-Name">>, <<"App-Version">>]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
 				  , <<"Geo-Location">>, <<"Access-Group">>
 				  , <<"Tenant-ID">>]).
+-define(DEFAULT_VALUES, []).
+-define(DEFAULT_TYPES, [{<<"Server-ID">>, fun is_binary/1}
+			,{<<"Event-Category">>, fun is_binary/1}
+			,{<<"Event-Name">>, fun is_binary/1}
+			,{<<"App-Name">>, fun is_binary/1}
+			,{<<"App-Version">>, fun is_binary/1}
+			,{<<"Raw-Headers">>, fun is_binary/1}
+			,{<<"Destination-Server">>, fun is_binary/1}
+			,{<<"Geo-Location">>, fun is_binary/1}
+			,{<<"Access-Group">>, fun is_binary/1}
+			,{<<"Tenant-ID">>, fun is_binary/1}
+			]).
 
+%% Authentication Requests - http://corp.switchfreedom.com/mediawiki/index.php/Call_Authentication#Authentication_APIs
 -define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
 			       , <<"Auth-User">>, <<"Auth-Domain">>]).
 -define(OPTIONAL_AUTH_REQ_HEADERS, []).
+-define(AUTH_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
+			  ,{<<"Event-Name">>, <<"auth_req">>}
+			 ]).
+-define(AUTH_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+			 ,{<<"To">>, fun is_binary/1}
+			 ,{<<"From">>, fun is_binary/1}
+			 ,{<<"Orig-IP">>, fun is_binary/1}
+			 ,{<<"Auth-User">>, fun is_binary/1}
+			 ,{<<"Auth-Domain">>, fun is_binary/1}
+			]).
 
--define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Pass">>]).
+%% Authentication Responses - http://corp.switchfreedom.com/mediawiki/index.php/Call_Authentication#Authentication_APIs
+-define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTH_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
+-define(AUTH_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
+			   ,{<<"Event-Name">>, <<"auth_resp">>}
+			   ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
+			 ]).
+-define(AUTH_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+			  ,{<<"Auth-Password">>, fun is_binary/1}
+			  ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
+							       lists:all(fun({K, V}) when is_binary(K) andalso is_binary(V) -> true;
+									    (_) -> false
+									 end, L);
+							  (_) -> false
+						       end}
+			  ,{<<"Access-Group">>, fun is_binary/1}
+			  ,{<<"Tenant-ID">>, fun is_binary/1}
+			 ]).
+
 
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Event-Queue">>]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>, <<"Geo-Location">>

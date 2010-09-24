@@ -21,12 +21,12 @@
 %% API
 -export([default_headers/5, extract_defaults/1]).
 
-%% Directory-related APIs
+%% Authentication and Routing
 -export([auth_req/1, auth_req_v/1, auth_resp/1, auth_resp_v/1
 	 ,route_req/1, route_req_v/1, route_resp/1, route_resp_v/1
 	 ,route_resp_route/1, route_resp_route_v/1]).
 
-%% Dialplan-related APIs
+%% In-Call
 -export([call_event/1, call_event_v/1, error_resp/1, error_resp_v/1]).
 -export([store_req/1, store_req_v/1, store_amqp_resp/1, store_amqp_resp_v/1
 	 ,store_http_resp/1, store_http_resp_v/1, tones_req/1, tones_req_v/1
@@ -74,30 +74,14 @@ extract_defaults(Prop) ->
 %%--------------------------------------------------------------------
 -spec(auth_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 auth_req(Prop) ->
-    Prop0 = [{<<"To">>, get_sip_to(Prop)}
-	     ,{<<"From">>, get_sip_from(Prop)}
-	     ,{<<"Orig-IP">>, get_orig_ip(Prop)}
-	     ,{<<"Auth-User">>, get_value(<<"user">>, Prop, get_value(<<"Auth-User">>, Prop))}
-             ,{<<"Auth-Domain">>, get_value(<<"domain">>, Prop, get_value(<<"Auth-Domain">>, Prop))}
-	     ,{<<"Auth-Pass">>, get_value(<<"password">>, Prop, get_value(<<"Auth-Pass">>, Prop))}
-	     | Prop],
-    case defaults(Prop0) of
-	{error, _Reason}=Error ->
-	    io:format("AuthReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?AUTH_REQ_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("AuthReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?AUTH_REQ_HEADERS, Prop1]),
-		    Error;
-		{Headers1, _Prop2} ->
-		    headers_to_json(Headers1)
-	    end
+    case auth_req_v(Prop) of
+	true -> build_message(Prop, ?AUTH_REQ_HEADERS, ?OPTIONAL_AUTH_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for auth_req"}
     end.
 
 -spec(auth_req_v/1 :: (Prop :: proplist()) -> boolean()).
 auth_req_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?AUTH_REQ_HEADERS).
+    validate(Prop, ?AUTH_REQ_HEADERS, ?AUTH_REQ_VALUES, ?AUTH_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Response - see wiki
@@ -106,24 +90,14 @@ auth_req_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(auth_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 auth_resp(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("AuthResp DefError: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?AUTH_RESP_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("AuthResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?AUTH_RESP_HEADERS, Prop]),
-		    Error;
-		{Headers1, Prop2} ->
-		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_AUTH_RESP_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case auth_resp_v(Prop) of
+	true -> build_message(Prop, ?AUTH_RESP_HEADERS, ?OPTIONAL_AUTH_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for auth_resp"}
     end.
 
 -spec(auth_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 auth_resp_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?AUTH_RESP_HEADERS).
+    validate(Prop, ?AUTH_RESP_HEADERS, ?AUTH_RESP_VALUES, ?AUTH_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Request - see wiki
@@ -132,27 +106,18 @@ auth_resp_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(route_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 route_req(Prop) ->
-    Prop0 = [{<<"To">>, get_sip_to(Prop)}
-	     ,{<<"From">>, get_sip_from(Prop)}
-	     | Prop],
-
-    Prop0_1 = case custom_channel_vars(Prop) of
-		  [] -> Prop0;
-		  CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | Prop0]
-	      end,
-
-    case defaults(Prop0_1) of
+    case defaults(Prop) of
 	{error, _Reason}=Error ->
 	    io:format("RouteReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?ROUTE_REQ_HEADERS, Headers) of
+	{Headers1, Prop1} ->
+	    case update_required_headers(Prop1, ?ROUTE_REQ_HEADERS, Headers1) of
 		{error, _Reason} = Error ->
 		    io:format("RouteReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_REQ_HEADERS, Prop1]),
 		    Error;
-		{Headers1, Prop2} ->
-		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_ROUTE_REQ_HEADERS, Headers1),
-		    headers_to_json(Headers2)
+		{Headers2, Prop2} ->
+		    {Headers3, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_ROUTE_REQ_HEADERS, Headers2),
+		    headers_to_json(Headers3)
 	    end
     end.
 
@@ -213,27 +178,9 @@ route_resp_route_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(call_event/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 call_event(Prop) ->
-    EvtName = get_value(<<"Event-Name">>, Prop),
-    EvtProp = [{<<"Event-Category">>, get_value(<<"Event-Category">>, Prop)}
-	       ,{<<"Event-Name">>, EvtName}
-	       ,{<<"Event-Timestamp">>, get_value(<<"Event-Timestamp">>, Prop)}
-	       ,{<<"Event-Date-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
-	       ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
-	       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
-	       ,{<<"Server-ID">>, get_value(<<"Server-ID">>, Prop)}
-	       ,{<<"App-Name">>, get_value(<<"App-Name">>, Prop)}
-	       ,{<<"App-Version">>, get_value(<<"App-Name">>, Prop)}
-	       ,{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
-	       | event_specific(EvtName, Prop)
-	      ],
-    EvtProp1 = case custom_channel_vars(Prop) of
-		   [] -> EvtProp;
-		   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp]
-	       end,
-
-    case defaults(EvtProp1) of
+    case defaults(Prop) of
 	{error, _Reason}=Error ->
-	    io:format("CallEvt Defaults Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, EvtProp]),
+	    io:format("CallEvt Defaults Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
 	{Headers0, Prop0} ->
 	    case update_required_headers(Prop0, ?CALL_EVENT_HEADERS, Headers0) of
@@ -448,6 +395,30 @@ convert_whistle_app_name(AppName) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(validate/4 :: (Prop :: proplist(), ReqH :: list(binary()), Vals :: proplist(), Types :: proplist()) -> boolean()).
+validate(Prop, ReqH, Vals, Types) ->
+    has_all(Prop, ?DEFAULT_HEADERS) andalso
+	has_all(Prop, ReqH) andalso
+	values_check(Prop, Vals) andalso
+	type_check(Prop, Types).
+
+-spec(build_message/3 :: (Prop :: proplist(), ReqH :: list(binary()), OptH :: list(binary())) -> {ok, iolist()} | {error, string()}).
+build_message(Prop, ReqH, OptH) ->
+    case defaults(Prop) of
+	{error, _Reason}=Error ->
+	    io:format("Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    Error;
+	{Headers1, Prop1} ->
+	    case update_required_headers(Prop1, ReqH, Headers1) of
+		{error, _Reason} = Error ->
+		    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop1]),
+		    Error;
+		{Headers2, Prop2} ->
+		    {Headers3, _Prop3} = update_optional_headers(Prop2, OptH, Headers2),
+		    headers_to_json(Headers3)
+	    end
+    end.
+
 -spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> {ok, iolist()} | {error, string()}).
 headers_to_json(HeadersProp) ->
     try
@@ -458,30 +429,6 @@ headers_to_json(HeadersProp) ->
 	error:E -> {error, io_lib:format("WHISTLE TO_JSON ERROR: ~s~n~p", [E, HeadersProp])};
 	exit:E -> {error, io_lib:format("WHISTLE TO_JSON EXIT ERROR: ~s~n~p", [E, HeadersProp])}
     end.
-
-%% Extract custom channel variables to include in the event
--spec(custom_channel_vars/1 :: (Prop :: proplist()) -> proplist()).
-custom_channel_vars(Prop) ->
-    Custom = lists:filter(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, _Key/binary>>, _V}) -> true;
-			     (_) -> false
-			  end, Prop),
-    lists:map(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}) -> {Key, V} end, Custom).
-			 
-
--spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
-    Application = get_value(<<"Application">>, Prop),
-    case get_value(Application, ?SUPPORTED_APPLICATIONS) of
-	undefined ->
-	    io:format("WHISTLE_API: Didn't find ~p in supported~n", [Application]),
-	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
-	AppName ->
-	    [{<<"Application-Name">>, AppName}
-	     ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop, <<"">>)}
-	    ]
-    end;
-event_specific(_Evt, _Prop) ->
-    [].
 
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
@@ -549,22 +496,30 @@ has_all(Prop, Headers) ->
 has_any(Prop, Headers) ->
     lists:any(fun(Header) -> is_defined(Header, Prop) end, Headers).
 
-%% retrieves the sip address for the 'to' field
--spec(get_sip_to/1 :: (Prop :: proplist()) -> binary()).
-get_sip_to(Prop) ->
-    list_to_binary([get_value(<<"sip_to_user">>, Prop, get_value(<<"variable_sip_to_user">>, Prop, ""))
-		    , "@"
-		    , get_value(<<"sip_to_host">>, Prop, get_value(<<"variable_sip_to_host">>, Prop, ""))
-		   ]).
+%% checks Prop against a list of values to ensure known key/value pairs are correct (like Event-Category
+%% and Event-Name). We don't care if a key is defined in Values and not in Prop; that is handled by has_all/1
+values_check(Prop, Values) ->
+    lists:all(fun({Key, Vs}) when is_list(Vs) ->
+		      case get_value(Key, Prop) of
+			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
+			  V -> lists:member(V, Vs)
+		      end;
+		 ({Key, V}) ->
+		      case get_value(Key, Prop) of
+			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
+			  V -> true;
+			  _Val ->
+			      io:format("WHISTLE_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
+			      false
+		      end
+	      end, Values).
 
-%% retrieves the sip address for the 'from' field
--spec(get_sip_from/1 :: (Prop :: proplist()) -> binary()).
-get_sip_from(Prop) ->
-    list_to_binary([
-		    get_value(<<"sip_from_user">>, Prop, get_value(<<"variable_sip_from_user">>, Prop, ""))
-		    ,"@"
-		    , get_value(<<"sip_from_host">>, Prop, get_value(<<"variable_sip_from_host">>, Prop, ""))
-		   ]).
-
-get_orig_ip(Prop) ->
-    get_value(<<"ip">>, Prop).
+%% checks Prop against a list of {Key, Fun}, running the value of Key through Fun, which returns a
+%% boolean.
+type_check(Prop, Types) ->
+    lists:all(fun({Key, Fun}) ->
+		      case get_value(Key, Prop) of
+			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
+			  Value -> Fun(Value) % returns boolean
+		      end
+	      end, Types).
