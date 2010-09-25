@@ -171,7 +171,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
     end;
-process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{tar_q=TQ}=State) ->
+process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{tar_q=TQ}=State) ->
     case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop, TQ) of
 	false ->
 	    format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
@@ -181,7 +181,7 @@ process_req({<<"dialplan">>,<<"REQUEST_PARAMS">>}, Prop, #state{tar_q=TQ}=State)
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~p~n", [self(), _Msg])
     end;
-process_req({<<"dialplan">>,<<"Call-Control">>}, Prop, State) ->
+process_req({<<"dialplan">>,<<"route_win">>}, Prop, State) ->
     3;
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).

@@ -233,17 +233,18 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
 					 ,"@"
 					 ,get_value(<<"server">>, Gateway)
 					]),
-	    case whistle_api:route_resp_route([{<<"Route">>, Dialstring}
-					       ,{<<"Media">>, <<"bypass">>}
-					       ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
-					       ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}
-					       ,{<<"Codecs">>, get_value(<<"codecs">>, Gateway, [])}
-					       ,{<<"Weight-Cost">>, <<"0">>}
-					       ,{<<"Weight-Location">>, <<"0">>}
-					       | BaseRouteData ]) of
-		{ok, CR} -> {[{struct, CR} | CRs], Regexed, BaseRouteData};
-		{error, E} ->
-		    format_log(error, "TS_CARRIER.gateway_to_route Error ~p~n", [E]),
+	    R = [{<<"Route">>, Dialstring}
+		 ,{<<"Media">>, <<"bypass">>}
+		 ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
+		 ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}
+		 ,{<<"Codecs">>, get_value(<<"codecs">>, Gateway, [])}
+		 ,{<<"Weight-Cost">>, <<"0">>}
+		 ,{<<"Weight-Location">>, <<"0">>}
+		 | BaseRouteData ],
+	    case whistle_api:route_resp_route_v(R) of
+		true -> {[{struct, R} | CRs], Regexed, BaseRouteData};
+		false ->
+		    format_log(error, "TS_CARRIER.gateway_to_route Error validating route~n~p~n", [R]),
 		    Acc
 	    end;
 	_ -> Acc

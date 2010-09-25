@@ -64,32 +64,32 @@ outbound_handler(Prop, ServerID) ->
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
 	    {struct, Value} = mochijson2:decode(get_value(<<"value">>, ViewProp)),
 	    {struct, DidOptions} = get_value(<<"DID_Opts">>, Value),
-	    process_routing(outbound_features(set_flags(DidOptions, Prop)), Prop);
+	    process_routing(outbound_features(set_flags(DidOptions, Prop)), Prop, ServerID);
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
     end.
 
--spec(process_routing/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> {ok, iolist()} | {error, string()}).
-process_routing(Flags, ApiProp) ->
+-spec(process_routing/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+process_routing(Flags, ApiProp, ServerID) ->
     case ts_credit:check(Flags) of
 	{ok, Flags1} ->
 	    %% call may proceed
-	    find_route(Flags1, ApiProp);
+	    find_route(Flags1, ApiProp, ServerID);
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Credit Error ~p~n", [self(), Error]),
-	    response(503, ApiProp)
+	    response(503, ApiProp, ServerID)
     end.
 
--spec(find_route/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> {ok, iolist()} | {error, string()}).
-find_route(Flags, ApiProp) ->
+-spec(find_route/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+find_route(Flags, ApiProp, ServerID) ->
     case ts_carrier:route(Flags) of
 	{ok, Routes} ->
 	    format_log(info, "TS_ROUTE(~p): Generated Routes~n~p~n", [self(), Routes]),
-	    response(Routes, ApiProp);
+	    response(Routes, ApiProp, ServerID);
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Routing Error ~p~n", [self(), Error]),
-	    response(404, ApiProp)
+	    response(404, ApiProp, ServerID)
     end.
 
 -spec(outbound_features/1 :: (Flags :: tuple()) -> tuple()).
@@ -115,7 +115,8 @@ set_flags(DidProp, ApiProp) ->
 	     ,from_domain = FromDomain
 	     ,direction = get_value(<<"Direction">>, ApiProp)
 	     ,failover = FailOpts
-	     ,callerid = {get_value(<<"CName">>, CallerIDOpts, ""), get_value(<<"CNum">>, CallerIDOpts, "")}
+	     ,callerid = {get_value(<<"CName">>, CallerIDOpts, get_value(<<"Caller-ID-Name">>, ApiProp))
+			  ,get_value(<<"CNum">>, CallerIDOpts, get_value(<<"Caller-ID-Number">>, ApiProp))}
 	     ,payphone = (get_value(<<"PayPhoneAccess">>, Opts) =:= 1)
 	     ,credit_available = get_value(<<"account_credit">>, DidProp)
 	     ,flat_rate_enabled = (get_value(<<"trunks_available">>, DidProp) > 0)
@@ -125,9 +126,11 @@ set_flags(DidProp, ApiProp) ->
 	     %,codecs = [] :: list()
 	    }.
 
--spec(response/2 :: (Routes :: proplist() | integer(), Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
-response(Routes, Prop) ->
-    Data = lists:umerge(specific_response(Routes), Prop),
+-spec(response/3 :: (Routes :: proplist() | integer(), Prop :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+response(Routes, Prop, ServerID) ->
+    Prop1 = [ {<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
+	      | whistle_api:default_headers(ServerID, <<"dialplan">>, <<"route_resp">>, <<"ts_route">>, <<"0.1">>) ],
+    Data = specific_response(Routes) ++ Prop1,
     whistle_api:route_resp(Data).
 
 -spec(specific_response/1 :: (CodeOrRoutes :: integer() | proplist()) -> proplist()).
