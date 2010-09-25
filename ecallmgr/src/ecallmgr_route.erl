@@ -85,39 +85,12 @@ init([]) ->
 %% @end
 %% #route_state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
-handle_call({add_fs_node, Node}, _From, #route_state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	{Node, _HandlerPid} ->
-	    format_log(info, "ROUTE(~p): handler(~p) known for ~p~n", [self(), _HandlerPid, Node]),
-	    {reply, {error, node_is_known}, State};
-	false ->
-	    case net_adm:ping(Node) of
-		pong ->
-		    HPid = setup_fs_conn(Node),
-		    link(HPid),
-		    format_log(info, "Route(~p): Starting handler(~p) for ~p~n", [self(), HPid, Node]),
-		    {reply, ok, State#route_state{fs_nodes=[{Node, HPid} | Nodes]}};
-		pang ->
-		    format_log(error, "Route(~p): ~p not responding~n", [self(), Node]),
-		    {reply, {error, no_connection}, State}
-	    end
-    end;
-handle_call({rm_fs_node, Node}, _From, #route_state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	{Node, HPid} ->
-	    case erlang:is_process_alive(HPid) of
-		true ->
-		    HPid ! shutdown,
-		    format_log(info, "ROUTE(~p): Shutting down handler ~p for ~p~n", [self(), HPid, Node]),
-		    {reply, ok, State#route_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
-		false ->
-		    format_log(error, "ROUTE(~p): Handler ~p already down for ~p~n", [self(), HPid, Node]),
-		    {reply, {error, node_down}, State}
-	    end;
-	false ->
-	    format_log(error, "ROUTE(~p): No handler for ~p~n", [self(), Node]),
-	    {reply, {error, no_node}, State}
-    end;
+handle_call({add_fs_node, Node}, _From, State) ->
+    {Resp, State1} = add_fs_node(Node, State),
+    {reply, Resp, State1};
+handle_call({rm_fs_node, Node}, _From, State) ->
+    {Resp, State1} = rm_fs_node(Node, State),
+    {reply, Resp, State1};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -145,8 +118,19 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', HPid, Reason}, #route_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(HPid, 2, Nodes) of
+	{Node, HPid} ->
+	    format_log(error, "ROUTE(~p): Received EXIT(~p) for ~p, restarting...~n", [self(), Reason, HPid]),
+	    {_, State1} = rm_fs_node(Node, State),
+	    {_, State2} = add_fs_node(Node, State1),
+	    {noreply, State2};
+	false ->
+	    format_log(error, "ROUTE(~p): Received EXIT(~p) for unknown ~p~n", [self(), Reason, HPid]),
+	    {noreply, State}
+    end;
 handle_info(_Info, State) ->
-    format_log(info, "ROUTE(~p): Unhandled Info: ~p~nState: ~p~n", [self(), _Info, State]),
+    format_log(info, "ROUTE(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -183,6 +167,41 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+add_fs_node(Node, #route_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, _HandlerPid} ->
+	    format_log(info, "ROUTE(~p): handler(~p) known for ~p~n", [self(), _HandlerPid, Node]),
+	    {{error, node_is_known}, State};
+	false ->
+	    case net_adm:ping(Node) of
+		pong ->
+		    HPid = setup_fs_conn(Node),
+		    link(HPid),
+		    format_log(info, "Route(~p): Starting handler(~p) for ~p~n", [self(), HPid, Node]),
+		    {ok, State#route_state{fs_nodes=[{Node, HPid} | Nodes]}};
+		pang ->
+		    format_log(error, "Route(~p): ~p not responding~n", [self(), Node]),
+		    {{error, no_connection}, State}
+	    end
+    end.
+
+rm_fs_node(Node, #route_state{fs_nodes=Nodes}=State) ->
+    case lists:keyfind(Node, 1, Nodes) of
+	{Node, HPid} ->
+	    case erlang:is_process_alive(HPid) of
+		true ->
+		    HPid ! shutdown,
+		    format_log(info, "ROUTE(~p): Shutting down handler ~p for ~p~n", [self(), HPid, Node]),
+		    {ok, State#route_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
+		false ->
+		    format_log(error, "ROUTE(~p): Handler ~p already down for ~p~n", [self(), HPid, Node]),
+		    {{error, node_down}, State#route_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}}
+	    end;
+	false ->
+	    format_log(error, "ROUTE(~p): No handler for ~p~n", [self(), Node]),
+	    {{error, no_node}, State}
+    end.
+
 fetch_route(Node, #handler_state{channel=undefined, ticket=undefined}=State) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     fetch_route(Node, State#handler_state{channel=Channel, ticket=Ticket});
@@ -243,21 +262,16 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
     Q = bind_q(Channel, Ticket, ID),
     {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
 
-    Custom = case ecallmgr_util:custom_channel_vars(Data) of
-		 [] -> [];
-		 CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | Data]
-	     end,
-
     DefProp = [{<<"Msg-ID">>, ID}
 	       ,{<<"Caller-ID-Name">>, get_value(<<"Caller-Caller-ID-Name">>, Data)}
 	       ,{<<"Caller-ID-Number">>, get_value(<<"Caller-Caller-ID-Number">>, Data)}
 	       ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
-	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"routing">>, <<"ecallmgr">>, Vsn)],
-    case whistle_api:route_req(lists:umerge([DefProp, Data, Custom, [{<<"Call-ID">>, UUID}
-								     ,{<<"Event-Queue">>, EvtQ}
-								    ]
-					    ])) of
+	       ,{<<"Call-ID">>, UUID}
+	       ,{<<"Event-Queue">>, EvtQ}
+	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(Data)}}
+	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, Vsn)],
+    case whistle_api:route_req(DefProp) of
 	{ok, JSON} ->
 	    format_log(info, "L/U-R(~p): Sending RouteReq JSON over Channel(~p)~n", [self(), Channel]),
 	    send_request(Channel, Ticket, JSON),
@@ -277,11 +291,17 @@ recv_response(ID) ->
 	#'basic.consume_ok'{} ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
-	    format_log(info, "L/U-R(~p): Recv Content: ~p Payload: ~s~n"
+	    format_log(info, "L/U.route(~p): Recv Content: ~p Payload: ~s~n"
 		       ,[self(), Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    case get_value(<<"Msg-ID">>, Prop) of
-		ID -> Prop;
+		ID ->
+		    case whistle_api:route_resp_v(Prop) of
+			true -> Prop;
+			false ->
+			    format_log(error, "L/U.route(~p): Invalid Route Resp~n~p~n", [self(), Prop]),
+			    invalid_route_resp
+		    end;
 		_BadId ->
 		    format_log(info, "L/U-R(~p): Recv MsgID ~p when expecting ~p~n", [self(), _BadId, ID]),
 		    recv_response(ID)
@@ -318,20 +338,18 @@ bind_channel_qs(Channel, Ticket, UUID, Node) ->
     ecallmgr_call_events:start(Node, UUID, {Channel, Ticket, EvtQueue}, CtlPid),
     {EvtQueue, CtlQueue}.
 
-send_control_queue(_Channel, _Ticket, _Q, undefined, _EvtQ) ->
+send_control_queue(_Channel, _Ticket, _Q, undefined) ->
     format_log(error, "ROUTE(~p): Cannot send control Q(~p) to undefined server-id~n", [self(), _Q]);
-send_control_queue(Channel, Ticket, CtlProp, AppQ, EvtQ) ->
-    Payload = [ {<<"Event-Name">>, <<"Call-Control">>}
-		,{<<"Event-Queue">>, EvtQ}
-		| CtlProp ],
-    {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket
-					       ,AppQ
-					       ,list_to_binary(mochijson2:encode({struct, Payload}))
-					       ,<<"application/json">>
-					      ),
-    %% execute the publish command
-    format_log(info, "L/U-R(~p): Sending AppQ(~p) the control Q~n", [self(), AppQ]),
-    amqp_channel:cast(Channel, BP, AmqpMsg).
+send_control_queue(Channel, Ticket, CtlProp, AppQ) ->
+    case whistle_api:route_win(CtlProp) of
+	{ok, JSON} ->
+	    {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, AppQ, JSON, <<"application/json">>),
+	    %% execute the publish command
+	    format_log(info, "L/U-R(~p): Sending AppQ(~p) the control Q~n", [self(), AppQ]),
+	    amqp_channel:cast(Channel, BP, AmqpMsg);
+	{error, _Msg} ->
+	    format_log(error, "L/U.route(~p): Sending Ctl to AppQ(~p) failed: ~p~n", [self(), AppQ, _Msg])
+    end.
 
 %% Prop = Route Response
 generate_xml(<<"bridge">>, Routes, _Prop) ->
@@ -400,14 +418,18 @@ handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{channel=Channel, ticket=Tic
 	    shutdown;
 	timeout ->
 	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE};
+	invalid_route_resp ->
+	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE};
 	Prop ->
 	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop),
-	    format_log(info, "L/U-R(~p): Sending XML to FS(~p) took ~pms ~n"
-		       ,[self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
+	    format_log(info, "L/U-R(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},
-	    CtlProp = [{<<"Msg-ID">>, UUID} |
-	    whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"control">>, <<"ecallmgr">>, Vsn)],
-	    send_control_queue(Channel, Ticket
-			       , [{<<"Call-ID">>, UUID} |  CtlProp]
-			       , get_value(<<"Server-ID">>, Prop), EvtQ)
+
+	    CtlProp = [{<<"Msg-ID">>, UUID}
+		       ,{<<"Call-ID">>, UUID}
+		       ,{<<"Event-Queue">>, EvtQ}
+		       ,{<<"Control-Queue">>, CtlQ}
+		       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, <<"ecallmgr.route">>, Vsn)],
+	    send_control_queue(Channel, Ticket, CtlProp
+			       ,get_value(<<"Destination-Server">>, Prop, get_value(<<"Server-ID">>, Prop)))
     end.
