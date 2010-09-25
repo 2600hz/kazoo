@@ -24,7 +24,7 @@
 %% Authentication and Routing
 -export([auth_req/1, auth_req_v/1, auth_resp/1, auth_resp_v/1
 	 ,route_req/1, route_req_v/1, route_resp/1, route_resp_v/1
-	 ,route_resp_route/1, route_resp_route_v/1]).
+	 ,route_resp_route/1, route_resp_route_v/1, route_win/1, route_win_v/1]).
 
 %% In-Call
 -export([call_event/1, call_event_v/1, error_resp/1, error_resp_v/1]).
@@ -106,24 +106,14 @@ auth_resp_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(route_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 route_req(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("RouteReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers1, Prop1} ->
-	    case update_required_headers(Prop1, ?ROUTE_REQ_HEADERS, Headers1) of
-		{error, _Reason} = Error ->
-		    io:format("RouteReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_REQ_HEADERS, Prop1]),
-		    Error;
-		{Headers2, Prop2} ->
-		    {Headers3, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_ROUTE_REQ_HEADERS, Headers2),
-		    headers_to_json(Headers3)
-	    end
+    case route_req_v(Prop) of
+	true -> build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for route_req"}
     end.
 
 -spec(route_req_v/1 :: (Prop :: proplist()) -> boolean()).
 route_req_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?ROUTE_REQ_HEADERS).
+    validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Response - see wiki
@@ -132,24 +122,14 @@ route_req_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(route_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 route_resp(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("RouteResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers0, Prop0} ->
-	    case update_required_headers(Prop0, ?ROUTE_RESP_HEADERS, Headers0) of
-		{error, _Reason} = Error ->
-		    io:format("RouteResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_RESP_HEADERS, Prop0]),
-		    Error;
-		{Headers1, Prop1} ->
-		    {Headers2, _Prop2} = update_optional_headers(Prop1, ?OPTIONAL_ROUTE_RESP_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case route_resp_v(Prop) of
+	true -> build_message(Prop, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for route_resp"}
     end.
 
 -spec(route_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 route_resp_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?ROUTE_RESP_HEADERS).
+    validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Route within a Dialplan Route Response - see wiki
@@ -158,18 +138,30 @@ route_resp_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(route_resp_route/1 :: (Prop :: proplist()) -> {ok, proplist()} | {error, string()}).
 route_resp_route(Prop) ->
-    case update_required_headers(Prop, ?ROUTE_RESP_ROUTE_HEADERS, []) of
-	{error, _Reason} = Error ->
-	    io:format("RouteRespRoute Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ROUTE_RESP_ROUTE_HEADERS, Prop]),
-	    Error;
-	{Headers0, Prop0} ->
-	    {Headers1, _Prop1} = update_optional_headers(Prop0, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, Headers0),
-	    {ok, Headers1}
+    case route_resp_route_v(Prop) of
+	true -> build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
+	false -> {error, "Proplist failed validation for route_resp_route"}
     end.
 
 -spec(route_resp_route_v/1 :: (Prop :: proplist()) -> boolean()).
 route_resp_route_v(Prop) ->
-    has_all(Prop, ?ROUTE_RESP_ROUTE_HEADERS).
+    validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Winning Responder Message - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(route_win/1 :: (Prop :: proplist()) -> {ok, proplist()} | {error, string()}).
+route_win(Prop) ->
+    case route_win_v(Prop) of
+	true -> build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
+	false -> {error, "Proplist failed validation for route_win"}
+    end.
+
+-spec(route_win_v/1 :: (Prop :: proplist()) -> boolean()).
+route_win_v(Prop) ->
+    validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener
@@ -398,7 +390,11 @@ convert_whistle_app_name(AppName) ->
 -spec(validate/4 :: (Prop :: proplist(), ReqH :: list(binary()), Vals :: proplist(), Types :: proplist()) -> boolean()).
 validate(Prop, ReqH, Vals, Types) ->
     has_all(Prop, ?DEFAULT_HEADERS) andalso
-	has_all(Prop, ReqH) andalso
+	validate_message(Prop, ReqH, Vals, Types).
+
+-spec(validate_message/4 :: (Prop :: proplist(), ReqH :: list(binary()), Vals :: proplist(), Types :: proplist()) -> boolean()).
+validate_message(Prop, ReqH, Vals, Types) ->
+    has_all(Prop, ReqH) andalso
 	values_check(Prop, Vals) andalso
 	type_check(Prop, Types).
 
@@ -408,16 +404,23 @@ build_message(Prop, ReqH, OptH) ->
 	{error, _Reason}=Error ->
 	    io:format("Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
-	{Headers1, Prop1} ->
-	    case update_required_headers(Prop1, ReqH, Headers1) of
-		{error, _Reason} = Error ->
-		    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop1]),
-		    Error;
-		{Headers2, Prop2} ->
-		    {Headers3, _Prop3} = update_optional_headers(Prop2, OptH, Headers2),
-		    headers_to_json(Headers3)
-	    end
+	HeadAndProp ->
+	    build_message_specific(HeadAndProp, ReqH, OptH)
     end.
+
+-spec(build_message_specific/3 :: (proplist() | tuple(), list(binary()), list(binary())) -> {ok, iolist()} | {error, string()}).
+build_message_specific({Headers, Prop}, ReqH, OptH) ->
+    case update_required_headers(Prop, ReqH, Headers) of
+	{error, _Reason} = Error ->
+	    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
+	    Error;
+	{Headers1, Prop1} ->
+	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
+	    headers_to_json(Headers2)
+    end;
+build_message_specific(Prop, ReqH, OptH) ->
+    build_message_specific({[], Prop}, ReqH, OptH).
+
 
 -spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> {ok, iolist()} | {error, string()}).
 headers_to_json(HeadersProp) ->
@@ -486,7 +489,7 @@ has_all(Prop, Headers) ->
 		      case is_defined(Header, Prop) of
 			  true -> true;
 			  false ->
-			      io:format("has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
+			      io:format("WHISTLE_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
 			      false
 		      end
 	      end, Headers).
@@ -502,7 +505,12 @@ values_check(Prop, Values) ->
     lists:all(fun({Key, Vs}) when is_list(Vs) ->
 		      case get_value(Key, Prop) of
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
-			  V -> lists:member(V, Vs)
+			  V -> case lists:member(V, Vs) of
+				   true -> true;
+				   false ->
+				       io:format("WHISTLE_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
+				       false
+			       end
 		      end;
 		 ({Key, V}) ->
 		      case get_value(Key, Prop) of
@@ -520,6 +528,11 @@ type_check(Prop, Types) ->
     lists:all(fun({Key, Fun}) ->
 		      case get_value(Key, Prop) of
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
-			  Value -> Fun(Value) % returns boolean
+			  Value -> case Fun(Value) of % returns boolean
+				       true -> true;
+				       false ->
+					   io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
+					   false
+				   end
 		      end
 	      end, Types).

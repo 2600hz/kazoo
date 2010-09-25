@@ -75,25 +75,75 @@
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
 
-
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Event-Queue">>]).
--define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>, <<"Geo-Location">>
-					 ,<<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">> %%process | proxy | bypass
-					 , <<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
-					 ,<<"Resource-Type">> %% MMS | SMS | audio | video | chat
-					 ,<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
-					 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+%% Route Requests - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
+-define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Event-Queue">>
+				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+			   ]).
+-define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
+					 ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
+					 ,<<"Resource-Type">>, <<"Cost-Parameters">>
 				    ]).
+-define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+			   ,{<<"Event-Name">>, <<"route_req">>}
+			   ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
+			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
+			  ]).
+-define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+			  ,{<<"To">>, fun is_binary/1}
+			  ,{<<"From">>, fun is_binary/1}
+			  ,{<<"Call-ID">>, fun is_binary/1}
+			  ,{<<"Event-Queue">>, fun is_binary/1}
+			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
+			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
+			  ,{<<"Cost-Parameters">>, fun({struct, L}) when is_list(L) ->
+							   has_all(?ROUTE_REQ_COST_PARAMS, L);
+						      (_) -> false
+						   end}
+			  ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
+							       true;
+							  (_) -> false
+						       end}
+			 ]).
+-define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
+				    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
+			       ]).
 
--define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
--define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
-
+%% Route Responses - Sub-section Route - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.3CRoute.3E
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
 						,<<"Auth-Password">>, <<"Codecs">>
 						,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
 					   ]).
+-define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}]).
+-define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}]).
 
+%% Route Responses - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
+-define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
+-define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
+-define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+			    ,{<<"Event-Name">>, <<"route_resp">>}
+			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
+			   ]).
+-define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
+			   ,{<<"Route-Error-Message">>, fun is_binary/1}
+			   ,{<<"Routes">>, fun(L) when is_list(L) ->
+						   lists:all(fun({struct, R}) ->
+								     whistle_api:route_resp_route_v(R)
+							     end, L);
+					      (_) -> false
+					   end}
+			  ]).
+
+%% Route Winner - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.22Winning.22_Application_Response_from_Call_Manager
+-define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>, <<"Event-Queue">>]).
+-define(OPTIONAL_ROUTE_WIN_HEADERS, []).
+-define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
+-define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+			  ,{<<"Control-Queue">>, fun is_binary/1}
+			  ,{<<"Event-Queue">>, fun is_binary/1}
+			 ]).
+
+%% Error Responses - 
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
 
 -define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Media-Transfer-Method">>
