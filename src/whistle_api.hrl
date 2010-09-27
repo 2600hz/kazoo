@@ -276,7 +276,7 @@
 			   ]).
 -define(HANGUP_REQ_TYPES, []).
 
-%% Hold - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FPark
+%% Park - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FPark
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PARK_REQ_HEADERS, []).
 -define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
@@ -285,7 +285,7 @@
 			 ]).
 -define(PARK_REQ_TYPES, []).
 
-%% Hold - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Call_Pickup
+%% Call Pickup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Call_Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, []).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
@@ -327,6 +327,29 @@
 			   ]).
 -define(PLAY_RECORD_DIGITS_REQ_TYPES, []).
 
+%% Say - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Say
+-define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
+-define(OPTIONAL_SAY_REQ_HEADERS, []).
+-define(SAY_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"say">>}
+			    ,{<<"Type">>, [<<"number">>, <<"items">>, <<"persons">>, <<"messages">>, <<"currency">>
+					       ,<<"time_measurement">>, <<"current_date">>, <<"current_time">>
+					       ,<<"current_date_time">>, <<"telephone_number">>, <<"telephone_extension">>
+					       ,<<"url">>, <<"ip_address">>, <<"e-mail_address">>, <<"postal_address">>
+					       ,<<"account_number">>, <<"name_spelled">>, <<"name_phonetic">>, <<"short_date_time">>]}
+			    ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
+			   ]).
+-define(SAY_REQ_TYPES, []).
+
+%% Sleep - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Sleep
+-define(SLEEP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Time">>]).
+-define(OPTIONAL_SLEEP_REQ_HEADERS, []).
+-define(SLEEP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"sleep">>}
+			   ]).
+-define(SLEEP_REQ_TYPES, []).
 
 
 %% [{FreeSWITCH-App-Name, Whistle-App-Name}]

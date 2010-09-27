@@ -441,6 +441,38 @@ call_pickup_req(Prop) ->
 call_pickup_req_v(Prop) ->
     validate(Prop, ?CALL_PICKUP_REQ_HEADERS, ?CALL_PICKUP_REQ_VALUES, ?CALL_PICKUP_REQ_TYPES).
 
+%%--------------------------------------------------------------------
+%% @doc Say - convert text to speech - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(say_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+say_req(Prop) ->
+    case say_req_v(Prop) of
+	true -> build_message(Prop, ?SAY_REQ_HEADERS, ?OPTIONAL_SAY_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for say_req"}
+    end.
+
+-spec(say_req_v/1 :: (Prop :: proplist()) -> boolean()).
+say_req_v(Prop) ->
+    validate(Prop, ?SAY_REQ_HEADERS, ?SAY_REQ_VALUES, ?SAY_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Sleep - Pauses execution - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(sleep_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+sleep_req(Prop) ->
+    case sleep_req_v(Prop) of
+	true -> build_message(Prop, ?SLEEP_REQ_HEADERS, ?OPTIONAL_SLEEP_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for sleep_req"}
+    end.
+
+-spec(sleep_req_v/1 :: (Prop :: proplist()) -> boolean()).
+sleep_req_v(Prop) ->
+    validate(Prop, ?SLEEP_REQ_HEADERS, ?SLEEP_REQ_VALUES, ?SLEEP_REQ_TYPES).
+
 %% given a proplist of a FS event, return the Whistle-equivalent app name
 -spec(convert_fs_evt_name/1 :: (EvtName :: binary()) -> undefined | binary()).
 convert_fs_evt_name(EvtName) ->
