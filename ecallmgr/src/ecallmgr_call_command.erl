@@ -123,8 +123,9 @@ exec_cmd(Node, UUID, Prop, <<"bridge">>) ->
     set_eff_call_id_number(Node, UUID, get_value(<<"Outgoing-Caller-ID-Number">>, Prop)),
     set_ringback(Node, UUID, get_value(<<"Ringback">>, Prop)),
     DialSeparator = case get_value(<<"Dial-Endpoint-Method">>, Prop) of
+			<<"simultaneous">> -> ",";
 			<<"single">> -> "|";
-			<<"simultaneous">> -> ","
+			_ -> "|"
 		    end,
     DialStrings = lists:map(fun get_bridge_endpoint/1, get_value(<<"Endpoints">>, Prop)),
     BridgeCmd = string:join(DialStrings, DialSeparator),
