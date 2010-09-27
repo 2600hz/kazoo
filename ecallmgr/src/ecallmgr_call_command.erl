@@ -84,7 +84,7 @@ exec_cmd(_Node, UUID, Prop, <<"store">>) ->
 	false ->
 	    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
     end;
-exec_cmd(Node, UUID, Prop, <<"tone">>) ->
+exec_cmd(Node, UUID, Prop, <<"tones">>) ->
     Tones = get_value(<<"Tones">>, Prop, []),
     FSTones = lists:map(fun({struct, Tone}) ->
 				Vol = case get_value(<<"Volume">>, Tone) of

@@ -22,15 +22,21 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% Authentication and Routing
--export([auth_req/1, auth_req_v/1, auth_resp/1, auth_resp_v/1
-	 ,route_req/1, route_req_v/1, route_resp/1, route_resp_v/1
-	 ,route_resp_route/1, route_resp_route_v/1, route_win/1, route_win_v/1]).
+-export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
 
 %% In-Call
--export([call_event/1, call_event_v/1, error_resp/1, error_resp_v/1]).
--export([store_req/1, store_req_v/1, store_amqp_resp/1, store_amqp_resp_v/1
-	 ,store_http_resp/1, store_http_resp_v/1, tones_req/1, tones_req_v/1
-	 ,tones_req_tone/1, tones_req_tone_v/1, queue_req/1, queue_req_v/1
+-export([call_event/1, error_resp/1]).
+-export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
+	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
+	 ,park_req/1, play_record_digits_req/1, call_pickup_req/1, hangup_req/1
+	]).
+
+%% Validation functions
+-export([auth_req_v/1, auth_resp_v/1, route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1
+	 ,call_event_v/1, error_resp_v/1, play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1
+	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
+	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_record_digits_req_v/1
+	 ,call_pickup_req_v/1, hangup_req_v/1
 	]).
 
 %% FS-specific routines
@@ -170,24 +176,14 @@ route_win_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(call_event/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 call_event(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("CallEvt Defaults Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers0, Prop0} ->
-	    case update_required_headers(Prop0, ?CALL_EVENT_HEADERS, Headers0) of
-		{error, _Reason} = Error ->
-		    io:format("CallEvt Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?CALL_EVENT_HEADERS, Prop0]),
-		    Error;
-		{Headers1, Prop1} ->
-		    {Headers2, _Prop2} = update_optional_headers(Prop1, ?OPTIONAL_CALL_EVENT_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case call_event_v(Prop) of
+	true -> build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
+	false -> {error, "Proplist failed validation for call_event"}
     end.
 
 -spec(call_event_v/1 :: (Prop :: proplist()) -> boolean()).
 call_event_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?CALL_EVENT_HEADERS).
+    validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event
@@ -196,23 +192,14 @@ call_event_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(error_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 error_resp(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("ErrorResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?ERROR_RESP_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("ErrorResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?ERROR_RESP_HEADERS, Prop1]),
-		    Error;
-		{Headers1, _Prop2} ->
-		    headers_to_json(Headers1)
-	    end
+    case error_resp_v(Prop) of
+	true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for error_resp"}
     end.
 
 -spec(error_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 error_resp_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?ERROR_RESP_HEADERS).
+    validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a Dialplan:store API call
@@ -221,24 +208,14 @@ error_resp_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(store_req/1 :: ( Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 store_req(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("StoreReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?STORE_REQ_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("StoreReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?STORE_REQ_HEADERS, Prop1]),
-		    Error;
-		{Headers1, Prop2} ->
-		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_STORE_REQ_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case store_req_v(Prop) of
+	true -> build_message(Prop, ?STORE_REQ_HEADERS, ?OPTIONAL_STORE_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for store_req"}
     end.
 
 -spec(store_req_v/1 :: (Prop :: proplist()) -> boolean()).
 store_req_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?STORE_REQ_HEADERS).
+    validate(Prop, ?STORE_REQ_HEADERS, ?STORE_REQ_VALUES, ?STORE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a Dialplan:store response for amqp storage method
@@ -247,25 +224,14 @@ store_req_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(store_amqp_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 store_amqp_resp(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("StoreAmqpResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?STORE_AMQP_RESP_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("StoreAmqpResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n"
-			      ,[Error, ?STORE_AMQP_RESP_HEADERS, Prop1]),
-		    Error;
-		{Headers1, Prop2} ->
-		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_STORE_AMQP_RESP_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case store_amqp_resp_v(Prop) of
+	true -> build_message(Prop, ?STORE_AMQP_RESP_HEADERS, ?OPTIONAL_STORE_AMQP_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for store_amqp_resp"}
     end.
 
 -spec(store_amqp_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 store_amqp_resp_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?STORE_AMQP_RESP_HEADERS).
+    validate(Prop, ?STORE_AMQP_RESP_HEADERS, ?STORE_AMQP_RESP_VALUES, ?STORE_AMQP_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a Dialplan:store response for http storage method
@@ -274,25 +240,14 @@ store_amqp_resp_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(store_http_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 store_http_resp(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("StoreHttpResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?STORE_HTTP_RESP_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("StoreHttpResp Error: ~p~nReqHeaders: ~p~nPassed: ~p~n"
-			      ,[Error, ?STORE_HTTP_RESP_HEADERS, Prop1]),
-		    Error;
-		{Headers1, Prop2} ->
-		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_STORE_HTTP_RESP_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case store_http_resp_v(Prop) of
+	true -> build_message(Prop, ?STORE_HTTP_RESP_HEADERS, ?OPTIONAL_STORE_HTTP_RESP_HEADERS);
+	false -> {error, "Prop failed validation for store_http_resp"}
     end.
 
 -spec(store_http_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 store_http_resp_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?STORE_HTTP_RESP_HEADERS).
+    validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki
@@ -301,25 +256,14 @@ store_http_resp_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(tones_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 tones_req(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("TonesReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?TONES_REQ_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("TonesReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n"
-			      ,[Error, ?TONES_REQ_HEADERS, Prop1]),
-		    Error;
-		{Headers1, Prop2} ->
-		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_TONES_REQ_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case tones_req_v(Prop) of
+	true -> build_message(Prop, ?TONES_REQ_HEADERS, ?OPTIONAL_TONES_REQ_HEADERS);
+	false -> {error, "Prop failed validation for tones_req"}
     end.
 
 -spec(tones_req_v/1 :: (Prop :: proplist()) -> boolean()).
 tones_req_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?TONES_REQ_HEADERS).
+    validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc A Tone within a Tones request - see wiki
@@ -328,45 +272,174 @@ tones_req_v(Prop) ->
 %%--------------------------------------------------------------------
 -spec(tones_req_tone/1 :: (Prop :: proplist()) -> {ok, proplist()} | {error, string()}).
 tones_req_tone(Prop) ->
-    case update_required_headers(Prop, ?TONES_REQ_TONE_HEADERS, []) of
-	{error, _Reason} = Error ->
-	    io:format("TonesReqTone Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?TONES_REQ_TONE_HEADERS, Prop]),
-	    Error;
-	{Headers0, Prop0} ->
-	    {Headers1, _Prop1} = update_optional_headers(Prop0, ?OPTIONAL_TONES_REQ_TONE_HEADERS, Headers0),
-	    {ok, Headers1}
+    case tones_req_tone_v(Prop) of
+	true -> build_message_specific(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
+	fase -> {error, "Proplist failed validation for tones_req_tone"}
     end.
 
 -spec(tones_req_tone_v/1 :: (Prop :: proplist()) -> boolean()).
 tones_req_tone_v(Prop) ->
-    has_all(Prop, ?TONES_REQ_TONE_HEADERS).
+    validate_message(Prop, ?TONES_REQ_TONE_HEADERS, ?TONES_REQ_TONE_VALUES, ?TONES_REQ_TONE_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Create a tone on the channel - see wiki
+%% @doc Send a list of dialplan applications in bulk - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
 -spec(queue_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
 queue_req(Prop) ->
-    case defaults(Prop) of
-	{error, _Reason}=Error ->
-	    io:format("QueueReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
-	    Error;
-	{Headers, Prop1} ->
-	    case update_required_headers(Prop1, ?QUEUE_REQ_HEADERS, Headers) of
-		{error, _Reason} = Error ->
-		    io:format("QueueReq Error: ~p~nReqHeaders: ~p~nPassed: ~p~n"
-			      ,[Error, ?QUEUE_REQ_HEADERS, Prop1]),
-		    Error;
-		{Headers1, Prop2} ->
-		    {Headers2, _Prop3} = update_optional_headers(Prop2, ?OPTIONAL_QUEUE_REQ_HEADERS, Headers1),
-		    headers_to_json(Headers2)
-	    end
+    case queue_req_v(Prop) of
+	true -> build_message(Prop, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for queue_req"}
     end.
 
 -spec(queue_req_v/1 :: (Prop :: proplist()) -> boolean()).
 queue_req_v(Prop) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso has_all(Prop, ?QUEUE_REQ_HEADERS).
+    validate(Prop, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Play media - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(play_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+play_req(Prop) ->
+    case play_req_v(Prop) of
+	true -> build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for play_req"}
+    end.
+
+-spec(play_req_v/1 :: (Prop :: proplist()) -> boolean()).
+play_req_v(Prop) ->
+    validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Record media - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(record_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+record_req(Prop) ->
+    case record_req_v(Prop) of
+	true -> build_message(Prop, ?RECORD_REQ_HEADERS, ?OPTIONAL_RECORD_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for record_req"}
+    end.
+
+-spec(record_req_v/1 :: (Prop :: proplist()) -> boolean()).
+record_req_v(Prop) ->
+    validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Bridge a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(bridge_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+bridge_req(Prop) ->
+    case bridge_req_v(Prop) of
+	true -> build_message(Prop, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for bridge_req"}
+    end.
+
+-spec(bridge_req_v/1 :: (Prop :: proplist()) -> boolean()).
+bridge_req_v(Prop) ->
+    validate(Prop, ?BRIDGE_REQ_HEADERS, ?BRIDGE_REQ_VALUES, ?BRIDGE_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Endpoints for bridging a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(bridge_req_endpoint/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+bridge_req_endpoint(Prop) ->
+    case bridge_req_endpoint_v(Prop) of
+	true -> build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
+	false -> {error, "Proplist failed validation for bridge_req_endpoint"}
+    end.
+
+-spec(bridge_req_endpoint_v/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+bridge_req_endpoint_v(Prop) ->
+    validate_message(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?BRIDGE_REQ_ENDPOINT_VALUES, ?BRIDGE_REQ_ENDPOINT_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Answer a session - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(answer_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+answer_req(Prop) ->
+    case answer_req_v(Prop) of
+	true -> build_message(Prop, ?ANSWER_REQ_HEADERS, ?OPTIONAL_ANSWER_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for answer_req"}
+    end.
+
+-spec(answer_req_v/1 :: (Prop :: proplist()) -> boolean()).
+answer_req_v(Prop) ->
+    validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Hangup a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(hangup_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+hangup_req(Prop) ->
+    case hangup_req_v(Prop) of
+	true -> build_message(Prop, ?HANGUP_REQ_HEADERS, ?OPTIONAL_HANGUP_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for hangup_req"}
+    end.
+
+-spec(hangup_req_v/1 :: (Prop :: proplist()) -> boolean()).
+hangup_req_v(Prop) ->
+    validate(Prop, ?HANGUP_REQ_HEADERS, ?HANGUP_REQ_VALUES, ?HANGUP_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Park a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(park_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+park_req(Prop) ->
+    case park_req_v(Prop) of
+	true -> build_message(Prop, ?PARK_REQ_HEADERS, ?OPTIONAL_PARK_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for park_req"}
+    end.
+
+-spec(park_req_v/1 :: (Prop :: proplist()) -> boolean()).
+park_req_v(Prop) ->
+    validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Play media and record digits - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(play_record_digits_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+play_record_digits_req(Prop) ->
+    case play_record_digits_req_v(Prop) of
+	true -> build_message(Prop, ?PLAY_RECORD_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_RECORD_DIGITS_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for play_record_digits_req"}
+    end.
+
+-spec(play_record_digits_req_v/1 :: (Prop :: proplist()) -> boolean()).
+play_record_digits_req_v(Prop) ->
+    validate(Prop, ?PLAY_RECORD_DIGITS_REQ_HEADERS, ?PLAY_RECORD_DIGITS_REQ_VALUES, ?PLAY_RECORD_DIGITS_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Pickup a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(call_pickup_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+call_pickup_req(Prop) ->
+    case call_pickup_req_v(Prop) of
+	true -> build_message(Prop, ?CALL_PICKUP_REQ_HEADERS, ?OPTIONAL_CALL_PICKUP_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for call_pickup_req"}
+    end.
+
+-spec(call_pickup_req_v/1 :: (Prop :: proplist()) -> boolean()).
+call_pickup_req_v(Prop) ->
+    validate(Prop, ?CALL_PICKUP_REQ_HEADERS, ?CALL_PICKUP_REQ_VALUES, ?CALL_PICKUP_REQ_TYPES).
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name
 -spec(convert_fs_evt_name/1 :: (EvtName :: binary()) -> undefined | binary()).
