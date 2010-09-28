@@ -162,14 +162,17 @@ get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
 
 process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
-    case whistle_api:auth_req_v(Prop) andalso ts_auth:handle_req(Prop) of
+    case whistle_api:auth_req_v(Prop) of
 	false ->
 	    format_log(error, "TS_RESPONDER.auth(~p): Failed to validate auth_req~n", [self()]);
-	{ok, JSON} ->
-	    RespQ = get_value(<<"Server-ID">>, Prop),
-	    send_resp(JSON, RespQ, State);
-	{error, _Msg} ->
-	    format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
+	true ->
+	    case ts_auth:handle_req(Prop) of
+		{ok, JSON} ->
+		    RespQ = get_value(<<"Server-ID">>, Prop),
+		    send_resp(JSON, RespQ, State);
+		{error, _Msg} ->
+		    format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
+	    end
     end;
 process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{tar_q=TQ}=State) ->
     case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop, TQ) of

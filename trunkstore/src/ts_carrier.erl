@@ -204,8 +204,12 @@ create_routes(Flags, Carriers) ->
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
-    {Routes, _, _} = lists:foldl(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID}, Carriers),
-    {ok, Routes}.
+    case lists:foldl(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID}, Carriers) of
+	{[], _, _} ->
+	    {error, "Failed to find routes for the call"};
+	{Routes, _, _} ->
+	    {ok, Routes}
+    end.
 
 carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
     BaseRouteData = case get_value(<<"callerid_type">>, CarrierData) of

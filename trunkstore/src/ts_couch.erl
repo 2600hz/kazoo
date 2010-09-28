@@ -109,10 +109,11 @@ get_results(DbName, DesignDoc, ViewOptions) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (Args :: list()) -> tuple() | ignore).
+-spec(init/1 :: (Args :: list()) -> tuple(ok, tuple())).
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, #state{connection=get_new_connection()}}.
+    InitState = #state{connection=get_new_connection()},
+    {ok, InitState}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -363,7 +364,7 @@ close_all_databases(DBs) ->
 			  end
 		  end, DBs).
 
--spec(close_all_views/1 :: (Vs :: list()) -> no_return()).
+-spec(close_all_views/1 :: (Vs :: list()) -> ok).
 close_all_views(Vs) ->
     lists:foreach(fun({_Key, ViewPid, MRef}) ->
 			  case is_process_alive(ViewPid) of
@@ -373,7 +374,8 @@ close_all_views(Vs) ->
 			      false ->
 				  ok
 			  end
-		  end, Vs).
+		  end, Vs),
+    ok.
 
 -spec(get_new_connection/1 :: (Params :: tuple()) -> {pid(), reference()}).
 get_new_connection() ->

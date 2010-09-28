@@ -49,24 +49,25 @@ handle_req(Prop) ->
 					    ,get_value(<<"Event-Name">>, Prop)
 					    ,?APP_NAME
 					    ,?APP_VERSION)],
-    case ViewInfo of
-	{error, Reason} ->
-	    format_log(error, "TS_AUTH(~p): Sending a 500 for error: ~p~n", [self(), Reason]),
-	    response(500, Defaults);
-	[] ->
-	    case Direction of
-		<<"inbound">> ->
-		    %% send urgent email or alert for Phantom Number
-		    format_log(error, "TS_AUTH(~p): Alert! ~p@~p was routed to us~n", [self(), AuthU, AuthD]);
-		<<"outbound">> ->
-		    %% unauthed user trying to make calls, alert
-		    format_log(error, "TS_AUTH(~p): Sending a 403 ~p~n", [self()])
-	    end,
-	    response(403, Defaults);
-	_ ->
-	    format_log(error, "TS_AUTH(~p): Sending a 200~n", [self()]),
-	    response(ViewInfo, Defaults)
-    end.
+    Info = case ViewInfo of
+	       {error, Reason} ->
+		   format_log(error, "TS_AUTH(~p): Sending a 500 for error: ~p~n", [self(), Reason]),
+		   500;
+	       [] ->
+		   case Direction of
+		       <<"inbound">> ->
+			   %% send urgent email or alert for Phantom Number
+			   format_log(error, "TS_AUTH(~p): Alert! ~p@~p was routed to us~n", [self(), AuthU, AuthD]);
+		       <<"outbound">> ->
+			   %% unauthed user trying to make calls, alert
+			   format_log(error, "TS_AUTH(~p): Sending a 403 ~p~n", [self()])
+		   end,
+		   403;
+	       _ ->
+		   format_log(error, "TS_AUTH(~p): Sending a 200~n", [self()]),
+		   ViewInfo
+	   end,
+    response(Info, Defaults).
 
 %%%===================================================================
 %%% Internal functions
@@ -140,8 +141,7 @@ response(ViewInfo, Prop) ->
     Data = lists:umerge(specific_response(ViewInfo), Prop),
     whistle_api:auth_resp(Data).
 
--spec(specific_response/1 :: (ViewInfo :: proplist()) -> proplist();
-			     (integer()) -> proplist()).
+-spec(specific_response/1 :: (ViewInfo :: proplist() | integer()) -> proplist()).
 specific_response(ViewInfo) when is_list(ViewInfo) ->
     {AuthProp} = get_value(<<"value">>, ViewInfo),
     {Info} = get_value(<<"auth">>, AuthProp),
