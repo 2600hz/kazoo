@@ -22,9 +22,41 @@
 %%% If just a single application is sent in the message, we check the CmdQ's
 %%% size and the current App's status; if both are empty, we fire the command
 %%% immediately; otherwise we add the command to the CmdQ and loop.
+%%%
+%%% When receiving an {execute_complete, UUID, EvtName} tuple from
+%%% the corresponding ecallmgr_call_events process tracking the call,
+%%% we convert the CurrApp name from Whistle parlance to FS, matching
+%%% it against what application name we got from FS via the events
+%%% process. If CurrApp is empty, we just loop since the completed
+%%% execution probably wasn't related to our stuff (perhaps FS internal);
+%%% if the converted Whistle name matches the passed FS name, we know
+%%% the CurrApp cmd has finished and can execute the next command in the
+%%% queue. If there are no commands in the queue, set CurrApp to <<>> and
+%%% loop; otherwise take the next command, execute it, and look with it as
+%%% the CurrApp. If EvtName and the converted Whistle name don't match,
+%%% something else executed that might have been related to the main
+%%% application's execute (think set commands, like playback terminators);
+%%% we can note the event happended, and continue looping as we were.
+%%%
 %%% @end
 %%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
+	{execute_complete, UUID, EvtName} ->
+	    format_log(info, "CONTROL(~p): CurrApp: ~p execute_complete: ~p~n", [self(), CurrApp, EvtName]),
+	    case whistle_api:convert_whistle_app_name(CurrApp) of
+		<<>> ->
+		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT);
+		EvtName ->
+		    case queue:out(CmdQ) of
+			{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, <<>>, CtlQ, StartT);
+			{{value, Cmd}, CmdQ1} ->
+			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
+			    loop(Node, UUID, CmdQ1, get_value(<<"Application-Name">>, Cmd), CtlQ, StartT)
+		    end;
+		_OtherEvt ->
+		    format_log(info, "CONTROL(~p): CurrApp: ~p Other: ~p~n", [self(), CurrApp, _OtherEvt]),
+		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT)
+	    end;
 -module(ecallmgr_call_control).
 
 -export([start/3, init/3]).
@@ -71,9 +103,6 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
 		false ->
 		    loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT)
 	    end;
-	#'basic.consume_ok'{}=BC ->
-	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
-	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT);
 	{execute_complete, UUID, EvtName} ->
 	    format_log(info, "CONTROL(~p): CurrApp: ~p execute_complete: ~p~n", [self(), CurrApp, EvtName]),
 	    case whistle_api:convert_whistle_app_name(CurrApp) of
@@ -97,6 +126,9 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
 	    ecallmgr_amqp:delete_queue(CtlQ),
 	    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
 		       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]);
+	#'basic.consume_ok'{}=BC ->
+	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
+	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT);
 	_Msg ->
 	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [_Msg]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT)
