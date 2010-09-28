@@ -258,6 +258,8 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 	    ?MODULE:fetch_route(Node, State)
     end.
 
+-spec(lookup_route/6 :: (Node :: atom(), HState :: tuple(), ID :: binary(), UUID :: binary(), FetchPid :: pid(), Data :: proplist()) ->
+			     no_return()).
 lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=HState, ID, UUID, FetchPid, Data) ->
     Q = bind_q(Channel, Ticket, ID),
     {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
