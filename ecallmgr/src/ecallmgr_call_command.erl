@@ -14,19 +14,22 @@
 -import(logger, [log/2, format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
+-define(LOCAL_MEDIA_PATH, "/tmp/").
+
 -type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
--spec(exec_cmd/3 :: (Node :: list(), UUID :: binary(), Prop :: proplist()) -> no_return()).
+-spec(exec_cmd/3 :: (Node :: list(), UUID :: binary(), Prop :: proplist()) -> ok | timeout | {error, string()}).
 exec_cmd(Node, UUID, Prop) ->
     DestID = get_value(<<"Call-ID">>, Prop),
     case DestID =:= UUID of
 	true -> exec_cmd(Node, UUID, Prop, get_value(<<"Application-Name">>, Prop));
-	false -> format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID])
+	false -> format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
+		 {error, "Command not for this node"}
     end.
 
--spec(exec_cmd/4 :: (Node :: list(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> no_return()).
+-spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> ok | timeout | {error, string()}).
 exec_cmd(Node, UUID, Prop, <<"play">>) ->
     F = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
     set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
@@ -137,7 +140,7 @@ exec_cmd(_Node, _UUID, _Prop, _App) ->
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
--spec(send_cmd/4 :: (Node :: binary(), UUID :: binary(), AppName :: string(), Args :: string()) -> no_return()).
+-spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) when is_binary(Args) ->
     send_cmd(Node, UUID, AppName, binary_to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->
@@ -174,9 +177,9 @@ media_path(UUID, Name) ->
 	false -> binary_to_list(Name)
     end.
 
--spec(get_media_path/1 :: (Name :: binary()) -> string()).
+-spec(get_media_path/1 :: (Name :: binary() | string()) -> list()).
 get_media_path(Name) ->
-    binary_to_list(list_to_binary(["/tmp/", Name, ".wav"])).
+    binary_to_list(list_to_binary([?LOCAL_MEDIA_PATH, Name, ".wav"])).
 
 -spec(stream_over_amqp/3 :: (File :: list(), Prop :: proplist(), Headers :: proplist()) -> no_return()).
 stream_over_amqp(File, Prop, Headers) ->
@@ -221,11 +224,11 @@ stream_over_http(File, Verb, Prop) ->
     Body = {fun stream_file/1, {undefined, File}},
     AppQ = get_value(<<"Server-ID">>, Prop),
     case ibrowse:send_req(Url, Headers, Method, Body) of
-	{ok, StatusCode, Headers, Body} ->
+	{ok, StatusCode, RespHeaders, RespBody} ->
 	    case whistle_api:store_http_resp([{<<"Media-Transfer-Results">>
 						   ,{struct, [{<<"Status-Code">>, StatusCode}
-							      ,{<<"Headers">>, {struct, Headers}}
-							      ,{<<"Body">>, list_to_binary(Body)}
+							      ,{<<"Headers">>, {struct, RespHeaders}}
+							      ,{<<"Body">>, list_to_binary(RespBody)}
 							     ]}
 					      }
 					      | Prop]) of
@@ -233,9 +236,7 @@ stream_over_http(File, Verb, Prop) ->
 		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
 		    ecallmgr_amqp:publish(JSON, targeted, AppQ);
 		{error, Msg} ->
-		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg]);
-		_Other ->
-		    format_log(error, "CONTROL(~p): ibrowse returned unexpected: ~p~n", [self(), _Other])
+		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
 	    end;
 	{error, Error} ->
 	    format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error]);
@@ -256,23 +257,25 @@ stream_file({Iod, _File}=State) ->
 	    eof
     end.
 
--spec(set_eff_call_id_name/3 :: (Node :: binary(), UUID :: binary(), Name :: undefined | binary()) -> no_return()).
+-spec(set_eff_call_id_name/3 :: (Node :: atom(), UUID :: binary(), Name :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_eff_call_id_name(_Node, _UUID, undefined) ->
     ok;
 set_eff_call_id_name(Node, UUID, Name) ->
     N = list_to_binary(["effective_caller_id_name=", Name]),
     set(Node, UUID, binary_to_list(N)).
 
--spec(set_eff_call_id_number/3 :: (Node :: binary(), UUID :: binary(), Num :: undefined | binary()) -> no_return()).
+-spec(set_eff_call_id_number/3 :: (Node :: atom(), UUID :: binary(), Num :: undefined | integer() | list() | binary()) -> ok | timeout | {error, string()}).
 set_eff_call_id_number(_Node, _UUID, undefined) ->
     ok;
 set_eff_call_id_number(Node, UUID, Num) when is_integer(Num) ->
     set_eff_call_id_number(Node, UUID, integer_to_list(Num));
-set_eff_call_id_number(Node, UUID, Num) ->
+set_eff_call_id_number(Node, UUID, Num) when is_list(Num) ->
+    set_eff_call_id_number(Node, UUID, list_to_binary(Num));
+set_eff_call_id_number(Node, UUID, Num) when is_binary(Num) ->
     N = list_to_binary(["effective_caller_id_number", Num]),
     set(Node, UUID, binary_to_list(N)).
 
--spec(set_bypass_media(Node :: binary(), UUID :: binary(), Method :: undefined | binary()) -> no_return()).
+-spec(set_bypass_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_bypass_media(_Node, _UUID, undefined) ->
     ok;
 set_bypass_media(Node, UUID, <<"true">>) ->
@@ -280,7 +283,7 @@ set_bypass_media(Node, UUID, <<"true">>) ->
 set_bypass_media(Node, UUID, <<"false">>) ->
     set(Node, UUID, "bypass_media=false").
 
--spec(set_timeout/3 :: (Node :: binary(), UUID :: binary(), N :: undefined | integer() | list()) -> no_return()).
+-spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
 set_timeout(_Node, _UUID, undefined) ->
     ok;
 set_timeout(Node, UUID, N) when is_integer(N) ->
@@ -289,7 +292,7 @@ set_timeout(Node, UUID, N) ->
     Timeout = [ $c,$a,$l,$l,$_,$t,$i,$m,$e,$o,$u,$t,$= | N],
     set(Node, UUID, Timeout).
 
--spec(set_terminators/3 :: (Node :: binary(), UUID :: binary(), Terminators :: undefined | binary()) -> no_return()).
+-spec(set_terminators/3 :: (Node :: atom(), UUID :: binary(), Terminators :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_terminators(_Node, _UUID, undefined) ->
     ok;
 set_terminators(Node, UUID, <<"">>) ->
@@ -298,13 +301,13 @@ set_terminators(Node, UUID, Ts) ->
     Terms = binary_to_list(list_to_binary(["playback_terminators=", Ts])),
     set(Node, UUID, Terms).
 
--spec(set_ringback/3 :: (Node :: binary(), UUID :: binary(), RingBack :: undefined | binary()) -> no_return()).
+-spec(set_ringback/3 :: (Node :: atom(), UUID :: binary(), RingBack :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_ringback(_Node, _UUID, undefined) ->
     ok;
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=${", RingBack, "}"]),
     set(Node, UUID, binary_to_list(RB)).
 
--spec(set/3 :: (Node :: binary(), UUID :: binary(), Arg :: list()) -> no_return()).
+-spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", Arg).

@@ -23,9 +23,9 @@ init(Node, UUID, {Channel, Ticket, CtlQueue}) ->
     BC = amqp_util:basic_consume(Ticket, CtlQueue),
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, BC, self()),
     format_log(info, "CONTROL(~p): initial loop call~n", [self()]),
-    loop(Node, UUID, queue:new(), undefined, CtlQueue, erlang:now()).
+    loop(Node, UUID, queue:new(), <<>>, CtlQueue, erlang:now()).
 
-%% CurrApp is the Whistle Application that is currently running in FS (or undefined)
+%% CurrApp is the Whistle Application that is currently running in FS (or empty)
 %% the next command in CmdQ doesn't run until CurrApp translates to the Event Name
 %% passed from the Event queue on the {command_execute_complete, ...} message
 loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
@@ -42,7 +42,7 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
 		    CmdQ1 = lists:foldl(fun({struct, Cmd}, TmpQ) ->
 						queue:in(DefProp ++ Cmd, TmpQ)
 					end, CmdQ, get_value(<<"Commands">>, Prop)),
-		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso CurrApp =:= undefined of
+		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso CurrApp =:= <<>> of
 			true ->
 			    {{value, Cmd}, CmdQ2} = queue:out(CmdQ1),
 			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
@@ -51,7 +51,7 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
 			    loop(Node, UUID, CmdQ1, CurrApp, CtlQ, StartT)
 		    end;
 		_AppName ->
-		    case queue:is_empty(CmdQ) andalso CurrApp =:= undefined of
+		    case queue:is_empty(CmdQ) andalso CurrApp =:= <<>> of
 			true ->
 			    ecallmgr_call_command:exec_cmd(Node, UUID, Prop),
 			    loop(Node, UUID, CmdQ, get_value(<<"Application-Name">>, Prop), CtlQ, StartT);
@@ -65,11 +65,11 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
 	{execute_complete, UUID, EvtName} ->
 	    format_log(info, "CONTROL(~p): CurrApp: ~p execute_complete: ~p~n", [self(), CurrApp, EvtName]),
 	    case whistle_api:convert_whistle_app_name(CurrApp) of
-		undefined ->
+		<<>> ->
 		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT);
 		EvtName ->
 		    case queue:out(CmdQ) of
-			{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, undefined, CtlQ, StartT);
+			{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, <<>>, CtlQ, StartT);
 			{{value, Cmd}, CmdQ1} ->
 			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
 			    loop(Node, UUID, CmdQ1, get_value(<<"Application-Name">>, Cmd), CtlQ, StartT)

@@ -275,7 +275,7 @@ tones_req_v(Prop) ->
 tones_req_tone(Prop) ->
     case tones_req_tone_v(Prop) of
 	true -> build_message_specific(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
-	fase -> {error, "Proplist failed validation for tones_req_tone"}
+	false -> {error, "Proplist failed validation for tones_req_tone"}
     end.
 
 -spec(tones_req_tone_v/1 :: (Prop :: proplist()) -> boolean()).
@@ -358,7 +358,7 @@ bridge_req_endpoint(Prop) ->
 	false -> {error, "Proplist failed validation for bridge_req_endpoint"}
     end.
 
--spec(bridge_req_endpoint_v/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(bridge_req_endpoint_v/1 :: (Prop :: proplist()) -> boolean()).
 bridge_req_endpoint_v(Prop) ->
     validate_message(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?BRIDGE_REQ_ENDPOINT_VALUES, ?BRIDGE_REQ_ENDPOINT_TYPES).
 
@@ -475,18 +475,18 @@ sleep_req_v(Prop) ->
     validate(Prop, ?SLEEP_REQ_HEADERS, ?SLEEP_REQ_VALUES, ?SLEEP_REQ_TYPES).
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name
--spec(convert_fs_evt_name/1 :: (EvtName :: binary()) -> undefined | binary()).
+-spec(convert_fs_evt_name/1 :: (EvtName :: binary()) -> binary()).
 convert_fs_evt_name(EvtName) ->
     case lists:keyfind(EvtName, 1, ?SUPPORTED_APPLICATIONS) of
-	false -> undefined;
+	false -> <<>>;
 	{EvtName, AppName} -> AppName
     end.
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
--spec(convert_whistle_app_name/1 :: (AppName :: binary()) -> undefined | binary()).
+-spec(convert_whistle_app_name/1 :: (AppName :: binary()) -> binary()).
 convert_whistle_app_name(AppName) ->
     case lists:keyfind(AppName, 2, ?SUPPORTED_APPLICATIONS) of
-	false -> undefined;
+	false -> <<>>;
 	{EvtName, AppName} -> EvtName
     end.
 

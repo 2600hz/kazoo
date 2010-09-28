@@ -78,9 +78,11 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+%% returns ok or {error, some_error_atom_explaining_more}
 add_fs_node(Node) ->
     gen_server:call(?MODULE, {add_fs_node, Node}).
 
+%% returns ok or {error, some_error_atom_explaining_more}
 rm_fs_node(Node) ->
     gen_server:call(?MODULE, {rm_fs_node, Node}).
 

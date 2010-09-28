@@ -112,7 +112,9 @@
 			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
 			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
 			  ,{<<"Cost-Parameters">>, fun({struct, L}) when is_list(L) ->
-							   has_all(?ROUTE_REQ_COST_PARAMS, L);
+							   lists:all(fun({K, _V}) ->
+									     lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+								     end, L);
 						      (_) -> false
 						   end}
 			  ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
@@ -370,4 +372,4 @@
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>]).
 
--type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
+-type proplist() :: list(tuple(binary(), (binary() | list() | fun()) )).
