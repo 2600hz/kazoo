@@ -28,7 +28,8 @@
 -export([call_event/1, error_resp/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
-	 ,park_req/1, play_record_digits_req/1, call_pickup_req/1, hangup_req/1
+	 ,park_req/1, play_record_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
+	 ,sleep_req/1
 	]).
 
 %% Validation functions
@@ -36,7 +37,7 @@
 	 ,call_event_v/1, error_resp_v/1, play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_record_digits_req_v/1
-	 ,call_pickup_req_v/1, hangup_req_v/1
+	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1
 	]).
 
 %% FS-specific routines

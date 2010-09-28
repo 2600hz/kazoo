@@ -320,12 +320,7 @@ bind_q(Channel, Ticket, ID) ->
 
 a1hash(User, Realm, Password) ->
     format_log(info, "AUTH(~p): a1hashing ~p:~p:~p~n", [self(), User, Realm, Password]),
-    to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
-
-to_hex(Bin) when is_binary(Bin) ->
-    to_hex(binary_to_list(Bin));
-to_hex(L) when is_list(L) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+    ecallmgr_util:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 %% setup a connection to mod_erlang_event for dialplan requests,
 %% or setup a timer to query for the node and return the timer ref

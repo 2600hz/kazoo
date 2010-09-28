@@ -1,6 +1,7 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_orig_ip/1, custom_channel_vars/1]).
+-export([to_hex/1]).
 
 -import(proplists, [get_value/2, get_value/3]).
 
@@ -33,3 +34,8 @@ custom_channel_vars(Prop) ->
 			     (_) -> false
 			  end, Prop),
     lists:map(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}) -> {Key, V} end, Custom).
+
+to_hex(Bin) when is_binary(Bin) ->
+    to_hex(binary_to_list(Bin));
+to_hex(L) when is_list(L) ->
+    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
