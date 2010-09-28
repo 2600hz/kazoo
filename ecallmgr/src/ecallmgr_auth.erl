@@ -2,7 +2,40 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Handles authentication requests on the FS instance by a device
+%%% When a device tries to register with a known FS node, FS sends a
+%%% fetch request to the corresponding fetch_handler (a process spawned
+%%% during the call to add_fs_node/1). The fetch_handler checks to see
+%%% that the fetch request is one the handler can, you know, handle
+%%% and if so, spawns a call to lookup_user/4. The newly spawned process
+%%% creates an Authentication Request API message, as well as a queue on
+%%% the Targeted Exchange, and places the AuthReq onto the Broadcast
+%%% Exchange. Lookup_user then waits, up to a threshold, for an AuthResp
+%%% message. If a timeout occurs, an empty response is returned to the
+%%% fetch_handler; otherwise, lookup_user tries to create the appropriate
+%%% XML response to pass back to the fetch_handler.
+%%% Upon receiving the XML, fetch_handler sends the XML to the FS node,
+%%% and goes back to waiting for another fetch request. The lookup_user
+%%% process ends after sending the XML and cleaning up.
+%%%
+%%%                 ---------------
+%%%                 |ecallmgr_auth|
+%%%                 ---------------
+%%%                        |
+%%%             -------------------------
+%%%             |                       |
+%%%     ---------------           ---------------
+%%%     |fetch_handler|           |fetch_handler|
+%%%     |(per FS Node)|           |(per FS Node)|
+%%%     ---------------           ---------------
+%%%            |                        |
+%%%     ---------------          ---------------
+%%%     |      |      |          |      |      |
+%%%   -----  -----  -----      -----  -----  -----
+%%%   |L/U|  |L/U|  |L/U|      |L/U|  |L/U|  |L/U|
+%%%   -----  -----  -----      -----  -----  -----
+%%%
+%%% L/U = lookup_user per auth request
+%%%
 %%% @end
 %%% Created : 17 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
