@@ -2,7 +2,26 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Receive call control commands from amqp queue, send to freeswitch
+%%% Created when a call hits a fetch_handler in ecallmgr_route.
+%%% A Control Queue is created by the lookup_route function in the
+%%% fetch_handler. On initialization, besides adding itself as the 
+%%% consumer for the AMQP messages, Call Control creates an empty queue
+%%% object (not to be confused with AMQP queues), sets the current
+%%% application running on the switch to the empty binary, and records
+%%% the timestamp of when the initialization finishes. The process then
+%%% enters its loop to wait.
+%%%
+%%% When receiving an AMQP message, after decoding the JSON into a proplist,
+%%% we check if the application is "queue" or not; if it is "queue", we
+%%% extract the default headers out, iterate through the Commands portion,
+%%% and append the default headers to the application-specific portions, and
+%%% insert these commands into the CmdQ. We then check whether the old CmdQ is
+%%% empty AND the new CmdQ is not, and that the current App is the empty
+%%% binary. If so, we dequeue the next command, execute it, and loop; otherwise
+%%% we loop with the CmdQ.
+%%% If just a single application is sent in the message, we check the CmdQ's
+%%% size and the current App's status; if both are empty, we fire the command
+%%% immediately; otherwise we add the command to the CmdQ and loop.
 %%% @end
 %%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
@@ -34,30 +53,23 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT) ->
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "CONTROL(~p): Recv App Cmd:~p~n"
-		       ,[self(), get_value(<<"Application-Name">>, Prop)]),
-	    case get_value(<<"Application-Name">>, Prop) of
-		<<"queue">> -> %% list of commands that need to be added
-		    DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
-		    CmdQ1 = lists:foldl(fun({struct, Cmd}, TmpQ) ->
-						queue:in(DefProp ++ Cmd, TmpQ)
-					end, CmdQ, get_value(<<"Commands">>, Prop)),
-		    case queue:is_empty(CmdQ) andalso not queue:is_empty(CmdQ1) andalso CurrApp =:= <<>> of
-			true ->
-			    {{value, Cmd}, CmdQ2} = queue:out(CmdQ1),
-			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
-			    loop(Node, UUID, CmdQ2, get_value(<<"Application-Name">>, Cmd), CtlQ, StartT);
-			false ->
-			    loop(Node, UUID, CmdQ1, CurrApp, CtlQ, StartT)
-		    end;
-		_AppName ->
-		    case queue:is_empty(CmdQ) andalso CurrApp =:= <<>> of
-			true ->
-			    ecallmgr_call_command:exec_cmd(Node, UUID, Prop),
-			    loop(Node, UUID, CmdQ, get_value(<<"Application-Name">>, Prop), CtlQ, StartT);
-			false ->
-			    loop(Node, UUID, queue:in(Prop, CmdQ), CurrApp, CtlQ, StartT)
-		    end
+	    NewCmdQ = case get_value(<<"Application-Name">>, Prop) of
+			  <<"queue">> -> %% list of commands that need to be added
+			      format_log(info, "CONTROL(~p): Recv App Cmd: Queue~n", [self()]),
+			      DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
+			      lists:foldl(fun({struct, Cmd}, TmpQ) ->
+						  queue:in(DefProp ++ Cmd, TmpQ)
+					  end, CmdQ, get_value(<<"Commands">>, Prop));
+			  _AppName ->
+			      queue:in(Prop, CmdQ)
+		      end,
+	    case (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= <<>> of
+		true ->
+		    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
+		    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
+		    loop(Node, UUID, NewCmdQ1, Cmd, CtlQ, StartT);
+		false ->
+		    loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT)
 	    end;
 	#'basic.consume_ok'{}=BC ->
 	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
