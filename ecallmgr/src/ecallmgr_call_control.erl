@@ -41,22 +41,6 @@
 %%% @end
 %%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
-	{execute_complete, UUID, EvtName} ->
-	    format_log(info, "CONTROL(~p): CurrApp: ~p execute_complete: ~p~n", [self(), CurrApp, EvtName]),
-	    case whistle_api:convert_whistle_app_name(CurrApp) of
-		<<>> ->
-		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT);
-		EvtName ->
-		    case queue:out(CmdQ) of
-			{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, <<>>, CtlQ, StartT);
-			{{value, Cmd}, CmdQ1} ->
-			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd),
-			    loop(Node, UUID, CmdQ1, get_value(<<"Application-Name">>, Cmd), CtlQ, StartT)
-		    end;
-		_OtherEvt ->
-		    format_log(info, "CONTROL(~p): CurrApp: ~p Other: ~p~n", [self(), CurrApp, _OtherEvt]),
-		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT)
-	    end;
 -module(ecallmgr_call_control).
 
 -export([start/3, init/3]).
