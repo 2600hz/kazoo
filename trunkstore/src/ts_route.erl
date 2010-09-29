@@ -44,16 +44,16 @@ handle_req(ApiProp, ServerID) ->
 %%%===================================================================
 -spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
 inbound_handler(ApiProp, ServerID) ->
-    Did = get_value(<<"To">>, ApiProp),
-    Options = [{"key", Did}],
+    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
+    Options = [{"key", ToUser}],
     case ts_couch:has_view(?TS_DB, ?TS_VIEW_DIDLOOKUP) andalso
 	ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
-	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
-		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
+	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p(~p)~n"
+		       ,[self(), ?TS_VIEW_DIDLOOKUP, ToUser, _ToDomain]),
 	    {error, "No DIDLOOKUP view"};
 	[] ->
-	    format_log(info, "TS_ROUTE(~p): No DID matching ~p~n", [self(), Did]),
+	    format_log(info, "TS_ROUTE(~p): No DID matching ~p~n", [self(), ToUser]),
 	    {error, "No matching DID"};
 	[{ViewProp} | _Rest] ->
 	    OurDid = get_value(<<"key">>, ViewProp),
