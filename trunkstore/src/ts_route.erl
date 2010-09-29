@@ -43,8 +43,28 @@ handle_req(ApiProp, ServerID) ->
 %%% Internal functions
 %%%===================================================================
 -spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
-inbound_handler(Prop, ServerID) ->
-    {error, "Inbound handler not implemented"}.
+inbound_handler(ApiProp, ServerID) ->
+    Did = get_value(<<"To">>, ApiProp),
+    Options = [{"key", Did}],
+    case ts_couch:has_view(?TS_DB, ?TS_VIEW_DIDLOOKUP) andalso
+	ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
+	false ->
+	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
+		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
+	    {error, "No DIDLOOKUP view"};
+	[] ->
+	    format_log(info, "TS_ROUTE(~p): No DID matching ~p~n", [self(), Did]),
+	    {error, "No matching DID"};
+	[{ViewProp} | _Rest] ->
+	    OurDid = get_value(<<"key">>, ViewProp),
+	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
+	    {struct, Value} = mochijson2:decode(get_value(<<"value">>, ViewProp)),
+	    {struct, DidOptions} = get_value(<<"DID_Opts">>, Value),
+	    process_routing(inbound_features(set_flags(DidOptions, ApiProp)), ApiProp, ServerID);
+	_Else ->
+	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
+	    {error, "Unexpected error in inbound_handler"}
+    end.
 
 -spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
 outbound_handler(Prop, ServerID) ->
@@ -92,9 +112,18 @@ find_route(Flags, ApiProp, ServerID) ->
 	    response(404, ApiProp, ServerID)
     end.
 
+-spec(inbound_features/1 :: (Flags :: tuple()) -> tuple()).
+inbound_features(Flags) ->
+    Features = [],
+    fold_features(Features, Flags).
+
 -spec(outbound_features/1 :: (Flags :: tuple()) -> tuple()).
 outbound_features(Flags) ->
     Features = [ts_e911, ts_t38],
+    fold_features(Features, Flags).
+    
+-spec(fold_features/2 :: (Features :: list(atom()), Flags :: tuple()) -> tuple()).
+fold_features(Features, Flags) ->
     lists:foldl(fun(Mod, Flags0) ->
 			Mod:process_flags(Flags0)
 		end, Flags, Features).
@@ -117,7 +146,7 @@ set_flags(DidProp, ApiProp) ->
 	     ,failover = FailOpts
 	     ,callerid = {get_value(<<"CName">>, CallerIDOpts, get_value(<<"Caller-ID-Name">>, ApiProp))
 			  ,get_value(<<"CNum">>, CallerIDOpts, get_value(<<"Caller-ID-Number">>, ApiProp))}
-	     ,payphone = (get_value(<<"PayPhoneAccess">>, Opts) =:= 1)
+	     ,route_options = Opts
 	     ,credit_available = get_value(<<"account_credit">>, DidProp)
 	     ,flat_rate_enabled = (get_value(<<"trunks_available">>, DidProp) > 0)
 	     %,fax = []

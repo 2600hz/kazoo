@@ -180,12 +180,12 @@ process_rates({RouteName, {RouteOptions}}) ->
 
 set_rate_flags(Flags, Rates) ->
     Dir = Flags#route_flags.direction,
+    User = case Dir of
+	       <<"outbound">> -> Flags#route_flags.to_user;
+	       <<"inbound">> -> Flags#route_flags.from_user
+	   end,
     Rates0 = proplists:delete(<<"_rev">>, proplists:delete(<<"_id">>, Rates)),
     Rates1 = lists:filter(fun({_RateName, RateData}) ->
-				  User = case Dir of
-					     <<"outbound">> -> Flags#route_flags.to_user;
-					     <<"inbound">> -> Flags#route_flags.from_user
-					 end,
 				  lists:member(Dir, get_value(<<"direction">>, RateData)) andalso
 				      lists:any(fun(Regex) ->
 							re:run(User, Regex) =/= nomatch
@@ -194,24 +194,29 @@ set_rate_flags(Flags, Rates) ->
     %% Filter on Options - All flag options must be in Rate options
     Rates2 = lists:filter(fun({_RateName, RateData}) -> options_match(Flags, RateData) end, Rates1),
 
-    {RateName, RateData} = hd(Rates2),
-    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
+    case Rates2 of
+	[] ->
+	    format_log(error, "TS_CREDIT(~p): No Rate found for ~p~n", [self(), User]),
+	    {error, no_route_found};
+	[{RateName, RateData} | _Rest] ->
+	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
-    %% trunks available in flags (flat_rate_enabled) and the carrier has flatrate available as well
-    UseFlatRate = Flags#route_flags.flat_rate_enabled andalso get_value(<<"flatrate">>, RateData, false),
+	    %% trunks available in flags (flat_rate_enabled) and the carrier has flatrate available as well
+	    UseFlatRate = Flags#route_flags.flat_rate_enabled andalso get_value(<<"flatrate">>, RateData, false),
 
-    case UseFlatRate of
-	true ->
-	    {ok, set_flat_flags(Flags, Dir)};
-	false ->
-	    Flags0 = set_rate_flags(Flags, Dir, RateData),
-	    case has_credit(Flags0, Dir) of
+	    case UseFlatRate of
 		true ->
-		    {ok, Flags0};
+		    {ok, set_flat_flags(Flags, Dir)};
 		false ->
-		    %% Raise Holy Hell, or play music saying no credit
-		    %% returns us to ts_responder to catch the error
-		    {error, lacking_credit}
+		    Flags0 = set_rate_flags(Flags, Dir, RateData),
+		    case has_credit(Flags0, Dir) of
+			true ->
+			    {ok, Flags0};
+			false ->
+			    %% Raise Holy Hell, or play music saying no credit
+			    %% returns us to ts_responder to catch the error
+			    {error, lacking_credit}
+		    end
 	    end
     end.
 
@@ -257,5 +262,6 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
-options_match(_Rate, _Flags) ->
-    true.
+-spec(options_match/2 :: (Flags :: tuple(), RateOptions :: list()) -> boolean()).
+options_match(Flags, RateOptions) ->
+    lists:all(fun(Opt) -> lists:member(Opt, RateOptions) end, Flags#route_flags.route_options).

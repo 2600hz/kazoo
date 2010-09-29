@@ -43,4 +43,5 @@
 	  ,outbound_rate_increment = 60 :: integer()     % time, in sec, to bill per
           ,outbound_rate_minimum = 60 :: integer()       % time, in sec, to bill as a minimum
 	  ,outbound_surcharge = 0.0 :: float()           % rate to charge up front
+	  ,route_options = [] :: list()                  % options required to be handled by carriers
 	 }).

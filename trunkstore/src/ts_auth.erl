@@ -33,22 +33,21 @@ handle_req(Prop) ->
     [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
     {AuthU, AuthD} = {get_value(<<"Auth-User">>, Prop), get_value(<<"Auth-Domain">>, Prop)},
 
-    ViewInfo = case is_inbound(FromDomain) of
-		   true ->
-		       Direction = <<"inbound">>,
-		       lookup_user(AuthU, AuthD);
-		   false ->
-		       Direction = <<"outbound">>,
-		       lookup_user(AuthU, AuthD)
-	       end,
+    Direction = case is_inbound(FromDomain) of
+		    true -> <<"inbound">>;
+		    false -> <<"outbound">>
+		end,
+
+    ViewInfo = lookup_user(AuthU, AuthD),
 
     Defaults = [{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
-		,{<<"Custom-Channel-Vars">>, {struct, [{<<"Direction">>, Direction}]}} | 
-		whistle_api:default_headers(<<>>
-					    ,get_value(<<"Event-Category">>, Prop)
-					    ,get_value(<<"Event-Name">>, Prop)
-					    ,?APP_NAME
-					    ,?APP_VERSION)],
+		,{<<"Custom-Channel-Vars">>, {struct, [{<<"Direction">>, Direction}]}}
+		| whistle_api:default_headers(<<>>
+					      ,get_value(<<"Event-Category">>, Prop)
+					      ,<<"auth_resp">>
+					      ,?APP_NAME
+					      ,?APP_VERSION)],
+
     Info = case ViewInfo of
 	       {error, Reason} ->
 		   format_log(error, "TS_AUTH(~p): Sending a 500 for error: ~p~n", [self(), Reason]),
@@ -180,5 +179,3 @@ find_ip(Domain) when is_list(Domain) ->
 		    inet_parse:ntoa(Addr)
 	    end
     end.
-	    
-	    
