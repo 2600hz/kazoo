@@ -31,108 +31,140 @@ exec_cmd(Node, UUID, Prop) ->
 
 -spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> ok | timeout | {error, string()}).
 exec_cmd(Node, UUID, Prop, <<"play">>) ->
-    F = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
-    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
-    send_cmd(Node, UUID, "playback", F);
+    case whistle_api:play_req_v(Prop) of
+	false -> {error, "play failed to execute as Prop did not validate."};
+	true ->
+	    F = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
+	    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
+	    send_cmd(Node, UUID, "playback", F)
+    end;
 exec_cmd(Node, UUID, _Prop, <<"hangup">>) ->
     send_cmd(Node, UUID, "hangup", "");
 exec_cmd(Node, UUID, Prop, <<"play_and_collect_digits">>) ->
-    Min = get_value(<<"Minimum-Digits">>, Prop),
-    Max = get_value(<<"Maximum-Digits">>, Prop),
-    Timeout = get_value(<<"Timeout">>, Prop),
-    Terminators = get_value(<<"Terminators">>, Prop),
-    Media = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
-    InvalidMedia = media_path(UUID, get_value(<<"Failed-Media-Name">>, Prop)),
-    Tries = get_value(<<"Media-Tries">>, Prop),
-    Regex = get_value(<<"Digits-Regex">>, Prop),
-    Storage = get_value(<<"Storage-Name">>, Prop, <<"ignore">>),
-    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " ",
-			   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
-    send_cmd(Node, UUID, "play_and_get_digits", Data);
+    case whistle_api:play_collect_digits_req_v(Prop) of
+	false -> {error, "play_and_collect_digits failed to execute as Prop did not validate."};
+	true ->
+	    Min = get_value(<<"Minimum-Digits">>, Prop),
+	    Max = get_value(<<"Maximum-Digits">>, Prop),
+	    Timeout = get_value(<<"Timeout">>, Prop),
+	    Terminators = get_value(<<"Terminators">>, Prop),
+	    Media = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
+	    InvalidMedia = media_path(UUID, get_value(<<"Failed-Media-Name">>, Prop)),
+	    Tries = get_value(<<"Media-Tries">>, Prop),
+	    Regex = get_value(<<"Digits-Regex">>, Prop),
+	    Storage = get_value(<<"Storage-Name">>, Prop, <<"ignore">>),
+	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " ",
+				   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
+	    send_cmd(Node, UUID, "play_and_get_digits", Data)
+    end;
 exec_cmd(Node, UUID, Prop, <<"record">>) ->
-    Name = get_value(<<"Media-Name">>, Prop),
-    Path = get_media_path(ecallmgr_media_registry:register_name(UUID, Name)),
-    RecArg = binary_to_list(list_to_binary([Path, " "
-					    ,get_value(<<"Time-Limit">>, Prop, "20"), " "
-					    ,get_value(<<"Silence-Threshold">>, Prop, "200"), " "
-					    ,get_value(<<"Silence-Hits">>, Prop, "3")
-					   ])),
-    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
-    send_cmd(Node, UUID, "record", RecArg);
+    case whistle_api:record_req_v(Prop) of
+	false -> {error, "record failed to execute as Prop did not validate."};
+	true ->
+	    Name = get_value(<<"Media-Name">>, Prop),
+	    Path = get_media_path(ecallmgr_media_registry:register_name(UUID, Name)),
+	    RecArg = binary_to_list(list_to_binary([Path, " "
+						    ,get_value(<<"Time-Limit">>, Prop, "20"), " "
+						    ,get_value(<<"Silence-Threshold">>, Prop, "200"), " "
+						    ,get_value(<<"Silence-Hits">>, Prop, "3")
+						   ])),
+	    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
+	    send_cmd(Node, UUID, "record", RecArg)
+    end;
 exec_cmd(_Node, UUID, Prop, <<"store">>) ->
-    Name = get_value(<<"Media-Name">>, Prop),
-    case ecallmgr_media_registry:is_registered(UUID, Name) of
-	{true, GenName} ->
-	    File = get_media_path(GenName),
-	    case filelib:is_regular(File) andalso get_value(<<"Media-Transfer-Method">>, Prop) of
-		<<"stream">> ->
-		    %% stream file over AMQP
-		    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
-			       ,{<<"Media-Name">>, Name}
-			       ,{<<"Application-Name">>, <<"store">>}
-			      ],
-		    spawn(fun() -> stream_over_amqp(File, Prop, Headers) end);
-		<<"put">>=Verb ->
-		    %% stream file over HTTP PUT
-		    spawn(fun() -> stream_over_http(File, Verb, Prop) end);
-		<<"post">>=Verb ->
-		    %% stream file over HTTP PUSH
-		    spawn(fun() -> stream_over_http(File, Verb, Prop) end);
+    case whistle_api:store_req_v(Prop) of
+	false -> {error, "store failed to execute as Prop did not validate."};
+	true ->
+	    Name = get_value(<<"Media-Name">>, Prop),
+	    case ecallmgr_media_registry:is_registered(UUID, Name) of
+		{true, GenName} ->
+		    File = get_media_path(GenName),
+		    case filelib:is_regular(File) andalso get_value(<<"Media-Transfer-Method">>, Prop) of
+			<<"stream">> ->
+			    %% stream file over AMQP
+			    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
+				       ,{<<"Media-Name">>, Name}
+				       ,{<<"Application-Name">>, <<"store">>}
+				      ],
+			    spawn(fun() -> stream_over_amqp(File, Prop, Headers) end);
+			<<"put">>=Verb ->
+			    %% stream file over HTTP PUT
+			    spawn(fun() -> stream_over_http(File, Verb, Prop) end);
+			<<"post">>=Verb ->
+			    %% stream file over HTTP PUSH
+			    spawn(fun() -> stream_over_http(File, Verb, Prop) end);
+			false ->
+			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), File]);
+			_Method ->
+			    %% unhandled method
+			    format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
+		    end;
 		false ->
-		    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), File]);
-		_Method ->
-		    %% unhandled method
-		    format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
-	    end;
-	false ->
-	    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
+		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
+	    end
     end;
 exec_cmd(Node, UUID, Prop, <<"tones">>) ->
-    Tones = get_value(<<"Tones">>, Prop, []),
-    FSTones = lists:map(fun({struct, Tone}) ->
-				Vol = case get_value(<<"Volume">>, Tone) of
-					  undefined -> [];
-					  %% need to map V (0-100) to FS values
-					  V -> list_to_binary(["v=", integer_to_list(V), ";"])
-				      end,
-				Repeat = case get_value(<<"Repeat">>, Tone) of
-					     undefined -> [];
-					     R -> list_to_binary(["l=", integer_to_list(R), ";"])
-					 end,
-				Freqs = string:join(lists:map(fun erlang:integer_to_list/1, get_value(<<"Frequencies">>, Tone)), ","),
-				On = integer_to_list(get_value(<<"Duration-ON">>, Tone)),
-				Off = integer_to_list(get_value(<<"Duration-OFF">>, Tone)),
-				binary_to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
-			end, Tones),
-    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
-    send_cmd(Node, UUID, "playback", Arg);
+    case whistle_api:tones_req_v(Prop) of
+	false -> {error, "store failed to execute as Prop did not validate."};
+	true ->
+	    Tones = get_value(<<"Tones">>, Prop, []),
+	    FSTones = lists:map(fun({struct, Tone}) ->
+					Vol = case get_value(<<"Volume">>, Tone) of
+						  undefined -> [];
+						  %% need to map V (0-100) to FS values
+						  V -> list_to_binary(["v=", integer_to_list(V), ";"])
+					      end,
+					Repeat = case get_value(<<"Repeat">>, Tone) of
+						     undefined -> [];
+						     R -> list_to_binary(["l=", integer_to_list(R), ";"])
+						 end,
+					Freqs = string:join(lists:map(fun erlang:integer_to_list/1, get_value(<<"Frequencies">>, Tone)), ","),
+					On = integer_to_list(get_value(<<"Duration-ON">>, Tone)),
+					Off = integer_to_list(get_value(<<"Duration-OFF">>, Tone)),
+					binary_to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+				end, Tones),
+	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+	    send_cmd(Node, UUID, "playback", Arg)
+    end;
 exec_cmd(Node, UUID, _Prop, <<"answer">>) ->
     send_cmd(Node, UUID, "answer", "");
 exec_cmd(Node, UUID, _Prop, <<"park">>) ->
     send_cmd(Node, UUID, "park", "");
 exec_cmd(Node, UUID, Prop, <<"sleep">>) ->
-    send_cmd(Node, UUID, "sleep", integer_to_list(get_value(<<"Amount">>, Prop)));
+    case whistle_api:sleep_req_v(Prop) of
+	false -> {error, "sleep failed to execute as Prop did not validate."};
+	true ->
+	    send_cmd(Node, UUID, "sleep", integer_to_list(get_value(<<"Amount">>, Prop)))
+    end;
 exec_cmd(Node, UUID, Prop, <<"say">>) ->
-    Lang = get_value(<<"Language">>, Prop),
-    Type = get_value(<<"Type">>, Prop),
-    Method = get_value(<<"Method">>, Prop),
-    Txt = get_value(<<"Say-Text">>, Prop),
-    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
-    send_cmd(Node, UUID, "say", Arg);
+    case whistle_api:say_req_v(Prop) of
+	false -> {error, "say failed to execute as Prop did not validate."};
+	true ->
+	    Lang = get_value(<<"Language">>, Prop),
+	    Type = get_value(<<"Type">>, Prop),
+	    Method = get_value(<<"Method">>, Prop),
+	    Txt = get_value(<<"Say-Text">>, Prop),
+	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
+	    send_cmd(Node, UUID, "say", Arg)
+    end;
 exec_cmd(Node, UUID, Prop, <<"bridge">>) ->
-    set_timeout(Node, UUID, get_value(<<"Timeout">>, Prop)),
-    set_bypass_media(Node, UUID, get_value(<<"Bypass-Media">>, Prop)),
-    set_eff_call_id_name(Node, UUID, get_value(<<"Outgoing-Caller-ID-Name">>, Prop)),
-    set_eff_call_id_number(Node, UUID, get_value(<<"Outgoing-Caller-ID-Number">>, Prop)),
-    set_ringback(Node, UUID, get_value(<<"Ringback">>, Prop)),
-    DialSeparator = case get_value(<<"Dial-Endpoint-Method">>, Prop) of
-			<<"simultaneous">> -> ",";
-			<<"single">> -> "|";
-			_ -> "|"
-		    end,
-    DialStrings = lists:map(fun get_bridge_endpoint/1, get_value(<<"Endpoints">>, Prop)),
-    BridgeCmd = string:join(DialStrings, DialSeparator),
-    send_cmd(Node, UUID, "bridge", BridgeCmd);
+    case whistle_api:bridge_req_v(Prop) of
+	false -> {error, "bridge failed to execute as Prop did not validate."};
+	true ->
+	    set_timeout(Node, UUID, get_value(<<"Timeout">>, Prop)),
+	    set_bypass_media(Node, UUID, get_value(<<"Bypass-Media">>, Prop)),
+	    set_eff_call_id_name(Node, UUID, get_value(<<"Outgoing-Caller-ID-Name">>, Prop)),
+	    set_eff_call_id_number(Node, UUID, get_value(<<"Outgoing-Caller-ID-Number">>, Prop)),
+	    set_ringback(Node, UUID, get_value(<<"Ringback">>, Prop)),
+	    DialSeparator = case get_value(<<"Dial-Endpoint-Method">>, Prop) of
+				<<"simultaneous">> -> ",";
+				<<"single">> -> "|";
+				_ -> "|"
+			    end,
+	    DialStrings = lists:map(fun get_bridge_endpoint/1, get_value(<<"Endpoints">>, Prop)),
+	    BridgeCmd = string:join(DialStrings, DialSeparator),
+	    send_cmd(Node, UUID, "bridge", BridgeCmd)
+    end;
 exec_cmd(_Node, _UUID, _Prop, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
 

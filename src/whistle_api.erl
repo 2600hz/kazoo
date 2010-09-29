@@ -28,7 +28,7 @@
 -export([call_event/1, error_resp/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
-	 ,park_req/1, play_record_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
+	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
 	 ,sleep_req/1
 	]).
 
@@ -36,7 +36,7 @@
 -export([auth_req_v/1, auth_resp_v/1, route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1
 	 ,call_event_v/1, error_resp_v/1, play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
-	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_record_digits_req_v/1
+	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1
 	]).
 
@@ -415,16 +415,16 @@ park_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(play_record_digits_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
-play_record_digits_req(Prop) ->
-    case play_record_digits_req_v(Prop) of
-	true -> build_message(Prop, ?PLAY_RECORD_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_RECORD_DIGITS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for play_record_digits_req"}
+-spec(play_collect_digits_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+play_collect_digits_req(Prop) ->
+    case play_collect_digits_req_v(Prop) of
+	true -> build_message(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for play_collect_digits_req"}
     end.
 
--spec(play_record_digits_req_v/1 :: (Prop :: proplist()) -> boolean()).
-play_record_digits_req_v(Prop) ->
-    validate(Prop, ?PLAY_RECORD_DIGITS_REQ_HEADERS, ?PLAY_RECORD_DIGITS_REQ_VALUES, ?PLAY_RECORD_DIGITS_REQ_TYPES).
+-spec(play_collect_digits_req_v/1 :: (Prop :: proplist()) -> boolean()).
+play_collect_digits_req_v(Prop) ->
+    validate(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?PLAY_COLLECT_DIGITS_REQ_VALUES, ?PLAY_COLLECT_DIGITS_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Pickup a call - see wiki

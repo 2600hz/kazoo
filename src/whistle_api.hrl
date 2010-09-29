@@ -318,16 +318,16 @@
 -define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
 %% Play and Record Digits - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Play_and_Collect_Digits
--define(PLAY_RECORD_DIGITS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>, <<"Maximum-Digits">>
+-define(PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>, <<"Maximum-Digits">>
 				 ,<<"Timeout">>, <<"Terminators">>, <<"Media-Name">>, <<"Media-Tries">>
 				 ,<<"Failed-Media-Name">>, <<"Digits-Regex">>
 			    ]).
--define(OPTIONAL_PLAY_RECORD_DIGITS_REQ_HEADERS, [<<"Storage-Name">>]).
--define(PLAY_RECORD_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Storage-Name">>]).
+-define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
 			   ]).
--define(PLAY_RECORD_DIGITS_REQ_TYPES, []).
+-define(PLAY_COLLECT_DIGITS_REQ_TYPES, []).
 
 %% Say - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Say
 -define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
