@@ -401,7 +401,7 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     CodecStr = string:join(Codecs, ","),
     [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
-    format_log(info, "ROUTE(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
+    format_log(info, "ROUTE(~p): Unknown channel var ~s::~s~n", [self(), _K, _V]),
     Vars.
 
 %% setup a connection to mod_erlang_event for dialplan requests,
