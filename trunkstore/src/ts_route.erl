@@ -28,8 +28,8 @@ handle_req(ApiProp, ServerID) ->
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
 	    {error, "No Custom Vars"};
-	{struct, []} ->
-	    {error, "Empty Custom Vars"};
+	{struct, []} -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
+	    inbound_handler([{<<"Direction">>, <<"inbound">>} | ApiProp], ServerID);
 	{struct, CCVs} ->
 	    case get_value(<<"Direction">>, CCVs) of
 		<<"outbound">>=D ->
@@ -103,15 +103,43 @@ process_routing(Flags, ApiProp, ServerID) ->
 
 -spec(find_route/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
 find_route(Flags, ApiProp, ServerID) ->
-    case ts_carrier:route(Flags) of
-	{ok, Routes} ->
-	    format_log(info, "TS_ROUTE(~p): Generated Routes~n~p~n", [self(), Routes]),
-	    response(Routes, ApiProp, ServerID);
-	{error, Error} ->
-	    format_log(error, "TS_ROUTE(~p): Routing Error ~p~n", [self(), Error]),
-	    response(404, ApiProp, ServerID)
+    case Flags#route_flags.direction =:= <<"outbound">> of
+	false ->
+	    %% handle inbound routing
+	    case inbound_route(Flags) of
+		{ok, Routes} ->
+		    format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
+		    response(Routes, ApiProp, ServerID);
+		{error, Error} ->
+		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
+		    response(404, ApiProp, ServerID)
+	    end;
+	true ->
+	    case ts_carrier:route(Flags) of
+		{ok, Routes} ->
+		    format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
+		    response(Routes, ApiProp, ServerID);
+		{error, Error} ->
+		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
+		    response(404, ApiProp, ServerID)
+	    end
     end.
 
+-spec(inbound_route/1 :: (Flags :: tuple()) -> {ok, proplist()} | {error, string()}).
+inbound_route(Flags) ->
+    Dialstring = list_to_binary(["user/", Flags#route_flags.to_user]),
+    R = [{<<"Route">>, Dialstring}
+	 ,{<<"Media">>, <<"bypass">>}
+	 ,{<<"Weight-Cost">>, <<"0">>}
+	 ,{<<"Weight-Location">>, <<"0">>}],
+
+    case whistle_api:route_resp_route_v(R) of
+	true -> {ok, R};
+	false ->
+	    format_log(error, "TS_ROUTE(~p): Failed to create inbound route for Dialstring ~p~n", [self(), Dialstring]),
+	    {error, "Failed to create inbound route"}
+    end.
+		  
 -spec(inbound_features/1 :: (Flags :: tuple()) -> tuple()).
 inbound_features(Flags) ->
     Features = [],

@@ -71,6 +71,10 @@ handle_req(Prop) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%% Inbound detection will likely be done in ACLs for carriers, so this function is more a place-holder
+%% than something more meaningful. Auth will likely be bypassed for known carriers, and this function
+%% will most likely return false everytime
 -spec(is_inbound/1 :: (Domain :: binary()) -> boolean()).
 is_inbound(Domain) ->
     IP = find_ip(Domain),
@@ -149,7 +153,6 @@ specific_response(ViewInfo) when is_list(ViewInfo) ->
      ,{<<"Event-Name">>, <<"auth_resp">>}
      ,{<<"Access-Group">>, get_value(<<"Access-Group">>, Info, <<"ignore">>)}
      ,{<<"Tenant-ID">>, get_value(<<"Tenant-ID">>, Info, <<"ignore">>)}
-     ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Custom1Key">>, <<"Custom1Value">>}]}}
     ];
 specific_response(500) ->
     [{<<"Auth-Method">>, <<"error">>}
