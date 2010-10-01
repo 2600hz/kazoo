@@ -1,0 +1,22 @@
+* Trunkstore
+
+** Whistle Layout
+
+[DID1]--|
+        |--|
+[DID2]--|  |--->[w_fs1]<-|
+                         |---[w_erl1]<--->(AMQP)
+[DID3]--|  |--->[w_fs2]<-|
+        |--|
+[DID4]--|
+
+** Trunkstore Layout
+
+                           |-->(TS_AUTH)                          |-->(CouchDB)
+(AMQP)<---(TS_RESPONDER)<--|                |-->(TS_CARRIER)<--|  |   
+  ^                        |-->(TS_ROUTE)<--|                  |--|
+  |                                         |-->(TS_CREDIT)<---|
+  |                                         |
+  |                                         |-->(TS_CALL_HANDLER)
+  |                                                     ^
+  |-----------------------------------------------------|
