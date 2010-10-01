@@ -1,0 +1,6 @@
+* Setup amqp_manager with custom host/port params for connecting to different rabbit clusters
+
+* ACL for applications on the Call Manager side?
+
+* All singleton gen_servers need a diagnostics call (or calls) to get a printout of the current state of the gen_server process.
+ * Mgmt erl node to query known callmgrs, known freeswitch nodes, etc?
