@@ -10,4 +10,4 @@
                         ecallmgr_call_command,ecallmgr_call_control,
                         ecallmgr_call_events,ecallmgr_deps,
                         ecallmgr_media_registry,ecallmgr_route,ecallmgr_sup,
-                        ecallmgr_util,freeswitch,logger,whistle_api]}]}.
+                        ecallmgr_util,freeswitch,logger,props,whistle_api]}]}.
