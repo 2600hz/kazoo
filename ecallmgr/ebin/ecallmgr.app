@@ -1,6 +1,6 @@
 {application,ecallmgr,
              [{description,"Manage resource requests and interface with freeSWITCH"},
-              {vsn,"0.1"},
+              {vsn,"0.3"},
               {registered,[]},
               {applications,[kernel,stdlib,crypto,sasl,amqp,log_roller]},
               {mod,{ecallmgr_app,[ecallmgr,ecallmgr_app,ecallmgr_sup,
