@@ -44,7 +44,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_fs_node/1, rm_fs_node/1]).
+-export([start_link/0, add_fs_node/1, rm_fs_node/1, diagnostics/0]).
 -export([fetch_user/2]).
 
 %% gen_server callbacks
@@ -62,7 +62,13 @@
 
 %% fs_nodes = [{FSNode, HandlerPid}]
 -record(auth_state, {fs_nodes=[]}).
--record(handler_state, {fs_node, channel, ticket, app_vsn, lookups=[]}).
+%% lookups = [{LookupPid, ID, erlang:now()}]
+-record(handler_state, {fs_node = undefined :: atom()
+		       ,channel = undefined :: pid()
+		       ,ticket = 0 :: integer()
+		       ,app_vsn = [] :: list()
+		       ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
+		       }).
 
 %%%===================================================================
 %%% API
@@ -85,6 +91,9 @@ add_fs_node(Node) ->
 %% returns ok or {error, some_error_atom_explaining_more}
 rm_fs_node(Node) ->
     gen_server:call(?MODULE, {rm_fs_node, Node}).
+
+diagnostics() ->
+    gen_server:call(?MODULE, {diagnostics}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -120,6 +129,25 @@ init([]) ->
 %% @end
 %% #auth_state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+handle_call({diagnostics}, _From, #auth_state{fs_nodes=Nodes}=State) ->
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+    {KnownNodes, HandlerD} = lists:foldl(fun({FSNode, HPid}, {KN, HD}) ->
+						 HPid ! {diagnostics, self()},
+						 HandlerD = receive
+								X -> X
+							    after
+								500 -> {error, timed_out, handler_busy}
+							    end,
+						 {[FSNode | KN], [{FSNode, HandlerD} | HD]}
+					 end, {[], []}, Nodes),
+    Resp = [{gen_server, ?MODULE}
+	    ,{host, net_adm:localhost()}
+	    ,{version, Vsn}
+	    ,{known_fs_nodes, KnownNodes}
+	    ,{handler_diagnostics, HandlerD}
+	    ,{recorded, erlang:now()}
+	   ],
+    {reply, Resp, State};
 handle_call({add_fs_node, Node}, _From, State) ->
     {Resp, State1} = add_fs_node(Node, State),
     {reply, Resp, State1};
@@ -156,7 +184,7 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', HPid, Reason}, #auth_state{fs_nodes=Nodes}=State) ->
     case lists:keyfind(HPid, 2, Nodes) of
 	{Node, HPid} ->
-	    format_log(error, "AUTH(~p): Received EXIT(~p) for ~p, restarting...~n", [self(), Reason, HPid]),
+	    format_log(error, "AUTH(~p): Handler EXITed(~p) for ~p, restarting handler...~n", [self(), Reason, HPid]),
 	    {_, State1} = rm_fs_node(Node, State),
 	    {_, State2} = add_fs_node(Node, State1),
 	    {noreply, State2};
@@ -238,7 +266,7 @@ rm_fs_node(Node, #auth_state{fs_nodes=Nodes}=State) ->
 	    {{error, no_node, Node}, State}
     end.
 
-fetch_user(Node, #handler_state{channel=undefined, ticket=undefined}=State) ->
+fetch_user(Node, #handler_state{channel=undefined}=State) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     fetch_user(Node, State#handler_state{channel=Channel, ticket=Ticket});
 fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
@@ -250,7 +278,7 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 		    LookupPid = spawn(fun() -> lookup_user(State, ID, Self, Data) end),
 		    link(LookupPid),
 		    format_log(info, "Fetch_user(~p): fetch directory: Id: ~p Lookup ~p~n", [self(), ID, LookupPid]),
-		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, erlang:now()} | LUs]});
+		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()} | LUs]});
 		_Other ->
 		    format_log(info, "Fetch_user(~p): Ignoring event ~p~n", [self(), _Other]),
 		    ?MODULE:fetch_user(Node, State)
@@ -280,21 +308,30 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 			  end, LUs),
 	    format_log(error, "Fetch_user(~p): shutting down~n", [self()]);
 	{lookup_finished, LookupPid} ->
-	    case get_value(LookupPid, LUs) of
-		StartTime when is_tuple(StartTime) ->
-		    format_log(info, "Fetch_user(~p): lookup (~p) finished in ~p ms~n"
-			       ,[self(), LookupPid, timer:now_diff(erlang:now(), StartTime) div 1000]),
-		    ?MODULE:fetch_user(Node, State#handler_state{lookups=proplists:delete(LookupPid, LUs)});
-		undefined ->
-		    format_log(error, "Fetch_user(~p): unknown lookup ~p~n", [self(), LookupPid]),
-		    ?MODULE:fetch_user(Node, State)
-	    end;
+	    close_lookup(LookupPid, Node, State);
+	{diagnostics, Pid} ->
+	    ActiveLUs = lists:map(fun({_LuPid, ID, Started}) -> [{fs_auth_id, ID}, {started, Started}] end, LUs),
+	    Resp = [{active_lookups, ActiveLUs}],
+	    Pid ! Resp,
+	    ?MODULE:fetch_user(Node, State);
 	Other ->
 	    format_log(info, "Fetch_user(~p): got other response: ~p", [self(), Other]),
 	    ?MODULE:fetch_user(Node, State)
     end.
 
+close_lookup(LookupPid, Node, #handler_state{lookups=LUs}=State) ->
+    case lists:keyfind(LookupPid, 1, LUs) of
+	{LookupPid, ID, StartTime} ->
+	    format_log(info, "Fetch_user(~p): lookup (~p:~p) finished in ~p ms~n"
+		       ,[self(), LookupPid, ID, timer:now_diff(erlang:now(), StartTime) div 1000]),
+	    ?MODULE:fetch_user(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs)});
+	false ->
+	    format_log(error, "Fetch_user(~p): unknown lookup ~p~n", [self(), LookupPid]),
+	    ?MODULE:fetch_user(Node, State)
+    end.
+
 lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, FetchPid, Data) ->
+    format_log(info, "L/U.user(~p): Starting up...~nC: ~p T: ~p ID: ~p FetchPid: ~p~n", [self(), Channel, Ticket, ID, FetchPid]),
     Q = bind_q(Channel, Ticket, ID),
 
     %% build req for rabbit
