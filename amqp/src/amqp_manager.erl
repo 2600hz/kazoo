@@ -18,7 +18,7 @@
 %% API
 -export([start_link/0, start/0, open_channel/1, close_channel/1, stop/0]).
 
--record(state, {connection, channels}).
+-record(state, {connection, conn_params, channels}).
 -define(SERVER, ?MODULE).
 
 %%====================================================================
@@ -54,16 +54,17 @@ stop() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-get_options() ->
-    #'amqp_params'{
-      port=5672
-      ,host="fs2.voicebus.net"
-     }.
-
 init([]) ->
     %% Start a connection to the AMQP broker server
     process_flag(trap_exit, true),
-    {ok, #state{connection=get_new_connection(), channels = []}}.
+    P = #'amqp_params'{
+      port = 5672
+      ,host = "fs2.voicebus.net"
+     },
+    {ok, #state{connection=get_new_connection(P), conn_params=P, channels = []}};
+init([#'amqp_params'{}=P]) ->
+    process_flag(trap_exit, true),
+    {ok, #state{connection=get_new_connection(P), conn_params=P, channels=[]}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -74,9 +75,9 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined}=State) ->
+handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined, conn_params=P}=State) ->
     format_log(info, "AMQP_MGR(~p): restart connection~n", [self()]),
-    handle_call(Req, From, State#state{connection=get_new_connection()});
+    handle_call(Req, From, State#state{connection=get_new_connection(P)});
 handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn}, channels=Channels}=State) ->
     case lists:keyfind(Pid, 1, Channels) of
         %% This PID already has a channel, just return it
@@ -147,10 +148,10 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRefConn}, channels=Channels}=State) ->
+handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRefConn}, conn_params=P, channels=Channels}=State) ->
     format_log(error, "AMQP_MGR(~p): Conn ~p went down (~p)~n", [self(), Pid, Reason]),
     close_all_channels(Channels),
-    {noreply, State#state{connection=get_new_connection(), channels=[]}};
+    {noreply, State#state{connection=get_new_connection(P), channels=[]}};
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=State) ->
     format_log(error, "AMQP_MGR(~p): Channel ~p went down (~p)~n", [self(), Pid, _Reason]),
     case lists:keyfind(Pid, 1, Channels) of
@@ -208,8 +209,8 @@ close_all_channels([{_Pid, Channel, _Ticket, MRef} | T]) ->
     end,
     close_all_channels(T).
 
-get_new_connection() ->
+get_new_connection(#'amqp_params'{}=P) ->
     format_log(info, "AMQP_MGR(~p): open connection~n", [self()]),
-    Connection = amqp_connection:start_network_link(get_options()),
+    Connection = amqp_connection:start_network_link(P),
     MRefConn = erlang:monitor(process, Connection),
     {Connection, MRefConn}.
