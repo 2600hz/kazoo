@@ -1,7 +1,7 @@
 -module(ecallmgr).
 
 -author('James Aimonetti <james@2600hz.com>').
--export([start/0, start_link/0, stop/0, add_fs_node/1]).
+-export([start/0, start_link/0, stop/0, add_fs_node/1, diagnostics/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
@@ -43,3 +43,8 @@ ensure_started(App) ->
 add_fs_node(Node) ->
     ecallmgr_auth:add_fs_node(Node),
     ecallmgr_route:add_fs_node(Node).
+
+diagnostics() ->
+    [{ecallmgr_auth, ecallmgr_auth:diagnostics()}
+     ,{ecallmgr_route, ecallmgr_route:diagnostics()}
+    ].
