@@ -41,27 +41,17 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_auth).
 
--behaviour(gen_server).
-
 %% API
--export([start_link/0, add_fs_node/1, rm_fs_node/1, diagnostics/0]).
+-export([start_handler/1]).
 -export([fetch_user/2]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
-
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
 
--define(SERVER, ?MODULE). 
-
-%% fs_nodes = [{FSNode, HandlerPid}]
--record(auth_state, {fs_nodes=[]}).
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
 		       ,channel = undefined :: pid()
@@ -70,201 +60,11 @@
 		       ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
-%%%===================================================================
-%%% API
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-%% returns ok or {error, some_error_atom_explaining_more}
-add_fs_node(Node) ->
-    gen_server:call(?MODULE, {add_fs_node, Node}).
-
-%% returns ok or {error, some_error_atom_explaining_more}
-rm_fs_node(Node) ->
-    gen_server:call(?MODULE, {rm_fs_node, Node}).
-
-diagnostics() ->
-    gen_server:call(?MODULE, {diagnostics}, infinity).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init([]) ->
-    process_flag(trap_exit, true),
-    {ok, #auth_state{}}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%% #auth_state{fs_nodes=[{FSNode, HandlerPid}]}
-%%--------------------------------------------------------------------
-handle_call({diagnostics}, _From, #auth_state{fs_nodes=Nodes}=State) ->
+start_handler(Node) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    {KnownNodes, HandlerD} = lists:foldl(fun({FSNode, HPid}, {KN, HD}) ->
-						 HPid ! {diagnostics, self()},
-						 HandlerD = receive
-								X -> X
-							    after
-								500 -> {error, timed_out, handler_busy}
-							    end,
-						 {[FSNode | KN], [{FSNode, HandlerD} | HD]}
-					 end, {[], []}, Nodes),
-    Resp = [{gen_server, ?MODULE}
-	    ,{host, net_adm:localhost()}
-	    ,{version, Vsn}
-	    ,{known_fs_nodes, KnownNodes}
-	    ,{handler_diagnostics, HandlerD}
-	    ,{recorded, erlang:now()}
-	   ],
-    {reply, Resp, State};
-handle_call({add_fs_node, Node}, _From, State) ->
-    {Resp, State1} = add_fs_node(Node, State),
-    {reply, Resp, State1};
-handle_call({rm_fs_node, Node}, _From, State) ->
-    {Resp, State1} = rm_fs_node(Node, State),
-    {reply, Resp, State1};
-handle_call(_Request, _From, State) ->
-    format_log(error, "AUTH(~p): Unhandled call ~p~n", [self(), _Request]),
-    {reply, {error, unhandled_request}, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({'EXIT', HPid, Reason}, #auth_state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(HPid, 2, Nodes) of
-	{Node, HPid} ->
-	    format_log(error, "AUTH(~p): Handler EXITed(~p) for ~p, restarting handler...~n", [self(), Reason, HPid]),
-	    {_, State1} = rm_fs_node(Node, State),
-	    {_, State2} = add_fs_node(Node, State1),
-	    {noreply, State2};
-	false ->
-	    format_log(error, "AUTH(~p): Received EXIT(~p) for unknown ~p~n", [self(), Reason, HPid]),
-	    {noreply, State}
-    end;
-handle_info(_Info, State) ->
-    format_log(info, "AUTH(~p): Unhandled Info: ~p~n", [self(), _Info]),
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, #auth_state{fs_nodes=Nodes}) ->
-    Self = self(),
-    format_log(error, "AUTH(~p): terminating: ~p~n", [Self, _Reason]),
-    lists:foreach(fun({_FSNode, HPid}) ->
-			  format_log(error, "AUTH(~p): terminate handler: ~p(~p)~n", [Self, HPid, _FSNode]),
-			  HPid ! shutdown
-		  end, Nodes),
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
--spec(add_fs_node/2 :: (Node :: atom(), State :: tuple()) -> {ok, tuple()} | {{error, atom()}, tuple()}).
-add_fs_node(Node, #auth_state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	{Node, _HandlerPid} ->
-	    format_log(info, "AUTH(~p): handler(~p) known for ~p~n", [self(), _HandlerPid, Node]),
-	    {{error, node_is_known}, State};
-	false ->
-	    case net_adm:ping(Node) of
-		pong ->
-		    HPid = setup_fs_conn(Node),
-		    link(HPid),
-		    format_log(info, "AUTH(~p): Starting handler(~p) for ~p~n", [self(), HPid, Node]),
-		    {ok, State#auth_state{fs_nodes=[{Node, HPid} | Nodes]}};
-		pang ->
-		    format_log(error, "AUTH(~p): ~p not responding~n", [self(), Node]),
-		    {{error, no_connection}, State}
-	    end
-    end.
-
-rm_fs_node(Node, #auth_state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	{Node, HPid} ->
-	    case erlang:is_process_alive(HPid) of
-		true ->
-		    HPid ! shutdown,
-		    format_log(info, "AUTH(~p): Shutting down handler ~p for ~p~n", [self(), HPid, Node]),
-		    {{ok, Node}, State#auth_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
-		false ->
-		    format_log(error, "AUTH(~p): Handler ~p already down for ~p~n", [self(), HPid, Node]),
-		    {{error, handler_down, Node}, State#auth_state{fs_nodes=lists:keydelete(Node, 1, Nodes)}}
-	    end;
-	false ->
-	    format_log(error, "AUTH(~p): No handler for ~p~n", [self(), Node]),
-	    {{error, no_node, Node}, State}
-    end.
+    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn)},
+    {ok, APid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_user, HState),
+    APid.
 
 fetch_user(Node, #handler_state{channel=undefined}=State) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
@@ -393,14 +193,6 @@ bind_q(Channel, Ticket, ID) ->
 a1hash(User, Realm, Password) ->
     format_log(info, "AUTH(~p): a1hashing ~p:~p:~p~n", [self(), User, Realm, Password]),
     ecallmgr_util:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
-
-%% setup a connection to mod_erlang_event for dialplan requests,
-%% or setup a timer to query for the node and return the timer ref
-setup_fs_conn(Node) ->
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn)},
-    {ok, Pid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_user, HState),
-    Pid.
 
 send_request(Channel, Ticket, JSON) ->
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),

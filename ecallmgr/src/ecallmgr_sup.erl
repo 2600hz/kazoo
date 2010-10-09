@@ -28,11 +28,9 @@ init([]) ->
      ,{
        {one_for_one, 5, 10}
        ,[
-	 %%?CHILD(ecallmgr_req, worker)
-	 ?CHILD(ecallmgr_media_registry, worker)
-	 ,?CHILD(ecallmgr_auth, worker)
-	 ,?CHILD(ecallmgr_route, worker)
-	 ,?CHILD(ecallmgr_amqp, worker)
+	 ?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
+	 ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
+	 ,?CHILD(ecallmgr_amqp, worker) % handles amqp messaging when a process doesn't track its own Conn/Ticket
 	]
       }
     }.
