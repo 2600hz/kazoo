@@ -59,7 +59,7 @@ handle_req(Prop) ->
 			   format_log(error, "TS_AUTH(~p): Alert! ~p@~p was routed to us~n", [self(), AuthU, AuthD]);
 		       <<"outbound">> ->
 			   %% unauthed user trying to make calls, alert
-			   format_log(error, "TS_AUTH(~p): Sending a 403 ~p~n", [self()])
+			   format_log(error, "TS_AUTH(~p): Sending a 403 - unauthed user trying to make a call~n", [self()])
 		   end,
 		   403;
 	       _ ->
@@ -156,12 +156,12 @@ specific_response(ViewInfo) when is_list(ViewInfo) ->
     ];
 specific_response(500) ->
     [{<<"Auth-Method">>, <<"error">>}
-     ,{<<"Auth-Pass">>, <<"500 Internal Error">>}
+     ,{<<"Auth-Password">>, <<"500 Internal Error">>}
      ,{<<"Access-Group">>, <<"ignore">>}
      ,{<<"Tenant-ID">>, <<"ignore">>}];
 specific_response(403) ->
     [{<<"Auth-Method">>, <<"error">>}
-     ,{<<"Auth-Pass">>, <<"403 Forbidden">>}
+     ,{<<"Auth-Password">>, <<"403 Forbidden">>}
      ,{<<"Access-Group">>, <<"ignore">>}
      ,{<<"Tenant-ID">>, <<"ignore">>}].
 
