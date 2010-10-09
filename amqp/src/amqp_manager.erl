@@ -76,7 +76,7 @@ init([#'amqp_params'{}=P]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined, conn_params=P}=State) ->
-    format_log(info, "AMQP_MGR(~p): restart connection~n", [self()]),
+    format_log(info, "AMQP_MGR(~p): restart connection w/ ~p~n", [self(), P]),
     handle_call(Req, From, State#state{connection=get_new_connection(P)});
 handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn}, channels=Channels}=State) ->
     case lists:keyfind(Pid, 1, Channels) of
@@ -149,7 +149,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRefConn}, conn_params=P, channels=Channels}=State) ->
-    format_log(error, "AMQP_MGR(~p): Conn ~p went down (~p)~n", [self(), Pid, Reason]),
+    format_log(error, "AMQP_MGR(~p): Conn ~p went down (~p), restart with ~p~n", [self(), Pid, Reason, P]),
     close_all_channels(Channels),
     {noreply, State#state{connection=get_new_connection(P), channels=[]}};
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=State) ->
@@ -163,7 +163,7 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=Sta
 		    ok
 	    end,
 	    erlang:demonitor(MRef),
-	    {noreply, #state{channels = lists:keydelete(Pid, 1, Channels)}};
+	    {noreply, State#state{channels = lists:keydelete(Pid, 1, Channels)}};
         false ->
 	    {noreply, State}
     end;

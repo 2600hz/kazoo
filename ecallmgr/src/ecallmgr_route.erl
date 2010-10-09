@@ -84,6 +84,12 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 		    format_log(error, "FETCH_ROUTE(~p): unknown lookup ~p~n", [self(), LookupPid]),
 		    ?MODULE:fetch_route(Node, State)
 	    end;
+	%% send diagnostic info
+	{diagnostics, Pid} ->
+	    ActiveLUs = lists:map(fun({_LuPid, ID, Started}) -> [{fs_route_id, ID}, {started, Started}] end, LUs),
+	    Resp = [{active_lookups, ActiveLUs}],
+	    Pid ! Resp,
+	    ?MODULE:fetch_route(Node, State);
 	Other ->
 	    format_log(info, "FETCH_ROUTE(~p): got other response: ~p", [self(), Other]),
 	    ?MODULE:fetch_route(Node, State)
