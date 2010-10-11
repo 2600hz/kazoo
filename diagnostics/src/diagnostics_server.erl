@@ -19,8 +19,16 @@
 	 terminate/2, code_change/3]).
 
 -import(logger, [format_log/3]).
+-import(props, [get_value/2, get_value/3]).
 
 -define(SERVER, ?MODULE).
+
+-define(CELL_FORMAT, " ~11.s |").
+-define(NODE_LINE, lists:flatten(["  | ", ?CELL_FORMAT, ?CELL_FORMAT
+				  ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT
+				  ,?CELL_FORMAT, "~n"])).
+-define(NODE_LINE_HEADER, io_lib:format(?NODE_LINE, ["Type", "Requested", "Successful"
+						     ,"Timed Out", "Failed", "Active"])).
 
 %%%===================================================================
 %%% API
@@ -181,6 +189,47 @@ display_node(Node) ->
 	    io:format("DIAG_SERVER: Error getting data from ~p: ~p~n", [Node, Reason]),
 	    error;
 	Data ->
-	    io:format("DIAG_SERVER: Node: ~p Data:~n~p~n~n", [Node, Data]),
+	    lists:foreach(fun({freeswitch_nodes, FSData}) ->
+				  display_fs_data(FSData);
+			     (X) -> io:format("DIAG_SERVER: Unknown result.~n~p~n", [X])
+			  end, Data),
 	    ok
     end.
+
+display_fs_data(Data) ->
+    GenSrv = get_value(gen_server, Data),
+    Vsn = get_value(version, Data),
+    Host = get_value(host, Data),
+    {{Y, M, D}, {H, Min, S}} = calendar:now_to_datetime(get_value(recorded, Data)),
+    io:format("Diagnostics for ~p (~p) on ~p at ~p:~p:~p on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
+
+    KnownNodes = string:join(lists:map(fun erlang:atom_to_list/1, get_value(known_fs_nodes, Data)), ", "),
+    io:format("  Known FS Nodes: ~p~n", [KnownNodes]),
+
+    lists:map(fun({Node, {auth_handler, AuthData}, {route_handler, RouteData}}) ->
+		      io:format("  Node Diagnostics for ~p~n", [Node]),
+		      io:format(?NODE_LINE_HEADER, []),
+		      show_line("Auth", AuthData),
+		      show_line("Route", RouteData)
+	      end, get_value(handler_diagnostics, Data)).
+
+show_line(Type, Data) ->
+    LR = get_value(lookups_requested, Data, 0),
+    R = integer_to_list(LR),
+
+    Format = fun(0) -> "0 (0%)";
+		(X) when is_integer(X) -> io_lib:format("~p (~p%)", [X, round(X / LR * 100)]);
+		(Y) -> io_lib:format("Huh: ~p", [Y])
+	     end,
+
+    S = Format(get_value(lookups_success, Data, 0)),
+    T = Format(get_value(lookups_timeout, Data, 0)),
+    F = Format(get_value(lookups_failed, Data, 0)),
+    A = Format(length(get_value(active_lookups, Data, []))),
+    io:format(?NODE_LINE, [Type, R, S, T, F, A]).
+%%
+%% Diagnostics for GEN_SERVER (VSN) on HOST at RecordedTime
+%%   Known Nodes: KNOWN_NODES
+%%   Type  | Requested | Successful | Timed Out | Failed | Active
+%%   Auth  |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2
+%%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2

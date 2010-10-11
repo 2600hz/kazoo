@@ -6,5 +6,4 @@
 * All singleton gen_servers need a diagnostics call (or calls) to get a printout of the current state of the gen_server process.
  * Mgmt erl node to query known callmgrs, known freeswitch nodes, etc?
 
-* Testing DIDs
- * 7916-7919
+* Testing DIDs - 415.886.791[6-9]
