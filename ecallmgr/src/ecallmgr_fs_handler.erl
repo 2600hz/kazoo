@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
@@ -7,6 +7,8 @@
 %%% during the call to add_fs_node/1). The fetch_handler checks to see
 %%% that the fetch request is one the handler can, you know, handle
 %%% and if so, spawns a call to lookup_(user|route)/4.
+%%%
+%%% CALL AUTHENTICATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%
 %%% For a user lookup, the newly spawned process creates an Authentication
 %%% Request API message, as well as a queue on the Targeted Exchange, and
@@ -36,6 +38,8 @@
 %%%   -----  -----  -----      -----  -----  -----
 %%%
 %%% L/U = lookup_user per auth request
+%%%
+%%% CALL ROUTING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%
 %%% For a route lookup, the newly spawned process creates a Route Request
 %%% API message, three queues (one for the lookup_route process on the
@@ -82,7 +86,7 @@
 %%%
 %%% @end
 %%% Created : 08 Oct 2010 by James Aimonetti <james@2600hz.com>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_handler).
 
 -behaviour(gen_server).
@@ -123,6 +127,7 @@ add_fs_node(Node) ->
 rm_fs_node(Node) ->
     gen_server:call(?MODULE, {rm_fs_node, Node}).
 
+%% calls all handlers and gets diagnostic info from them
 diagnostics() ->
     gen_server:call(?MODULE, {diagnostics}, infinity).
 
@@ -165,17 +170,17 @@ handle_call({diagnostics}, _From, #state{fs_nodes=Nodes}=State) ->
     {KnownNodes, HandlerD} = lists:foldl(fun({FSNode, AuthHPid, RouteHPid}, {KN, HD}) ->
 						 AuthHPid ! {diagnostics, self()},
 						 AuthHandlerD = receive
-								X -> X
-							    after
-								500 -> {error, timed_out, handler_busy}
-							    end,
+								    X -> X
+								after
+								    500 -> {error, timed_out, handler_busy}
+								end,
 						 RouteHPid ! {diagnostics, self()},
 						 RteHandlerD = receive
-								Y -> Y
-							    after
-								500 -> {error, timed_out, handler_busy}
-							    end,
-						 {[FSNode | KN], [{FSNode, AuthHandlerD, RteHandlerD} | HD]}
+								   Y -> Y
+							       after
+								   500 -> {error, timed_out, handler_busy}
+							       end,
+						 {[FSNode | KN], [{FSNode, {auth_handler, AuthHandlerD}, {route_handler, RteHandlerD}} | HD]}
 					 end, {[], []}, Nodes),
     Resp = [{gen_server, ?MODULE}
 	    ,{host, net_adm:localhost()}

@@ -20,10 +20,17 @@
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
 
+-record(handler_stats, {lookups_success = 0 :: integer()
+			,lookups_failed = 0 :: integer()
+                        ,lookups_timeout = 0 :: integer()
+                        ,lookups_requested = 0 :: integer()
+		       }).
+
 -record(handler_state, {fs_node :: atom()
 			,channel :: pid()
 			,ticket :: integer()
 			,app_vsn :: binary()
+			,stats = #handler_stats{} :: tuple()
 			,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
@@ -36,7 +43,7 @@ start_handler(Node) ->
 fetch_route(Node, #handler_state{channel=undefined}=State) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     fetch_route(Node, State#handler_state{channel=Channel, ticket=Ticket});
-fetch_route(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
+fetch_route(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=State) ->
     receive
 	{fetch, dialplan, _Tag, _Key, _Value, ID, [UUID | Data]} ->
 	    case get_value(<<"Event-Name">>, Data) of
@@ -44,9 +51,11 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 		    Self = self(),
 		    LookupPid = spawn(fun() -> lookup_route(Node, State, ID, UUID, Self, Data) end),
 		    link(LookupPid),
+		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 		    format_log(info, "FETCH_ROUTE(~p): fetch route: Id: ~p UUID: ~p Lookup: ~p~n"
 			       ,[self(), ID, UUID, LookupPid]),
-		    ?MODULE:fetch_route(Node, State#handler_state{lookups=[{LookupPid, erlang:now()}|LUs]});
+		    ?MODULE:fetch_route(Node, State#handler_state{lookups=[{LookupPid, erlang:now()}|LUs]
+								  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
 		    format_log(info, "FETCH_ROUTE(~p): Ignoring event ~p~n", [self(), _Other]),
 		    ?MODULE:fetch_route(Node, State)
@@ -74,25 +83,39 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 				  end
 			  end, LUs),
 	    format_log(error, "FETCH_ROUTE(~p): shutting down~n", [self()]);
-	{lookup_finished, LookupPid} ->
-	    case get_value(LookupPid, LUs) of
-		StartTime when is_tuple(StartTime) ->
-		    format_log(info, "FETCH_ROUTE(~p): lookup (~p) finished in ~p ms~n"
-			       ,[self(), LookupPid, timer:now_diff(erlang:now(), StartTime) div 1000]),
-		    ?MODULE:fetch_route(Node, State#handler_state{lookups=proplists:delete(LookupPid, LUs)});
-		undefined ->
-		    format_log(error, "FETCH_ROUTE(~p): unknown lookup ~p~n", [self(), LookupPid]),
-		    ?MODULE:fetch_route(Node, State)
-	    end;
+	{lookup_finished, LookupPid, EndResult} ->
+	    close_lookup(LookupPid, Node, State, EndResult);
 	%% send diagnostic info
 	{diagnostics, Pid} ->
 	    ActiveLUs = lists:map(fun({_LuPid, ID, Started}) -> [{fs_route_id, ID}, {started, Started}] end, LUs),
-	    Resp = [{active_lookups, ActiveLUs}],
+	    Resp = [{active_lookups, ActiveLUs}
+		    ,{lookups_success, Stats#handler_stats.lookups_success}
+		    ,{lookups_failed, Stats#handler_stats.lookups_failed}
+		    ,{lookups_timeout, Stats#handler_stats.lookups_timeout}
+		    ,{lookups_requested, Stats#handler_stats.lookups_requested}
+		   ],
 	    Pid ! Resp,
 	    ?MODULE:fetch_route(Node, State);
 	Other ->
 	    format_log(info, "FETCH_ROUTE(~p): got other response: ~p", [self(), Other]),
 	    ?MODULE:fetch_route(Node, State)
+    end.
+
+close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, EndResult) ->
+    case lists:keyfind(LookupPid, 1, LUs) of
+	{LookupPid, ID, StartTime} ->
+	    RunTime = timer:now_diff(erlang:now(), StartTime) div 1000,
+	    format_log(info, "Fetch_user(~p): lookup (~p:~p) finished in ~p ms~n"
+		       ,[self(), LookupPid, ID, RunTime]),
+	    Stats1 = case EndResult of 
+			 success -> Stats#handler_stats{lookups_success=Stats#handler_stats.lookups_success+1};
+			 failed -> Stats#handler_stats{lookups_failed=Stats#handler_stats.lookups_failed+1};
+			 timeout -> Stats#handler_stats{lookups_timeout=Stats#handler_stats.lookups_timeout+1}
+		     end,
+	    ?MODULE:fetch_user(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs), stats=Stats1});
+	false ->
+	    format_log(error, "Fetch_user(~p): unknown lookup ~p~n", [self(), LookupPid]),
+	    ?MODULE:fetch_user(Node, State)
     end.
 
 -spec(lookup_route/6 :: (Node :: atom(), HState :: tuple(), ID :: binary(), UUID :: binary(), FetchPid :: pid(), Data :: proplist()) ->
@@ -110,16 +133,18 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
 	       ,{<<"Event-Queue">>, EvtQ}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(Data)}}
 	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, Vsn)],
-    case whistle_api:route_req(DefProp) of
-	{ok, JSON} ->
-	    format_log(info, "L/U-R(~p): Sending RouteReq JSON over Channel(~p)~n", [self(), Channel]),
-	    send_request(Channel, Ticket, JSON),
-	    handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid),
-	    ecallmgr_amqp:delete_queue(Q);
-	{error, _Msg} ->
-	    format_log(error, "L/U-R(~p): Route Req API error ~p~n", [self(), _Msg])
-    end,
-    FetchPid ! {lookup_finished, self()}.
+    EndResult = case whistle_api:route_req(DefProp) of
+		    {ok, JSON} ->
+			format_log(info, "L/U-R(~p): Sending RouteReq JSON over Channel(~p)~n", [self(), Channel]),
+			send_request(Channel, Ticket, JSON),
+			Result = handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid),
+			ecallmgr_amqp:delete_queue(Q),
+			Result;
+		    {error, _Msg} ->
+			format_log(error, "L/U-R(~p): Route Req API error ~p~n", [self(), _Msg]),
+			failed
+		end,
+    FetchPid ! {lookup_finished, self(), EndResult}.
 
 send_request(Channel, Ticket, JSON) ->
     {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
@@ -178,16 +203,19 @@ bind_channel_qs(Channel, Ticket, UUID, Node) ->
     {EvtQueue, CtlQueue}.
 
 send_control_queue(_Channel, _Ticket, _Q, undefined) ->
-    format_log(error, "ROUTE(~p): Cannot send control Q(~p) to undefined server-id~n", [self(), _Q]);
+    format_log(error, "ROUTE(~p): Cannot send control Q(~p) to undefined server-id~n", [self(), _Q]),
+    failed;
 send_control_queue(Channel, Ticket, CtlProp, AppQ) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->
 	    {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, AppQ, JSON, <<"application/json">>),
 	    %% execute the publish command
 	    format_log(info, "L/U-R(~p): Sending AppQ(~p) the control Q~n", [self(), AppQ]),
-	    amqp_channel:cast(Channel, BP, AmqpMsg);
+	    amqp_channel:cast(Channel, BP, AmqpMsg),
+	    success;
 	{error, _Msg} ->
-	    format_log(error, "L/U.route(~p): Sending Ctl to AppQ(~p) failed: ~p~n", [self(), AppQ, _Msg])
+	    format_log(error, "L/U.route(~p): Sending Ctl to AppQ(~p) failed: ~p~n", [self(), AppQ, _Msg]),
+	    failed
     end.
 
 %% Prop = Route Response
@@ -246,11 +274,13 @@ handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{channel=Channel, ticket=Tic
     case recv_response(ID) of
 	shutdown ->
 	    format_log(error, "L/U-R(~p): Shutting down for ID ~p~n", [self(), ID]),
-	    shutdown;
+	    failed;
 	timeout ->
-	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE};
+	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE},
+	    timeout;
 	invalid_route_resp ->
-	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE};
+	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE},
+	    failed;
 	Prop ->
 	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop),
 	    format_log(info, "L/U-R(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
