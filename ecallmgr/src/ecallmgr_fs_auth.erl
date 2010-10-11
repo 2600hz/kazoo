@@ -2,44 +2,11 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% When a device tries to register with a known FS node, FS sends a
-%%% fetch request to the corresponding fetch_handler (a process spawned
-%%% during the call to add_fs_node/1). The fetch_handler checks to see
-%%% that the fetch request is one the handler can, you know, handle
-%%% and if so, spawns a call to lookup_user/4. The newly spawned process
-%%% creates an Authentication Request API message, as well as a queue on
-%%% the Targeted Exchange, and places the AuthReq onto the Broadcast
-%%% Exchange. Lookup_user then waits, up to a threshold, for an AuthResp
-%%% message. If a timeout occurs, an empty response is returned to the
-%%% fetch_handler; otherwise, lookup_user tries to create the appropriate
-%%% XML response to pass back to the fetch_handler.
-%%% Upon receiving the XML, fetch_handler sends the XML to the FS node,
-%%% and goes back to waiting for another fetch request. The lookup_user
-%%% process ends after sending the XML and cleaning up.
-%%%
-%%%                 ---------------
-%%%                 |ecallmgr_auth|
-%%%                 ---------------
-%%%                        |
-%%%             -------------------------
-%%%             |                       |
-%%%     ---------------           ---------------
-%%%     |fetch_handler|           |fetch_handler|
-%%%     |(per FS Node)|           |(per FS Node)|
-%%%     ---------------           ---------------
-%%%            |                        |
-%%%     ---------------          ---------------
-%%%     |      |      |          |      |      |
-%%%   -----  -----  -----      -----  -----  -----
-%%%   |L/U|  |L/U|  |L/U|      |L/U|  |L/U|  |L/U|
-%%%   -----  -----  -----      -----  -----  -----
-%%%
-%%% L/U = lookup_user per auth request
-%%%
+%%% Handle directory lookups from FreeSWITCH
 %%% @end
 %%% Created : 17 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(ecallmgr_auth).
+-module(ecallmgr_fs_auth).
 
 %% API
 -export([start_handler/1]).
@@ -52,11 +19,18 @@
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
 
+-record(handler_stats, {lookups_success = 0 :: integer()
+			,lookups_failed = 0 :: integer()
+                        ,lookups_timeout = 0 :: integer()
+                        ,lookups_requested = 0 :: integer()
+		       }).
+
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
 		       ,channel = undefined :: pid()
 		       ,ticket = 0 :: integer()
 		       ,app_vsn = [] :: list()
+		       ,stats = #handler_stats{} :: tuple()
 		       ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
@@ -69,7 +43,7 @@ start_handler(Node) ->
 fetch_user(Node, #handler_state{channel=undefined}=State) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
     fetch_user(Node, State#handler_state{channel=Channel, ticket=Ticket});
-fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
+fetch_user(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=State) ->
     receive
 	{fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]} ->
 	    case get_value(<<"Event-Name">>, Data) of
@@ -77,8 +51,10 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 		    Self = self(),
 		    LookupPid = spawn(fun() -> lookup_user(State, ID, Self, Data) end),
 		    link(LookupPid),
-		    format_log(info, "Fetch_user(~p): fetch directory: Id: ~p Lookup ~p~n", [self(), ID, LookupPid]),
-		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()} | LUs]});
+		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
+		    format_log(info, "Fetch_user(~p): fetch directory: Id: ~p Lookup ~p (Number ~p)~n", [self(), ID, LookupPid, LookupsReq]),
+		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()} | LUs]
+								 ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
 		    format_log(info, "Fetch_user(~p): Ignoring event ~p~n", [self(), _Other]),
 		    ?MODULE:fetch_user(Node, State)
@@ -107,11 +83,16 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 				  end
 			  end, LUs),
 	    format_log(error, "Fetch_user(~p): shutting down~n", [self()]);
-	{lookup_finished, LookupPid} ->
-	    close_lookup(LookupPid, Node, State);
+	{lookup_finished, LookupPid, EndResult} ->
+	    close_lookup(LookupPid, Node, State, EndResult);
 	{diagnostics, Pid} ->
 	    ActiveLUs = lists:map(fun({_LuPid, ID, Started}) -> [{fs_auth_id, ID}, {started, Started}] end, LUs),
-	    Resp = [{active_lookups, ActiveLUs}],
+	    Resp = [{active_lookups, ActiveLUs}
+		    ,{lookups_success, Stats#handler_stats.lookups_success}
+		    ,{lookups_failed, Stats#handler_stats.lookups_failed}
+		    ,{lookups_timeout, Stats#handler_stats.lookups_timeout}
+		    ,{lookups_requested, Stats#handler_stats.lookups_requested}
+		   ],
 	    Pid ! Resp,
 	    ?MODULE:fetch_user(Node, State);
 	Other ->
@@ -119,12 +100,18 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs}=State) ->
 	    ?MODULE:fetch_user(Node, State)
     end.
 
-close_lookup(LookupPid, Node, #handler_state{lookups=LUs}=State) ->
+close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, EndResult) ->
     case lists:keyfind(LookupPid, 1, LUs) of
 	{LookupPid, ID, StartTime} ->
+	    RunTime = timer:now_diff(erlang:now(), StartTime) div 1000,
 	    format_log(info, "Fetch_user(~p): lookup (~p:~p) finished in ~p ms~n"
-		       ,[self(), LookupPid, ID, timer:now_diff(erlang:now(), StartTime) div 1000]),
-	    ?MODULE:fetch_user(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs)});
+		       ,[self(), LookupPid, ID, RunTime]),
+	    Stats1 = case EndResult of 
+			 success -> Stats#handler_stats{lookups_success=Stats#handler_stats.lookups_success+1};
+			 failed -> Stats#handler_stats{lookups_failed=Stats#handler_stats.lookups_failed+1};
+			 timeout -> Stats#handler_stats{lookups_timeout=Stats#handler_stats.lookups_timeout+1}
+		     end,
+	    ?MODULE:fetch_user(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs), stats=Stats1});
 	false ->
 	    format_log(error, "Fetch_user(~p): unknown lookup ~p~n", [self(), LookupPid]),
 	    ?MODULE:fetch_user(Node, State)
@@ -142,16 +129,18 @@ lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Fet
 	    ,{<<"Auth-User">>, get_value(<<"user">>, Data, get_value(<<"Auth-User">>, Data))}
 	    ,{<<"Auth-Domain">>, get_value(<<"domain">>, Data, get_value(<<"Auth-Domain">>, Data))}
 	    | whistle_api:default_headers(Q, <<"directory">>, <<"auth_req">>, <<"ecallmgr.auth">>, Vsn)],
-    case whistle_api:auth_req(Prop) of
-	{ok, JSON} ->
-	    format_log(info, "L/U(~p): Sending JSON over Channel(~p)~n~s~n", [self(), Channel, JSON]),
-	    send_request(Channel, Ticket, JSON),
-	    handle_response(ID, Data, FetchPid),
-	    amqp_channel:cast(Channel, amqp_util:queue_delete(Ticket, Q));
-	{error, _Msg} ->
-	    format_log(error, "L/U(~p): Auth_Req API error ~p~n", [self(), _Msg])
-    end,
-    FetchPid ! {lookup_finished, self()}.
+    EndResult = case whistle_api:auth_req(Prop) of
+		    {ok, JSON} ->
+			format_log(info, "L/U(~p): Sending JSON over Channel(~p)~n~s~n", [self(), Channel, JSON]),
+			send_request(Channel, Ticket, JSON),
+			Result = handle_response(ID, Data, FetchPid),
+			amqp_channel:cast(Channel, amqp_util:queue_delete(Ticket, Q)),
+			Result;
+		    {error, _Msg} ->
+			format_log(error, "L/U(~p): Auth_Req API error ~p~n", [self(), _Msg]),
+			failed
+		end,
+    FetchPid ! {lookup_finished, self(), EndResult}.
 
 recv_response(ID) ->
     receive
@@ -204,11 +193,13 @@ handle_response(ID, Data, FetchPid) ->
     case recv_response(ID) of
 	shutdown ->
 	    format_log(error, "L/U(~p): Shutting down for ID ~p~n", [self(), ID]),
-	    shutdown;
+	    failed;
 	timeout ->
-	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
+	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE},
+	    timeout;
 	invalid_auth_resp ->
-	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
+	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE},
+	    failed;
 	Prop ->
 	    User = get_value(<<"user">>, Data),
 	    Domain = get_value(<<"domain">>, Data),
@@ -219,7 +210,8 @@ handle_response(ID, Data, FetchPid) ->
 		    Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])),
 		    format_log(info, "LOOKUP_USER(~p): Sending pass resp (took ~pms)~n"
 			       ,[self(), timer:now_diff(erlang:now(), T1) div 1000]),
-		    FetchPid ! {xml_response, ID, Resp};
+		    FetchPid ! {xml_response, ID, Resp},
+		    success;
 		<<"a1-hash">> ->
 		    Hash = get_value(<<"Auth-Password">>, Prop),
 		    ChannelParams = get_channel_params(Prop),
@@ -228,15 +220,18 @@ handle_response(ID, Data, FetchPid) ->
 			    ),
 		    format_log(info, "LOOKUP_USER(~p): Sending hashed resp (took ~pms)~n"
 			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
-		    FetchPid ! {xml_response, ID, Resp};
+		    FetchPid ! {xml_response, ID, Resp},
+		    success;
 		<<"ip">> ->
 		    format_log(info, "LOOKUP_USER(~p): Unsupported auth by IP (took ~pms)~n"
 			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
-		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE};
+		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE},
+		    failed;
 		<<"error">> ->
 		    format_log(info, "LOOKUP_USER(~p): Auth by Error: ~p (took ~pms)~n"
 			       ,[self(), get_value(<<"Auth-Password">>, Prop), timer:now_diff(erlang:now(), T1) div 1000]),
-		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE}
+		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE},
+		    failed
 	    end
     end.
 

@@ -2,8 +2,84 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Centralize the fetch_handler methods, leaving the lookup pieces in 
-%%% the auth and route modules
+%%% When a device tries to register with a known FS node, FS sends a
+%%% fetch request to the corresponding fetch_handler (a process spawned
+%%% during the call to add_fs_node/1). The fetch_handler checks to see
+%%% that the fetch request is one the handler can, you know, handle
+%%% and if so, spawns a call to lookup_(user|route)/4.
+%%%
+%%% For a user lookup, the newly spawned process creates an Authentication
+%%% Request API message, as well as a queue on the Targeted Exchange, and
+%%% places the AuthReq onto the Broadcast Exchange. Lookup_user then waits,
+%%% up to a threshold, for an AuthResp message. If a timeout occurs, an
+%%% empty response is returned to the fetch_handler; otherwise, lookup_user
+%%% tries to create the appropriate XML response to pass back to the
+%%% fetch_handler. Upon receiving the XML, fetch_handler sends the XML to
+%%% the FS node, and goes back to waiting for another fetch request. The
+%%% lookup_user process ends after sending the XML and cleaning up.
+%%%
+%%%                 ---------------
+%%%                 |ecallmgr_auth|
+%%%                 ---------------
+%%%                        |
+%%%             -------------------------
+%%%             |                       |
+%%%     ---------------           ---------------
+%%%     |fetch_handler|           |fetch_handler|
+%%%     |(per FS Node)|           |(per FS Node)|
+%%%     ---------------           ---------------
+%%%            |                        |
+%%%     ---------------          ---------------
+%%%     |      |      |          |      |      |
+%%%   -----  -----  -----      -----  -----  -----
+%%%   |L/U|  |L/U|  |L/U|      |L/U|  |L/U|  |L/U|
+%%%   -----  -----  -----      -----  -----  -----
+%%%
+%%% L/U = lookup_user per auth request
+%%%
+%%% For a route lookup, the newly spawned process creates a Route Request
+%%% API message, three queues (one for the lookup_route process on the
+%%% Targeted Exchange, one for the call's event stream on the CallEvent
+%%% Exchange, and one to receive call control API messages from an
+%%% application on the CallControl Exchange), and send the Req message to
+%%% the Broadcast Exchange. lookup_route/4 then waits, up to a threshold,
+%%% for a returning Route Response API message. If a timeout occurs, an
+%%% empty XML snippet is returned; otherwise lookup_route tries to create
+%%% appropriate routing XML to pass back to the handler. After sending the
+%%% XML to the fetch handler, lookup_route creates two processes, one to
+%%% listen for events related to the call-id and publish them to the 
+%%% CallEvent queue, and one to listen for control messages on the CallControl
+%%% queue. Further call processing is handled via the CallControl process,
+%%% and call events are made known to interested applications via the 
+%%% CallEvents process.
+%%%
+%%%                 ----------------
+%%%                 |ecallmgr_route|
+%%%                 ----------------
+%%%                        |
+%%%             -------------------------
+%%%             |                       |
+%%%     ---------------           ---------------
+%%%     |fetch_handler|           |fetch_handler|
+%%%     |(per FS Node)|           |(per FS Node)|
+%%%     ---------------           ---------------
+%%%            |                        |
+%%%     ---------------          ---------------
+%%%     |      |      |          |      |      |
+%%%   -----  -----  -----      -----  -----  -----
+%%%   |L/U|  |L/U|  |L/U|      |L/U|  |L/U|  |L/U|
+%%%   -----  -----  -----      -----  -----  -----
+%%%     |                        |
+%%%   -----                    -----
+%%%   |   |                    |   |
+%%% ---- ----                ---- ----
+%%% |CC| |CE|                |CC| |CE|
+%%% ---- ----                ---- ----
+%%%
+%%% L/U = lookup_route per dialplan request
+%%% CC = CallControl process
+%%% CE = CallEvent process
+%%%
 %%% @end
 %%% Created : 08 Oct 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
@@ -18,7 +94,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
@@ -26,8 +102,8 @@
 -include("whistle_api.hrl").
 
 -define(SERVER, ?MODULE). 
--define(AUTH_MOD, ecallmgr_auth).
--define(ROUTE_MOD, ecallmgr_route).
+-define(AUTH_MOD, ecallmgr_fs_auth).
+-define(ROUTE_MOD, ecallmgr_fs_route).
 
 %% fs_nodes = [{FSNode, AuthHandlerPid, RouteHandlerPid}]
 -record(state, {fs_nodes=[]}).

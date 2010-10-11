@@ -2,12 +2,12 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Receive dialplan bindings, search for a match, and create call ctl
-%%% and evt queues
+%%% Receive dialplan bindings from FreeSWITCH, search for a match,
+%%% and create call ctl and evt queues.
 %%% @end
 %%% Created : 24 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(ecallmgr_route).
+-module(ecallmgr_fs_route).
 
 %% API
 -export([start_handler/1]).
