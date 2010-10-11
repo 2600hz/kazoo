@@ -176,7 +176,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(display_node/1 :: (Node :: atom()) -> ok | error).
 display_node(Node) ->
-    io:format("DIAG_SERVER: Displaying ~p~n", [Node]),
     case rpc:call(Node, ecallmgr, diagnostics, []) of
 	{badrpc, Reason} ->
 	    io:format("DIAG_SERVER: Error getting data from ~p: ~p~n", [Node, Reason]),
