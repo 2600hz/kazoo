@@ -1,0 +1,9 @@
+{application,diagnostics,
+             [{description,[]},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{diagnostics_app,[]}},
+              {env,[]},
+              {modules,[diagnostics,diagnostics_app,diagnostics_server,
+                        diagnostics_sup,logger]}]}.
