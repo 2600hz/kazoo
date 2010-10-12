@@ -52,8 +52,8 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=Stat
 		    LookupPid = spawn(fun() -> lookup_route(Node, State, ID, UUID, Self, Data) end),
 		    link(LookupPid),
 		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-		    format_log(info, "FETCH_ROUTE(~p): fetch route: Id: ~p UUID: ~p Lookup: ~p~n"
-			       ,[self(), ID, UUID, LookupPid]),
+		    format_log(info, "FETCH_ROUTE(~p): fetch route: Id: ~p UUID: ~p Lookup: ~p Req#: ~p~n"
+			       ,[self(), ID, UUID, LookupPid, LookupsReq]),
 		    ?MODULE:fetch_route(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()}|LUs]
 								  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
