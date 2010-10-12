@@ -213,6 +213,8 @@ display_fs_data(Data) ->
 		      show_line("Route", RouteData)
 	      end, get_value(handler_diagnostics, Data)).
 
+show_line(Type, {error, Error, Reason}) ->
+    io:format("  |  ~11.s | ERROR(~p): ~p~n", [Type, Error, Reason]);
 show_line(Type, Data) ->
     LR = get_value(lookups_requested, Data, 0),
     R = integer_to_list(LR),
