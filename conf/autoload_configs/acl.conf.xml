@@ -1,0 +1,9 @@
+<configuration name="acl.conf" description="Network Lists">
+    <network-lists>
+        <list name="inbound_carriers" default="deny">
+            <node type="allow" cidr="172.203.215.241/32"/> <!--VG03-->
+        </list>
+    </network-lists>
+</configuration>
+
+
