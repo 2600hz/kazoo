@@ -168,17 +168,27 @@ init([]) ->
 handle_call({diagnostics}, _From, #state{fs_nodes=Nodes}=State) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     {KnownNodes, HandlerD} = lists:foldl(fun({FSNode, AuthHPid, RouteHPid}, {KN, HD}) ->
-						 AuthHPid ! {diagnostics, self()},
-						 AuthHandlerD = receive
-								    X -> X
-								after
-								    500 -> {error, timed_out, handler_busy}
+						 AuthHandlerD = case erlang:is_process_alive(AuthHPid) of
+								    true ->
+									AuthHPid ! {diagnostics, self()},
+									receive
+									    X -> X
+									after
+									    500 -> {error, timed_out, handler_busy}
+									end;
+								    false ->
+									{error, not_responding, handler_down}
 								end,
-						 RouteHPid ! {diagnostics, self()},
-						 RteHandlerD = receive
-								   Y -> Y
-							       after
-								   500 -> {error, timed_out, handler_busy}
+						 RteHandlerD = case erlang:is_process_alive(RouteHPid) of
+								   true ->
+								       RouteHPid ! {diagnostics, self()},
+								       receive
+									   Y -> Y
+								       after
+									   500 -> {error, timed_out, handler_busy}
+								       end;
+								   false ->
+								       {error, not_responding, handler_down}
 							       end,
 						 {[FSNode | KN], [{FSNode, {auth_handler, AuthHandlerD}, {route_handler, RteHandlerD}} | HD]}
 					 end, {[], []}, Nodes),
