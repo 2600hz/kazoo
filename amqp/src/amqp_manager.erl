@@ -20,6 +20,7 @@
 
 -record(state, {connection, conn_params, channels}).
 -define(SERVER, ?MODULE).
+-define(DEFAULT_AMQP_HOST, "whistle-erl001-fmt.2600hz.org").
 
 %%====================================================================
 %% API
@@ -57,14 +58,45 @@ stop() ->
 init([]) ->
     %% Start a connection to the AMQP broker server
     process_flag(trap_exit, true),
-    P = #'amqp_params'{
+
+    LocalP = #'amqp_params'{
       port = 5672
-      ,host = "fs2.voicebus.net"
+      ,host = net_adm:localhost()
      },
-    {ok, #state{connection=get_new_connection(P), conn_params=P, channels = []}};
+    try
+	format_log(info, "AMQP_MGR(init): Trying localhost(~p) for connection~n", [net_adm:localhost()]),
+	C = get_new_connection(LocalP),
+	{ok, #state{connection=C, conn_params=LocalP, channels = []}}
+    catch
+	_:Reason ->
+	    format_log(error, "AMQP_MGR(init): Failed to start localhost connection: ~p~n", [Reason]),
+	    
+	    P = #'amqp_params'{
+	      port = 5672
+	      ,host = ?DEFAULT_AMQP_HOST
+	     },
+	    format_log(info, "AMQP_MGR(init): Failed to find amqp on localhost. Trying ~p~n", [?DEFAULT_AMQP_HOST]),
+	    try
+		C1 = get_new_connection(P),
+		{ok, #state{connection=C1, conn_params=P, channels = []}}
+	    catch
+		_:Reason ->
+		    format_log(error, "AMQP_MGR(init): Failed to start connection: ~p~n", [Reason]),
+		    {stop, Reason}
+	    end
+    end;
 init([#'amqp_params'{}=P]) ->
     process_flag(trap_exit, true),
-    {ok, #state{connection=get_new_connection(P), conn_params=P, channels=[]}}.
+    format_log(info, "AMQP_MGR(init): Trying to connect to amqp on ~p~n", [#'amqp_params'.host]),
+
+    try
+	C = get_new_connection(P),
+	{ok, #state{connection=C, conn_params=P, channels=[]}}
+    catch
+	_:Reason ->
+	    format_log(error, "AMQP_MGR(init): Failed to start connection: ~p~n", [Reason]),
+	    {stop, Reason}
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -167,9 +199,10 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=Sta
         false ->
 	    {noreply, State}
     end;
-handle_info({'EXIT', _Pid, Reason}, State) ->
-    format_log(error, "AMQP_MGR(~p): EXIT received for ~p with reason ~p~n", [self(), _Pid, Reason]),
-    {stop, Reason, State};
+handle_info({'EXIT', Pid, Reason}, #state{connection={Pid, _MRefConn}, conn_params=P, channels=Channels}=State) ->
+    format_log(error, "AMQP_MGR(~p): EXIT received for Conn(~p) with reason ~p~n", [self(), Pid, Reason]),
+    close_all_channels(Channels),
+    {noreply, State#state{connection=get_new_connection(P), channels=[]}};
 handle_info(_Info, State) ->
     format_log(error, "AMQP_MGR(~p): Unhandled info req: ~p~nState: ~p~n", [self(), _Info, State]),
     {noreply, State}.
@@ -210,7 +243,6 @@ close_all_channels([{_Pid, Channel, _Ticket, MRef} | T]) ->
     close_all_channels(T).
 
 get_new_connection(#'amqp_params'{}=P) ->
-    format_log(info, "AMQP_MGR(~p): open connection~n", [self()]),
     Connection = amqp_connection:start_network_link(P),
     MRefConn = erlang:monitor(process, Connection),
     {Connection, MRefConn}.
