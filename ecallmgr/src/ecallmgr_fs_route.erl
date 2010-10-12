@@ -105,17 +105,17 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
     case lists:keyfind(LookupPid, 1, LUs) of
 	{LookupPid, ID, StartTime} ->
 	    RunTime = timer:now_diff(erlang:now(), StartTime) div 1000,
-	    format_log(info, "Fetch_user(~p): lookup (~p:~p) finished in ~p ms~n"
+	    format_log(info, "Fetch_route(~p): lookup (~p:~p) finished in ~p ms~n"
 		       ,[self(), LookupPid, ID, RunTime]),
 	    Stats1 = case EndResult of 
 			 success -> Stats#handler_stats{lookups_success=Stats#handler_stats.lookups_success+1};
 			 failed -> Stats#handler_stats{lookups_failed=Stats#handler_stats.lookups_failed+1};
 			 timeout -> Stats#handler_stats{lookups_timeout=Stats#handler_stats.lookups_timeout+1}
 		     end,
-	    ?MODULE:fetch_user(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs), stats=Stats1});
+	    ?MODULE:fetch_route(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs), stats=Stats1});
 	false ->
-	    format_log(error, "Fetch_user(~p): unknown lookup ~p~n", [self(), LookupPid]),
-	    ?MODULE:fetch_user(Node, State)
+	    format_log(error, "Fetch_route(~p): unknown lookup ~p~n", [self(), LookupPid]),
+	    ?MODULE:fetch_route(Node, State)
     end.
 
 -spec(lookup_route/6 :: (Node :: atom(), HState :: tuple(), ID :: binary(), UUID :: binary(), FetchPid :: pid(), Data :: proplist()) ->
