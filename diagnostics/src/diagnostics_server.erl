@@ -196,6 +196,11 @@ display_node(Node) ->
 	    ok
     end.
 
+%% Diagnostics for GEN_SERVER (VSN) on HOST at HH:MM:SS on YYYY-MM-DD
+%%   Node Diagnostics for NODE
+%%   Type  | Requested | Successful | Timed Out | Failed | Active
+%%   Auth  |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2
+%%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2
 display_fs_data(Data) ->
     GenSrv = get_value(gen_server, Data),
     Vsn = get_value(version, Data),
@@ -228,9 +233,3 @@ show_line(Type, Data) when is_list(Data) ->
     F = Format(get_value(lookups_failed, Data, 0)),
     A = Format(length(get_value(active_lookups, Data, []))),
     io:format(?NODE_LINE, [Type, R, S, T, F, A]).
-%%
-%% Diagnostics for GEN_SERVER (VSN) on HOST at RecordedTime
-%%   Known Nodes: KNOWN_NODES
-%%   Type  | Requested | Successful | Timed Out | Failed | Active
-%%   Auth  |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2
-%%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2
