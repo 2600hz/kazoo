@@ -54,7 +54,7 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=Stat
 		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 		    format_log(info, "FETCH_ROUTE(~p): fetch route: Id: ~p UUID: ~p Lookup: ~p~n"
 			       ,[self(), ID, UUID, LookupPid]),
-		    ?MODULE:fetch_route(Node, State#handler_state{lookups=[{LookupPid, erlang:now()}|LUs]
+		    ?MODULE:fetch_route(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()}|LUs]
 								  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
 		    format_log(info, "FETCH_ROUTE(~p): Ignoring event ~p~n", [self(), _Other]),
