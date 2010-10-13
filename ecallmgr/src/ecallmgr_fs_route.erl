@@ -180,23 +180,23 @@ recv_response(ID) ->
     end.
 
 bind_q(Channel, Ticket, ID) ->
-    amqp_channel:cast(Channel, amqp_util:targeted_exchange(Ticket)),
+    amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, ID)),
-    amqp_channel:cast(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
+    amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
     Queue.
 
 %% creates the event and control queues for the call, spins up the event handler
 %% to pump messages to the queue, and returns the control queue
 bind_channel_qs(Channel, Ticket, UUID, Node) ->
-    amqp_channel:cast(Channel, amqp_util:callevt_exchange(Ticket)),
-    amqp_channel:cast(Channel, amqp_util:callctl_exchange(Ticket)),
+    amqp_channel:call(Channel, amqp_util:callevt_exchange(Ticket)),
+    amqp_channel:call(Channel, amqp_util:callctl_exchange(Ticket)),
 
     #'queue.declare_ok'{queue = EvtQueue} = amqp_channel:call(Channel, amqp_util:new_callevt_queue(Ticket, UUID)),
     #'queue.declare_ok'{queue = CtlQueue} = amqp_channel:call(Channel, amqp_util:new_callctl_queue(Ticket, UUID)),
 
-    amqp_channel:cast(Channel, amqp_util:bind_q_to_callevt(Ticket, EvtQueue, EvtQueue)),
-    amqp_channel:cast(Channel, amqp_util:bind_q_to_callctl(Ticket, CtlQueue, CtlQueue)),
+    amqp_channel:call(Channel, amqp_util:bind_q_to_callevt(Ticket, EvtQueue, EvtQueue)),
+    amqp_channel:call(Channel, amqp_util:bind_q_to_callctl(Ticket, CtlQueue, CtlQueue)),
 
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Channel, Ticket, CtlQueue}),
     ecallmgr_call_events:start(Node, UUID, {Channel, Ticket, EvtQueue}, CtlPid),

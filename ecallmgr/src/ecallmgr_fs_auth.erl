@@ -134,7 +134,7 @@ lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Fet
 			format_log(info, "L/U(~p): Sending JSON over Channel(~p)~n~s~n", [self(), Channel, JSON]),
 			send_request(Channel, Ticket, JSON),
 			Result = handle_response(ID, Data, FetchPid),
-			amqp_channel:cast(Channel, amqp_util:queue_delete(Ticket, Q)),
+			amqp_channel:call(Channel, amqp_util:queue_delete(Ticket, Q)),
 			Result;
 		    {error, _Msg} ->
 			format_log(error, "L/U(~p): Auth_Req API error ~p~n", [self(), _Msg]),
@@ -173,9 +173,10 @@ recv_response(ID) ->
     end.
 
 bind_q(Channel, Ticket, ID) ->
-    amqp_channel:cast(Channel, amqp_util:targeted_exchange(Ticket)),
+    amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
+    amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, ID)),
-    amqp_channel:cast(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
+    amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
     amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
     Queue.
 

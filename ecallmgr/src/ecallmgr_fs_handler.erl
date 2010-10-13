@@ -121,11 +121,11 @@ start_link() ->
 
 %% returns ok or {error, some_error_atom_explaining_more}
 add_fs_node(Node) ->
-    gen_server:call(?MODULE, {add_fs_node, Node}).
+    gen_server:call(?MODULE, {add_fs_node, Node}, infinity).
 
 %% returns ok or {error, some_error_atom_explaining_more}
 rm_fs_node(Node) ->
-    gen_server:call(?MODULE, {rm_fs_node, Node}).
+    gen_server:call(?MODULE, {rm_fs_node, Node}, infinity).
 
 %% calls all handlers and gets diagnostic info from them
 diagnostics() ->
@@ -236,14 +236,14 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes}=State) ->
     case lists:keyfind(HPid, 2, Nodes) of
 	{Node, HPid, RouteHPid} ->
-	    format_log(error, "FS_HANDLER(~p): Auth Handler EXITed(~p) for ~p, restarting handler...~n", [self(), Reason, HPid]),
 	    APid = start_auth_handler(Node),
+	    format_log(error, "FS_HANDLER(~p): Auth Handler EXITed(~p) for ~p, restarting handler as ~p...~n", [self(), Reason, HPid, APid]),
 	    {noreply, State#state{fs_nodes=[{Node, APid, RouteHPid} | lists:keydelete(Node, 1, Nodes)]}};
 	false ->
 	    case lists:keyfind(HPid, 3, Nodes) of
 		{Node, AuthHPid, HPid} ->
-		    format_log(error, "FS_HANDLER(~p): Route Handler EXITed(~p) for ~p, restarting handler...~n", [self(), Reason, HPid]),
 		    RPid = start_route_handler(Node),
+		    format_log(error, "FS_HANDLER(~p): Route Handler EXITed(~p) for ~p, restarting handler as ~p...~n", [self(), Reason, HPid, RPid]),
 		    {noreply, State#state{fs_nodes=[{Node, AuthHPid, RPid} | lists:keydelete(Node, 1, Nodes)]}};
 		false ->
 		    format_log(error, "FS_HANDLER(~p): Received EXIT(~p) for unknown ~p~n", [self(), Reason, HPid]),
