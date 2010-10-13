@@ -246,7 +246,7 @@ handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes}=State) ->
 		    format_log(error, "FS_HANDLER(~p): Route Handler EXITed(~p) for ~p, restarting handler as ~p...~n", [self(), Reason, HPid, RPid]),
 		    {noreply, State#state{fs_nodes=[{Node, AuthHPid, RPid} | lists:keydelete(Node, 1, Nodes)]}};
 		false ->
-		    format_log(error, "FS_HANDLER(~p): Received EXIT(~p) for unknown ~p~n", [self(), Reason, HPid]),
+		    format_log(error, "FS_HANDLER(~p): Received EXIT(~p) for unknown (or already ended) pid ~p~n", [self(), Reason, HPid]),
 		    {noreply, State}
 	    end
     end;
