@@ -181,6 +181,7 @@ recv_response(ID) ->
 
 bind_q(Channel, Ticket, ID) ->
     amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
+    amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
     #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, ID)),
     amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
     #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
