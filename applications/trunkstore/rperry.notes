@@ -1,0 +1,21 @@
+In the Auth Views:
+   Tenant ID
+In the DID view:
+  Tenant ID
+  Server Information for Bridging Inbound Call
+  Default CallerID Name/Num for the Server (if configured)
+  Default CallerID Name/Num for the account (if configured)
+  Default E911 CallerID Name/Num for the Server (if configured)
+  Default E911 CallerID Name/Num for the account (if configured)
+  Credit available for the account
+  (maybe) Credit available per server/DID
+  Number of Flat-rate Trunks available
+  Flags for type of calls allowed
+    CallerID
+    CNAM
+    Porting
+    US48
+    Alaska
+    Hawaii
+    TollFree
+    etc...
