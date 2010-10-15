@@ -1,7 +1,7 @@
 {application, ecallmgr
  ,[
-   {description, "Manage resource requests and interface with freeSWITCH"}
-   ,{vsn, "0.3"}
+   {description, "Manage resource requests and interface with FreeSWITCH"}
+   ,{vsn, "0.3.1"}
    ,{registered, []}
    ,{applications
      ,[

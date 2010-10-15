@@ -16,8 +16,9 @@
          terminate/2, code_change/3]).
 
 %% API
--export([start_link/0, start/0, open_channel/1, close_channel/1, stop/0]).
+-export([start_link/0, start/0, open_channel/1, open_channel/2, close_channel/1, stop/0]).
 
+%% channels = [{Pid, Channel, Ticket, Ref} | {Pid, Channel, Ticket, Ref, Host, HostConn, HostRef}]
 -record(state, {connection, conn_params, channels}).
 -define(SERVER, ?MODULE).
 -define(DEFAULT_AMQP_HOST, "whistle-erl001-fmt.2600hz.org").
@@ -37,6 +38,9 @@ start() ->
 
 open_channel(Pid) ->
     gen_server:call(?SERVER, {open_channel, Pid}, infinity).
+
+open_channel(Pid, Host) ->
+    gen_server:call(?SERVER, {open_channel, Pid, Host}, infinity).
 
 close_channel(Pid) ->
     gen_server:cast(?SERVER, {close_channel, Pid}).
@@ -59,10 +63,7 @@ init([]) ->
     %% Start a connection to the AMQP broker server
     process_flag(trap_exit, true),
 
-    LocalP = #'amqp_params'{
-      port = 5672
-      ,host = net_adm:localhost()
-     },
+    LocalP = create_amqp_params(net_adm:localhost()),
     try
 	format_log(info, "AMQP_MGR(init): Trying localhost(~p) for connection~n", [net_adm:localhost()]),
 	C = get_new_connection(LocalP),
@@ -71,10 +72,7 @@ init([]) ->
 	_:Reason ->
 	    format_log(error, "AMQP_MGR(init): Failed to start localhost connection: ~p~n", [Reason]),
 	    
-	    P = #'amqp_params'{
-	      port = 5672
-	      ,host = ?DEFAULT_AMQP_HOST
-	     },
+	    P = create_amqp_params(?DEFAULT_AMQP_HOST),
 	    format_log(info, "AMQP_MGR(init): Failed to find amqp on localhost. Trying ~p~n", [?DEFAULT_AMQP_HOST]),
 	    try
 		C1 = get_new_connection(P),
@@ -106,7 +104,32 @@ init([#'amqp_params'{}=P]) ->
 %%                                      {stop, Reason, Reply, State} |
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
+%%
+%% channels = [{Pid, Channel, Ticket, Ref} | {Pid, Channel, Ticket, Ref, Host, HostConn, HostRef}]
 %%--------------------------------------------------------------------
+handle_call({open_channel, Pid, Host}, _From, #state{channels=Channels}=State) ->
+    format_log(info, "AMQP_MGR(~p): Start channel using a different host (~p)~n", [self(), Host]),
+    case lists:keyfind(Pid, 1, Channels) of
+        %% This PID already has a channel, just return it
+        {Pid, Channel, Ticket, _MRef} ->
+	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p~n", [self(), Pid, Channel, Ticket]),
+            {reply, {ok, Channel, Ticket}, State};
+	{Pid, Channel, Ticket, _MRef, Host, _HostRef} ->
+	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p from Host(~p)~n", [self(), Pid, Channel, Ticket, Host]),
+	    {reply, {ok, Channel, Ticket}, State};
+        false ->
+	    {HostConn, HostRef} = get_new_connection(create_amqp_params(Host)),
+	    case open_amqp_channel(HostConn, Pid) of
+		{HostChannel, MRef, HostTicket} ->
+                    {reply
+		     ,{ok, HostChannel, HostTicket}
+		     ,State#state{channels=[{Pid, HostChannel, HostTicket, MRef, Host, HostConn, HostRef} | Channels]}
+                    };
+                Fail ->
+		    format_log(error, "AMQP_MGR(~p): Failed to access Channel: ~p~n", [self(), Fail]),
+                    {reply, {error, Fail}, State}
+            end
+    end;
 handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined, conn_params=P}=State) ->
     format_log(info, "AMQP_MGR(~p): restart connection w/ ~p~n", [self(), P]),
     handle_call(Req, From, State#state{connection=get_new_connection(P)});
@@ -116,33 +139,18 @@ handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn
         {_Pid, Channel, Ticket, _MRef} ->
 	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p~n", [self(), Pid, Channel, Ticket]),
             {reply, {ok, Channel, Ticket}, State};
+	{_Pid, Channel, Ticket, _MRef, _Host, _HostConn, _HostRef} ->
+	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p from Host(~p)~n", [self(), Pid, Channel, Ticket, _Host]),
+	    {reply, {ok, Channel, Ticket}, State};
         false ->
-            %% Open an AMQP channel to access our realm
-            Channel = amqp_connection:open_channel(Connection),
-	    format_log(info, "AMQP_MGR(~p): Open channel(~p) for ~p~n", [self(), Channel, Pid]),
-
-	    %% if a message is returned, we need to handle it
-	    amqp_channel:register_return_handler(Channel, Pid),
-
-            Access = #'access.request'{
-	      realm = <<"/data">>, %% fs_toolkit_cfg:get([amqp_access, realm]),
-	      exclusive = false, %% fs_toolkit_cfg:get([amqp_access, exclusive]),
-	      passive = true, %% fs_toolkit_cfg:get([amqp_access, passive]),
-	      active = true, %% fs_toolkit_cfg:get([amqp_access, active]),
-	      write = true, %% fs_toolkit_cfg:get([amqp_access, write]),
-	      read = true %% fs_toolkit_cfg:get([amqp_access, read])
-	     },
-
-            case amqp_channel:call(Channel, Access) of
-                #'access.request_ok'{ticket = Ticket} ->
-                    MRef = erlang:monitor(process, Pid),
-                    {reply,
-		     {ok, Channel, Ticket},
-		     State#state{channels=[{Pid, Channel, Ticket, MRef} | Channels]}
+	    case open_amqp_channel(Connection, Pid) of
+		{Channel, MRef, Ticket} ->
+                    {reply
+		     ,{ok, Channel, Ticket}
+		     ,State#state{channels=[{Pid, Channel, Ticket, MRef} | Channels]}
                     };
-
                 Fail ->
-		    format_log(error, "AMQP_MGR(~p): Failed to access Channel(~p): ~p~n", [self(), Channel, Fail]),
+		    format_log(error, "AMQP_MGR(~p): Failed to access Channel: ~p~n", [self(), Fail]),
                     {reply, {error, Fail}, State}
             end
     end;
@@ -242,7 +250,35 @@ close_all_channels([{_Pid, Channel, _Ticket, MRef} | T]) ->
     end,
     close_all_channels(T).
 
+-spec(create_amqp_params/1 :: (Host :: string()) -> tuple()).
+create_amqp_params(Host) ->
+    create_amqp_params(Host, 5672).
+-spec(create_amqp_params/2 :: (Host :: string(), Port :: integer()) -> tuple()).
+create_amqp_params(Host, Port) ->
+    #'amqp_params'{
+		    port = Port
+		    ,host = Host
+		  }.
+
 get_new_connection(#'amqp_params'{}=P) ->
     Connection = amqp_connection:start_network_link(P),
     MRefConn = erlang:monitor(process, Connection),
     {Connection, MRefConn}.
+
+-spec(open_amqp_channel/2 :: (Connection :: pid(), Pid :: pid()) -> tuple(pid(), integer(), reference()) | any()).
+open_amqp_channel(Connection, Pid) ->
+    %% Open an AMQP channel to access our realm
+    Channel = amqp_connection:open_channel(Connection),
+    format_log(info, "AMQP_MGR(~p): Open channel(~p) for ~p~n", [self(), Channel, Pid]),
+
+    %% if a message is returned, we need to handle it
+    amqp_channel:register_return_handler(Channel, Pid),
+
+    Access = amqp_util:access_request(),
+
+    case amqp_channel:call(Channel, Access) of
+	#'access.request_ok'{ticket = Ticket} ->
+	    MRef = erlang:monitor(process, Pid),
+	    {Channel, MRef, Ticket};
+	Fail -> Fail
+    end.

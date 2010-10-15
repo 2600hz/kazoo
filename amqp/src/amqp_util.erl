@@ -24,6 +24,8 @@
 -export([new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5
 	 , channel_close/0, channel_close/1, channel_close/2, queue_delete/2,queue_delete/3]).
 
+-export([access_request/0]).
+
 -define(EXCHANGE_TARGETED, <<"targeted">>).
 -define(TYPE_TARGETED, <<"direct">>).
 
@@ -297,3 +299,13 @@ queue_delete(Ticket, Queue, Prop) ->
 	      ,if_empty = get_value(if_empty, Prop, false)
 	      ,nowait = get_value(nowait, Prop, true)
 	     }.
+
+access_request() ->
+    #'access.request'{
+		realm = <<"/data">>
+		,exclusive = false
+		,passive = true
+		,active = true
+		,write = true
+		,read = true
+	       }.
