@@ -2,7 +2,7 @@
   <settings>
     <param name="listen-ip" value="0.0.0.0"/>
     <param name="listen-port" value="8031"/>
-    <param name="cookie" value="ClueCon"/>
+    <param name="cookie-file" value="$${base_dir}/conf/autoload_configs/.erlang.cookie" />
     <param name="shortname" value="false"/>
     <param name="nodename" value="freeswitch@sub.domain.tld" />
     <!-- in additon to cookie, optionally restrict by ACL -->
