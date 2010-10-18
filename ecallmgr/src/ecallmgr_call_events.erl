@@ -16,7 +16,7 @@
 -import(logger, [log/2, format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
-%% Node, UUID, {Channel, Ticket, EvtQueue}
+%% Node, UUID, {AmqpHost, EvtQueue}, CtlPid
 start(Node, UUID, Amqp, CtlPid) ->
     spawn(ecallmgr_call_events, init, [Node, UUID, Amqp, CtlPid]).
 
@@ -24,7 +24,7 @@ init(Node, UUID, Amqp, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
     loop(UUID, Amqp, CtlPid).
 
-%% Amqp = {Channel, Ticket, EvtQueue}
+%% Amqp = {Host, EvtQueue}
 loop(UUID, Amqp, CtlPid) ->
     receive
 	{call, {event, [UUID | Data]}} ->
@@ -52,12 +52,11 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
-remove_queue({Channel, Ticket, EvtQueue}) ->
-    QD = amqp_util:queue_delete(Ticket, EvtQueue),
-    format_log(info, "EVT(~p): Delete Queue ~p~n", [self(), QD]),
-    amqp_channel:cast(Channel, QD).
+remove_queue({AmqpHost, EvtQueue}) ->
+    format_log(info, "EVT(~p): Delete Queue.~n", [self()]),
+    amqp_util:queue_delete(AmqpHost, EvtQueue).
 
-publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
+publish_msg({AmqpHost, EvtQueue}, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
@@ -81,13 +80,11 @@ publish_msg({Channel, Ticket, EvtQueue}, Prop) ->
 
 	    case whistle_api:call_event(EvtProp1) of
 		{ok, JSON} ->
-		    {BP, AmqpMsg} = amqp_util:callevt_publish(Ticket
-							      ,EvtQueue
-							      ,list_to_binary(JSON)
-							      ,<<"application/json">>
-							     ),
-		    %% execute the publish command
-		    amqp_channel:call(Channel, BP, AmqpMsg);
+		    amqp_util:callevt_publish(AmqpHost
+					      ,EvtQueue
+					      ,list_to_binary(JSON)
+					      ,<<"application/json">>
+					     );
 		{error, Msg} ->
 		    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
 	    end;

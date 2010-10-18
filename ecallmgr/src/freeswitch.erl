@@ -380,5 +380,7 @@ start_event_handler(Node, Module, Function, State) ->
 %% This function returns either `{ok, Pid}' where `Pid' is the pid of the newly
 %% spawned process, `{error, Reason}' or the atom `timeout' if FreeSWITCH did
 %% not respond.
+-spec(start_fetch_handler/5 :: (Node :: atom(), Section :: atom(), Module :: atom(), Function :: atom(), State :: any()) ->
+				    {ok, pid()} | {error, any()}).
 start_fetch_handler(Node, Section, Module, Function, State) ->
 	start_handler(Node, {bind, Section}, Module, Function, State).

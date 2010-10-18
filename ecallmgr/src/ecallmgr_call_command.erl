@@ -9,10 +9,10 @@
 
 -module(ecallmgr_call_command).
 
--export([exec_cmd/3]).
+-export([exec_cmd/4]).
 
 -import(logger, [log/2, format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 
 -define(LOCAL_MEDIA_PATH, "/tmp/").
 
@@ -20,17 +20,17 @@
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
--spec(exec_cmd/3 :: (Node :: list(), UUID :: binary(), Prop :: proplist()) -> ok | timeout | {error, string()}).
-exec_cmd(Node, UUID, Prop) ->
+-spec(exec_cmd/4 :: (Node :: list(), UUID :: binary(), Prop :: proplist(), AmqpHost :: string()) -> ok | timeout | {error, string()}).
+exec_cmd(Node, UUID, Prop, AmqpHost) ->
     DestID = get_value(<<"Call-ID">>, Prop),
     case DestID =:= UUID of
-	true -> exec_cmd(Node, UUID, Prop, get_value(<<"Application-Name">>, Prop));
+	true -> exec_cmd(Node, UUID, Prop, AmqpHost, get_value(<<"Application-Name">>, Prop));
 	false -> format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
 		 {error, "Command not for this node"}
     end.
 
--spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), Application :: binary()) -> ok | timeout | {error, string()}).
-exec_cmd(Node, UUID, Prop, <<"play">>) ->
+-spec(exec_cmd/5 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), AmqpHost :: string(), Application :: binary()) -> ok | timeout | {error, string()}).
+exec_cmd(Node, UUID, Prop, _AmqpHost, <<"play">>) ->
     case whistle_api:play_req_v(Prop) of
 	false -> {error, "play failed to execute as Prop did not validate."};
 	true ->
@@ -38,9 +38,9 @@ exec_cmd(Node, UUID, Prop, <<"play">>) ->
 	    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
 	    send_cmd(Node, UUID, "playback", F)
     end;
-exec_cmd(Node, UUID, _Prop, <<"hangup">>) ->
+exec_cmd(Node, UUID, _Prop, _AmqpHost, <<"hangup">>) ->
     send_cmd(Node, UUID, "hangup", "");
-exec_cmd(Node, UUID, Prop, <<"play_and_collect_digits">>) ->
+exec_cmd(Node, UUID, Prop, _AmqpHost, <<"play_and_collect_digits">>) ->
     case whistle_api:play_collect_digits_req_v(Prop) of
 	false -> {error, "play_and_collect_digits failed to execute as Prop did not validate."};
 	true ->
@@ -57,7 +57,7 @@ exec_cmd(Node, UUID, Prop, <<"play_and_collect_digits">>) ->
 				   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
 	    send_cmd(Node, UUID, "play_and_get_digits", Data)
     end;
-exec_cmd(Node, UUID, Prop, <<"record">>) ->
+exec_cmd(Node, UUID, Prop, _AmqpHost, <<"record">>) ->
     case whistle_api:record_req_v(Prop) of
 	false -> {error, "record failed to execute as Prop did not validate."};
 	true ->
@@ -71,7 +71,7 @@ exec_cmd(Node, UUID, Prop, <<"record">>) ->
 	    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
 	    send_cmd(Node, UUID, "record", RecArg)
     end;
-exec_cmd(_Node, UUID, Prop, <<"store">>) ->
+exec_cmd(_Node, UUID, Prop, AmqpHost, <<"store">>) ->
     case whistle_api:store_req_v(Prop) of
 	false -> {error, "store failed to execute as Prop did not validate."};
 	true ->
@@ -86,13 +86,13 @@ exec_cmd(_Node, UUID, Prop, <<"store">>) ->
 				       ,{<<"Media-Name">>, Name}
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
-			    spawn(fun() -> stream_over_amqp(File, Prop, Headers) end);
+			    spawn(fun() -> stream_over_amqp(File, Prop, Headers, AmqpHost) end);
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
-			    spawn(fun() -> stream_over_http(File, Verb, Prop) end);
+			    spawn(fun() -> stream_over_http(File, Verb, Prop, AmqpHost) end);
 			<<"post">>=Verb ->
 			    %% stream file over HTTP PUSH
-			    spawn(fun() -> stream_over_http(File, Verb, Prop) end);
+			    spawn(fun() -> stream_over_http(File, Verb, Prop, AmqpHost) end);
 			false ->
 			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), File]);
 			_Method ->
@@ -103,7 +103,7 @@ exec_cmd(_Node, UUID, Prop, <<"store">>) ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
 	    end
     end;
-exec_cmd(Node, UUID, Prop, <<"tones">>) ->
+exec_cmd(Node, UUID, Prop, _AmqpHost, <<"tones">>) ->
     case whistle_api:tones_req_v(Prop) of
 	false -> {error, "store failed to execute as Prop did not validate."};
 	true ->
@@ -126,17 +126,17 @@ exec_cmd(Node, UUID, Prop, <<"tones">>) ->
 	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
 	    send_cmd(Node, UUID, "playback", Arg)
     end;
-exec_cmd(Node, UUID, _Prop, <<"answer">>) ->
+exec_cmd(Node, UUID, _Prop, _AmqpHost, <<"answer">>) ->
     send_cmd(Node, UUID, "answer", "");
-exec_cmd(Node, UUID, _Prop, <<"park">>) ->
+exec_cmd(Node, UUID, _Prop, _AmqpHost, <<"park">>) ->
     send_cmd(Node, UUID, "park", "");
-exec_cmd(Node, UUID, Prop, <<"sleep">>) ->
+exec_cmd(Node, UUID, Prop, _AmqpHost, <<"sleep">>) ->
     case whistle_api:sleep_req_v(Prop) of
 	false -> {error, "sleep failed to execute as Prop did not validate."};
 	true ->
 	    send_cmd(Node, UUID, "sleep", integer_to_list(get_value(<<"Amount">>, Prop)))
     end;
-exec_cmd(Node, UUID, Prop, <<"say">>) ->
+exec_cmd(Node, UUID, Prop, _AmqpHost, <<"say">>) ->
     case whistle_api:say_req_v(Prop) of
 	false -> {error, "say failed to execute as Prop did not validate."};
 	true ->
@@ -147,7 +147,7 @@ exec_cmd(Node, UUID, Prop, <<"say">>) ->
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
 	    send_cmd(Node, UUID, "say", Arg)
     end;
-exec_cmd(Node, UUID, Prop, <<"bridge">>) ->
+exec_cmd(Node, UUID, Prop, _AmqpHost, <<"bridge">>) ->
     case whistle_api:bridge_req_v(Prop) of
 	false -> {error, "bridge failed to execute as Prop did not validate."};
 	true ->
@@ -165,7 +165,7 @@ exec_cmd(Node, UUID, Prop, <<"bridge">>) ->
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
 	    send_cmd(Node, UUID, "bridge", BridgeCmd)
     end;
-exec_cmd(_Node, _UUID, _Prop, _App) ->
+exec_cmd(_Node, _UUID, _Prop, _AmqpHost, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
 
 %%%===================================================================
@@ -213,8 +213,8 @@ media_path(UUID, Name) ->
 get_media_path(Name) ->
     binary_to_list(list_to_binary([?LOCAL_MEDIA_PATH, Name, ".wav"])).
 
--spec(stream_over_amqp/3 :: (File :: list(), Prop :: proplist(), Headers :: proplist()) -> no_return()).
-stream_over_amqp(File, Prop, Headers) ->
+-spec(stream_over_amqp/4 :: (File :: list(), Prop :: proplist(), Headers :: proplist(), AmqpHost :: string()) -> no_return()).
+stream_over_amqp(File, Prop, Headers, AmqpHost) ->
     DestQ = case get_value(<<"Media-Transfer-Destination">>, Prop) of
 		undefined ->
 		    get_value(<<"Server-ID">>, Prop);
@@ -223,11 +223,11 @@ stream_over_amqp(File, Prop, Headers) ->
 		Q ->
 		    Q
 	    end,
-    stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1).
+    stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1, AmqpHost).
 
 %% get a chunk of the file and send it in an AMQP message to the DestQ
--spec(stream_over_amqp/5 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer()) -> no_return()).
-stream_over_amqp(DestQ, F, State, Headers, Seq) ->
+-spec(stream_over_amqp/6 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer(), AmqpHost :: string()) -> no_return()).
+stream_over_amqp(DestQ, F, State, Headers, Seq, AmqpHost) ->
     case F(State) of
 	{ok, Data, State1} ->
 	    %% send msg
@@ -235,19 +235,19 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    ecallmgr_amqp:publish(JSON, targeted, DestQ),
-	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1);
+	    amqp_util:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
+	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1, AmqpHost);
 	eof ->
 	    Msg = [{<<"Media-Content">>, <<"eof">>}
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    ecallmgr_amqp:publish(JSON, targeted, DestQ),
+	    amqp_util:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
 	    eof
     end.
 
--spec(stream_over_http/3 :: (File :: list(), Verb :: binary(), Prop :: proplist()) -> no_return()).
-stream_over_http(File, Verb, Prop) ->
+-spec(stream_over_http/4 :: (File :: list(), Verb :: binary(), Prop :: proplist(), AmqpHost :: string()) -> no_return()).
+stream_over_http(File, Verb, Prop, AmqpHost) ->
     Url = binary_to_list(get_value(<<"Media-Transfer-Destination">>, Prop)),
     {struct, AddHeaders} = get_value(<<"Additional-Headers">>, Prop, {struct, []}),
     Headers = [{"Content-Length", filelib:file_size(File)}
@@ -266,7 +266,7 @@ stream_over_http(File, Verb, Prop) ->
 					      | Prop]) of
 		{ok, JSON} ->
 		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
-		    ecallmgr_amqp:publish(JSON, targeted, AppQ);
+		    amqp_util:targeted_publish(AmqpHost, AppQ, JSON, <<"application/json">>);
 		{error, Msg} ->
 		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
 	    end;

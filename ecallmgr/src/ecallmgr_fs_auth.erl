@@ -9,8 +9,8 @@
 -module(ecallmgr_fs_auth).
 
 %% API
--export([start_handler/1]).
--export([fetch_user/2]).
+-export([start_handler/2]).
+-export([fetch_user/2, lookup_user/5]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -27,30 +27,27 @@
 
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
-		       ,channel = undefined :: pid()
-		       ,ticket = 0 :: integer()
-		       ,app_vsn = [] :: list()
+		       ,amqp_host = "" :: string()
+		       ,app_vsn = [] :: string()
 		       ,stats = #handler_stats{} :: tuple()
 		       ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
-start_handler(Node) ->
+-spec(start_handler/2 :: (Node :: atom(), AmqpHost :: string()) -> pid()).
+start_handler(Node, AmqpHost) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn)},
+    HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn)},
     {ok, APid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_user, HState),
     APid.
 
-fetch_user(Node, #handler_state{channel=undefined}=State) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    fetch_user(Node, State#handler_state{channel=Channel, ticket=Ticket});
-fetch_user(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=State) ->
+-spec(fetch_user/2 :: (Node :: atom(), State :: tuple()) -> no_return()).
+fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State) ->
     receive
 	{fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]} ->
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
 		    Self = self(),
-		    LookupPid = spawn(fun() -> lookup_user(State, ID, Self, Data) end),
-		    link(LookupPid),
+		    LookupPid = spawn_link(?MODULE, lookup_user, [State, ID, Self, Host, Data]),
 		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 		    format_log(info, "FETCH_USER(~p): fetch directory: Id: ~p Lookup ~p (Number ~p)~n", [self(), ID, LookupPid, LookupsReq]),
 		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()} | LUs]
@@ -71,10 +68,6 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=State
 	    format_log(info, "FETCH_USER(~p): Received XML for ID ~p~n", [self(), ID]),
 	    freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_user(Node, State);
-	{'EXIT', Channel, noconnection} ->
-	    {ok, Channel1, Ticket1} = amqp_manager:open_channel(self()),
-	    format_log(error, "FETCH_USER(~p): Channel(~p) went down; replaced with ~p~n", [self(), Channel, Channel1]),
-	    ?MODULE:fetch_user(Node, State#handler_state{channel=Channel1, ticket=Ticket1});
 	shutdown ->
 	    lists:foreach(fun({Pid,_StartTime}) ->
 				  case erlang:is_process_alive(Pid) of
@@ -92,6 +85,7 @@ fetch_user(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=State
 		    ,{lookups_failed, Stats#handler_stats.lookups_failed}
 		    ,{lookups_timeout, Stats#handler_stats.lookups_timeout}
 		    ,{lookups_requested, Stats#handler_stats.lookups_requested}
+		    ,{amqp_host, Host}
 		   ],
 	    Pid ! Resp,
 	    ?MODULE:fetch_user(Node, State);
@@ -117,9 +111,9 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
 	    ?MODULE:fetch_user(Node, State)
     end.
 
-lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, FetchPid, Data) ->
-    format_log(info, "L/U.user(~p): Starting up...~nC: ~p T: ~p ID: ~p FetchPid: ~p~n", [self(), Channel, Ticket, ID, FetchPid]),
-    Q = bind_q(Channel, Ticket, ID),
+lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
+    format_log(info, "L/U.user(~p): Starting up...~nAH: ~p ID: ~p FetchPid: ~p~n", [self(), AmqpHost, ID, FetchPid]),
+    Q = bind_q(AmqpHost, ID),
 
     %% build req for rabbit
     Prop = [{<<"Msg-ID">>, ID}
@@ -131,13 +125,14 @@ lookup_user(#handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, ID, Fet
 	    | whistle_api:default_headers(Q, <<"directory">>, <<"auth_req">>, <<"ecallmgr.auth">>, Vsn)],
     EndResult = case whistle_api:auth_req(Prop) of
 		    {ok, JSON} ->
-			format_log(info, "L/U.user(~p): Sending JSON over Channel(~p)~n~s~n", [self(), Channel, JSON]),
-			send_request(Channel, Ticket, JSON),
+			format_log(info, "L/U.user(~p): Sending JSON to Host(~p)~n~s~n", [self(), AmqpHost, JSON]),
+			send_request(AmqpHost, JSON),
 			Result = handle_response(ID, Data, FetchPid),
-			amqp_channel:call(Channel, amqp_util:queue_delete(Ticket, Q)),
+			amqp_util:queue_delete(AmqpHost, Q),
 			Result;
 		    {error, _Msg} ->
 			format_log(error, "L/U.user(~p): Auth_Req API error ~p~n", [self(), _Msg]),
+			amqp_util:queue_delete(AmqpHost, Q),
 			failed
 		end,
     FetchPid ! {lookup_finished, self(), EndResult}.
@@ -171,21 +166,20 @@ recv_response(ID) ->
 	    timeout
     end.
 
-bind_q(Channel, Ticket, ID) ->
-    amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
-    amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
-    #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, ID)),
-    amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
-    amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
+bind_q(AmqpHost, ID) ->
+    amqp_util:targeted_exchange(AmqpHost),
+    amqp_util:broadcast_exchange(AmqpHost),
+    Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
+    amqp_util:bind_q_to_targeted(AmqpHost, Queue),
+    amqp_util:basic_consume(AmqpHost, Queue, self()),
     Queue.
 
 a1hash(User, Realm, Password) ->
     format_log(info, "L/U.user(~p): a1hashing ~p:~p:~p~n", [self(), User, Realm, Password]),
     ecallmgr_util:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
-send_request(Channel, Ticket, JSON) ->
-    {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
-    amqp_channel:cast(Channel, BP, AmqpMsg).
+send_request(Host, JSON) ->
+    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>).
 
 handle_response(ID, Data, FetchPid) ->
     T1 = erlang:now(),

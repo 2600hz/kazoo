@@ -10,7 +10,7 @@
 -module(ecallmgr_fs_route).
 
 %% API
--export([start_handler/1]).
+-export([start_handler/2]).
 -export([fetch_route/2, lookup_route/6]).
 
 -import(props, [get_value/2, get_value/3]).
@@ -27,23 +27,20 @@
 		       }).
 
 -record(handler_state, {fs_node :: atom()
-			,channel :: pid()
-			,ticket :: integer()
+			,amqp_host = "" :: string()
 			,app_vsn :: binary()
 			,stats = #handler_stats{} :: tuple()
 			,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
-start_handler(Node) ->
+-spec(start_handler/2 :: (Node :: atom(), Host :: string()) -> pid()).
+start_handler(Node, Host) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn)},
+    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), amqp_host=Host},
     {ok, RPid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, fetch_route, HState),
     RPid.
 
-fetch_route(Node, #handler_state{channel=undefined}=State) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    fetch_route(Node, State#handler_state{channel=Channel, ticket=Ticket});
-fetch_route(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=State) ->
+fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State) ->
     receive
 	{fetch, dialplan, _Tag, _Key, _Value, ID, [UUID | Data]} ->
 	    case get_value(<<"Event-Name">>, Data) of
@@ -70,10 +67,6 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=Stat
 	    format_log(info, "FETCH_ROUTE(~p): Received XML for ID ~p~n", [self(), ID]),
 	    freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_route(Node, State);
-	{'EXIT', Channel, noconnection} ->
-	    {ok, Channel1, Ticket1} = amqp_manager:open_channel(self()),
-	    format_log(error, "FETCH_ROUTE(~p): Channel(~p) went down; replaced with ~p~n", [self(), Channel, Channel1]),
-	    ?MODULE:fetch_route(Node, State#handler_state{channel=Channel1, ticket=Ticket1});
 	shutdown ->
 	    lists:foreach(fun({Pid,_StartTime}) ->
 				  case erlang:is_process_alive(Pid) of
@@ -92,6 +85,7 @@ fetch_route(Node, #handler_state{channel=Channel, lookups=LUs, stats=Stats}=Stat
 		    ,{lookups_failed, Stats#handler_stats.lookups_failed}
 		    ,{lookups_timeout, Stats#handler_stats.lookups_timeout}
 		    ,{lookups_requested, Stats#handler_stats.lookups_requested}
+		    ,{amqp_host, Host}
 		   ],
 	    Pid ! Resp,
 	    ?MODULE:fetch_route(Node, State);
@@ -118,9 +112,9 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
 
 -spec(lookup_route/6 :: (Node :: atom(), HState :: tuple(), ID :: binary(), UUID :: binary(), FetchPid :: pid(), Data :: proplist()) ->
 			     no_return()).
-lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=HState, ID, UUID, FetchPid, Data) ->
-    Q = bind_q(Channel, Ticket, ID),
-    {EvtQ, CtlQ} = bind_channel_qs(Channel, Ticket, UUID, Node),
+lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID, FetchPid, Data) ->
+    Q = bind_q(Host, ID),
+    {EvtQ, CtlQ} = bind_channel_qs(Host, UUID, Node),
 
     DefProp = [{<<"Msg-ID">>, ID}
 	       ,{<<"Caller-ID-Name">>, get_value(<<"Caller-Caller-ID-Name">>, Data)}
@@ -133,10 +127,10 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
 	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, Vsn)],
     EndResult = case whistle_api:route_req(DefProp) of
 		    {ok, JSON} ->
-			format_log(info, "L/U.route(~p): Sending RouteReq JSON over Channel(~p)~n", [self(), Channel]),
-			send_request(Channel, Ticket, JSON),
+			format_log(info, "L/U.route(~p): Sending RouteReq JSON to Host(~p)~n", [self(), Host]),
+			send_request(Host, JSON),
 			Result = handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid),
-			ecallmgr_amqp:delete_queue(Q),
+			amqp_util:queue_delete(Host, Q),
 			Result;
 		    {error, _Msg} ->
 			format_log(error, "L/U.route(~p): Route Req API error ~p~n", [self(), _Msg]),
@@ -144,9 +138,8 @@ lookup_route(Node, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}=H
 		end,
     FetchPid ! {lookup_finished, self(), EndResult}.
 
-send_request(Channel, Ticket, JSON) ->
-    {BP, AmqpMsg} = amqp_util:broadcast_publish(Ticket, JSON, <<"application/json">>),
-    amqp_channel:cast(Channel, BP, AmqpMsg).
+send_request(Host, JSON) ->
+    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>).
 
 recv_response(ID) ->
     receive
@@ -176,40 +169,39 @@ recv_response(ID) ->
 	    timeout
     end.
 
-bind_q(Channel, Ticket, ID) ->
-    amqp_channel:call(Channel, amqp_util:targeted_exchange(Ticket)),
-    amqp_channel:call(Channel, amqp_util:broadcast_exchange(Ticket)),
-    #'queue.declare_ok'{queue = Queue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, ID)),
-    amqp_channel:call(Channel, amqp_util:bind_q_to_targeted(Ticket, Queue, Queue)),
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, Queue), self()),
+bind_q(AmqpHost, ID) ->
+    amqp_util:targeted_exchange(AmqpHost),
+    amqp_util:broadcast_exchange(AmqpHost),
+    Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
+    amqp_util:bind_q_to_targeted(AmqpHost, Queue),
+    amqp_util:basic_consume(AmqpHost, Queue, self()),
     Queue.
 
 %% creates the event and control queues for the call, spins up the event handler
 %% to pump messages to the queue, and returns the control queue
-bind_channel_qs(Channel, Ticket, UUID, Node) ->
-    amqp_channel:call(Channel, amqp_util:callevt_exchange(Ticket)),
-    amqp_channel:call(Channel, amqp_util:callctl_exchange(Ticket)),
+bind_channel_qs(Host, UUID, Node) ->
+    amqp_util:callevt_exchange(Host),
+    amqp_util:callctl_exchange(Host),
 
-    #'queue.declare_ok'{queue = EvtQueue} = amqp_channel:call(Channel, amqp_util:new_callevt_queue(Ticket, UUID)),
-    #'queue.declare_ok'{queue = CtlQueue} = amqp_channel:call(Channel, amqp_util:new_callctl_queue(Ticket, UUID)),
+    EvtQueue = amqp_util:new_callevt_queue(Host, UUID),
+    CtlQueue = amqp_util:new_callctl_queue(Host, UUID),
 
-    amqp_channel:call(Channel, amqp_util:bind_q_to_callevt(Ticket, EvtQueue, EvtQueue)),
-    amqp_channel:call(Channel, amqp_util:bind_q_to_callctl(Ticket, CtlQueue, CtlQueue)),
+    amqp_util:bind_q_to_callevt(Host, EvtQueue),
+    amqp_util:bind_q_to_callctl(Host, CtlQueue),
 
-    CtlPid = ecallmgr_call_control:start(Node, UUID, {Channel, Ticket, CtlQueue}),
-    ecallmgr_call_events:start(Node, UUID, {Channel, Ticket, EvtQueue}, CtlPid),
+    CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
+    ecallmgr_call_events:start(Node, UUID, {Host, EvtQueue}, CtlPid),
     {EvtQueue, CtlQueue}.
 
-send_control_queue(_Channel, _Ticket, _Q, undefined) ->
+send_control_queue(_Host, _Q, undefined) ->
     format_log(error, "L/U.route(~p): Cannot send control Q(~p) to undefined server-id~n", [self(), _Q]),
     failed;
-send_control_queue(Channel, Ticket, CtlProp, AppQ) ->
+send_control_queue(Host, CtlProp, AppQ) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->
-	    {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, AppQ, JSON, <<"application/json">>),
+	    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>),
 	    %% execute the publish command
 	    format_log(info, "L/U.route(~p): Sending AppQ(~p) the control Q~n", [self(), AppQ]),
-	    amqp_channel:cast(Channel, BP, AmqpMsg),
 	    success;
 	{error, _Msg} ->
 	    format_log(error, "L/U.route(~p): Sending Ctl to AppQ(~p) failed: ~p~n", [self(), AppQ, _Msg]),
@@ -267,7 +259,7 @@ get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "L/U.route(~p): Unknown channel var ~s::~s~n", [self(), _K, _V]),
     Vars.
 
-handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{channel=Channel, ticket=Ticket, app_vsn=Vsn}, FetchPid) ->
+handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid) ->
     T1 = erlang:now(),
     case recv_response(ID) of
 	shutdown ->
@@ -289,6 +281,6 @@ handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{channel=Channel, ticket=Tic
 		       ,{<<"Event-Queue">>, EvtQ}
 		       ,{<<"Control-Queue">>, CtlQ}
 		       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, <<"ecallmgr.route">>, Vsn)],
-	    send_control_queue(Channel, Ticket, CtlProp
+	    send_control_queue(Host, CtlProp
 			       ,get_value(<<"Destination-Server">>, Prop, get_value(<<"Server-ID">>, Prop)))
     end.

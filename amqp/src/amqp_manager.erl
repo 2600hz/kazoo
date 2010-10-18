@@ -1,7 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% File    : amqp_manager.erl
-%%% Author  : K Anderson
-%%% Description : The fs_toolkit AMQP connection manager.  
+%%% Authors  : K Anderson
+%%%          : James Aimonetti
+%%% Description : The AMQP connection manager.
 %%%
 %%% Created :  March 24 2010
 %%%-------------------------------------------------------------------
@@ -16,12 +17,16 @@
          terminate/2, code_change/3]).
 
 %% API
--export([start_link/0, start/0, open_channel/1, open_channel/2, close_channel/1, stop/0]).
+-export([start_link/0, start/0, open_channel/1, open_channel/2, close_channel/2, stop/0]).
 
-%% channels = [{Pid, Channel, Ticket, Ref} | {Pid, Channel, Ticket, Ref, Host, HostConn, HostRef}]
--record(state, {connection, conn_params, channels}).
 -define(SERVER, ?MODULE).
 -define(DEFAULT_AMQP_HOST, "whistle-erl001-fmt.2600hz.org").
+
+%% [ {connection, Connection, MRef} OR {ProcessPid, ChannelPid, MRef, Ticket} ]
+%% state = [ {Host, host_info()} ]
+-type amqp_host_info() :: list(tuple(connection, pid(), reference()) | tuple(pid(), pid(), reference(), integer())).
+
+-type amqp_mgr_state() :: list(tuple(string(), amqp_host_info())).
 
 %%====================================================================
 %% API
@@ -36,15 +41,21 @@ start_link() ->
 start() ->
     gen_server:start({local, ?SERVER}, ?MODULE, [], []).
 
+%% returns {ok, Channel, Ticket}
+-spec(open_channel/1 :: ( Pid :: pid()) -> {ok, pid(), integer()}).
 open_channel(Pid) ->
-    gen_server:call(?SERVER, {open_channel, Pid}, infinity).
+    format_log(error, "AMQP_MGR: open_channel/1 is deprecated. Please use open_channel/2 (Pid, Host)~n", []),
+    gen_server:call(?SERVER, {open_channel, Pid, ?DEFAULT_AMQP_HOST}, infinity).
 
+-spec(open_channel/2 :: ( Pid :: pid(), Host :: string() ) -> {ok, pid(), integer()}).
 open_channel(Pid, Host) ->
     gen_server:call(?SERVER, {open_channel, Pid, Host}, infinity).
 
-close_channel(Pid) ->
-    gen_server:cast(?SERVER, {close_channel, Pid}).
+-spec(close_channel/2 :: (Pid :: pid(), Host :: string() ) -> ok).
+close_channel(Pid, Host) ->
+    gen_server:cast(?SERVER, {close_channel, Pid, Host}).
 
+-spec(stop/0 :: () -> no_return()).
 stop() ->
     exit(whereis(?SERVER), normal).
 
@@ -59,42 +70,11 @@ stop() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
+-spec(init/1 :: (list()) -> tuple(ok, amqp_mgr_state())).
 init([]) ->
     %% Start a connection to the AMQP broker server
     process_flag(trap_exit, true),
-
-    LocalP = create_amqp_params(net_adm:localhost()),
-    try
-	format_log(info, "AMQP_MGR(init): Trying localhost(~p) for connection~n", [net_adm:localhost()]),
-	C = get_new_connection(LocalP),
-	{ok, #state{connection=C, conn_params=LocalP, channels = []}}
-    catch
-	_:Reason ->
-	    format_log(error, "AMQP_MGR(init): Failed to start localhost connection: ~p~n", [Reason]),
-	    
-	    P = create_amqp_params(?DEFAULT_AMQP_HOST),
-	    format_log(info, "AMQP_MGR(init): Failed to find amqp on localhost. Trying ~p~n", [?DEFAULT_AMQP_HOST]),
-	    try
-		C1 = get_new_connection(P),
-		{ok, #state{connection=C1, conn_params=P, channels = []}}
-	    catch
-		_:Reason ->
-		    format_log(error, "AMQP_MGR(init): Failed to start connection: ~p~n", [Reason]),
-		    {stop, Reason}
-	    end
-    end;
-init([#'amqp_params'{}=P]) ->
-    process_flag(trap_exit, true),
-    format_log(info, "AMQP_MGR(init): Trying to connect to amqp on ~p~n", [#'amqp_params'.host]),
-
-    try
-	C = get_new_connection(P),
-	{ok, #state{connection=C, conn_params=P, channels=[]}}
-    catch
-	_:Reason ->
-	    format_log(error, "AMQP_MGR(init): Failed to start connection: ~p~n", [Reason]),
-	    {stop, Reason}
-    end.
+    {ok, []}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -105,58 +85,47 @@ init([#'amqp_params'{}=P]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%
-%% channels = [{Pid, Channel, Ticket, Ref} | {Pid, Channel, Ticket, Ref, Host, HostConn, HostRef}]
+%% Hosts = [{Host, HostInfo}]
+%% HostInfo = [
+%%   {connection, Conn, MRef}, <- 1 and only 1
+%%   {ProcessPid, Channel, Ticket, MRef} <- 0 or more
+%% ]
 %%--------------------------------------------------------------------
-handle_call({open_channel, Pid, Host}, _From, #state{channels=Channels}=State) ->
-    format_log(info, "AMQP_MGR(~p): Start channel using a different host (~p)~n", [self(), Host]),
-    case lists:keyfind(Pid, 1, Channels) of
-        %% This PID already has a channel, just return it
-        {Pid, Channel, Ticket, _MRef} ->
-	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p~n", [self(), Pid, Channel, Ticket]),
-            {reply, {ok, Channel, Ticket}, State};
-	{Pid, Channel, Ticket, _MRef, Host, _HostRef} ->
-	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p from Host(~p)~n", [self(), Pid, Channel, Ticket, Host]),
-	    {reply, {ok, Channel, Ticket}, State};
-        false ->
-	    {HostConn, HostRef} = get_new_connection(create_amqp_params(Host)),
-	    case open_amqp_channel(HostConn, Pid) of
-		{HostChannel, MRef, HostTicket} ->
-                    {reply
-		     ,{ok, HostChannel, HostTicket}
-		     ,State#state{channels=[{Pid, HostChannel, HostTicket, MRef, Host, HostConn, HostRef} | Channels]}
-                    };
-                Fail ->
-		    format_log(error, "AMQP_MGR(~p): Failed to access Channel: ~p~n", [self(), Fail]),
-                    {reply, {error, Fail}, State}
-            end
-    end;
-handle_call({open_channel, _Pid}=Req, From, #state{connection=undefined, conn_params=P}=State) ->
-    format_log(info, "AMQP_MGR(~p): restart connection w/ ~p~n", [self(), P]),
-    handle_call(Req, From, State#state{connection=get_new_connection(P)});
-handle_call({open_channel, Pid}, _From, #state{connection={Connection, _MRefConn}, channels=Channels}=State) ->
-    case lists:keyfind(Pid, 1, Channels) of
-        %% This PID already has a channel, just return it
-        {_Pid, Channel, Ticket, _MRef} ->
-	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p~n", [self(), Pid, Channel, Ticket]),
-            {reply, {ok, Channel, Ticket}, State};
-	{_Pid, Channel, Ticket, _MRef, _Host, _HostConn, _HostRef} ->
-	    format_log(info, "AMQP_MGR(~p): Found Channel for ~p C: ~p T: ~p from Host(~p)~n", [self(), Pid, Channel, Ticket, _Host]),
-	    {reply, {ok, Channel, Ticket}, State};
-        false ->
-	    case open_amqp_channel(Connection, Pid) of
+handle_call({open_channel, Pid, Host}, _From, Hosts) ->
+    case lists:keyfind(Host, 1, Hosts) of
+	%% Unknown Host, need to create a Connection before a channel
+	false ->
+	    {Conn, ConnMRef} = get_new_connection(create_amqp_params(Host)),
+	    case open_amqp_channel(Conn, Pid) of
 		{Channel, MRef, Ticket} ->
-                    {reply
-		     ,{ok, Channel, Ticket}
-		     ,State#state{channels=[{Pid, Channel, Ticket, MRef} | Channels]}
-                    };
-                Fail ->
-		    format_log(error, "AMQP_MGR(~p): Failed to access Channel: ~p~n", [self(), Fail]),
-                    {reply, {error, Fail}, State}
-            end
-    end;
-handle_call(_Request, _From, State) ->
-    format_log(error, "AMQP_MGR(~p): Unhandled call req: ~p~nState: ~p~n", [self(), _Request, State]),
-    {reply, ok, State}.
+		    HostInfo = [{connection, Conn, ConnMRef}, {Pid, Channel, Ticket, MRef}],
+		    format_log(info, "AMQP_MGR(~p): New Host(~p): ~p~n", [self(), Host, HostInfo]),
+		    {reply, {ok, Channel, Ticket}, [{Host, HostInfo} | Hosts]};
+		Fail ->
+		    HostInfo = [{connection, Conn, ConnMRef}],
+		    format_log(error, "AMQP_MGR(~p): Failed to open channel for ~p: ~p~n", [self(), Host, Fail]),
+		    {reply, {error, Fail}, [{Host, HostInfo} | Hosts]}
+	    end;
+	%% Host is known, now look for whether Pid is known
+	{Host, HostInfo} ->
+	    case lists:keyfind(Pid, 1, HostInfo) of
+		%% Pid is not known for the host, create channel
+		false ->
+		    {_, Conn, _} = lists:keyfind(connection, 1, HostInfo),
+		    case open_amqp_channel(Conn, Pid) of
+			{Channel, MRef, Ticket} ->
+			    HostInfo1 = [{Pid, Channel, Ticket, MRef} | HostInfo],
+			    format_log(info, "AMQP_MGR(~p): New Channel for Host(~p): ~p~n", [self(), Host, HostInfo1]),
+			    {reply, {ok, Channel, Ticket}, [{Host, HostInfo1} | lists:keydelete(Host, 1, Hosts)]};
+			Fail ->
+			    format_log(error, "AMQP_MGR(~p): Failed to open channel for ~p: ~p~n", [self(), Host, Fail]),
+			    {reply, {error, Fail}, Hosts}
+		    end;
+		%% Pid is known, meaning channel exists to this Host
+		{Pid, Channel, Ticket, _MRef} ->
+		    {reply, {ok, Channel, Ticket}, Hosts}
+	    end
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -164,23 +133,22 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({close_channel, Pid}, #state{channels=Channels}=State) ->
-    case lists:keyfind(Pid, 1, Channels) of
-        {Pid, Channel, _Ticket, MRef} ->
-	    case erlang:is_process_alive(Channel) of
-		true ->
-		    #'channel.close_ok'{} = amqp_channel:call(Channel, amqp_util:channel_close());
+handle_cast({close_channel, Pid, Host}, Hosts) ->
+    case lists:keyfind(Host, 1, Hosts) of
+	false ->
+	    format_log(error, "AMQP_MGR(~p): Host ~p is not known, can't close channels for ~p~n", [self(), Host, Pid]),
+	    {noreply, Hosts};
+	{Host, HostInfo} ->
+	    case lists:keyfind(Pid, 1, HostInfo) of
 		false ->
-		    ok
-	    end,
-            erlang:demonitor(MRef),
-            {noreply, State#state{channels=lists:keydelete(Pid, 1, Channels)}};
-        false ->
-	    {noreply, State}
-    end;
-handle_cast(_Msg, State) ->
-    format_log(error, "AMQP_MGR(~p): Unhandled cast req: ~p~nState: ~p~n", [self(), _Msg, State]),
-    {noreply, State}.
+		    format_log(error, "AMQP_MGR(~p): Host ~p is known, but pid ~p is not.~n", [self(), Host, Pid]),
+		    {noreply, Hosts};
+		{Pid, Channel, _Ticket, MRef} ->
+		    format_log(info, "AMQP_MGR(~p): Closing down ~p for ~p on host ~p~n", [self(), Channel, Pid, Host]),
+		    close_channel_down(Channel, MRef),
+		    {noreply, [{Host, lists:keydelete(Pid, 1, HostInfo)} | lists:keydelete(Host, 1, Hosts)]}
+	    end
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -188,32 +156,15 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({'DOWN', MRefConn, process, Pid, Reason}, #state{connection={Pid,MRefConn}, conn_params=P, channels=Channels}=State) ->
-    format_log(error, "AMQP_MGR(~p): Conn ~p went down (~p), restart with ~p~n", [self(), Pid, Reason, P]),
-    close_all_channels(Channels),
-    {noreply, State#state{connection=get_new_connection(P), channels=[]}};
-handle_info({'DOWN', _Ref, process, Pid, _Reason}, #state{channels=Channels}=State) ->
-    format_log(error, "AMQP_MGR(~p): Channel ~p went down (~p)~n", [self(), Pid, _Reason]),
-    case lists:keyfind(Pid, 1, Channels) of
-        {Pid, Channel, _Ticket, MRef} ->
-            case erlang:is_process_alive(Channel) of
-		true ->
-		    amqp_manager:close_channel(Channel);
-		false ->
-		    ok
-	    end,
-	    erlang:demonitor(MRef),
-	    {noreply, State#state{channels = lists:keydelete(Pid, 1, Channels)}};
-        false ->
-	    {noreply, State}
-    end;
-handle_info({'EXIT', Pid, Reason}, #state{connection={Pid, _MRefConn}, conn_params=P, channels=Channels}=State) ->
-    format_log(error, "AMQP_MGR(~p): EXIT received for Conn(~p) with reason ~p~n", [self(), Pid, Reason]),
-    close_all_channels(Channels),
-    {noreply, State#state{connection=get_new_connection(P), channels=[]}};
-handle_info(_Info, State) ->
-    format_log(error, "AMQP_MGR(~p): Unhandled info req: ~p~nState: ~p~n", [self(), _Info, State]),
-    {noreply, State}.
+handle_info({'DOWN', _Ref, process, Pid, Reason}, Hosts) ->
+    format_log(error, "AMQP_MGR(~p): ~p went down (~p)~n", [self(), Pid, Reason]),
+    {noreply, Hosts};
+handle_info({'EXIT', Pid, Reason}, Hosts) ->
+    format_log(error, "AMQP_MGR(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, Reason]),
+    {noreply, Hosts};
+handle_info(_Info, Hosts) ->
+    format_log(error, "AMQP_MGR(~p): Unhandled info req: ~p~nHosts: ~p~n", [self(), _Info, Hosts]),
+    {noreply, Hosts}.
 
 %%--------------------------------------------------------------------
 %% Function: terminate(Reason, State) -> void()
@@ -222,33 +173,46 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(Reason, #state{connection=undefined}) ->
-    Reason;
-terminate(Reason, #state{connection={Conn, _MRefConn}, channels=Channels}) ->
-    close_all_channels(Channels),
-    ok = amqp_connection:close(Conn, 200, <<"Goodbye">>),
+terminate(Reason, Hosts) ->
+    close_server(Hosts),
     Reason.
 
 %%--------------------------------------------------------------------
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% Description: Convert process state when code is changed
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+code_change(_OldVsn, Hosts, _Extra) ->
+    {ok, Hosts}.
 
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-close_all_channels([]) -> ok;
-close_all_channels([{_Pid, Channel, _Ticket, MRef} | T]) ->
-    case  is_process_alive(Channel) of
+
+close_server(Hosts) ->
+    lists:foreach(fun({Host, HostInfo}) ->
+			  close_host(Host, HostInfo)
+		  end, Hosts).
+
+close_host(Host, HostInfo) ->
+    lists:foreach(fun({connection, Conn, Ref}) ->
+			  close_conn(Conn, Ref);
+		     ({Pid, Channel, _Ticket, Ref}) ->
+			  close_channel_down(Channel, Ref),
+			  Pid ! {amqp_host_down, Host}
+		  end, HostInfo).
+
+close_conn(Conn, Ref) ->
+    erlang:demonitor(Ref),
+    amqp_connection:close(Conn, 200, <<"Goodbye">>).
+
+close_channel_down(Chan, Ref) ->
+    erlang:demonitor(Ref),
+    case erlang:is_process_alive(Chan) of
 	true ->
-	    amqp_manager:close_channel(Channel),
-	    erlang:demonitor(MRef);
+	    amqp_util:channel_close(Chan);
 	false ->
 	    ok
-    end,
-    close_all_channels(T).
+    end.
 
 -spec(create_amqp_params/1 :: (Host :: string()) -> tuple()).
 create_amqp_params(Host) ->
@@ -260,6 +224,7 @@ create_amqp_params(Host, Port) ->
 		    ,host = Host
 		  }.
 
+-spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
 get_new_connection(#'amqp_params'{}=P) ->
     Connection = amqp_connection:start_network_link(P),
     MRefConn = erlang:monitor(process, Connection),
