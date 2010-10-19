@@ -28,7 +28,6 @@
             <param name="tls" value="false"/>
             <param name="tls-bind-params" value="transport=tls"/>
             <param name="tls-sip-port" value="5070"/>
-            <param name="tls-cert-dir" value="/repository/ROOT/common/ssl"/>
             <param name="tls-version" value="tlsv1"/>        
                     
             
