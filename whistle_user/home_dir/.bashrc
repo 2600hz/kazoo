@@ -1,2 +1,5 @@
 keychain id_dsa
-. ~/.keychain/`uname -n`-sh
+. /home/whistle/.keychain/`uname -n`-sh
+
+export ERL_LIBS=/home/whistle/epm
+export PATH=$PATH:/home/whistle/bin
