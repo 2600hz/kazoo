@@ -158,10 +158,12 @@ handle_cast({close_channel, Pid, Host}, Hosts) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, Reason}, Hosts) ->
     format_log(error, "AMQP_MGR(~p): ~p went down (~p)~n", [self(), Pid, Reason]),
-    {noreply, Hosts};
+    Hosts1 = lists:foldl(fun(HostTuple, Hosts0) -> find_down_pid(Pid, HostTuple, Hosts0) end, [], Hosts),
+    {noreply, Hosts1};
 handle_info({'EXIT', Pid, Reason}, Hosts) ->
     format_log(error, "AMQP_MGR(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, Reason]),
-    {noreply, Hosts};
+    Hosts1 = lists:foldl(fun(HostTuple, Hosts0) -> find_down_pid(Pid, HostTuple, Hosts0) end, [], Hosts),
+    {noreply, Hosts1};
 handle_info(_Info, Hosts) ->
     format_log(error, "AMQP_MGR(~p): Unhandled info req: ~p~nHosts: ~p~n", [self(), _Info, Hosts]),
     {noreply, Hosts}.
@@ -187,6 +189,62 @@ code_change(_OldVsn, Hosts, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+-spec(find_down_pid/3 :: (DownPid :: pid(), Host0 :: tuple(string(), amqp_host_info()), Hosts0 :: amqp_host_info()) -> amqp_host_info()).
+find_down_pid(DownPid, {Host, HostInfo}=Host0, Hosts0) ->
+    %% check HostInfo's connection pid, each channel pid, and each process pid
+    case lists:keyfind(DownPid, 2, HostInfo) of
+	{connection, DownPid, MRef} -> % connection is down
+	    close_host(Host, HostInfo), %% close all channels
+	    try
+		%% restart connection
+		{Conn, ConnMRef} = get_new_connection(create_amqp_params(Host)),
+		HostInfo0 = [{connection, Conn, ConnMRef}],
+
+		%% reopen channels for all process pids
+		HostInfo1 = lists:foldl(fun({ProcessPid, _OldChannel, _OldTicket, _OldMRef}, HostInfoTmp) ->
+						case open_amqp_channel(Conn, ProcessPid) of
+						    {Channel, MRef, Ticket} ->
+							[{Host, [{ProcessPid, Channel, Ticket, MRef} | HostInfoTmp]} | Hosts0];
+						    Fail ->
+							format_log(error, "AMQP_MGR(~p): Failed to start channel during conn recovery for host ~p: ~p~n"
+								   ,[self(), Host, Fail]),
+							[{Host, HostInfoTmp} | Hosts0]
+						end;
+					   ({connection, _, _}, HostInfoTmp) -> HostInfoTmp
+					end, HostInfo0, HostInfo),
+		[{Host, HostInfo1} | Hosts0]
+	    catch
+		_Class:_Error ->
+		    format_log(error, "AMQP_MGR(~p): Exception when recovering a conn to ~p: ~p::~p~n", [self(), Host, _Class, _Error]),
+		    Hosts0
+	    end;
+	false ->
+	    %% check channel pids for down pid
+	    case lists:keyfind(DownPid, 2, HostInfo) of
+		{ProcessPid, DownPid, _Ticket, OldMRef} ->
+		    %% close channel down
+		    close_channel_down(DownPid, OldMRef),
+		    %% restart channel
+		    {connection, Conn, _} = lists:keyfind(connection, 1, HostInfo),
+		    case open_amqp_channel(Conn, ProcessPid) of
+			{Channel, MRef, Ticket} ->
+			    [{Host, [{ProcessPid, Channel, Ticket, MRef} | lists:keydelete(DownPid, 2, HostInfo)]} | Hosts0];
+			Fail ->
+			    format_log(error, "AMQP_MGR(~p): Failed to start channel during channel recovery for host ~p: ~p~n", [self(), Host, Fail]),
+			    [{Host, lists:keydelete(DownPid, 2, HostInfo)} | Hosts0]
+		    end;
+		false ->
+		    case lists:keyfind(DownPid, 1, HostInfo) of
+			{DownPid, Channel, _Ticket, MRef} ->
+			    close_channel_down(Channel, MRef),
+			    %% Process is down, remove channel
+			    [{Host, lists:keydelete(DownPid, 1, HostInfo)} | Host0];
+			false ->
+			    %% unchanged
+			    [Host0 | Hosts0]
+		    end
+	    end
+    end.
 
 close_server(Hosts) ->
     lists:foreach(fun({Host, HostInfo}) ->
