@@ -2,7 +2,7 @@
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 
 -export([targeted_exchange/1, targeted_publish/3, targeted_publish/4]).
 -export([callctl_exchange/1, callctl_publish/3, callctl_publish/4]).
@@ -21,10 +21,10 @@
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2]).
 
--export([new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5
+-export([new_queue/1, new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5
 	 , channel_close/1, channel_close/2, channel_close/3, queue_delete/2,queue_delete/3]).
 
--export([access_request/0]).
+-export([access_request/0, access_request/1]).
 
 -define(EXCHANGE_TARGETED, <<"targeted">>).
 -define(TYPE_TARGETED, <<"direct">>).
@@ -143,7 +143,9 @@ new_callctl_queue(Host, CallId) ->
 	      ,list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
-%% Declare a queue
+%% Declare a queue and returns the queue Name
+new_queue(Host) ->
+    new_queue(Host, <<"">>). % let's the client lib create a random queue name
 new_queue(Host, Queue) ->
     new_queue(Host, Queue, []).
 new_queue(Host, Queue, Prop) when is_list(Queue) ->
@@ -321,11 +323,13 @@ queue_delete(Host, Queue, Prop) ->
     amqp_channel:call(Channel, QD).
 
 access_request() ->
+    access_request([]).
+access_request(Options) ->
     #'access.request'{
-		realm = <<"/data">>
-		,exclusive = false
-		,passive = true
-		,active = true
-		,write = true
-		,read = true
-	       }.
+      realm = get_value(realm, Options, <<"/data">>)
+      ,exclusive = get_value(exclusive, Options, false)
+      ,passive = get_value(passive, Options, true)
+      ,active = get_value(active, Options, true)
+      ,write = get_value(write, Options, true)
+      ,read = get_value(read, Options, true)
+     }.
