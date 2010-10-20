@@ -212,7 +212,7 @@ handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) 
     {reply, Resp, State};
 handle_call({add_fs_node, _Node}, _From, #state{amqp_host=""}=State) ->
     {reply, {error, no_amqp_host_defined}, State};
-handle_call({add_fs_node, _Node}, _From, State) ->
+handle_call({add_fs_node, Node}, _From, State) ->
     {Resp, State1} = add_fs_node(Node, State),
     {reply, Resp, State1};
 handle_call({rm_fs_node, Node}, _From, State) ->

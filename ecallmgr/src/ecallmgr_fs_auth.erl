@@ -171,7 +171,7 @@ bind_q(AmqpHost, ID) ->
     amqp_util:broadcast_exchange(AmqpHost),
     Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),
-    amqp_util:basic_consume(AmqpHost, Queue, self()),
+    amqp_util:basic_consume(AmqpHost, Queue),
     Queue.
 
 a1hash(User, Realm, Password) ->
