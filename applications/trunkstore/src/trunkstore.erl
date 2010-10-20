@@ -12,6 +12,7 @@ start_link() ->
     ensure_started(amqp),
     ensure_started(dynamic_compile),
     ensure_started(log_roller),
+    ensure_started(ibrowse),
     ensure_started(couchbeam),
     trunkstore_sup:start_link().
 
@@ -24,6 +25,7 @@ start() ->
     ensure_started(amqp),
     ensure_started(dynamic_compile),
     ensure_started(log_roller),
+    ensure_started(ibrowse),
     ensure_started(couchbeam),
     application:start(trunkstore).
 

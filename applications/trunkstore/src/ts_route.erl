@@ -46,8 +46,7 @@ handle_req(ApiProp, ServerID) ->
 inbound_handler(ApiProp, ServerID) ->
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     Options = [{"key", ToUser}],
-    case ts_couch:has_view(?TS_DB, ?TS_VIEW_DIDLOOKUP) andalso
-	ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
+    case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p(~p)~n"
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, ToUser, _ToDomain]),
@@ -70,8 +69,7 @@ inbound_handler(ApiProp, ServerID) ->
 outbound_handler(Prop, ServerID) ->
     Did = get_value(<<"Caller-ID-Number">>, Prop),
     Options = [{"keys", [Did, get_value(<<"Caller-ID-Name">>, Prop)]}],
-    case ts_couch:has_view(?TS_DB, ?TS_VIEW_DIDLOOKUP) andalso
-	ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
+    case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),

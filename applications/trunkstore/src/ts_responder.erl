@@ -16,7 +16,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, set_couch_host/1, set_amqp_host/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,7 +29,11 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {channel, ticket, broad_q, tar_q}).
+-record(state, {amqp_host = "" :: string()
+		,couch_host = "" :: string()
+                ,broad_q = <<>> :: binary()
+                ,tar_q = <<>> :: binary()
+	       }).
 
 %%%===================================================================
 %%% API
@@ -44,6 +48,12 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+set_couch_host(CHost) ->
+    gen_server:call(?SERVER, {set_couch_host, CHost}, infinity).
+
+set_amqp_host(AHost) ->
+    gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -61,8 +71,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, Channel, Ticket, BroadQ, TarQ} = start_amqp(),
-    {ok, #state{channel=Channel, ticket=Ticket, broad_q = BroadQ, tar_q = TarQ}}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -78,6 +87,18 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
+    format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
+    ts_couch:set_host(CHost),
+    {reply, ok, State#state{couch_host=CHost}};
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, broad_q=OBQ, tar_q=OTQ}=State) ->
+    format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldAHost, AHost]),
+    amqp_util:queue_delete(OldAHost, OBQ),
+    amqp_util:queue_delete(OldAHost, OTQ),
+    amqp_manager:close_channel(self(), OldAHost),
+
+    {ok, BQ, TQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, broad_q=BQ, tar_q=TQ}};
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -111,7 +132,7 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
-%% catch all so we dont loose state
+%% catch all so we don't lose state
 handle_info(_Unhandled, State) ->
     format_log(info, "TS_RESPONDER(~p): unknown info request: ~p~n", [self(), _Unhandled]),
     {noreply, State}.
@@ -127,9 +148,9 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{channel=Channel, ticket=Ticket, broad_q=BQ, tar_q=TQ}) ->
-    amqp_channel:cast(Channel, amqp_util:queue_delete(Ticket, BQ)),
-    amqp_channel:cast(Channel, amqp_util:queue_delete(Ticket, TQ)),
+terminate(_Reason, #state{amqp_host=AHost, broad_q=BQ, tar_q=TQ}) ->
+    amqp_util:queue_delete(AHost, BQ),
+    amqp_util:queue_delete(AHost, TQ),
     format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
@@ -184,35 +205,36 @@ process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{tar_q=TQ}=State) ->
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~p~n", [self(), _Msg])
     end;
+%% What to do with post route processing?
 process_req({<<"dialplan">>,<<"route_win">>}, Prop, State) ->
     3;
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
-send_resp(JSON, RespQ, #state{channel=Channel, ticket=Ticket}) ->
-    {BP, AmqpMsg} = amqp_util:targeted_publish(Ticket, RespQ, JSON, <<"application/json">>),
+-spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
+send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
     format_log(info, "TS_RESPONDER(~p): Sending to ~p~n", [self(), RespQ]),
-    amqp_channel:call(Channel, BP, AmqpMsg).
+    amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
 
-start_amqp() ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
+-spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
+start_amqp(AHost) ->
     BroadName = ["ts_responder.", net_adm:localhost()],
     TarName = ["ts_responder.callctl.", net_adm:localhost()],
 
-    amqp_channel:cast(Channel, amqp_util:broadcast_exchange(Ticket)),
-    amqp_channel:cast(Channel, amqp_util:targeted_exchange(Ticket)),
+    amqp_util:broadcast_exchange(AHost),
+    amqp_util:targeted_exchange(AHost),
 
-    #'queue.declare_ok'{queue=BroadQueue} = amqp_channel:call(Channel, amqp_util:new_broadcast_queue(Ticket, BroadName)),
-    #'queue.declare_ok'{queue=TarQueue} = amqp_channel:call(Channel, amqp_util:new_targeted_queue(Ticket, TarName)),
+    BroadQueue = amqp_util:new_broadcast_queue(AHost, BroadName),
+    TarQueue = amqp_util:new_targeted_queue(AHost, TarName),
 
     %% Bind the queue to an exchange
-    amqp_channel:cast(Channel, amqp_util:bind_q_to_broadcast(Ticket, BroadQueue)),
+    amqp_util:bind_q_to_broadcast(AHost, BroadQueue),
     format_log(info, "TS_RESPONDER(~p): Bound ~p~n", [self(), BroadQueue]),
-    amqp_channel:cast(Channel, amqp_util:bind_q_to_targeted(Ticket, TarQueue, TarQueue)),
+    amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
 
     %% Register a consumer to listen to the queue
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, BroadQueue), self()),
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, TarQueue), self()),
+    amqp_util:basic_consume(AHost, BroadQueue),
+    amqp_util:basic_consume(AHost, TarQueue),
 
     format_log(info, "TS_RESPONDER(~p): Consuming on B(~p) and T(~p)~n", [self(), BroadQueue, TarQueue]),
-    {ok, Channel, Ticket, BroadQueue, TarQueue}.
+    {ok, BroadQueue, TarQueue}.

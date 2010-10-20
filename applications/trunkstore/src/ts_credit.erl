@@ -63,13 +63,7 @@ force_rate_refresh() ->
 %%--------------------------------------------------------------------
 init([]) ->
     timer:send_interval(?REFRESH_RATE, refresh),
-    case get_current_rates() of
-	{ok, Rates} ->
-	    {ok, Rates};
-	{error, _Err} ->
-	    format_log(error, "TS_CREDIT(~p): Error getting rates: ~p~n", [self(), _Err]),
-	    {ok, []}
-    end.
+    {ok, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,12 +152,18 @@ get_current_rates() ->
 	not_found ->
 	    format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
 	    {error, "No matching rates"};
+	{error, unhandled_call} ->
+	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call ts_couch:set_host/1~n", [self()]),
+	    {error, "No database host"};
 	[] ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
 	{Rates} ->
 	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
-	    {ok, lists:map(fun process_rates/1, Rates)}
+	    {ok, lists:map(fun process_rates/1, Rates)};
+	Error ->
+	    format_log(error, "TS_CREDIT(~p): Fail ~p~n", [self(), Error]),
+	    {error, "Unknown error occurred"}
     end.
 
 process_rates({<<"_id">>, _}=ID) ->

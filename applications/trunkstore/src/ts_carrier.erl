@@ -63,13 +63,7 @@ force_carrier_refresh() ->
 %%--------------------------------------------------------------------
 init([]) ->
     timer:send_interval(?REFRESH_RATE, refresh),
-    case get_current_carriers() of
-	{ok, Carriers} ->
-	    {ok, Carriers};
-	{error, _Err} ->
-	    format_log(error, "TS_CARRIER(~p): Error getting carriers: ~p~n", [self(), _Err]),
-	    {ok, []}
-    end.
+    {ok, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,12 +152,18 @@ get_current_carriers() ->
 	not_found ->
 	    format_log(info, "TS_CARRIER(~p): No document(~p) found~n", [self(), ?TS_CARRIERS_DOC]),
 	    {error, "No matching carriers"};
+	{error, unhandled_call} ->
+	    format_log(info, "TS_CARRIER(~p): No database host found~n", [self()]),
+	    {error, "Unknown Database Host"};
 	[] ->
 	    format_log(info, "TS_CARRIER(~p): No Carriers defined~n", [self()]),
 	    {error, "No matching carriers"};
 	{Carriers} ->
 	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), Carriers]),
-	    {ok, lists:map(fun process_carriers/1, Carriers)}
+	    {ok, lists:map(fun process_carriers/1, Carriers)};
+	Other ->
+	    format_log(error, "TS_CARRIER(~p): Unexpected error ~p~n", [self(), Other]),
+	    {error, "Unexpected error"}
     end.
 
 process_carriers({<<"_id">>, _}=ID) ->

@@ -11,30 +11,34 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, db_info/1]).
+-export([start_link/0, set_host/1]).
 
 %% Document manipulation
--export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2]).
+-export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3]).
 
 %% Views
--export([has_view/2, count/2, count/3, get_all_results/2, get_results/3]).
+-export([get_all_results/2, get_results/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
 -import(logger, [format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
 
 -include("ts.hrl").
 
 -define(SERVER, ?MODULE). 
 
-%% Connection = {CouchPid, MRef}
-%% Databases = [{ {ProcessPid, DbName}, DbPid, MRef}]
-%% Views = [{ {ProcessPid, DesignDoc, ViewOptions}, ViewPid, MRef}]
+%% Host = IP Address or FQDN
+%% Connection = {Host, #server{}}
+%% DBs = [{DbName, #db{}}]
+%% Views = [{ {DesignDoc, ViewName}, #view{}}]
 %% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
--record(state, {connection, databases=[], views=[]}).
+-record(state, {
+	  connection = {} :: tuple(string(), tuple())
+	  ,dbs = [] :: list(tuple(string(), tuple()))
+	  ,views = [] :: list(tuple(tuple(string(), string()), tuple()))
+	 }).
 
 %%%===================================================================
 %%% API
@@ -50,18 +54,20 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-%% get info about Db from Couch
-db_info(DbName) ->
-    gen_server:call(?MODULE, {db_info, to_list(DbName)}).
+%% set the host to connect to
+set_host(HostName) ->
+    gen_server:call(?MODULE, {set_host, HostName}).
 
 %% create a new Document - a tuple with a proplist
-new_doc() ->
-    {[]}.
+new_doc() -> {[]}.
 
 %% open a document given a docid
 %% returns not_found or the Document
 open_doc(DbName, DocId) ->
-    gen_server:call(?MODULE, {open_doc, to_list(DbName), to_binary(DocId)}).
+    open_doc(DbName, DocId, []).
+
+open_doc(DbName, DocId, Options) ->
+    gen_server:call(?MODULE, {open_doc, to_list(DbName), to_binary(DocId), Options}, infinity).
 
 %% add a K/V pair to a Document
 add_to_doc(Key, Value, Doc) ->
@@ -73,17 +79,7 @@ rm_from_doc(Key, Doc) ->
 
 %% save a Document to the DB
 save_doc(DbName, Doc) ->
-    gen_server:call(?MODULE, {save_doc, to_list(DbName), Doc}).
-
-%% Does the DB have a View in the specified design doc? - must be called before views can be accessed
-has_view(DbName, DesignDoc) ->
-    gen_server:call(?MODULE, {has_view, to_list(DbName), to_list(DesignDoc)}).
-
-%% Count how many rows are in the view
-count(DbName, DesignDoc) ->
-    count(DbName, DesignDoc, []).
-count(DbName, DesignDoc, ViewOptions) ->
-    gen_server:call(?MODULE, {count, to_list(DbName), to_list(DesignDoc), ViewOptions}).
+    gen_server:call(?MODULE, {save_doc, to_list(DbName), Doc}, infinity).
 
 %% get the results of the view
 %% {Total, Offset, Meta, Rows}
@@ -92,7 +88,7 @@ get_all_results(DbName, DesignDoc) ->
 
 %% {Total, Offset, Meta, Rows}
 get_results(DbName, DesignDoc, ViewOptions) ->
-    gen_server:call(?MODULE, {get_results, to_list(DbName), to_list(DesignDoc), ViewOptions}).
+    gen_server:call(?MODULE, {get_results, to_list(DbName), DesignDoc, ViewOptions}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -112,8 +108,7 @@ get_results(DbName, DesignDoc, ViewOptions) ->
 -spec(init/1 :: (Args :: list()) -> tuple(ok, tuple())).
 init([]) ->
     process_flag(trap_exit, true),
-    InitState = #state{connection=get_new_connection()},
-    {ok, InitState}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -129,149 +124,56 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({count, DbName, DesignDoc, ViewOptions}, {From, _Ref}
-	    ,#state{connection={Conn,_MRefConn}, databases=DBs, views=Vs}=State) ->
-    {DP, State1} = case find_db_pid(DBs, DbName, From) of
-		       nopid ->
-			   case open_db(Conn, DbName, From, State) of
-			       {ok, DbPid, State0} ->
-				   {DbPid, State0};
-			       ErrD ->
-				   {ErrD, State}
-			   end;
-		       DbPid ->
-			   {DbPid, State}
-		   end,
-    case DP of
-	Pid when is_pid(Pid) ->
-	    case find_view_pid(Vs, DesignDoc, From) of
-		nopid ->
-		    case open_view(DP, DesignDoc, From, State1) of
-			{ok, ViewPid, State2} ->
-			    {reply, couchbeam_view:count(ViewPid, ViewOptions), State2};
-			ErrV ->
-			    {reply, ErrV, State1}
-		    end;
-		ViewPid ->
-		    {reply, couchbeam_view:count(ViewPid, ViewOptions), State1}
-	    end;
-	Err ->
-	    {reply, {error, Err}, State1}
-    end;
-handle_call({get_results, DbName, DesignDoc, ViewOptions}, {From, _Ref}
-	    ,#state{connection={Conn,_MRefConn}, databases=DBs, views=Vs}=State) ->
-    {DP, State1} = case find_db_pid(DBs, DbName, From) of
-		       nopid ->
-			   case open_db(Conn, DbName, From, State) of
-			       {ok, DbPid, State0} ->
-				   {DbPid, State0};
-			       ErrD ->
-				   {ErrD, State}
-			   end;
-		       DbPid ->
-			   {DbPid, State}
-		   end,
-    case DP of
-	Pid when is_pid(Pid) ->
-	    case find_view_pid(Vs, DesignDoc, From) of
-		nopid ->
-		    case open_view(DP, DesignDoc, From, State1) of
-			{ok, ViewPid, State2} ->
-			    Res = couchbeam_view:fetch(ViewPid, ViewOptions),
-			    format_log(info, "TS_COUCH(~p): get_results fetched from ~p.~n", [self(), ViewPid]),
-			    case Res of
-				{ok, {Json}} -> {reply, get_value(<<"rows">>, Json), State2};
-				_ -> {reply, [], State2}
-			    end;
-			ErrV ->
-			    format_log(info, "TS_COUCH(~p): get_results ErrV ~p~n", [self(), ErrV]),
-			    {reply, ErrV, State1}
-		    end;
-		ViewPid ->
-		    Res = couchbeam_view:fetch(ViewPid, ViewOptions),
-		    format_log(info, "TS_COUCH(~p): get_results fetched from ~p.~n", [self(), ViewPid]),
-		    case Res of
-			{ok, {Json}} -> {reply, get_value(<<"rows">>, Json), State1};
-			_ -> {reply, [], State1}
+handle_call({get_results, DbName, DesignDoc, ViewOptions}, _From, #state{connection={_Host, Conn}, dbs=DBs, views=Vs}=State) ->
+    case get_db(DbName, Conn, DBs) of
+	{{error, _Err}=E, _DBs} ->
+	    {reply, E, State};
+	{Db, DBs1} ->
+	    case get_view(Db, DesignDoc, ViewOptions, Vs) of
+		{{error, _Err}=E, _DBs} ->
+		    {reply, E, State#state{dbs=DBs1}};
+		{View, Vs1} ->
+		    case couchbeam_view:fetch(View) of
+			{ok, JSON} ->
+			    {reply, JSON, State#state{dbs=DBs1, views=Vs1}};
+			Error ->
+			    {reply, Error, State#state{dbs=DBs1}}
 		    end
-	    end;
-	Err ->
-	    format_log(info, "TS_COUCH(~p): get_results Err ~p~n", [self(), Err]),
-	    {reply, {error, Err}, State1}
-    end;
-handle_call({has_view, DbName, DesignDoc}, {From, _Ref}
-	    ,#state{connection={Conn,_MRefConn}, databases=DBs, views=Vs}=State) ->
-    format_log(info, "TS_COUCH(~p): has_view ~p ~p~n", [self(), DbName, DesignDoc]),
-    {DP, State1} = case find_db_pid(DBs, DbName, From) of
-		       nopid ->
-			   case open_db(Conn, DbName, From, State) of
-			       {ok, DbPid, State0} ->
-				   {DbPid, State0};
-			       ErrD ->
-				   {ErrD, State}
-			   end;
-		       DbPid ->
-			   {DbPid, State}
-		   end,
-    case DP of
-	Pid when is_pid(Pid) ->
-	    case find_view_pid(Vs, DesignDoc, From) of
-		nopid ->
-		    case open_view(DP, DesignDoc, From, State1) of
-			{ok, _ViewPid, State2} ->
-			    format_log(info, "TS_COUCH(~p): has_view true~n", [self()]),
-			    {reply, true, State2};
-			ErrV ->
-			    format_log(info, "TS_COUCH(~p): has_view ErrV: ~p~n", [self(), ErrV]),
-			    {reply, false, State1}
-		    end;
-		_ViewPid ->
-		    format_log(info, "TS_COUCH(~p): has_view true~n", [self()]),
-		    {reply, true, State1}
-	    end;
-	Err ->
-	    format_log(info, "TS_COUCH(~p): has_view Err ~p~n", [self(), Err]),
-	    {reply, false, State1}
-    end;
-handle_call({open_doc, DbName, DocId}, {From, _Ref}, #state{connection={Conn,_MRefConn}, databases=DBs}=State) ->
-    case find_db_pid(DBs, DbName, From) of
-	nopid ->
-	    case open_db(Conn, DbName, From, State) of
-		{ok, DbPid, State1} ->
-		    {reply, couchbeam_db:open_doc(DbPid, DocId), State1};
-		Err ->
-		    {reply, Err, State}
-	    end;
-	DbPid ->
-	    {reply, couchbeam_db:open_doc(DbPid, DocId), State}
-    end;
-handle_call({save_doc, DbName, Doc}, {From, _Ref}, #state{connection={Conn,_MRefConn}, databases=DBs}=State) ->
-    case find_db_pid(DBs, DbName, From) of
-	nopid ->
-	    case open_db(Conn, DbName, From, State) of
-		{ok, DbPid, State1} ->
-		    {reply, couchbeam_db:save_doc(DbPid, Doc), State1};
-		Err ->
-		    {reply, Err, State}
-	    end;
-	DbPid ->
-	    {reply, couchbeam_db:save_doc(DbPid, Doc), State}
-    end;
-handle_call({db_info, DbName}, {From, _Ref}, #state{connection={Conn,_MRefConn}, databases=DBs}=State) ->
-    case lists:keyfind({From, DbName}, 1, DBs) of
-	{{From, DbName}, DbPid, _MRef} ->
-	    {reply, couchbeam_db:info(DbPid), State};
-	false ->
-	    case open_db(Conn, DbName, From, State) of
-		{ok, DbPid, State1} ->
-		    {reply, couchbeam_db:info(DbPid), State1};
-		{error, _Reason, _State1}=Err ->
-		    {reply, Err, State}
 	    end
     end;
+handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
+    case get_db(DbName, Conn, DBs) of
+	{{error, _Err}=E, _DBs} ->
+	    {reply, E, State};
+	{Db, DBs1} ->
+	    {reply, couchbeam:open_doc(Db, DocId, Options), State#state{dbs=DBs1}}
+    end;
+handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
+    case get_db(DbName, Conn, DBs) of
+	{{error, _Err}=E, _DBs} ->
+	    {reply, E, State};
+	{Db, DBs1} ->
+	    {reply, couchbeam:save_doc(Db, Doc), State#state{dbs=DBs1}}
+    end;
+handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) ->
+    format_log(info, "TS_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
+    case get_new_connection(Host) of
+	{error, _Error}=E ->
+	    {reply, E, State};
+	{_Host, _Conn}=HC ->
+	    {reply, ok, State#state{connection=HC,  dbs=[], views=[]}}
+    end;
+handle_call({set_host, Host}, _From, State) ->
+    format_log(info, "TS_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
+    case get_new_connection(Host) of
+	{error, _Error}=E ->
+	    {reply, E, State};
+	{_Host, _Conn}=HC ->
+	    {reply, ok, State#state{connection=HC,  dbs=[], views=[]}}
+    end;
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    format_log(error, "TS_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
+    {reply, {error, unhandled_call}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -296,30 +198,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', MRefConn, process, CouchPid, Reason}
-	    ,#state{connection={CouchPid,MRefConn}, databases=DBs, views=Vs}=State) ->
-    format_log(error, "TS_COUCH(~p): CouchConn(~p) went down: ~p~n", [self(), CouchPid, Reason]),
-    close_all_databases(DBs),
-    close_all_views(Vs),
-    {noreply, State#state{connection=get_new_connection(), databases=[]}};
-handle_info({'DOWN', _Ref, process, DbPid, _Reason}, #state{databases=DBs}=State) ->
-    format_log(error, "TS_COUCH(~p): Db(~p) went down: ~p~n", [self(), DbPid, _Reason]),
-    case lists:keyfind(DbPid, 2, DBs) of
-        {{_ProcessPid, DbName}, DbPid, MRef} ->
-            case erlang:is_process_alive(DbPid) of
-		true ->
-		    couchbeam_db:close(DbName);
-		false ->
-		    ok
-	    end,
-	    erlang:demonitor(MRef),
-	    {noreply, #state{databases = lists:keydelete(DbPid, 2, DBs)}};
-        false ->
-	    {noreply, State}
-    end;
-handle_info({'EXIT', _Pid, Reason}, State) ->
-    format_log(error, "TS_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), _Pid, Reason]),
-    {stop, Reason, State};
+handle_info({'DOWN', _MRefConn, process, _Pid, _Reason}, State) ->
+    format_log(error, "TS_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),
+    {noreply, State};
+handle_info({'EXIT', _Pid, _Reason}, State) ->
+    format_log(error, "TS_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), _Pid, _Reason]),
+    {noreply, State};
 handle_info(_Info, State) ->
     format_log(error, "TS_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -352,85 +236,53 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(close_all_databases/1 :: (DBs :: list()) -> no_return()).
-close_all_databases(DBs) ->
-    lists:foreach(fun({{_ProcessPid, DbName}, DbPid, MRef}) ->
-			  case is_process_alive(DbPid) of
-			      true ->
-				  couchbeam_db:close(DbName),
-				  erlang:demonitor(MRef);
-			      false ->
-				  ok
-			  end
-		  end, DBs).
-
--spec(close_all_views/1 :: (Vs :: list()) -> ok).
-close_all_views(Vs) ->
-    lists:foreach(fun({_Key, ViewPid, MRef}) ->
-			  case is_process_alive(ViewPid) of
-			      true ->
-				  couchbeam_view:close_view(ViewPid),
-				  erlang:demonitor(MRef);
-			      false ->
-				  ok
-			  end
-		  end, Vs),
-    ok.
-
--spec(get_new_connection/1 :: (Params :: tuple()) -> {pid(), reference()}).
-get_new_connection() ->
-    get_new_connection(?COUCH_PARAMS).
-get_new_connection(Params) ->
-    couchbeam:start(),
-    Conn = couchbeam_server:start_connection_link(Params),
-    MRefConn = erlang:monitor(process, Conn),
-    format_log(info, "TS_COUCH(~p): Starting up conn ~p (~p) using~n~p~n", [self(), Conn, MRefConn, Params]),
-    {Conn, MRefConn}.
-
--spec(open_db/4 :: (Conn :: pid(), DbName :: string(), From :: pid(), State :: tuple()) -> tuple()).
-open_db(Conn, DbName, From, #state{databases=DBs}=State) ->
-    case couchbeam_db:open_or_create(Conn, DbName) of
-	DbPid when is_pid(DbPid) ->
-	    MRef = erlang:monitor(process, DbPid),
-	    {ok, DbPid, State#state{databases=[ {{From, DbName}, DbPid, MRef} | DBs]}};
-	{ok, Error} ->
-	    format_log(error, "TS_COUCH(~p): Unable to create ~p (~p)~n", [self(), DbName, Error]),
-	    {error, Error, State};
-	Else ->
-	    format_log(error, "TS_COUCH(~p): Error creating ~p (~p)~n", [self(), DbName, Else]),
-	    {error, Else, State}
+-spec(get_new_connection/1 :: (Host :: string()) -> {string(), tuple()} | {error, term()}).
+get_new_connection(Host) ->
+    Conn = couchbeam:server_connection(Host, 5984, "", []),
+    format_log(info, "TS_COUCH(~p): Host ~p has conn ~p~n", [self(), Host, Conn]),
+    case couchbeam:server_info(Conn) of
+	{ok, _Version} ->
+	    format_log(info, "TS_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
+	    {Host, Conn};
+	{error, _Error}=E ->
+	    format_log(error, "TS_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, _Error]),
+	    E
     end.
 
--spec(find_db_pid/3 :: (DBs :: list(), DbName :: string(), From :: pid()) -> pid() | nopid).
-find_db_pid(DBs, DbName, From) ->
-    case lists:keyfind({From, DbName}, 1, DBs) of
-	{_Key, DbPid, _MRef} ->
-	    DbPid;
+%% get_db, if DbName is known, returns the {#db{}, DBs}, else returns {#db{}, [{DbName, #db{}} | DBs]}
+%% an error in opening the db will cause a {{error, Err}, DBs} to be returned
+-spec(get_db/3 :: (DbName :: string(), Conn :: tuple(), DBs :: list()) -> tuple(tuple(), list())).
+get_db(DbName, Conn, DBs) ->
+    get_db(DbName, Conn, DBs, []).
+
+-spec(get_db/4 :: (DbName :: string(), Conn :: tuple(), DBs :: list(), Options :: list()) -> tuple(tuple(), list())).
+get_db(DbName, Conn, DBs, Options) ->
+    case lists:keyfind(DbName, 1, DBs) of
 	false ->
-	    nopid
+	    {ok, Db} = couchbeam:open_db(Conn, DbName, Options),
+	    case couchbeam:db_info(Db) of
+		{ok, _JSON} ->
+		    {Db, [{DbName, Db} | DBs]};
+		{error, _Error}=E ->
+		    {E, DBs}
+	    end;
+	{DbName, Db} ->
+	    {Db, DBs}
     end.
 
--spec(open_view/4 :: (DbPid :: pid(), DesignDoc :: string(), From :: pid(), State :: tuple()) -> tuple()).
-open_view(DbPid, DesignDoc, From, #state{views=Vs}=State) ->
-    case couchbeam_db:view(DbPid, DesignDoc) of
-	ViewPid when is_pid(ViewPid) ->
-	    MRef = erlang:monitor(process, ViewPid),
-	    {ok, ViewPid, State#state{views=[ {{From, DesignDoc}, ViewPid, MRef} | Vs]}};
-	{ok, Error} ->
-	    format_log(error, "TS_COUCH(~p): Unable to create ~p(~p)~n", [self(), DesignDoc, Error]),
-	    {error, Error, State};
-	Else ->
-	    format_log(error, "TS_COUCH(~p): Error creating ~p(~p)~n", [self(), DesignDoc, Else]),
-	    {error, Else, State}
-    end.
-
--spec(find_view_pid/3 :: (Vs :: list(), DesignDoc :: string(), From :: pid()) -> pid() | nopid).
-find_view_pid(Vs, DesignDoc, From) ->
-    case lists:keyfind({From, DesignDoc}, 1, Vs) of
-	{_Key, ViewPid, _MRef} ->
-	    ViewPid;
+%% get_view, if Db/DesignDoc is known, return {#view{}, Views}, else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
+-spec(get_view/4 :: (Db :: tuple(), DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list(), Views :: list()) -> tuple(tuple(), list())).
+get_view(Db, DesignDoc, ViewOptions, Views) ->
+    case lists:keyfind({Db, DesignDoc, ViewOptions}, 1, Views) of
+	{{Db, DesignDoc, ViewOptions}, View} ->
+	    {View, Views};
 	false ->
-	    nopid
+	    case couchbeam:view(Db, DesignDoc, ViewOptions) of
+		{error, _Error}=E ->
+		    {E, Views};
+		{ok, View} ->
+		    {View, [{{Db, DesignDoc, ViewOptions}, View} | Views]}
+	    end
     end.
 
 -spec(to_list/1 :: (X :: atom() | list() | binary()) -> list()).

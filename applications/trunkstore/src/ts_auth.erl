@@ -80,8 +80,7 @@ is_inbound(Domain) ->
     IP = find_ip(Domain),
     Options = [{"key", IP}],
     format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
-    case ts_couch:has_view(?TS_DB, ?TS_VIEW_CARRIERIP) andalso
-	ts_couch:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
+    case ts_couch:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
 	false ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
 		       ,[self(), ?TS_VIEW_CARRIERIP, Domain, IP]),
@@ -103,8 +102,7 @@ lookup_user(Name, Domain) ->
     Options = [{"key", IP}],
     format_log(info, "TS_AUTH(~p): lookup_user with ~p and ~p(~p) in ~p.~p~n"
 	       ,[self(), Name, Domain, IP, ?TS_DB, ?TS_VIEW_IPAUTH]),
-    case ts_couch:has_view(?TS_DB, ?TS_VIEW_IPAUTH) andalso
-	ts_couch:get_results(?TS_DB, ?TS_VIEW_IPAUTH, Options) of
+    case ts_couch:get_results(?TS_DB, ?TS_VIEW_IPAUTH, Options) of
 	false ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
 		       ,[self(), ?TS_VIEW_IPAUTH, Domain, IP]),
@@ -123,8 +121,7 @@ lookup_user(Name, Domain) ->
 -spec(lookup_user/1 :: (Name :: binary()) -> proplist() | {error, string()}).
 lookup_user(Name) ->
     Options = [{"key", Name}],
-    case ts_couch:has_view(?TS_DB, ?TS_VIEW_USERAUTH) andalso
-	ts_couch:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
+    case ts_couch:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
 	false ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_USERAUTH, Name]),
 	    {error, "No view found."};

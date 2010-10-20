@@ -1,1 +1,1 @@
-../../rabbitmq-erlang-client/dist/rabbit_common
+../../../rabbitmq-erlang-client/dist/rabbit_common
