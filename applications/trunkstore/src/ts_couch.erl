@@ -24,6 +24,7 @@
 	 terminate/2, code_change/3]).
 
 -import(logger, [format_log/3]).
+-import(props, [get_value/2, get_value/3]).
 
 -include("ts.hrl").
 
@@ -134,8 +135,8 @@ handle_call({get_results, DbName, DesignDoc, ViewOptions}, _From, #state{connect
 		    {reply, E, State#state{dbs=DBs1}};
 		{View, Vs1} ->
 		    case couchbeam_view:fetch(View) of
-			{ok, JSON} ->
-			    {reply, JSON, State#state{dbs=DBs1, views=Vs1}};
+			{ok, {Prop}} ->
+			    {reply, get_value(<<"rows">>, Prop, []), State#state{dbs=DBs1, views=Vs1}};
 			Error ->
 			    {reply, Error, State#state{dbs=DBs1}}
 		    end
@@ -146,7 +147,8 @@ handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host,
 	{{error, _Err}=E, _DBs} ->
 	    {reply, E, State};
 	{Db, DBs1} ->
-	    {reply, couchbeam:open_doc(Db, DocId, Options), State#state{dbs=DBs1}}
+	    {ok, {Doc}} = couchbeam:open_doc(Db, DocId, Options),
+	    {reply, Doc, State#state{dbs=DBs1}}
     end;
 handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
     case get_db(DbName, Conn, DBs) of

@@ -85,6 +85,9 @@ is_inbound(Domain) ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
 		       ,[self(), ?TS_VIEW_CARRIERIP, Domain, IP]),
 	    false;
+	{error, not_found} ->
+	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
+	    false;
 	[] ->
 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
 	    false;
@@ -92,7 +95,7 @@ is_inbound(Domain) ->
 	    format_log(info, "TS_AUTH(~p): Carrier found for ~p(~p)~n~p~n", [self(), Domain, IP, ViewProp]),
 	    true;
 	_Else ->
-	    format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
+	    format_log(error, "TS_AUTH(~p): Got something unexpected during inbound check~n~p~n", [self(), _Else]),
 	    false
     end.
 

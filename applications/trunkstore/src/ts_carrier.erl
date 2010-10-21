@@ -158,8 +158,8 @@ get_current_carriers() ->
 	[] ->
 	    format_log(info, "TS_CARRIER(~p): No Carriers defined~n", [self()]),
 	    {error, "No matching carriers"};
-	{Carriers} ->
-	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), Carriers]),
+	Carriers when is_list(Carriers) ->
+	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Carriers)]),
 	    {ok, lists:map(fun process_carriers/1, Carriers)};
 	Other ->
 	    format_log(error, "TS_CARRIER(~p): Unexpected error ~p~n", [self(), Other]),

@@ -90,6 +90,8 @@ init([]) ->
 handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
     format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
     ts_couch:set_host(CHost),
+    ts_carrier:force_carrier_refresh(),
+    ts_credit:force_rate_refresh(),
     {reply, ok, State#state{couch_host=CHost}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
     format_log(info, "TS_RESPONDER(~p): Setting couch host to ~p~n", [self(), AHost]),
