@@ -32,7 +32,7 @@ start() ->
 %% @spec stop() -> ok
 %% @doc Stop the callmgr server.
 stop() ->
-    application:stop(ecallmgr).
+    application:stop(trunkstore).
 
 ensure_started(App) ->
     case application:start(App) of
