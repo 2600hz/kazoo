@@ -63,7 +63,7 @@ handle_req(Prop) ->
 		   end,
 		   403;
 	       _ ->
-		   format_log(error, "TS_AUTH(~p): Sending a 200~n", [self()]),
+		   format_log(error, "TS_AUTH(~p): Sending a 200 w/ ~p~n", [self(), ViewInfo]),
 		   ViewInfo
 	   end,
     response(Info, Defaults).
@@ -146,10 +146,10 @@ response(ViewInfo, Prop) ->
 
 -spec(specific_response/1 :: (ViewInfo :: proplist() | integer()) -> proplist()).
 specific_response(ViewInfo) when is_list(ViewInfo) ->
-    {AuthProp} = get_value(<<"value">>, ViewInfo),
-    {Info} = get_value(<<"auth">>, AuthProp),
-    [{<<"Auth-Password">>, get_value(<<"AuthPassword">>, Info)}
-     ,{<<"Auth-Method">>, get_value(<<"AuthMethod">>, Info)}
+    {Info} = get_value(<<"value">>, ViewInfo),
+    Method = list_to_binary(string:to_lower(binary_to_list(get_value(<<"auth_method">>, Info)))),
+    [{<<"Auth-Password">>, get_value(<<"auth_password">>, Info)}
+     ,{<<"Auth-Method">>, Method}
      ,{<<"Event-Name">>, <<"auth_resp">>}
      ,{<<"Access-Group">>, get_value(<<"Access-Group">>, Info, <<"ignore">>)}
      ,{<<"Tenant-ID">>, get_value(<<"Tenant-ID">>, Info, <<"ignore">>)}
@@ -178,7 +178,7 @@ find_ip(Domain) when is_list(Domain) ->
 		    format_log(error, "TS_AUTH(~p): Failed to find addrs for ~p: ~p~n", [self(), Domain, Hostent]),
 		    Domain;
 		[Addr | _Rest] ->
-		    format_log(info, "TS_AUTH(~p): Found ~p addresses, using the first ~p~n", [self(), _Rest, Addr]),
+		    format_log(info, "TS_AUTH(~p): Found ~p, other addrs (maybe): ~p~n", [self(), Addr, _Rest]),
 		    inet_parse:ntoa(Addr)
 	    end
     end.
