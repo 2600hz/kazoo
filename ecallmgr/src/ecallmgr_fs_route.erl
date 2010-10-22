@@ -37,8 +37,11 @@
 start_handler(Node, Host) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), amqp_host=Host},
-    {ok, RPid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, fetch_init, HState),
-    RPid.
+    case freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, fetch_init, HState) of
+	timeout -> {error, timeout};
+	{error, _Err}=E -> E;
+	{ok, RPid} when is_pid(RPid) -> RPid
+    end.
 
 fetch_init(Node, State) ->
     %% link to the fake FreeSWITCH pid so if the handler dies, FreeSWITCH is notified and can clean it out
@@ -68,6 +71,7 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 	    ?MODULE:fetch_route(Node, State);
 	{nodedown, Node} ->
 	    format_log(error, "FETCH_ROUTE(~p): Node ~p exited", [self(), Node]),
+	    freeswitch:close(Node),
 	    ok;
 	{xml_response, ID, XML} ->
 	    format_log(info, "FETCH_ROUTE(~p): Received XML for ID ~p~n", [self(), ID]),

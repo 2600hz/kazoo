@@ -28,17 +28,20 @@
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
 		       ,amqp_host = "" :: string()
-		       ,app_vsn = [] :: string()
+		       ,app_vsn = [] :: binary()
 		       ,stats = #handler_stats{} :: tuple()
 		       ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
--spec(start_handler/2 :: (Node :: atom(), AmqpHost :: string()) -> pid()).
+-spec(start_handler/2 :: (Node :: atom(), AmqpHost :: string()) -> pid() | {error, term()}).
 start_handler(Node, AmqpHost) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn)},
-    {ok, APid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_init, HState),
-    APid.
+    case freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_init, HState) of
+	timeout -> {error, timeout};
+	{error, _Err}=E -> E;
+	{ok, APid} when is_pid(APid) -> APid
+    end.
 
 fetch_init(Node, State) ->
     %% link to the fake FreeSWITCH pid so if the handler dies, FreeSWITCH is notified and can clean it out
@@ -69,6 +72,7 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 	    ?MODULE:fetch_user(Node, State);
 	{nodedown, Node} ->
 	    format_log(error, "FETCH_USER(~p): Node ~p exited", [self(), Node]),
+	    freeswitch:close(Node),
 	    ok;
 	{xml_response, ID, XML} ->
 	    format_log(info, "FETCH_USER(~p): Received XML for ID ~p~n", [self(), ID]),
@@ -173,6 +177,7 @@ recv_response(ID) ->
 	    timeout
     end.
 
+-spec(bind_q/2 :: (AmqpHost :: binary(), ID :: binary()) -> binary()).
 bind_q(AmqpHost, ID) ->
     amqp_util:targeted_exchange(AmqpHost),
     amqp_util:broadcast_exchange(AmqpHost),

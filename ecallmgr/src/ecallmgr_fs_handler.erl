@@ -248,15 +248,25 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
     case lists:keyfind(HPid, 2, Nodes) of
 	{Node, HPid, RouteHPid} ->
-	    APid = start_auth_handler(Node, Host),
-	    format_log(error, "FS_HANDLER(~p): Auth Handler EXITed(~p) for ~p, restarting handler as ~p...~n", [self(), Reason, HPid, APid]),
-	    {noreply, State#state{fs_nodes=[{Node, APid, RouteHPid} | lists:keydelete(Node, 1, Nodes)]}};
+	    case start_auth_handler(Node, Host) of
+		{error, Err} ->
+		    format_log(error, "FS_HANDLER(~p): Auth Handler failed to restart for ~p: ~p~n", [self(), Node, Err]),
+		    {noreply, State#state{fs_nodes=[{Node, undefined, RouteHPid} | lists:keydelete(Node, 1, Nodes)]}};
+		APid when is_pid(APid) ->
+		    format_log(error, "FS_HANDLER(~p): Auth Handler EXITed(~p) for ~p, restarting handler as ~p...~n", [self(), Reason, HPid, APid]),
+		    {noreply, State#state{fs_nodes=[{Node, APid, RouteHPid} | lists:keydelete(Node, 1, Nodes)]}}
+	    end;
 	false ->
 	    case lists:keyfind(HPid, 3, Nodes) of
 		{Node, AuthHPid, HPid} ->
-		    RPid = start_route_handler(Node, Host),
-		    format_log(error, "FS_HANDLER(~p): Route Handler EXITed(~p) for ~p, restarting handler as ~p...~n", [self(), Reason, HPid, RPid]),
-		    {noreply, State#state{fs_nodes=[{Node, AuthHPid, RPid} | lists:keydelete(Node, 1, Nodes)]}};
+		    case start_route_handler(Node, Host) of
+			{error, Err} ->
+			    format_log(error, "FS_HANDLER(~p): Route Handler failed to restart for ~p: ~p~n", [self(), Node, Err]),
+			    {noreply, State#state{fs_nodes=[{Node, AuthHPid, undefined} | lists:keydelete(Node, 1, Nodes)]}};
+			RPid when is_pid(RPid) ->
+			    format_log(error, "FS_HANDLER(~p): Route Handler EXITed(~p) for ~p, restarting handler as ~p...~n", [self(), Reason, HPid, RPid]),
+			    {noreply, State#state{fs_nodes=[{Node, AuthHPid, RPid} | lists:keydelete(Node, 1, Nodes)]}}
+		    end;
 		false ->
 		    format_log(error, "FS_HANDLER(~p): Received EXIT(~p) for unknown (or already ended) pid ~p~n", [self(), Reason, HPid]),
 		    {noreply, State}
@@ -310,9 +320,20 @@ add_fs_node(Node, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
 	false ->
 	    case net_adm:ping(Node) of
 		pong ->
-		    {AuthHPid, RouteHPid} = setup_fs_conn(Node, Host),
-		    format_log(info, "FS_HANDLER(~p): Starting handlers(~p and ~p) for ~p~n", [self(), AuthHPid, RouteHPid, Node]),
-		    {ok, State#state{fs_nodes=[{Node, AuthHPid, RouteHPid} | Nodes]}};
+		    case start_auth_handler(Node, Host) of
+			{error, Err}=E ->
+			    format_log(error, "FS_HANDLER(~p): Failed to start auth handler: ~p~n", [self(), Err]),
+			    {E, State};
+			AuthHPid when is_pid(AuthHPid) ->
+			    case start_route_handler(Node, Host) of
+				{error, Err}=E ->
+				    format_log(error, "FS_HANDLER(~p): Failed to start route handler: ~p~n", [self(), Err]),
+				    {E, State#state{fs_nodes=[{Node, AuthHPid, undefined} | Nodes]}};
+				RouteHPid when is_pid(RouteHPid) ->
+				    format_log(info, "FS_HANDLER(~p): Starting handlers(~p and ~p) for ~p~n", [self(), AuthHPid, RouteHPid, Node]),
+				    {ok, State#state{fs_nodes=[{Node, AuthHPid, RouteHPid} | Nodes]}}
+			    end
+		    end;
 		pang ->
 		    format_log(error, "FS_HANDLER(~p): ~p not responding~n", [self(), Node]),
 		    {{error, no_connection}, State}
@@ -322,7 +343,7 @@ add_fs_node(Node, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
 rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
     case lists:keyfind(Node, 1, Nodes) of
 	{Node, AuthHPid, RteHPid} ->
-	    AuthRes = case erlang:is_process_alive(AuthHPid) of
+	    AuthRes = case is_pid(AuthHPid) andalso erlang:is_process_alive(AuthHPid) of
 			  true ->
 			      AuthHPid ! shutdown,
 			      format_log(info, "FS_HANDLER(~p): Shutting down auth handler ~p for ~p~n", [self(), AuthHPid, Node]),
@@ -331,7 +352,7 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 			      format_log(error, "FS_HANDLER(~p): Auth Handler ~p already down for ~p~n", [self(), AuthHPid, Node]),
 			      {error, auth_handler_down, Node}
 		      end,
-	    RouteRes = case erlang:is_process_alive(RteHPid) of
+	    RouteRes = case is_pid(RteHPid) andalso erlang:is_process_alive(RteHPid) of
 			   true ->
 			       RteHPid ! shutdown,
 			       format_log(info, "FS_HANDLER(~p): Shutting down route handler ~p for ~p~n", [self(), AuthHPid, Node]),
@@ -346,21 +367,21 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 	    {{error, no_node, Node}, State}
     end.
 
--spec(start_auth_handler/2 :: (Node :: atom(), Host :: string()) -> pid()).
+-spec(start_auth_handler/2 :: (Node :: atom(), Host :: string()) -> pid() | tuple(error, term())).
 start_auth_handler(Node, Host) ->
     start_handler(Node, Host, ?AUTH_MOD).
 
--spec(start_route_handler/2 :: (Node :: atom(), Host :: string()) -> pid()).
+-spec(start_route_handler/2 :: (Node :: atom(), Host :: string()) -> pid() | tuple(error, term())).
 start_route_handler(Node, Host) ->
     start_handler(Node, Host, ?ROUTE_MOD).
 
--spec(start_handler/3 :: (Node :: atom(), Host :: string(), Mod :: atom()) -> pid()).
+-spec(start_handler/3 :: (Node :: atom(), Host :: string(), Mod :: atom()) -> pid() | tuple(error, term())).
 start_handler(Node, Host, Mod) ->
-    Pid = Mod:start_handler(Node, Host),
-    link(Pid),
-    Pid.
-
-%% setup a connection to mod_erlang_event for directory and dialplan events
--spec(setup_fs_conn/2 :: (Node :: atom(), Host :: string()) -> {pid(), pid()}).
-setup_fs_conn(Node, Host) ->
-    {start_auth_handler(Node, Host), start_route_handler(Node, Host)}.
+    case Mod:start_handler(Node, Host) of
+	Pid when is_pid(Pid) ->
+	    link(Pid),
+	    Pid;
+	{error, _Other}=E ->
+	    format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p~n", [self(), Mod, Node, Host, _Other]),
+	    E
+    end.
