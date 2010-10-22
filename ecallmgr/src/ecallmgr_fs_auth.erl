@@ -10,7 +10,7 @@
 
 %% API
 -export([start_handler/2]).
--export([fetch_user/2, lookup_user/5]).
+-export([fetch_init/2, fetch_user/2, lookup_user/5]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -37,8 +37,14 @@
 start_handler(Node, AmqpHost) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn)},
-    {ok, APid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_user, HState),
+    {ok, APid} = freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_init, HState),
     APid.
+
+fetch_init(Node, State) ->
+    %% link to the fake FreeSWITCH pid so if the handler dies, FreeSWITCH is notified and can clean it out
+    {ok, FPid} = freeswitch:getpid(Node),
+    link(FPid),
+    fetch_user(Node, State).
 
 -spec(fetch_user/2 :: (Node :: atom(), State :: tuple()) -> no_return()).
 fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State) ->
@@ -75,6 +81,7 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 				      false -> ok
 				  end
 			  end, LUs),
+	    freeswitch:close(Node),
 	    format_log(error, "FETCH_USER(~p): shutting down~n", [self()]);
 	{lookup_finished, LookupPid, EndResult} ->
 	    close_lookup(LookupPid, Node, State, EndResult);

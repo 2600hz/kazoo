@@ -11,7 +11,7 @@
 
 %% API
 -export([start_handler/2]).
--export([fetch_route/2, lookup_route/6]).
+-export([fetch_init/2, fetch_route/2, lookup_route/6]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -37,8 +37,14 @@
 start_handler(Node, Host) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), amqp_host=Host},
-    {ok, RPid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, fetch_route, HState),
+    {ok, RPid} = freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, fetch_init, HState),
     RPid.
+
+fetch_init(Node, State) ->
+    %% link to the fake FreeSWITCH pid so if the handler dies, FreeSWITCH is notified and can clean it out
+    {ok, FPid} = freeswitch:getpid(Node),
+    link(FPid),
+    fetch_route(Node, State).
 
 fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State) ->
     receive
@@ -74,6 +80,7 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 				      false -> ok
 				  end
 			  end, LUs),
+	    freeswitch:close(Node),
 	    format_log(error, "FETCH_ROUTE(~p): shutting down~n", [self()]);
 	{lookup_finished, LookupPid, EndResult} ->
 	    close_lookup(LookupPid, Node, State, EndResult);
