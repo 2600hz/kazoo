@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <include>
-    <profile name="common_interface_5060">
+    <profile name="sipinterface_1">
         <domains>
             <domain name="all" alias="true" parse="false"/>
         </domains>
@@ -58,7 +58,7 @@
             
             
             <!-- Dialplan -->
-            <param name="context" value="default"/>
+            <param name="context" value="context_2"/>
             <param name="dialplan" value="XML"/>
             <param name="manual-redirect" value="true"/>
             <param name="disable-transfer" value="false"/>
@@ -113,7 +113,6 @@
             <!--<param name="NDLB-force-rport" value="true"/>-->
             <param name="inbound-reg-force-matching-username" value="true"/>
             <param name="auth-all-packets" value="false"/>
-            <param name="user-agent-filter" value="^(PolycomSoundPointIP.*)|(Yealink SIP.*)|(Twinkle.*)|(X-Lite.*)$"/>
             <!--<param name="force-register-domain" value="$${local_ip_v4}"/>-->
             <!--<param name="force-register-db-domain" value="$${local_ip_v4}"/>-->
 

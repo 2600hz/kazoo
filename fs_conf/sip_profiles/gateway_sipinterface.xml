@@ -57,7 +57,7 @@
             
             
             <!-- Dialplan -->
-            <param name="context" value="default"/>
+            <param name="context" value="context_2"/>
             <param name="dialplan" value="XML"/>
             <!--<param name="manual-redirect" value="true"/>-->
             <param name="disable-transfer" value="true"/>

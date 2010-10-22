@@ -158,7 +158,7 @@ get_current_rates() ->
 	[] ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
-	{Rates} ->
+	Rates when is_list(Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
 	    {ok, lists:map(fun process_rates/1, Rates)};
 	Error ->

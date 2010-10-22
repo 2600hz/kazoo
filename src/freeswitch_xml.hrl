@@ -25,7 +25,7 @@
     <domain name=\"~s\">
       <user id=\"~s\">
         <params>
-          <param name=\"password\" value=\"\"/>
+          <param name=\"password\" value=\"~s\"/>
         </params>
         <variables>
           ~s

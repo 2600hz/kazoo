@@ -24,7 +24,7 @@
 %%%===================================================================
 -spec(handle_req/2 :: (ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
 handle_req(ApiProp, ServerID) ->
-    format_log(info, "TS_ROUTE(~p): Prop: ~p~n", [self(), ApiProp]),
+    format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
 	    {error, "No Custom Vars"};
@@ -67,8 +67,10 @@ inbound_handler(ApiProp, ServerID) ->
 
 -spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
 outbound_handler(Prop, ServerID) ->
-    Did = get_value(<<"Caller-ID-Number">>, Prop),
-    Options = [{"keys", [Did, get_value(<<"Caller-ID-Name">>, Prop)]}],
+    format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
+    Did = get_value(<<"Caller-ID-Number">>, Prop, <<>>),
+    Did1 = get_value(<<"Caller-ID-Name">>, Prop, <<>>),
+    Options = [{"keys", [Did, Did1]}],
     case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
@@ -80,8 +82,8 @@ outbound_handler(Prop, ServerID) ->
 	[{ViewProp} | _Rest] ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
-	    {struct, Value} = mochijson2:decode(get_value(<<"value">>, ViewProp)),
-	    {struct, DidOptions} = get_value(<<"DID_Opts">>, Value),
+	    {Value} = get_value(<<"value">>, ViewProp),
+	    {DidOptions} = get_value(<<"DID_Opts">>, Value),
 	    process_routing(outbound_features(set_flags(DidOptions, Prop)), Prop, ServerID);
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
@@ -159,9 +161,9 @@ set_flags(DidProp, ApiProp) ->
     [ToUser, ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     [FromUser, FromDomain] = binary:split(get_value(<<"From">>, ApiProp), <<"@">>),
 
-    {struct, FailOpts} = get_value(<<"FailOver">>, DidProp, {struct, []}),
-    {struct, CallerIDOpts} = get_value(<<"CallerID">>, DidProp, {struct, []}),
-    {struct, Opts} = get_value(<<"Options">>, DidProp),
+    {FailOpts} = get_value(<<"failover">>, DidProp, {[]}),
+    {CallerIDOpts} = get_value(<<"caller_id">>, DidProp, {[]}),
+    {Opts} = get_value(<<"options">>, DidProp, {[]}),
 
     #route_flags{
 	     to_user = ToUser
@@ -170,11 +172,11 @@ set_flags(DidProp, ApiProp) ->
 	     ,from_domain = FromDomain
 	     ,direction = get_value(<<"Direction">>, ApiProp)
 	     ,failover = FailOpts
-	     ,callerid = {get_value(<<"CName">>, CallerIDOpts, get_value(<<"Caller-ID-Name">>, ApiProp))
-			  ,get_value(<<"CNum">>, CallerIDOpts, get_value(<<"Caller-ID-Number">>, ApiProp))}
+	     ,callerid = {get_value(<<"cid_name">>, CallerIDOpts, get_value(<<"Caller-ID-Name">>, ApiProp))
+			  ,get_value(<<"cid_num">>, CallerIDOpts, get_value(<<"Caller-ID-Number">>, ApiProp))}
 	     ,route_options = Opts
 	     ,credit_available = get_value(<<"account_credit">>, DidProp)
-	     ,flat_rate_enabled = (get_value(<<"trunks_available">>, DidProp) > 0)
+	     ,flat_rate_enabled = (get_value(<<"trunks_available">>, DidProp, 0) > 0)
 	     %,fax = []
 	     %,callerid_default
 	     %,flat_rate_enabled -> number of flat rate trunks available
