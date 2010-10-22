@@ -199,9 +199,11 @@ handle_response(ID, Data, FetchPid) ->
 	    Domain = get_value(<<"domain">>, Data),
 	    case get_value(<<"Auth-Method">>, Prop) of
 		<<"password">> ->
-		    Hash = a1hash(User, Domain, get_value(<<"Auth-Password">>, Prop)),
+		    Pass = get_value(<<"Auth-Password">>, Prop),
+		    Hash = a1hash(User, Domain, Pass),
 		    ChannelParams = get_channel_params(Prop),
-		    Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])),
+		    %Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])),
+		    Resp = lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Domain, User, Pass, ChannelParams])),
 		    format_log(info, "L/U.user(~p): Sending pass resp (took ~pms)~n"
 			       ,[self(), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, Resp},
