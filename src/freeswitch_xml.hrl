@@ -1,4 +1,4 @@
--define(EMPTYRESPONSE, "<document type=\"freeswitch/xml\"></document>").
+-define(EMPTYRESPONSE, ""). %"<document type=\"freeswitch/xml\"></document>").
 
 %% not including dial string section so we can manually do the bridging
 %% or something like that (ask Darren).
