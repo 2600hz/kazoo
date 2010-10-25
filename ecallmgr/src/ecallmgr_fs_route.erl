@@ -19,12 +19,7 @@
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
-
--record(handler_stats, {lookups_success = 0 :: integer()
-			,lookups_failed = 0 :: integer()
-                        ,lookups_timeout = 0 :: integer()
-                        ,lookups_requested = 0 :: integer()
-		       }).
+-include("ecallmgr.hrl").
 
 -record(handler_state, {fs_node :: atom()
 			,amqp_host = "" :: string()
@@ -36,7 +31,8 @@
 -spec(start_handler/2 :: (Node :: atom(), Host :: string()) -> pid()).
 start_handler(Node, Host) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), amqp_host=Host},
+    Stats = #handler_stats{started = erlang:now()},
+    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), amqp_host=Host, stats=Stats},
     case freeswitch:start_fetch_handler(Node, dialplan, ?MODULE, fetch_init, HState) of
 	timeout -> {error, timeout};
 	{error, _Err}=E -> E;
@@ -92,11 +88,8 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 	{diagnostics, Pid} ->
 	    ActiveLUs = lists:map(fun({_LuPid, ID, Started}) -> [{fs_route_id, ID}, {started, Started}] end, LUs),
 	    Resp = [{active_lookups, ActiveLUs}
-		    ,{lookups_success, Stats#handler_stats.lookups_success}
-		    ,{lookups_failed, Stats#handler_stats.lookups_failed}
-		    ,{lookups_timeout, Stats#handler_stats.lookups_timeout}
-		    ,{lookups_requested, Stats#handler_stats.lookups_requested}
 		    ,{amqp_host, Host}
+		    | ecallmgr_diagnostics:get_diagnostics(Stats)
 		   ],
 	    Pid ! Resp,
 	    ?MODULE:fetch_route(Node, State);
