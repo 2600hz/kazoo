@@ -264,4 +264,5 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 %% All options set in Flags must be set in Rate to be usable
 -spec(options_match/2 :: (Flags :: tuple(), RateOptions :: list()) -> boolean()).
 options_match(Flags, RateOptions) ->
+    format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [Flags#route_flags.route_options, RateOptions]),
     lists:all(fun(Opt) -> lists:member(Opt, RateOptions) end, Flags#route_flags.route_options).
