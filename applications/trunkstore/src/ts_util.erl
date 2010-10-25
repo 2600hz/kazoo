@@ -18,4 +18,7 @@ to_e164([$1 | N]=AlmostE164) when length(N) == 10 ->
     [$+ | AlmostE164];
 %% 8001234567 -> +18001234567
 to_e164(TenDig) when length(TenDig) == 10 ->
-    [$+, $1 | TenDig].
+    [$+, $1 | TenDig];
+to_e164(Other) ->
+    Other.
+
