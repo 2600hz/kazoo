@@ -69,7 +69,8 @@ inbound_handler(ApiProp, ServerID) ->
 outbound_handler(Prop, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
     Did = ts_util:to_e164(get_value(<<"Caller-ID-Number">>, Prop, <<>>)),
-    Options = [{"keys", [Did]}],
+    Did1 = ts_util:to_e164(get_value(<<"Caller-ID-Name">>, Prop, <<>>)),
+    Options = [{"keys", [Did, Did1]}],
     case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
