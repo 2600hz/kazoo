@@ -9,7 +9,7 @@
             <!-- SIP -->
             <param name="sip-ip" value="$${local_ip_v4}"/>
             <param name="ext-sip-ip" value="auto"/>            
-            <param name="user-agent-string" value="voicesrv.net"/>
+            <param name="user-agent-string" value="2600hz.org"/>
             <param name="debug" value="0"/>
             <param name="sip-trace" value="no"/>
             <param name="enable-100rel" value="false"/>
