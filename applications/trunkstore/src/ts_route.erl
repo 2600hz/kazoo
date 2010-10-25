@@ -77,7 +77,7 @@ outbound_handler(Prop, ServerID) ->
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
 	    {error, "No DIDLOOKUP view"};
 	[] ->
-	    format_log(info, "TS_ROUTE(~p): No DID matching ~p~n", [self(), Did]),
+	    format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
 	    {error, "No matching DID"};
 	[{ViewProp} | _Rest] ->
 	    OurDid = get_value(<<"key">>, ViewProp),

@@ -11,14 +11,14 @@
 -export([to_e164/1]).
 
 %% +18001234567 -> +18001234567
-to_e164([$+, $1 | N]=E164) when length(N) == 10 ->
+to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) == 80 -> % 8bits/ch * 10ch
     E164;
 %% 18001234567 -> +18001234567
-to_e164([$1 | N]=AlmostE164) when length(N) == 10 ->
-    [$+ | AlmostE164];
+to_e164(<<$1, N/binary>>=AlmostE164) when erlang:bit_size(N) == 80 ->
+    << $+, AlmostE164/bitstring >>;
 %% 8001234567 -> +18001234567
-to_e164(TenDig) when length(TenDig) == 10 ->
-    [$+, $1 | TenDig];
+to_e164(TenDig) when erlang:bit_size(TenDig) == 80 ->
+    <<$+, $1, TenDig/bitstring>>;
 to_e164(Other) ->
     Other.
 
