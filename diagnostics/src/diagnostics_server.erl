@@ -26,9 +26,11 @@
 -define(CELL_FORMAT, " ~11.s |").
 -define(NODE_LINE, lists:flatten(["  | ", ?CELL_FORMAT, ?CELL_FORMAT
 				  ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT
-				  ,?CELL_FORMAT, "~n"])).
+				  ,?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
 -define(NODE_LINE_HEADER, io_lib:format(?NODE_LINE, ["Type", "Requested", "Successful"
-						     ,"Timed Out", "Failed", "Active"])).
+						     ,"Timed Out", "Failed", "Active", "Uptime"])).
+
+-define(MICRO_TO_SEC, 1000000).
 
 %%%===================================================================
 %%% API
@@ -198,9 +200,9 @@ display_node(Node) ->
 
 %% Diagnostics for GEN_SERVER (VSN) on HOST at HH:MM:SS on YYYY-MM-DD
 %%   Node Diagnostics for NODE
-%%   Type  | Requested | Successful | Timed Out | Failed | Active
-%%   Auth  |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2
-%%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2
+%%   Type  | Requested | Successful | Timed Out | Failed | Active | Uptime
+%%   Auth  |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2   |  32m
+%%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2   |  32m
 display_fs_data(Data) ->
     GenSrv = get_value(gen_server, Data),
     Vsn = get_value(version, Data),
@@ -232,4 +234,37 @@ show_line(Type, Data) when is_list(Data) ->
     T = Format(get_value(lookups_timeout, Data, 0)),
     F = Format(get_value(lookups_failed, Data, 0)),
     A = Format(length(get_value(active_lookups, Data, []))),
-    io:format(?NODE_LINE, [Type, R, S, T, F, A]).
+    U = get_uptime(get_value(uptime, Data, 0)),
+    io:format(?NODE_LINE, [Type, R, S, T, F, A, U]).
+
+%% uptime, in microseconds
+get_uptime(0) ->
+    "N/A";
+%% when less than 1 second, time in milliseconds
+get_uptime(Micro) when Micro < ?MICRO_TO_SEC ->
+    io_lib:format("~pms", [Micro div 1000]);
+%% when less than 1 minute, time in seconds
+get_uptime(Micro) when Micro < 60 * ?MICRO_TO_SEC ->
+    io_lib:format("~ps", [Micro div ?MICRO_TO_SEC]);
+%% when less than 10 minutes, time in MmSs
+get_uptime(Micro) when Micro < 600 * ?MICRO_TO_SEC ->
+    S = Micro div ?MICRO_TO_SEC,
+    M = S div 60,
+    io_lib:format("~pm~ps", [M rem 60, S rem 60]);
+%% when less than 1 hour, time in mins
+get_uptime(Micro) when Micro < 3600 * ?MICRO_TO_SEC ->
+    io_lib:format("~pm", [Micro div (60 * ?MICRO_TO_SEC)]);
+%% when less than 1 day, time in HhMm
+get_uptime(Micro) when Micro < 86400 * ?MICRO_TO_SEC ->
+    M = Micro div (60 * ?MICRO_TO_SEC),
+    H = M div 60,
+    io_lib:format("~ph~pm", [H rem 24, M rem 60]);
+%% when greater than 1 day, time in DdHhMm
+get_uptime(Micro) ->
+    M = Micro div (60 * ?MICRO_TO_SEC),
+    H = M div 60,
+    D = H div 24,
+    io_lib:format("~pd~ph~pm", [D, H rem 24, M rem 60]).
+    
+
+    
