@@ -195,8 +195,14 @@ get_routes(Flags, Carriers) ->
 	[] ->
 	    {error, "No carriers match outbound number"};
 	Cs ->
-	    create_routes(Flags, Cs)
+	    create_routes(Flags, lists:sort(fun sort_carriers/2, Cs))
     end.
+
+%% sort on weight_cost; return true if weightA >= weightB, else false
+-spec(sort_carriers/2 :: (CarrierA :: tuple(), CarrierB :: tuple()) -> boolean()).
+sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
+    get_value(<<"weight_cost">>, CarrierAData, 0) >= get_value(<<"weight_cost">>, CarrierBData, 0).
+    
 
 %% transform Carriers proplist() into a list of Routes for the API
 -spec(create_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
