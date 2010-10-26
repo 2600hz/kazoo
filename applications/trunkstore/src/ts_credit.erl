@@ -194,7 +194,7 @@ set_rate_flags(Flags, Rates) ->
     %% Filter on Options - All flag options must be in Rate options
     Rates2 = lists:filter(fun({_RateName, RateData}) ->
 				  format_log(info, "TS_CREDIT.options_match: Filter ~p~n", [_RateName]),
-				  options_match(Flags, get_value(<<"options">>, RateData, []))
+				  options_match(Flags#route_flags.route_options, get_value(<<"options">>, RateData, []))
 			  end, Rates1),
 
     case Rates2 of
@@ -265,7 +265,9 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
--spec(options_match/2 :: (Flags :: tuple(), RateOptions :: list()) -> boolean()).
-options_match(Flags, RateOptions) ->
-    format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [Flags#route_flags.route_options, RateOptions]),
-    lists:all(fun(Opt) -> get_value(Opt, RateOptions, false) =/= false end, Flags#route_flags.route_options).
+-spec(options_match/2 :: (RouteOptions :: tuple(list()) | list(), RateOptions :: list()) -> boolean()).
+options_match({RouteOptions}, RateOptions) ->
+    options_match(RouteOptions, RateOptions);
+options_match(RouteOptions, RateOptions) ->
+    format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [RouteOptions, RateOptions]),
+    lists:all(fun(Opt) -> get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
