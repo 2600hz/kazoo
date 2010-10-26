@@ -183,6 +183,7 @@ process_carriers({CarrierName, {CarrierOptions}}) ->
 -spec(get_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
 get_routes(Flags, Carriers) ->
     User = Flags#route_flags.to_user,
+    format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
 
     Carriers0 = proplists:delete(<<"_rev">>, proplists:delete(<<"_id">>, Carriers)),
     Carriers1 = lists:filter(fun({_CarrierName, CarrierData}) ->
