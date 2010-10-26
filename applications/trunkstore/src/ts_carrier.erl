@@ -219,10 +219,14 @@ create_routes(Flags, Carriers) ->
     end.
 
 carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
-    BaseRouteData = case get_value(<<"callerid_type">>, CarrierData) of
+    CallerIDData = case get_value(<<"callerid_type">>, CarrierData) of
 			undefined -> CallerID;
 			Type -> [{<<"Caller-ID-Type">>, Type} | CallerID]
 		    end,
+    BaseRouteData = [ {<<"Weight-Cost">>, get_value(<<"weight_cost">>, CarrierData, <<"0">>)}
+		      ,{<<"Weight-Location">>, get_value(<<"weight_location">>, CarrierData, <<"0">>)}
+		      | CallerIDData
+		    ],
     Regexed = lists:foldl(fun(Regex, Acc) ->
 				  case re:run(User, Regex, [{capture, [1], binary}]) of
 				      {match, [Capture]} -> Capture;
@@ -249,8 +253,6 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
 		 ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
 		 ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}
 		 ,{<<"Codecs">>, get_value(<<"codecs">>, Gateway, [])}
-		 ,{<<"Weight-Cost">>, <<"0">>}
-		 ,{<<"Weight-Location">>, <<"0">>}
 		 | BaseRouteData ],
 	    case whistle_api:route_resp_route_v(R) of
 		true -> {[{struct, R} | CRs], Regexed, BaseRouteData};
