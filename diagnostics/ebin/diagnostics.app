@@ -1,6 +1,6 @@
 {application,diagnostics,
-             [{description,[]},
-              {vsn,"1"},
+             [{description,"Connect to Nodes that support the Diagnostics API"},
+              {vsn,"0.2.0"},
               {registered,[]},
               {applications,[kernel,stdlib]},
               {mod,{diagnostics_app,[]}},
