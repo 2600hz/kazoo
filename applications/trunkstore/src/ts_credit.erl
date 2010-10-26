@@ -192,7 +192,10 @@ set_rate_flags(Flags, Rates) ->
 						end, get_value(<<"routes">>, RateData))
 			  end, Rates0),
     %% Filter on Options - All flag options must be in Rate options
-    Rates2 = lists:filter(fun({_RateName, RateData}) -> options_match(Flags, get_value(<<"options">>, RateData)) end, Rates1),
+    Rates2 = lists:filter(fun({_RateName, RateData}) ->
+				  format_log(info, "TS_CREDIT.options_match: Filter ~p~n", [_RateName]),
+				  options_match(Flags, get_value(<<"options">>, RateData, []))
+			  end, Rates1),
 
     case Rates2 of
 	[] ->
