@@ -198,14 +198,12 @@ get_routes(Flags, Carriers) ->
 	    create_routes(Flags, lists:sort(fun sort_carriers/2, Cs))
     end.
 
-%% sort on weight_cost; return true if weightA >= weightB, else false
+%% see http://erldocs.com/R14A/stdlib/lists.html#sort/2
+%% return true when A should come before B
+%% so return true if A's weight is greater than B's weight
 -spec(sort_carriers/2 :: (CarrierA :: tuple(), CarrierB :: tuple()) -> boolean()).
 sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
-    AWeight = get_value(<<"weight_cost">>, CarrierAData, 0),
-    BWeight = get_value(<<"weight_cost">>, CarrierBData, 0),
-    format_log(info, "CA(~p): ~p CB(~p): ~p~n", [_CarrierAName, AWeight, _CarrierBName, BWeight]),
-    AWeight >= BWeight.
-    
+    get_value(<<"weight_cost">>, CarrierAData, 0) >= get_value(<<"weight_cost">>, CarrierBData, 0).
 
 %% transform Carriers proplist() into a list of Routes for the API
 -spec(create_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
@@ -214,7 +212,7 @@ create_routes(Flags, Carriers) ->
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
-    case lists:foldl(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID}, Carriers) of
+    case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID}, Carriers) of
 	{[], _, _} ->
 	    {error, "Failed to find routes for the call"};
 	{Routes, _, _} ->
@@ -226,8 +224,8 @@ carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
 			undefined -> CallerID;
 			Type -> [{<<"Caller-ID-Type">>, Type} | CallerID]
 		    end,
-    BaseRouteData = [ {<<"Weight-Cost">>, get_value(<<"weight_cost">>, CarrierData, <<"0">>)}
-		      ,{<<"Weight-Location">>, get_value(<<"weight_location">>, CarrierData, <<"0">>)}
+    BaseRouteData = [ {<<"Weight-Cost">>, get_value(<<"weight_cost">>, CarrierData, <<"1">>)}
+		      ,{<<"Weight-Location">>, get_value(<<"weight_location">>, CarrierData, <<"1">>)}
 		      | CallerIDData
 		    ],
     Regexed = lists:foldl(fun(Regex, Acc) ->
