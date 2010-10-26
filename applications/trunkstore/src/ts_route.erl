@@ -162,7 +162,7 @@ set_flags(DidProp, ApiProp) ->
 
     {FailOpts} = get_value(<<"failover">>, DidProp, {[]}),
     {CallerIDOpts} = get_value(<<"caller_id">>, DidProp, {[]}),
-    {Opts} = get_value(<<"options">>, DidProp, {[]}),
+    Opts = get_value(<<"options">>, DidProp, {[]}),
 
     #route_flags{
 	     to_user = ts_util:to_e164(ToUser)
