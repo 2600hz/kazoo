@@ -165,9 +165,9 @@ set_flags(DidProp, ApiProp) ->
     {Opts} = get_value(<<"options">>, DidProp, {[]}),
 
     #route_flags{
-	     to_user = ToUser
+	     to_user = ts_util:to_e164(ToUser)
 	     ,to_domain = ToDomain
-	     ,from_user = FromUser
+	     ,from_user = ts_util:to_e164(FromUser)
 	     ,from_domain = FromDomain
 	     ,direction = get_value(<<"Direction">>, ApiProp)
 	     ,failover = FailOpts
