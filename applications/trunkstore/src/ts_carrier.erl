@@ -23,7 +23,7 @@
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
 
 -import(logger, [format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 
 %%%===================================================================
 %%% API
@@ -201,7 +201,10 @@ get_routes(Flags, Carriers) ->
 %% sort on weight_cost; return true if weightA >= weightB, else false
 -spec(sort_carriers/2 :: (CarrierA :: tuple(), CarrierB :: tuple()) -> boolean()).
 sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
-    get_value(<<"weight_cost">>, CarrierAData, 0) >= get_value(<<"weight_cost">>, CarrierBData, 0).
+    AWeight = get_value(<<"weight_cost">>, CarrierAData, 0),
+    BWeight = get_value(<<"weight_cost">>, CarrierBData, 0),
+    format_log(info, "CA(~p): ~p CB(~p): ~p~n", [_CarrierAName, AWeight, _CarrierBName, BWeight]),
+    AWeight >= BWeight.
     
 
 %% transform Carriers proplist() into a list of Routes for the API
