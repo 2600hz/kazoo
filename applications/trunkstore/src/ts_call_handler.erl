@@ -35,42 +35,51 @@
 %%%-------------------------------------------------------------------
 -module(ts_call_handler).
 
--export([start/4, init/4]).
+-export([start/3, init/3, loop/3]).
 
--import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
--import(logger, [log/2, format_log/3]).
+
+-import(props, [get_value/2, get_value/3]).
+-import(logger, [format_log/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 
--spec(start/4 :: (CallID :: binary(), Flags :: tuple(), EvtQ :: binary(), CtlQ :: binary()) -> pid()).
-start(CallID, Flags, EvtQ, CtlQ) ->
-    spawn(ts_call_handler, init, [CallID, Flags, EvtQ, CtlQ]).
+-spec(start/3 :: (CallID :: binary(), Flags :: tuple(), AmqpHost :: string()) -> pid()).
+start(CallID, Flags, AmqpHost) ->
+    spawn_link(ts_call_handler, init, [CallID, Flags, AmqpHost]).
 
--spec(init/4 :: (CaallID :: binary(), Flags :: tuple(), EvtQ :: binary(), CtlQ :: binary()) -> no_return()).
-init(CallID, Flags, EvtQ, CtlQ) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self()),
-    consume_events(Channel, Ticket, EvtQ),
-    loop(CallID, Flags, {Channel, Ticket, CtlQ}).
+-spec(init/3 :: (CallID :: binary(), Flags :: tuple(), AmqpHost :: string()) -> no_return()).
+init(CallID, Flags, AmqpHost) ->
+    format_log(info, "TS_CALL(~p): Starting post handler for ~p...~n", [self(), CallID]),
+    consume_events(AmqpHost, CallID),
+    loop(CallID, Flags, {AmqpHost, <<>>}).
 
--spec(loop/3 :: (CallID :: binary(), Flags :: tuple(), Amqp :: tuple(Channel :: pid(), Ticket :: integer(), CtlQ :: binary())) -> no_return()).
-loop(CallID, Flags, {Channel, Ticket, CtlQ}=Amqp) ->
+-spec(loop/3 :: (CallID :: binary(), Flags :: tuple(), Amqp :: tuple(Host :: string(), CtlQ :: binary())) -> no_return()).
+loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
     receive
+	{ctl_queue, CallID, CtlQ1} ->
+	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1});
+	{shutdown, CallID} ->
+	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
 	{_, #amqp_msg{props = _Props, payload = Payload}} ->
 	    format_log(info, "TS_CALL(~p): Evt recv:~n~s~n", [self(), Payload]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 
 	    case get_value(<<"Event-Name">>, Prop) of
 		<<"CHANNEL_DESTROY">> ->
-		    format_log(info, "TS_CALL(~p): ChanDestroy Done~n", [self()]),
-		    done;
+		    format_log(info, "TS_CALL(~p): ChanDestroy recv, shutting down...~n", [self()]),
+		    ts_responder:rm_post_handler(CallID);
+		<<"CHANNEL_HANGUP">> ->
+		    format_log(info, "TS_CALL(~p): ChanHangup recv, shutting down...~n", [self()]),
+		    ts_responder:rm_post_handler(CallID);
 		_EvtName ->
-		    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)])
+		    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
+		    ?MODULE:loop(CallID, Flags, Amqp)
 	    end;
 	_Other ->
-	    format_log(info, "TS_CALL(~p): Received Other: ~p~n", [self(), _Other])
-    end,
-    loop(CallID, Flags, Amqp).
+	    format_log(info, "TS_CALL(~p): Received Other: ~p~n", [self(), _Other]),
+	    ?MODULE:loop(CallID, Flags, Amqp)
+    end.
 
--spec(consume_events/3 :: (Channel :: pid(), Ticket :: integer(), EvtQ :: binary()) -> no_return()).
-consume_events(Channel, Ticket, EvtQ) ->
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, amqp_util:basic_consume(Ticket, EvtQ), self()).
+-spec(consume_events/2 :: (Host :: string(), CallID :: binary()) -> no_return()).
+consume_events(Host, CallID) ->
+    amqp_util:callevt_consume(Host, CallID).

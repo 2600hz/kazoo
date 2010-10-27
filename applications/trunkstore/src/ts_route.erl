@@ -22,7 +22,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec(handle_req/2 :: (ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+-spec(handle_req/2 :: (ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
 handle_req(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
@@ -42,7 +42,7 @@ handle_req(ApiProp, ServerID) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+-spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
 inbound_handler(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Inbound handler started...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
@@ -54,7 +54,7 @@ inbound_handler(ApiProp, ServerID) ->
 	    Error
     end.
 
--spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+-spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
 outbound_handler(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
     Did = ts_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
@@ -86,7 +86,7 @@ lookup_did(Did) ->
 	    {error, "Unexpected error in outbound_handler"}
     end.
 
--spec(process_routing/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+-spec(process_routing/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
 process_routing(Flags, ApiProp, ServerID) ->
     case ts_credit:check(Flags) of
 	{ok, Flags1} ->
@@ -94,10 +94,10 @@ process_routing(Flags, ApiProp, ServerID) ->
 	    find_route(Flags1, ApiProp, ServerID);
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Credit Error ~p~n", [self(), Error]),
-	    response(503, ApiProp, ServerID)
+	    response(503, ApiProp, Flags, ServerID)
     end.
 
--spec(find_route/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
+-spec(find_route/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
 find_route(Flags, ApiProp, ServerID) ->
     case Flags#route_flags.direction =:= <<"outbound">> of
 	false ->
@@ -105,19 +105,19 @@ find_route(Flags, ApiProp, ServerID) ->
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
 		    format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, ServerID);
+		    response(Routes, ApiProp, Flags, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
-		    response(404, ApiProp, ServerID)
+		    response(404, ApiProp, Flags, ServerID)
 	    end;
 	true ->
 	    case ts_carrier:route(Flags) of
 		{ok, Routes} ->
 		    format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, ServerID);
+		    response(Routes, ApiProp, Flags, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
-		    response(404, ApiProp, ServerID)
+		    response(404, ApiProp, Flags, ServerID)
 	    end
     end.
 
@@ -140,7 +140,7 @@ inbound_route(Flags) ->
 	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route]),
 	    {error, "Inbound route validation failed"}
     end.
-		  
+
 -spec(inbound_features/1 :: (Flags :: tuple()) -> tuple()).
 inbound_features(Flags) ->
     Features = [],
@@ -150,7 +150,7 @@ inbound_features(Flags) ->
 outbound_features(Flags) ->
     Features = [ts_e911, ts_t38],
     fold_features(Features, Flags).
-    
+
 -spec(fold_features/2 :: (Features :: list(atom()), Flags :: tuple()) -> tuple()).
 fold_features(Features, Flags) ->
     lists:foldl(fun(Mod, Flags0) ->
@@ -192,12 +192,17 @@ set_flags(DidProp, ApiProp) ->
 	     %,codecs = [] :: list()
 	    }.
 
--spec(response/3 :: (Routes :: proplist() | integer(), Prop :: proplist(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
-response(Routes, Prop, ServerID) ->
+-spec(response/4 :: (Routes :: proplist() | integer(), Prop :: proplist(), Flags :: tuple(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
+response(Routes, Prop, Flags, ServerID) ->
     Prop1 = [ {<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
 	      | whistle_api:default_headers(ServerID, <<"dialplan">>, <<"route_resp">>, <<"ts_route">>, <<"0.1">>) ],
     Data = specific_response(Routes) ++ Prop1,
-    whistle_api:route_resp(Data).
+    case whistle_api:route_resp(Data) of
+	{ok, JSON} ->
+	    {ok, JSON, Flags};
+	{error, _E}=Error ->
+	    Error
+    end.
 
 -spec(specific_response/1 :: (CodeOrRoutes :: integer() | proplist()) -> proplist()).
 specific_response(404) ->
