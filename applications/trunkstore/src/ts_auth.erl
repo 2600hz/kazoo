@@ -12,7 +12,7 @@
 -export([handle_req/1]).
 
 -define(APP_NAME, <<"ts_responder.auth">>).
--define(APP_VERSION, <<"0.1">>).
+-define(APP_VERSION, <<"0.3.0">>).
 
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 -include("ts.hrl").

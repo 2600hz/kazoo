@@ -534,9 +534,9 @@ headers_to_json(HeadersProp) ->
 	JSON = mochijson2:encode({struct, HeadersProp}),
 	{ok, JSON}
     catch
-	throw:E -> {error, io_lib:format("WHISTLE TO_JSON THROW ERROR: ~s~n~p", [E, HeadersProp])};
-	error:E -> {error, io_lib:format("WHISTLE TO_JSON ERROR: ~s~n~p", [E, HeadersProp])};
-	exit:E -> {error, io_lib:format("WHISTLE TO_JSON EXIT ERROR: ~s~n~p", [E, HeadersProp])}
+	throw:E -> {error, io_lib:format("WHISTLE TO_JSON THROW ERROR: ~p~n~p", [E, HeadersProp])};
+	error:E -> {error, io_lib:format("WHISTLE TO_JSON ERROR: ~p~n~p", [E, HeadersProp])};
+	exit:E -> {error, io_lib:format("WHISTLE TO_JSON EXIT ERROR: ~p~n~p", [E, HeadersProp])}
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing

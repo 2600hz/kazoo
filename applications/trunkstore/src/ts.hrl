@@ -12,6 +12,8 @@
 -define(TS_RATES_DOC, "rates").
 -define(TS_CARRIERS_DOC, "carriers").
 
+-define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>]).
+
 % just want to deal with binary K/V pairs
 -type proplist() :: list(tuple(binary(), binary())) | [].
 
@@ -30,6 +32,8 @@
           ,callerid_default = {} :: tuple()              % Override Name and Number for Caller ID
 	  ,fax = [] :: proplist()                        % Fax properties
 	  ,flat_rate_enabled = false :: boolean()        % is this a flat-rate eligible call
+	  ,auth_options = [] :: proplist()               % server auth creds
+          ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX"
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
 	  ,inbound_rate = 0.0 :: float()                 % rate for the inbound leg
 	  ,inbound_rate_increment = 60 :: integer()      % time, in sec, to bill per

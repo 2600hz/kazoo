@@ -144,11 +144,10 @@
 			   ]).
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
 			   ,{<<"Route-Error-Message">>, fun is_binary/1}
-			   ,{<<"Routes">>, fun(L) when is_list(L) ->
-						   lists:all(fun({struct, R}) ->
-								     whistle_api:route_resp_route_v(R)
-							     end, L);
-					      (_) -> false
+			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
+					      (_Bad) -> 
+						   io:format("Bad v ~p~n", [_Bad]),
+						   false
 					   end}
 			  ]).
 

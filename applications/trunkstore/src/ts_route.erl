@@ -17,7 +17,7 @@
 -include("ts.hrl").
 
 -define(APP_NAME, <<"ts_responder.route">>).
--define(APP_VERSION, <<"0.1">>).
+-define(APP_VERSION, <<"0.4.0">>).
 
 %%%===================================================================
 %%% API
@@ -44,12 +44,14 @@ handle_req(ApiProp, ServerID) ->
 %%%===================================================================
 -spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
 inbound_handler(ApiProp, ServerID) ->
+    format_log(info, "TS_ROUTE(~p): Inbound handler started...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
-    Options = [{"key", ToUser}],
+    Did = ts_util:to_e164(ToUser),
+    Options = [{"key", Did}],
     case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p(~p)~n"
-		       ,[self(), ?TS_VIEW_DIDLOOKUP, ToUser, _ToDomain]),
+		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did, _ToDomain]),
 	    {error, "No DIDLOOKUP view"};
 	[] ->
 	    format_log(info, "TS_ROUTE(~p): No DID matching ~p~n", [self(), ToUser]),
@@ -57,9 +59,8 @@ inbound_handler(ApiProp, ServerID) ->
 	[{ViewProp} | _Rest] ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
-	    {struct, Value} = mochijson2:decode(get_value(<<"value">>, ViewProp)),
-	    {struct, DidOptions} = get_value(<<"DID_Opts">>, Value),
-	    process_routing(inbound_features(set_flags(DidOptions, ApiProp)), ApiProp, ServerID);
+	    {Value} = get_value(<<"value">>, ViewProp),
+	    process_routing(inbound_features(set_flags(Value, ApiProp)), ApiProp, ServerID);
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in inbound_handler"}
@@ -82,8 +83,7 @@ outbound_handler(Prop, ServerID) ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
 	    {Value} = get_value(<<"value">>, ViewProp),
-	    {DidOptions} = get_value(<<"DID_Opts">>, Value),
-	    process_routing(outbound_features(set_flags(DidOptions, Prop)), Prop, ServerID);
+	    process_routing(outbound_features(set_flags(Value, Prop)), Prop, ServerID);
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
@@ -126,17 +126,22 @@ find_route(Flags, ApiProp, ServerID) ->
 
 -spec(inbound_route/1 :: (Flags :: tuple()) -> {ok, proplist()} | {error, string()}).
 inbound_route(Flags) ->
-    Dialstring = list_to_binary(["user/", Flags#route_flags.to_user]),
-    R = [{<<"Route">>, Dialstring}
-	 ,{<<"Media">>, <<"bypass">>}
-	 ,{<<"Weight-Cost">>, <<"0">>}
-	 ,{<<"Weight-Location">>, <<"0">>}],
-
-    case whistle_api:route_resp_route_v(R) of
-	true -> {ok, R};
+    User = case Flags#route_flags.inbound_format of
+	       <<"E.164">> -> ts_util:to_e164(Flags#route_flags.to_user);
+	       <<"1NPANXXXXXX">> -> ts_util:to_1npanxxxxxx(Flags#route_flags.to_user);
+	       _NPANXXXXXX -> ts_util:to_npanxxxxxx(Flags#route_flags.to_user)
+	   end,
+    Dialstring = list_to_binary([User, $@, get_value(<<"auth_ip">>, Flags#route_flags.auth_options, Flags#route_flags.to_domain)]),
+    Route = [{<<"Route">>, Dialstring}
+	     ,{<<"Weight-Cost">>, 1}
+	     ,{<<"Weight-Location">>, 1}
+	     ,{<<"Media">>, <<"bypass">>}
+	    ],
+    case whistle_api:route_resp_route_v(Route) of
+	true -> {ok, [{struct, Route}]};
 	false ->
-	    format_log(error, "TS_ROUTE(~p): Failed to create inbound route for Dialstring ~p~n", [self(), Dialstring]),
-	    {error, "Failed to create inbound route"}
+	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route]),
+	    {error, "Inbound route validation failed"}
     end.
 		  
 -spec(inbound_features/1 :: (Flags :: tuple()) -> tuple()).
@@ -157,12 +162,18 @@ fold_features(Features, Flags) ->
 
 -spec(set_flags/2 :: (DidProp :: proplist(), ApiProp :: proplist()) -> tuple()).
 set_flags(DidProp, ApiProp) ->
+    {DidOptions} = get_value(<<"DID_Opts">>, DidProp, {[]}),
+    {AuthOptions} = get_value(<<"auth">>, DidProp, {[]}),
+    {AccountOptions} = get_value(<<"account">>, DidProp, {[]}),
+
     [ToUser, ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     [FromUser, FromDomain] = binary:split(get_value(<<"From">>, ApiProp), <<"@">>),
 
-    {FailOpts} = get_value(<<"failover">>, DidProp, {[]}),
-    {CallerIDOpts} = get_value(<<"caller_id">>, DidProp, {[]}),
+    {FailOpts} = get_value(<<"failover">>, DidOptions, {[]}),
+    {CallerIDOpts} = get_value(<<"caller_id">>, DidOptions, {[]}),
     Opts = get_value(<<"options">>, DidProp, {[]}),
+
+    Trunks = to_integer(get_value(<<"trunks">>, AccountOptions, 0)),
 
     #route_flags{
 	     to_user = ts_util:to_e164(ToUser)
@@ -175,7 +186,9 @@ set_flags(DidProp, ApiProp) ->
 			  ,get_value(<<"cid_num">>, CallerIDOpts, get_value(<<"Caller-ID-Number">>, ApiProp))}
 	     ,route_options = Opts
 	     ,credit_available = get_value(<<"account_credit">>, DidProp)
-	     ,flat_rate_enabled = (get_value(<<"trunks_available">>, DidProp, 0) > 0)
+	     ,flat_rate_enabled = (Trunks > 0)
+	     ,auth_options = AuthOptions
+	     ,inbound_format = get_value(<<"inbound_format">>, DidProp, <<"NPANXXXXXX">>)
 	     %,fax = []
 	     %,callerid_default
 	     %,flat_rate_enabled -> number of flat rate trunks available
@@ -206,3 +219,10 @@ specific_response(Routes) when is_list(Routes) ->
     [{<<"Routes">>, Routes}
      ,{<<"Method">>, <<"bridge">>}
     ].
+
+to_integer(X) when is_binary(X) ->
+    list_to_integer(binary_to_list(X));
+to_integer(X) when is_list(X) ->
+    list_to_integer(X);
+to_integer(X) when is_integer(X) ->
+    X.
