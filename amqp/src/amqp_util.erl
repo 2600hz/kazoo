@@ -21,8 +21,9 @@
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2]).
 
--export([new_queue/1, new_queue/2, delete_queue/2, basic_consume/2, basic_publish/4, basic_publish/5
-	 , channel_close/1, channel_close/2, channel_close/3, queue_delete/2,queue_delete/3]).
+-export([new_queue/1, new_queue/2, delete_queue/2, basic_consume/2, basic_consume/3
+	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2
+	 ,channel_close/3, queue_delete/2,queue_delete/3]).
 
 -export([access_request/0, access_request/1]).
 
@@ -250,15 +251,18 @@ callctl_consume(Host, CallId) ->
 basic_consume(Host, Queue) when is_list(Queue) ->
     basic_consume(Host, list_to_binary(Queue));
 basic_consume(Host, Queue) ->
+    basic_consume(Host, Queue, []).
+
+basic_consume(Host, Queue, Options) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
     BC = #'basic.consume'{
       ticket = Ticket
       ,queue = Queue
       ,consumer_tag = Queue
-      ,no_local = false
-      ,no_ack = true
-      ,exclusive = true
-      ,nowait = false
+      ,no_local = get_value(no_local, Options, false)
+      ,no_ack = get_value(no_ack, Options, true)
+      ,exclusive = get_value(exclusive, Options, true)
+      ,nowait = get_value(nowait, Options, false)
      },
     amqp_channel:subscribe(Channel, BC, self()).
 
