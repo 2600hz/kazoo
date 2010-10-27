@@ -65,7 +65,5 @@
       <!--<param name="record-copyright" value="Your Copyright"/>-->
     </profile>
 
-    <X-PRE-PROCESS cmd="include" data="/repository/ROOT/*/*/conf/autoload_configs/voicemail.profiles"/>
-
   </profiles>
 </configuration> 

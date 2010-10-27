@@ -76,7 +76,7 @@
             <param name="manage-presence" value="true"/>
             <!--<param name="manage-shared-appearance" value="true"/>-->
             <!--<param name="dbname" value="share_presence"/>-->
-            <!--<param name="presence-hosts" value=".gocentrix.net"/>-->
+            <!--<param name="presence-hosts" value=".2600hz.org"/>-->
             <param name="force-subscription-expires" value="360"/>
             <param name="send-message-query-on-register" value="true"/>
             
