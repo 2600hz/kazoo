@@ -175,6 +175,7 @@ bind_q(AmqpHost, ID) ->
     amqp_util:targeted_exchange(AmqpHost),
     amqp_util:broadcast_exchange(AmqpHost),
     Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
+    format_log(info, "L/U.user(~p): create targeted queue ~p~n", [self(), Queue]),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),
     amqp_util:basic_consume(AmqpHost, Queue),
     Queue.
