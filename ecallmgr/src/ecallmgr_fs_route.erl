@@ -74,7 +74,7 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 	    freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_route(Node, State);
 	shutdown ->
-	    lists:foreach(fun({Pid,_StartTime}) ->
+	    lists:foreach(fun({Pid, _CallID, _StartTime}) ->
 				  case erlang:is_process_alive(Pid) of
 				      true -> Pid ! shutdown;
 				      false -> ok
@@ -260,7 +260,7 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     CodecStr = string:join(Codecs, ","),
     [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
-    format_log(info, "L/U.route(~p): Unknown channel var ~s::~s~n", [self(), _K, _V]),
+    format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
 handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid) ->

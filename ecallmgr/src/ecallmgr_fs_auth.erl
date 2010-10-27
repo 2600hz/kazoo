@@ -75,7 +75,7 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 	    freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_user(Node, State);
 	shutdown ->
-	    lists:foreach(fun({Pid,_StartTime}) ->
+	    lists:foreach(fun({Pid, _CallID, _StartTime}) ->
 				  case erlang:is_process_alive(Pid) of
 				      true -> Pid ! shutdown;
 				      false -> ok
