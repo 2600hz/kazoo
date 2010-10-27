@@ -28,7 +28,7 @@
 %% @doc Give Prop, the Auth API request, create the API response JSON
 %% @end
 %%--------------------------------------------------------------------
--spec(handle_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(handle_req/1 :: (Prop :: proplist()) -> tuple(ok | error, iolist() | string())).
 handle_req(Prop) ->
     [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
     {AuthU, AuthD} = {get_value(<<"Auth-User">>, Prop), get_value(<<"Auth-Domain">>, Prop)},
@@ -38,7 +38,12 @@ handle_req(Prop) ->
 		    false -> <<"outbound">>
 		end,
 
-    ViewInfo = lookup_user(AuthU, AuthD),
+    ViewInfo = case lookup_user(AuthU, AuthD) of
+		   {ok, View} -> View;
+		   {error, _E}=Error ->
+		       format_log(error, "TS_AUTH(~p): Failed to lookup user ~p@~p~n", [self(), AuthU, AuthD]),
+		       Error
+	       end,
 
     Defaults = [{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
 		,{<<"Custom-Channel-Vars">>, {struct, [{<<"Direction">>, Direction}]}}
@@ -99,7 +104,7 @@ is_inbound(Domain) ->
 	    false
     end.
 
--spec(lookup_user/2 :: (Name :: binary(), Domain :: binary()) -> proplist() | {error, string()}).
+-spec(lookup_user/2 :: (Name :: binary(), Domain :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name, Domain) ->
     IP = find_ip(Domain),
     Options = [{"key", IP}],
@@ -115,13 +120,13 @@ lookup_user(Name, Domain) ->
 	    lookup_user(Name);
 	[{ViewProp} | _Rest] ->
 	    format_log(info, "TS_AUTH(~p): Using ~p(~p), retrieved~n~p~n", [self(), Domain, IP, ViewProp]),
-	    ViewProp;
+	    {ok, ViewProp};
 	_Else ->
 	    format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in lookup_user/2"}
     end.
 
--spec(lookup_user/1 :: (Name :: binary()) -> proplist() | {error, string()}).
+-spec(lookup_user/1 :: (Name :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name) ->
     Options = [{"key", Name}],
     case ts_couch:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
@@ -133,7 +138,7 @@ lookup_user(Name) ->
 	    [];
 	[{ViewProp} | _Rest] ->
 	    format_log(info, "TS_AUTH(~p): Using ~p, retrieved~n~p~n", [self(), Name, ViewProp]),
-	    ViewProp;
+	    {ok, ViewProp};
 	_Else ->
 	    format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpeced error in lookup_user/1"}
@@ -165,6 +170,7 @@ specific_response(403) ->
      ,{<<"Access-Group">>, <<"ignore">>}
      ,{<<"Tenant-ID">>, <<"ignore">>}].
 
+-spec(find_ip/1 :: (Domain :: binary() | list()) -> list()).
 find_ip(Domain) when is_binary(Domain) ->
     find_ip(binary_to_list(Domain));
 find_ip(Domain) when is_list(Domain) ->

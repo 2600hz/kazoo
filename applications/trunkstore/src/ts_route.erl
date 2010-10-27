@@ -47,29 +47,26 @@ inbound_handler(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Inbound handler started...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     Did = ts_util:to_e164(ToUser),
-    Options = [{"key", Did}],
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
-	false ->
-	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p(~p)~n"
-		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did, _ToDomain]),
-	    {error, "No DIDLOOKUP view"};
-	[] ->
-	    format_log(info, "TS_ROUTE(~p): No DID matching ~p~n", [self(), ToUser]),
-	    {error, "No matching DID"};
-	[{ViewProp} | _Rest] ->
-	    OurDid = get_value(<<"key">>, ViewProp),
-	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
-	    {Value} = get_value(<<"value">>, ViewProp),
+    case lookup_did(Did) of
+	{ok, Value} ->
 	    process_routing(inbound_features(set_flags(Value, ApiProp)), ApiProp, ServerID);
-	_Else ->
-	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
-	    {error, "Unexpected error in inbound_handler"}
+	{error, _E}=Error ->
+	    Error
     end.
 
 -spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> {ok, iolist()} | {error, string()}).
-outbound_handler(Prop, ServerID) ->
+outbound_handler(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
-    Did = ts_util:to_e164(get_value(<<"Caller-ID-Number">>, Prop, <<>>)),
+    Did = ts_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
+    case lookup_did(Did) of
+	{ok, Value} ->
+	    process_routing(outbound_features(set_flags(Value, ApiProp)), ApiProp, ServerID);
+	{error, _E}=Error ->
+	    Error
+    end.
+
+-spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok | error, proplist() | string())).
+lookup_did(Did) ->
     Options = [{"keys", [Did]}],
     case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
@@ -83,7 +80,7 @@ outbound_handler(Prop, ServerID) ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
 	    {Value} = get_value(<<"value">>, ViewProp),
-	    process_routing(outbound_features(set_flags(Value, Prop)), Prop, ServerID);
+	    {ok, Value};
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
@@ -124,7 +121,7 @@ find_route(Flags, ApiProp, ServerID) ->
 	    end
     end.
 
--spec(inbound_route/1 :: (Flags :: tuple()) -> {ok, proplist()} | {error, string()}).
+-spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok | error, proplist() | string())).
 inbound_route(Flags) ->
     User = case Flags#route_flags.inbound_format of
 	       <<"E.164">> -> ts_util:to_e164(Flags#route_flags.to_user);
