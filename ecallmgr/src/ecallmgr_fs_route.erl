@@ -225,7 +225,7 @@ generate_xml(<<"bridge">>, Routes, _Prop) ->
 							   end,
 					     ChannelVars = get_channel_vars(RouteProp),
 					     Ext = io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]),
-					     {Idx+1, [Ext | Acc]};
+					     {Idx+1, [Ext | Acc]}
 				     end, {1, ""}, lists:reverse(Routes)),
     format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));

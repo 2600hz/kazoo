@@ -208,7 +208,7 @@ display_fs_data(Data) ->
     Vsn = get_value(version, Data),
     Host = get_value(host, Data),
     {{Y, M, D}, {H, Min, S}} = calendar:now_to_datetime(get_value(recorded, Data)),
-    io:format("Diagnostics for ~p (~s) on ~p at ~p:~p:~p on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
+    io:format("Diagnostics for ~p (~s) on ~p at ~2.2.0w:~2.2.0w:~2.2.0w on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
 
     lists:map(fun({Node, {auth_handler, AuthData}, {route_handler, RouteData}}) ->
 		      io:format("  Node Diagnostics for ~p~n", [Node]),
