@@ -218,12 +218,21 @@ generate_xml(<<"bridge">>, Routes, _Prop) ->
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
 					     Route = get_value(<<"Route">>, RouteProp), %% translate Route to FS-encoded URI
+
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
 							       <<"process">> -> "false";
 							       _ -> "true" %% auto?
 							   end,
-					     ChannelVars = get_channel_vars(RouteProp),
+
+					     RP1 = case get_value(<<"Progress-Timeout">>, RouteProp) of
+						       undefined -> [ {<<"Progress-Timeout">>, <<"6">>} | RouteProp];
+						       I when is_integer(I) -> [ {<<"Progress-Timeout">>, integer_to_list(I)}
+										 | lists:keydelete(<<"Progress-Timeout">>, 1, RouteProp) ];
+						       _ -> RouteProp
+						   end,
+
+					     ChannelVars = get_channel_vars(RP1),
 					     Ext = io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]),
 					     {Idx+1, [Ext | Acc]}
 				     end, {1, ""}, lists:reverse(Routes)),
@@ -259,6 +268,8 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     Codecs = lists:map(fun binary_to_list/1, Cs),
     CodecStr = string:join(Codecs, ","),
     [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
+get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->
+    [ list_to_binary([<<"progress_timeout=">>, V]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
