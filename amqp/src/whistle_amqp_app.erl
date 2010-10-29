@@ -1,4 +1,4 @@
--module(amqp_app).
+-module(whistle_amqp_app).
 
 -behaviour(application).
 
@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    amqp_sup:start_link().
+    whistle_amqp_sup:start_link().
 
 stop(_State) ->
     ok.

@@ -279,17 +279,25 @@ close_host(Host, HostInfo) ->
 -spec(close_conn/2 :: (Conn :: pid(), Ref :: reference()) -> no_return()).
 close_conn(Conn, Ref) ->
     erlang:demonitor(Ref),
-    case erlang:is_process_alive(Conn) of
-	true -> amqp_connection:close(Conn, 200, <<"Goodbye">>);
-	false -> ok
+    try
+	case erlang:is_process_alive(Conn) of
+	    true -> amqp_connection:close(Conn, 200, <<"Goodbye">>);
+	    false -> ok
+	end
+    catch
+	_:_ -> ok
     end.
 
 -spec(close_channel_down/2 :: (Chan :: pid(), Ref :: reference()) -> none()).
 close_channel_down(Chan, Ref) ->
     erlang:demonitor(Ref),
-    case erlang:is_process_alive(Chan) of
-	true -> amqp_channel:close(Chan);
-	false -> ok
+    try
+	case erlang:is_process_alive(Chan) of
+	    true -> amqp_channel:close(Chan);
+	    false -> ok
+	end
+    catch
+	_:_ -> ok
     end.
 
 -spec(create_amqp_params/1 :: (Host :: string()) -> tuple()).
@@ -300,11 +308,12 @@ create_amqp_params(Host, Port) ->
     #'amqp_params'{
       port = Port
       ,host = Host
+      ,channel_max = ?MAX_CHANNEL_NUMBER
      }.
 
 -spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
 get_new_connection(#'amqp_params'{}=P) ->
-    Connection = amqp_connection:start_network_link(P),
+    Connection = amqp_connection:start(network, P),
     MRefConn = erlang:monitor(process, Connection),
     {Connection, MRefConn}.
 

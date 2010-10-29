@@ -1,5 +1,4 @@
-
--module(amqp_sup).
+-module(whistle_amqp_sup).
 
 -behaviour(supervisor).
 

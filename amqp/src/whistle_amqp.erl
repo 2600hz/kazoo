@@ -1,4 +1,4 @@
--module(amqp).
+-module(whistle_amqp).
 
 -author('James Aimonetti <james@2600hz.com>').
 
@@ -15,14 +15,16 @@ ensure_started(App) ->
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    amqp_sup:start_link().
+    io:format("Start_link~n", []),
+    whistle_amqp_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the amqp server.
 start() ->
-    application:start(amqp).
+    io:format("Start~n", []),
+    application:start(whistle_amqp).
 
 %% @spec stop() -> ok
 %% @doc Stop the amqp server.
 stop() ->
-    application:stop(amqp).
+    application:stop(whistle_amqp).

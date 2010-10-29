@@ -9,7 +9,7 @@
        ,stdlib
        ,crypto
        ,sasl
-       ,amqp
+       ,whistle_amqp
        ,log_roller
       ]}
    ,{mod, { ecallmgr_app
