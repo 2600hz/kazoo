@@ -313,7 +313,7 @@ create_amqp_params(Host, Port) ->
 
 -spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
 get_new_connection(#'amqp_params'{}=P) ->
-    Connection = amqp_connection:start(network, P),
+    {ok, Connection} = amqp_connection:start(network, P),
     MRefConn = erlang:monitor(process, Connection),
     {Connection, MRefConn}.
 
