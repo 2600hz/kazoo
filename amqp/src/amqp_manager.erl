@@ -320,7 +320,7 @@ get_new_connection(#'amqp_params'{}=P) ->
 -spec(open_amqp_channel/2 :: (Connection :: pid(), Pid :: pid()) -> tuple(pid(), reference(), reference(), integer()) | any()).
 open_amqp_channel(Connection, Pid) ->
     %% Open an AMQP channel to access our realm
-    Channel = amqp_connection:open_channel(Connection),
+    {ok, Channel} = amqp_connection:open_channel(Connection),
     format_log(info, "AMQP_MGR(~p): Open channel(~p) for ~p~n", [self(), Channel, Pid]),
 
     %% if a message is returned, we need to handle it
