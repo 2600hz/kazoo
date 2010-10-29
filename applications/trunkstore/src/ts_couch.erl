@@ -147,8 +147,13 @@ handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host,
 	{{error, _Err}=E, _DBs} ->
 	    {reply, E, State};
 	{Db, DBs1} ->
-	    {ok, {Doc}} = couchbeam:open_doc(Db, DocId, Options),
-	    {reply, Doc, State#state{dbs=DBs1}}
+	    case couchbeam:open_doc(Db, DocId, Options) of
+		{ok, {Doc}} ->
+		    {reply, Doc, State#state{dbs=DBs1}};
+		Other ->
+		    format_log(error, "TS_COUCH(~p): Failed to find ~p: ~p~n", [self(), DocId, Other]),
+		    {reply, {error, not_found}, State}
+	    end
     end;
 handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
     case get_db(DbName, Conn, DBs) of

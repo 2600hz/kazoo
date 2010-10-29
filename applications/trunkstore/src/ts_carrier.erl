@@ -21,6 +21,7 @@
 
 -define(SERVER, ?MODULE).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
+-define(DEFAULT_PROGRESS_TIMEOUT, 6). % seconds to timeout if no progress
 
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
@@ -160,16 +161,19 @@ get_current_carriers() ->
 	    {error, "No matching carriers"};
 	Carriers when is_list(Carriers) ->
 	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Carriers)]),
-	    {ok, lists:map(fun process_carriers/1, Carriers)};
+	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))};
 	Other ->
 	    format_log(error, "TS_CARRIER(~p): Unexpected error ~p~n", [self(), Other]),
 	    {error, "Unexpected error"}
     end.
 
-process_carriers({<<"_id">>, _}=ID) ->
-    ID;
-process_carriers({<<"_rev">>, _}=Rev) ->
-    Rev;
+active_carriers({<<"_id">>, _}) ->
+    false;
+active_carriers({<<"_rev">>, _}) ->
+    false;
+active_carriers({_CarrierName, {CarrierOptions}}) ->
+    get_value(<<"enabled">>, CarrierOptions) =:= <<"1">>.
+
 process_carriers({CarrierName, {CarrierOptions}}) ->
     RoutesRegexStrs = get_value(<<"routes">>, CarrierOptions, []),
     RouteRegexs = lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs),
@@ -208,7 +212,7 @@ sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
 %% transform Carriers proplist() into a list of Routes for the API
 -spec(create_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
 create_routes(Flags, Carriers) ->
-    CallerID = case Flags#route_flags.callerid of
+    CallerID = case Flags#route_flags.caller_id of
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
@@ -240,7 +244,7 @@ carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
     {GatewayRoutes, User, CallerID}.
 
 gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
-    case get_value(<<"enabled">>, Gateway, <<"1">>) of
+    case get_value(<<"enabled">>, Gateway, <<"0">>) of
 	<<"1">> ->
 	    Dialstring = list_to_binary([<<"sip:">>
 					 ,get_value(<<"prefix">>, Gateway)
@@ -254,6 +258,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
 		 ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
 		 ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}
 		 ,{<<"Codecs">>, get_value(<<"codecs">>, Gateway, [])}
+		 ,{<<"Progress-Timeout">>, get_value(<<"progress_timer">>, Gateway, ?DEFAULT_PROGRESS_TIMEOUT)}
 		 | BaseRouteData ],
 	    case whistle_api:route_resp_route_v(R) of
 		true -> {[{struct, R} | CRs], Regexed, BaseRouteData};

@@ -9,6 +9,7 @@
 -module(ts_util).
 
 -export([to_e164/1, to_npanxxxxxx/1, to_1npanxxxxxx/1]).
+-export([to_integer/1, to_float/1]).
 
 %% +18001234567 -> +18001234567
 to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) == 80 -> % 8bits/ch * 10ch
@@ -39,3 +40,19 @@ to_1npanxxxxxx(NPAN) when erlang:bit_size(NPAN) == 80 ->
     <<$1, NPAN>>;
 to_1npanxxxxxx(Other) ->
     Other.
+
+to_integer(X) when is_binary(X) ->
+    list_to_integer(binary_to_list(X));
+to_integer(X) when is_list(X) ->
+    list_to_integer(X);
+to_integer(X) when is_integer(X) ->
+    X.
+
+to_float(X) when is_binary(X) ->
+    list_to_float(binary_to_list(X));
+to_float(X) when is_list(X) ->
+    list_to_float(X);
+to_float(X) when is_integer(X) ->
+    X * 1.0;
+to_float(X) when is_float(X) ->
+    X.

@@ -46,7 +46,11 @@ handle_req(Prop) ->
 	       end,
 
     Defaults = [{<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
-		,{<<"Custom-Channel-Vars">>, {struct, [{<<"Direction">>, Direction}]}}
+		,{<<"Custom-Channel-Vars">>, {struct, [
+						       {<<"Direction">>, Direction}
+						       ,{<<"Auth-User">>, AuthU}
+						      ]
+					     }}
 		| whistle_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
 					      ,get_value(<<"Event-Category">>, Prop)
 					      ,<<"auth_resp">>

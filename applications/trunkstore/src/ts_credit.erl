@@ -205,12 +205,14 @@ set_rate_flags(Flags, Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    %% trunks available in flags (flat_rate_enabled) and the carrier has flatrate available as well
-	    UseFlatRate = Flags#route_flags.flat_rate_enabled andalso get_value(<<"flatrate">>, RateData, false),
+	    UseFlatRate = Flags#route_flags.trunks > 0 andalso get_value(<<"flatrate">>, RateData, false),
 
 	    case UseFlatRate of
 		true ->
+		    format_log(info, "TS_CREDIT(~p): Use flat rate for ~p~n", [self(), Dir]),
 		    {ok, set_flat_flags(Flags, Dir)};
 		false ->
+		    format_log(info, "TS_CREDIT(~p): Use rate data for ~p: ~p~n", [self(), Dir, RateData]),
 		    Flags0 = set_rate_flags(Flags, Dir, RateData),
 		    case has_credit(Flags0, Dir) of
 			true ->
