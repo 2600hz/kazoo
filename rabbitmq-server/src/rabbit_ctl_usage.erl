@@ -27,28 +27,29 @@ Commands:
     force_reset
     rotate_logs <suffix>
 
-    cluster<clusternode> ...
-    force_cluster<clusternode> ...
+    cluster <clusternode> ...
+    force_cluster <clusternode> ...
 
     close_connection <connectionpid> <explanation>
 
     add_user <username> <password>
     delete_user <username>
     change_password <username> <newpassword>
+    set_admin <username>
+    clear_admin <username>
     list_users
 
     add_vhost <vhostpath>
     delete_vhost <vhostpath>
     list_vhosts
-    set_permissions [-p <vhostpath>] <username> <configure> <write> <read>
+    set_permissions [-p <vhostpath>] <user> <conf> <write> <read>
     clear_permissions [-p <vhostpath>] <username>
     list_permissions [-p <vhostpath>]
     list_user_permissions [-p <vhostpath>] <username>
 
     list_queues [-p <vhostpath>] [<queueinfoitem> ...]
     list_exchanges [-p <vhostpath>] [<exchangeinfoitem> ...]
-
-    list_bindings [-p <vhostpath>]
+    list_bindings [-p <vhostpath>] [<bindinginfoitem> ...]
     list_connections [<connectioninfoitem> ...]
     list_channels [<channelinfoitem> ...]
     list_consumers
@@ -63,16 +64,17 @@ messages_ready, messages_unacknowledged, messages, consumers, memory].
 <exchangeinfoitem> must be a member of the list [name, type, durable, 
 auto_delete, arguments].
 
-The output format for \"list_bindings\" is a list of rows containing exchange 
-name, queue name, routing key and arguments, in that order.
+<bindinginfoitem> must be a member of the list [source_name, source_kind, 
+destination_name, destination_kind, routing_key, arguments].
 
 <connectioninfoitem> must be a member of the list [pid, address, port, 
-peer_address, peer_port, state, channels, user, vhost, timeout, frame_max, 
+peer_address, peer_port, peer_cert_subject, peer_cert_issuer, 
+peer_cert_validity, state, channels, protocol, user, vhost, timeout, frame_max, 
 client_properties, recv_oct, recv_cnt, send_oct, send_cnt, send_pend].
 
 <channelinfoitem> must be a member of the list [pid, connection, number, user, 
 vhost, transactional, consumer_count, messages_unacknowledged, 
-acks_uncommitted, prefetch_count].
+acks_uncommitted, prefetch_count, client_flow_blocked].
 
 The output format for \"list_consumers\" is a list of rows containing, in 
 order, the queue name, channel process id, consumer tag, and a boolean 

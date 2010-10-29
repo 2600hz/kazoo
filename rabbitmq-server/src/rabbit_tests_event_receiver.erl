@@ -29,22 +29,38 @@
 %%   Contributor(s): ______________________________________.
 %%
 
--module(rabbit_tracer).
--export([start/0]).
+-module(rabbit_tests_event_receiver).
 
--import(erlang).
+-export([start/1, stop/0]).
 
-start() ->
-    spawn(fun mainloop/0),
+-export([init/1, handle_call/2, handle_event/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+start(Pid) ->
+    gen_event:add_handler(rabbit_event, ?MODULE, [Pid]).
+
+stop() ->
+    gen_event:delete_handler(rabbit_event, ?MODULE, []).
+
+%%----------------------------------------------------------------------------
+
+init([Pid]) ->
+    {ok, Pid}.
+
+handle_call(_Request, Pid) ->
+    {ok, not_understood, Pid}.
+
+handle_event(Event, Pid) ->
+    Pid ! Event,
+    {ok, Pid}.
+
+handle_info(_Info, Pid) ->
+    {ok, Pid}.
+
+terminate(_Arg, _Pid) ->
     ok.
 
-mainloop() ->
-    erlang:trace(new, true, [all]),
-    mainloop1().
+code_change(_OldVsn, Pid, _Extra) ->
+    {ok, Pid}.
 
-mainloop1() ->
-    receive
-        Msg ->
-            rabbit_log:info("TRACE: ~p~n", [Msg])
-    end,
-    mainloop1().
+%%----------------------------------------------------------------------------

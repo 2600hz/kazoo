@@ -41,7 +41,7 @@
 %%used by TCP-based transports, e.g. STOMP adapter
 -export([check_tcp_listener_address/3]).
 
--export([tcp_listener_started/2, tcp_listener_stopped/2,
+-export([tcp_listener_started/3, tcp_listener_stopped/3,
          start_client/1, start_ssl_client/2]).
 
 -include("rabbit.hrl").
@@ -107,7 +107,17 @@ boot_ssl() ->
             ok;
         {ok, SslListeners} ->
             ok = rabbit_misc:start_applications([crypto, public_key, ssl]),
-            {ok, SslOpts} = application:get_env(ssl_options),
+            {ok, SslOptsConfig} = application:get_env(ssl_options),
+            % unknown_ca errors are silently ignored  prior to R14B unless we
+            % supply this verify_fun - remove when at least R14B is required
+            SslOpts =
+                case proplists:get_value(verify, SslOptsConfig, verify_none) of
+                    verify_none -> SslOptsConfig;
+                    verify_peer -> [{verify_fun, fun([])    -> true;
+                                                    ([_|_]) -> false
+                                                 end}
+                                   | SslOptsConfig]
+                end,
             [start_ssl_listener(Host, Port, SslOpts) || {Host, Port} <- SslListeners],
             ok
     end.
@@ -118,7 +128,7 @@ start() ->
                {rabbit_tcp_client_sup,
                 {tcp_client_sup, start_link,
                  [{local, rabbit_tcp_client_sup},
-                  {rabbit_reader,start_link,[]}]},
+                  {rabbit_connection_sup,start_link,[]}]},
                 transient, infinity, supervisor, [tcp_client_sup]}),
     ok.
 
@@ -150,14 +160,14 @@ check_tcp_listener_address(NamePrefix, Host, Port) ->
     {IPAddress, Name}.
 
 start_tcp_listener(Host, Port) ->
-    start_listener(Host, Port, "TCP Listener",
+    start_listener(Host, Port, amqp, "TCP Listener",
                    {?MODULE, start_client, []}).
 
 start_ssl_listener(Host, Port, SslOpts) ->
-    start_listener(Host, Port, "SSL Listener",
+    start_listener(Host, Port, 'amqp/ssl', "SSL Listener",
                    {?MODULE, start_ssl_client, [SslOpts]}).
 
-start_listener(Host, Port, Label, OnConnect) ->
+start_listener(Host, Port, Protocol, Label, OnConnect) ->
     {IPAddress, Name} =
         check_tcp_listener_address(rabbit_tcp_listener_sup, Host, Port),
     {ok,_} = supervisor:start_child(
@@ -165,8 +175,8 @@ start_listener(Host, Port, Label, OnConnect) ->
                {Name,
                 {tcp_listener_sup, start_link,
                  [IPAddress, Port, ?RABBIT_TCP_OPTS ,
-                  {?MODULE, tcp_listener_started, []},
-                  {?MODULE, tcp_listener_stopped, []},
+                  {?MODULE, tcp_listener_started, [Protocol]},
+                  {?MODULE, tcp_listener_stopped, [Protocol]},
                   OnConnect, Label]},
                 transient, infinity, supervisor, [tcp_listener_sup]}),
     ok.
@@ -178,20 +188,25 @@ stop_tcp_listener(Host, Port) ->
     ok = supervisor:delete_child(rabbit_sup, Name),
     ok.
 
-tcp_listener_started(IPAddress, Port) ->
+tcp_listener_started(Protocol, IPAddress, Port) ->
+    %% We need the ip to distinguish e.g. 0.0.0.0 and 127.0.0.1
+    %% We need the host so we can distinguish multiple instances of the above
+    %% in a cluster.
     ok = mnesia:dirty_write(
            rabbit_listener,
            #listener{node = node(),
-                     protocol = tcp,
+                     protocol = Protocol,
                      host = tcp_host(IPAddress),
+                     ip_address = IPAddress,
                      port = Port}).
 
-tcp_listener_stopped(IPAddress, Port) ->
+tcp_listener_stopped(Protocol, IPAddress, Port) ->
     ok = mnesia:dirty_delete_object(
            rabbit_listener,
            #listener{node = node(),
-                     protocol = tcp,
+                     protocol = Protocol,
                      host = tcp_host(IPAddress),
+                     ip_address = IPAddress,
                      port = Port}).
 
 active_listeners() ->
@@ -204,10 +219,10 @@ on_node_down(Node) ->
     ok = mnesia:dirty_delete(rabbit_listener, Node).
 
 start_client(Sock, SockTransform) ->
-    {ok, Child} = supervisor:start_child(rabbit_tcp_client_sup, []),
-    ok = rabbit_net:controlling_process(Sock, Child),
-    Child ! {go, Sock, SockTransform},
-    Child.
+    {ok, _Child, Reader} = supervisor:start_child(rabbit_tcp_client_sup, []),
+    ok = rabbit_net:controlling_process(Sock, Reader),
+    Reader ! {go, Sock, SockTransform},
+    Reader.
 
 start_client(Sock) ->
     start_client(Sock, fun (S) -> {ok, S} end).
@@ -230,8 +245,9 @@ start_ssl_client(SslOpts, Sock) ->
       end).
 
 connections() ->
-    [Pid || {_, Pid, _, _} <- supervisor:which_children(
-                                rabbit_tcp_client_sup)].
+    [rabbit_connection_sup:reader(ConnSup) ||
+        {_, ConnSup, supervisor, _}
+            <- supervisor:which_children(rabbit_tcp_client_sup)].
 
 connection_info_keys() -> rabbit_reader:info_keys().
 
@@ -242,8 +258,7 @@ connection_info_all() -> cmap(fun (Q) -> connection_info(Q) end).
 connection_info_all(Items) -> cmap(fun (Q) -> connection_info(Q, Items) end).
 
 close_connection(Pid, Explanation) ->
-    case lists:any(fun ({_, ChildPid, _, _}) -> ChildPid =:= Pid end,
-                   supervisor:which_children(rabbit_tcp_client_sup)) of
+    case lists:member(Pid, connections()) of
         true  -> rabbit_reader:shutdown(Pid, Explanation);
         false -> throw({error, {not_a_connection_pid, Pid}})
     end.

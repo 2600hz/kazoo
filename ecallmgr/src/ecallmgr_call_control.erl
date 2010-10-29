@@ -113,6 +113,6 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
 	_Msg ->
-	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [_Msg]),
+	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [self(), _Msg]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost)
     end.

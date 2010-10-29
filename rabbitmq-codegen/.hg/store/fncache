@@ -16,3 +16,5 @@ data/json.py.i
 data/rabbitmq-0.8-extensions.json.i
 data/recover-0.8.json.i
 data/unbind-0.8.json.i
+data/confirm-extension.json.i
+data/puback-extension.json.i

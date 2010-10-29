@@ -130,3 +130,12 @@ data/tests/src/negative_test_util.erl.i
 data/tests/src/network_client_test.erl.i
 data/tests/src/test_util.erl.i
 data/tests/test_util.erl.i
+data/README.in.i
+data/src/amqp_channel.erl.d
+data/src/amqp_channel.erl.d
+data/src/amqp_channels_manager.erl.i
+data/src/amqp_client.erl.i
+data/src/amqp_connection_specific_sup.erl.i
+data/src/amqp_connection_type_sup.erl.i
+data/src/amqp_gen_connection.erl.i
+data/src/amqp_sup.erl.i

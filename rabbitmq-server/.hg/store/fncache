@@ -295,3 +295,11 @@ data/src/vm_memory_monitor.erl.i
 data/src/worker_pool.erl.i
 data/src/worker_pool_sup.erl.i
 data/src/worker_pool_worker.erl.i
+data/src/rabbit_binding.erl.i
+data/src/rabbit_msg_store.erl.d
+data/src/rabbit_msg_store.erl.d
+data/src/rabbit_ssl.erl.i
+data/src/rabbit_upgrade.erl.i
+data/src/rabbit_upgrade_functions.erl.i
+data/src/rabbit_upgrades.erl.i
+data/src/sha2.erl.i
