@@ -1,0 +1,18 @@
+{application, whistle_amqp,
+ [
+  {description, "AMQP client helpers for interacting with a AMQP server"}
+  ,{vsn, "0.5.1"}
+  ,{modules, [
+	      whistle_amqp_app
+	      ,whistle_amqp_sup
+	      ,amqp_manager
+	     ]
+   }
+  ,{registered, []}
+  ,{applications, [
+		   kernel
+		   ,stdlib
+		  ]}
+  ,{mod, { whistle_amqp_app, []}}
+  ,{env, []}
+ ]}.

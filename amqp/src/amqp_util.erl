@@ -228,8 +228,6 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) when is_list(Queue) ->
     bind_q_to_exchange(Host, list_to_binary(Queue), Routing, Exchange);
 bind_q_to_exchange(Host, Queue, Routing, Exchange) when is_list(Routing) ->
     bind_q_to_exchange(Host, Queue, list_to_binary(Routing), Exchange);
-bind_q_to_exchange(Host, Queue, Routing, Exchange) when is_list(Exchange) ->
-    bind_q_to_exchange(Host, Queue, Routing, list_to_binary(Exchange));
 bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
     QB = #'queue.bind'{

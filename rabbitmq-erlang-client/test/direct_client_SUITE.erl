@@ -29,7 +29,6 @@
 -define(RPC_SLEEP, 500).
 
 -export([test_coverage/0]).
--export([test_channel_flow/0]).
 
 -include("amqp_client.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -58,6 +57,12 @@ lifecycle_test() ->
 nowait_exchange_declare_test() ->
     test_util:nowait_exchange_declare_test(new_connection()).
 
+channel_repeat_open_close_test() ->
+    test_util:channel_repeat_open_close_test(new_connection()).
+
+channel_multi_open_close_test() ->
+    test_util:channel_multi_open_close_test(new_connection()).
+
 basic_ack_test() ->
     test_util:basic_ack_test(new_connection()).
 
@@ -77,12 +82,6 @@ rpc_test() ->
     test_util:rpc_test(new_connection()).
 
 %%---------------------------------------------------------------------------
-%% This must be kicked off manually because it can only be run after Rabbit
-%% has been running for 1 minute
-test_channel_flow() ->
-    test_util:channel_flow_test(new_connection()).
-
-%%---------------------------------------------------------------------------
 %% Negative Tests
 %%---------------------------------------------------------------------------
 
@@ -98,15 +97,20 @@ bogus_rpc_test() ->
 channel_death_test() ->
     negative_test_util:channel_death_test(new_connection()).
 
+command_invalid_over_channel_test() ->
+    negative_test_util:command_invalid_over_channel_test(new_connection()).
+
 %%---------------------------------------------------------------------------
 %% Common Functions
 %%---------------------------------------------------------------------------
 
 new_connection() ->
-    amqp_connection:start_direct().
+    case amqp_connection:start(direct) of
+        {ok, Conn}         -> Conn;
+        {error, _} = Error -> Error
+    end.
 
 test_coverage() ->
     rabbit_misc:enable_cover(),
     test(),
     rabbit_misc:report_cover().
-

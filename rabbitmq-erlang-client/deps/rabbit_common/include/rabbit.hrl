@@ -29,14 +29,15 @@
 %%   Contributor(s): ______________________________________.
 %%
 
--record(user, {username, password}).
+-record(user, {username, password, is_admin}).
 -record(permission, {configure, write, read}).
 -record(user_vhost, {username, virtual_host}).
 -record(user_permission, {user_vhost, permission}).
 
 -record(vhost, {virtual_host, dummy}).
 
--record(connection, {user, timeout_sec, frame_max, vhost, client_properties}).
+-record(connection, {protocol, user, timeout_sec, frame_max, vhost,
+                     client_properties}).
 
 -record(content,
         {class_id,
@@ -44,6 +45,7 @@
          properties_bin, %% either 'none', or an encoded properties binary
          %% Note: at most one of properties and properties_bin can be
          %% 'none' at once.
+         protocol, %% The protocol under which properties_bin was encoded
          payload_fragments_rev %% list of binaries, in reverse order (!)
          }).
 
@@ -58,28 +60,34 @@
 -record(route, {binding, value = const}).
 -record(reverse_route, {reverse_binding, value = const}).
 
--record(binding, {exchange_name, key, queue_name, args = []}).
--record(reverse_binding, {queue_name, key, exchange_name, args = []}).
+-record(binding, {source, key, destination, args = []}).
+-record(reverse_binding, {destination, key, source, args = []}).
 
--record(listener, {node, protocol, host, port}).
+-record(listener, {node, protocol, host, ip_address, port}).
 
 -record(basic_message, {exchange_name, routing_key, content, guid,
                         is_persistent}).
 
 -record(ssl_socket, {tcp, ssl}).
 -record(delivery, {mandatory, immediate, txn, sender, message}).
--record(amqp_error, {name, explanation, method = none}).
+-record(amqp_error, {name, explanation = "", method = none}).
+
+-record(event, {type, props, timestamp}).
+
+-record(message_properties, {expiry}).
 
 %%----------------------------------------------------------------------------
 
 -define(COPYRIGHT_MESSAGE, "Copyright (C) 2007-2010 LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.").
 -define(INFORMATION_MESSAGE, "Licensed under the MPL.  See http://www.rabbitmq.com/").
+-define(PROTOCOL_VERSION, "AMQP 0-9-1 / 0-9 / 0-8").
 -define(ERTS_MINIMUM, "5.6.3").
 
 -define(MAX_WAIT, 16#ffffffff).
 
 -define(HIBERNATE_AFTER_MIN,        1000).
 -define(DESIRED_HIBERNATE,         10000).
+-define(STATS_INTERVAL,             5000).
 
 -ifdef(debug).
 -define(LOGDEBUG0(F), rabbit_log:debug(F)).

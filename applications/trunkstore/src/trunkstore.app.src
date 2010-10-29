@@ -8,7 +8,7 @@
     ,{applications, [
 		     kernel
 		     ,stdlib
-		     ,amqp
+		     ,whistle_amqp
 		    ]
      }
     ,{mod, { trunkstore_app, []}}
