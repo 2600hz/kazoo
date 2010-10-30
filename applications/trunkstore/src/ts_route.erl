@@ -147,7 +147,7 @@ inbound_route(Flags) ->
 %	       <<"1NPANXXXXXX">> -> ts_util:to_1npanxxxxxx(Flags#route_flags.to_user);
 %	       _NPANXXXXXX -> ts_util:to_npanxxxxxx(Flags#route_flags.to_user)
 %	   end,
-    Dialstring = list_to_binary(["${sofia_contact(", Flags#route_flags.auth_user, "@$${domain})}"]),
+    Dialstring = list_to_binary(["user:", Flags#route_flags.auth_user]),
     Route = [{<<"Route">>, Dialstring}
 	     ,{<<"Weight-Cost">>, 1}
 	     ,{<<"Weight-Location">>, 1}
