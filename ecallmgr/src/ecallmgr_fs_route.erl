@@ -288,7 +288,7 @@ handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn
 	    failed;
 	Prop ->
 	    io:format("D: ~p~n", [Data]),
-	    Domain = get_value(<<"domain">>, Data, <<"$${domain}">>),
+	    Domain = get_value(<<"domain">>, Data, ?DEFAULT_DOMAIN),
 	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Domain),
 	    format_log(info, "L/U.route(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},

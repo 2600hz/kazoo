@@ -135,7 +135,7 @@
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}]).
 -define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}
 				 ,{<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
-						   (<<"user:", _/binary>>) -> true;
+						   ([<<"user:", _/binary>>, _]) -> true;
 						   (_) -> false
 						end}
 				 ]).

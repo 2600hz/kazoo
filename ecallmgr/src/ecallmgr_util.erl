@@ -40,7 +40,7 @@ to_hex(Bin) when is_binary(Bin) ->
 to_hex(L) when is_list(L) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
 
-route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _Domain) -> DS;
-route_to_dialstring(<<"user:", User/binary>>, Domain) ->
-    list_to_binary(["${regex(${sofia_contact(sipinterface_1/", User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
-route_to_dialstring(DS, _Domain) -> DS.
+route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _D) -> DS;
+route_to_dialstring([<<"user:", User/binary>>, DID], Domain) ->
+    list_to_binary([DID, "${regex(${sofia_contact(sipinterface_1/",User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
+route_to_dialstring(DS, _D) -> DS.
