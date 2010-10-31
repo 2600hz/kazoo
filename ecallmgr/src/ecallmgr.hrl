@@ -4,3 +4,5 @@
                         ,lookups_requested = 0 :: integer()
 			,started = {0,0,0} :: tuple(integer(), integer(), integer())
 		       }).
+
+-define(DEFAULT_DOMAIN, <<"trunks.2600hz.com">>).

@@ -142,12 +142,12 @@ find_route(Flags, ApiProp, ServerID) ->
 -spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok | error, proplist() | string())).
 inbound_route(Flags) ->
     format_log(info, "TS_ROUTE(~p): Inbound route flags: ~p~n", [self(), Flags]),
-    %User = case Flags#route_flags.inbound_format of
-%	       <<"E.164">> -> ts_util:to_e164(Flags#route_flags.to_user);
-%	       <<"1NPANXXXXXX">> -> ts_util:to_1npanxxxxxx(Flags#route_flags.to_user);
-%	       _NPANXXXXXX -> ts_util:to_npanxxxxxx(Flags#route_flags.to_user)
-%	   end,
-    Dialstring = list_to_binary(["user:", Flags#route_flags.auth_user]),
+    DID = case Flags#route_flags.inbound_format of
+	      <<"E.164">> -> ts_util:to_e164(Flags#route_flags.to_user);
+	      <<"1NPANXXXXXX">> -> ts_util:to_1npanxxxxxx(Flags#route_flags.to_user);
+	      _ -> ts_util:to_npanxxxxxx(Flags#route_flags.to_user)
+	  end,
+    Dialstring = [list_to_binary(["user:", Flags#route_flags.auth_user]), DID],
     Route = [{<<"Route">>, Dialstring}
 	     ,{<<"Weight-Cost">>, 1}
 	     ,{<<"Weight-Location">>, 1}

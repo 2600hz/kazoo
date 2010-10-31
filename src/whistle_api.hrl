@@ -133,7 +133,12 @@
 						,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
 					   ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}]).
--define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}]).
+-define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}
+				 ,{<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
+						   ([<<"user:", _/binary>>, _]) -> true;
+						   (_) -> false
+						end}
+				 ]).
 
 %% Route Responses - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
