@@ -133,7 +133,7 @@ lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID,
 		    {ok, JSON} ->
 			format_log(info, "L/U.route(~p): Sending RouteReq JSON to Host(~p)~n", [self(), Host]),
 			send_request(Host, JSON),
-			Result = handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid),
+			Result = handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid, Data),
 			amqp_util:queue_delete(Host, Q),
 			Result;
 		    {error, _Msg} ->
@@ -213,11 +213,11 @@ send_control_queue(Host, CtlProp, AppQ) ->
     end.
 
 %% Prop = Route Response
-generate_xml(<<"bridge">>, Routes, _Prop) ->
+generate_xml(<<"bridge">>, Routes, _Prop, Domain) ->
     format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
-					     Route = get_value(<<"Route">>, RouteProp), %% translate Route to FS-encoded URI
+					     Route = ecallmgr_util:route_to_dialstring(get_value(<<"Route">>, RouteProp), Domain),
 
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
@@ -238,9 +238,9 @@ generate_xml(<<"bridge">>, Routes, _Prop) ->
 				     end, {1, ""}, lists:reverse(Routes)),
     format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
-generate_xml(<<"park">>, _Routes, _Prop) ->
+generate_xml(<<"park">>, _Routes, _Prop, _Domain) ->
     ?ROUTE_PARK_RESPONSE;
-generate_xml(<<"error">>, _Routes, Prop) ->
+generate_xml(<<"error">>, _Routes, Prop, _Domain) ->
     ErrCode = get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
     format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
@@ -274,7 +274,7 @@ get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
-handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid) ->
+handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid, Data) ->
     T1 = erlang:now(),
     case recv_response(ID) of
 	shutdown ->
@@ -287,7 +287,9 @@ handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn
 	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE},
 	    failed;
 	Prop ->
-	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop),
+	    io:format("D: ~p~n", [Data]),
+	    Domain = get_value(<<"domain">>, Data, <<"$${domain}">>),
+	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Domain),
 	    format_log(info, "L/U.route(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},
 

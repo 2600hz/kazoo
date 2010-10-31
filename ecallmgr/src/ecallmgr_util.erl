@@ -1,7 +1,7 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_orig_ip/1, custom_channel_vars/1]).
--export([to_hex/1]).
+-export([to_hex/1, route_to_dialstring/2]).
 
 -import(proplists, [get_value/2, get_value/3]).
 
@@ -39,3 +39,8 @@ to_hex(Bin) when is_binary(Bin) ->
     to_hex(binary_to_list(Bin));
 to_hex(L) when is_list(L) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+
+route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _Domain) -> DS;
+route_to_dialstring(<<"user:", User/binary>>, Domain) ->
+    list_to_binary(["${regex(${sofia_contact(sipinterface_1/", User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
+route_to_dialstring(DS, _Domain) -> DS.

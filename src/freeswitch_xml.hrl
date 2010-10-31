@@ -56,7 +56,6 @@
     <action application=\"set\" data=\"bypass_media=~s\"/>
     <action application=\"set\" data=\"hangup_after_bridge=true\"/>
     <action application=\"set\" data=\"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH\"/>
-    <action application=\"set\" data=\"continue_on_fail=CALL_REJECTED,NORMAL_TEMPORARY_FAILURE,INCOMPATIBLE_DESTINATION,NO_ROUTE_DESTINATION,INVALID_NUMBER_FORMAT,NO_USER_RESPONSE,USER_BUSY,NETWORK_OUT_OF_ORDER\"/>
     <action application=\"bridge\" data=\"~ssofia/sipinterface_1/~s\" />
   </condition>
 </extension>").
