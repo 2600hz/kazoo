@@ -222,7 +222,7 @@ generate_xml(<<"bridge">>, Routes, _Prop, Domain) ->
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
 							       <<"process">> -> "false";
-							       _ -> "true" %% auto?
+							       _ -> "false" %% default to not bypassing media
 							   end,
 
 					     RP1 = case get_value(<<"Progress-Timeout">>, RouteProp) of
