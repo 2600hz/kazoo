@@ -60,7 +60,7 @@ add_post_handler(CallID, Pid) ->
     gen_server:call(?SERVER, {add_post_handler, CallID, Pid}, infinity).
 
 rm_post_handler(CallID) ->
-    gen_server:call(?SERVER, {rm_post_handler, CallID}, infinity).
+    gen_server:cast(?SERVER, {rm_post_handler, CallID}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -94,15 +94,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({rm_post_handler, CallID}, _From, #state{post_handlers=Posts}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Remove handler for ~p~n", [self(), CallID]),
-    case lists:keyfind(CallID, 1, Posts) of
-	false ->
-	    {reply, {error, no_handler, CallID}, State};
-	{CallID, Pid} ->
-	    Pid ! shutdown,
-	    {reply, ok, State#state{post_handlers=lists:keydelete(CallID, 1, Posts)}}
-    end;
 handle_call({add_post_handler, CallID, Pid}, _From, #state{post_handlers=Posts}=State) ->
     format_log(info, "TS_RESPONDER(~p): Add handler(~p) for ~p~n", [self(), Pid, CallID]),
     {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
@@ -137,6 +128,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({rm_post_handler, CallID}, #state{post_handlers=Posts}=State) ->
+    format_log(info, "TS_RESPONDER(~p): Remove handler for ~p~n", [self(), CallID]),
+    case lists:keyfind(CallID, 1, Posts) of
+	false ->
+	    {reply, {error, no_handler, CallID}, State};
+	{CallID, _Pid} ->
+	    {noreply, State#state{post_handlers=lists:keydelete(CallID, 1, Posts)}}
+    end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

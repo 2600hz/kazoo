@@ -167,7 +167,7 @@ inbound_features(Flags) ->
 
 -spec(outbound_features/1 :: (Flags :: tuple()) -> tuple()).
 outbound_features(Flags) ->
-    Features = [], %[ts_e911, ts_t38],
+    Features = [ts_e911],
     fold_features(Features, Flags).
 
 -spec(fold_features/2 :: (Features :: list(atom()), Flags :: tuple()) -> tuple()).

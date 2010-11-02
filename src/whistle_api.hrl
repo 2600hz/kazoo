@@ -167,8 +167,10 @@
 
 %% Call Events - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Receiving_Call_Events
 -define(CALL_EVENT_HEADERS, [<<"Event-Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
--define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Message">>, <<"Custom-Channel-Vars">>]).
--define(CALL_EVENT_VALUES, []).
+-define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
+					  ,<<"Msg-ID">>
+				     ]).
+-define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"Call-Event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
 							       true;
 							  (_) -> false
@@ -370,10 +372,12 @@
 				 ,{<<"say">>, <<"say">>}
 				 ,{<<"sleep">>, <<"sleep">>}
 				 ,{<<"bridge">>, <<"bridge">>}
+				 ,{<<"signal_bridge">>, <<"bridge">>}
 				 ,{<<"answer">>, <<"answer">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				]).
 
--define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>]).
+-define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
+			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>]).
 
 -type proplist() :: list(tuple(binary(), (binary() | list() | fun()) )).
