@@ -60,7 +60,7 @@ add_post_handler(CallID, Pid) ->
     gen_server:call(?SERVER, {add_post_handler, CallID, Pid}, infinity).
 
 rm_post_handler(CallID) ->
-    gen_server:cast(?SERVER, {rm_post_handler, CallID}, infinity).
+    gen_server:cast(?SERVER, {rm_post_handler, CallID}).
 
 %%%===================================================================
 %%% gen_server callbacks
