@@ -20,7 +20,7 @@
 -define(APPVER, <<"0.4.0">>).
 -define(EVENT_CAT, <<"Call-Event">>).
 
-%% Node, UUID, {AmqpHost, EvtQueue}, CtlPid
+%% Node, UUID, AmqpHost, CtlPid
 start(Node, UUID, Amqp, CtlPid) ->
     spawn(ecallmgr_call_events, init, [Node, UUID, Amqp, CtlPid]).
 
@@ -28,12 +28,12 @@ init(Node, UUID, Amqp, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
     loop(UUID, Amqp, CtlPid).
 
-%% Amqp = {Host, EvtQueue}
+-spec(loop/3 :: (UUID :: binary(), Amqp :: string(), CtlPid :: pid()) -> no_return()).
 loop(UUID, Amqp, CtlPid) ->
     receive
 	{call, {event, [UUID | Data]}} ->
 	    format_log(info, "EVT(~p): {Call, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
-	    publish_msg(Amqp, Data),
+	    publish_msg(Amqp, UUID, Data),
 	    loop(UUID, Amqp, CtlPid);
 	{call_event, {event, [ UUID | Data ] } } ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
@@ -41,12 +41,11 @@ loop(UUID, Amqp, CtlPid) ->
 	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p~n"
 		       ,[self(), UUID, AppName, EvtName]),
 
-	    publish_msg(Amqp, Data),
+	    publish_msg(Amqp, UUID, Data),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
 	    loop(UUID, Amqp, CtlPid);
 	call_hangup ->
 	    CtlPid ! {hangup, UUID},
-	    remove_queue(Amqp),
 	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
@@ -59,21 +58,17 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
-remove_queue({AmqpHost, EvtQueue}) ->
-    amqp_util:queue_delete(AmqpHost, EvtQueue),
-    format_log(info, "EVT(~p): Delete Evt Queue ~p.~n", [self(), EvtQueue]).
-
-publish_msg({AmqpHost, EvtQueue}, Prop) ->
+publish_msg(AmqpHost, UUID, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
 	    EvtProp = [{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
 		       ,{<<"Event-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
-		       ,{<<"Call-ID">>, get_value(<<"Unique-ID">>, Prop)}
+		       ,{<<"Call-ID">>, UUID}
 		       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
 		       | event_specific(EvtName, Prop)
 		      ] ++
-		whistle_api:default_headers(EvtQueue, ?EVENT_CAT, EvtName, ?APPNAME, ?APPVER),
+		whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APPNAME, ?APPVER),
 	    EvtProp1 = case ecallmgr_util:custom_channel_vars(Prop) of
 			   [] -> EvtProp;
 			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp]
@@ -81,11 +76,7 @@ publish_msg({AmqpHost, EvtQueue}, Prop) ->
 
 	    case whistle_api:call_event(EvtProp1) of
 		{ok, JSON} ->
-		    amqp_util:callevt_publish(AmqpHost
-					      ,EvtQueue
-					      ,list_to_binary(JSON)
-					      ,<<"application/json">>
-					     );
+		    amqp_util:callevt_publish(AmqpHost, UUID, JSON, <<"application/json">>);
 		{error, Msg} ->
 		    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
 	    end;

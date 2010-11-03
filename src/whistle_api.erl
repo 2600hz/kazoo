@@ -2,15 +2,16 @@
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
-%%% Whistle API request and response helpers
+%%% Whistle API Helpers
+%%%
 %%% Most API functions take a proplist, filter it against required headers
 %%% and optional headers, and return either the JSON string if all
 %%% required headers (default AND API-call-specific) are present, or an
 %%% error if some headers are missing.
 %%%
-%%% To check a received message's validity, pass true to only check
-%%% validity and not create the JSON message.
-%%% 
+%%% To only check the validity, use the api call's corresponding *_v/1 function.
+%%% This will parse the proplist and return a boolean if the proplist is valid
+%%% for creating a JSON message.
 %%%
 %%% See http://corp.switchfreedom.com/mediawiki/index.php/API_Definition
 %%% @end
