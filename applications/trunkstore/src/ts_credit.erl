@@ -204,8 +204,8 @@ set_rate_flags(Flags, Rates) ->
 	[{RateName, RateData} | _Rest] ->
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
-	    %% trunks available in flags (flat_rate_enabled) and the carrier has flatrate available as well
-	    UseFlatRate = Flags#route_flags.trunks > 0 andalso get_value(<<"flatrate">>, RateData, false),
+	    %% trunks available in flags (flat_rate_enabled) and the rate has flatrate available as well
+	    UseFlatRate = Flags#route_flags.trunks > Flags#route_flags.trunks_in_use andalso get_value(<<"flatrate">>, RateData, false),
 
 	    case UseFlatRate of
 		true ->
@@ -238,6 +238,7 @@ set_rate_flags(Flags, <<"inbound">>=In, RateData) ->
       ,inbound_rate_increment = get_value(<<"rate_increment">>, RateData)
       ,inbound_rate_minimum = get_value(<<"rate_minimum">>, RateData)
       ,inbound_surcharge = get_value(<<"rate_surcharge">>, RateData)
+      ,flat_rate_enabled = false
      };
 set_rate_flags(Flags, <<"outbound">>=Out, RateData) ->
     format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateData]),
@@ -246,6 +247,7 @@ set_rate_flags(Flags, <<"outbound">>=Out, RateData) ->
       ,outbound_rate_increment = get_value(<<"rate_increment">>, RateData)
       ,outbound_rate_minimum = get_value(<<"rate_minimum">>, RateData)
       ,outbound_surcharge = get_value(<<"rate_surcharge">>, RateData)
+      ,flat_rate_enabled = false
      }.
 
 set_flat_flags(Flags, <<"inbound">>=In) ->
@@ -255,6 +257,7 @@ set_flat_flags(Flags, <<"inbound">>=In) ->
       ,inbound_rate_increment = 0
       ,inbound_rate_minimum = 0
       ,inbound_surcharge = 0.0
+      ,flat_rate_enabled = true
      };
 set_flat_flags(Flags, <<"outbound">>=Out) ->
     format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [Out]),
@@ -263,6 +266,7 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
       ,outbound_rate_increment = 0
       ,outbound_rate_minimum = 0
       ,outbound_surcharge = 0.0
+      ,flat_rate_enabled = true
      }.
 
 %% match options set in Flags to options available in Rate

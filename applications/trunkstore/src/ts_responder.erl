@@ -104,11 +104,11 @@ handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) -
     ts_credit:force_rate_refresh(),
     {reply, ok, State#state{couch_host=CHost}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Setting couch host to ~p~n", [self(), AHost]),
+    format_log(info, "TS_RESPONDER(~p): Setting amqp host to ~p~n", [self(), AHost]),
     {ok, BQ, TQ} = start_amqp(AHost),
     {reply, ok, State#state{amqp_host=AHost, broad_q=BQ, tar_q=TQ}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, broad_q=OBQ, tar_q=OTQ}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldAHost, AHost]),
+    format_log(info, "TS_RESPONDER(~p): Updating amqp host from ~p to ~p~n", [self(), OldAHost, AHost]),
     amqp_util:queue_delete(OldAHost, OBQ),
     amqp_util:queue_delete(OldAHost, OTQ),
     amqp_manager:close_channel(self(), OldAHost),
