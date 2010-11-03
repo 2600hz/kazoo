@@ -149,16 +149,26 @@ inbound_route(Flags) ->
 	  end,
     Dialstring = [list_to_binary(["user:", Flags#route_flags.auth_user]), DID],
     Route = [{<<"Route">>, Dialstring}
-	     ,{<<"Weight-Cost">>, 1}
-	     ,{<<"Weight-Location">>, 1}
+	     ,{<<"Weight-Cost">>, <<"1">>}
+	     ,{<<"Weight-Location">>, <<"1">>}
 	     ,{<<"Media">>, <<"bypass">>}
 	    ],
     case whistle_api:route_resp_route_v(Route) of
-	true -> {ok, [{struct, Route}]};
+	true -> {ok, add_failover_route(Flags#route_flags.failover, Flags, [{struct, Route}])};
 	false ->
 	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route]),
 	    {error, "Inbound route validation failed"}
     end.
+
+add_failover_route({}, _Flags, Rs) -> Rs;
+%% route to a SIP URI
+add_failover_route({<<"SIP-URI">>, URI}, Flags, Rs) ->
+    Rs;
+%% route to a E.164 number - need to setup outbound for this sucker
+add_failover_route({<<"E.164">>, DID}, Flags, Rs) ->
+    Rs.
+
+    
 
 -spec(inbound_features/1 :: (Flags :: tuple()) -> tuple()).
 inbound_features(Flags) ->
@@ -219,84 +229,82 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
       ,direction = get_value(<<"Direction">>, ChannelVars, <<"inbound">>)
      }.
 
+%% Flags from the DID
+%% - Failover
+%% - Caller ID
+%% - Auth User
+%% - Trunks
+%% - Credit Available
 -spec(flags_from_did/2 :: (DidProp :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_did(DidProp, Flags) ->
     {DidOptions} = get_value(<<"DID_Opts">>, DidProp, {[]}),
     {AcctOpts} = get_value(<<"account">>, DidProp, {[]}),
     {AuthOpts} = get_value(<<"auth">>, DidProp, {[]}),
 
-    {FailOpts} = get_value(<<"failover">>, DidOptions, {[]}),
-    {CallerIDOpts} = get_value(<<"caller_id">>, DidOptions, {[]}),
-
     Trunks = ts_util:to_integer(get_value(<<"trunks">>, AcctOpts, 0)),
     format_log(info, "Got ~p trunks from ~p~n", [Trunks, AcctOpts]),
 
     Opts = get_value(<<"options">>, DidProp, {[]}),
 
-    F0 = case FailOpts of
-	     [] -> Flags;
-	     FO -> Flags#route_flags{failover={get_value(<<"type">>, FO, <<>>)
-					       ,get_value(<<"uri">>, FO, <<>>)
-					      }}
-	 end,
-    F1 = case CallerIDOpts of
-	     [] -> F0;
-	     CID -> F0#route_flags{caller_id = {get_value(<<"cid_name">>, CID, <<>>)
-						   ,get_value(<<"cid_number">>, CID, <<>>)
-						  }}
-	 end,
+    F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {[]})),
+    F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {[]})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
 		   ,trunks = Trunks
 		   ,credit_available = ts_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 		  }.
 
+%% Flags from the Server
+%% - Inbound Format <- what format does the server expect the inbound caller-id in?
+%% - Codecs <- list of codecs supported by the server
+%% - Caller Id <- only if it hasn't been set on the DID level
+%% - Failover <- only if it hasn't been set on the DID level
+%% - Trunks <- Max trunks allowed on the server
+%% - 
 -spec(flags_from_srv/3 :: ( AuthUser :: binary(), Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_srv(AuthUser, Doc, Flags) ->
     Srv = lookup_server(AuthUser, Doc),
 
     F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Srv, <<"NPANXXXXXX">>)
-			   ,codecs=get_value(<<"codecs">>, Srv, [])},
-    F1 = case F0#route_flags.caller_id of
-	     {} ->
-		 {CID} = get_value(<<"caller_id">>, Srv, {[]}),
-		 F0#route_flags{caller_id = {get_value(<<"cid_name">>, CID, <<>>)
-					     ,get_value(<<"cid_number">>, CID, <<>>)}};
-	     _CID -> F0
-	 end,
-    case F1#route_flags.failover of
-	{} ->
-	    {FO} = get_value(<<"failover">>, Srv, {[]}),
-	    F1#route_flags{failover={get_value(<<"type">>, FO, <<>>)
-				     ,get_value(<<"uri">>, FO, <<>>)
-				    }};
-	_FO -> F1
-    end.
+			   ,codecs=get_value(<<"codecs">>, Srv, [])
+			   %,trunks = Trunks
+			   %,credit_available = ts_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
+			  },
+    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {[]})),
+    add_failover(F1, get_value(<<"failover">>, Srv, {[]})).
 
+%% Flags from the Account
+%% - Credit available
+%% - Trunks purchased <- eventually need to look at the server under the account to see how many are allocatable to the server
+%% - Trunks in use
+%% - Caller ID <- only if it hasn't been set at the server or DID level
+%% - Failover <- only if it hasn't been set at the server or DID level
 -spec(flags_from_account(Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
     {Credit} = get_value(<<"credit">>, Acct, {[]}),
     Trunks = ts_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
+    TrunksInUse = ts_util:to_integer(get_value(<<"trunks_in_use">>, Acct, Flags#route_flags.trunks_in_use)),
 
     F0 = Flags#route_flags{credit_available = ts_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
 			   ,trunks = Trunks
+			   ,trunks_in_use = TrunksInUse
 			  },
-    F1 = case F0#route_flags.caller_id of
-	     {} ->
-		 {CID} = get_value(<<"caller_id">>, Acct, {[]}),
-		 F0#route_flags{caller_id = {get_value(<<"cid_name">>, CID, <<>>)
-					     ,get_value(<<"cid_number">>, CID, <<>>)}};
-	     _CID -> F0
-	 end,
-    case F1#route_flags.failover of
-	{} ->
-	    {FO} = get_value(<<"failover">>, Acct, {[]}),
-	    F1#route_flags{failover={get_value(<<"type">>, FO, <<>>)
-				     ,get_value(<<"uri">>, FO, <<>>)
-				    }};
-	_FO -> F1
-    end.
+    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Acct, {[]})),
+    add_failover(F1, get_value(<<"failover">>, Acct, {[]})).
+
+-spec(add_failover/2 :: (F0 :: tuple(), FOver :: tuple(proplist())) -> tuple()).
+add_failover(#route_flags{failover={}}=F0, {[]}) -> F0;
+add_failover(#route_flags{failover={}}=F0, {[{_K, _V}=FOver]}) ->
+    F0#route_flags{failover=FOver};
+add_failover(F, _) -> F.
+
+-spec(add_caller_id/2 :: (F0 :: tuple(), CID :: tuple(proplist())) -> tuple()).
+add_caller_id(#route_flags{caller_id={}}=F0, {[]}) -> F0;
+add_caller_id(#route_flags{caller_id={}}=F0, {CID}) ->
+    F0#route_flags{caller_id = {get_value(<<"cid_name">>, CID, <<>>)
+				,get_value(<<"cid_number">>, CID, <<>>)}};
+add_caller_id(F, _) -> F.
 
 -spec(lookup_server/2 :: (AuthUser :: binary(), Doc :: proplist()) -> proplist()).
 lookup_server(AuthUser, Doc) ->
