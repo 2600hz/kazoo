@@ -17,7 +17,7 @@
 -include("ts.hrl").
 
 -define(APP_NAME, <<"ts_responder.route">>).
--define(APP_VERSION, <<"0.4.0">>).
+-define(APP_VERSION, <<"0.4.2">>).
 
 %%%===================================================================
 %%% API
@@ -154,21 +154,40 @@ inbound_route(Flags) ->
 	     ,{<<"Media">>, <<"bypass">>}
 	    ],
     case whistle_api:route_resp_route_v(Route) of
-	true -> {ok, add_failover_route(Flags#route_flags.failover, Flags, [{struct, Route}])};
+	true -> {ok, add_failover_route(Flags#route_flags.failover, Flags, {struct, Route})};
 	false ->
 	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route]),
 	    {error, "Inbound route validation failed"}
     end.
 
-add_failover_route({}, _Flags, Rs) -> Rs;
+-spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), tuple(), tuple(struct, proplist())) -> proplist()).
+add_failover_route({}, _Flags, InboundRoute) -> [InboundRoute];
 %% route to a SIP URI
-add_failover_route({<<"SIP-URI">>, URI}, Flags, Rs) ->
-    Rs;
+add_failover_route({<<"sip">>, URI}, _Flags, InboundRoute) ->
+    [InboundRoute, {struct, [{<<"Route">>, URI}
+			     ,{<<"Weight-Cost">>, <<"1">>}
+			     ,{<<"Weight-Location">>, <<"1">>}
+			     ,{<<"Media">>, <<"bypass">>}
+			    ]}];
 %% route to a E.164 number - need to setup outbound for this sucker
-add_failover_route({<<"E.164">>, DID}, Flags, Rs) ->
-    Rs.
-
-    
+add_failover_route({<<"e164">>, DID}, Flags, InboundRoute) ->
+    OutBFlags = Flags#route_flags{to_user=DID
+				  ,direction = <<"outbound">>
+				 },
+    case ts_credit:check(OutBFlags) of
+	{ok, OutBFlags1} ->
+	    case ts_carrier:route(OutBFlags1) of
+		{ok, Routes} ->
+		    format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
+		    [InboundRoute | Routes];
+		{error, Error} ->
+		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), Error]),
+		    [InboundRoute]
+	    end;
+	{error, Error} ->
+	    format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, Error]),
+	    [InboundRoute]
+    end.
 
 -spec(inbound_features/1 :: (Flags :: tuple()) -> tuple()).
 inbound_features(Flags) ->
