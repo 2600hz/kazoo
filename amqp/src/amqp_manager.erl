@@ -11,6 +11,7 @@
 -include("../include/amqp_client/include/amqp_client.hrl").
 
 -import(logger, [log/2, format_log/3]).
+-import(props, [get_value/2, get_value/3]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -108,7 +109,7 @@ handle_call({open_channel, Pid, Host}, _From, Hosts) ->
 		{Pid, _PidMRef, Channel, _ChanMRef, Ticket} ->
 		    case erlang:is_process_alive(Channel) of
 			true -> {reply, {ok, Channel, Ticket}, Hosts};
-			false -> start_channel(Pid, Host, HostInfo, Hosts)
+			false -> start_channel(Pid, Host, lists:keydelete(Channel, ?CHANNEL_PID, HostInfo), Hosts)
 		    end
 	    end
     end.
@@ -182,7 +183,7 @@ start_channel(Pid, Host, HostInfo, Hosts) ->
     {_, Conn, _} = lists:keyfind(connection, 1, HostInfo),
     {Channel, ChanMRef, ProcessMRef, Ticket} = open_amqp_channel(Conn, Pid),
     HostInfo1 = [{Pid, ProcessMRef, Channel, ChanMRef, Ticket} | HostInfo],
-    format_log(info, "AMQP_MGR(~p): Open Channel for Known Host(~p): ~n", [self(), Host]),
+    format_log(info, "AMQP_MGR(~p): Open Channel for Known Host(~p) and Process pid ~p: ~n", [self(), Host, Pid]),
     {reply, {ok, Channel, Ticket}, [{Host, HostInfo1} | lists:keydelete(Host, 1, Hosts)]}.
 
 -spec(start_connection_and_channel/3 :: (Pid :: pid(), Host :: string(), Hosts :: amqp_mgr_state()) ->
@@ -291,6 +292,7 @@ create_amqp_params(Host) ->
     create_amqp_params(Host, 5672).
 -spec(create_amqp_params/2 :: (Host :: string(), Port :: integer()) -> tuple()).
 create_amqp_params(Host, Port) ->
+    format_log(info, "AMQP_MGR(~p): H: ~p P: ~p~n", [self(), Host, Port]),
     #'amqp_params'{
       port = Port
       ,host = Host
@@ -298,7 +300,9 @@ create_amqp_params(Host, Port) ->
 
 -spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
 get_new_connection(#'amqp_params'{}=P) ->
+    Localhost = net_adm:localhost(),
     {ok, Connection} = amqp_connection:start(network, P),
+    format_log(info, "AMQP_MGR(~p): Conn ~p started.~n", [Connection]),
     MRefConn = erlang:monitor(process, Connection),
     {Connection, MRefConn}.
 
@@ -306,7 +310,7 @@ get_new_connection(#'amqp_params'{}=P) ->
 open_amqp_channel(Connection, Pid) ->
     %% Open an AMQP channel to access our realm
     {ok, Channel} = amqp_connection:open_channel(Connection),
-    format_log(info, "AMQP_MGR(~p): Open channel(~p) for ~p~n", [self(), Channel, Pid]),
+    format_log(info, "AMQP_MGR(~p): Open channel(~p) for ~p on conn ~p~n", [self(), Channel, Pid, Connection]),
 
     %% if a message is returned, we need to handle it
     amqp_channel:register_return_handler(Channel, Pid),
