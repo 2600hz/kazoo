@@ -125,41 +125,41 @@
        | #'basic.recover_ok'{} | #'tx.select'{} | #'tx.select_ok'{} | #'tx.commit'{}
        | #'tx.commit_ok'{} | #'tx.rollback'{} | #'tx.rollback_ok'{} )).
 -type(amqp_method_field_name() ::
-       ( known_hosts | arguments | ticket | consumer_tag
-       | exclusive | requeue | routing_key | response
-       | mechanism | locale | read | arguments
-       | queue | ticket | global | exclusive
-       | no_ack | arguments | mandatory | consumer_tag
-       | queue | exchange | delivery_tag | heartbeat
-       | queue | destination | channel_max | durable
-       | passive | queue | version_minor | method_id
-       | queue | consumer_tag | routing_key | queue
-       | no_local | reply_code | delivery_tag | out_of_band
+       ( known_hosts | arguments | reply_code | delivery_tag
+       | challenge | exclusive | routing_key | mechanism
+       | locale | consumer_tag | message_count | read
+       | arguments | queue | nowait | ticket
+       | requeue | capabilities | arguments | mandatory
+       | exchange | heartbeat | ticket | exclusive
+       | if_empty | exchange | exchange | channel_max
+       | durable | passive | consumer_tag | ticket
+       | response | reply_text | multiple | consumer_tag
+       | version_minor | queue | no_local | out_of_band
        | reply_code | redelivered | ticket | routing_key
-       | message_count | ticket | message_count | durable
-       | passive | nowait | no_ack | server_properties
-       | requeue | realm | type | reply_code
-       | delivery_tag | if_unused | reply_text | if_empty
-       | exchange | exchange | destination | response
-       | exchange | consumer_tag | heartbeat | version_major
-       | reply_text | multiple | auto_delete | mechanisms
-       | nowait | exclusive | reply_text | arguments
-       | channel_id | class_id | queue | nowait
-       | delivery_tag | capabilities | immediate | cluster_id
-       | nowait | client_properties | if_unused | source
-       | ticket | virtual_host | locales | nowait
-       | passive | active | nowait | prefetch_size
-       | class_id | routing_key | routing_key | exchange
-       | ticket | ticket | routing_key | source
-       | requeue | insist | ticket | channel_max
-       | challenge | queue | consumer_tag | nowait
-       | consumer_count | arguments | redelivered | active
-       | method_id | exchange | active | routing_key
-       | routing_key | nowait | auto_delete | arguments
-       | prefetch_count | frame_max | arguments | ticket
-       | exchange | message_count | exchange | write
-       | message_count | nowait | ticket | ticket
-       | internal | frame_max | nowait | ticket
+       | nowait | delivery_tag | ticket | immediate
+       | cluster_id | durable | reply_code | client_properties
+       | server_properties | realm | type | passive
+       | nowait | delivery_tag | routing_key | nowait
+       | reply_text | routing_key | destination | response
+       | ticket | routing_key | requeue | if_unused
+       | exchange | version_major | source | auto_delete
+       | mechanisms | nowait | exclusive | reply_text
+       | exchange | arguments | redelivered | channel_id
+       | destination | queue | source | frame_max
+       | nowait | if_unused | ticket | virtual_host
+       | arguments | prefetch_count | locales | passive
+       | active | exchange | message_count | class_id
+       | class_id | exchange | ticket | method_id
+       | ticket | insist | ticket | ticket
+       | channel_max | internal | ticket | queue
+       | consumer_tag | nowait | active | requeue
+       | consumer_count | method_id | heartbeat | active
+       | routing_key | routing_key | nowait | global
+       | no_ack | auto_delete | consumer_tag | queue
+       | frame_max | delivery_tag | arguments | no_ack
+       | arguments | write | message_count | nowait
+       | queue | queue | prefetch_size | message_count
+       | queue | nowait | exchange | routing_key
        | ticket )).
 -type(amqp_property_record() ::
        ( #'P_connection'{} | #'P_channel'{} | #'P_access'{} | #'P_exchange'{}
