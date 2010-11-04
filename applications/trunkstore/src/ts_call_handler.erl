@@ -59,6 +59,7 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 	{ctl_queue, CallID, CtlQ1} ->
 	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1});
 	{shutdown, CallID} ->
+	    amqp_util:delete_callmgr_queue(Host, CallID),
 	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
 	{_, #amqp_msg{props = _Props, payload = Payload}} ->
 	    format_log(info, "TS_CALL(~p): Evt recv:~n~s~n", [self(), Payload]),
@@ -82,4 +83,7 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 
 -spec(consume_events/2 :: (Host :: string(), CallID :: binary()) -> no_return()).
 consume_events(Host, CallID) ->
-    amqp_util:callevt_consume(Host, CallID).
+    amqp_util:callevt_exchange(Host),
+    EvtQ = amqp_util:new_callevt_queue(Host, ["ts_call.event.", net_adm:localhost()]),
+    amqp_util:bind_q_to_callevt(Host, EvtQ, CallID),
+    amqp_util:basic_consume(Host, EvtQ).
