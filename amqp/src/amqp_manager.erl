@@ -294,7 +294,6 @@ create_amqp_params(Host, Port) ->
     #'amqp_params'{
       port = Port
       ,host = Host
-      ,channel_max = ?MAX_CHANNEL_NUMBER
      }.
 
 -spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
