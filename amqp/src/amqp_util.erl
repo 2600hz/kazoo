@@ -139,20 +139,14 @@ callmgr_exchange(Host) ->
 %% A generic Exchange maker
 new_exchange(Host, Exchange, Type) ->
     new_exchange(Host, Exchange, Type, []).
-new_exchange(Host, Exchange, Type, Options) ->
+new_exchange(Host, Exchange, Type, _Options) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
     ED = #'exchange.declare'{
       ticket = Ticket
       ,exchange = Exchange
       ,type = Type
-      ,passive = get_value(passive, Options, false)
-      ,durable = get_value(durable, Options, false)
-      ,auto_delete = get_value(auto_delete, Options, false)
-      ,internal = get_value(internal, Options, false)
-      ,nowait = get_value(nowait, Options, true)
-      ,arguments = get_value(arguments, Options, [])
      },
-    amqp_channel:call(Channel, ED).
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED).
 
 new_targeted_queue(Host, QueueName) ->
     new_queue(Host, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])
@@ -173,29 +167,29 @@ new_callctl_queue(Host, CallId) ->
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 new_callmgr_queue(Host, Queue) ->
-    new_queue(Host, Queue).
+    new_queue(Host, Queue, []).
 
 %% Declare a queue and returns the queue Name
 new_queue(Host) ->
     new_queue(Host, <<"">>). % let's the client lib create a random queue name
 new_queue(Host, Queue) ->
     new_queue(Host, Queue, []).
-new_queue(Host, Queue, Prop) when is_list(Queue) ->
-    new_queue(Host, list_to_binary(Queue), Prop);
-new_queue(Host, Queue, Prop) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
+new_queue(Host, Queue, Options) when is_list(Queue) ->
+    new_queue(Host, list_to_binary(Queue), Options);
+new_queue(Host, Queue, _Options) ->
+    {ok, Channel, _Ticket} = amqp_manager:open_channel(Host, self()),
     QD = #'queue.declare'{
-      ticket = Ticket
-      ,queue = Queue
-      ,passive = get_value(passive, Prop, false)
-      ,durable = get_value(durable, Prop, false)
-      ,exclusive = get_value(exclusive, Prop, true)
-      ,auto_delete = get_value(auto_delete, Prop, true)
-      ,nowait = get_value(nowait, Prop, true)
-      ,arguments = get_value(arguments, Prop, [])
+      %ticket = Ticket
+      queue = Queue
+      %,passive = get_value(passive, Options, false)
+      %,durable = get_value(durable, Options, false)
+      %,exclusive = get_value(exclusive, Options, true)
+      %,auto_delete = get_value(auto_delete, Options, true)
+      %,nowait = get_value(nowait, Options, false)
+      %,arguments = get_value(arguments, Options, [])
      },
-    #'queue.declare_ok'{queue = QueueName} = amqp_channel:call(Channel, QD),
-    QueueName.
+    #'queue.declare_ok'{queue=Q} = amqp_channel:call(Channel, QD),
+    Q.
 
 delete_callevt_queue(Host, CallId) ->
     delete_callevt_queue(Host, CallId, []).
