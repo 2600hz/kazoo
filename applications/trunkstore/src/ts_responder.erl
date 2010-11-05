@@ -106,16 +106,27 @@ handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) -
     {reply, ok, State#state{couch_host=CHost}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
     format_log(info, "TS_RESPONDER(~p): Setting amqp host to ~p~n", [self(), AHost]),
+<<<<<<< HEAD
     {ok, BQ, TQ} = start_amqp(AHost),
     {reply, ok, State#state{amqp_host=AHost, callmgr_q=BQ, tar_q=TQ}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, callmgr_q=OBQ, tar_q=OTQ}=State) ->
+=======
+    {ok, CQ, TQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}};
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, callmgr_q=OCQ, tar_q=OTQ}=State) ->
+>>>>>>> master
     format_log(info, "TS_RESPONDER(~p): Updating amqp host from ~p to ~p~n", [self(), OldAHost, AHost]),
-    amqp_util:queue_delete(OldAHost, OBQ),
+    amqp_util:queue_delete(OldAHost, OCQ),
     amqp_util:queue_delete(OldAHost, OTQ),
     amqp_manager:close_channel(self(), OldAHost),
 
+<<<<<<< HEAD
     {ok, BQ, TQ} = start_amqp(AHost),
     {reply, ok, State#state{amqp_host=AHost, callmgr_q=BQ, tar_q=TQ}};
+=======
+    {ok, CQ, TQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}};
+>>>>>>> master
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -173,8 +184,13 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+<<<<<<< HEAD
 terminate(_Reason, #state{amqp_host=AHost, callmgr_q=BQ, tar_q=TQ}) ->
     amqp_util:queue_delete(AHost, BQ),
+=======
+terminate(_Reason, #state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}) ->
+    amqp_util:queue_delete(AHost, CQ),
+>>>>>>> master
     amqp_util:queue_delete(AHost, TQ),
     format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
@@ -265,7 +281,11 @@ send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
 
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
 start_amqp(AHost) ->
+<<<<<<< HEAD
     CallmgrName = ["ts_responder.callmgr", net_adm:localhost()],
+=======
+    CallmgrName = ["ts_responder.callmgr.", net_adm:localhost()],
+>>>>>>> master
     TarName = ["ts_responder.callctl.", net_adm:localhost()],
 
     amqp_util:callmgr_exchange(AHost),

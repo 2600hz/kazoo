@@ -39,6 +39,7 @@
 -define(QUIET_OPT, "-q").
 -define(NODE_OPT, "-n").
 -define(VHOST_OPT, "-p").
+-define(SCOPE_OPT, "-s").
 
 %%----------------------------------------------------------------------------
 
@@ -66,7 +67,7 @@ start() ->
     {[Command0 | Args], Opts} =
         rabbit_misc:get_options(
           [{flag, ?QUIET_OPT}, {option, ?NODE_OPT, NodeStr},
-           {option, ?VHOST_OPT, "/"}],
+           {option, ?VHOST_OPT, "/"}, {option, ?SCOPE_OPT, "client"}],
           FullCommand),
     Opts1 = lists:map(fun({K, V}) ->
                               case K of
@@ -288,9 +289,10 @@ action(list_consumers, Node, _Args, Opts, Inform) ->
 
 action(set_permissions, Node, [Username, CPerm, WPerm, RPerm], Opts, Inform) ->
     VHost = proplists:get_value(?VHOST_OPT, Opts),
+    Scope = proplists:get_value(?SCOPE_OPT, Opts),
     Inform("Setting permissions for user ~p in vhost ~p", [Username, VHost]),
     call(Node, {rabbit_access_control, set_permissions,
-                [Username, VHost, CPerm, WPerm, RPerm]});
+                [Scope, Username, VHost, CPerm, WPerm, RPerm]});
 
 action(clear_permissions, Node, [Username], Opts, Inform) ->
     VHost = proplists:get_value(?VHOST_OPT, Opts),

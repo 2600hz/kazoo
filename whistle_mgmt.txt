@@ -1,0 +1,90 @@
+$WHISTLE/start_local.sh
+  Start a shell on the local machine, has cookie enabled. Can connect to any host via JCL.
+
+  Ctrl-G from a shell to open JCL
+  --> r 'node@hostname'
+  --> c
+
+  Do something on the node
+
+  %% To safely exit the node without stopping it:  
+  Ctrl-G to open the JCL
+  --> j
+  % find the local node you opened
+  --> c #
+  local@hostname $> q().
+
+  Each application also has a conn-to-APPNAME.sh to facilitate connecting to the node on the local host. Usage is slightly different for exiting the node safely:
+  ecallmgr@hostname $> ^G % Ctrl-G
+  --> j
+    1*  {ecallmgr@hostname, shell, start, []}
+  --> s
+  --> j
+    1  {ecallmgr@hostname, shell, start, []}
+    2* {ecallmgr_conn@hostname, shell, start, []}
+  --> c
+  q().
+
+  If the asterisk is not next to #2, c 2 will get you there explicitly.
+
+CallMgr:
+  'ecallmgr@HOSTNAME' - ecallmgr@whistle-erl001-fmt.2600hz.org
+
+  Things to do:
+    Set (or change) the AMQP host:
+      ecallmgr_fs_handler:set_amqp_host("hostname"). % can also use net_adm:localhost() if the callmgr is on the same server as rabbit
+    Add a FreeSWITCH node:
+      ecallmgr_fs_handler:add_fs_node('freeswitch@hostname'). % must be single quoted
+    Rm a FreeSWITCH node:
+      ecallmgr_fs_handler:rm_fs_node('freeswitch@hostname').
+
+TrunkStore:
+  'ts@HOSTNAME' - ts@whistle-erl001-fmt.2600hz.org
+
+  Things to do:
+    Set (or change) the AMQP host:
+      ts_responder:set_amqp_host("hostname").
+    Set (or change) the Couch host:
+      ts_responder:set_couch_host("hostname").
+    Refresh the Rates information:
+      ts_credit:force_rate_refresh().
+    Refresh the Carrier data:
+      ts_carrier:force_carrier_refresh().
+
+Diagnostics server:
+  $WHISTLE/diagnostics/start.sh - start up the Erlang shell
+
+  Things to do:
+    Add a callmgr node:
+      diagnostics_server:add_node('ecallmgr@HOSTNAME'). % note single-quotes
+    Rm a callmgr node:
+      diagnostics_server:rm_node('ecallmgr@HOSTNAME').
+    View all nodes:
+      diagnostics_server:view().
+    View specific node:
+      diagnostics_server:view('node@HOSTNAME').
+
+  Reading the output:
+    For auth:
+      A success is when an auth XML chunk is sent to FreeSWITCH
+      A timeout is when it takes to long to get a response from Trunkstore
+      A failure is every other reason why a good auth response wasn't generated (if a device has the wrong password, still considered a success since we had creds to return).
+    For routing:
+      A success is when a successful set of bridge commands (or a park) is sent to FreeSWITCH (doesn't care if the call is actually bridged).
+      A timeout, again, is if trunkstore is too slow.
+      A failure is every other reason a good route response XML wasn't sent to FreeSWITCH
+    Active lookups are how many lookups are currently being processed. As they typically take < 20ms, you won't see much here.
+    There is also an uptime column to see how long the particular handler has been up on FreeSWITCH node.
+    You will also see a handler that has gone down. Currently one must rm the entire FS node and add it again, but a handler restart is in the works.
+
+FreeSWITCH:
+  From the fs_cli:
+    erlang listeners
+      - will list the nodes of callmgrs connected to the node
+    load/reload/unload mod_erlang_event
+      - loads/reloads/unloads the module
+  Conf file is $FS/conf/autoload_configs/erlang_event.conf.xml
+  Erlang cookie file is $FS/conf/autoload_configs/.erlang.cookie
+    - Permissions must be 600
+    - Owner must match user used to start FreeSWITCH (typically the freeswitch user)
+    - Start freeswitch as with root@freeswitch#> sudo -u freeswitch $FS/bin/freeswitch -nonat -nc -hp

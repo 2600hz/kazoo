@@ -18,6 +18,7 @@
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
+-include("whistle_amqp.hrl").
 -include("ecallmgr.hrl").
 
 %% lookups = [{LookupPid, ID, erlang:now()}]
@@ -173,7 +174,7 @@ recv_response(ID) ->
 -spec(bind_q/2 :: (AmqpHost :: binary(), ID :: binary()) -> binary()).
 bind_q(AmqpHost, ID) ->
     amqp_util:targeted_exchange(AmqpHost),
-    amqp_util:broadcast_exchange(AmqpHost),
+    amqp_util:callmgr_exchange(AmqpHost),
     Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
     format_log(info, "L/U.user(~p): create targeted queue ~p~n", [self(), Queue]),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),
@@ -185,7 +186,7 @@ a1hash(User, Realm, Password) ->
     ecallmgr_util:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 send_request(Host, JSON) ->
-    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>).
+    amqp_util:callmgr_publish(Host, JSON, <<"application/json">>, ?KEY_AUTH_REQ).
 
 handle_response(ID, Data, FetchPid) ->
     T1 = erlang:now(),

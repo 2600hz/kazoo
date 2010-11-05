@@ -59,6 +59,7 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 	{ctl_queue, CallID, CtlQ1} ->
 	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1});
 	{shutdown, CallID} ->
+	    amqp_util:delete_callmgr_queue(Host, CallID),
 	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
 	{_, #amqp_msg{props = _Props, payload = Payload}} ->
 	    format_log(info, "TS_CALL(~p): Evt recv:~n~s~n", [self(), Payload]),

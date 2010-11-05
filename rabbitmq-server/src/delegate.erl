@@ -35,7 +35,7 @@
 
 -behaviour(gen_server2).
 
--export([start_link/2, invoke_no_result/2, invoke/2, process_count/0]).
+-export([start_link/1, invoke_no_result/2, invoke/2, process_count/0]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -44,8 +44,7 @@
 
 -ifdef(use_specs).
 
--spec(start_link/2 ::
-        (atom(), non_neg_integer()) -> {'ok', pid()} | {'error', any()}).
+-spec(start_link/1 :: (non_neg_integer()) -> {'ok', pid()} | {'error', any()}).
 -spec(invoke_no_result/2 ::
         (pid() | [pid()], fun ((pid()) -> any())) -> 'ok').
 -spec(invoke/2 :: (pid() | [pid()], fun ((pid()) -> A)) -> A).
@@ -61,8 +60,8 @@
 
 %%----------------------------------------------------------------------------
 
-start_link(Prefix, Hash) ->
-    gen_server2:start_link({local, server(Prefix, Hash)}, ?MODULE, [], []).
+start_link(Hash) ->
+    gen_server2:start_link({local, server(Hash)}, ?MODULE, [], []).
 
 invoke(Pid, Fun) when is_pid(Pid) ->
     [Res] = invoke_per_node(split_delegate_per_node([Pid]), Fun),
@@ -148,8 +147,7 @@ delegate_per_remote_node(NodePids, Fun, DelegateFun) ->
 local_server(Node) ->
     case get({delegate_local_server_name, Node}) of
         undefined ->
-            Name = server(outgoing,
-                          erlang:phash2({self(), Node}, process_count())),
+            Name = server(erlang:phash2({self(), Node}, process_count())),
             put({delegate_local_server_name, Node}, Name),
             Name;
         Name -> Name
@@ -162,20 +160,17 @@ remote_server(Node) ->
                 {badrpc, _} ->
                     %% Have to return something, if we're just casting
                     %% then we don't want to blow up
-                    server(incoming, 1);
+                    server(1);
                 Count ->
-                    Name = server(incoming,
-                                  erlang:phash2({self(), Node}, Count)),
+                    Name = server(erlang:phash2({self(), Node}, Count)),
                     put({delegate_remote_server_name, Node}, Name),
                     Name
             end;
         Name -> Name
     end.
 
-server(Prefix, Hash) ->
-    list_to_atom("delegate_" ++
-                     atom_to_list(Prefix) ++ "_" ++
-                     integer_to_list(Hash)).
+server(Hash) ->
+    list_to_atom("delegate_process_" ++ integer_to_list(Hash)).
 
 safe_invoke(Pids, Fun) when is_list(Pids) ->
     [safe_invoke(Pid, Fun) || Pid <- Pids];
