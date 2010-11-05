@@ -133,7 +133,9 @@
 						,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
 						,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
 					   ]).
--define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}]).
+-define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
+				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
+				 ]).
 -define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}
 				 ,{<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
 						   ([<<"user:", _/binary>>, _]) -> true;
