@@ -82,4 +82,7 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 
 -spec(consume_events/2 :: (Host :: string(), CallID :: binary()) -> no_return()).
 consume_events(Host, CallID) ->
-    amqp_util:callevt_consume(Host, CallID).
+    amqp_util:callevt_exchange(Host),
+    EvtQ = amqp_util:new_callevt_queue(Host, list_to_binary(["ts_call.event.", CallID])),
+    amqp_util:bind_q_to_callevt(Host, EvtQ, CallID),
+    amqp_util:basic_consume(Host, EvtQ).
