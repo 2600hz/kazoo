@@ -284,4 +284,5 @@ start_amqp(AHost) ->
     amqp_util:basic_consume(AHost, CallmgrQueue),
     amqp_util:basic_consume(AHost, TarQueue),
 
+    format_log(info, "TS_RESPONDER(~p): Consuming on B(~p) and T(~p)~n", [self(), CallmgrQueue, TarQueue]),
     {ok, CallmgrQueue, TarQueue}.
