@@ -268,6 +268,14 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
 get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"progress_timeout=">>, V]) | Vars];
+get_channel_vars({<<"Rate">>, V}, Vars) ->
+    [ list_to_binary([<<"rate=">>, ecallmgr_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Rate-Increment">>, V}, Vars) ->
+    [ list_to_binary([<<"rate_increment=">>, ecallmgr_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
+    [ list_to_binary([<<"rate_minimum=">>, ecallmgr_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Surcharge">>, V}, Vars) ->
+    [ list_to_binary([<<"surcharge=">>, ecallmgr_util:to_list(V)]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
