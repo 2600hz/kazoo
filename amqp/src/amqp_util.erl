@@ -88,9 +88,7 @@ callctl_publish(Host, CallId, Payload, ContentType) ->
     basic_publish(Host, ?EXCHANGE_CALLCTL, Route, Payload, ContentType).
 
 callevt_publish(Host, CallId, Payload) ->
-    callevt_publish(Host, CallId, Payload, undefined).
-callevt_publish(Host, CallId, Payload, ContentType) when is_binary(CallId) ->
-    callevt_publish(Host, binary_to_list(CallId), Payload, ContentType);
+    callevt_publish(Host, CallId, Payload, <<"application/json">>).
 callevt_publish(Host, CallId, Payload, ContentType) ->
     Route = <<?KEY_CALL_EVENT/binary, CallId/binary>>,
     basic_publish(Host, ?EXCHANGE_CALLEVT, Route, Payload, ContentType).
@@ -177,7 +175,7 @@ new_queue(Host, Queue) ->
 new_queue(Host, Queue, Options) when is_list(Queue) ->
     new_queue(Host, list_to_binary(Queue), Options);
 new_queue(Host, Queue, _Options) ->
-    {ok, Channel, _Ticket} = amqp_manager:open_channel(Host, self()),
+    {ok, Channel, _Ticket} = amqp_manager:open_channel(self(), Host),
     QD = #'queue.declare'{
       %ticket = Ticket
       queue = Queue

@@ -32,7 +32,7 @@
 
 -record(state, {amqp_host = "" :: string()
 		,couch_host = "" :: string()
-                ,callmgr_q = <<>> :: binary()
+		,callmgr_q = <<>> :: binary()
                 ,tar_q = <<>> :: binary()
 		,post_handlers = [] :: list(tuple(binary(), pid())) %% [ {CallID, PostHandlerPid} ]
 	       }).
@@ -277,7 +277,7 @@ start_amqp(AHost) ->
     %% Bind the queue to an exchange
     amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
     amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
-    format_log(info, "TS_RESPONDER(~p): Bound ~p for ?p and ?p~n", [self(), CallmgrQueue, ?KEY_AUTH_REQ, ?KEY_ROUTE_REQ]),
+    format_log(info, "TS_RESPONDER(~p): Bound ~p for ~p and ~p~n", [self(), CallmgrQueue, ?KEY_AUTH_REQ, ?KEY_ROUTE_REQ]),
     amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
 
     %% Register a consumer to listen to the queue
