@@ -300,7 +300,6 @@ create_amqp_params(Host, Port) ->
 
 -spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
 get_new_connection(#'amqp_params'{}=P) ->
-    Localhost = net_adm:localhost(),
     {ok, Connection} = amqp_connection:start(network, P),
     format_log(info, "AMQP_MGR(~p): Conn ~p started.~n", [self(), Connection]),
     MRefConn = erlang:monitor(process, Connection),
