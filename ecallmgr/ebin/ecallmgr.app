@@ -12,4 +12,4 @@
                         ecallmgr_deps,ecallmgr_diagnostics,ecallmgr_fs_auth,
                         ecallmgr_fs_handler,ecallmgr_fs_route,
                         ecallmgr_media_registry,ecallmgr_sup,ecallmgr_util,
-                        freeswitch,logger,props,whistle_api]}]}.
+                        freeswitch,logger,props,whistle_api,whistle_util]}]}.
