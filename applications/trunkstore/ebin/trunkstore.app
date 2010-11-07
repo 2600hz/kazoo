@@ -1,6 +1,6 @@
 {application,trunkstore,
              [{description,"Trunk Store Backend - Authentication and Routing"},
-              {vsn,"0.1"},
+              {vsn,"0.3.1"},
               {registered,[]},
               {applications,[kernel,stdlib,whistle_amqp]},
               {mod,{trunkstore_app,[]}},

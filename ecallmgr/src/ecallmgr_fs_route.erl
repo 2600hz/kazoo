@@ -19,6 +19,7 @@
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
+-include("whistle_amqp.hrl").
 -include("ecallmgr.hrl").
 
 -record(handler_state, {fs_node :: atom()
@@ -118,7 +119,7 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
 			     no_return()).
 lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID, FetchPid, Data) ->
     Q = bind_q(Host, ID),
-    {EvtQ, CtlQ} = bind_channel_qs(Host, UUID, Node),
+    CtlQ = bind_channel_qs(Host, UUID, Node),
 
     DefProp = [{<<"Msg-ID">>, ID}
 	       ,{<<"Caller-ID-Name">>, get_value(<<"Caller-Caller-ID-Name">>, Data)}
@@ -126,14 +127,13 @@ lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID,
 	       ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
 	       ,{<<"Call-ID">>, UUID}
-	       ,{<<"Event-Queue">>, EvtQ}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(Data)}}
 	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, Vsn)],
     EndResult = case whistle_api:route_req(DefProp) of
 		    {ok, JSON} ->
 			format_log(info, "L/U.route(~p): Sending RouteReq JSON to Host(~p)~n", [self(), Host]),
 			send_request(Host, JSON),
-			Result = handle_response(ID, UUID, EvtQ, CtlQ, HState, FetchPid, Data),
+			Result = handle_response(ID, UUID, CtlQ, HState, FetchPid, Data),
 			amqp_util:queue_delete(Host, Q),
 			Result;
 		    {error, _Msg} ->
@@ -143,7 +143,7 @@ lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID,
     FetchPid ! {lookup_finished, self(), EndResult}.
 
 send_request(Host, JSON) ->
-    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>).
+    amqp_util:callmgr_publish(Host, JSON, <<"application/json">>, ?KEY_ROUTE_REQ).
 
 recv_response(ID) ->
     receive
@@ -175,7 +175,7 @@ recv_response(ID) ->
 
 bind_q(AmqpHost, ID) ->
     amqp_util:targeted_exchange(AmqpHost),
-    amqp_util:broadcast_exchange(AmqpHost),
+    amqp_util:callmgr_exchange(AmqpHost),
     Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),
     amqp_util:basic_consume(AmqpHost, Queue),
@@ -187,15 +187,13 @@ bind_channel_qs(Host, UUID, Node) ->
     amqp_util:callevt_exchange(Host),
     amqp_util:callctl_exchange(Host),
 
-    EvtQueue = amqp_util:new_callevt_queue(Host, UUID),
     CtlQueue = amqp_util:new_callctl_queue(Host, UUID),
 
-    amqp_util:bind_q_to_callevt(Host, EvtQueue),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
 
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
-    ecallmgr_call_events:start(Node, UUID, {Host, EvtQueue}, CtlPid),
-    {EvtQueue, CtlQueue}.
+    ecallmgr_call_events:start(Node, UUID, Host, CtlPid),
+    CtlQueue.
 
 send_control_queue(_Host, _Q, undefined) ->
     format_log(error, "L/U.route(~p): Cannot send control Q(~p) to undefined server-id~n", [self(), _Q]),
@@ -270,11 +268,19 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
 get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"progress_timeout=">>, V]) | Vars];
+get_channel_vars({<<"Rate">>, V}, Vars) ->
+    [ list_to_binary([<<"rate=">>, ecallmgr_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Rate-Increment">>, V}, Vars) ->
+    [ list_to_binary([<<"rate_increment=">>, ecallmgr_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
+    [ list_to_binary([<<"rate_minimum=">>, ecallmgr_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Surcharge">>, V}, Vars) ->
+    [ list_to_binary([<<"surcharge=">>, ecallmgr_util:to_list(V)]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
-handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid, Data) ->
+handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid, Data) ->
     T1 = erlang:now(),
     case recv_response(ID) of
 	shutdown ->
@@ -295,7 +301,6 @@ handle_response(ID, UUID, EvtQ, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn
 
 	    CtlProp = [{<<"Msg-ID">>, UUID}
 		       ,{<<"Call-ID">>, UUID}
-		       ,{<<"Event-Queue">>, EvtQ}
 		       ,{<<"Control-Queue">>, CtlQ}
 		       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, <<"ecallmgr.route">>, Vsn)],
 	    send_control_queue(Host, CtlProp

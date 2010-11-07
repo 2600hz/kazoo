@@ -26,12 +26,13 @@
 -import(logger, [log/2, format_log/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
+-include("../../../src/whistle_amqp.hrl").
 
 -define(SERVER, ?MODULE). 
 
 -record(state, {amqp_host = "" :: string()
 		,couch_host = "" :: string()
-                ,broad_q = <<>> :: binary()
+		,callmgr_q = <<>> :: binary()
                 ,tar_q = <<>> :: binary()
 		,post_handlers = [] :: list(tuple(binary(), pid())) %% [ {CallID, PostHandlerPid} ]
 	       }).
@@ -104,17 +105,17 @@ handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) -
     ts_credit:force_rate_refresh(),
     {reply, ok, State#state{couch_host=CHost}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Setting couch host to ~p~n", [self(), AHost]),
-    {ok, BQ, TQ} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, broad_q=BQ, tar_q=TQ}};
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, broad_q=OBQ, tar_q=OTQ}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldAHost, AHost]),
-    amqp_util:queue_delete(OldAHost, OBQ),
+    format_log(info, "TS_RESPONDER(~p): Setting amqp host to ~p~n", [self(), AHost]),
+    {ok, CQ, TQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}};
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, callmgr_q=OCQ, tar_q=OTQ}=State) ->
+    format_log(info, "TS_RESPONDER(~p): Updating amqp host from ~p to ~p~n", [self(), OldAHost, AHost]),
+    amqp_util:queue_delete(OldAHost, OCQ),
     amqp_util:queue_delete(OldAHost, OTQ),
     amqp_manager:close_channel(self(), OldAHost),
 
-    {ok, BQ, TQ} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, broad_q=BQ, tar_q=TQ}};
+    {ok, CQ, TQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}};
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -172,8 +173,8 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_host=AHost, broad_q=BQ, tar_q=TQ}) ->
-    amqp_util:queue_delete(AHost, BQ),
+terminate(_Reason, #state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}) ->
+    amqp_util:queue_delete(AHost, CQ),
     amqp_util:queue_delete(AHost, TQ),
     format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
@@ -264,23 +265,24 @@ send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
 
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
 start_amqp(AHost) ->
-    BroadName = ["ts_responder.", net_adm:localhost()],
+    CallmgrName = ["ts_responder.callmgr.", net_adm:localhost()],
     TarName = ["ts_responder.callctl.", net_adm:localhost()],
 
-    amqp_util:broadcast_exchange(AHost),
+    amqp_util:callmgr_exchange(AHost),
     amqp_util:targeted_exchange(AHost),
 
-    BroadQueue = amqp_util:new_broadcast_queue(AHost, BroadName),
+    CallmgrQueue = amqp_util:new_callmgr_queue(AHost, CallmgrName),
     TarQueue = amqp_util:new_targeted_queue(AHost, TarName),
 
     %% Bind the queue to an exchange
-    amqp_util:bind_q_to_broadcast(AHost, BroadQueue),
-    format_log(info, "TS_RESPONDER(~p): Bound ~p~n", [self(), BroadQueue]),
+    amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
+    amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
+    format_log(info, "TS_RESPONDER(~p): Bound ~p for ~p and ~p~n", [self(), CallmgrQueue, ?KEY_AUTH_REQ, ?KEY_ROUTE_REQ]),
     amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
 
     %% Register a consumer to listen to the queue
-    amqp_util:basic_consume(AHost, BroadQueue),
+    amqp_util:basic_consume(AHost, CallmgrQueue),
     amqp_util:basic_consume(AHost, TarQueue),
 
-    format_log(info, "TS_RESPONDER(~p): Consuming on B(~p) and T(~p)~n", [self(), BroadQueue, TarQueue]),
-    {ok, BroadQueue, TarQueue}.
+    format_log(info, "TS_RESPONDER(~p): Consuming on B(~p) and T(~p)~n", [self(), CallmgrQueue, TarQueue]),
+    {ok, CallmgrQueue, TarQueue}.

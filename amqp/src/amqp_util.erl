@@ -1,6 +1,7 @@
 -module(amqp_util).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
+-include("../../src/whistle_amqp.hrl").
 
 -import(props, [get_value/2, get_value/3]).
 
@@ -9,38 +10,63 @@
 -export([callevt_exchange/1, callevt_publish/3, callevt_publish/4]).
 -export([broadcast_exchange/1, broadcast_publish/2, broadcast_publish/3]).
 -export([resource_exchange/1, resource_publish/2, resource_publish/3]).
+-export([callmgr_exchange/1, callmgr_publish/4]).
 
 -export([bind_q_to_targeted/2, bind_q_to_targeted/3]).
 -export([bind_q_to_callctl/2, bind_q_to_callctl/3]).
--export([bind_q_to_callevt/2, bind_q_to_callevt/3]).
+-export([bind_q_to_callevt/3]).
 -export([bind_q_to_broadcast/2, bind_q_to_broadcast/3]).
 -export([bind_q_to_resource/2, bind_q_to_resource/3]).
+-export([bind_q_to_callmgr/3]).
 
--export([callevt_consume/2, callctl_consume/2]).
+-export([callctl_consume/2]).
 
--export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2]).
--export([delete_callevt_queue/2, delete_callctl_queue/2]).
+-export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2, new_callmgr_queue/2]).
+-export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
 
 -export([new_queue/1, new_queue/2, delete_queue/2, basic_consume/2, basic_consume/3
 	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2
-	 ,channel_close/3, queue_delete/2,queue_delete/3]).
+	 ,channel_close/3, queue_delete/2, queue_delete/3]).
 
 -export([access_request/0, access_request/1]).
 
+%% Targeted Exchange
+%% - Any process that needs a dedicated queue to be reached at creates one on this exchange
+%% - One consumer of the queue, many publishers of the queue.
 -define(EXCHANGE_TARGETED, <<"targeted">>).
 -define(TYPE_TARGETED, <<"direct">>).
 
+%% Call Control Exchange
+%% - Specific type of exchange for call control. When a call is spun up, a process is created
+%%   to have a queue on this exchange and listen for commands to come to it.
+%% - One consumer of the queue, probably one publisher, though may be many, to the queue.
 -define(EXCHANGE_CALLCTL, <<"callctl">>).
 -define(TYPE_CALLCTL, <<"direct">>).
 
+%% Call Event Exchange
+%% - When a call spins up, a process publishes to the callevt exchange at call.event.CALLID
+%% - Any app that wants call events can bind to call.event.* for all events, or call.event.CALLID
+%%   for a specific call's events
 -define(EXCHANGE_CALLEVT, <<"callevt">>).
--define(TYPE_CALLEVT, <<"direct">>).
+-define(TYPE_CALLEVT, <<"topic">>).
 
+%% Broadcast Exchange
+%% - Any consumer can create a queue to get any message published to the exchange
+%% - Many publishers to the exchange, one consumer per queue
 -define(EXCHANGE_BROADCAST, <<"broadcast">>).
 -define(TYPE_BROADCAST, <<"fanout">>).
 
 -define(EXCHANGE_RESOURCE, <<"resource">>).
 -define(TYPE_RESOURCE, <<"fanout">>).
+
+%% Call Manager Exchange
+%% - ecallmgr will publish requests to this exchange using routing keys
+%%   apps that want to handle certain messages will create a queue with the appropriate routing key
+%%   in the binding to receive the messages.
+%% - ecallmgr publishes to the exchange with a routing key; consumers bind their queue with the
+%%   routing keys they want messages for.
+-define(EXCHANGE_CALLMGR, <<"callmgr">>).
+-define(TYPE_CALLMGR, <<"topic">>).
 
 %% Publish Messages to a given Exchange.Queue
 targeted_publish(Host, Queue, Payload) ->
@@ -59,19 +85,12 @@ callctl_publish(Host, CallId, Payload, ContentType) ->
 		0 -> list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]);
 		_ -> list_to_binary(CallId)
 	    end,
-
     basic_publish(Host, ?EXCHANGE_CALLCTL, Route, Payload, ContentType).
 
 callevt_publish(Host, CallId, Payload) ->
-    callevt_publish(Host, CallId, Payload, undefined).
-
-callevt_publish(Host, CallId, Payload, ContentType) when is_binary(CallId) ->
-    callevt_publish(Host, binary_to_list(CallId), Payload, ContentType);
+    callevt_publish(Host, CallId, Payload, <<"application/json">>).
 callevt_publish(Host, CallId, Payload, ContentType) ->
-    Route = case string:str(CallId, binary_to_list(?EXCHANGE_CALLEVT)) of
-		0 -> list_to_binary([?EXCHANGE_CALLEVT, ".", CallId]);
-		_ -> list_to_binary(CallId)
-	    end,
+    Route = <<?KEY_CALL_EVENT/binary, CallId/binary>>,
     basic_publish(Host, ?EXCHANGE_CALLEVT, Route, Payload, ContentType).
 
 broadcast_publish(Host, Payload) ->
@@ -92,6 +111,10 @@ resource_publish(Host, Payload, ContentType) when is_list(ContentType) ->
 resource_publish(Host, Payload, ContentType) ->
     basic_publish(Host, ?EXCHANGE_RESOURCE, <<"#">>, Payload, ContentType).
 
+%% What host to publish to, what to send, what content type, what routing key
+callmgr_publish(Host, Payload, ContentType, RoutingKey) ->
+    basic_publish(Host, ?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
+
 %% Create (or access) an Exchange
 targeted_exchange(Host) ->
     new_exchange(Host, ?EXCHANGE_TARGETED, ?TYPE_TARGETED).
@@ -108,23 +131,20 @@ broadcast_exchange(Host) ->
 resource_exchange(Host) ->
     new_exchange(Host, ?EXCHANGE_RESOURCE, ?TYPE_RESOURCE).
 
+callmgr_exchange(Host) ->
+    new_exchange(Host, ?EXCHANGE_CALLMGR, ?TYPE_CALLMGR).
+
 %% A generic Exchange maker
 new_exchange(Host, Exchange, Type) ->
     new_exchange(Host, Exchange, Type, []).
-new_exchange(Host, Exchange, Type, Options) ->
+new_exchange(Host, Exchange, Type, _Options) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
     ED = #'exchange.declare'{
       ticket = Ticket
       ,exchange = Exchange
       ,type = Type
-      ,passive = get_value(passive, Options, false)
-      ,durable = get_value(durable, Options, false)
-      ,auto_delete = get_value(auto_delete, Options, false)
-      ,internal = get_value(internal, Options, false)
-      ,nowait = get_value(nowait, Options, true)
-      ,arguments = get_value(arguments, Options, [])
      },
-    amqp_channel:call(Channel, ED).
+    #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED).
 
 new_targeted_queue(Host, QueueName) ->
     new_queue(Host, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])
@@ -144,27 +164,30 @@ new_callctl_queue(Host, CallId) ->
 	      ,list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
+new_callmgr_queue(Host, Queue) ->
+    new_queue(Host, Queue, []).
+
 %% Declare a queue and returns the queue Name
 new_queue(Host) ->
     new_queue(Host, <<"">>). % let's the client lib create a random queue name
 new_queue(Host, Queue) ->
     new_queue(Host, Queue, []).
-new_queue(Host, Queue, Prop) when is_list(Queue) ->
-    new_queue(Host, list_to_binary(Queue), Prop);
-new_queue(Host, Queue, Prop) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
+new_queue(Host, Queue, Options) when is_list(Queue) ->
+    new_queue(Host, list_to_binary(Queue), Options);
+new_queue(Host, Queue, _Options) ->
+    {ok, Channel, _Ticket} = amqp_manager:open_channel(self(), Host),
     QD = #'queue.declare'{
-      ticket = Ticket
-      ,queue = Queue
-      ,passive = get_value(passive, Prop, false)
-      ,durable = get_value(durable, Prop, false)
-      ,exclusive = get_value(exclusive, Prop, true)
-      ,auto_delete = get_value(auto_delete, Prop, true)
-      ,nowait = get_value(nowait, Prop, true)
-      ,arguments = get_value(arguments, Prop, [])
+      %ticket = Ticket
+      queue = Queue
+      %,passive = get_value(passive, Options, false)
+      %,durable = get_value(durable, Options, false)
+      %,exclusive = get_value(exclusive, Options, true)
+      %,auto_delete = get_value(auto_delete, Options, true)
+      %,nowait = get_value(nowait, Options, false)
+      %,arguments = get_value(arguments, Options, [])
      },
-    #'queue.declare_ok'{queue = QueueName} = amqp_channel:call(Channel, QD),
-    QueueName.
+    #'queue.declare_ok'{queue=Q} = amqp_channel:call(Channel, QD),
+    Q.
 
 delete_callevt_queue(Host, CallId) ->
     delete_callevt_queue(Host, CallId, []).
@@ -177,6 +200,9 @@ delete_callctl_queue(Host, CallId) ->
 
 delete_callctl_queue(Host, CallId, Prop) ->
     delete_queue(Host, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]), Prop).
+
+delete_callmgr_queue(Host, CallId) ->
+    delete_queue(Host, << ?KEY_CALL_EVENT/binary, CallId/binary >>, []).
 
 delete_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
@@ -205,11 +231,8 @@ bind_q_to_callctl(Host, Queue) ->
 bind_q_to_callctl(Host, Queue, Routing) ->
     bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_CALLCTL).
 
-bind_q_to_callevt(Host, Queue) ->
-    bind_q_to_callevt(Host, Queue, Queue).
-
-bind_q_to_callevt(Host, Queue, Routing) ->
-    bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_CALLEVT).
+bind_q_to_callevt(Host, Queue, CallId) ->
+    bind_q_to_exchange(Host, Queue, <<?KEY_CALL_EVENT/binary, CallId/binary>>, ?EXCHANGE_CALLEVT).
 
 bind_q_to_broadcast(Host, Queue) ->
     bind_q_to_broadcast(Host, Queue, <<"#">>).
@@ -223,6 +246,9 @@ bind_q_to_resource(Host, Queue) ->
 bind_q_to_resource(Host, Queue, Routing) ->
     bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_RESOURCE).
 
+bind_q_to_callmgr(Host, Queue, Routing) ->
+    bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_CALLMGR).
+
 %% generic binder
 bind_q_to_exchange(Host, Queue, Routing, Exchange) when is_list(Queue) ->
     bind_q_to_exchange(Host, list_to_binary(Queue), Routing, Exchange);
@@ -232,25 +258,23 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
     QB = #'queue.bind'{
       ticket = Ticket
-      ,queue = Queue
-      ,exchange = Exchange
-      ,routing_key = Routing
+      ,queue = Queue %% what queue does the binding attach to?
+      ,exchange = Exchange %% what exchange does the binding attach to?
+      ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
       ,nowait = true
       ,arguments = []
      },
     amqp_channel:call(Channel, QB).
 
-callevt_consume(Host, CallId) ->
-    basic_consume(Host, list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])).
 callctl_consume(Host, CallId) ->
     basic_consume(Host, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])).
 
 %% create a consumer for a Queue
-basic_consume(Host, Queue) when is_list(Queue) ->
-    basic_consume(Host, list_to_binary(Queue));
 basic_consume(Host, Queue) ->
     basic_consume(Host, Queue, []).
 
+basic_consume(Host, Queue, Options) when is_list(Queue) ->
+    basic_consume(Host, list_to_binary(Queue), Options);
 basic_consume(Host, Queue, Options) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
     BC = #'basic.consume'{

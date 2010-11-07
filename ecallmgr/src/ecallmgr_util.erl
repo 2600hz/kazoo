@@ -1,7 +1,7 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_orig_ip/1, custom_channel_vars/1]).
--export([to_hex/1, route_to_dialstring/2]).
+-export([to_hex/1, route_to_dialstring/2, to_list/1, to_binary/1]).
 
 -import(proplists, [get_value/2, get_value/3]).
 
@@ -44,3 +44,27 @@ route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _D) -> DS;
 route_to_dialstring([<<"user:", User/binary>>, DID], Domain) ->
     list_to_binary([DID, "${regex(${sofia_contact(sipinterface_1/",User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
 route_to_dialstring(DS, _D) -> DS.
+
+-spec(to_list/1 :: (X :: atom() | list() | binary() | integer() | float()) -> list()).
+to_list(X) when is_float(X) ->
+    mochinum:digits(X);
+to_list(X) when is_integer(X) ->
+    integer_to_list(X);
+to_list(X) when is_binary(X) ->
+    binary_to_list(X);
+to_list(X) when is_atom(X) ->
+    atom_to_list(X);
+to_list(X) when is_list(X) ->
+    X.
+
+-spec(to_binary/1 :: (X :: atom() | list() | binary() | integer() | float()) -> binary()).
+to_binary(X) when is_float(X) ->
+    to_binary(mochinum:digits(X));
+to_binary(X) when is_integer(X) ->
+    to_binary(integer_to_list(X));
+to_binary(X) when is_atom(X) ->
+    list_to_binary(atom_to_list(X));
+to_binary(X) when is_list(X) ->
+    list_to_binary(X);
+to_binary(X) when is_binary(X) ->
+    X.
