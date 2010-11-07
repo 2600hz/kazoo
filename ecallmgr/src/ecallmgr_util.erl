@@ -47,7 +47,7 @@ route_to_dialstring(DS, _D) -> DS.
 
 -spec(to_list/1 :: (X :: atom() | list() | binary() | integer() | float()) -> list()).
 to_list(X) when is_float(X) ->
-    float_to_list(X);
+    mochinum:digits(X);
 to_list(X) when is_integer(X) ->
     integer_to_list(X);
 to_list(X) when is_binary(X) ->
@@ -59,7 +59,7 @@ to_list(X) when is_list(X) ->
 
 -spec(to_binary/1 :: (X :: atom() | list() | binary() | integer() | float()) -> binary()).
 to_binary(X) when is_float(X) ->
-    to_binary(float_to_list(X));
+    to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) ->
     to_binary(integer_to_list(X));
 to_binary(X) when is_atom(X) ->
