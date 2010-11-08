@@ -7,7 +7,7 @@
 %%% @end
 %%% Created :  8 Nov 2010 by James Aimonetti <james@2600hz.org>
 
--module(trunkstore_deps).
+-module(whistle_amqp_deps).
 -author('author <james@2600hz.org>').
 
 -export([ensure/0, ensure/1]).
