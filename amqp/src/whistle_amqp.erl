@@ -7,13 +7,13 @@
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    io:format("Start_link~n", []),
+    whistle_amqp_deps:ensure(?MODULE),
     whistle_amqp_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the amqp server.
 start() ->
-    io:format("Start~n", []),
+    whistle_amqp_deps:ensure(?MODULE),
     application:start(whistle_amqp).
 
 %% @spec stop() -> ok
