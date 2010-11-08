@@ -50,7 +50,9 @@ new_siblings(Module) ->
 %% @doc Ensure that all ebin and include paths for dependencies
 %%      of the application for Module are on the code path.
 ensure(Module) ->
-    code:add_paths(new_siblings(Module)),
+    Sibs = new_siblings(Module),
+    io:format("AMQP: New siblings to add~n~p~n", [Sibs]),
+    code:add_pathsa(Sibs),
     code:clash(),
     ok.
 
