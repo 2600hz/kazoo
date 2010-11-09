@@ -1,4 +1,4 @@
--module(whistle_amqp_app).
+-module(cdr_app).
 
 -behaviour(application).
 
@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    whistle_amqp:start_link().
+    cdr:start_link().
 
 stop(_State) ->
     ok.
