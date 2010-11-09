@@ -7,7 +7,7 @@
 %%% @end
 %%% Created :  8 Nov 2010 by James Aimonetti <james@2600hz.org>
 
--module(whistle_amqp_deps).
+-module(cdr_deps).
 -author('author <james@2600hz.org>').
 
 -export([ensure/0, ensure/1]).
@@ -50,9 +50,7 @@ new_siblings(Module) ->
 %% @doc Ensure that all ebin and include paths for dependencies
 %%      of the application for Module are on the code path.
 ensure(Module) ->
-    Sibs = new_siblings(Module),
-    io:format("AMQP: New siblings to add~n~p~n", [Sibs]),
-    code:add_pathsa(Sibs),
+    code:add_paths(new_siblings(Module)),
     code:clash(),
     ok.
 

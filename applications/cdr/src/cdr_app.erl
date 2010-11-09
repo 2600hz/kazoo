@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    cdr_sup:start_link().
+    cdr:start_link().
 
 stop(_State) ->
     ok.
