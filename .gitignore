@@ -2,4 +2,3 @@
 */log
 */mnesia
 */error_log
-*.beam
