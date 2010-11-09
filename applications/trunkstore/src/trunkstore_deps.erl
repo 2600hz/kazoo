@@ -1,12 +1,14 @@
-%% @James Aimonetti James Aimonetti <james@sfvoip.com>
-%% @copyright 2010 James Aimonetti.
-
-%% @doc Ensure that the relatively-installed dependencies are on the code
-%%      loading path, and locate resources relative
-%%      to this application's path.
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010, James Aimonetti
+%%% @doc Ensure that the relatively-installed dependencies are on the code
+%%%      loading path, and locate resources relative
+%%%      to this application's path.
+%%%
+%%% @end
+%%% Created :  8 Nov 2010 by James Aimonetti <james@2600hz.org>
 
 -module(trunkstore_deps).
--author('James Aimonetti <james@2600hz.com>').
+-author('author <james@2600hz.org>').
 
 -export([ensure/0, ensure/1]).
 -export([get_base_dir/0, get_base_dir/1]).
