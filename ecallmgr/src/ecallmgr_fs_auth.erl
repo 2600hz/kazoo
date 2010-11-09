@@ -181,10 +181,6 @@ bind_q(AmqpHost, ID) ->
     amqp_util:basic_consume(AmqpHost, Queue),
     Queue.
 
-a1hash(User, Realm, Password) ->
-    format_log(info, "L/U.user(~p): a1hashing ~p:~p:~p~n", [self(), User, Realm, Password]),
-    ecallmgr_util:to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
-
 send_request(Host, JSON) ->
     amqp_util:callmgr_publish(Host, JSON, <<"application/json">>, ?KEY_AUTH_REQ).
 
@@ -207,7 +203,7 @@ handle_response(ID, Data, FetchPid) ->
 	    case get_value(<<"Auth-Method">>, Prop) of
 		<<"password">> ->
 		    Pass = get_value(<<"Auth-Password">>, Prop),
-		    Hash = a1hash(User, Domain, Pass),
+		    %Hash = whistle_util:a1hash(User, Domain, Pass),
 		    ChannelParams = get_channel_params(Prop),
 		    %Resp = lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])),
 		    Resp = lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Domain, User, Pass, ChannelParams])),

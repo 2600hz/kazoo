@@ -160,12 +160,11 @@
 			  ]).
 
 %% Route Winner - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.22Winning.22_Application_Response_from_Call_Manager
--define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>, <<"Event-Queue">>]).
+-define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, []).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
 -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
 			  ,{<<"Control-Queue">>, fun is_binary/1}
-			  ,{<<"Event-Queue">>, fun is_binary/1}
 			 ]).
 
 %% Call Events - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Receiving_Call_Events

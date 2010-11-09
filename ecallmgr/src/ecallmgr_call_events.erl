@@ -41,6 +41,12 @@ loop(UUID, Amqp, CtlPid) ->
 	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p~n"
 		       ,[self(), UUID, AppName, EvtName]),
 
+	    case EvtName of
+		<<"CHANNEL_HANGUP">> -> format_log(info, "HANGUP ~p~n", [Data]);
+		<<"CHANNEL_HANGUP_COMPLETE">> -> format_log(info, "HANGUP_C ~p~n", [Data]);
+		_ -> ok
+	    end,
+
 	    publish_msg(Amqp, UUID, Data),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
 	    loop(UUID, Amqp, CtlPid);

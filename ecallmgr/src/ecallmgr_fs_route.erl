@@ -174,8 +174,6 @@ recv_response(ID) ->
     end.
 
 bind_q(AmqpHost, ID) ->
-    amqp_util:targeted_exchange(AmqpHost),
-    amqp_util:callmgr_exchange(AmqpHost),
     Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),
     amqp_util:basic_consume(AmqpHost, Queue),
@@ -184,9 +182,6 @@ bind_q(AmqpHost, ID) ->
 %% creates the event and control queues for the call, spins up the event handler
 %% to pump messages to the queue, and returns the control queue
 bind_channel_qs(Host, UUID, Node) ->
-    amqp_util:callevt_exchange(Host),
-    amqp_util:callctl_exchange(Host),
-
     CtlQueue = amqp_util:new_callctl_queue(Host, UUID),
 
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
@@ -269,13 +264,13 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
 get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"progress_timeout=">>, V]) | Vars];
 get_channel_vars({<<"Rate">>, V}, Vars) ->
-    [ list_to_binary([<<"rate=">>, ecallmgr_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"rate=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Rate-Increment">>, V}, Vars) ->
-    [ list_to_binary([<<"rate_increment=">>, ecallmgr_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"rate_increment=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
-    [ list_to_binary([<<"rate_minimum=">>, ecallmgr_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"rate_minimum=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Surcharge">>, V}, Vars) ->
-    [ list_to_binary([<<"surcharge=">>, ecallmgr_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"surcharge=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({_K, _V}, Vars) ->
     format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
@@ -293,7 +288,6 @@ handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, Fet
 	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE},
 	    failed;
 	Prop ->
-	    io:format("D: ~p~n", [Data]),
 	    Domain = get_value(<<"domain">>, Data, ?DEFAULT_DOMAIN),
 	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Domain),
 	    format_log(info, "L/U.route(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),

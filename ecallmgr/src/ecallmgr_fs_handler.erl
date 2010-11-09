@@ -173,6 +173,10 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, Host}, _From, #state{amqp_host=H}=State) ->
     format_log(info, "FS_HANDLER(~p): Setting AMQP Host to ~p from ~p~n", [self(), Host, H]),
+    amqp_util:targeted_exchange(Host),
+    amqp_util:callmgr_exchange(Host),
+    amqp_util:callevt_exchange(Host),
+    amqp_util:callctl_exchange(Host),
     {reply, ok, State#state{amqp_host=Host}};
 handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
