@@ -30,7 +30,7 @@
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
-	 ,sleep_req/1
+	 ,sleep_req/1, tone_detect_req/1
 	]).
 
 %% Validation functions
@@ -38,7 +38,7 @@
 	 ,call_event_v/1, error_resp_v/1, play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
-	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1
+	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
 	]).
 
 %% FS-specific routines
@@ -80,7 +80,7 @@ extract_defaults(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(auth_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(auth_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 auth_req(Prop) ->
     case auth_req_v(Prop) of
 	true -> build_message(Prop, ?AUTH_REQ_HEADERS, ?OPTIONAL_AUTH_REQ_HEADERS);
@@ -96,7 +96,7 @@ auth_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(auth_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(auth_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 auth_resp(Prop) ->
     case auth_resp_v(Prop) of
 	true -> build_message(Prop, ?AUTH_RESP_HEADERS, ?OPTIONAL_AUTH_RESP_HEADERS);
@@ -112,7 +112,7 @@ auth_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(route_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 route_req(Prop) ->
     case route_req_v(Prop) of
 	true -> build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
@@ -128,7 +128,7 @@ route_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(route_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 route_resp(Prop) ->
     case route_resp_v(Prop) of
 	true -> build_message(Prop, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
@@ -144,7 +144,7 @@ route_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_resp_route/1 :: (Prop :: proplist()) -> {ok, proplist()} | {error, string()}).
+-spec(route_resp_route/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 route_resp_route(Prop) ->
     case route_resp_route_v(Prop) of
 	true -> build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
@@ -160,7 +160,7 @@ route_resp_route_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_win/1 :: (Prop :: proplist()) -> {ok, proplist()} | {error, string()}).
+-spec(route_win/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 route_win(Prop) ->
     case route_win_v(Prop) of
 	true -> build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
@@ -176,7 +176,7 @@ route_win_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(call_event/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(call_event/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 call_event(Prop) ->
     case call_event_v(Prop) of
 	true -> build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
@@ -192,7 +192,7 @@ call_event_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(error_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(error_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 error_resp(Prop) ->
     case error_resp_v(Prop) of
 	true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
@@ -208,7 +208,7 @@ error_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(store_req/1 :: ( Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(store_req/1 :: ( Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 store_req(Prop) ->
     case store_req_v(Prop) of
 	true -> build_message(Prop, ?STORE_REQ_HEADERS, ?OPTIONAL_STORE_REQ_HEADERS);
@@ -224,7 +224,7 @@ store_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(store_amqp_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(store_amqp_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 store_amqp_resp(Prop) ->
     case store_amqp_resp_v(Prop) of
 	true -> build_message(Prop, ?STORE_AMQP_RESP_HEADERS, ?OPTIONAL_STORE_AMQP_RESP_HEADERS);
@@ -240,7 +240,7 @@ store_amqp_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(store_http_resp/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(store_http_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 store_http_resp(Prop) ->
     case store_http_resp_v(Prop) of
 	true -> build_message(Prop, ?STORE_HTTP_RESP_HEADERS, ?OPTIONAL_STORE_HTTP_RESP_HEADERS);
@@ -256,7 +256,7 @@ store_http_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(tones_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(tones_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 tones_req(Prop) ->
     case tones_req_v(Prop) of
 	true -> build_message(Prop, ?TONES_REQ_HEADERS, ?OPTIONAL_TONES_REQ_HEADERS);
@@ -272,7 +272,7 @@ tones_req_v(Prop) ->
 %% Takes proplist and returns a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(tones_req_tone/1 :: (Prop :: proplist()) -> {ok, proplist()} | {error, string()}).
+-spec(tones_req_tone/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 tones_req_tone(Prop) ->
     case tones_req_tone_v(Prop) of
 	true -> build_message_specific(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
@@ -284,11 +284,27 @@ tones_req_tone_v(Prop) ->
     validate_message(Prop, ?TONES_REQ_TONE_HEADERS, ?TONES_REQ_TONE_VALUES, ?TONES_REQ_TONE_TYPES).
 
 %%--------------------------------------------------------------------
+%% @doc Detect tones on the line
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(tone_detect_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+tone_detect_req(Prop) ->
+    case tone_detect_req_v(Prop) of
+	true -> build_message(Prop, ?TONE_DETECT_REQ_HEADERS, ?OPTIONAL_TONE_DETECT_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for tone_detect"}
+    end.
+
+-spec(tone_detect_req_v/1 :: (Prop :: proplist()) -> boolean()).
+tone_detect_req_v(Prop) ->
+    validate(Prop, ?TONE_DETECT_REQ_HEADERS, ?TONE_DETECT_REQ_VALUES, ?TONE_DETECT_REQ_TYPES).
+
+%%--------------------------------------------------------------------
 %% @doc Send a list of dialplan applications in bulk - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(queue_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(queue_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 queue_req(Prop) ->
     case queue_req_v(Prop) of
 	true -> build_message(Prop, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
@@ -304,7 +320,7 @@ queue_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(play_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(play_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 play_req(Prop) ->
     case play_req_v(Prop) of
 	true -> build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
@@ -320,7 +336,7 @@ play_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(record_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(record_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 record_req(Prop) ->
     case record_req_v(Prop) of
 	true -> build_message(Prop, ?RECORD_REQ_HEADERS, ?OPTIONAL_RECORD_REQ_HEADERS);
@@ -336,7 +352,7 @@ record_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(bridge_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 bridge_req(Prop) ->
     case bridge_req_v(Prop) of
 	true -> build_message(Prop, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
@@ -352,7 +368,7 @@ bridge_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_req_endpoint/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(bridge_req_endpoint/1 :: (Prop :: proplist()) -> tuple(ok, proplist()) | tuple(error, string())).
 bridge_req_endpoint(Prop) ->
     case bridge_req_endpoint_v(Prop) of
 	true -> build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
@@ -368,7 +384,7 @@ bridge_req_endpoint_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(answer_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(answer_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 answer_req(Prop) ->
     case answer_req_v(Prop) of
 	true -> build_message(Prop, ?ANSWER_REQ_HEADERS, ?OPTIONAL_ANSWER_REQ_HEADERS);
@@ -384,7 +400,7 @@ answer_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(hangup_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(hangup_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 hangup_req(Prop) ->
     case hangup_req_v(Prop) of
 	true -> build_message(Prop, ?HANGUP_REQ_HEADERS, ?OPTIONAL_HANGUP_REQ_HEADERS);
@@ -400,7 +416,7 @@ hangup_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(park_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(park_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 park_req(Prop) ->
     case park_req_v(Prop) of
 	true -> build_message(Prop, ?PARK_REQ_HEADERS, ?OPTIONAL_PARK_REQ_HEADERS);
@@ -416,7 +432,7 @@ park_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(play_collect_digits_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(play_collect_digits_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 play_collect_digits_req(Prop) ->
     case play_collect_digits_req_v(Prop) of
 	true -> build_message(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS);
@@ -432,7 +448,7 @@ play_collect_digits_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(call_pickup_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(call_pickup_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 call_pickup_req(Prop) ->
     case call_pickup_req_v(Prop) of
 	true -> build_message(Prop, ?CALL_PICKUP_REQ_HEADERS, ?OPTIONAL_CALL_PICKUP_REQ_HEADERS);
@@ -448,7 +464,7 @@ call_pickup_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(say_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(say_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 say_req(Prop) ->
     case say_req_v(Prop) of
 	true -> build_message(Prop, ?SAY_REQ_HEADERS, ?OPTIONAL_SAY_REQ_HEADERS);
@@ -464,7 +480,7 @@ say_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(sleep_req/1 :: (Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(sleep_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 sleep_req(Prop) ->
     case sleep_req_v(Prop) of
 	true -> build_message(Prop, ?SLEEP_REQ_HEADERS, ?OPTIONAL_SLEEP_REQ_HEADERS);
@@ -505,7 +521,7 @@ validate_message(Prop, ReqH, Vals, Types) ->
 	values_check(Prop, Vals) andalso
 	type_check(Prop, Types).
 
--spec(build_message/3 :: (Prop :: proplist(), ReqH :: list(binary()), OptH :: list(binary())) -> {ok, iolist()} | {error, string()}).
+-spec(build_message/3 :: (Prop :: proplist(), ReqH :: list(binary()), OptH :: list(binary())) -> tuple(ok, iolist()) | tuple(error, string())).
 build_message(Prop, ReqH, OptH) ->
     case defaults(Prop) of
 	{error, _Reason}=Error ->
@@ -515,7 +531,7 @@ build_message(Prop, ReqH, OptH) ->
 	    build_message_specific(HeadAndProp, ReqH, OptH)
     end.
 
--spec(build_message_specific/3 :: (proplist() | tuple(), list(binary()), list(binary())) -> {ok, iolist()} | {error, string()}).
+-spec(build_message_specific/3 :: (proplist() | tuple(), list(binary()), list(binary())) -> tuple(ok, iolist()) | tuple(error, string())).
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
 	{error, _Reason} = Error ->
@@ -529,7 +545,7 @@ build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
 
 
--spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 headers_to_json(HeadersProp) ->
     try
 	JSON = mochijson2:encode({struct, HeadersProp}),

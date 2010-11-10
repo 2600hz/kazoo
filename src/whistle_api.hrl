@@ -239,6 +239,26 @@
 			       ]).
 -define(TONES_REQ_TONE_TYPES, []).
 
+%% Tone Detect - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Tone_Detection
+-define(TONE_DETECT_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tone-Detect-Name">>, <<"Frequencies">>]).
+-define(OPTIONAL_TONE_DETECT_REQ_HEADERS, [<<"Sniff-Direction">>, <<"Timeout">>, <<"On-Success">>, <<"Hits-Needed">>]).
+-define(TONE_DETECT_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+				 ,{<<"Event-Name">>, <<"command">>}
+				 ,{<<"Application-Name">>, <<"tone_detect">>}
+				 ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
+				 ]).
+-define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
+				,{<<"Timeout">>, fun(<<"+", T/binary>>) ->
+							 try whistle_util:to_integer(T), true
+							 catch _:_ -> false
+							 end;
+						    (T) ->
+							 try whistle_util:to_integer(T), true
+							 catch _:_ -> false
+							 end
+						 end}
+			       ]).
+
 %% Queue Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Queue
 -define(QUEUE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Commands">>]).
 -define(OPTIONAL_QUEUE_REQ_HEADERS, []).
