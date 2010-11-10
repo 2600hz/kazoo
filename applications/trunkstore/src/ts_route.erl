@@ -46,14 +46,14 @@ handle_req(ApiProp, ServerID) ->
 inbound_handler(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
-    Did = ts_util:to_e164(ToUser),
+    Did = whistle_util:to_e164(ToUser),
     Flags = create_flags(Did, ApiProp),
     process_routing(inbound_features(Flags), ApiProp, ServerID).
 
 -spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
 outbound_handler(ApiProp, ServerID) ->
     format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
-    Did = ts_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
+    Did = whistle_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
     Flags = create_flags(Did, ApiProp),
     process_routing(outbound_features(Flags), ApiProp, ServerID).
 
@@ -143,9 +143,9 @@ find_route(Flags, ApiProp, ServerID) ->
 inbound_route(Flags) ->
     format_log(info, "TS_ROUTE(~p): Inbound route flags: ~p~n", [self(), Flags]),
     DID = case Flags#route_flags.inbound_format of
-	      <<"E.164">> -> ts_util:to_e164(Flags#route_flags.to_user);
-	      <<"1NPANXXXXXX">> -> ts_util:to_1npanxxxxxx(Flags#route_flags.to_user);
-	      _ -> ts_util:to_npanxxxxxx(Flags#route_flags.to_user)
+	      <<"E.164">> -> whistle_util:to_e164(Flags#route_flags.to_user);
+	      <<"1NPANXXXXXX">> -> whistle_util:to_1npanxxxxxx(Flags#route_flags.to_user);
+	      _ -> whistle_util:to_npanxxxxxx(Flags#route_flags.to_user)
 	  end,
     Dialstring = [list_to_binary(["user:", Flags#route_flags.auth_user]), DID],
     Route = [{<<"Route">>, Dialstring}
@@ -240,9 +240,9 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 	     _CID -> Flags
 	 end,
     F0#route_flags{
-      to_user = ts_util:to_e164(ToUser)
+      to_user = whistle_util:to_e164(ToUser)
       ,to_domain = ToDomain
-      ,from_user = ts_util:to_e164(FromUser)
+      ,from_user = whistle_util:to_e164(FromUser)
       ,from_domain = FromDomain
       ,auth_user = get_value(<<"Auth-User">>, ChannelVars, Flags#route_flags.auth_user)
       ,direction = get_value(<<"Direction">>, ChannelVars, <<"inbound">>)
@@ -260,7 +260,7 @@ flags_from_did(DidProp, Flags) ->
     {AcctOpts} = get_value(<<"account">>, DidProp, {[]}),
     {AuthOpts} = get_value(<<"auth">>, DidProp, {[]}),
 
-    Trunks = ts_util:to_integer(get_value(<<"trunks">>, AcctOpts, 0)),
+    Trunks = whistle_util:to_integer(get_value(<<"trunks">>, AcctOpts, 0)),
     format_log(info, "Got ~p trunks from ~p~n", [Trunks, AcctOpts]),
 
     Opts = get_value(<<"options">>, DidProp, {[]}),
@@ -270,7 +270,7 @@ flags_from_did(DidProp, Flags) ->
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
 		   ,trunks = Trunks
-		   ,credit_available = ts_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
+		   ,credit_available = whistle_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 		  }.
 
 %% Flags from the Server
@@ -287,7 +287,7 @@ flags_from_srv(AuthUser, Doc, Flags) ->
     F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Srv, <<"NPANXXXXXX">>)
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   %,trunks = Trunks
-			   %,credit_available = ts_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
+			   %,credit_available = whistle_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {[]})),
     add_failover(F1, get_value(<<"failover">>, Srv, {[]})).
@@ -302,10 +302,10 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
     {Credit} = get_value(<<"credit">>, Acct, {[]}),
-    Trunks = ts_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
-    TrunksInUse = ts_util:to_integer(get_value(<<"trunks_in_use">>, Acct, Flags#route_flags.trunks_in_use)),
+    Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
+    TrunksInUse = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct, Flags#route_flags.trunks_in_use)),
 
-    F0 = Flags#route_flags{credit_available = ts_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
+    F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
 			   ,trunks = Trunks
 			   ,trunks_in_use = TrunksInUse
 			  },
