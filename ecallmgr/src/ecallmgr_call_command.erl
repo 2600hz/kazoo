@@ -25,8 +25,10 @@ exec_cmd(Node, UUID, Prop, AmqpHost) ->
     DestID = get_value(<<"Call-ID">>, Prop),
     case DestID =:= UUID of
 	true ->
-	    {App, AppData} = get_fs_app(Node, UUID, Prop, AmqpHost, get_value(<<"Application-Name">>, Prop)),
-	    send_cmd(Node, UUID, App, AppData);
+	    case get_fs_app(Node, UUID, Prop, AmqpHost, get_value(<<"Application-Name">>, Prop)) of
+		{error, _Msg}=Err -> Err;
+		{App, AppData} -> send_cmd(Node, UUID, App, AppData)
+	    end;
 	false ->
 	    format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
 	    {error, "Command not for this node"}
@@ -193,7 +195,7 @@ get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
--spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
+-spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) when is_binary(Args) ->
     send_cmd(Node, UUID, AppName, binary_to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->

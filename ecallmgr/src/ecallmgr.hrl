@@ -5,4 +5,10 @@
 			,started = {0,0,0} :: tuple(integer(), integer(), integer())
 		       }).
 
+-record(node_stats, {started = {0,0,0} :: tuple(integer(), integer(), integer())
+		     ,last_heartbeat = {0,0,0} :: tuple(integer(), integer(), integer())
+                     ,created_channels = 0 :: integer()
+		     ,destroyed_channels = 0 :: integer()
+		    }).
+
 -define(DEFAULT_DOMAIN, <<"trunks.2600hz.com">>).
