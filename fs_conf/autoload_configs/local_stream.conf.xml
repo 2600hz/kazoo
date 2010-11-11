@@ -1,12 +1,12 @@
 <configuration name="local_stream.conf" description="stream files from local dir">
 
-    <directory name="default" path="$${sounds_dir}/music/default/8000">
+    <directory name="default" path="$${sounds_dir}/music/8000">
         <param name="rate" value="8000"/>
         <param name="shuffle" value="true"/>
         <param name="channels" value="1"/>
         <param name="interval" value="20"/>
         <param name="timer-name" value="soft"/>
-        <!--<param name="chime-list" value="$${sounds_dir}/music/default/8000/chime1.wav"/>-->
+        <!--<param name="chime-list" value="$${sounds_dir}/music/8000/chime1.wav"/>-->
         <!--<param name="chime-freq" value="30"/>-->
         <!--<param name="chime-max" value="500"/>-->
     </directory>
@@ -17,7 +17,7 @@
         <param name="channels" value="1"/>
         <param name="interval" value="20"/>
         <param name="timer-name" value="soft"/>
-        <!--<param name="chime-list" value="$${sounds_dir}/music/default/8000/chime1.wav"/>-->
+        <!--<param name="chime-list" value="$${sounds_dir}/music/8000/chime1.wav"/>-->
         <!--<param name="chime-freq" value="30"/>-->
         <!--<param name="chime-max" value="500"/>-->
     </directory>
@@ -28,7 +28,7 @@
         <param name="channels" value="1"/>
         <param name="interval" value="20"/>
         <param name="timer-name" value="soft"/>
-        <!--<param name="chime-list" value="$${sounds_dir}/music/default/16000/chime1.wav"/>-->
+        <!--<param name="chime-list" value="$${sounds_dir}/music/16000/chime1.wav"/>-->
         <!--<param name="chime-freq" value="30"/>-->
         <!--<param name="chime-max" value="500"/>-->
     </directory>
@@ -39,7 +39,7 @@
         <param name="channels" value="1"/>
         <param name="interval" value="20"/>
         <param name="timer-name" value="soft"/>
-        <!--<param name="chime-list" value="$${sounds_dir}/music/default/32000/chime1.wav"/>-->
+        <!--<param name="chime-list" value="$${sounds_dir}/music/32000/chime1.wav"/>-->
         <!--<param name="chime-freq" value="30"/>-->
         <!--<param name="chime-max" value="500"/>-->
     </directory>

@@ -6,11 +6,11 @@
         <!--<load module="mod_syslog"/>-->
 
         <!-- XML Interfaces -->
-        <load module="mod_xml_cdr"/>
+        <!--<load module="mod_xml_cdr"/>-->
 
         <!-- Event Handlers -->
         <load module="mod_event_socket"/>
-        <load module="mod_event_multicast"/>
+        <!--<load module="mod_event_multicast"/>-->
         <load module="mod_erlang_event" />
 
         <!-- Directory Interfaces -->
@@ -31,9 +31,6 @@
         <load module="mod_esf"/>
         <load module="mod_valet_parking"/>
         <load module="mod_hash"/>
-        
-        <!-- SNOM Module -->
-        <!--<load module="mod_snom"/>-->
 
         <!-- Codec Interfaces -->
         <load module="mod_spandsp"/>
