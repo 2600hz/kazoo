@@ -52,8 +52,10 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	{event, [undefined | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
-	    %% not call related?
-	    monitor_loop(Node, S);
+	    case EvtName of
+		<<"HEARTBEAT">> -> monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
+		_ -> monitor_loop(Node, S)
+	    end;
 	{event, [UUID | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    format_log(info, "FS_NODE(~p): Evt: ~p UUID: ~p~n", [self(), EvtName, UUID]),
