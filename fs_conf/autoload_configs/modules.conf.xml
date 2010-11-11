@@ -30,14 +30,13 @@
         <load module="mod_directory"/>
         <load module="mod_esf"/>
         <load module="mod_valet_parking"/>
-        <!--<load module="mod_spy"/>-->
-        <load module="mod_limit"/>
-
+        <load module="mod_hash"/>
+        
         <!-- SNOM Module -->
         <!--<load module="mod_snom"/>-->
 
         <!-- Codec Interfaces -->
-        <load module="mod_voipcodecs"/>
+        <load module="mod_spandsp"/>
         <!--<load module="mod_g723_1"/>-->
         <load module="mod_g729"/>
         <!--<load module="mod_amr"/>-->
@@ -59,7 +58,7 @@
         <!-- Languages -->
 
         <!-- ASR /TTS -->
-        <load module="mod_cepstral"/>
+        <load module="mod_flite"/>
 
         <!-- Say -->
         <load module="mod_say_en"/>

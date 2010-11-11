@@ -79,6 +79,7 @@
             <!--<param name="presence-hosts" value=".2600hz.org"/>-->
             <param name="force-subscription-expires" value="360"/>
             <param name="send-message-query-on-register" value="true"/>
+
             
             <!-- Codecs -->
             <param name="inbound-codec-negotiation" value="generous"/>
