@@ -188,6 +188,7 @@ bind_channel_qs(Host, UUID, Node) ->
 
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
     ecallmgr_call_events:start(Node, UUID, Host, CtlPid),
+    %ecallmgr_call_cdr:start(Node, UUID, Host),
     CtlQueue.
 
 send_control_queue(_Host, _Q, undefined) ->

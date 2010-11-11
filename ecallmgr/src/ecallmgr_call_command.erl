@@ -24,23 +24,28 @@
 exec_cmd(Node, UUID, Prop, AmqpHost) ->
     DestID = get_value(<<"Call-ID">>, Prop),
     case DestID =:= UUID of
-	true -> exec_cmd(Node, UUID, Prop, AmqpHost, get_value(<<"Application-Name">>, Prop));
-	false -> format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
-		 {error, "Command not for this node"}
+	true ->
+	    case get_fs_app(Node, UUID, Prop, AmqpHost, get_value(<<"Application-Name">>, Prop)) of
+		{error, _Msg}=Err -> Err;
+		{App, AppData} -> send_cmd(Node, UUID, App, AppData)
+	    end;
+	false ->
+	    format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
+	    {error, "Command not for this node"}
     end.
 
--spec(exec_cmd/5 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), AmqpHost :: string(), Application :: binary()) -> ok | timeout | {error, string()}).
-exec_cmd(Node, UUID, Prop, _AmqpHost, <<"play">>) ->
+-spec(get_fs_app/5 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), AmqpHost :: string(), Application :: binary()) -> tuple(binary(), binary()) | tuple(error, string())).
+get_fs_app(Node, UUID, Prop, _AmqpHost, <<"play">>) ->
     case whistle_api:play_req_v(Prop) of
 	false -> {error, "play failed to execute as Prop did not validate."};
 	true ->
 	    F = media_path(UUID, get_value(<<"Media-Name">>, Prop)),
 	    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
-	    send_cmd(Node, UUID, "playback", F)
+	    {<<"playback">>, F}
     end;
-exec_cmd(Node, UUID, _Prop, _AmqpHost, <<"hangup">>) ->
-    send_cmd(Node, UUID, "hangup", "");
-exec_cmd(Node, UUID, Prop, _AmqpHost, <<"play_and_collect_digits">>) ->
+get_fs_app(_Node, _UUID, _Prop, _AmqpHost, <<"hangup">>=App) ->
+    {App, <<>>};
+get_fs_app(_Node, UUID, Prop, _AmqpHost, <<"play_and_collect_digits">>) ->
     case whistle_api:play_collect_digits_req_v(Prop) of
 	false -> {error, "play_and_collect_digits failed to execute as Prop did not validate."};
 	true ->
@@ -55,9 +60,9 @@ exec_cmd(Node, UUID, Prop, _AmqpHost, <<"play_and_collect_digits">>) ->
 	    Storage = get_value(<<"Storage-Name">>, Prop, <<"ignore">>),
 	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " ",
 				   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
-	    send_cmd(Node, UUID, "play_and_get_digits", Data)
+	    {<<"play_and_get_digits">>, Data}
     end;
-exec_cmd(Node, UUID, Prop, _AmqpHost, <<"record">>) ->
+get_fs_app(Node, UUID, Prop, _AmqpHost, <<"record">>) ->
     case whistle_api:record_req_v(Prop) of
 	false -> {error, "record failed to execute as Prop did not validate."};
 	true ->
@@ -69,9 +74,9 @@ exec_cmd(Node, UUID, Prop, _AmqpHost, <<"record">>) ->
 						    ,get_value(<<"Silence-Hits">>, Prop, "3")
 						   ])),
 	    set_terminators(Node, UUID, get_value(<<"Terminators">>, Prop)),
-	    send_cmd(Node, UUID, "record", RecArg)
+	    {<<"record">>, RecArg}
     end;
-exec_cmd(_Node, UUID, Prop, AmqpHost, <<"store">>) ->
+get_fs_app(_Node, UUID, Prop, AmqpHost, <<"store">>) ->
     case whistle_api:store_req_v(Prop) of
 	false -> {error, "store failed to execute as Prop did not validate."};
 	true ->
@@ -103,7 +108,7 @@ exec_cmd(_Node, UUID, Prop, AmqpHost, <<"store">>) ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
 	    end
     end;
-exec_cmd(Node, UUID, Prop, _AmqpHost, <<"tones">>) ->
+get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"tones">>) ->
     case whistle_api:tones_req_v(Prop) of
 	false -> {error, "store failed to execute as Prop did not validate."};
 	true ->
@@ -124,19 +129,18 @@ exec_cmd(Node, UUID, Prop, _AmqpHost, <<"tones">>) ->
 					binary_to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
 				end, Tones),
 	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
-	    send_cmd(Node, UUID, "playback", Arg)
+	    {<<"playback">>, Arg}
     end;
-exec_cmd(Node, UUID, _Prop, _AmqpHost, <<"answer">>) ->
-    send_cmd(Node, UUID, "answer", "");
-exec_cmd(Node, UUID, _Prop, _AmqpHost, <<"park">>) ->
-    send_cmd(Node, UUID, "park", "");
-exec_cmd(Node, UUID, Prop, _AmqpHost, <<"sleep">>) ->
+get_fs_app(_Node, _UUID, _Prop, _AmqpHost, <<"answer">>=App) ->
+    {App, <<>>};
+get_fs_app(_Node, _UUID, _Prop, _AmqpHost, <<"park">>=App) ->
+    {App, <<>>};
+get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"sleep">>=App) ->
     case whistle_api:sleep_req_v(Prop) of
 	false -> {error, "sleep failed to execute as Prop did not validate."};
-	true ->
-	    send_cmd(Node, UUID, "sleep", integer_to_list(get_value(<<"Amount">>, Prop)))
+	true -> {App, whistle_util:to_binary(get_value(<<"Amount">>, Prop))}
     end;
-exec_cmd(Node, UUID, Prop, _AmqpHost, <<"say">>) ->
+get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"say">>=App) ->
     case whistle_api:say_req_v(Prop) of
 	false -> {error, "say failed to execute as Prop did not validate."};
 	true ->
@@ -145,9 +149,9 @@ exec_cmd(Node, UUID, Prop, _AmqpHost, <<"say">>) ->
 	    Method = get_value(<<"Method">>, Prop),
 	    Txt = get_value(<<"Say-Text">>, Prop),
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
-	    send_cmd(Node, UUID, "say", Arg)
+	    {App, Arg}
     end;
-exec_cmd(Node, UUID, Prop, _AmqpHost, <<"bridge">>) ->
+get_fs_app(Node, UUID, Prop, _AmqpHost, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(Prop) of
 	false -> {error, "bridge failed to execute as Prop did not validate."};
 	true ->
@@ -163,16 +167,35 @@ exec_cmd(Node, UUID, Prop, _AmqpHost, <<"bridge">>) ->
 			    end,
 	    DialStrings = lists:map(fun get_bridge_endpoint/1, get_value(<<"Endpoints">>, Prop)),
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
-	    send_cmd(Node, UUID, "bridge", BridgeCmd)
+	    {App, BridgeCmd}
     end;
-exec_cmd(_Node, _UUID, _Prop, _AmqpHost, _App) ->
+get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
+    case whistle_api:tone_detect_req_v(Prop) of
+	false -> {error, "tone detect failed to execute as Prop did not validate"};
+	true ->
+	    Key = get_value(<<"Tone-Detect-Name">>, Prop),
+	    Freqs = lists:map(fun binary_to_list/1, get_value(<<"Frequencies">>, Prop)),
+	    FreqsStr = string:join(Freqs, ","),
+	    Flags = get_value(<<"Sniff-Direction">>, Prop, <<"read">>),
+	    Timeout = get_value(<<"Timeout">>, Prop, <<"+1000">>),
+	    HitsNeeded = get_value(<<"Hits-Needed">>, Prop, <<"1">>),
+
+	    SuccessProp = get_value(<<"On-Success">>, Prop, []) ++ whistle_api:extract_defaults(Prop), %% app command lacks the default headers
+	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessProp, AmqpHost, get_value(<<"Application-Name">>, SuccessProp)) of
+					       {error, _Str} -> {<<>>, <<>>};
+					       {_, _}=Success -> Success
+					   end,
+	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
+	    {App, Data}
+    end;
+get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
 
 %%%===================================================================
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
--spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
+-spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) when is_binary(Args) ->
     send_cmd(Node, UUID, AppName, binary_to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->

@@ -14,7 +14,7 @@
 -include("whistle_api.hrl").
 
 -import(logger, [log/2, format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 
 -define(APPNAME, <<"ecallmgr.call.event">>).
 -define(APPVER, <<"0.4.0">>).
@@ -41,11 +41,13 @@ loop(UUID, Amqp, CtlPid) ->
 	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p~n"
 		       ,[self(), UUID, AppName, EvtName]),
 
-	    case EvtName of
-		<<"CHANNEL_HANGUP">> -> format_log(info, "HANGUP ~p~n", [Data]);
-		<<"CHANNEL_HANGUP_COMPLETE">> -> format_log(info, "HANGUP_C ~p~n", [Data]);
-		_ -> ok
-	    end,
+%	    case EvtName of
+%		<<"CHANNEL_HANGUP">> -> format_log(info, "HANGUP ~p~n", [Data]);
+%		<<"CHANNEL_HANGUP_COMPLETE">> ->
+%		    format_log(info, "HANGUP_C ~p~n", [Data]),
+%		    ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data);
+%		_ -> ok
+%	    end,
 
 	    publish_msg(Amqp, UUID, Data),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
