@@ -6,4 +6,4 @@
               {mod,{diagnostics_app,[]}},
               {env,[]},
               {modules,[diagnostics,diagnostics_app,diagnostics_server,
-                        diagnostics_sup,logger,props]}]}.
+                        diagnostics_sup,logger,props,whistle_util]}]}.
