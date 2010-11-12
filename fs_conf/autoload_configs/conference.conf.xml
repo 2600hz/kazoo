@@ -1,4 +1,4 @@
-<configuration name="conference.conf" description="Audio Conference">	
+<configuration name="conference.conf" description="Audio Conference">
     <caller-controls>
         <group name="default">
             <control action="mute" digits="0"/>
@@ -15,7 +15,7 @@
             <control action="hangup" digits="#"/>
         </group>
     </caller-controls>
-
+    
     <profiles>
         <profile name="default">
             <param name="rate" value="8000"/>
@@ -23,8 +23,9 @@
             <param name="energy-level" value="300"/>
             <!--<param name="member-flags" value="waste"/>-->
             <param name="caller-controls" value="default"/>
-            <param name="tts-engine" value="cepstral"/>
-            <param name="tts-voice" value="Allison-8kHz"/>
+            <param name="tts-engine" value="flite"/>
+            <param name="tts-voice" value="kal"/>
+            <param name="sound-prefix" value="$${sounds_dir}/en/us/callie"/>
             <param name="ack-sound" value="beep.wav"/>
             <param name="nack-sound" value="beeperr.wav"/>
             <param name="muted-sound" value="conference/conf-muted.wav"/>
@@ -40,19 +41,22 @@
             <param name="is-unlocked-sound" value="conference/conf-is-unlocked.wav"/>
             <param name="pin-sound" value="conference/conf-pin.wav"/>
             <param name="bad-pin-sound" value="conference/conf-bad-pin.wav"/>
+            <param name="caller-id-name" value="Unknown"/>
+            <param name="caller-id-number" value="5555555555"/>
             <!-- <param name="suppress-events" value="start-talking,stop-talking"/> -->
             <param name="comfort-noise" value="true"/>
             <param name="auto-record" value="$${recordings_dir}/${conference_name}_${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>
         </profile>
-
+                    
         <profile name="wideband">
             <param name="rate" value="16000"/>
             <param name="interval" value="20"/>
             <param name="energy-level" value="300"/>
             <!--<param name="member-flags" value="waste"/>-->
             <param name="caller-controls" value="default"/>
-            <param name="tts-engine" value="cepstral"/>
-            <param name="tts-voice" value="Allison-8kHz"/>
+            <param name="tts-engine" value="flite"/>
+            <param name="tts-voice" value="kal"/>
+            <param name="sound-prefix" value="$${sounds_dir}/en/us/callie"/>
             <param name="ack-sound" value="beep.wav"/>
             <param name="nack-sound" value="beeperr.wav"/>
             <param name="muted-sound" value="conference/conf-muted.wav"/>
@@ -68,19 +72,22 @@
             <param name="is-unlocked-sound" value="conference/conf-is-unlocked.wav"/>
             <param name="pin-sound" value="conference/conf-pin.wav"/>
             <param name="bad-pin-sound" value="conference/conf-bad-pin.wav"/>
+            <param name="caller-id-name" value="Unknown"/>
+            <param name="caller-id-number" value="5555555555"/>
             <!-- <param name="suppress-events" value="start-talking,stop-talking"/> -->
             <param name="comfort-noise" value="true"/>
             <param name="auto-record" value="$${recordings_dir}/${conference_name}_${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>
         </profile>
-
+                                
         <profile name="ultrawideband">
             <param name="rate" value="32000"/>
             <param name="interval" value="20"/>
             <param name="energy-level" value="300"/>
             <!--<param name="member-flags" value="waste"/>-->
             <param name="caller-controls" value="default"/>
-            <param name="tts-engine" value="cepstral"/>
-            <param name="tts-voice" value="Allison-8kHz"/>
+            <param name="tts-engine" value="flite"/>
+            <param name="tts-voice" value="kal"/>
+            <param name="sound-prefix" value="$${sounds_dir}/en/us/callie"/>
             <param name="ack-sound" value="beep.wav"/>
             <param name="nack-sound" value="beeperr.wav"/>
             <param name="muted-sound" value="conference/conf-muted.wav"/>
@@ -96,19 +103,22 @@
             <param name="is-unlocked-sound" value="conference/conf-is-unlocked.wav"/>
             <param name="pin-sound" value="conference/conf-pin.wav"/>
             <param name="bad-pin-sound" value="conference/conf-bad-pin.wav"/>
+            <param name="caller-id-name" value="Unknown"/>
+            <param name="caller-id-number" value="5555555555"/>
             <!-- <param name="suppress-events" value="start-talking,stop-talking"/> -->
             <param name="comfort-noise" value="true"/>
             <param name="auto-record" value="$${recordings_dir}/${conference_name}_${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>
         </profile>
-        
+
         <profile name="cdquality">
             <param name="rate" value="48000"/>
             <param name="interval" value="20"/>
             <param name="energy-level" value="300"/>
             <!--<param name="member-flags" value="waste"/>-->
             <param name="caller-controls" value="default"/>
-            <param name="tts-engine" value="cepstral"/>
-            <param name="tts-voice" value="Allison-8kHz"/>
+            <param name="tts-engine" value="flite"/>
+            <param name="tts-voice" value="kal"/>
+            <param name="sound-prefix" value="$${sounds_dir}/en/us/callie"/>
             <param name="ack-sound" value="beep.wav"/>
             <param name="nack-sound" value="beeperr.wav"/>
             <param name="muted-sound" value="conference/conf-muted.wav"/>
@@ -124,6 +134,8 @@
             <param name="is-unlocked-sound" value="conference/conf-is-unlocked.wav"/>
             <param name="pin-sound" value="conference/conf-pin.wav"/>
             <param name="bad-pin-sound" value="conference/conf-bad-pin.wav"/>
+            <param name="caller-id-name" value="Unknown"/>
+            <param name="caller-id-number" value="5555555555"/>
             <!-- <param name="suppress-events" value="start-talking,stop-talking"/> -->
             <param name="comfort-noise" value="true"/>
             <param name="auto-record" value="$${recordings_dir}/${conference_name}_${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>
@@ -135,8 +147,9 @@
             <param name="energy-level" value="300"/>
             <!--<param name="member-flags" value="waste"/>-->
             <param name="caller-controls" value="none"/>
-            <param name="tts-engine" value="cepstral"/>
-            <param name="tts-voice" value="Allison-8kHz"/>
+            <param name="tts-engine" value="flite"/>
+            <param name="tts-voice" value="kal"/>
+            <param name="sound-prefix" value="$${sounds_dir}/en/us/callie"/>
             <param name="muted-sound" value="conference/conf-muted.wav"/>
             <param name="unmuted-sound" value="conference/conf-unmuted.wav"/>
             <param name="alone-sound" value="conference/conf-alone.wav"/>
@@ -150,11 +163,12 @@
             <param name="is-unlocked-sound" value="conference/conf-is-unlocked.wav"/>
             <param name="pin-sound" value="conference/conf-pin.wav"/>
             <param name="bad-pin-sound" value="conference/conf-bad-pin.wav"/>
+            <param name="caller-id-name" value="Unknown"/>
+            <param name="caller-id-number" value="5555555555"/>
             <!-- <param name="suppress-events" value="start-talking,stop-talking"/> -->
             <param name="comfort-noise" value="true"/>
             <param name="auto-record" value="$${recordings_dir}/${conference_name}_${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>
         </profile>
-
 
     </profiles>
 </configuration>
