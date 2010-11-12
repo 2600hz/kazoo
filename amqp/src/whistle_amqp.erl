@@ -5,24 +5,20 @@
 
 -export([start/2, start/0, start_link/0, stop/0, stop/1]).
 
-%% 
-start(Type, Args) ->
-    io:format("AMQP start with type ~p and args ~p~n", [Type, Args]),
+%%
+start(_Type, _Args) ->
     whistle_amqp_deps:ensure(?MODULE),
     whistle_amqp_sup:start_link().
-    
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    io:format("AMQP Start link~n", []),
     whistle_amqp_deps:ensure(?MODULE),
     whistle_amqp_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the amqp server.
 start() ->
-    io:format("AMQP Start~n", []),
     whistle_amqp_deps:ensure(?MODULE),
     application:start(whistle_amqp).
 

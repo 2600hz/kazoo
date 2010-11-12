@@ -292,7 +292,6 @@ create_amqp_params(Host) ->
     create_amqp_params(Host, 5672).
 -spec(create_amqp_params/2 :: (Host :: string(), Port :: integer()) -> tuple()).
 create_amqp_params(Host, Port) ->
-    format_log(info, "AMQP_MGR(~p): H: ~p P: ~p~n", [self(), Host, Port]),
     #'amqp_params'{
       port = Port
       ,host = Host
