@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Given a diagnostics record, create a diagnostics proplist to return
 %%% @end
-%%% Created : 25 Oct 2010 by James Aimonetti <>
+%%% Created : 25 Oct 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_diagnostics).
 
@@ -22,6 +22,7 @@ get_diagnostics(#handler_stats{}=Stats) ->
     ];
 get_diagnostics(#node_stats{}=Stats) ->
     [{uptime, timer:now_diff(erlang:now(), Stats#node_stats.started)}
+     ,{last_heartbeat, timer:now_diff(erlang:now(), Stats#node_stats.last_heartbeat)}
      ,{active_channels, Stats#node_stats.created_channels - Stats#node_stats.destroyed_channels}
      ,{created_channels, Stats#node_stats.created_channels}
      ,{destroyed_channels, Stats#node_stats.destroyed_channels}

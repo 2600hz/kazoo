@@ -10,7 +10,7 @@
 -module(ecallmgr_fs_route).
 
 %% API
--export([start_handler/2]).
+-export([start_handler/3]).
 -export([fetch_init/2, fetch_route/2, lookup_route/6]).
 
 -import(props, [get_value/2, get_value/3]).
@@ -29,8 +29,8 @@
 			,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
--spec(start_handler/2 :: (Node :: atom(), Host :: string()) -> pid()).
-start_handler(Node, Host) ->
+-spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid()).
+start_handler(Node, _Options, Host) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     Stats = #handler_stats{started = erlang:now()},
     HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), amqp_host=Host, stats=Stats},

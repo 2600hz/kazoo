@@ -24,11 +24,14 @@
 -define(SERVER, ?MODULE).
 
 -define(CELL_FORMAT, " ~11.s |").
+-define(HANDLER_LINE, lists:flatten(["  | ", ?CELL_FORMAT, ?CELL_FORMAT
+				     ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT
+				     ,?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
+-define(HANDLER_LINE_HEADER, io_lib:format(?HANDLER_LINE, ["Type", "Requested", "Successful"
+							,"Timed Out", "Failed", "Active", "Uptime"])).
 -define(NODE_LINE, lists:flatten(["  | ", ?CELL_FORMAT, ?CELL_FORMAT
-				  ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT
-				  ,?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
--define(NODE_LINE_HEADER, io_lib:format(?NODE_LINE, ["Type", "Requested", "Successful"
-						     ,"Timed Out", "Failed", "Active", "Uptime"])).
+				  ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
+-define(NODE_LINE_HEADER, io_lib:format(?NODE_LINE, ["Type", "Created", "Destroyed", "Active", "Uptime"])).
 
 -define(MICRO_TO_SEC, 1000000).
 
@@ -203,25 +206,36 @@ display_node(Node) ->
 %%   Type  | Requested | Successful | Timed Out | Failed | Active | Uptime
 %%   Auth  |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2   |  32m
 %%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2   |  32m
+%%   Node  | CHAN_CREA |  CHAN_DEST |           |        | ACTIVE |  1m2s
 display_fs_data(Data) ->
     GenSrv = get_value(gen_server, Data),
     Vsn = get_value(version, Data),
     Host = get_value(host, Data),
     {{Y, M, D}, {H, Min, S}} = calendar:now_to_datetime(get_value(recorded, Data)),
     io:format("Diagnostics for ~p (~s) on ~p at ~2.2.0w:~2.2.0w:~2.2.0w on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
+    lists:foreach(fun show_node/1, get_value(handler_diagnostics, Data)).
 
-    lists:map(fun({Node, {auth_handler, AuthData}, {route_handler, RouteData}}) ->
-		      io:format("  Node Diagnostics for ~p~n", [Node]),
-		      io:format(?NODE_LINE_HEADER, []),
-		      show_line("Auth", AuthData),
-		      show_line("Route", RouteData)
-	      end, get_value(handler_diagnostics, Data)).
+show_node(T) ->
+    [Node | L] = tuple_to_list(T),
+    io:format("  Node Diagnostics for ~p~n", [Node]),
+    io:format(?HANDLER_LINE_HEADER, []),
+    lists:foreach(fun({H, Data}) -> show_line(H, Data) end, L).
 
 show_line(Type, {error, Error, Reason}) ->
     io:format("  |  ~11.s | ERROR(~p): ~p~n", [Type, Error, Reason]);
 show_line(Type, {'EXIT', _Pid, Cause}) ->
     io:format("  |  ~11.s | ERROR(exit): ~p~n", [Type, Cause]);
-show_line(Type, Data) when is_list(Data) ->
+show_line(node_handler=Handler, Data) ->
+    io:format("~n", []),
+    io:format(?NODE_LINE_HEADER, []),
+    Type = lists:takewhile(fun(C) -> C =/= $_ end, atom_to_list(Handler)),
+    R = whistle_util:to_list(get_value(created_channels, Data, 0)),
+    S = whistle_util:to_list(get_value(destroyed_channels, Data, 0)),
+    A = whistle_util:to_list(get_value(active_channels, Data, 0)),
+    U = get_uptime(get_value(uptime, Data, 0)),
+    io:format(?NODE_LINE, [Type, R, S, A, U]);
+show_line(Handler, Data) when is_list(Data) ->
+    Type = lists:takewhile(fun(C) -> C =/= $_ end, atom_to_list(Handler)),
     LR = get_value(lookups_requested, Data, 0),
     R = integer_to_list(LR),
 
@@ -235,7 +249,7 @@ show_line(Type, Data) when is_list(Data) ->
     F = Format(get_value(lookups_failed, Data, 0)),
     A = Format(length(get_value(active_lookups, Data, []))),
     U = get_uptime(get_value(uptime, Data, 0)),
-    io:format(?NODE_LINE, [Type, R, S, T, F, A, U]).
+    io:format(?HANDLER_LINE, [Type, R, S, T, F, A, U]).
 
 %% uptime, in microseconds
 get_uptime(0) ->
@@ -265,6 +279,3 @@ get_uptime(Micro) ->
     H = M div 60,
     D = H div 24,
     io_lib:format("~pd~ph~pm", [D, H rem 24, M rem 60]).
-    
-
-    

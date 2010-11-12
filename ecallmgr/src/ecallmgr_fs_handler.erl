@@ -96,7 +96,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_fs_node/1, rm_fs_node/1, diagnostics/0, set_amqp_host/1]).
+-export([start_link/0, add_fs_node/1, add_fs_node/2, rm_fs_node/1, diagnostics/0, set_amqp_host/1]).
+%-export([request_resource/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -129,8 +130,9 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns ok or {error, some_error_atom_explaining_more}
-add_fs_node(Node) ->
-    gen_server:call(?MODULE, {add_fs_node, Node}, infinity).
+add_fs_node(Node) -> add_fs_node(Node, []).
+add_fs_node(Node, Opts) ->
+    gen_server:call(?MODULE, {add_fs_node, Node, Opts}, infinity).
 
 %% returns ok or {error, some_error_atom_explaining_more}
 rm_fs_node(Node) ->
@@ -206,10 +208,10 @@ handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) 
 	    ,{amqp_host, Host}
 	   ],
     {reply, Resp, State};
-handle_call({add_fs_node, _Node}, _From, #state{amqp_host=""}=State) ->
+handle_call({add_fs_node, _Node, _Options}, _From, #state{amqp_host=""}=State) ->
     {reply, {error, no_amqp_host_defined}, State};
-handle_call({add_fs_node, Node}, _From, State) ->
-    {Resp, State1} = add_fs_node(Node, State),
+handle_call({add_fs_node, Node, Options}, _From, State) ->
+    {Resp, State1} = add_fs_node(Node, check_options(Options), State),
     {reply, Resp, State1};
 handle_call({rm_fs_node, Node}, _From, State) ->
     {Resp, State1} = rm_fs_node(Node, State),
@@ -290,6 +292,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(check_options/1 :: (Opts :: proplist()) -> proplist()).
+check_options([]) ->
+    [{bias, 1}, {max_channels, 100}];
+check_options(Opts) ->
+    Opts0 = case get_value(bias, Opts) of
+		undefined -> [{bias, 1} | Opts];
+		_ -> Opts
+	    end,
+    case get_value(max_channels, Opts0) of
+	undefined -> [{max_channels, 100} | Opts0];
+	_ -> Opts0
+    end.
+
 -spec(check_down_pid/4 :: (Nodes :: list(node_handlers()), HPid :: pid(), Host :: string(), Fs :: list(fun())) -> list(node_handlers())).
 check_down_pid(Nodes, HPid, Host, Fs) ->
     check_down_pid(Nodes, HPid, Host, Fs, 2).
@@ -340,8 +355,8 @@ diagnostics_query(Pid) ->
 	    {error, not_responding, handler_down}
     end.
 
--spec(add_fs_node/2 :: (Node :: atom(), State :: tuple()) -> {ok, tuple()} | {{error, atom()}, tuple()}).
-add_fs_node(Node, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
+-spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: tuple()) -> {ok, tuple()} | {{error, atom()}, tuple()}).
+add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
     case lists:keyfind(Node, 1, Nodes) of
 	T when is_tuple(T) ->
 	    format_log(info, "FS_HANDLER(~p): handlers known ~p~n", [self(), T]),
@@ -350,7 +365,7 @@ add_fs_node(Node, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
 	    case net_adm:ping(Node) of
 		pong ->
 		    erlang:monitor_node(Node, true),
-		    HPids = lists:map(fun(StartFun) -> StartFun(Node, Host) end, ?START_HANDLERS),
+		    HPids = lists:map(fun(StartFun) -> StartFun(Node, Options, Host) end, ?START_HANDLERS),
 		    Tuple = erlang:list_to_tuple([Node | HPids]),
 		    {ok, State#state{fs_nodes=[Tuple | Nodes]}};
 		pang ->

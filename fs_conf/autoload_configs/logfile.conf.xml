@@ -2,7 +2,7 @@
     <settings>
         <param name="rotate-on-hup" value="true"/>
     </settings>
-    
+
     <profiles>
         <profile name="debug">
             <settings>
@@ -13,8 +13,8 @@
             <mappings>
                 <map name="all" value="debug,info,notice,warning,err,crit,alert"/>
             </mappings>
-        </profile>  
-        
+        </profile>
+
         <profile name="error">
             <settings>
                 <param name="logfile" value="/usr/local/freeswitch/log/error.log"/>
@@ -40,7 +40,7 @@
                 <map name="sofia_sla.c" value="info,notice,warning,err,crit,alert"/>
                 <map name="sofia_presence.c" value="info,notice,warning,err,crit,alert"/>
             </mappings>
-        </profile>    
-  </profiles>
+        </profile>
+    </profiles>
 </configuration>
 

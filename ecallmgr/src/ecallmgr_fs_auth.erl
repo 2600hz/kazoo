@@ -9,7 +9,7 @@
 -module(ecallmgr_fs_auth).
 
 %% API
--export([start_handler/2]).
+-export([start_handler/3]).
 -export([fetch_init/2, fetch_user/2, lookup_user/5]).
 
 -import(props, [get_value/2, get_value/3]).
@@ -29,8 +29,8 @@
 		       ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
--spec(start_handler/2 :: (Node :: atom(), AmqpHost :: string()) -> pid() | {error, term()}).
-start_handler(Node, AmqpHost) ->
+-spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
+start_handler(Node, _Options, AmqpHost) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     Stats = #handler_stats{started = erlang:now()},
     HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn), stats=Stats},
