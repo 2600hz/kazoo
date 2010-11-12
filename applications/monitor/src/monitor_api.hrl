@@ -29,5 +29,6 @@
 -define(OPTIONAL_PING_RESP_HEADERS, []).
 -define(PING_RESP_VALUES, [{<<"Event-Category">>, <<"task">>}
               ,{<<"Event-Name">>, <<"ping_req">>}
+              ,{<<"Success">>, [<<"true">>. <<"false">>]}
              ]).
 -define(PING_RESP_TYPES, [{<<"Success">>, fun is_binary/1}]).
