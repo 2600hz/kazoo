@@ -168,7 +168,7 @@
 			 ]).
 
 %% Resource Request - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Request
--define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>]).
+-define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Server-ID">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>]).
 -define(RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"originate">>}
 			      ,{<<"Event-Name">>, <<"resource_req">>}

@@ -8,7 +8,7 @@
 -module(ecallmgr_fs_node).
 
 %% API
--export([start_handler/2]).
+-export([start_handler/3]).
 -export([monitor_node/2]).
 
 -import(props, [get_value/2, get_value/3]).
@@ -25,13 +25,14 @@
 		       ,amqp_host = "" :: string()
 		       ,app_vsn = [] :: binary()
 		       ,stats = #node_stats{} :: tuple()
+		       ,options = [] :: proplist()
 		       }).
 
--spec(start_handler/2 :: (Node :: atom(), AmqpHost :: string()) -> pid() | {error, term()}).
-start_handler(Node, AmqpHost) ->
+-spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
+start_handler(Node, Options, AmqpHost) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     Stats = #node_stats{started = erlang:now()},
-    HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn), stats=Stats},
+    HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn), stats=Stats, options=Options},
     case freeswitch:start_event_handler(Node, ?MODULE, monitor_node, HState) of
 	{ok, Pid} -> Pid;
 	timeout -> {error, timeout};

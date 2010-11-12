@@ -30,6 +30,7 @@ init([]) ->
        ,[
 	 ?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
 	 ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
+	 ,?CHILD(resource_mgr, worker) % handles resource requests / resource availability
 	]
       }
     }.
