@@ -146,13 +146,15 @@ new_exchange(Host, Exchange, Type, _Options) ->
      },
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED).
 
+new_targeted_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{nowait, false}]);
 new_targeted_queue(Host, QueueName) ->
-    new_queue(Host, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])
-	      ,[{nowait, false}]).
+    new_queue(Host, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName]), [{nowait, false}]).
 
+new_broadcast_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{nowait, false}]);
 new_broadcast_queue(Host, QueueName) ->
-    new_queue(Host, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName])
-	      ,[{nowait, false}]).
+    new_queue(Host, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName]), [{nowait, false}]).
 
 new_callevt_queue(Host, CallId) ->
     new_queue(Host
