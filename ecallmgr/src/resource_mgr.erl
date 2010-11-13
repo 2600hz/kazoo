@@ -22,6 +22,7 @@
 -import(logger, [format_log/3]).
 
 -include("whistle_amqp.hrl").
+-include("../include/amqp_client/include/amqp_client.hrl").
 
 -define(SERVER, ?MODULE). 
 
@@ -62,7 +63,9 @@ set_amqp_host(Host) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    H = net_adm:localhost(),
+    Q = start_amqp(H, "", <<>>),
+    {ok, #state{amqp_host=H, callmgr_q=Q}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,10 +95,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({set_amqp_host, Host}, #state{amqp_host=""}=State) ->
-    Q = start_amqp(Host, "", <<>>),
-    format_log(info, "RSCMGR(~p): Start Amqp(~p): ~p~n", [self(), Host, Q]),
-    {noreply, State#state{amqp_host=Host, callmgr_q=Q}};
 handle_cast({set_amqp_host, Host}, #state{amqp_host=OldHost, callmgr_q=OldQ}=State) ->
     NewQ = start_amqp(Host, OldHost, OldQ),
     format_log(info, "RSCMGR(~p): Change Amqp from ~p to ~p: ~p~n", [self(), OldHost, Host, NewQ]),
@@ -113,6 +112,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
+					   ,payload = Payload}}, #state{amqp_host=AmqpHost}=State) ->
+    spawn(fun() -> handle_resource_req(Payload, AmqpHost) end),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -155,3 +158,93 @@ start_amqp(Host, OldHost, OldQ) ->
     amqp_util:queue_delete(OldHost, OldQ),
     amqp_util:channel_close(OldHost),
     start_amqp(Host, "", <<>>).
+
+handle_resource_req(Payload, AmqpHost) ->
+    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "RSCMGR.h_res_req(~p): Req: ~p~n", [self(), Prop]),
+    Options = get_request_options(Prop),
+    Nodes = get_resources(request_type(Prop), Options),
+
+    Min = get_value(min_channels_requested, Options),
+    Max = get_value(max_channels_requested, Options),
+    Route = get_value(<<"Route">>, Prop),
+    start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max).
+
+get_resources({<<"originate">>, <<"resource_req">>, <<"audio">>=Type}, Options) ->
+    format_log(info, "RSCMGR.get_res(~p): Type ~p Options: ~p~n", [self(), Type, Options]),
+    FSAvail = ecallmgr_fs_handler:request_resource(Type, Options), % merge other switch results into this list as well (eventually)
+    lists:usort(fun sort_resources/2, FSAvail);
+get_resources(_Type, _Options) ->
+    format_log(error, "RSCMGR.get_res(~p): Unknown request type ~p~n", [self(), _Type]),
+    [].
+
+request_type(Prop) ->
+    {get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop), get_value(<<"Resource-Type">>, Prop)}.
+
+get_request_options(Prop) ->
+    Min = get_value(<<"Resource-Minimum">>, Prop, 1),
+    [{min_channels_requested, Min}
+     ,{max_channels_requested, get_value(<<"Resource-Maximum">>, Prop, Min)}
+    ].
+
+start_channels([], _Amqp, _Route, 0, _) -> ok;
+start_channels([], _Amqp, _Route, M, _) -> {error, failed_starting, M};
+start_channels(_Ns, _Amqp, _Route, 0, 0) -> ok;
+start_channels([N | Ns]=Nodes, Amqp, Route, 0, Max) ->
+    case start_channel(N, Route, Amqp) of
+	{ok, 0} -> start_channels(Ns, Amqp, Route, 0, Max-1);
+	{ok, _Left} -> start_channels(Nodes, Amqp, Route, 0, Max-1);
+	{error, _} -> start_channels(Ns, Amqp, Route, 0, Max)
+    end;
+start_channels([N | Ns]=Nodes, Amqp, Route, Min, Max) ->
+    case start_channel(N, Route, Amqp) of
+	{ok, 0} -> start_channels(Ns, Amqp, Route, Min-1, Max);
+	{ok, _Left} -> start_channels(Nodes, Amqp, Route, Min-1, Max);
+	{error, _} -> start_channels(Ns, Amqp, Route, Min, Max)
+    end.
+
+start_channel(N, Route, Amqp) ->
+    Pid = get_value(node, N),
+    Pid ! {resource_consume, self(), Route},
+    receive
+	{resource_consumed, UUID, AvailableChan} ->
+	    send_uuid_to_app(Amqp, UUID),
+	    {ok, AvailableChan};
+	{resource_error, E} ->
+	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
+	    {error, E}
+    after
+	1000 -> {error, timeout}
+    end.
+
+send_uuid_to_app({Host, Prop}, UUID) ->
+    CtlQ = amqp_util:new_callctl_queue(Host, UUID),
+    Msg = get_value(<<"Msg-ID">>, Prop),
+    AppQ = get_value(<<"Server-ID">>, Prop),
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+
+    RespProp = [{<<"Msg-ID">>, Msg}
+	       ,{<<"Call-ID">>, UUID}
+	       ,{<<"Control-Queue">>, CtlQ}
+		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, Vsn)],
+    {ok, JSON} = whistle_api:resource_resp(RespProp),
+    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+
+%% sort first by percentage utilized (less utilized first), then by available channels (more available first)
+%% [
+%%   [{node, 1}, {p_u, 80}, {a_c, 3}, ...]
+%%  ,[{node, 2}, {p_u, 50}, {a_c, 5}, ...]
+%%  ,[{node, 3}, {p_u, 50}, {a_c, 1}, ...]
+%%  ,[{node, 4}, {p_u, 10}, {a_c, 10}, ...]
+%% ] ==>
+%% [ [{node, 4}], [{node, 2}], [{node, 3}], [{node, 1}] ]
+%%    least util,  more chan    most chan    most util
+sort_resources(PropA, PropB) ->
+    UtilA = get_value(percent_utilized, PropA),
+    UtilB = get_value(percent_utilized, PropB),
+    case UtilA of
+        UtilB ->                   % same utilization, use node with more available channels
+	    get_value(available_channels, PropA) > get_value(available_channels, PropB);
+	X when X > UtilB -> false; % B is less utilized
+	_X -> true                  % A is less utilized
+    end.

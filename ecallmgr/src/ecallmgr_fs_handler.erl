@@ -97,7 +97,9 @@
 
 %% API
 -export([start_link/0, add_fs_node/1, add_fs_node/2, rm_fs_node/1, diagnostics/0, set_amqp_host/1]).
-%-export([request_resource/2]).
+
+%% Resource allotment
+-export([request_resource/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -111,10 +113,13 @@
 
 -define(SERVER, ?MODULE). 
 -define(AUTH_MOD, ecallmgr_fs_auth).
+-define(AUTH_MOD_POS, 2).
 -define(ROUTE_MOD, ecallmgr_fs_route).
+-define(ROUTE_MOD_POS, 3).
 -define(NODE_MOD, ecallmgr_fs_node).
+-define(NODE_MOD_POS, 4).
 
--define(START_HANDLERS, [fun start_auth_handler/2, fun start_route_handler/2, fun start_node_handler/2]).
+-define(START_HANDLERS, [fun start_auth_handler/3, fun start_route_handler/3, fun start_node_handler/3]).
 
 %% fs_nodes = [{FSNode, AuthHandlerPid, RouteHandlerPid, FSNodeHandlerPid}]
 -type node_handlers() :: tuple(atom(), pid(), pid(), pid()).
@@ -144,6 +149,17 @@ diagnostics() ->
 
 set_amqp_host(Host) ->
     gen_server:call(?MODULE, {set_amqp_host, Host}, infinity).
+
+%% Type - audio | video
+%% Options - Proplist
+%%   {min_channels_requested, 1}
+%%   {max_channels_requested, 1}
+%% Returns - Proplist
+%%   {max_channels_available, 4}
+%%   {bias, 1}
+-spec(request_resource/2 :: (Type :: binary(), Options :: proplist()) -> proplist()).
+request_resource(Type, Options) ->
+    gen_server:call(?MODULE, {request_resource, Type, Options}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -216,6 +232,10 @@ handle_call({add_fs_node, Node, Options}, _From, State) ->
 handle_call({rm_fs_node, Node}, _From, State) ->
     {Resp, State1} = rm_fs_node(Node, State),
     {reply, Resp, State1};
+handle_call({request_resource, Type, Options}, _From, #state{fs_nodes=Nodes}=State) ->
+    Resp = process_resource_request(Type, Nodes, Options),
+    format_log(info, "FS_HANDLER(~p): Resource Resp: ~p~n", [self(), Resp]),
+    {reply, Resp, State};
 handle_call(_Request, _From, State) ->
     format_log(error, "FS_HANDLER(~p): Unhandled call ~p~n", [self(), _Request]),
     {reply, {error, unhandled_request}, State}.
@@ -401,21 +421,21 @@ close_node(N, S, P, L) ->
 	  end,
     close_node(N, S, P+1, [Res | L]).
 
--spec(start_auth_handler/2 :: (Node :: atom(), Host :: string()) -> pid() | tuple(error, term())).
-start_auth_handler(Node, Host) ->
-    start_handler(Node, Host, ?AUTH_MOD).
+-spec(start_auth_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid() | tuple(error, term())).
+start_auth_handler(Node, Options, Host) ->
+    start_handler(Node, Options, Host, ?AUTH_MOD).
 
--spec(start_route_handler/2 :: (Node :: atom(), Host :: string()) -> pid() | tuple(error, term())).
-start_route_handler(Node, Host) ->
-    start_handler(Node, Host, ?ROUTE_MOD).
+-spec(start_route_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid() | tuple(error, term())).
+start_route_handler(Node, Options, Host) ->
+    start_handler(Node, Options, Host, ?ROUTE_MOD).
 
--spec(start_node_handler/2 :: (Node :: atom(), Host :: string()) -> pid() | tuple(error, term())).
-start_node_handler(Node, Host) ->
-    start_handler(Node, Host, ?NODE_MOD).
+-spec(start_node_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid() | tuple(error, term())).
+start_node_handler(Node, Options, Host) ->
+    start_handler(Node, Options, Host, ?NODE_MOD).
 
--spec(start_handler/3 :: (Node :: atom(), Host :: string(), Mod :: atom()) -> pid() | tuple(error, term())).
-start_handler(Node, Host, Mod) ->
-    case Mod:start_handler(Node, Host) of
+-spec(start_handler/4 :: (Node :: atom(), Options :: proplist(), Host :: string(), Mod :: atom()) -> pid() | tuple(error, term())).
+start_handler(Node, Options, Host, Mod) ->
+    case Mod:start_handler(Node, Options, Host) of
 	Pid when is_pid(Pid) ->
 	    link(Pid),
 	    Pid;
@@ -423,3 +443,21 @@ start_handler(Node, Host, Mod) ->
 	    format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p~n", [self(), Mod, Node, Host, _Other]),
 	    E
     end.
+
+-spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(node_handlers()), Options :: proplist()) -> proplist()).
+process_resource_request(<<"audio">>=Type, Nodes, Options) ->
+    NodesResp = lists:map(fun(N) ->
+				  NodePid = element(?NODE_MOD_POS, N),
+				  format_log(info, "FS_HANDLER.prr: NodePid ~p N ~p~n", [NodePid, N]),
+				  NodePid ! {resource_request, self(), Type, Options},
+				  receive
+				      {resource_response, NodePid, Resp} ->
+					  Resp
+				  after 500 ->
+					  []
+				  end
+			  end,Nodes),
+    [ X || X <- NodesResp, X =/= []];
+process_resource_request(Type, _Nodes, _Options) ->
+    format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),
+    [].
