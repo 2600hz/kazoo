@@ -13,7 +13,7 @@ reload_app(stdlib) -> ok;
 reload_app(kernel) -> ok;
 reload_app(App) ->
     {ok, Prop} = application:get_all_key(App),
-    Mods = proplist:get_value(module, Prop, []),
+    Mods = proplists:get_value(module, Prop, []),
     lists:foreach(fun(M) ->
 			  code:purge(M),
 			  code:load_file(M)
