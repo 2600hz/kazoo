@@ -7,7 +7,7 @@
 %%% @end
 %%% Created :  11 Nov 2010 by Karl Anderson <karl@2600hz.org>
 
--module(montior_deps).
+-module(monitor_deps).
 -author('author <karl@2600hz.org>').
 
 -export([ensure/0, ensure/1]).

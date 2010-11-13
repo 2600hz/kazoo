@@ -23,10 +23,10 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% Monitor Agent Ping
--export([pint_req/1, ping_resp/1]).
+-export([ping_req/1, ping_resp/1]).
 
 %% Validation functions
--export([auth_req_v/1, auth_resp_v/1]).
+-export([ping_req_v/1, ping_resp_v/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
@@ -135,9 +135,9 @@ headers_to_json(HeadersProp) ->
 	JSON = mochijson2:encode({struct, HeadersProp}),
 	{ok, JSON}
     catch
-	throw:E -> {error, io_lib:format("WHISTLE TO_JSON THROW ERROR: ~p~n~p", [E, HeadersProp])};
-	error:E -> {error, io_lib:format("WHISTLE TO_JSON ERROR: ~p~n~p", [E, HeadersProp])};
-	exit:E -> {error, io_lib:format("WHISTLE TO_JSON EXIT ERROR: ~p~n~p", [E, HeadersProp])}
+	throw:E -> {error, io_lib:format("MONITOR TO_JSON THROW ERROR: ~p~n~p", [E, HeadersProp])};
+	error:E -> {error, io_lib:format("MONITOR TO_JSON ERROR: ~p~n~p", [E, HeadersProp])};
+	exit:E -> {error, io_lib:format("MONITOR TO_JSON EXIT ERROR: ~p~n~p", [E, HeadersProp])}
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing
@@ -196,7 +196,7 @@ has_all(Prop, Headers) ->
 		      case is_defined(Header, Prop) of
 			  true -> true;
 			  false ->
-			      io:format("WHISTLE_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
+			      io:format("MONITOR_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
 			      false
 		      end
 	      end, Headers).
@@ -215,7 +215,7 @@ values_check(Prop, Values) ->
 			  V -> case lists:member(V, Vs) of
 				   true -> true;
 				   false ->
-				       io:format("WHISTLE_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
+				       io:format("MONITOR_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
 				       false
 			       end
 		      end;
@@ -224,7 +224,7 @@ values_check(Prop, Values) ->
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
 			  V -> true;
 			  _Val ->
-			      io:format("WHISTLE_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
+			      io:format("MONITOR_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
 			      false
 		      end
 	      end, Values).
@@ -238,7 +238,7 @@ type_check(Prop, Types) ->
 			  Value -> case Fun(Value) of % returns boolean
 				       true -> true;
 				       false ->
-					   io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
+					   io:format("MONITOR_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
 					   false
 				   end
 		      end

@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, new_task/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -22,6 +22,13 @@
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
+-include("../include/amqp_client/include/amqp_client.hrl").
+-include("../../../src/whistle_amqp.hrl").
+
+-record(state, {
+        amqp_host = "" :: string()
+        ,monitor_q = <<>> :: binary()
+    }).
 
 %%%===================================================================
 %%% API
@@ -34,8 +41,11 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(AHost) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [AHost], []).
+
+set_amqp_host(AHost) ->
+    gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,6 +79,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
+    format_log(info, "MONITOR_AGENT_PING(~p): Setting amqp host to ~p~n", [self(), AHost]),
+    {ok, MQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, monitor_q=MQ}};
+
 handle_call(_Request, _From, State) ->
     {reply, {error, unsupported}, State}.
 

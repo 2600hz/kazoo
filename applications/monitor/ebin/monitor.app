@@ -1,0 +1,10 @@
+{application,monitor,
+             [{description,[]},
+              {vsn,"0.1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{monitor_app,[]}},
+              {env,[]},
+              {modules,[logger,monitor,monitor_agent_ping,monitor_api,
+                        monitor_app,monitor_deps,monitor_icmp,monitor_master,
+                        monitor_sup,props]}]}.
