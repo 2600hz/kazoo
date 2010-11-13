@@ -48,7 +48,8 @@
 %% FS-specific routines
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 
--import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
+-import(props, [get_value/2, get_value/3]).
+-import(proplists, [delete/2, is_defined/2]).
 
 -include("whistle_api.hrl").
 

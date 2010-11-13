@@ -44,7 +44,7 @@ monitor_node(Node, #handler_state{}=S) ->
     freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT']),
     monitor_loop(Node, S).
 
-monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=S) ->
+monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
     receive
 	{diagnostics, Pid} ->
 	    Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
@@ -72,6 +72,28 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		    end;
 		_ -> monitor_loop(Node, S)
 	    end;
+	{resource_request, Pid, <<"audio">>, ChanOptions} ->
+	    ActiveChan = Cr - De,
+	    MaxChan = get_value(max_channels, Opts),
+	    AvailChan =  MaxChan - ActiveChan,
+	    Utilized =  round(ActiveChan / MaxChan * 100),
+
+	    MinReq = get_value(min_channels_requested, ChanOptions),
+
+	    format_log(info, "FS_NODE(~p): Avail: ~p MinReq: ~p~n", [self(), AvailChan, MinReq]),
+
+	    case MinReq > AvailChan of
+		true -> Pid ! {resource_response, self(), []};
+		false -> Pid ! {resource_response, self(), [{node, self()}
+							    ,{available_channels, AvailChan}
+							    ,{percent_utilization, Utilized}
+							   ]}
+	    end,
+	    monitor_loop(Node, S);
+	{resource_consume, Pid, Route} ->
+	    DS = ecallmgr_util:route_to_dialstring(get_value(<<"Route">>, RouteProp), ?DEFAULT_DOMAIN), %% need to update this to be configurable
+	    case freeswitch:api(Node, originate, list_to_binary([DS, " &park"])) of
+		
 	Msg ->
 	    format_log(info, "FS_NODE(~p): Recv ~p~n", [self(), Msg]),
 	    monitor_loop(Node, S)
