@@ -180,10 +180,7 @@ process_rates({RouteName, {RouteOptions}}) ->
 
 set_rate_flags(Flags, Rates) ->
     Dir = Flags#route_flags.direction,
-    User = case Dir of
-	       <<"outbound">> -> Flags#route_flags.to_user;
-	       <<"inbound">> -> Flags#route_flags.from_user
-	   end,
+    User = Flags#route_flags.to_user,
     Rates0 = proplists:delete(<<"_rev">>, proplists:delete(<<"_id">>, Rates)),
     Rates1 = lists:filter(fun({_RateName, RateData}) ->
 				  lists:member(Dir, get_value(<<"direction">>, RateData)) andalso
