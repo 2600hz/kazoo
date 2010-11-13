@@ -141,3 +141,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
+start_amqp(AHost) ->
+    MonitormgrName = ["agent_ping.monitormgr.", net_adm:localhost()],
+
+    amqp_util:monitormgr_exchange(AHost),
+    amqp_util:targeted_exchange(AHost),
+
+    MonitormgrQueue = amqp_util:new_montiormgr_queue(AHost, MonitormgrName),
+
+    %% Bind the queue to an exchange
+    amqp_util:bind_q_to_monitormgr(AHost, MonitormgrQueue, ?KEY_PING_REQ),
+    format_log(info, "MONITOR_AGENT_PING(~p): Bound ~p for ~p~n", [self(), MonitormgrQueue, ?KEY_PING_REQ]),
+    amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
+
+    %% Register a consumer to listen to the queue
+    amqp_util:basic_consume(AHost, MonitormgrQueue),
+
+    format_log(info, "MONITOR_AGENT_PING(~p): Consuming on ~p~n", [self(), MonitormgrQueue]),
+    {ok, MonitormgrQueue}.

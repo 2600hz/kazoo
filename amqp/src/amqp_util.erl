@@ -11,6 +11,7 @@
 -export([broadcast_exchange/1, broadcast_publish/2, broadcast_publish/3]).
 -export([resource_exchange/1, resource_publish/2, resource_publish/3]).
 -export([callmgr_exchange/1, callmgr_publish/4]).
+-export([monitormgr_exchange/1, monitormgr_publish/4]).
 
 -export([bind_q_to_targeted/2, bind_q_to_targeted/3]).
 -export([bind_q_to_callctl/2, bind_q_to_callctl/3]).
@@ -18,11 +19,14 @@
 -export([bind_q_to_broadcast/2, bind_q_to_broadcast/3]).
 -export([bind_q_to_resource/2, bind_q_to_resource/3]).
 -export([bind_q_to_callmgr/3]).
+-export([bind_q_to_monitormgr/3]).
 
 -export([callctl_consume/2]).
 
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2, new_callmgr_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
+
+-export([new_monitormgr_queue/2, delete_monitormgr_queue/2]).
 
 -export([new_queue/1, new_queue/2, delete_queue/2, basic_consume/2, basic_consume/3
 	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2
@@ -67,6 +71,15 @@
 %%   routing keys they want messages for.
 -define(EXCHANGE_CALLMGR, <<"callmgr">>).
 -define(TYPE_CALLMGR, <<"topic">>).
+
+%% Monitor Manager Exchange
+%% - monitor manager will publish requests to this exchange using routing keys
+%%   agents that want to handle certain messages will create a queue with the appropriate routing key
+%%   in the binding to receive the messages.
+%% - monitor manager publishes to the exchange with a routing key; consumers bind their queue with the
+%%   routing keys they want messages for.
+-define(EXCHANGE_MONITORMGR, <<"monitormgr">>).
+-define(TYPE_MONITORMGR, <<"topic">>).
 
 %% Publish Messages to a given Exchange.Queue
 targeted_publish(Host, Queue, Payload) ->
@@ -115,6 +128,9 @@ resource_publish(Host, Payload, ContentType) ->
 callmgr_publish(Host, Payload, ContentType, RoutingKey) ->
     basic_publish(Host, ?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
 
+monitormgr_publish(Host, Payload, ContentType, RoutingKey) ->
+    basic_publish(Host, ?EXCHANGE_MONITORMGR, RoutingKey, Payload, ContentType).
+
 %% Create (or access) an Exchange
 targeted_exchange(Host) ->
     new_exchange(Host, ?EXCHANGE_TARGETED, ?TYPE_TARGETED).
@@ -133,6 +149,9 @@ resource_exchange(Host) ->
 
 callmgr_exchange(Host) ->
     new_exchange(Host, ?EXCHANGE_CALLMGR, ?TYPE_CALLMGR).
+
+monitormgr_exchange(Host) ->
+    new_exchange(Host, ?EXCHANGE_MONITORMGR, ?TYPE_MONITORMGR).
 
 %% A generic Exchange maker
 new_exchange(Host, Exchange, Type) ->
@@ -165,6 +184,9 @@ new_callctl_queue(Host, CallId) ->
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 new_callmgr_queue(Host, Queue) ->
+    new_queue(Host, Queue, []).
+
+new_monitormgr_queue(Host, Queue) ->
     new_queue(Host, Queue, []).
 
 %% Declare a queue and returns the queue Name
@@ -203,6 +225,9 @@ delete_callctl_queue(Host, CallId, Prop) ->
 
 delete_callmgr_queue(Host, CallId) ->
     delete_queue(Host, << ?KEY_CALL_EVENT/binary, CallId/binary >>, []).
+
+delete_monitormgr_queue(Host, Queue) ->
+    delete_queue(Host, Queue).
 
 delete_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
@@ -248,6 +273,9 @@ bind_q_to_resource(Host, Queue, Routing) ->
 
 bind_q_to_callmgr(Host, Queue, Routing) ->
     bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_CALLMGR).
+
+bind_q_to_monitormgr(Host, Queue, Routing) ->
+    bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_MONITORMGR).
 
 %% generic binder
 bind_q_to_exchange(Host, Queue, Routing, Exchange) when is_list(Queue) ->
