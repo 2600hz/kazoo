@@ -34,14 +34,14 @@ RABBITMQ_MNESIA_BASE=$DIR/mnesia
 RABBITMQ_LOG_BASE=$DIR/log
 RABBITMQ_CONFIG_FILE=$DIR/rabbitmq
 
-[ "x" = "x$HOSTNAME" ] && HOSTNAME=`env hostname -s`
-RABBITMQ_NODENAME=rabbit@${HOSTNAME%%.*}
+[ "x" = "x$HOSTNAME" ] && HOSTNAME=`env hostname -f`
+RABBITMQ_NODENAME=rabbit@${HOSTNAME}
 
 RABBITMQ_NODE_IP_ADDRESS="0.0.0.0"
 RABBITMQ_NODE_PORT=5672
 
-[ "x" = "x$HOSTNAME" ] && HOSTNAME=`env hostname -s`
-NODENAME=rabbit@${HOSTNAME%%.*}
+[ "x" = "x$HOSTNAME" ] && HOSTNAME=`env hostname -f`
+NODENAME=rabbit@${HOSTNAME}
 SERVER_ERL_ARGS="+K true +A30 +P 1048576 \
 -kernel inet_default_listen_options [{nodelay,true}] \
 -kernel inet_default_connect_options [{nodelay,true}]"
@@ -128,7 +128,7 @@ set -f
 exec erl \
     ${RABBITMQ_EBIN_PATH} \
     ${RABBITMQ_START_RABBIT} \
-    -sname ${RABBITMQ_NODENAME} \
+    -name ${RABBITMQ_NODENAME} \
     -boot ${RABBITMQ_BOOT_FILE} \
     ${RABBITMQ_CONFIG_ARG} \
     +W w \
