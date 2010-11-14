@@ -1,7 +1,7 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_orig_ip/1, custom_channel_vars/1]).
--export([route_to_dialstring/2]).
+-export([route_to_dialstring/2, route_to_dialstring/3]).
 
 -import(props, [get_value/2, get_value/3]).
 
@@ -40,3 +40,13 @@ route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _D) -> %% assumes _Rest is prop
 route_to_dialstring([<<"user:", User/binary>>, DID], Domain) ->
     list_to_binary([DID, "${regex(${sofia_contact(sipinterface_1/",User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
 route_to_dialstring(DS, _D) -> DS.
+
+%% for some commands, like originate, macros are not run; need to progressively build the dialstring
+route_to_dialstring([<<"user:", User/binary>>, DID], Domain, FSNode) ->
+    {ok, SC} = freeswitch:api(FSNode, sofia_contact, binary_to_list(list_to_binary(["sipinterface_1/",User, "@", Domain]))),
+    Regex = list_to_binary([SC, "|^[^\@]+(.*)|", DID, "%1"]),
+    io:format("Regex: ~p~n", [Regex]),
+    {ok, DS} = freeswitch:api(FSNode, regex, binary_to_list(Regex)),
+    DS;
+route_to_dialstring(X, _, _) -> X.
+
