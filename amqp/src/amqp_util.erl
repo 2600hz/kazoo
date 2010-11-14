@@ -156,6 +156,8 @@ new_broadcast_queue(Host, <<>>) ->
 new_broadcast_queue(Host, QueueName) ->
     new_queue(Host, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName]), [{nowait, false}]).
 
+new_callevt_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callevt_queue(Host, CallId) ->
     new_queue(Host
 	      ,list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
@@ -203,8 +205,8 @@ delete_callctl_queue(Host, CallId) ->
 delete_callctl_queue(Host, CallId, Prop) ->
     delete_queue(Host, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]), Prop).
 
-delete_callmgr_queue(Host, CallId) ->
-    delete_queue(Host, << ?KEY_CALL_EVENT/binary, CallId/binary >>, []).
+delete_callmgr_queue(Host, Queue) ->
+    delete_queue(Host, Queue, []).
 
 delete_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
