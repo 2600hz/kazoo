@@ -1,0 +1,119 @@
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010, James Aimonetti
+%%% @doc
+%%% Manage a FreeSWITCH node and its resources
+%%% @end
+%%% Created : 11 Nov 2010 by James Aimonetti <james@2600hz.org>
+
+-module(ecallmgr_fs_node).
+
+-compile(export_all).
+
+%% API
+-export([start_handler/3]).
+-export([monitor_node/2]).
+
+-import(props, [get_value/2, get_value/3]).
+-import(logger, [log/2, format_log/3]).
+
+-include("../include/amqp_client/include/amqp_client.hrl").
+-include("freeswitch_xml.hrl").
+-include("whistle_api.hrl").
+-include("whistle_amqp.hrl").
+-include("ecallmgr.hrl").
+
+%% lookups = [{LookupPid, ID, erlang:now()}]
+-record(handler_state, {fs_node = undefined :: atom()
+		       ,amqp_host = "" :: string()
+		       ,app_vsn = [] :: binary()
+		       ,stats = #node_stats{} :: tuple()
+		       ,options = [] :: proplist()
+		       }).
+
+-spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
+start_handler(Node, Options, AmqpHost) ->
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+    Stats = #node_stats{started = erlang:now()},
+    HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn), stats=Stats, options=Options},
+    case freeswitch:start_event_handler(Node, ?MODULE, monitor_node, HState) of
+	{ok, Pid} -> Pid;
+	timeout -> {error, timeout};
+	{error, _Err}=E -> E
+    end.
+
+monitor_node(Node, #handler_state{}=S) ->
+    %% do init
+    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT']),
+    monitor_loop(Node, S).
+
+monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
+    receive
+	{diagnostics, Pid} ->
+	    Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
+	    Pid ! Resp,
+	    monitor_loop(Node, S);
+	{event, [undefined | Data]} ->
+	    EvtName = get_value(<<"Event-Name">>, Data),
+	    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
+	    case EvtName of
+		<<"HEARTBEAT">> -> monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
+		_ -> monitor_loop(Node, S)
+	    end;
+	{event, [UUID | Data]} ->
+	    EvtName = get_value(<<"Event-Name">>, Data),
+	    format_log(info, "FS_NODE(~p): Evt: ~p UUID: ~p~n", [self(), EvtName, UUID]),
+	    case EvtName of
+		<<"CHANNEL_CREATE">> -> monitor_loop(Node, S#handler_state{stats=Stats#node_stats{created_channels=Cr+1}});
+		<<"CHANNEL_DESTROY">> ->
+		    ChanState = get_value(<<"Channel-State">>, Data),
+		    case ChanState of
+			<<"CS_NEW">> -> % ignore
+			    monitor_loop(Node, S);
+			<<"CS_DESTROY">> ->
+			    monitor_loop(Node, S#handler_state{stats=Stats#node_stats{destroyed_channels=De+1}})
+		    end;
+		_ -> monitor_loop(Node, S)
+	    end;
+	{resource_request, Pid, <<"audio">>, ChanOptions} ->
+	    ActiveChan = Cr - De,
+	    MaxChan = get_value(max_channels, Opts),
+	    AvailChan =  MaxChan - ActiveChan,
+	    Utilized =  round(ActiveChan / MaxChan * 100),
+
+	    MinReq = get_value(min_channels_requested, ChanOptions),
+
+	    format_log(info, "FS_NODE(~p): Avail: ~p MinReq: ~p~n", [self(), AvailChan, MinReq]),
+
+	    case MinReq > AvailChan of
+		true -> Pid ! {resource_response, self(), []};
+		false -> Pid ! {resource_response, self(), [{node, self()}
+							    ,{available_channels, AvailChan}
+							    ,{percent_utilization, Utilized}
+							   ]}
+	    end,
+	    monitor_loop(Node, S);
+	{resource_consume, Pid, Route} ->
+	    ActiveChan = Cr - De,
+	    MaxChan = get_value(max_channels, Opts, 1),
+	    AvailChan =  MaxChan - ActiveChan,
+
+	    DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
+	    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
+	    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", DS, " &park"])),
+	    format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
+	    case freeswitch:api(Node, originate, OrigStr) of
+		{ok, X} ->
+		    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
+		    Pid ! {resource_consumed, binary:bin_to_list(X, {4, byte_size(X)-5}), AvailChan-1};
+		{error, Y} ->
+		    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, Y]),
+		    Pid ! {resource_error, Y};
+		timeout ->
+		    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
+		    Pid ! {resource_error, timeout}
+	    end,
+	    monitor_loop(Node, S);
+	Msg ->
+	    format_log(info, "FS_NODE(~p): Recv ~p~n", [self(), Msg]),
+	    monitor_loop(Node, S)
+    end.
