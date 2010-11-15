@@ -1,3 +1,11 @@
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010, James Aimonetti
+%%% @doc
+%%% Various utilities specific to ecallmgr. More general utilities go
+%%% in whistle_util.erl
+%%% @end
+%%% Created : 15 Nov 2010 by James Aimonetti <james@2600hz.org>
+
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_orig_ip/1, custom_channel_vars/1]).
