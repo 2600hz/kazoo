@@ -97,23 +97,26 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    MaxChan = get_value(max_channels, Opts, 1),
 	    AvailChan =  MaxChan - ActiveChan,
 
-	    DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
-	    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
-	    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", DS, " &park"])),
-	    format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
-	    case freeswitch:api(Node, originate, OrigStr) of
-		{ok, X} ->
-		    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
-		    Pid ! {resource_consumed, binary:bin_to_list(X, {4, byte_size(X)-5}), AvailChan-1};
-		{error, Y} ->
-		    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, Y]),
-		    Pid ! {resource_error, Y};
-		timeout ->
-		    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
-		    Pid ! {resource_error, timeout}
-	    end,
+	    spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan) end),
 	    monitor_loop(Node, S);
 	Msg ->
 	    format_log(info, "FS_NODE(~p): Recv ~p~n", [self(), Msg]),
 	    monitor_loop(Node, S)
+    end.
+
+originate_channel(Node, Pid, Route, AvailChan) ->
+    DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
+    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
+    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", DS, " &park"])),
+    format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
+    case freeswitch:api(Node, originate, OrigStr) of
+	{ok, X} ->
+	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
+	    Pid ! {resource_consumed, binary:bin_to_list(X, {4, byte_size(X)-5}), AvailChan-1};
+	{error, Y} ->
+	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, Y]),
+	    Pid ! {resource_error, Y};
+	timeout ->
+	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
+	    Pid ! {resource_error, timeout}
     end.

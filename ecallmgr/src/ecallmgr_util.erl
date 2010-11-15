@@ -1,9 +1,9 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_orig_ip/1, custom_channel_vars/1]).
--export([route_to_dialstring/2, route_to_dialstring/3]).
+-export([to_hex/1, route_to_dialstring/2, route_to_dialstring/3, to_list/1, to_binary/1]).
 
--import(props, [get_value/2, get_value/3]).
+-import(proplists, [get_value/2, get_value/3]).
 
 -include("whistle_api.hrl").
 
@@ -35,8 +35,12 @@ custom_channel_vars(Prop) ->
 			  end, Prop),
     lists:map(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}) -> {Key, V} end, Custom).
 
-route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _D) -> %% assumes _Rest is properly formatted (may want to force to E.164?)
-    DS;
+to_hex(Bin) when is_binary(Bin) ->
+    to_hex(binary_to_list(Bin));
+to_hex(L) when is_list(L) ->
+    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+
+route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _D) -> DS;
 route_to_dialstring([<<"user:", User/binary>>, DID], Domain) ->
     list_to_binary([DID, "${regex(${sofia_contact(sipinterface_1/",User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
 route_to_dialstring(DS, _D) -> DS.
@@ -44,9 +48,30 @@ route_to_dialstring(DS, _D) -> DS.
 %% for some commands, like originate, macros are not run; need to progressively build the dialstring
 route_to_dialstring([<<"user:", User/binary>>, DID], Domain, FSNode) ->
     {ok, SC} = freeswitch:api(FSNode, sofia_contact, binary_to_list(list_to_binary(["sipinterface_1/",User, "@", Domain]))),
-    Regex = list_to_binary([SC, "|^[^\@]+(.*)|", DID, "%1"]),
-    io:format("Regex: ~p~n", [Regex]),
-    {ok, DS} = freeswitch:api(FSNode, regex, binary_to_list(Regex)),
-    DS;
+    {ok, Regex} = re:compile("^[^\@]+"),
+    re:replace(SC, Regex, DID, [{return, binary}]);
 route_to_dialstring(X, _, _) -> X.
 
+-spec(to_list/1 :: (X :: atom() | list() | binary() | integer() | float()) -> list()).
+to_list(X) when is_float(X) ->
+    mochinum:digits(X);
+to_list(X) when is_integer(X) ->
+    integer_to_list(X);
+to_list(X) when is_binary(X) ->
+    binary_to_list(X);
+to_list(X) when is_atom(X) ->
+    atom_to_list(X);
+to_list(X) when is_list(X) ->
+    X.
+
+-spec(to_binary/1 :: (X :: atom() | list() | binary() | integer() | float()) -> binary()).
+to_binary(X) when is_float(X) ->
+    to_binary(mochinum:digits(X));
+to_binary(X) when is_integer(X) ->
+    to_binary(integer_to_list(X));
+to_binary(X) when is_atom(X) ->
+    list_to_binary(atom_to_list(X));
+to_binary(X) when is_list(X) ->
+    list_to_binary(X);
+to_binary(X) when is_binary(X) ->
+    X.
