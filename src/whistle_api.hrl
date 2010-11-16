@@ -174,7 +174,11 @@
 			      ,{<<"Event-Name">>, <<"resource_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
 			      ]).
--define(RESOURCE_REQ_TYPES, []).
+-define(RESOURCE_REQ_TYPES, [{<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
+					      ([<<"user:", _/binary>>, DID]) when is_binary(DID) -> true;
+					      (_) -> false
+					   end}
+			    ]).
 
 %% Resource Response - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Response
 -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
