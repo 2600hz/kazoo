@@ -225,7 +225,7 @@ start_channel(N, Route, Amqp) ->
 	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
 	    {error, E}
     after
-	1000 -> {error, timeout}
+	10000 -> {error, timeout}
     end.
 
 -spec(send_uuid_to_app/2 :: (tuple(string(), proplist()), binary()) -> no_return()).
@@ -240,6 +240,7 @@ send_uuid_to_app({Host, Prop}, UUID) ->
 	       ,{<<"Control-Queue">>, CtlQ}
 		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
+    format_log(info, "RSC_MGR: Sending resp to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 %% sort first by percentage utilized (less utilized first), then by available channels (more available first)

@@ -7,8 +7,6 @@
 
 -module(ecallmgr_fs_node).
 
--compile(export_all).
-
 %% API
 -export([start_handler/3]).
 -export([monitor_node/2]).
@@ -104,22 +102,24 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    MaxChan = get_value(max_channels, Opts, 1),
 	    AvailChan =  MaxChan - ActiveChan,
 
-	    spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan) end),
+	    spawn(fun() -> originate_channel(Node, S#handler_state.amqp_host, Pid, Route, AvailChan) end),
 	    monitor_loop(Node, S);
 	Msg ->
 	    format_log(info, "FS_NODE(~p): Recv ~p~n", [self(), Msg]),
 	    monitor_loop(Node, S)
     end.
 
-originate_channel(Node, Pid, Route, AvailChan) ->
+originate_channel(Node, Host, Pid, Route, AvailChan) ->
     DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
     format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
     OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", DS, " &park"])),
     format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
-    case freeswitch:api(Node, originate, OrigStr) of
+    case freeswitch:api(Node, originate, OrigStr, 10000) of
 	{ok, X} ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
-	    Pid ! {resource_consumed, binary:bin_to_list(X, {4, byte_size(X)-5}), AvailChan-1};
+	    CallID =  binary:bin_to_list(X, {4, byte_size(X)-5}),
+	    start_call_handling(Node, Host, CallID),
+	    Pid ! {resource_consumed, CallID, AvailChan-1};
 	{error, Y} ->
 	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, Y]),
 	    Pid ! {resource_error, Y};
@@ -127,6 +127,12 @@ originate_channel(Node, Pid, Route, AvailChan) ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
 	    Pid ! {resource_error, timeout}
     end.
+
+start_call_handling(Node, Host, UUID) ->
+    CtlQueue = amqp_util:new_callctl_queue(Host, UUID),
+    amqp_util:bind_q_to_callctl(Host, CtlQueue),
+    CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
+    ecallmgr_call_events:start(Node, UUID, Host, CtlPid).
 
 diagnostics(Pid, Stats) ->
     Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
@@ -150,8 +156,9 @@ extract_node_data(Node) ->
 
 -spec(process_status/1 :: (Lines :: list()) -> proplist()).
 process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
-    {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}]),
-    UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min) + ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + Micro,
+    {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
+    UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
+	+ ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + whistle_util:to_integer(Micro),
     {match, SessSinceNum} = re:run(SessSince, "([\\d]+)", [{capture, [1], list}]),
     {match, Sess30Num} = re:run(Sess30, "([\\d]+)", [{capture, [1], list}]),
     {match, SessMaxNum} = re:run(SessMax, "([\\d]+)", [{capture, [1], list}]),
