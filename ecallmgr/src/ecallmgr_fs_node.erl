@@ -39,7 +39,7 @@
 
 -spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
 start_handler(Node, Options, AmqpHost) ->
-    
+    NodeData = extract_node_data(Node),
     {ok, Chans} = freeswitch:api(Node, show, "channels"),
     {ok, R} = re:compile("([\\d+])"),
     {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
