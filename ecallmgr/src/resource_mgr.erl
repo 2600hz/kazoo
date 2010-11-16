@@ -118,6 +118,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
     spawn(fun() -> handle_resource_req(Payload, AmqpHost) end),
     {noreply, State};
 handle_info(_Info, State) ->
+    format_log(info, "RSCMGR(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -131,7 +132,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{amqp_host=Host, callmgr_q=Q}) ->
+    format_log(info, "RSCMGR(~p): Going down(~p). H: ~p Q: ~p~n", [self(), _Reason, Host, Q]),
+    amqp_util:delete_callmgr_queue(Host, Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -148,6 +151,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(start_amqp/3 :: (Host :: string(), OldHost :: string(), OldQ :: binary()) -> binary()).
 start_amqp(Host, "", <<>>) ->
     amqp_util:callmgr_exchange(Host),
     amqp_util:targeted_exchange(Host),
@@ -156,7 +160,7 @@ start_amqp(Host, "", <<>>) ->
     amqp_util:basic_consume(Host, Q),
     Q;
 start_amqp(Host, OldHost, OldQ) ->
-    amqp_util:queue_delete(OldHost, OldQ),
+    amqp_util:delete_callmgr_queue(OldHost, OldQ),
     amqp_util:channel_close(OldHost),
     start_amqp(Host, "", <<>>).
 
