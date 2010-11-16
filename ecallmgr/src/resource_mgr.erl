@@ -171,8 +171,8 @@ handle_resource_req(Payload, AmqpHost) ->
     Options = get_request_options(Prop),
     Nodes = get_resources(request_type(Prop), Options),
 
-    Min = get_value(min_channels_requested, Options),
-    Max = get_value(max_channels_requested, Options),
+    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
+    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
     Route = get_value(<<"Route">>, Prop),
     start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min).
 
@@ -191,9 +191,9 @@ request_type(Prop) ->
 
 -spec(get_request_options/1 :: (Prop :: proplist()) -> proplist()).
 get_request_options(Prop) ->
-    Min = get_value(<<"Resource-Minimum">>, Prop, 1),
+    Min = whistle_util:to_integer(get_value(<<"Resource-Minimum">>, Prop, 1)),
     [{min_channels_requested, Min}
-     ,{max_channels_requested, get_value(<<"Resource-Maximum">>, Prop, Min)}
+     ,{max_channels_requested, whistle_util:to_integer(get_value(<<"Resource-Maximum">>, Prop, Min))}
     ].
 
 -spec(start_channels/5 :: (Nodes :: list(), Amqp :: tuple(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> no_return()).
