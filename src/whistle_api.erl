@@ -585,12 +585,9 @@ build_message_specific(Prop, ReqH, OptH) ->
 -spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 headers_to_json(HeadersProp) ->
     try
-	JSON = mochijson2:encode({struct, HeadersProp}),
-	{ok, JSON}
+	{ok, mochijson2:encode({struct, HeadersProp})}
     catch
-	throw:E -> {error, io_lib:format("WHISTLE TO_JSON THROW ERROR: ~p~n~p", [E, HeadersProp])};
-	error:E -> {error, io_lib:format("WHISTLE TO_JSON ERROR: ~p~n~p", [E, HeadersProp])};
-	exit:E -> {error, io_lib:format("WHISTLE TO_JSON EXIT ERROR: ~p~n~p", [E, HeadersProp])}
+	_What:_Why -> {error, io_lib:format("WHISTLE TO_JSON ERROR(~p): ~p~n~p", [_What, _Why, HeadersProp])}
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing
