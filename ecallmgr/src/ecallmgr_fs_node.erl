@@ -46,7 +46,10 @@ start_handler(Node, Options, AmqpHost) ->
     Active = whistle_util:to_integer(lists:flatten(Match)),
 
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    Stats = #node_stats{started = erlang:now(), created_channels=Active},
+    Stats = #node_stats{started = erlang:now()
+			,created_channels=Active
+			,fs_uptime=get_value(uptime, NodeData, 0)
+		       },
     HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn), stats=Stats, options=Options},
     case freeswitch:start_event_handler(Node, ?MODULE, monitor_node, HState) of
 	{ok, Pid} -> Pid;
