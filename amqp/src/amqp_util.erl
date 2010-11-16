@@ -218,7 +218,7 @@ delete_queue(Host, Queue, Prop) ->
       ,queue=Queue
       ,if_unused = get_value(if_unused, Prop, false)
       ,if_empty = get_value(if_empty, Prop, false)
-      ,nowait = get_value(nowait, Prop, true)
+      ,nowait = get_value(nowait, Prop, false)
      },
     amqp_channel:call(Channel, QD).
 
