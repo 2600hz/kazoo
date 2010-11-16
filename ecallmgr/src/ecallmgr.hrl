@@ -9,6 +9,7 @@
 		     ,last_heartbeat = {0,0,0} :: tuple(integer(), integer(), integer())
                      ,created_channels = 0 :: integer()
 		     ,destroyed_channels = 0 :: integer()
+		     ,fs_uptime = 0 :: integer() % in microseconds
 		    }).
 
 -define(DEFAULT_DOMAIN, <<"trunks.2600hz.com">>).
