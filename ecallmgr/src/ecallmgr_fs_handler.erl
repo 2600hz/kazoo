@@ -121,6 +121,10 @@
 -define(NODE_MOD_POS, 5).
 
 -define(START_HANDLERS, [fun start_auth_handler/3, fun start_route_handler/3, fun start_node_handler/3]).
+-define(HANDLER_POSS, [{?AUTH_MOD_POS, fun start_auth_handler/3}
+		       ,{?ROUTE_MOD_POS, fun start_route_handler/3}
+		       ,{?NODE_MOD_POS, fun start_node_handler/3}
+		      ]).
 
 %% fs_nodes = [{FSNode, Options, AuthHandlerPid, RouteHandlerPid, FSNodeHandlerPid}]
 -type node_handlers() :: tuple(atom(), pid(), pid(), pid(), proplist()).
@@ -383,12 +387,23 @@ diagnostics_query(Pid) ->
 	    {error, not_responding, handler_down}
     end.
 
--spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: tuple()) -> {ok, tuple()} | {{error, atom()}, tuple()}).
+-spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: tuple()) -> tuple(ok, tuple()) | tuple(tuple(error, atom()), tuple())).
 add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
     case lists:keyfind(Node, 1, Nodes) of
 	T when is_tuple(T) ->
 	    format_log(info, "FS_HANDLER(~p): handlers known ~p~n", [self(), T]),
-	    {{error, node_is_known}, State};
+	    NewL = lists:foldl(fun({Pos, StartFun}, Acc) ->
+				       case element(Pos, T) of
+					   Pid when is_pid(Pid) ->
+					       Pid ! {update_options, Options},
+					       [Pid | Acc];
+					   _Other ->
+					       [StartFun(Node, Options, Host) | Acc]
+				       end
+			       end, [Options, Node], ?HANDLER_POSS),
+	    NewT = list_to_tuple(lists:reverse(NewL)),
+	    format_log(info, "FS_HANDLER(~p): Restarted handlers. Old: ~p New ~p~n", [self(), T, NewT]),
+	    {ok, State#state{fs_nodes=[NewT | lists:keydelete(Node, 1, Nodes)]}};
 	false ->
 	    case net_adm:ping(Node) of
 		pong ->

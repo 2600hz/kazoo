@@ -171,8 +171,8 @@ handle_resource_req(Payload, AmqpHost) ->
     Options = get_request_options(Prop),
     Nodes = get_resources(request_type(Prop), Options),
 
-    Min = get_value(min_channels_requested, Options),
-    Max = get_value(max_channels_requested, Options),
+    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
+    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
     Route = get_value(<<"Route">>, Prop),
     start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min).
 
@@ -191,9 +191,9 @@ request_type(Prop) ->
 
 -spec(get_request_options/1 :: (Prop :: proplist()) -> proplist()).
 get_request_options(Prop) ->
-    Min = get_value(<<"Resource-Minimum">>, Prop, 1),
+    Min = whistle_util:to_integer(get_value(<<"Resource-Minimum">>, Prop, 1)),
     [{min_channels_requested, Min}
-     ,{max_channels_requested, get_value(<<"Resource-Maximum">>, Prop, Min)}
+     ,{max_channels_requested, whistle_util:to_integer(get_value(<<"Resource-Maximum">>, Prop, Min))}
     ].
 
 -spec(start_channels/5 :: (Nodes :: list(), Amqp :: tuple(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> no_return()).
@@ -225,7 +225,7 @@ start_channel(N, Route, Amqp) ->
 	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
 	    {error, E}
     after
-	1000 -> {error, timeout}
+	10000 -> {error, timeout}
     end.
 
 -spec(send_uuid_to_app/2 :: (tuple(string(), proplist()), binary()) -> no_return()).
@@ -240,6 +240,7 @@ send_uuid_to_app({Host, Prop}, UUID) ->
 	       ,{<<"Control-Queue">>, CtlQ}
 		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
+    format_log(info, "RSC_MGR: Sending resp to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 %% sort first by percentage utilized (less utilized first), then by available channels (more available first)
