@@ -193,6 +193,8 @@ new_callevt_queue(Host, CallId) ->
 	      ,list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
+new_callctl_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(Host, CallId) ->
     new_queue(Host
 	      ,list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
