@@ -194,7 +194,7 @@ set_rate_flags(Flags, Rates) ->
 				  options_match(Flags#route_flags.route_options, get_value(<<"options">>, RateData, []))
 			  end, Rates1),
 
-    case Rates2 of
+    case lists:usort(fun sort_rates/2, Rates2) of
 	[] ->
 	    format_log(error, "TS_CREDIT(~p): No Rate found for ~p~n", [self(), User]),
 	    {error, no_route_found};
@@ -221,6 +221,10 @@ set_rate_flags(Flags, Rates) ->
 		    end
 	    end
     end.
+
+%% Return true of RateA has higher weight than RateB
+sort_rates({_RNameA, RateDataA}, {_RNameB, RateDataB}) ->
+    whistle_util:to_integer(get_value(<<"weight">>, RateDataA, 1)) >= whistle_util:to_integer(get_value(<<"weight">>, RateDataB, 1)).
 
 %% can they be on the phone for at least a minute?
 has_credit(Flags, <<"inbound">>) ->
