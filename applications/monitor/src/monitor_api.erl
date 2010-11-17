@@ -20,7 +20,7 @@
 -module(monitor_api).
 
 %% API
--export([default_headers/3, extract_defaults/1]).
+-export([default_headers/4, extract_defaults/1]).
 
 %% Monitor Agent Ping
 -export([ping_req/1, ping_resp/1]).
@@ -42,9 +42,11 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec(default_headers/3 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()) -> proplist()).
-default_headers(ServerID, EvtCat, EvtName) ->
-    [{<<"Server-ID">>, ServerID}
+-spec(default_headers/4 :: (MsgID :: binary(), ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()) -> proplist()).
+default_headers(MsgID, ServerID, EvtCat, EvtName) ->
+    [
+      {<<"Msg-ID">>, MsgID}
+     ,{<<"Server-ID">>, ServerID}
      ,{<<"Event-Category">>, EvtCat}
      ,{<<"Event-Name">>, EvtName}
      ,{<<"App-Name">>, <<"monitor">>}
