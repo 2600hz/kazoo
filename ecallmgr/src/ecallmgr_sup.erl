@@ -29,6 +29,7 @@ init([]) ->
        {one_for_one, 5, 10}
        ,[
 	 ?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
+	 ,?CHILD(resource_mgr, worker) % handles resource requests / resource availability
 	 ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
 	]
       }

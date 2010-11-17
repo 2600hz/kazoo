@@ -165,7 +165,8 @@ handle_info(_Info, Hosts) ->
 %%--------------------------------------------------------------------
 terminate(Reason, Hosts) ->
     close_server(Hosts),
-    Reason.
+    format_log(info, "AMQP_MGR(~p): Going down(~p)~n", [self(), Reason]),
+    ok.
 
 %%--------------------------------------------------------------------
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
@@ -197,37 +198,25 @@ find_down_pid(DownPid, {Host, HostInfo}=Host0, Hosts0) ->
     %% check HostInfo's connection pid, each channel pid, and each process pid
     case lists:keyfind(DownPid, ?CONNECTION_PID, HostInfo) of
 	{connection, DownPid, _MRef} -> % connection is down
-	    format_log(info, "AMQP_MGR(~p): conn went down~n", [self()]),
+	    format_log(info, "AMQP_MGR(~p): conn ~p went down~n", [self(), DownPid]),
 	    close_host(Host, HostInfo), %% close all channels
-	    try
-		%% restart connection
-		{Conn, ConnMRef} = get_new_connection(create_amqp_params(Host)),
-		HostInfo0 = [{connection, Conn, ConnMRef}],
-
-		%% reopen channels for all process pids
-		HostInfo1 = lists:foldl(fun({ProcessPid, _OldProcessMRef, _OldChannel, _OldMRef, _OldTicket}, HostInfoTmp) ->
-						{Channel, ChanMRef, ProcessMRef, Ticket} = open_amqp_channel(Conn, ProcessPid),
-						[{ProcessPid, ProcessMRef, Channel, ChanMRef, Ticket} | HostInfoTmp];
-					   ({connection, _, _}, HostInfoTmp) -> HostInfoTmp
-					end, HostInfo0, HostInfo),
-		[{Host, HostInfo1} | Hosts0]
-	    catch
-		_Class:_Error ->
-		    format_log(error, "AMQP_MGR(~p): Exception when recovering a conn to ~p: ~p::~p~n", [self(), Host, _Class, _Error]),
-		    Hosts0
-	    end;
+	    Hosts0;
 	false ->
 	    case lists:keyfind(DownPid, ?CHANNEL_PID, HostInfo) of
-		{ProcessPid, ProcessMRef, DownPid, OldChanMRef, _Ticket} ->
-		    format_log(info, "AMQP_MGR(~p): channel went down~n", [self()]),
+		{ProcessPid, OldProcessMRef, DownPid, OldChanMRef, _Ticket} ->
+		    format_log(info, "AMQP_MGR(~p): channel(~p) for ~p went down~n", [self(), DownPid, ProcessPid]),
 		    %% close channel down
 		    close_channel_down(DownPid, OldChanMRef),
-		    erlang:demonitor(ProcessMRef),
+		    erlang:demonitor(OldProcessMRef),
 
 		    %% restart channel
 		    {connection, Conn, _} = lists:keyfind(connection, 1, HostInfo),
+		    format_log(info, "AMQP_MGR(~p): restart channel using conn ~p(~p) for ~p~n", [self(), Conn, Host, ProcessPid]),
 		    {Channel, ChanMRef, ProcessMRef, Ticket} = open_amqp_channel(Conn, ProcessPid),
-		    [{Host, [{ProcessPid, ProcessMRef, Channel, ChanMRef, Ticket} | lists:keydelete(DownPid, ?CHANNEL_PID, HostInfo)]} | Hosts0];
+		    
+		    [{Host, [{ProcessPid, ProcessMRef, Channel, ChanMRef, Ticket}
+			     | lists:keydelete(DownPid, ?CHANNEL_PID, HostInfo)]}
+		     | Hosts0];
 		false ->
 		    case lists:keyfind(DownPid, ?PROCESS_PID, HostInfo) of
 			{DownPid, DownMRef, Channel, ChanMRef, _Ticket} ->
@@ -237,6 +226,7 @@ find_down_pid(DownPid, {Host, HostInfo}=Host0, Hosts0) ->
 			    %% Process is down, remove channel
 			    [{Host, lists:keydelete(DownPid, ?PROCESS_PID, HostInfo)} | lists:keydelete(Host, 1, Hosts0)];
 			false ->
+			    format_log(info, "AMQP_MGR(~p): unknown pid went down~n", [self()]),
 			    %% unchanged
 			    [Host0 | Hosts0]
 		    end
@@ -245,19 +235,22 @@ find_down_pid(DownPid, {Host, HostInfo}=Host0, Hosts0) ->
 
 -spec(close_server/1 :: (Hosts :: amqp_mgr_state()) -> no_return()).
 close_server(Hosts) ->
-    format_log(info, "AMQP_MGR(~p): Closing server down~n", [self()]),
+    format_log(info, "AMQP_MGR(~p): Closing server down~n~p~n", [self(), Hosts]),
     lists:foreach(fun({Host, HostInfo}) ->
-			  close_host(Host, HostInfo)
-		  end, Hosts).
+			  format_log(info, "close_server ~p returned ~p~n", [Host, close_host(Host, HostInfo)])
+		  end, Hosts),
+    format_log(info, "Closing server done.~n", []).
 
 -spec(close_host/2 :: (Host :: string(), HostInfo :: amqp_host_info()) -> no_return()).
 close_host(Host, HostInfo) ->
-    format_log(info, "AMQP_MGR(~p): Closing host ~p down~n", [self(), Host]),
     {connection, Conn, Ref} = lists:keyfind(connection, 1, HostInfo),
     ConnUp = erlang:is_process_alive(Conn),
-    lists:foreach(fun({Pid, PidMRef, Channel, ChanMRef, _Ticket}) ->
+    Channels = lists:keydelete(connection, 1, HostInfo),
+    format_log(info, "AMQP_MGR(~p): Closing host ~p down~n~p~nCh: ~p~n", [self(), Host, HostInfo, Channels]),
+    lists:foreach(fun({Pid, PidMRef, Channel, ChanMRef, _Ticket}=Tup) ->
 			  case ConnUp of
 			      true ->
+				  format_log(info, "AMQP_MGR.close_host: H: ~p Ch: ~p P: ~p~n", [Host, Channel, Pid]),
 				  close_channel_down(Channel, ChanMRef),
 				  erlang:demonitor(PidMRef),
 				  case erlang:is_process_alive(Pid) of
@@ -265,18 +258,26 @@ close_host(Host, HostInfo) ->
 				      false -> ok
 				  end;
 			      false ->
+				  format_log(info, "AMQP_MGR.close_host: Tup ~p~n", [Tup]),
 				  ok
 			  end
-		  end, lists:keydelete(connection, 1, HostInfo)),
-    ConnUp andalso close_conn(Conn, Ref).
+		  end, Channels),
+    case ConnUp of
+	true -> close_conn(Conn, Ref);
+	false -> 
+	    format_log(info, "close host returning ok~n", []),
+	    ok
+    end.
 
 -spec(close_conn/2 :: (Conn :: pid(), Ref :: reference()) -> no_return()).
 close_conn(Conn, Ref) ->
     erlang:demonitor(Ref),
+    format_log(info, "AMQP_MGR(~p): Goodbye conn ~p~n", [self(), Conn]),
     amqp_connection:close(Conn, 200, <<"Goodbye">>).
 
--spec(close_channel_down/2 :: (Chan :: pid(), Ref :: reference()) -> none()).
+-spec(close_channel_down/2 :: (Chan :: pid(), Ref :: reference()) -> no_return()).
 close_channel_down(Chan, Ref) ->
+    format_log(info, "AMQP_MGR(~p): Shutting down channel ~p~n", [self(), Chan]),
     erlang:demonitor(Ref),
     try
 	case erlang:is_process_alive(Chan) of
@@ -284,7 +285,9 @@ close_channel_down(Chan, Ref) ->
 	    false -> ok
 	end
     catch
-	_:_ -> ok
+	_What:_Why ->
+	    format_log(error, "AMQP_MGR(~p): Exception when closing channel ~p: ~p:~p~n", [self(), Chan, _What, _Why]),
+	    ok
     end.
 
 -spec(create_amqp_params/1 :: (Host :: string()) -> tuple()).
@@ -292,7 +295,6 @@ create_amqp_params(Host) ->
     create_amqp_params(Host, 5672).
 -spec(create_amqp_params/2 :: (Host :: string(), Port :: integer()) -> tuple()).
 create_amqp_params(Host, Port) ->
-    format_log(info, "AMQP_MGR(~p): H: ~p P: ~p~n", [self(), Host, Port]),
     #'amqp_params'{
       port = Port
       ,host = Host
@@ -309,12 +311,12 @@ get_new_connection(#'amqp_params'{}=P) ->
 open_amqp_channel(Connection, Pid) ->
     %% Open an AMQP channel to access our realm
     {ok, Channel} = amqp_connection:open_channel(Connection),
-    format_log(info, "AMQP_MGR(~p): Open channel(~p) for ~p on conn ~p~n", [self(), Channel, Pid, Connection]),
 
     %% if a message is returned, we need to handle it
     amqp_channel:register_return_handler(Channel, Pid),
 
     #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
+    format_log(info, "AMQP_MGR(~p): Open channel(~p - ~p) for ~p on conn ~p~n", [self(), Channel, Ticket, Pid, Connection]),
 
     MRef = erlang:monitor(process, Pid),
     ChanMRef = erlang:monitor(process, Channel),

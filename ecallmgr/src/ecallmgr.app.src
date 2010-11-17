@@ -1,7 +1,7 @@
 {application, ecallmgr
  ,[
    {description, "Manage resource requests and interface with FreeSWITCH"}
-   ,{vsn, "0.4.0"}
+   ,{vsn, "0.5.0"}
    ,{registered, []}
    ,{applications
      ,[
@@ -19,6 +19,16 @@
 	      ,ecallmgr_sup
 	      ,ecallmgr_deps
 	      ,ecallmgr_req
+	      ,ecallmgr_fs_handler
+	      ,ecallmgr_fs_route
+	      ,ecallmgr_fs_auth
+	      ,ecallmgr_fs_node
+	      ,ecallmgr_call_command
+	      ,ecallmgr_call_control
+	      ,ecallmgr_call_events
+	      ,ecallmgr_diagnostics
+	      ,ecallmgr_media_registry
+	      ,resource_mgr
 	     ]
 	  }
     }

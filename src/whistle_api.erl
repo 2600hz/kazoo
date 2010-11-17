@@ -25,6 +25,9 @@
 %% Authentication and Routing
 -export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
 
+%% Resources
+-export([resource_req/1, resource_resp/1]).
+
 %% In-Call
 -export([call_event/1, error_resp/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
@@ -39,12 +42,14 @@
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
+	 ,resource_req_v/1, resource_resp_v/1
 	]).
 
 %% FS-specific routines
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 
--import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
+-import(props, [get_value/2, get_value/3]).
+-import(proplists, [delete/2, is_defined/2]).
 
 -include("whistle_api.hrl").
 
@@ -170,6 +175,38 @@ route_win(Prop) ->
 -spec(route_win_v/1 :: (Prop :: proplist()) -> boolean()).
 route_win_v(Prop) ->
     validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Resource Request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(resource_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+resource_req(Prop) ->
+    case resource_req_v(Prop) of
+	true -> build_message(Prop, ?RESOURCE_REQ_HEADERS, ?OPTIONAL_RESOURCE_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for resource_req"}
+    end.
+
+-spec(resource_req_v/1 :: (Prop :: proplist()) -> boolean()).
+resource_req_v(Prop) ->
+    validate(Prop, ?RESOURCE_REQ_HEADERS, ?RESOURCE_REQ_VALUES, ?RESOURCE_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Resource Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(resource_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+resource_resp(Prop) ->
+    case resource_resp_v(Prop) of
+	true -> build_message(Prop, ?RESOURCE_RESP_HEADERS, ?OPTIONAL_RESOURCE_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for resource_resp"}
+    end.
+
+-spec(resource_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+resource_resp_v(Prop) ->
+    validate(Prop, ?RESOURCE_RESP_HEADERS, ?RESOURCE_RESP_VALUES, ?RESOURCE_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener
@@ -548,12 +585,9 @@ build_message_specific(Prop, ReqH, OptH) ->
 -spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 headers_to_json(HeadersProp) ->
     try
-	JSON = mochijson2:encode({struct, HeadersProp}),
-	{ok, JSON}
+	{ok, mochijson2:encode({struct, HeadersProp})}
     catch
-	throw:E -> {error, io_lib:format("WHISTLE TO_JSON THROW ERROR: ~p~n~p", [E, HeadersProp])};
-	error:E -> {error, io_lib:format("WHISTLE TO_JSON ERROR: ~p~n~p", [E, HeadersProp])};
-	exit:E -> {error, io_lib:format("WHISTLE TO_JSON EXIT ERROR: ~p~n~p", [E, HeadersProp])}
+	_What:_Why -> {error, io_lib:format("WHISTLE TO_JSON ERROR(~p): ~p~n~p", [_What, _Why, HeadersProp])}
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing

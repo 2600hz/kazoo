@@ -24,7 +24,7 @@
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2, new_callmgr_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
 
--export([new_queue/1, new_queue/2, delete_queue/2, basic_consume/2, basic_consume/3
+-export([new_queue/1, new_queue/2, new_queue/3, delete_queue/2, basic_consume/2, basic_consume/3
 	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2
 	 ,channel_close/3, queue_delete/2, queue_delete/3]).
 
@@ -176,19 +176,25 @@ new_exchange(Host, Exchange, Type, _Options) ->
      },
     #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED).
 
+new_targeted_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{nowait, false}]);
 new_targeted_queue(Host, QueueName) ->
-    new_queue(Host, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName])
-	      ,[{nowait, false}]).
+    new_queue(Host, list_to_binary([?EXCHANGE_TARGETED, ".", QueueName]), [{nowait, false}]).
 
+new_broadcast_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{nowait, false}]);
 new_broadcast_queue(Host, QueueName) ->
-    new_queue(Host, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName])
-	      ,[{nowait, false}]).
+    new_queue(Host, list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName]), [{nowait, false}]).
 
+new_callevt_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callevt_queue(Host, CallId) ->
     new_queue(Host
 	      ,list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
+new_callctl_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(Host, CallId) ->
     new_queue(Host
 	      ,list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
@@ -199,22 +205,22 @@ new_callmgr_queue(Host, Queue) ->
 
 %% Declare a queue and returns the queue Name
 new_queue(Host) ->
-    new_queue(Host, <<"">>). % let's the client lib create a random queue name
+    new_queue(Host, <<>>). % let's the client lib create a random queue name
 new_queue(Host, Queue) ->
     new_queue(Host, Queue, []).
 new_queue(Host, Queue, Options) when is_list(Queue) ->
     new_queue(Host, list_to_binary(Queue), Options);
-new_queue(Host, Queue, _Options) ->
-    {ok, Channel, _Ticket} = amqp_manager:open_channel(self(), Host),
+new_queue(Host, Queue, Options) ->
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
     QD = #'queue.declare'{
-      %ticket = Ticket
-      queue = Queue
-      %,passive = get_value(passive, Options, false)
-      %,durable = get_value(durable, Options, false)
-      %,exclusive = get_value(exclusive, Options, true)
-      %,auto_delete = get_value(auto_delete, Options, true)
-      %,nowait = get_value(nowait, Options, false)
-      %,arguments = get_value(arguments, Options, [])
+      ticket = Ticket
+      ,queue = Queue
+      ,passive = get_value(passive, Options, false)
+      ,durable = get_value(durable, Options, false)
+      ,exclusive = get_value(exclusive, Options, true)
+      ,auto_delete = get_value(auto_delete, Options, true)
+      ,nowait = get_value(nowait, Options, false)
+      ,arguments = get_value(arguments, Options, [])
      },
     #'queue.declare_ok'{queue=Q} = amqp_channel:call(Channel, QD),
     Q.
@@ -231,8 +237,8 @@ delete_callctl_queue(Host, CallId) ->
 delete_callctl_queue(Host, CallId, Prop) ->
     delete_queue(Host, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]), Prop).
 
-delete_callmgr_queue(Host, CallId) ->
-    delete_queue(Host, << ?KEY_CALL_EVENT/binary, CallId/binary >>, []).
+delete_callmgr_queue(Host, Queue) ->
+    delete_queue(Host, Queue, []).
 
 delete_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
@@ -244,7 +250,7 @@ delete_queue(Host, Queue, Prop) ->
       ,queue=Queue
       ,if_unused = get_value(if_unused, Prop, false)
       ,if_empty = get_value(if_empty, Prop, false)
-      ,nowait = get_value(nowait, Prop, true)
+      ,nowait = get_value(nowait, Prop, false)
      },
     amqp_channel:call(Channel, QD).
 

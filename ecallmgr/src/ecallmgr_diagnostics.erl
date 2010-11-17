@@ -11,8 +11,9 @@
 -export([get_diagnostics/1]).
 
 -include("ecallmgr.hrl").
+-include("whistle_api.hrl").
 
--spec(get_diagnostics/1 :: (Stats :: tuple()) -> list(tuple(atom(), term()))).
+-spec(get_diagnostics/1 :: (Stats :: tuple()) -> proplist()).
 get_diagnostics(#handler_stats{}=Stats) ->
     [{lookups_success, Stats#handler_stats.lookups_success}
      ,{lookups_failed, Stats#handler_stats.lookups_failed}

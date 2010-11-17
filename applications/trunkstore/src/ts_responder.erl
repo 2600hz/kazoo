@@ -265,24 +265,20 @@ send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
 
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
 start_amqp(AHost) ->
-    CallmgrName = ["ts_responder.callmgr.", net_adm:localhost()],
-    TarName = ["ts_responder.callctl.", net_adm:localhost()],
-
     amqp_util:callmgr_exchange(AHost),
     amqp_util:targeted_exchange(AHost),
 
-    CallmgrQueue = amqp_util:new_callmgr_queue(AHost, CallmgrName),
-    TarQueue = amqp_util:new_targeted_queue(AHost, TarName),
+    CallmgrQueue = amqp_util:new_callmgr_queue(AHost, <<>>),
+    TarQueue = amqp_util:new_targeted_queue(AHost, <<>>),
 
     %% Bind the queue to an exchange
     amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
     amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
-    format_log(info, "TS_RESPONDER(~p): Bound ~p for ~p and ~p~n", [self(), CallmgrQueue, ?KEY_AUTH_REQ, ?KEY_ROUTE_REQ]),
     amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
 
     %% Register a consumer to listen to the queue
     amqp_util:basic_consume(AHost, CallmgrQueue),
     amqp_util:basic_consume(AHost, TarQueue),
 
-    format_log(info, "TS_RESPONDER(~p): Consuming on B(~p) and T(~p)~n", [self(), CallmgrQueue, TarQueue]),
+    format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p) and T(~p)~n", [self(), CallmgrQueue, TarQueue]),
     {ok, CallmgrQueue, TarQueue}.

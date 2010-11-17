@@ -14,7 +14,7 @@
 
 -module(freeswitch).
 
--export([send/2, api/3, api/2, bgapi/3, bgapi/4, event/2, session_event/2,
+-export([send/2, api/4, api/3, api/2, bgapi/3, bgapi/4, event/2, session_event/2,
 		nixevent/2, session_nixevent/2, noevents/1, session_noevents/1, close/1,
 		get_event_header/2, get_event_body/1,
 		get_event_name/1, getpid/1, sendmsg/3,
@@ -73,13 +73,16 @@ fetch_reply(Node, FetchID, Reply) ->
 %% @doc Make a blocking API call to FreeSWITCH. The result of the API call is
 %% returned or `timeout' if FreeSWITCH fails to respond.
 api(Node, Cmd, Args) ->
-	{api, Node} ! {api, Cmd, Args},
+    api(Node, Cmd, Args, ?TIMEOUT).
+
+api(Node, Cmd, Args, Timeout) ->
+    	{api, Node} ! {api, Cmd, Args},
 	receive
 		{ok, X} -> 
 			{ok, X};
 		{error, X} ->
 			{error, X}
-	after ?TIMEOUT ->
+	after Timeout ->
 		timeout
 	end.
 

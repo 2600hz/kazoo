@@ -12,12 +12,19 @@ reload_all_apps() ->
 reload_app(stdlib) -> ok;
 reload_app(kernel) -> ok;
 reload_app(App) ->
+    io:format("Reloading App ~p~n", [App]),
     {ok, Prop} = application:get_all_key(App),
-    Mods = proplist:get_value(module, Prop, []),
-    lists:foreach(fun(M) ->
-			  code:purge(M),
-			  code:load_file(M)
-		  end, Mods).
+    case proplists:get_value(mod, Prop, []) of
+	{_ModApp, Mods} ->
+	    lists:foreach(fun(M) ->
+				  io:format("Reloading Mod ~p~n", [M]),
+				  code:purge(M),
+				  code:load_file(M)
+			  end, Mods);
+	[] ->
+	    io:format("No Mods to reload~n", [])
+    end,
+    io:format("Reloading ~p Done...~n", [App]).
 
 to_hex(Bin) when is_binary(Bin) ->
     to_hex(binary_to_list(Bin));
