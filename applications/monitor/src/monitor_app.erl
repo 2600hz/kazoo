@@ -10,7 +10,9 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    monitor_sup:start_link().
+    monitor_master:start_link(),
+    monitor_agent_network:start_link().
+    %% monitor_sup:start_link().
 
 stop(_State) ->
     ok.

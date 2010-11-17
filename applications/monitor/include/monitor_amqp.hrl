@@ -5,7 +5,12 @@
 %%% @end
 %%% Created :  12 Nov 2010 by Karl Monitor <karl@2600hz.org>
 
+-include("./amqp_client/include/amqp_client.hrl").
+-include("../../../src/whistle_amqp.hrl").
+
 %% routing keys to use in the monitormgr exchange
--define(KEY_PING_REQ, <<"ping.req">>).
--define(KEY_SIP_OPTION_REQ, <<"sip.option.req">>).
--define(KEY_CALL_BASIC_REQ, <<"call.basic">>).
+-define(KEY_MONITOR_MASTER_REQ, <<"monitor.master.req">>).
+
+-define(KEY_AGENT_NET_REQ, <<"monitor.agent.req">>).
+-define(KEY_AGENT_SIP_REQ, <<"monitor.sip.req">>).
+-define(KEY_AGENT_CALL_REQ, <<"monitor.call.req">>).

@@ -20,7 +20,7 @@
 -module(monitor_api).
 
 %% API
--export([default_headers/5, extract_defaults/1]).
+-export([default_headers/3, extract_defaults/1]).
 
 %% Monitor Agent Ping
 -export([ping_req/1, ping_resp/1]).
@@ -30,7 +30,7 @@
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
--include("monitor_api.hrl").
+-include("../include/monitor_api.hrl").
 
 %%%===================================================================
 %%% API
@@ -42,13 +42,13 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec(default_headers/5 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary(), AppName :: binary(), AppVsn :: binary()) -> proplist()).
-default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
+-spec(default_headers/3 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()) -> proplist()).
+default_headers(ServerID, EvtCat, EvtName) ->
     [{<<"Server-ID">>, ServerID}
      ,{<<"Event-Category">>, EvtCat}
      ,{<<"Event-Name">>, EvtName}
-     ,{<<"App-Name">>, AppName}
-     ,{<<"App-Version">>, AppVsn}
+     ,{<<"App-Name">>, <<"monitor">>}
+     ,{<<"App-Version">>, <<"0.1.0">>}
     ].
 
 %%--------------------------------------------------------------------
@@ -67,7 +67,7 @@ extract_defaults(Prop) ->
 -spec(ping_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 ping_req(Prop) ->
     case ping_req_v(Prop) of
-	true -> build_message(Prop, ?PING_REQ_HEADERS, ?OPTIONAL_PING_REQ_HEADERS);
+	true -> build_message(Prop, ?PING_REQ_HEADERS, ?OPTIONAL_PING_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for ping_req"}
     end.
 
@@ -126,6 +126,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
 	    headers_to_json(Headers2)
     end;
 build_message_specific(Prop, ReqH, OptH) ->
+io:format("MARKER: ~p~n", [Prop]),
     build_message_specific({[], Prop}, ReqH, OptH).
 
 

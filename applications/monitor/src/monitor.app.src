@@ -4,8 +4,9 @@
   {vsn, "0.1"},
   {registered, []},
   {applications, [
-                  kernel,
-                  stdlib
+                  kernel
+                  ,stdlib
+                  ,whistle_amqp
                  ]},
   {mod, { monitor_app, []}},
   {env, []}

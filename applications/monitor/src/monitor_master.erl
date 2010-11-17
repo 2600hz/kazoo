@@ -2,7 +2,7 @@
 %%% @author Karl Anderson <karl@2600hz.com>
 %%% @copyright (C) 2010, Karl Anderson
 %%% @doc
-%%% Responsible for managing the whistle monitoring application
+%%% Responsible for managing the monitoring application
 %%% @end
 %%% Created : 11 Nov 2010 by Karl Anderson <karl@2600hz.com>
 %%%-------------------------------------------------------------------
@@ -12,6 +12,7 @@
 
 %% API
 -export([start_link/0]).
+-export([set_amqp_host/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -21,6 +22,13 @@
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
+
+-include("../include/monitor_amqp.hrl").
+
+-record(state, {
+        amqp_host = "" :: string()
+        ,monitor_q = <<>> :: binary()
+    }).
 
 %%%===================================================================
 %%% API
@@ -36,6 +44,8 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+set_amqp_host(AHost) ->
+    gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,8 +79,18 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
+    format_log(info, "MONITOR_MASTER(~p): Setting amqp host to ~p~n", [self(), AHost]),
+    {ok, Monitor_Q} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, monitor_q=Monitor_Q}};
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ}=State) ->
+    format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
+    amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
+    amqp_manager:close_channel(self(), CurrentAHost),
+    {ok, Monitor_Q} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, monitor_q=Monitor_Q}};
 handle_call(_Request, _From, State) ->
-    {reply, {error, unsupported}, State}.
+    {reply, ignored, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,26 +146,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
 start_amqp(AHost) ->
-    CallmgrName = ["monitor_responder.callmgr.", net_adm:localhost()],
-    TarName = ["ts_responder.callctl.", net_adm:localhost()],
+    amqp_util:monitor_exchange(AHost),
 
-    amqp_util:callmgr_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
-
-    CallmgrQueue = amqp_util:new_callmgr_queue(AHost, CallmgrName),
-    TarQueue = amqp_util:new_targeted_queue(AHost, TarName),
+    Monitor_Q = amqp_util:new_monitor_queue(AHost),
 
     %% Bind the queue to an exchange
-    amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
-    amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
-    format_log(info, "TS_RESPONDER(~p): Bound ~p for ~p and ~p~n", [self(), CallmgrQueue, ?KEY_AUTH_REQ, ?KEY_ROUTE_REQ]),
-    amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
+    format_log(info, "MONITOR_MASTER(~p): Bind ~p for ~p~n", [self(), Monitor_Q, ?KEY_MONITOR_MASTER_REQ]),
+    amqp_util:bind_q_to_monitor(AHost, Monitor_Q, ?KEY_MONITOR_MASTER_REQ),
 
     %% Register a consumer to listen to the queue
-    amqp_util:basic_consume(AHost, CallmgrQueue),
-    amqp_util:basic_consume(AHost, TarQueue),
+    format_log(info, "MONITOR_MASTER(~p): Consume on ~p~n", [self(), Monitor_Q]),
+    amqp_util:basic_consume(AHost, Monitor_Q),
 
-    format_log(info, "TS_RESPONDER(~p): Consuming on B(~p) and T(~p)~n", [self(), CallmgrQueue, TarQueue]),
-    {ok, CallmgrQueue, TarQueue}.
+    {ok, Monitor_Q}.

@@ -2,16 +2,18 @@
 %%% @author Karl Anderson <karl@2600hz.com>
 %%% @copyright (C) 2010, Karl Anderson
 %%% @doc
-%%% Responsible for managing the ping tasks
+%%% Responsible for runnning the network monitoring tasks
 %%% @end
 %%% Created : 11 Nov 2010 by Karl Anderson <karl@2600hz.com>
 %%%-------------------------------------------------------------------
--module(monitor_agent_ping).
+-module(monitor_agent_network).
 
 -behaviour(gen_server).
 
 %% API
 -export([start_link/0]).
+
+-export([set_amqp_host/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -22,12 +24,11 @@
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
--include("../../../src/whistle_amqp.hrl").
+-include("../include/monitor_amqp.hrl").
 
 -record(state, {
         amqp_host = "" :: string()
-        ,monitor_q = <<>> :: binary()
+        ,agent_q = <<>> :: binary()
     }).
 
 %%%===================================================================
@@ -41,8 +42,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(AHost) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [AHost], []).
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 set_amqp_host(AHost) ->
     gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
@@ -63,7 +64,7 @@ set_amqp_host(AHost) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, []}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -80,12 +81,17 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
-    format_log(info, "MONITOR_AGENT_PING(~p): Setting amqp host to ~p~n", [self(), AHost]),
-    {ok, MQ} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, monitor_q=MQ}};
-
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Setting amqp host to ~p~n", [self(), AHost]),
+    {ok, Agent_Q} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, agent_q=Agent_Q}};
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, agent_q=CurrentAgentQ}=State) ->
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
+    amqp_util:queue_delete(CurrentAHost, CurrentAgentQ),
+    amqp_manager:close_channel(self(), CurrentAHost),
+    {ok, Agent_Q} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, agent_q=Agent_Q}};
 handle_call(_Request, _From, State) ->
-    {reply, {error, unsupported}, State}.
+    {reply, ignored, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,6 +116,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', _Pid, Reason}, State) ->
+    format_log(error, "MONITOR_AGENT_NETWORK(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
+    {noreply, Reason, State};
+%% receive resource requests from Apps
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -124,7 +137,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{amqp_host=AHost, agent_q=Agent_Q}) ->
+    amqp_util:queue_delete(AHost, Agent_Q),
+    format_log(error, "MONITOR_AGENT_NETWORK~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -141,22 +156,45 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
 start_amqp(AHost) ->
-    MonitormgrName = ["agent_ping.monitormgr.", net_adm:localhost()],
+    amqp_util:monitor_exchange(AHost),
 
-    amqp_util:monitormgr_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
-
-    MonitormgrQueue = amqp_util:new_montiormgr_queue(AHost, MonitormgrName),
+    Agent_Q = amqp_util:new_monitor_queue(AHost),
 
     %% Bind the queue to an exchange
-    amqp_util:bind_q_to_monitormgr(AHost, MonitormgrQueue, ?KEY_PING_REQ),
-    format_log(info, "MONITOR_AGENT_PING(~p): Bound ~p for ~p~n", [self(), MonitormgrQueue, ?KEY_PING_REQ]),
-    amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p for ~p~n", [self(), Agent_Q, ?KEY_AGENT_NET_REQ]),
+    amqp_util:bind_q_to_monitor(AHost, Agent_Q, ?KEY_AGENT_NET_REQ),
 
     %% Register a consumer to listen to the queue
-    amqp_util:basic_consume(AHost, MonitormgrQueue),
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Consume on ~p~n", [self(), Agent_Q]),
+    amqp_util:basic_consume(AHost, Agent_Q),
 
-    format_log(info, "MONITOR_AGENT_PING(~p): Consuming on ~p~n", [self(), MonitormgrQueue]),
-    {ok, MonitormgrQueue}.
+    {ok, Agent_Q}.
+
+get_msg_type(Prop) ->
+    { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
+
+handle_req(ContentType, Payload, State) ->
+    case ContentType of
+    <<"application/json">> ->
+        {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+        format_log(info, "MONITOR_AGENT_NETWORK(~p): Recv CT: ~p~nPayload: ~p~n", [self(), ContentType, Prop]),
+        process_req(get_msg_type(Prop), Prop, State);
+    _ ->
+        format_log(info, "MONITOR_AGENT_NETWORK(~p): recieved unknown msg type: ~p~n", [self(), ContentType])
+    end.
+
+process_req({<<"task">>, <<"ping_req">>}, Prop, State) ->
+    case monitor_api:ping_req_v(Prop) of
+    false ->
+        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_req~n", [self()]);
+    true ->
+        Dest = get_value(<<"Destination">>, Prop),
+        RespQ = get_value(<<"Server-ID">>, Prop),
+        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Ping to ~p started~n", [self(), Dest]),
+        Resp = monitor_icmp:reachable(binary_to_list(Dest)),
+        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Ping to ~p returned ~p~n", [self(), Dest, Resp])
+    end,
+    State;
+process_req(_MsgType, _Prop, _State) ->
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
