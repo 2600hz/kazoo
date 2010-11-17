@@ -218,8 +218,8 @@ start_channel(N, Route, Amqp) ->
     Pid = get_value(node, N),
     Pid ! {resource_consume, self(), Route},
     receive
-	{resource_consumed, UUID, AvailableChan} ->
-	    send_uuid_to_app(Amqp, UUID),
+	{resource_consumed, UUID, CtlQ, AvailableChan} ->
+	    send_uuid_to_app(Amqp, UUID, CtlQ),
 	    {ok, AvailableChan};
 	{resource_error, E} ->
 	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
@@ -228,9 +228,8 @@ start_channel(N, Route, Amqp) ->
 	10000 -> {error, timeout}
     end.
 
--spec(send_uuid_to_app/2 :: (tuple(string(), proplist()), binary()) -> no_return()).
-send_uuid_to_app({Host, Prop}, UUID) ->
-    CtlQ = amqp_util:new_callctl_queue(Host, UUID),
+-spec(send_uuid_to_app/3 :: (Amqp :: tuple(string(), proplist()), UUID :: binary(), CtlQ :: binary()) -> no_return()).
+send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
     Msg = get_value(<<"Msg-ID">>, Prop),
     AppQ = get_value(<<"Server-ID">>, Prop),
     {ok, Vsn} = application:get_key(ecallmgr, vsn),

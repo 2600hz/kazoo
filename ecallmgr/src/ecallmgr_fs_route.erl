@@ -118,7 +118,7 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
 -spec(lookup_route/6 :: (Node :: atom(), HState :: tuple(), ID :: binary(), UUID :: binary(), FetchPid :: pid(), Data :: proplist()) ->
 			     no_return()).
 lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID, FetchPid, Data) ->
-    Q = bind_q(Host, ID),
+    Q = bind_q(Host),
     CtlQ = bind_channel_qs(Host, UUID, Node),
 
     DefProp = [{<<"Msg-ID">>, ID}
@@ -173,8 +173,9 @@ recv_response(ID) ->
 	    timeout
     end.
 
-bind_q(AmqpHost, ID) ->
-    Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
+-spec(bind_q/1 :: (AmqpHost :: binary()) -> Queue :: binary()).
+bind_q(AmqpHost) ->
+    Queue = amqp_util:new_targeted_queue(AmqpHost, <<>>),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),
     amqp_util:basic_consume(AmqpHost, Queue),
     Queue.
@@ -182,8 +183,7 @@ bind_q(AmqpHost, ID) ->
 %% creates the event and control queues for the call, spins up the event handler
 %% to pump messages to the queue, and returns the control queue
 bind_channel_qs(Host, UUID, Node) ->
-    CtlQueue = amqp_util:new_callctl_queue(Host, UUID),
-
+    CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
 
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
