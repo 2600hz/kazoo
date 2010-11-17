@@ -423,4 +423,4 @@
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>]).
 
--type proplist() :: list(tuple(atom() | binary(), (binary() | list() | fun()) )).
+-type proplist() :: list(tuple(atom() | binary(), (binary() | list() | fun() | integer()) )).

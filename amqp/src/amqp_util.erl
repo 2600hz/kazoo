@@ -68,6 +68,36 @@
 -define(EXCHANGE_CALLMGR, <<"callmgr">>).
 -define(TYPE_CALLMGR, <<"topic">>).
 
+%% Monitor Manager Exchange
+%% - monitor manager will publish requests to this exchange using routing keys
+%%   agents that want to handle certain messages will create a queue with the appropriate routing key
+%%   in the binding to receive the messages.
+%% - monitor manager publishes to the exchange with a routing key; consumers bind their queue with the
+%%   routing keys they want messages for.
+-export([monitor_exchange/1, monitor_publish/4]).
+-export([new_monitor_queue/1, delete_monitor_queue/2]).
+-export([bind_q_to_monitor/3]).
+
+-define(EXCHANGE_MONITOR, <<"monitor">>).
+-define(TYPE_MONITOR, <<"topic">>).
+
+monitor_publish(Host, Payload, ContentType, RoutingKey) ->
+    basic_publish(Host, ?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
+
+monitor_exchange(Host) ->
+    new_exchange(Host, ?EXCHANGE_MONITOR, ?TYPE_MONITOR).
+
+new_monitor_queue(Host) ->
+    new_queue(Host, <<"">>, [{exclusive, false}, {auto_delete, true}]).
+
+delete_monitor_queue(Host, Queue) ->
+    delete_queue(Host, Queue, []).
+
+bind_q_to_monitor(Host, Queue, Routing) ->
+    bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_MONITOR).
+
+
+
 %% Publish Messages to a given Exchange.Queue
 targeted_publish(Host, Queue, Payload) ->
     targeted_publish(Host, Queue, Payload, undefined).
@@ -163,6 +193,8 @@ new_callevt_queue(Host, CallId) ->
 	      ,list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
+new_callctl_queue(Host, <<>>) ->
+    new_queue(Host, <<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(Host, CallId) ->
     new_queue(Host
 	      ,list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])

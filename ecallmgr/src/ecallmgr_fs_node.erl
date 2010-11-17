@@ -55,8 +55,10 @@ start_handler(Node, Options, AmqpHost) ->
 	{error, _Err}=E -> E
     end.
 
+-spec(monitor_node/2 :: (Node :: atom(), S :: tuple()) -> no_return()).
 monitor_node(Node, #handler_state{}=S) ->
     %% do init
+    erlang:monitor_node(Node, true),
     freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT']),
     monitor_loop(Node, S).
 
@@ -117,9 +119,9 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
     case freeswitch:api(Node, originate, OrigStr, 10000) of
 	{ok, X} ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
-	    CallID =  binary:bin_to_list(X, {4, byte_size(X)-5}),
-	    start_call_handling(Node, Host, CallID),
-	    Pid ! {resource_consumed, CallID, AvailChan-1};
+	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
+	    CtlQ = start_call_handling(Node, Host, CallID),
+	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
 	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, Y]),
 	    Pid ! {resource_error, Y};
@@ -128,12 +130,15 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 	    Pid ! {resource_error, timeout}
     end.
 
+-spec(start_call_handling/3 :: (Node :: atom(), Host :: string(), UUID :: binary()) -> CtlQueue :: binary()).
 start_call_handling(Node, Host, UUID) ->
-    CtlQueue = amqp_util:new_callctl_queue(Host, UUID),
+    CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
-    ecallmgr_call_events:start(Node, UUID, Host, CtlPid).
+    ecallmgr_call_events:start(Node, UUID, Host, CtlPid),
+    CtlQueue.
 
+-spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).
 diagnostics(Pid, Stats) ->
     Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
     Pid ! Resp.

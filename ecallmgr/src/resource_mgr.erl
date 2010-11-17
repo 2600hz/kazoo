@@ -167,16 +167,21 @@ start_amqp(Host, OldHost, OldQ) ->
 -spec(handle_resource_req/2 :: (Payload :: binary(), AmqpHost :: string()) -> no_return()).
 handle_resource_req(Payload, AmqpHost) ->
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "RSCMGR.h_res_req(~p): Req: ~p~n", [self(), Prop]),
-    Options = get_request_options(Prop),
-    Nodes = get_resources(request_type(Prop), Options),
+    case whistle_api:resource_req_v(Prop) of
+	true ->
+	    format_log(info, "RSCMGR.h_res_req(~p): Req: ~p~n", [self(), Prop]),
+	    Options = get_request_options(Prop),
+	    Nodes = get_resources(request_type(Prop), Options),
 
-    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
-    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
-    Route = get_value(<<"Route">>, Prop),
-    start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min).
+	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
+	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
+	    Route = get_value(<<"Route">>, Prop),
+	    start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min);
+	false ->
+	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validated ~p~n", [self(), Prop])
+    end.
 
--spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
+-spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | list()).
 get_resources({<<"originate">>, <<"resource_req">>, <<"audio">>=Type}, Options) ->
     format_log(info, "RSCMGR.get_res(~p): Type ~p Options: ~p~n", [self(), Type, Options]),
     FSAvail = ecallmgr_fs_handler:request_resource(Type, Options), % merge other switch results into this list as well (eventually)
@@ -213,13 +218,13 @@ start_channels([N | Ns]=Nodes, Amqp, Route, Min, Max) ->
 	{error, _} -> start_channels(Ns, Amqp, Route, Min, Max)
     end.
 
--spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), Amqp :: tuple()) -> tuple(ok | error, term())).
+-spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), Amqp :: tuple()) -> tuple(ok, integer()) | tuple(error, term())).
 start_channel(N, Route, Amqp) ->
     Pid = get_value(node, N),
     Pid ! {resource_consume, self(), Route},
     receive
-	{resource_consumed, UUID, AvailableChan} ->
-	    send_uuid_to_app(Amqp, UUID),
+	{resource_consumed, UUID, CtlQ, AvailableChan} ->
+	    send_uuid_to_app(Amqp, UUID, CtlQ),
 	    {ok, AvailableChan};
 	{resource_error, E} ->
 	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
@@ -228,9 +233,8 @@ start_channel(N, Route, Amqp) ->
 	10000 -> {error, timeout}
     end.
 
--spec(send_uuid_to_app/2 :: (tuple(string(), proplist()), binary()) -> no_return()).
-send_uuid_to_app({Host, Prop}, UUID) ->
-    CtlQ = amqp_util:new_callctl_queue(Host, UUID),
+-spec(send_uuid_to_app/3 :: (Amqp :: tuple(string(), proplist()), UUID :: binary(), CtlQ :: binary()) -> no_return()).
+send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
     Msg = get_value(<<"Msg-ID">>, Prop),
     AppQ = get_value(<<"Server-ID">>, Prop),
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
@@ -258,7 +262,13 @@ sort_resources(PropA, PropB) ->
     UtilB = get_value(percent_utilized, PropB),
     case UtilA of
         UtilB ->                   % same utilization, use node with more available channels
-	    get_value(available_channels, PropA) > get_value(available_channels, PropB);
+	    ACA = get_value(available_channels, PropA),
+	    ACB = get_value(available_channels, PropB),
+	    case ACA of
+		ACB ->
+		    get_value(bias, PropA, 1) >= get_value(bias, PropB, 1);
+		_ -> false
+	    end;
 	X when X > UtilB -> false; % B is less utilized
-	_X -> true                  % A is less utilized
+	_X -> true                 % A is less utilized
     end.
