@@ -117,8 +117,7 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
     end.
 
 lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
-    format_log(info, "L/U.user(~p): Starting up...~nAH: ~p ID: ~p FetchPid: ~p~n", [self(), AmqpHost, ID, FetchPid]),
-    Q = bind_q(AmqpHost, ID),
+    Q = bind_q(AmqpHost),
 
     %% build req for rabbit
     Prop = [{<<"Msg-ID">>, ID}
@@ -171,12 +170,9 @@ recv_response(ID) ->
 	    timeout
     end.
 
--spec(bind_q/2 :: (AmqpHost :: binary(), ID :: binary()) -> binary()).
-bind_q(AmqpHost, ID) ->
-    amqp_util:targeted_exchange(AmqpHost),
-    amqp_util:callmgr_exchange(AmqpHost),
-    Queue = amqp_util:new_targeted_queue(AmqpHost, ID),
-    format_log(info, "L/U.user(~p): create targeted queue ~p~n", [self(), Queue]),
+-spec(bind_q/1 :: (AmqpHost :: binary()) -> Queue :: binary()).
+bind_q(AmqpHost) ->
+    Queue = amqp_util:new_targeted_queue(AmqpHost, <<>>),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),
     amqp_util:basic_consume(AmqpHost, Queue),
     Queue.

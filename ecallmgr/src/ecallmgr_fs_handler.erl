@@ -120,6 +120,8 @@
 -define(NODE_MOD, ecallmgr_fs_node).
 -define(NODE_MOD_POS, 5).
 
+-define(MAX_TIMEOUT_FOR_NODE_RESTART, 300000). % 5 minutes
+
 -define(START_HANDLERS, [fun start_auth_handler/3, fun start_route_handler/3, fun start_node_handler/3]).
 -define(HANDLER_POSS, [{?AUTH_MOD_POS, fun start_auth_handler/3}
 		       ,{?ROUTE_MOD_POS, fun start_route_handler/3}
@@ -281,8 +283,11 @@ handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
 	    {noreply, State};
 	N ->
 	    Node = element(1, N),
-	    close_node(N),
-	    {noreply, State#state{fs_nodes=lists:keydelete(Node, 1, Nodes)}}
+	    Opts = element(?OPTIONS_POS, N),
+	    erlang:monitor_node(Node, false),
+	    spawn(fun() -> watch_node_for_restart(Node, Opts) end),
+	    format_log(info, "FS_HANDLER(~p): Node ~p has gone down~n", [self(), Node]),
+	    {noreply, State}
     end;
 handle_info(_Info, State) ->
     format_log(info, "FS_HANDLER(~p): Unhandled Info: ~p~n", [self(), _Info]),
@@ -319,6 +324,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(watch_node_for_restart/2 :: (Node :: atom(), Opts :: proplist()) -> no_return()).
+watch_node_for_restart(Node, Opts) ->
+    watch_node_for_restart(Node, Opts, 1000).
+
+-spec(watch_node_for_restart/3 :: (Node :: atom(), Opts :: proplist(), Timeout :: integer()) -> no_return()).
+watch_node_for_restart(Node, Opts, Timeout) when Timeout > ?MAX_TIMEOUT_FOR_NODE_RESTART ->
+    is_node_up(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART);
+watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
+    is_node_up(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART);
+watch_node_for_restart(Node, Opts, Timeout) ->
+    is_node_up(Node, Opts, Timeout * 2).
+
+is_node_up(Node, Opts, Timeout) ->
+    lib:flush_receive(),
+    case net_adm:ping(Node) of
+	pong -> ?MODULE:add_fs_node(Node, Opts);
+	pang ->
+	    receive
+	    after
+		Timeout ->
+		    format_log(info, "FS_HANDLER.is_node_up(~p): ~p still down, trying again in ~p secs~n", [self(), Node, Timeout div 1000]),
+		    watch_node_for_restart(Node, Opts, Timeout)
+	    end
+    end.
+
 -spec(check_options/1 :: (Opts :: proplist()) -> proplist()).
 check_options([]) ->
     [{bias, 1}, {max_channels, 100}];
@@ -343,6 +373,7 @@ check_down_pid(Nodes, HPid, Host, [F | Fs], [Pos | Ps]) ->
     case restart_handler(Nodes, HPid, Pos, Host, F) of
 	Tuple when is_tuple(Tuple) ->
 	    Node = element(1, Tuple),
+	    erlang:monitor_node(Node, true),
 	    [Tuple | lists:keydelete(Node, 1, Nodes)];
 	false ->
 	    check_down_pid(Nodes, HPid, Host, Fs, Ps)
@@ -374,18 +405,22 @@ restart_handler(Nodes, HPid, Pos, Host, StartFun) ->
     end.
 
 %% query a pid for its diagnostics info
-diagnostics_query(Pid) ->
+-spec(diagnostics_query/1 :: (Pid :: pid()) -> tuple(ok, proplist()) | tuple(error, atom(), term())).
+diagnostics_query(Pid) when is_pid(Pid) ->
     case erlang:is_process_alive(Pid) of
 	true ->
 	    Pid ! {diagnostics, self()},
 	    receive
-		X -> X
+		X -> {ok, X}
 	    after
 		500 -> {error, timed_out, handler_busy}
 	    end;
 	false ->
 	    {error, not_responding, handler_down}
-    end.
+    end;
+diagnostics_query(X) ->
+    {error, handler_down, X}.
+
 
 -spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: tuple()) -> tuple(ok, tuple()) | tuple(tuple(error, atom()), tuple())).
 add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
@@ -475,7 +510,7 @@ start_handler(Node, Options, Host, Mod) ->
 	    {error, Why}
     end.
 
--spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(node_handlers()), Options :: proplist()) -> proplist()).
+-spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(node_handlers()), Options :: proplist()) -> list(proplist()) | list()).
 process_resource_request(<<"audio">>=Type, Nodes, Options) ->
     NodesResp = lists:map(fun(N) ->
 				  NodePid = element(?NODE_MOD_POS, N),
@@ -487,7 +522,7 @@ process_resource_request(<<"audio">>=Type, Nodes, Options) ->
 				  after 500 ->
 					  []
 				  end
-			  end,Nodes),
+			  end, Nodes),
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
     format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),
