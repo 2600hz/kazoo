@@ -119,7 +119,7 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', _Pid, Reason}, State) ->
     format_log(error, "MONITOR_AGENT_NETWORK(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
     {noreply, Reason, State};
-%% receive resource requests from Apps
+%% Spawn tasks to process the incomming requests
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
@@ -162,9 +162,12 @@ start_amqp(AHost) ->
 
     Agent_Q = amqp_util:new_monitor_queue(AHost),
 
-    %% Bind the queue to an exchange
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p for ~p~n", [self(), Agent_Q, ?KEY_AGENT_NET_REQ]),
+    %% Bind the queue to the targeted exchange
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p as a targeted queue~n", [self(), Agent_Q]),
     amqp_util:bind_q_to_targeted(AHost, Agent_Q),
+
+    %% Bind the queue to the topic exchange
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p for ~p~n", [self(), Agent_Q, ?KEY_AGENT_NET_REQ]),
     amqp_util:bind_q_to_monitor(AHost, Agent_Q, ?KEY_AGENT_NET_REQ),
 
     %% Register a consumer to listen to the queue

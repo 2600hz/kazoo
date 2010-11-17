@@ -1,6 +1,6 @@
 -module(monitor_test).
 
--export([ping/1]).
+-export([ping/1, ping/2]).
 
 -include("../include/monitor_amqp.hrl").
 
@@ -8,7 +8,10 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 ping(Dest) ->
-    {ok, Q} = start_amqp(),
+    ping (Dest, 1).
+
+ping(Dest, Count) ->
+    {ok, Q} = start_amqp(net_adm:localhost()),
 
     Api = [{<<"Event-Category">>, <<"task">>}
        ,{<<"Event-Name">>, <<"ping_req">>}
@@ -16,13 +19,13 @@ ping(Dest) ->
        ,{<<"App-Version">>, <<"0.1.0">>}
        ,{<<"Server-ID">>, Q}
        ,{<<"Msg-ID">>, <<"monitor-ping-test-id">>}
-       ,{<<"Destination">>, list_to_binary(Dest)}
-       ,{<<"Count">>, <<"1">>}
+       ,{<<"Destination">>, whistle_util:to_binary(Dest)}
+       ,{<<"Count">>, whistle_util:to_binary(Count)}
       ],
 
     {ok, JSON} = monitor_api:ping_req(Api),
     amqp_util:monitor_publish(net_adm:localhost(), JSON, <<"application/json">>, ?KEY_AGENT_NET_REQ),    
-    spawn(fun() -> loop(Q) end).
+    loop(Q).
 
 loop(Q) ->
     receive
@@ -38,17 +41,22 @@ loop(Q) ->
         format_log(info, "MONITOR_TEST(~p): goodbye cruel world~n", [self()])
     end.
 
-start_amqp() ->
-    amqp_util:targeted_exchange(net_adm:localhost()),
+start_amqp(AHost) ->
+    amqp_util:monitor_exchange(AHost),
+    amqp_util:targeted_exchange(AHost),
 
-    Agent_Q = amqp_util:new_monitor_queue(net_adm:localhost()),
+    Agent_Q = amqp_util:new_monitor_queue(AHost),
 
-    %% Bind the queue to an exchange
-    amqp_util:bind_q_to_targeted(net_adm:localhost(), Agent_Q),
-    amqp_util:bind_q_to_monitor(net_adm:localhost(), Agent_Q, <<"#">>),
+    %% Bind the queue to the targeted exchange
+    format_log(info, "MONITOR_TEST(~p): Bind ~p as a targeted queue~n", [self(), Agent_Q]),
+    amqp_util:bind_q_to_targeted(AHost, Agent_Q),
+
+    %% Bind the queue to the topic exchange
+    format_log(info, "MONITOR_TEST(~p): Bind ~p for <<\"#\">>~n", [self(), Agent_Q]),
+    amqp_util:bind_q_to_monitor(AHost, Agent_Q, <<"#">>),
 
     %% Register a consumer to listen to the queue
-    amqp_util:basic_consume(net_adm:localhost(), Agent_Q),
+    amqp_util:basic_consume(AHost, Agent_Q),
 
     {ok, Agent_Q}.
 

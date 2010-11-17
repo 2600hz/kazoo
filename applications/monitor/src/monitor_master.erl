@@ -148,8 +148,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 start_amqp(AHost) ->
     amqp_util:monitor_exchange(AHost),
+    amqp_util:targeted_exchange(AHost),
 
     Monitor_Q = amqp_util:new_monitor_queue(AHost),
+
+    %% Bind the queue to the targeted exchange
+    format_log(info, "MONITOR_MASTER(~p): Bind ~p as a targeted queue~n", [self(), Monitor_Q]),
+    amqp_util:bind_q_to_targeted(AHost, Monitor_Q),
 
     %% Bind the queue to an exchange
     format_log(info, "MONITOR_MASTER(~p): Bind ~p for ~p~n", [self(), Monitor_Q, ?KEY_MONITOR_MASTER_REQ]),
