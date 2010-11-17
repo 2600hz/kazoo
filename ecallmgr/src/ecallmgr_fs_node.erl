@@ -58,6 +58,7 @@ start_handler(Node, Options, AmqpHost) ->
 -spec(monitor_node/2 :: (Node :: atom(), S :: tuple()) -> no_return()).
 monitor_node(Node, #handler_state{}=S) ->
     %% do init
+    erlang:monitor_node(Node, true),
     freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT']),
     monitor_loop(Node, S).
 
