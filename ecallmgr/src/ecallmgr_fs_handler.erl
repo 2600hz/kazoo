@@ -475,7 +475,7 @@ start_handler(Node, Options, Host, Mod) ->
 	    {error, Why}
     end.
 
--spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(node_handlers()), Options :: proplist()) -> proplist()).
+-spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(node_handlers()), Options :: proplist()) -> list(proplist()) | list()).
 process_resource_request(<<"audio">>=Type, Nodes, Options) ->
     NodesResp = lists:map(fun(N) ->
 				  NodePid = element(?NODE_MOD_POS, N),
@@ -487,7 +487,7 @@ process_resource_request(<<"audio">>=Type, Nodes, Options) ->
 				  after 500 ->
 					  []
 				  end
-			  end,Nodes),
+			  end, Nodes),
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
     format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),

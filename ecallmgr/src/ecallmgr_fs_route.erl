@@ -173,7 +173,7 @@ recv_response(ID) ->
 	    timeout
     end.
 
--spec(bind_q/1 :: (AmqpHost :: binary()) -> Queue :: binary()).
+-spec(bind_q/1 :: (AmqpHost :: string()) -> Queue :: binary()).
 bind_q(AmqpHost) ->
     Queue = amqp_util:new_targeted_queue(AmqpHost, <<>>),
     amqp_util:bind_q_to_targeted(AmqpHost, Queue),

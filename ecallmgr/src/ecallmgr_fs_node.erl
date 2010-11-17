@@ -55,6 +55,7 @@ start_handler(Node, Options, AmqpHost) ->
 	{error, _Err}=E -> E
     end.
 
+-spec(monitor_node/2 :: (Node :: atom(), S :: tuple()) -> no_return()).
 monitor_node(Node, #handler_state{}=S) ->
     %% do init
     freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT']),
@@ -117,7 +118,7 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
     case freeswitch:api(Node, originate, OrigStr, 10000) of
 	{ok, X} ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
-	    CallID =  binary:bin_to_list(X, {4, byte_size(X)-5}),
+	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
 	    CtlQ = start_call_handling(Node, Host, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
