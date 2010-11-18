@@ -119,7 +119,7 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', _Pid, Reason}, State) ->
     format_log(error, "MONITOR_AGENT_NETWORK(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
     {noreply, Reason, State};
-%% receive resource requests from Apps
+%% Spawn tasks to process the incomming requests
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
@@ -158,10 +158,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 start_amqp(AHost) ->
     amqp_util:monitor_exchange(AHost),
+    amqp_util:targeted_exchange(AHost),
 
     Agent_Q = amqp_util:new_monitor_queue(AHost),
 
-    %% Bind the queue to an exchange
+    %% Bind the queue to the targeted exchange
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p as a targeted queue~n", [self(), Agent_Q]),
+    amqp_util:bind_q_to_targeted(AHost, Agent_Q),
+
+    %% Bind the queue to the topic exchange
     format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p for ~p~n", [self(), Agent_Q, ?KEY_AGENT_NET_REQ]),
     amqp_util:bind_q_to_monitor(AHost, Agent_Q, ?KEY_AGENT_NET_REQ),
 
@@ -173,6 +178,17 @@ start_amqp(AHost) ->
 
 get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
+
+get_msg_destination(Prop) ->
+        Dest = get_value(<<"Destination">>, Prop, <<"localhost">>),
+        binary_to_list(Dest).
+
+get_msg_count(Prop) ->
+        Count = get_value(<<"Count">>, Prop, <<"1">>),
+        case binary_to_list(Count) of
+            C when is_number(C) -> C;
+            _ -> 1
+        end.
 
 handle_req(ContentType, Payload, State) ->
     case ContentType of
@@ -189,12 +205,21 @@ process_req({<<"task">>, <<"ping_req">>}, Prop, State) ->
     false ->
         format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_req~n", [self()]);
     true ->
-        Dest = get_value(<<"Destination">>, Prop),
-        RespQ = get_value(<<"Server-ID">>, Prop),
-        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Ping to ~p started~n", [self(), Dest]),
-        Resp = monitor_icmp:reachable(binary_to_list(Dest)),
-        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Ping to ~p returned ~p~n", [self(), Dest, Resp])
+        Result = monitor_icmp:ping_test(get_msg_destination(Prop), get_msg_count(Prop)),
+        Resp = lists:map(fun({K,V}) -> {whistle_util:to_binary(K), whistle_util:to_binary(V)} end, Result),
+        create_send_resp(Resp, Prop, State)
     end,
     State;
 process_req(_MsgType, _Prop, _State) ->
     format_log(info, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
+
+create_send_resp(Resp, Prop, #state{amqp_host=AHost, agent_q=Agent_Q})->
+    RespQ = get_value(<<"Server-ID">>, Prop),
+    MsgID = get_value(<<"Msg-ID">>, Prop),
+    Default = monitor_api:default_headers(MsgID, Agent_Q, <<"task">>, <<"ping_resp">>),
+    {ok, JSON} = monitor_api:ping_resp(lists:append(Default, Resp)),
+    send_resp(JSON, RespQ, AHost).
+
+send_resp(JSON, RespQ, AHost) ->
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Sending to ~p~n", [self(), RespQ]),
+    amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).

@@ -8,4 +8,4 @@
               {modules,[logger,monitor,monitor_agent_network,
                         monitor_agent_ping,monitor_api,monitor_app,
                         monitor_deps,monitor_icmp,monitor_master,monitor_sup,
-                        monitor_test,props]}]}.
+                        monitor_test,props,whistle_util]}]}.
