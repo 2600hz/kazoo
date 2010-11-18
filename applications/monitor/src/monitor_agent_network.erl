@@ -202,12 +202,11 @@ handle_req(ContentType, Payload, State) ->
 
 process_req({<<"task">>, <<"ping_req">>}, Prop, State) ->
     case monitor_api:ping_req_v(Prop) of
-    false ->
-        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_req~n", [self()]);
     true ->
-        Result = monitor_icmp:ping_test(get_msg_destination(Prop), get_msg_count(Prop)),
-        Resp = lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, Result),
-        create_send_resp(Resp, Prop, State)
+        Resp = monitor_icmp:ping_test(get_msg_destination(Prop), get_msg_count(Prop)),
+        create_send_resp(Resp, Prop, State);
+    _ ->
+        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_req~n", [self()])
     end,
     State;
 process_req(_MsgType, _Prop, _State) ->
@@ -215,10 +214,10 @@ process_req(_MsgType, _Prop, _State) ->
 
 create_send_resp(Resp, Prop, #state{amqp_host=AHost, agent_q=Agent_Q})->
     RespQ = get_value(<<"Server-ID">>, Prop),
-    MsgID = get_value(<<"Msg-ID">>, Prop),
-    Default = monitor_api:default_headers(MsgID, Agent_Q, <<"task">>, <<"ping_resp">>),
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Creating reply for ~p~nPayload: ~p~n", [self(), RespQ, lists:append(Default, Resp)]),
-    {ok, JSON} = monitor_api:ping_resp(lists:append(Default, Resp)),
+    Defaults = monitor_util:prop_updates([{<<"Server-ID">>, Agent_Q}, {<<"Event-Name">>, <<"ping_resp">>}], Prop),
+    Headers = monitor_api:prepare_amqp_prop([Resp, Defaults]),
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Created reply headers:~nPayload:~p~n", [self(), Headers]),
+    {ok, JSON} = monitor_api:ping_resp(Headers),
     send_resp(JSON, RespQ, AHost).
 
 send_resp(JSON, RespQ, AHost) ->

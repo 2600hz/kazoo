@@ -20,7 +20,8 @@
 -module(monitor_api).
 
 %% API
--export([default_headers/4, extract_defaults/1]).
+-export([default_headers/4, default_headers/3, optional_default_headers/3]).
+-export([prepare_amqp_prop/1, extract_defaults/1]).
 
 %% Monitor Agent Ping
 -export([ping_req/1, ping_resp/1]).
@@ -42,8 +43,8 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec(default_headers/4 :: (MsgID :: binary(), ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()) -> proplist()).
-default_headers(MsgID, ServerID, EvtCat, EvtName) ->
+%% -spec(default_headers/4 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()), MsgID :: binary() -> proplist()).
+default_headers(ServerID, EvtCat, EvtName, MsgID) ->
     [
       {<<"Msg-ID">>, MsgID}
      ,{<<"Server-ID">>, ServerID}
@@ -53,6 +54,24 @@ default_headers(MsgID, ServerID, EvtCat, EvtName) ->
      ,{<<"App-Version">>, <<"0.1.0">>}
     ].
 
+-spec(default_headers/3 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()) -> proplist()).
+default_headers(ServerID, EvtCat, EvtName) ->
+    [
+      {<<"Msg-ID">>, monitor_util:to_binary(monitor_util:uuid())}
+     ,{<<"Server-ID">>, ServerID}
+     ,{<<"Event-Category">>, EvtCat}
+     ,{<<"Event-Name">>, EvtName}
+     ,{<<"App-Name">>, <<"monitor">>}
+     ,{<<"App-Version">>, <<"0.1.0">>}
+    ].
+
+optional_default_headers(Job_ID, Name, Iteration) ->
+    [
+      {"Task-Name", Name}
+     ,{"Job-ID", Job_ID}
+     ,{"Task-Iteration", Iteration}
+    ].
+
 %%--------------------------------------------------------------------
 %% @doc Extract just the default headers from a message
 %% @end
@@ -60,6 +79,12 @@ default_headers(MsgID, ServerID, EvtCat, EvtName) ->
 -spec(extract_defaults/1 :: (Prop :: proplist()) -> proplist()).
 extract_defaults(Prop) ->
     lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS).
+
+prepare_amqp_prop([{_, _}|_]=Prop) ->
+    lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, Prop);
+
+prepare_amqp_prop(ListOfPropLists) ->
+    lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, lists:append(ListOfPropLists)).
 
 %%--------------------------------------------------------------------
 %% @doc Monitor Agent Ping Request - see wiki

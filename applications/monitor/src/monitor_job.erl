@@ -41,7 +41,6 @@
 -record(task, {
         type = "" :: string()
         ,options = []
-        ,running = false
         ,iteration = 0 
     }).
 
@@ -175,7 +174,7 @@ handle_call({resume}, _From, #state{tref=CurrentTRef, interval=Interval, job_id=
 
 handle_call({add_task, [Name, Type, Options]}, _From, #state{tasks=Tasks, job_id=Job_ID}=State) ->
     Task = #task{type=Type, options=Options},
-    format_log(info, "MONITOR_JOB(~p): Job ~p added a new task ~p~n", [self(), Job_ID, Task]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p added a new task~n~p~n", [self(), Job_ID, Task]), 
     {reply, ok, State#state{tasks=[{Name, Task}|Tasks]}};
 
 handle_call({rm_task, Name}, _From, #state{tasks=Tasks, job_id=Job_ID}=State) ->
@@ -212,13 +211,19 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', _Pid, Reason}, State) ->
+    format_log(error, "MONITOR_JOB(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
+    {noreply, Reason, State};
+%% Spawn tasks to process the incomming responses
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    spawn(fun() -> handle_resp(Props#'P_basic'.content_type, Payload, State) end),
+    {noreply, State};
 handle_info({heartbeat}, #state{amqp_host="", job_id=Job_ID}=State) ->
     format_log(error, "MONITOR_JOB(~p): Job ~p woke up by timer, with no AMQP host! Snoozing...~n", [self(), Job_ID]), 
     {noreply, State};
 handle_info({heartbeat}, #state{tasks=Tasks, job_id=Job_ID}=State) ->
     format_log(info, "MONITOR_JOB(~p): Job ~p woke up by timer~n", [self(), Job_ID]), 
-    run_tasks(Tasks, State),
-    {noreply, State};
+    {noreply, run_tasks(Tasks, State)};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -287,25 +292,38 @@ type_to_routing_key(Type) ->
 
 run_tasks([], State) ->
     State;
-run_tasks([{Name, Task}|T], #state{amqp_host=AHost, job_id=Job_ID, job_q=Job_Q}=State)->
+run_tasks([{Name, Task}|T], #state{amqp_host=AHost, job_id=Job_ID, job_q=Job_Q, tasks=Tasks}=State)->
     format_log(info, "MONITOR_JOB(~p): Job ~p executing task ~p~n~p~n", [self(), Job_ID, Name, Task]),
-    case create_request(Task, Job_Q) of
-        {ok, JSON} -> send_req(AHost, JSON, type_to_routing_key(Task#task.type));
-        {error, Error} -> format_log(error, "MONITOR_JOB(~p): Create task request error ~p~n ", [self(), Error])
+    NewState = case create_req(Task, Job_Q, Name, Job_ID) of
+        {ok, JSON} -> 
+            send_req(AHost, JSON, type_to_routing_key(Task#task.type)),
+            State#state{tasks=[{Name, Task#task{iteration=Task#task.iteration+1}} | proplists:delete(Name, Tasks)]};
+        {error, Error} -> 
+            format_log(error, "MONITOR_JOB(~p): Create task request error ~p~n ", [self(), Error]),
+            State
     end,
-    run_tasks(T, State).
+    run_tasks(T, NewState).
+
+create_req(Task, Job_Q, Name, Job_ID) ->
+    Defaults = monitor_api:default_headers(Job_Q, <<"task">>, monitor_util:to_binary(Task#task.type)),
+    Details = monitor_api:optional_default_headers(Job_ID, Name, Task#task.iteration),
+    Headers = monitor_api:prepare_amqp_prop([Details, Defaults, Task#task.options]),
+    format_log(info, "MONITOR_JOB(~p): Created task headers:~n~p~n", [self(), Headers]),
+    case erlang:function_exported(monitor_api, list_to_atom(Task#task.type), 1) of
+        true -> apply(monitor_api, list_to_atom(Task#task.type), [Headers]);
+        _ -> {error, invalid_api}
+    end.
 
 send_req(AHost, JSON, RoutingKey) ->
     format_log(info, "MONITOR_JOB(~p): Sending request to ~p~n", [self(), RoutingKey]),
     amqp_util:monitor_publish(AHost, JSON, <<"application/json">>, RoutingKey).
 
-create_request(Task, Job_Q) ->
-    MsgID = <<"test-msg-id">>,
-    Default = monitor_api:default_headers(MsgID, Job_Q, <<"task">>, monitor_util:to_binary(Task#task.type)),
-    Req = lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, Task#task.options),
-    Headers = lists:append(Default, Req),
-    format_log(info, "MONITOR_JOB(~p): Created task headers:~n~p~n", [self(), Headers]),
-    case erlang:function_exported(monitor_api, list_to_atom(Task#task.type), 1) of
-        true -> apply(monitor_api, list_to_atom(Task#task.type), [Headers]);
-        _ -> {error, invalid_api}
+handle_resp(ContentType, Payload, State) ->
+    case ContentType of
+    <<"application/json">> ->
+        {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+        format_log(info, "MONITOR_JOB(~p): Recv CT: ~p~nPayload: ~p~n", [self(), ContentType, Prop]);
+        %% process_req(get_msg_type(Prop), Prop, State);
+    _ ->
+        format_log(info, "MONITOR_JOB(~p): recieved unknown msg type: ~p~n", [self(), ContentType])
     end.
