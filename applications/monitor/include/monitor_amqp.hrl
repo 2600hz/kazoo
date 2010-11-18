@@ -11,6 +11,6 @@
 %% routing keys to use in the monitormgr exchange
 -define(KEY_MONITOR_MASTER_REQ, <<"monitor.master.req">>).
 
--define(KEY_AGENT_NET_REQ, <<"monitor.agent.req">>).
+-define(KEY_AGENT_NET_REQ, <<"monitor.net.req">>).
 -define(KEY_AGENT_SIP_REQ, <<"monitor.sip.req">>).
 -define(KEY_AGENT_CALL_REQ, <<"monitor.call.req">>).

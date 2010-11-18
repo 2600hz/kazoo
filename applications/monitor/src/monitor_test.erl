@@ -19,8 +19,8 @@ ping(Dest, Count) ->
        ,{<<"App-Version">>, <<"0.1.0">>}
        ,{<<"Server-ID">>, Q}
        ,{<<"Msg-ID">>, <<"monitor-ping-test-id">>}
-       ,{<<"Destination">>, whistle_util:to_binary(Dest)}
-       ,{<<"Count">>, whistle_util:to_binary(Count)}
+       ,{<<"Destination">>, monitor_util:to_binary(Dest)}
+       ,{<<"Count">>, monitor_util:to_binary(Count)}
       ],
 
     {ok, JSON} = monitor_api:ping_req(Api),
