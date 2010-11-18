@@ -6,5 +6,6 @@
               {mod,{monitor_app,[]}},
               {env,[]},
               {modules,[logger,monitor,monitor_agent_network,monitor_api,
-                        monitor_app,monitor_deps,monitor_icmp,monitor_master,
-                        monitor_sup,monitor_test,props]}]}.
+                        monitor_app,monitor_deps,monitor_icmp,monitor_job,
+                        monitor_master,monitor_sup,monitor_test,monitor_util,
+                        props,whistle_util]}]}.

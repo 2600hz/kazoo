@@ -15,6 +15,7 @@
 
 %% Document manipulation
 -export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3]).
+-export([add_change_handler/2]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -35,10 +36,12 @@
 %% DBs = [{DbName, #db{}}]
 %% Views = [{ {DesignDoc, ViewName}, #view{}}]
 %% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
+%% ChangeHandlers :: [ {DocID, Pid}]
 -record(state, {
 	  connection = {} :: tuple(string(), tuple())
 	  ,dbs = [] :: list(tuple(string(), tuple()))
 	  ,views = [] :: list(tuple(tuple(string(), string()), tuple()))
+	  ,change_handlers = [] :: list(tuple(binary(), pid()))
 	 }).
 
 %%%===================================================================
@@ -68,19 +71,19 @@ open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
 open_doc(DbName, DocId, Options) ->
-    gen_server:call(?MODULE, {open_doc, to_list(DbName), to_binary(DocId), Options}, infinity).
+    gen_server:call(?MODULE, {open_doc, whistle_util:to_list(DbName), whistle_util:to_binary(DocId), Options}, infinity).
 
 %% add a K/V pair to a Document
 add_to_doc(Key, Value, Doc) ->
-    couchbeam_doc:extend(to_binary(Key), Value, Doc).
+    couchbeam_doc:extend(whistle_util:to_binary(Key), Value, Doc).
 
 %% remove a K from the Document
 rm_from_doc(Key, Doc) ->
-    couchbeam_doc:delete_value(to_binary(Key), Doc).
+    couchbeam_doc:delete_value(whistle_util:to_binary(Key), Doc).
 
 %% save a Document to the DB
 save_doc(DbName, Doc) ->
-    gen_server:call(?MODULE, {save_doc, to_list(DbName), Doc}, infinity).
+    gen_server:call(?MODULE, {save_doc, whistle_util:to_list(DbName), Doc}, infinity).
 
 %% get the results of the view
 %% {Total, Offset, Meta, Rows}
@@ -89,7 +92,11 @@ get_all_results(DbName, DesignDoc) ->
 
 %% {Total, Offset, Meta, Rows}
 get_results(DbName, DesignDoc, ViewOptions) ->
-    gen_server:call(?MODULE, {get_results, to_list(DbName), DesignDoc, ViewOptions}, infinity).
+    gen_server:call(?MODULE, {get_results, whistle_util:to_list(DbName), DesignDoc, ViewOptions}, infinity).
+
+
+add_change_handler(DBName, DocID) ->
+    gen_server:call(?MODULE, {add_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -178,6 +185,26 @@ handle_call({set_host, Host}, _From, State) ->
 	{_Host, _Conn}=HC ->
 	    {reply, ok, State#state{connection=HC,  dbs=[], views=[]}}
     end;
+handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{connection={_H, Conn}, dbs=DBs, change_handlers=CH}=State) ->
+    case get_value(DocID, CH) of
+	undefined ->
+	    case get_db(DBName, Conn, DBs) of
+		{{error, _Err}=E, _DBs} ->
+		    {reply, E, State};
+		{Db, _DBs1} ->
+		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"}
+								      ,{filter, <<"filter/by_doc">>}
+								      ,{name, DocID}
+								      %% don't include these last two params if you want a stream
+								      %% of changes for the whole DB
+								     ]),
+		    format_log(info, "TS_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
+		    {reply, ok, State#state{change_handlers=[{DocID, Pid} | CH]}}
+	    end;
+	Pid ->
+	    format_log(info, "TS_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+	    {reply, {error, handler_exists}, State}
+    end;
 handle_call(_Request, _From, State) ->
     format_log(error, "TS_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
     {reply, {error, unhandled_call}, State}.
@@ -205,6 +232,31 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({ReqID, done}, State) ->
+    format_log(info, "TS_COUCH.wait(~p): DONE~n", [self()]),
+    {noreply, State};
+handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
+    DocID = get_value(<<"id">>, Change),
+    case get_value(DocID, CH) of
+	undefined ->
+	    format_log(info, "TS_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
+	    {noreply, State};
+	Pid when is_pid(Pid) ->
+	    case get_value(<<"deleted">>, Change) of
+		true ->
+		    format_log(info, "TS_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
+		    Pid ! {document_deleted, DocID}; % document deleted, no more looping
+		undefined ->
+		    format_log(info, "TS_COUCH.wait(~p): ~p change sent to ~p~n", [self(), DocID, Pid]),
+		    Pid ! {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))},
+		    {noreply, State}
+	    end;
+	_Other ->
+	    format_log(error, "Error ~p~n", [_Other])
+    end;
+handle_info({ReqID, {error, E}}, State) ->
+    format_log(info, "TS_COUCH.wait(~p): ERROR ~p~n", [self(), E]),
+    {noreply, State};
 handle_info({'DOWN', _MRefConn, process, _Pid, _Reason}, State) ->
     format_log(error, "TS_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),
     {noreply, State};
@@ -291,19 +343,3 @@ get_view(Db, DesignDoc, ViewOptions, Views) ->
 		    {View, [{{Db, DesignDoc, ViewOptions}, View} | Views]}
 	    end
     end.
-
--spec(to_list/1 :: (X :: atom() | list() | binary()) -> list()).
-to_list(X) when is_binary(X) ->
-    binary_to_list(X);
-to_list(X) when is_atom(X) ->
-    atom_to_list(X);
-to_list(X) when is_list(X) ->
-    X.
-
--spec(to_binary/1 :: (X :: atom() | list() | binary()) -> binary()).
-to_binary(X) when is_atom(X) ->
-    list_to_binary(atom_to_list(X));
-to_binary(X) when is_list(X) ->
-    list_to_binary(X);
-to_binary(X) when is_binary(X) ->
-    X.

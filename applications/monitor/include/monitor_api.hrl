@@ -26,9 +26,19 @@
 
 %% Monitor Ping Respons
 -define(PING_RESP_HEADERS, [<<"Success">>]).
--define(OPTIONAL_PING_RESP_HEADERS, []).
+-define(OPTIONAL_PING_RESP_HEADERS, [<<"Target">>
+             ,<<"TX">>
+             ,<<"RX">>
+             ,<<"Loss">>
+             ,<<"Time">>
+             ,<<"Min">>
+             ,<<"Avg">>
+             ,<<"Max">>
+             ,<<"Mdev">>
+             ,<<"Host">>    
+            ]).
 -define(PING_RESP_VALUES, [{<<"Event-Category">>, <<"task">>}
-              ,{<<"Event-Name">>, <<"ping_req">>}
+              ,{<<"Event-Name">>, <<"ping_resp">>}
               ,{<<"Success">>, [<<"true">>, <<"false">>]}
              ]).
 -define(PING_RESP_TYPES, [{<<"Success">>, fun is_binary/1}]).
