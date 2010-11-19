@@ -63,7 +63,6 @@ force_carrier_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    timer:send_interval(?REFRESH_RATE, refresh),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -117,6 +116,20 @@ handle_info(refresh, OldCarriers) ->
 	    format_log(error, "TS_CARRIER(~p): Error getting carriers: ~p~n", [self(), _Err]),
 	    {noreply, OldCarriers}
     end;
+handle_info({document_changes, DocID, Changes}, Carriers) ->
+    format_log(info, "TS_CARRIER(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
+    CurrRev = get_value(<<"_rev">>, Carriers),
+    ChangedCarriers = lists:foldl(fun(ChangeProp, Cs) ->
+					  case get_value(<<"rev">>, ChangeProp) of
+					      undefined -> Cs;
+					      CurrRev -> Cs;
+					      _ ->
+						  {ok, NewCarriers} = get_current_carriers(),
+						  NewCarriers
+					  end
+				  end, Carriers, Changes),
+    format_log(info, "TS_CARRIER(~p): Changed carriers from ~p to ~p~n", [self(), CurrRev, get_value(<<"_rev">>, ChangedCarriers)]),
+    {noreply, ChangedCarriers};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -161,6 +174,7 @@ get_current_carriers() ->
 	    {error, "No matching carriers"};
 	Carriers when is_list(Carriers) ->
 	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Carriers)]),
+	    ts_couch:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
 	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))};
 	Other ->
 	    format_log(error, "TS_CARRIER(~p): Unexpected error ~p~n", [self(), Other]),
@@ -168,12 +182,14 @@ get_current_carriers() ->
     end.
 
 active_carriers({<<"_id">>, _}) ->
-    false;
+    true;
 active_carriers({<<"_rev">>, _}) ->
-    false;
+    true;
 active_carriers({_CarrierName, {CarrierOptions}}) ->
     get_value(<<"enabled">>, CarrierOptions) =:= <<"1">>.
 
+process_carriers({<<"_id">>, _}=ID) -> ID;
+process_carriers({<<"_rev">>, _}=Rev) -> Rev;
 process_carriers({CarrierName, {CarrierOptions}}) ->
     RoutesRegexStrs = get_value(<<"routes">>, CarrierOptions, []),
     RouteRegexs = lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs),

@@ -62,7 +62,6 @@ force_rate_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    timer:send_interval(?REFRESH_RATE, refresh),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -116,6 +115,21 @@ handle_info(refresh, OldRates) ->
 	    format_log(error, "TS_CREDIT(~p): Error getting rates: ~p~n", [self(), _Err]),
 	    {noreply, OldRates}
     end;
+handle_info({document_changes, DocID, Changes}, Rates) ->
+    format_log(info, "TS_CREDIT(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
+    CurrRev = get_value(<<"_rev">>, Rates),
+    ChangedRates = lists:foldl(fun(ChangeProp, Rs) ->
+				       NewRev = get_value(<<"rev">>, ChangeProp),
+				       case NewRev of
+					   undefined -> Rs;
+					   CurrRev -> Rs;
+					   _ ->
+					       {ok, NewRates} = get_current_rates(),
+					       NewRates
+				       end
+			       end, Rates, Changes),
+    format_log(info, "TS_CREDIT(~p): Changed rates from ~p to ~p~n", [self(), CurrRev, get_value(<<"_rev">>, ChangedRates)]),
+    {noreply, ChangedRates};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -160,16 +174,15 @@ get_current_rates() ->
 	    {error, "No matching rates"};
 	Rates when is_list(Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
+	    ts_couch:add_change_handler(?TS_DB, ?TS_RATES_DOC),
 	    {ok, lists:map(fun process_rates/1, Rates)};
 	Error ->
 	    format_log(error, "TS_CREDIT(~p): Fail ~p~n", [self(), Error]),
 	    {error, "Unknown error occurred"}
     end.
 
-process_rates({<<"_id">>, _}=ID) ->
-    ID;
-process_rates({<<"_rev">>, _}=Rev) ->
-    Rev;
+process_rates({<<"_id">>, _}=ID) -> ID;
+process_rates({<<"_rev">>, _}=Rev) -> Rev;
 process_rates({RouteName, {RouteOptions}}) ->
     RoutesRegexStrs = get_value(<<"routes">>, RouteOptions, []),
     {Options} = get_value(<<"options">>, RouteOptions, {[]}),
