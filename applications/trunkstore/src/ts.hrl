@@ -35,13 +35,14 @@
 	  ,flat_rate_enabled = false :: boolean()        % is this a flat-rate eligible call - only if trunks are available
           ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX"
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
-	  ,inbound_rate = 0.0 :: float()                 % rate for the inbound leg
+	  ,inbound_rate = 0.0 :: float()                 % rate for the inbound leg, per minute
 	  ,inbound_rate_increment = 60 :: integer()      % time, in sec, to bill per
           ,inbound_rate_minimum = 60 :: integer()        % time, in sec, to bill as a minimum
 	  ,inbound_surcharge = 0.0 :: float()            % rate to charge up front
-	  ,outbound_rate = 0.0 :: float()                % rate for the outbound leg
+	  ,outbound_rate = 0.0 :: float()                % rate for the outbound leg, per minute
 	  ,outbound_rate_increment = 60 :: integer()     % time, in sec, to bill per
           ,outbound_rate_minimum = 60 :: integer()       % time, in sec, to bill as a minimum
 	  ,outbound_surcharge = 0.0 :: float()           % rate to charge up front
 	  ,route_options = [] :: list()                  % options required to be handled by carriers
+	  ,account_doc = [] :: proplist()                % the full Couch document
 	 }).
