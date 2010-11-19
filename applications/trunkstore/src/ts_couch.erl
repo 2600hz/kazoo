@@ -15,7 +15,7 @@
 
 %% Document manipulation
 -export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3]).
--export([add_change_handler/2]).
+-export([add_change_handler/2, rm_change_handler/1]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -74,16 +74,21 @@ open_doc(DbName, DocId, Options) ->
     gen_server:call(?MODULE, {open_doc, whistle_util:to_list(DbName), whistle_util:to_binary(DocId), Options}, infinity).
 
 %% add a K/V pair to a Document
+-spec(add_to_doc/3 :: (Key :: binary(), Value :: term(), Doc :: proplist()) -> proplist()).
 add_to_doc(Key, Value, Doc) ->
-    couchbeam_doc:extend(whistle_util:to_binary(Key), Value, Doc).
+    {Doc1} = couchbeam_doc:extend(whistle_util:to_binary(Key), Value, {Doc}),
+    Doc1.
 
 %% remove a K from the Document
+-spec(rm_from_doc/2 :: (Key :: binary(), Doc :: proplist()) -> proplist()).
 rm_from_doc(Key, Doc) ->
-    couchbeam_doc:delete_value(whistle_util:to_binary(Key), Doc).
+    {Doc1} = couchbeam_doc:delete_value(whistle_util:to_binary(Key), {Doc}),
+    Doc1.
 
 %% save a Document to the DB
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> proplist()).
 save_doc(DbName, Doc) ->
-    gen_server:call(?MODULE, {save_doc, whistle_util:to_list(DbName), Doc}, infinity).
+    gen_server:call(?MODULE, {save_doc, whistle_util:to_list(DbName), {Doc}}, infinity).
 
 %% get the results of the view
 %% {Total, Offset, Meta, Rows}
@@ -94,9 +99,11 @@ get_all_results(DbName, DesignDoc) ->
 get_results(DbName, DesignDoc, ViewOptions) ->
     gen_server:call(?MODULE, {get_results, whistle_util:to_list(DbName), DesignDoc, ViewOptions}, infinity).
 
-
 add_change_handler(DBName, DocID) ->
     gen_server:call(?MODULE, {add_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).
+
+rm_change_handler(DocID) ->
+    gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_binary(DocID)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -167,7 +174,8 @@ handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs
 	{{error, _Err}=E, _DBs} ->
 	    {reply, E, State};
 	{Db, DBs1} ->
-	    {reply, couchbeam:save_doc(Db, Doc), State#state{dbs=DBs1}}
+	    {ok, {Doc1}} = couchbeam:save_doc(Db, Doc),
+	    {reply, {ok, Doc1}, State#state{dbs=DBs1}}
     end;
 handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) ->
     format_log(info, "TS_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
@@ -175,7 +183,7 @@ handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) 
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    {reply, ok, State#state{connection=HC,  dbs=[], views=[]}}
+	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
     end;
 handle_call({set_host, Host}, _From, State) ->
     format_log(info, "TS_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
@@ -183,11 +191,11 @@ handle_call({set_host, Host}, _From, State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    {reply, ok, State#state{connection=HC,  dbs=[], views=[]}}
+	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
     end;
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{connection={_H, Conn}, dbs=DBs, change_handlers=CH}=State) ->
-    case get_value(DocID, CH) of
-	undefined ->
+    case lists:keyfind(DocID, 1, CH) of
+	false ->
 	    case get_db(DBName, Conn, DBs) of
 		{{error, _Err}=E, _DBs} ->
 		    {reply, E, State};
@@ -199,11 +207,31 @@ handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{connection=
 								      %% of changes for the whole DB
 								     ]),
 		    format_log(info, "TS_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
-		    {reply, ok, State#state{change_handlers=[{DocID, Pid} | CH]}}
+		    link(Pid),
+		    {reply, ok, State#state{change_handlers=[{DocID, ReqID, [Pid]} | CH]}}
 	    end;
-	Pid ->
-	    format_log(info, "TS_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
-	    {reply, {error, handler_exists}, State}
+	{DocID, ReqID, Pids} ->
+	    case lists:member(Pid, Pids) of
+		false ->
+		    {reply, ok, State#state{change_handlers=[{DocID, ReqID, [Pid | Pids]} | lists:keydelete(DocID, 1, CH)]}};
+		true ->
+		    format_log(info, "TS_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+		    {reply, {error, handler_exists}, State}
+	    end
+    end;
+handle_call({rm_change_handler, DocID}, {From, _Ref}, #state{change_handlers=CH}=State) ->
+    case lists:keyfind(DocID, 1, CH) of
+	false ->
+	    {reply, ok, State};
+	{DocID, ReqID, Pids} when is_list(Pids) ->
+	    CH1 = case lists:delete(From, Pids) of
+		      [] ->
+			  %% unreg from couchbeam
+			  lists:keydelete(DocID, 1, CH);
+		      Pids1 ->
+			  [ {DocID, ReqID, Pids1} | lists:keydelete(DocID, 1, CH)]
+		  end,
+	    {reply, ok, State#state{change_handlers=CH1}}
     end;
 handle_call(_Request, _From, State) ->
     format_log(error, "TS_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
@@ -232,37 +260,37 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({ReqID, done}, State) ->
+handle_info({_ReqID, done}, State) ->
     format_log(info, "TS_COUCH.wait(~p): DONE~n", [self()]),
     {noreply, State};
-handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
+handle_info({_ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-    case get_value(DocID, CH) of
-	undefined ->
+    case lists:keyfind(DocID, 1, CH) of
+	false ->
 	    format_log(info, "TS_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
-	Pid when is_pid(Pid) ->
-	    case get_value(<<"deleted">>, Change) of
-		true ->
-		    format_log(info, "TS_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
-		    Pid ! {document_deleted, DocID}; % document deleted, no more looping
-		undefined ->
-		    format_log(info, "TS_COUCH.wait(~p): ~p change sent to ~p~n", [self(), DocID, Pid]),
-		    Pid ! {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))},
-		    {noreply, State}
-	    end;
-	_Other ->
-	    format_log(error, "Error ~p~n", [_Other])
+	{DocID, _ReqID, Pids} ->
+	    SendToPid = case get_value(<<"deleted">>, Change) of
+			    true ->
+				format_log(info, "TS_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
+				{document_deleted, DocID}; % document deleted, no more looping
+			    undefined ->
+				format_log(info, "TS_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
+				{document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
+			end,
+	    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids),
+	    {noreply, State}
     end;
-handle_info({ReqID, {error, E}}, State) ->
+handle_info({_ReqID, {error, E}}, State) ->
     format_log(info, "TS_COUCH.wait(~p): ERROR ~p~n", [self(), E]),
     {noreply, State};
 handle_info({'DOWN', _MRefConn, process, _Pid, _Reason}, State) ->
     format_log(error, "TS_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),
     {noreply, State};
-handle_info({'EXIT', _Pid, _Reason}, State) ->
-    format_log(error, "TS_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), _Pid, _Reason]),
-    {noreply, State};
+handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
+    format_log(error, "TS_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
+    CH1 = lists:map(fun({_DocID, _ReqID, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
+    {noreply, State#state{change_handlers=CH1}};
 handle_info(_Info, State) ->
     format_log(error, "TS_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
     {noreply, State}.
