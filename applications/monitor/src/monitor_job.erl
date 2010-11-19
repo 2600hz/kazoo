@@ -284,9 +284,9 @@ get_job_name(Job_ID) ->
 
 type_to_routing_key(Type) ->
     case Type of 
-        "ping_req" -> ?KEY_AGENT_NET_REQ;
-        "sip_option" -> ?KEY_AGENT_SIP_REQ;
-        "basic_call" -> ?KEY_AGENT_CALL_REQ;
+        "ping_net_req" -> ?KEY_AGENT_NET_REQ;
+        "option_sip_req" -> ?KEY_AGENT_SIP_REQ;
+        "basic_call_req" -> ?KEY_AGENT_CALL_REQ;
         _ -> undefined
     end.
 
@@ -308,7 +308,7 @@ create_req(Task, Job_Q, Name, Job_ID) ->
     Defaults = monitor_api:default_headers(Job_Q, <<"task">>, monitor_util:to_binary(Task#task.type)),
     Details = monitor_api:optional_default_headers(Job_ID, Name, Task#task.iteration),
     Headers = monitor_api:prepare_amqp_prop([Details, Defaults, Task#task.options]),
-    format_log(info, "MONITOR_JOB(~p): Created task headers:~n~p~n", [self(), Headers]),
+    format_log(info, "MONITOR_JOB(~p): Created task headers:~nPayload: ~p~n", [self(), Headers]),
     case erlang:function_exported(monitor_api, list_to_atom(Task#task.type), 1) of
         true -> apply(monitor_api, list_to_atom(Task#task.type), [Headers]);
         _ -> {error, invalid_api}

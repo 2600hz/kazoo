@@ -24,10 +24,10 @@
 -export([prepare_amqp_prop/1, extract_defaults/1]).
 
 %% Monitor Agent Ping
--export([ping_req/1, ping_resp/1]).
+-export([ping_net_req/1, ping_net_resp/1]).
 
 %% Validation functions
--export([ping_req_v/1, ping_resp_v/1]).
+-export([ping_net_req_v/1, ping_net_resp_v/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
@@ -91,32 +91,32 @@ prepare_amqp_prop(ListOfPropLists) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(ping_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
-ping_req(Prop) ->
-    case ping_req_v(Prop) of
-	true -> build_message(Prop, ?PING_REQ_HEADERS, ?OPTIONAL_PING_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for ping_req"}
+-spec(ping_net_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+ping_net_req(Prop) ->
+    case ping_net_req_v(Prop) of
+	true -> build_message(Prop, ?PING_NET_REQ_HEADERS, ?OPTIONAL_PING_NET_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for ping_net_req"}
     end.
 
--spec(ping_req_v/1 :: (Prop :: proplist()) -> boolean()).
-ping_req_v(Prop) ->
-    validate(Prop, ?PING_REQ_HEADERS, ?PING_REQ_VALUES, ?PING_REQ_TYPES).
+-spec(ping_net_req_v/1 :: (Prop :: proplist()) -> boolean()).
+ping_net_req_v(Prop) ->
+    validate(Prop, ?PING_NET_REQ_HEADERS, ?PING_NET_REQ_VALUES, ?PING_NET_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Monitor Agent Ping Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(ping_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
-ping_resp(Prop) ->
-    case ping_resp_v(Prop) of
-	true -> build_message(Prop, ?PING_RESP_HEADERS, ?OPTIONAL_PING_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for ping_resp"}
+-spec(ping_net_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+ping_net_resp(Prop) ->
+    case ping_net_resp_v(Prop) of
+	true -> build_message(Prop, ?PING_NET_RESP_HEADERS, ?OPTIONAL_PING_NET_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for ping_net_resp"}
     end.
 
--spec(ping_resp_v/1 :: (Prop :: proplist()) -> boolean()).
-ping_resp_v(Prop) ->
-    validate(Prop, ?PING_RESP_HEADERS, ?PING_RESP_VALUES, ?PING_RESP_TYPES).
+-spec(ping_net_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+ping_net_resp_v(Prop) ->
+    validate(Prop, ?PING_NET_RESP_HEADERS, ?PING_NET_RESP_VALUES, ?PING_NET_RESP_TYPES).
 
 %%%===================================================================
 %%% Internal functions
