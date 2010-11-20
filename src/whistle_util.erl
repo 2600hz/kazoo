@@ -14,15 +14,15 @@ reload_app(kernel) -> ok;
 reload_app(App) ->
     io:format("Reloading App ~p~n", [App]),
     {ok, Prop} = application:get_all_key(App),
-    case proplists:get_value(mod, Prop, []) of
-	{_ModApp, Mods} ->
+    case proplists:get_value(modules, Prop, []) of
+	[] ->
+	    io:format("No Mods to reload~n", []);
+	Mods ->
 	    lists:foreach(fun(M) ->
 				  io:format("Reloading Mod ~p~n", [M]),
 				  code:purge(M),
 				  code:load_file(M)
-			  end, Mods);
-	[] ->
-	    io:format("No Mods to reload~n", [])
+			  end, Mods)
     end,
     io:format("Reloading ~p Done...~n", [App]).
 

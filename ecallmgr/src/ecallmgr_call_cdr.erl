@@ -17,10 +17,26 @@
 
 -type proplist() :: list(tuple(binary(), (binary() | list() | fun()) )).
 
--define(APPNAME, <<"ecallmgr.call.event">>).
+-define(APPNAME, <<"ecallmgr.call.cdr">>).
 -define(APPVER, <<"0.2.0">>).
--define(EVENT_CAT, <<"Call-Detail">>).
--define(EVENT_NAME, <<"CDR">>).
+-define(EVENT_CAT, <<"call-detail">>).
+-define(EVENT_NAME, <<"cdr">>).
+
+-define(FS_TO_WHISTLE_MAP, [{<<"FreeSWITCH-Hostname">>, <<"Handling-Server-Name">>}
+			    ,{<<"Hangup-Cause">>, <<"Hangup-Cause">>}
+			    ,{<<"Unique-ID">>, <<"Call-ID">>}
+			    ,{<<"Event-Date-Timestamp">>, <<"Timestamp">>}
+			    ,{<<"Call-Direction">>, <<"Call-Direction">>}
+			    ,{<<"variable_switch_r_sdp">>, <<"SDP">>}
+			    ,{<<"variable_sip_to_uri">>, <<"To-Uri">>}
+			    ,{<<"variable_sip_from_uri">>, <<"From-Uri">>}
+			    ,{<<"Caller-Caller-ID-Name">>, <<"Caller-ID-Name">>}
+			    ,{<<"Caller-Caller-ID-Number">>, <<"Caller-ID-Number">>}
+			    ,{<<"Caller-Callee-ID-Name">>, <<"Callee-ID-Name">>}
+			    ,{<<"Caller-Callee-ID-Number">>, <<"Callee-ID-Number">>}
+			    ,{<<"Other-Leg-Unique-ID">>, <<"Other-Leg-Call-ID">>}
+			    
+			   ]).
 
 -spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: binary(), EvtProp :: proplist()) -> no_return()).
 new_cdr(UUID, AmqpHost, EvtProp) ->

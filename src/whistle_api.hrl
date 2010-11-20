@@ -200,6 +200,14 @@
 						       end}
 			  ]).
 
+%% Call CDR - http://corp.switchfreedom.com/mediawiki/index.php/CallmgrCDRSpec
+-define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_CALL_CDR_HEADERS, [<<"Custom-Channel-Vars">>]).
+-define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call-detail">>}
+			  ,{<<"Event-Name">>, <<"cdr">>}
+			 ]).
+-define(CALL_CDR_TYPES, []).
+
 %% Error Responses - http://corp.switchfreedom.com/mediawiki/index.php/General_Concepts#StandardAPIFormat
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
 -define(OPTIONAL_ERROR_RESP_HEADERS, []).
@@ -423,4 +431,4 @@
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>]).
 
--type proplist() :: list(tuple(atom() | binary(), (binary() | list() | fun() | integer()) )).
+-type proplist() :: list(tuple(atom() | binary(), binary() | list() | fun() | integer() )).
