@@ -201,10 +201,19 @@
 			  ]).
 
 %% Call CDR - http://corp.switchfreedom.com/mediawiki/index.php/CallmgrCDRSpec
--define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_CALL_CDR_HEADERS, [<<"Custom-Channel-Vars">>]).
+-define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
+			       ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>, <<"Other-Leg-Call-ID">>
+			       ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
+			       ,<<"Digits-Dialed">>
+			  ]).
+-define(OPTIONAL_CALL_CDR_HEADERS, [<<"Custom-Channel-Vars">>, <<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
+					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+					,<<"User-Agent">>, <<"Caller-ID-Type">>
+				   ]).
 -define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call-detail">>}
 			  ,{<<"Event-Name">>, <<"cdr">>}
+			  ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
+			  ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
 			 ]).
 -define(CALL_CDR_TYPES, []).
 

@@ -17,6 +17,8 @@
 
 -type proplist() :: list(tuple(binary(), (binary() | list() | fun()) )).
 
+-include("whistle_amqp.hrl").
+
 -define(APPNAME, <<"ecallmgr.call.cdr">>).
 -define(APPVER, <<"0.2.0">>).
 -define(EVENT_CAT, <<"call-detail">>).
@@ -27,7 +29,8 @@
 			    ,{<<"Unique-ID">>, <<"Call-ID">>}
 			    ,{<<"Event-Date-Timestamp">>, <<"Timestamp">>}
 			    ,{<<"Call-Direction">>, <<"Call-Direction">>}
-			    ,{<<"variable_switch_r_sdp">>, <<"SDP">>}
+			    ,{<<"variable_switch_r_sdp">>, <<"Remote-SDP">>}
+			    ,{<<"variable_sip_local_sdp_str">>, <<"Local-SDP">>}
 			    ,{<<"variable_sip_to_uri">>, <<"To-Uri">>}
 			    ,{<<"variable_sip_from_uri">>, <<"From-Uri">>}
 			    ,{<<"Caller-Caller-ID-Name">>, <<"Caller-ID-Name">>}
@@ -35,14 +38,27 @@
 			    ,{<<"Caller-Callee-ID-Name">>, <<"Callee-ID-Name">>}
 			    ,{<<"Caller-Callee-ID-Number">>, <<"Callee-ID-Number">>}
 			    ,{<<"Other-Leg-Unique-ID">>, <<"Other-Leg-Call-ID">>}
-			    
+			    ,{<<"variable_sip_user_agent">>, <<"User-Agent">>}
+			    ,{<<"variable_duration">>, <<"Duration-Seconds">>}
+			    ,{<<"variable_billsec">>, <<"Billing-Seconds">>}
+			    ,{<<"variable_progresssec">>, <<"Ringing-Seconds">>}
+			    ,{<<"variable_digits_dialed">>, <<"Digits-Dialed">>}
 			   ]).
+-define(FS_TO_WHISTLE_OUTBOUND_MAP, [{<<"variable_sip_cid_type">>, <<"Caller-ID-Type">>}]).
 
 -spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: binary(), EvtProp :: proplist()) -> no_return()).
 new_cdr(UUID, AmqpHost, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
-    amqp_util:callevt_publish(AmqpHost, UUID, CDRJson, <<"application/json">>).
+    amqp_util:callmgr_publish(AmqpHost, CDRJson, <<"application/json">>, <<?KEY_CALL_CDR/binary, UUID/binary>>).
 
-create_cdr(Prop) ->
+-spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).
+create_cdr(EvtProp) ->
     DefProp = whistle_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APPNAME, ?APPVER),
-    to_be_continued.
+    ApiProp = lists:foldl(fun({FSKey, WK}, WApi) ->
+				  case get_value(FSKey, EvtProp) of
+				      undefined -> WApi;
+				      V -> [{WK, V} | WApi]
+				  end
+			  end, DefProp, ?FS_TO_WHISTLE_MAP),
+    {ok, JSON} = whistle_api:call_cdr(ApiProp),
+    JSON.
