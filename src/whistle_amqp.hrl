@@ -15,8 +15,8 @@
 %% To listen for auth requests, bind your queue in the CallMgr Exchange with the <<"auth.req">> routing key.
 %% To listen for route requests, bind your queue in the CallMgr Exchange with the <<"route.req">> routing key.
 
-%% For a specific call event stream, bind to <<"call.event.CALLID">>
+%% For a specific call event stream, bind to <<"call.event.CALLID">> on the CallEvent Exchange
 %% For all call events, bind to <<"call.event.*">>
 
-%% For a specific call cdr, bind to <<"call.cdr.CALLID">>
+%% For a specific call cdr, bind to <<"call.cdr.CALLID">> on the CallEvent Exchange
 %% For all call cdrs, bind to <<"call.cdr.*">>

@@ -50,7 +50,7 @@
 new_cdr(UUID, AmqpHost, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
     io:format("CDR: ~s~n", [CDRJson]),
-    amqp_util:callmgr_publish(AmqpHost, CDRJson, <<"application/json">>, <<?KEY_CALL_CDR/binary, UUID/binary>>).
+    amqp_util:callevt_publish(AmqpHost, CDRJson, <<"application/json">>, <<?KEY_CALL_CDR/binary, UUID/binary>>).
 
 -spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).
 create_cdr(EvtProp) ->
