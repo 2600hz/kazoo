@@ -202,13 +202,13 @@
 
 %% Call CDR - http://corp.switchfreedom.com/mediawiki/index.php/CallmgrCDRSpec
 -define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
-			       ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>, <<"Other-Leg-Call-ID">>
+			       ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
 			       ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
 			       ,<<"Digits-Dialed">>
 			  ]).
 -define(OPTIONAL_CALL_CDR_HEADERS, [<<"Custom-Channel-Vars">>, <<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
 					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-					,<<"User-Agent">>, <<"Caller-ID-Type">>
+					,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
 				   ]).
 -define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call-detail">>}
 			  ,{<<"Event-Name">>, <<"cdr">>}

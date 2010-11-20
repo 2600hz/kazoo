@@ -43,8 +43,7 @@ loop(UUID, Amqp, CtlPid) ->
 
 	    case EvtName of
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    format_log(info, "HANGUP_C ~p~n", [Data]),
-		    ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data);
+		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data) end);
 		_ -> ok
 	    end,
 

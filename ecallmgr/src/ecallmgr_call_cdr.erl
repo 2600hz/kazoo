@@ -49,16 +49,24 @@
 -spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: binary(), EvtProp :: proplist()) -> no_return()).
 new_cdr(UUID, AmqpHost, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
+    io:format("CDR: ~s~n", [CDRJson]),
     amqp_util:callmgr_publish(AmqpHost, CDRJson, <<"application/json">>, <<?KEY_CALL_CDR/binary, UUID/binary>>).
 
 -spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).
 create_cdr(EvtProp) ->
     DefProp = whistle_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APPNAME, ?APPVER),
-    ApiProp = lists:foldl(fun({FSKey, WK}, WApi) ->
-				  case get_value(FSKey, EvtProp) of
-				      undefined -> WApi;
-				      V -> [{WK, V} | WApi]
-				  end
-			  end, DefProp, ?FS_TO_WHISTLE_MAP),
-    {ok, JSON} = whistle_api:call_cdr(ApiProp),
+    ApiProp0 = add_values(?FS_TO_WHISTLE_MAP, DefProp, EvtProp),
+    ApiProp1 = case get_value(<<"direction">>, ApiProp0) of
+		   <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);
+		   _ -> ApiProp0
+	       end,
+    {ok, JSON} = whistle_api:call_cdr(ApiProp1),
     JSON.
+
+add_values(Mappings, Prop, EvtProp) ->
+    lists:foldl(fun({FSKey, WK}, WApi) ->
+			case get_value(FSKey, EvtProp) of
+			    undefined -> WApi;
+			    V -> [{WK, V} | WApi]
+			end
+		end, Prop, Mappings).
