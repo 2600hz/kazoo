@@ -79,11 +79,11 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 	    case get_value(<<"Event-Name">>, Prop) of
 		<<"CHANNEL_DESTROY">> ->
 		    format_log(info, "TS_CALL(~p): ChanDestroy recv, shutting down...~n", [self()]),
-		    update_account(60, Flags),
 		    ts_responder:rm_post_handler(CallID);
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    format_log(info, "TS_CALL(~p): ChanHangupCompl recv, shutting down...~n", [self()]),
-		    update_account(60, Flags),
+		    format_log(info, "TS_CALL(~p): ChanHangupCompl recv, shutting down...~n", [self()]);
+		<<"cdr">> ->
+		    update_account(get_value(<<"Billing-Seconds">>, Prop), Flags),
 		    ts_couch:rm_change_handler(get_value(<<"_id">>, Flags#route_flags.account_doc)),
 		    ts_responder:rm_post_handler(CallID);
 		_EvtName ->
@@ -100,7 +100,8 @@ consume_events(Host, CallID) ->
     amqp_util:callevt_exchange(Host),
     EvtQ = amqp_util:new_callevt_queue(Host, <<>>),
     format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p", [self(), EvtQ, CallID]),
-    amqp_util:bind_q_to_callevt(Host, EvtQ, CallID),
+    amqp_util:bind_q_to_callevt(Host, EvtQ, CallID, events),
+    amqp_util:bind_q_to_callevt(Host, EvtQ, CallID, cdr),
     amqp_util:basic_consume(Host, EvtQ).
 
 monitor_account_doc(#route_flags{account_doc=Doc}) ->
