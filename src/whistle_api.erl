@@ -29,7 +29,7 @@
 -export([resource_req/1, resource_resp/1]).
 
 %% In-Call
--export([call_event/1, error_resp/1]).
+-export([call_event/1, error_resp/1, call_cdr/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
@@ -42,7 +42,7 @@
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
-	 ,resource_req_v/1, resource_resp_v/1
+	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1
 	]).
 
 %% FS-specific routines
@@ -223,6 +223,22 @@ call_event(Prop) ->
 -spec(call_event_v/1 :: (Prop :: proplist()) -> boolean()).
 call_event_v(Prop) ->
     validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Format a CDR for a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(call_cdr/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_cdr(Prop) ->
+    case call_cdr_v(Prop) of
+	true -> build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
+	false -> {error, "Proplist failed validation for call_cdr"}
+    end.
+
+-spec(call_cdr_v/1 :: (Prop :: proplist()) -> boolean()).
+call_cdr_v(Prop) ->
+    validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event

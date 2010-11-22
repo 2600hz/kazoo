@@ -194,15 +194,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-handle_req(ContentType, Payload, State) ->
-    case ContentType of
-	<<"application/json">> ->
-	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "TS_RESPONDER(~p): Recv CT: ~p~nPayload: ~p~n", [self(), ContentType, Prop]),
-	    process_req(get_msg_type(Prop), Prop, State);
-	_ ->
-	    format_log(info, "TS_RESPONDER(~p): recieved unknown msg type: ~p~n", [self(), ContentType])
-    end.
+handle_req(<<"application/json">>, Payload, State) ->
+    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "TS_RESPONDER(~p): Recv JSON~nPayload: ~p~n", [self(), Prop]),
+    process_req(get_msg_type(Prop), Prop, State);
+handle_req(_ContentType, _Payload, _State) ->
+    format_log(info, "TS_RESPONDER(~p): recieved unknown msg type: ~p~n", [self(), _ContentType]).
 
 get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
@@ -260,7 +257,6 @@ start_post_handler(Prop, Flags, #state{amqp_host=AmqpHost}) ->
 
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
-    format_log(info, "TS_RESPONDER(~p): Sending to ~p~n", [self(), RespQ]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
 
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).

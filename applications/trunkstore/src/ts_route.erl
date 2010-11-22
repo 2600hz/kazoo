@@ -66,7 +66,7 @@ lookup_user(Name) ->
 	    {error, "No view found."};
 	[] ->
 	    format_log(info, "TS_ROUTE(~p): No Name matching ~p~n", [self(), Name]),
-	    [];
+	    {error, "No user found"};
 	[{ViewProp} | _Rest] ->
 	    format_log(info, "TS_ROUTE(~p): Using user ~p, retrieved~n~p~n", [self(), Name, ViewProp]),
 	    DocID = get_value(<<"id">>, ViewProp),
@@ -122,8 +122,9 @@ find_route(Flags, ApiProp, ServerID) ->
 	    %% handle inbound routing
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
-		    format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, Flags, ServerID);
+		    %%format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
+		    Flags1 = update_account(Flags),
+		    response(Routes, ApiProp, Flags1, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)
@@ -131,8 +132,9 @@ find_route(Flags, ApiProp, ServerID) ->
 	true ->
 	    case ts_carrier:route(Flags) of
 		{ok, Routes} ->
-		    format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, Flags, ServerID);
+		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
+		    Flags1 = update_account(Flags),
+		    response(Routes, ApiProp, Flags1, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)
@@ -178,7 +180,7 @@ add_failover_route({<<"e164">>, DID}, Flags, InboundRoute) ->
 	{ok, OutBFlags1} ->
 	    case ts_carrier:route(OutBFlags1) of
 		{ok, Routes} ->
-		    format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
+		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
 		    [InboundRoute | Routes];
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), Error]),
@@ -219,9 +221,6 @@ create_flags(Did, ApiProp) ->
 	 end,
     F3 = case Doc of
 	     {error, _E1} -> F1;
-	     D when is_list(D) ->
-		 F2 = flags_from_srv(AuthUser, D, F1),
-		 flags_from_account(D, F2);
 	     {ok, D} ->
 		 F2 = flags_from_srv(AuthUser, D, F1),
 		 flags_from_account(D, F2)
@@ -301,13 +300,14 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 -spec(flags_from_account(Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
-    {Credit} = get_value(<<"credit">>, Acct, {[]}),
+    {Credit} = get_value(<<"credits">>, Acct, {[]}),
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
     TrunksInUse = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct, Flags#route_flags.trunks_in_use)),
 
     F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
 			   ,trunks = Trunks
 			   ,trunks_in_use = TrunksInUse
+			   ,account_doc=Doc
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Acct, {[]})),
     add_failover(F1, get_value(<<"failover">>, Acct, {[]})).
@@ -364,3 +364,18 @@ specific_response(Routes) when is_list(Routes) ->
     [{<<"Routes">>, Routes}
      ,{<<"Method">>, <<"bridge">>}
     ].
+
+%% update the account's trunks_in_use if flat_rate
+-spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
+update_account(#route_flags{flat_rate_enabled=true, trunks_in_use=TinU, account_doc=Doc}=Flags) ->
+    
+    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p on doc ~p(~p)~n"
+	       , [self(), TinU, TinU+1, get_value(<<"_id">>, Doc), get_value(<<"_rev">>, Doc)]),
+    {Acct0} = get_value(<<"account">>, Doc),
+    Acct1 = [{<<"trunks_in_use">>, whistle_util:to_binary(TinU+1)} | proplists:delete(<<"trunks_in_use">>, Acct0)],
+    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
+    {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
+    format_log(info, "TS_ROUTE.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
+    Flags#route_flags{trunks_in_use=TinU+1, account_doc=Doc2};
+update_account(#route_flags{}=Flags) ->
+    Flags.
