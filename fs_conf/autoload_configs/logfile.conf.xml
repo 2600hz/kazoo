@@ -6,8 +6,8 @@
     <profiles>
         <profile name="debug">
             <settings>
-                <param name="logfile" value="/usr/local/freeswitch/log/debug.log"/>
-                <param name="rollover" value="26214400"/>
+                <param name="logfile" value="$${base_dir}/log/debug.log"/>
+                <param name="rollover" value="0"/>
                 <param name="uuid" value="true" />
             </settings>
             <mappings>
@@ -17,8 +17,8 @@
 
         <profile name="error">
             <settings>
-                <param name="logfile" value="/usr/local/freeswitch/log/error.log"/>
-                <param name="rollover" value="26214400"/>
+                <param name="logfile" value="$${base_dir}/log/error.log"/>
+                <param name="rollover" value="0"/>
                 <param name="uuid" value="true" />
             </settings>
             <mappings>
@@ -26,10 +26,21 @@
             </mappings>
         </profile>
 
+        <profile name="erlang">
+            <settings>
+                <param name="logfile" value="$${base_dir}/log/erlang.log"/>
+                <param name="rollover" value="0"/>
+                <param name="uuid" value="true" />
+            </settings>
+            <mappings>
+                <map name="mod_erlang_event.c" value="debug,info,notice,warning,err,crit,alert"/>
+            </mappings>
+        </profile>
+
         <profile name="sofia">
             <settings>
-                <param name="logfile" value="/usr/local/freeswitch/log/sofia.log"/>
-                <param name="rollover" value="26214400"/>
+                <param name="logfile" value="$${base_dir}/log/sofia.log"/>
+                <param name="rollover" value="0"/>
                 <param name="uuid" value="true" />
             </settings>
             <mappings>
@@ -43,4 +54,3 @@
         </profile>
     </profiles>
 </configuration>
-

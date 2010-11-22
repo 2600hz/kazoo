@@ -200,6 +200,23 @@
 						       end}
 			  ]).
 
+%% Call CDR - http://corp.switchfreedom.com/mediawiki/index.php/CallmgrCDRSpec
+-define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
+			       ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
+			       ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
+			       ,<<"Digits-Dialed">>
+			  ]).
+-define(OPTIONAL_CALL_CDR_HEADERS, [<<"Custom-Channel-Vars">>, <<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
+					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+					,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
+				   ]).
+-define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call-detail">>}
+			  ,{<<"Event-Name">>, <<"cdr">>}
+			  ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
+			  ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
+			 ]).
+-define(CALL_CDR_TYPES, []).
+
 %% Error Responses - http://corp.switchfreedom.com/mediawiki/index.php/General_Concepts#StandardAPIFormat
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
 -define(OPTIONAL_ERROR_RESP_HEADERS, []).
@@ -423,4 +440,4 @@
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>]).
 
--type proplist() :: list(tuple(atom() | binary(), (binary() | list() | fun() | integer()) )).
+-type proplist() :: list(tuple(atom() | binary(), binary() | list() | fun() | integer() )).

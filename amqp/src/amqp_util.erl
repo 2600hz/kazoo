@@ -14,7 +14,7 @@
 
 -export([bind_q_to_targeted/2, bind_q_to_targeted/3]).
 -export([bind_q_to_callctl/2, bind_q_to_callctl/3]).
--export([bind_q_to_callevt/3]).
+-export([bind_q_to_callevt/3, bind_q_to_callevt/4]).
 -export([bind_q_to_broadcast/2, bind_q_to_broadcast/3]).
 -export([bind_q_to_resource/2, bind_q_to_resource/3]).
 -export([bind_q_to_callmgr/3]).
@@ -117,11 +117,14 @@ callctl_publish(Host, CallId, Payload, ContentType) ->
 	    end,
     basic_publish(Host, ?EXCHANGE_CALLCTL, Route, Payload, ContentType).
 
+
 callevt_publish(Host, CallId, Payload) ->
-    callevt_publish(Host, CallId, Payload, <<"application/json">>).
-callevt_publish(Host, CallId, Payload, ContentType) ->
-    Route = <<?KEY_CALL_EVENT/binary, CallId/binary>>,
-    basic_publish(Host, ?EXCHANGE_CALLEVT, Route, Payload, ContentType).
+    callevt_publish(Host, CallId, Payload, event).
+
+callevt_publish(Host, CallId, Payload, event) ->
+    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallId/binary>>, Payload, <<"application/json">>);
+callevt_publish(Host, CallId, Payload, cdr) ->
+    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>).
 
 broadcast_publish(Host, Payload) ->
     broadcast_publish(Host, Payload, undefined).
@@ -267,8 +270,15 @@ bind_q_to_callctl(Host, Queue) ->
 bind_q_to_callctl(Host, Queue, Routing) ->
     bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_CALLCTL).
 
+
+%% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallId
 bind_q_to_callevt(Host, Queue, CallId) ->
-    bind_q_to_exchange(Host, Queue, <<?KEY_CALL_EVENT/binary, CallId/binary>>, ?EXCHANGE_CALLEVT).
+    bind_q_to_callevt(Host, Queue, CallId, events).
+
+bind_q_to_callevt(Host, Queue, CallId, events) ->
+    bind_q_to_exchange(Host, Queue, <<?KEY_CALL_EVENT/binary, CallId/binary>>, ?EXCHANGE_CALLEVT);
+bind_q_to_callevt(Host, Queue, CallId, cdr) ->
+    bind_q_to_exchange(Host, Queue, <<?KEY_CALL_CDR/binary, CallId/binary>>, ?EXCHANGE_CALLEVT).
 
 bind_q_to_broadcast(Host, Queue) ->
     bind_q_to_broadcast(Host, Queue, <<"#">>).
