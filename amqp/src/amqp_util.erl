@@ -117,11 +117,14 @@ callctl_publish(Host, CallId, Payload, ContentType) ->
 	    end,
     basic_publish(Host, ?EXCHANGE_CALLCTL, Route, Payload, ContentType).
 
+
 callevt_publish(Host, CallId, Payload) ->
-    callevt_publish(Host, CallId, Payload, <<"application/json">>).
-callevt_publish(Host, CallId, Payload, ContentType) ->
-    Route = <<?KEY_CALL_EVENT/binary, CallId/binary>>,
-    basic_publish(Host, ?EXCHANGE_CALLEVT, Route, Payload, ContentType).
+    callevt_publish(Host, CallId, Payload, event).
+
+callevt_publish(Host, CallId, Payload, event) ->
+    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallId/binary>>, Payload, <<"application/json">>);
+callevt_publish(Host, CallId, Payload, cdr) ->
+    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>).
 
 broadcast_publish(Host, Payload) ->
     broadcast_publish(Host, Payload, undefined).

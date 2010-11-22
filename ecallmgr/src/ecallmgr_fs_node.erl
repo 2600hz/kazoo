@@ -88,7 +88,6 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 			    monitor_loop(Node, S#handler_state{stats=Stats#node_stats{destroyed_channels=De+1}})
 		    end;
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    format_log(info, "~p~n", [Data]),
 		    monitor_loop(Node, S);
 		_ -> monitor_loop(Node, S)
 	    end;
