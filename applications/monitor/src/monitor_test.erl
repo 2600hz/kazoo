@@ -1,20 +1,39 @@
 -module(monitor_test).
 
 -export([ping/1, ping/2]).
+-export([create_jobs/1]).
+-export([set_agent_amqp/0]).
 
 -include("../include/monitor_amqp.hrl").
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
+-define(AMQP_HOST, net_adm:localhost()).
+
+create_jobs(Count) ->
+   do_create_jobs(Count).
+
+do_create_jobs(0) ->
+   ok;
+do_create_jobs(Count) ->
+   monitor_job:start_link(integer_to_list(Count)),
+   monitor_job:pause(integer_to_list(Count)),
+   monitor_job:set_amqp_host(integer_to_list(Count), ?AMQP_HOST),
+   monitor_job:add_task(integer_to_list(Count), "test_1", "ping_net_req", [{"Destination", "localhost"}]),
+   do_create_jobs(Count-1).
+
+set_agent_amqp() ->
+   monitor_agent_network:set_amqp_host(?AMQP_HOST).
+
 ping(Dest) ->
     ping (Dest, 1).
 
 ping(Dest, Count) ->
-    {ok, Q} = start_amqp(net_adm:localhost()),
+    {ok, Q} = start_amqp(?AMQP_HOST),
 
     Api = [{<<"Event-Category">>, <<"task">>}
-       ,{<<"Event-Name">>, <<"ping_req">>}
+       ,{<<"Event-Name">>, <<"ping_net_req">>}
        ,{<<"App-Name">>, <<"monitor">>}
        ,{<<"App-Version">>, <<"0.1.0">>}
        ,{<<"Server-ID">>, Q}
@@ -24,7 +43,7 @@ ping(Dest, Count) ->
       ],
 
     {ok, JSON} = monitor_api:ping_req(Api),
-    amqp_util:monitor_publish(net_adm:localhost(), JSON, <<"application/json">>, ?KEY_AGENT_NET_REQ),    
+    amqp_util:monitor_publish(?AMQP_HOST, JSON, <<"application/json">>, ?KEY_AGENT_NET_REQ),    
     loop(Q).
 
 loop(Q) ->
@@ -37,7 +56,7 @@ loop(Q) ->
         loop(Q)
     after
     20000 ->
-        amqp_util:queue_delete(net_adm:localhost(), Q),
+        amqp_util:queue_delete(?AMQP_HOST, Q),
         format_log(info, "MONITOR_TEST(~p): goodbye cruel world~n", [self()])
     end.
 
