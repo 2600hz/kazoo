@@ -20,13 +20,14 @@
 -module(monitor_api).
 
 %% API
--export([default_headers/4, extract_defaults/1]).
+-export([default_headers/4, default_headers/3, optional_default_headers/3]).
+-export([prepare_amqp_prop/1, extract_defaults/1]).
 
 %% Monitor Agent Ping
--export([ping_req/1, ping_resp/1]).
+-export([ping_net_req/1, ping_net_resp/1]).
 
 %% Validation functions
--export([ping_req_v/1, ping_resp_v/1]).
+-export([ping_net_req_v/1, ping_net_resp_v/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
@@ -42,8 +43,8 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec(default_headers/4 :: (MsgID :: binary(), ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()) -> proplist()).
-default_headers(MsgID, ServerID, EvtCat, EvtName) ->
+%% -spec(default_headers/4 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()), MsgID :: binary() -> proplist()).
+default_headers(ServerID, EvtCat, EvtName, MsgID) ->
     [
       {<<"Msg-ID">>, MsgID}
      ,{<<"Server-ID">>, ServerID}
@@ -51,6 +52,24 @@ default_headers(MsgID, ServerID, EvtCat, EvtName) ->
      ,{<<"Event-Name">>, EvtName}
      ,{<<"App-Name">>, <<"monitor">>}
      ,{<<"App-Version">>, <<"0.1.0">>}
+    ].
+
+-spec(default_headers/3 :: (ServerID :: binary(), EvtCat :: binary(), EvtName :: binary()) -> proplist()).
+default_headers(ServerID, EvtCat, EvtName) ->
+    [
+      {<<"Msg-ID">>, monitor_util:to_binary(monitor_util:uuid())}
+     ,{<<"Server-ID">>, ServerID}
+     ,{<<"Event-Category">>, EvtCat}
+     ,{<<"Event-Name">>, EvtName}
+     ,{<<"App-Name">>, <<"monitor">>}
+     ,{<<"App-Version">>, <<"0.1.0">>}
+    ].
+
+optional_default_headers(Job_ID, Name, Iteration) ->
+    [
+      {"Task-Name", Name}
+     ,{"Job-ID", Job_ID}
+     ,{"Task-Iteration", Iteration}
     ].
 
 %%--------------------------------------------------------------------
@@ -61,37 +80,43 @@ default_headers(MsgID, ServerID, EvtCat, EvtName) ->
 extract_defaults(Prop) ->
     lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS).
 
+prepare_amqp_prop([{_, _}|_]=Prop) ->
+    lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, Prop);
+
+prepare_amqp_prop(ListOfPropLists) ->
+    lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, lists:append(ListOfPropLists)).
+
 %%--------------------------------------------------------------------
 %% @doc Monitor Agent Ping Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(ping_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
-ping_req(Prop) ->
-    case ping_req_v(Prop) of
-	true -> build_message(Prop, ?PING_REQ_HEADERS, ?OPTIONAL_PING_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for ping_req"}
+-spec(ping_net_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+ping_net_req(Prop) ->
+    case ping_net_req_v(Prop) of
+	true -> build_message(Prop, ?PING_NET_REQ_HEADERS, ?OPTIONAL_PING_NET_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for ping_net_req"}
     end.
 
--spec(ping_req_v/1 :: (Prop :: proplist()) -> boolean()).
-ping_req_v(Prop) ->
-    validate(Prop, ?PING_REQ_HEADERS, ?PING_REQ_VALUES, ?PING_REQ_TYPES).
+-spec(ping_net_req_v/1 :: (Prop :: proplist()) -> boolean()).
+ping_net_req_v(Prop) ->
+    validate(Prop, ?PING_NET_REQ_HEADERS, ?PING_NET_REQ_VALUES, ?PING_NET_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Monitor Agent Ping Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(ping_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
-ping_resp(Prop) ->
-    case ping_resp_v(Prop) of
-	true -> build_message(Prop, ?PING_RESP_HEADERS, ?OPTIONAL_PING_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for ping_resp"}
+-spec(ping_net_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+ping_net_resp(Prop) ->
+    case ping_net_resp_v(Prop) of
+	true -> build_message(Prop, ?PING_NET_RESP_HEADERS, ?OPTIONAL_PING_NET_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for ping_net_resp"}
     end.
 
--spec(ping_resp_v/1 :: (Prop :: proplist()) -> boolean()).
-ping_resp_v(Prop) ->
-    validate(Prop, ?PING_RESP_HEADERS, ?PING_RESP_VALUES, ?PING_RESP_TYPES).
+-spec(ping_net_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+ping_net_resp_v(Prop) ->
+    validate(Prop, ?PING_NET_RESP_HEADERS, ?PING_NET_RESP_VALUES, ?PING_NET_RESP_TYPES).
 
 %%%===================================================================
 %%% Internal functions
