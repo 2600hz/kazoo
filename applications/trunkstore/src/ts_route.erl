@@ -60,7 +60,7 @@ outbound_handler(ApiProp, ServerID) ->
 -spec(lookup_user/1 :: (Name :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name) ->
     Options = [{"keys", [Name]}],
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
+    case whistle_couch:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_USERAUTH, Name]),
 	    {error, "No view found."};
@@ -70,7 +70,7 @@ lookup_user(Name) ->
 	[{ViewProp} | _Rest] ->
 	    format_log(info, "TS_ROUTE(~p): Using user ~p, retrieved~n~p~n", [self(), Name, ViewProp]),
 	    DocID = get_value(<<"id">>, ViewProp),
-	    case ts_couch:open_doc(?TS_DB, DocID) of
+	    case whistle_couch:open_doc(?TS_DB, DocID) of
 		{error, E}=Error ->
 		    format_log(error, "TS_ROUTE(~p): Failed to retrieve doc ~p: ~p~n", [self(), DocID, E]),
 		    Error;
@@ -85,7 +85,7 @@ lookup_user(Name) ->
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_did(Did) ->
     Options = [{"keys", [Did]}],
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
+    case whistle_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
@@ -221,7 +221,7 @@ create_flags(Did, ApiProp) ->
 	 end,
     F3 = case Doc of
 	     {error, _E1} ->
-		 case ts_couch:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
+		 case whistle_couch:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
 		     {error, _E2} -> F1;
 		     Doc1 ->
 			 F2 = flags_from_srv(AuthUser, Doc1, F1),
@@ -380,12 +380,12 @@ update_account(#route_flags{callid=CallID, flat_rate_enabled=true, account_doc=D
     ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
     format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), ACs1, CallID]),
     Acct1 = [{<<"active_calls">>, [CallID | ACs1]} | proplists:delete(<<"active_calls">>, Acct0)],
-    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
-    case ts_couch:save_doc(?TS_DB, Doc1) of
+    Doc1 = whistle_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
+    case whistle_couch:save_doc(?TS_DB, Doc1) of
 	{ok, Doc2} ->
 	    Flags#route_flags{active_calls=lists:usort([CallID | ACs1]), account_doc=Doc2};
 	{error, conflict} ->
-	    update_account(Flags#route_flags{account_doc=ts_couch:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
+	    update_account(Flags#route_flags{account_doc=whistle_couch:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
     end;
 update_account(#route_flags{}=Flags) ->
     Flags.
