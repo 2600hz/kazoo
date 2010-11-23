@@ -310,7 +310,7 @@ flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
     {Credit} = get_value(<<"credits">>, Acct, {[]}),
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
-    ACs = get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls),
+    ACs = lists:usort(get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls)), % only uniques
 
     F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
 			   ,trunks = Trunks
@@ -383,7 +383,7 @@ update_account(#route_flags{callid=CallID, flat_rate_enabled=true, account_doc=D
     Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
     case ts_couch:save_doc(?TS_DB, Doc1) of
 	{ok, Doc2} ->
-	    Flags#route_flags{active_calls=[CallID | ACs1], account_doc=Doc2};
+	    Flags#route_flags{active_calls=lists:usort([CallID | ACs1]), account_doc=Doc2};
 	{error, conflict} ->
 	    update_account(Flags#route_flags{account_doc=ts_couch:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
     end;

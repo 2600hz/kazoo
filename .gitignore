@@ -2,3 +2,4 @@
 */log
 */mnesia
 */error_log
+.eunit
