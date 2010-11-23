@@ -268,7 +268,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
-    format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n", [self(), HPid, Reason]),
+    format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n~p~n", [self(), HPid, Reason, Nodes]),
     NewNodes = check_down_pid(Nodes, HPid, Host),
     {noreply, State#state{fs_nodes=NewNodes}};
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
@@ -278,7 +278,7 @@ handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
 	    {noreply, State};
 	[#node_handler{node=Node, options=Opts}=N|_] ->
 	    erlang:monitor_node(Node, false),
-	    WatchPid = spawn(fun() -> watch_node_for_restart(Node, Opts) end),
+	    WatchPid = spawn_link(fun() -> watch_node_for_restart(Node, Opts) end),
 	    format_log(info, "FS_HANDLER(~p): Node ~p has gone down~n", [self(), Node]),
 	    {noreply, State#state{fs_nodes=[N#node_handler{node_watch_pid=WatchPid} | lists:keydelete(Node, 2, Nodes)]}}
     end;
@@ -331,13 +331,15 @@ watch_node_for_restart(Node, Opts, Timeout) ->
 
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
-	pong -> ?MODULE:add_fs_node(Node, Opts);
+	pong ->
+	    format_log(info, "FS_HANDLER.is_node_up(~p): ~p has risen~n", [self(), Node]),
+	    ?MODULE:add_fs_node(Node, Opts);
 	pang ->
 	    receive
 		shutdown -> format_log(info, "FS_HANDLER(~p): watcher going down for ~p~n", [self(), Node])
 	    after
 		Timeout ->
-		    format_log(info, "FS_HANDLER.is_node_up(~p): ~p still down, trying again in ~p secs~n", [self(), Node, Timeout div 1000]),
+		    format_log(info, "FS_HANDLER.is_node_up(~p): trying ~p again, then waiting for ~p secs~n", [self(), Node, Timeout div 1000]),
 		    watch_node_for_restart(Node, Opts, Timeout)
 	    end
     end.
@@ -360,6 +362,7 @@ check_down_pid(Nodes, HPid, Host) ->
     lists:foldl(fun(#node_handler{auth_handler_pid=AHP
 				  ,route_handler_pid=RHP
 				  ,node_handler_pid=NHP
+				  ,node_watch_pid=undefined
 				  ,options=Options
 				  ,node=Node
 				 }=N, Nodes0) ->
@@ -370,7 +373,11 @@ check_down_pid(Nodes, HPid, Host) ->
 			[N#node_handler{auth_handler_pid=NewAHP
 					,route_handler_pid=NewRHP
 					,node_handler_pid=NewNHP}
-			 | Nodes0]
+			 | Nodes0];
+		   (#node_handler{node_watch_pid=NWP}=N, Nodes0) when NWP =:= HPid ->
+			[N#node_handler{node_watch_pid=undefined} | Nodes0];
+		   (#node_handler{node_watch_pid=NWP}, Nodes0) when is_pid(NWP) ->
+			Nodes0
 		end, [], Nodes).
 
 -spec(restart_handler/6 :: (Node :: atom(), Options :: proplist(), Host :: string(), DownPid :: pid() | undefined, CurrPid :: pid() | undefined, StartFun :: fun()) ->
@@ -387,7 +394,9 @@ restart_handler(Node, Options, Host, HPid, HPid, StartFun) ->
 	{error, Err} ->
 	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
 	    undefined;
-	Pid when is_pid(Pid) -> Pid
+	Pid when is_pid(Pid) ->
+	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
+	    Pid
     end;
 restart_handler(_, _, _, _, Pid, _) -> Pid.
 
