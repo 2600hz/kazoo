@@ -394,7 +394,9 @@ restart_handler(Node, Options, Host, HPid, HPid, StartFun) ->
 	{error, Err} ->
 	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
 	    undefined;
-	Pid when is_pid(Pid) -> Pid
+	Pid when is_pid(Pid) ->
+	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
+	    Pid
     end;
 restart_handler(_, _, _, _, Pid, _) -> Pid.
 
