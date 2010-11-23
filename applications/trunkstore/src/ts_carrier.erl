@@ -234,19 +234,19 @@ create_routes(Flags, Carriers) ->
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
     RateInfo = case Flags#route_flags.direction of
-		      <<"inbound">> ->
-			  [{<<"Rate">>, Flags#route_flags.inbound_rate}
-			   ,{<<"Rate-Increment">>, Flags#route_flags.inbound_rate_increment}
-			   ,{<<"Rate-Minimum">>, Flags#route_flags.inbound_rate_minimum}
-			   ,{<<"Surcharge">>, Flags#route_flags.inbound_surcharge}
-			   | CallerID];
-		      <<"outbound">> ->
-			  [{<<"Rate">>, Flags#route_flags.outbound_rate}
-			   ,{<<"Rate-Increment">>, Flags#route_flags.outbound_rate_increment}
-			   ,{<<"Rate-Minimum">>, Flags#route_flags.outbound_rate_minimum}
-			   ,{<<"Surcharge">>, Flags#route_flags.outbound_surcharge}
-			   | CallerID]
-		  end,
+		   <<"inbound">> ->
+		       [{<<"Custom-Channel-Vars">>, {struct, [{<<"Rate">>, Flags#route_flags.inbound_rate}
+							      ,{<<"Rate-Increment">>, Flags#route_flags.inbound_rate_increment}
+							      ,{<<"Rate-Minimum">>, Flags#route_flags.inbound_rate_minimum}
+							      ,{<<"Surcharge">>, Flags#route_flags.inbound_surcharge}]}}
+			| CallerID];
+		   <<"outbound">> ->
+		       [{<<"Custom-Channel-Vars">>, {struct, [{<<"Rate">>, Flags#route_flags.outbound_rate}
+							      ,{<<"Rate-Increment">>, Flags#route_flags.outbound_rate_increment}
+							      ,{<<"Rate-Minimum">>, Flags#route_flags.outbound_rate_minimum}
+							      ,{<<"Surcharge">>, Flags#route_flags.outbound_surcharge}]}}
+			| CallerID]
+	       end,
     case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, RateInfo}, Carriers) of
 	{[], _, _} ->
 	    {error, "Failed to find routes for the call"};
