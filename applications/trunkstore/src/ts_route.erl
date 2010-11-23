@@ -11,7 +11,7 @@
 %% API
 -export([handle_req/2]).
 
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
 -include("ts.hrl").
@@ -97,7 +97,7 @@ lookup_did(Did) ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
 	    {Value} = get_value(<<"value">>, ViewProp),
-	    {ok, Value};
+	    {ok, [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value]};
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
@@ -141,7 +141,7 @@ find_route(Flags, ApiProp, ServerID) ->
 	    end
     end.
 
--spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok | error, proplist() | string())).
+-spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok, proplist()) | tuple(error, string())).
 inbound_route(Flags) ->
     format_log(info, "TS_ROUTE(~p): Inbound route flags: ~p~n", [self(), Flags]),
     DID = case Flags#route_flags.inbound_format of
@@ -220,7 +220,13 @@ create_flags(Did, ApiProp) ->
 		 #route_flags{}
 	 end,
     F3 = case Doc of
-	     {error, _E1} -> F1;
+	     {error, _E1} ->
+		 case ts_couch:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
+		     {error, _E2} -> F1;
+		     Doc1 ->
+			 F2 = flags_from_srv(AuthUser, Doc1, F1),
+			 flags_from_account(Doc1, F2)
+		 end;
 	     {ok, D} ->
 		 F2 = flags_from_srv(AuthUser, D, F1),
 		 flags_from_account(D, F2)
@@ -262,13 +268,14 @@ flags_from_did(DidProp, Flags) ->
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, AcctOpts, 0)),
     format_log(info, "Got ~p trunks from ~p~n", [Trunks, AcctOpts]),
 
-    Opts = get_value(<<"options">>, DidProp, {[]}),
+    {Opts} = get_value(<<"options">>, DidProp, {[]}),
 
     F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {[]})),
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {[]})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
 		   ,trunks = Trunks
+		   ,account_doc_id = get_value(<<"id">>, DidProp)
 		   ,credit_available = whistle_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 		  }.
 
@@ -367,15 +374,13 @@ specific_response(Routes) when is_list(Routes) ->
 
 %% update the account's trunks_in_use if flat_rate
 -spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
-update_account(#route_flags{flat_rate_enabled=true, trunks_in_use=TinU, account_doc=Doc}=Flags) ->
-    
-    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p on doc ~p(~p)~n"
-	       , [self(), TinU, TinU+1, get_value(<<"_id">>, Doc), get_value(<<"_rev">>, Doc)]),
-    {Acct0} = get_value(<<"account">>, Doc),
+update_account(#route_flags{flat_rate_enabled=true, account_doc=Doc, trunks_in_use=OldTinU}=Flags) ->
+    {Acct0} = get_value(<<"account">>, Doc, {[]}),
+    TinU = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct0, OldTinU)),
+    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), TinU, TinU+1]),
     Acct1 = [{<<"trunks_in_use">>, whistle_util:to_binary(TinU+1)} | proplists:delete(<<"trunks_in_use">>, Acct0)],
     Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
     {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
-    format_log(info, "TS_ROUTE.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
     Flags#route_flags{trunks_in_use=TinU+1, account_doc=Doc2};
 update_account(#route_flags{}=Flags) ->
     Flags.
