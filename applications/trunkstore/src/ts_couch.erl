@@ -282,7 +282,7 @@ handle_info({_ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    {noreply, State}
     end;
 handle_info({_ReqID, {error, E}}, State) ->
-    format_log(info, "TS_COUCH.wait(~p): ERROR ~p~n", [self(), E]),
+    format_log(info, "TS_COUCH.wait(~p): ERROR ~p for reqid ~p~n", [self(), E, _ReqID]),
     {noreply, State};
 handle_info({'DOWN', _MRefConn, process, _Pid, _Reason}, State) ->
     format_log(error, "TS_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),

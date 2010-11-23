@@ -245,7 +245,8 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 	     _CID -> Flags
 	 end,
     F0#route_flags{
-      to_user = whistle_util:to_e164(ToUser)
+      callid = get_value(<<"Call-ID">>, ApiProp)
+      ,to_user = whistle_util:to_e164(ToUser)
       ,to_domain = ToDomain
       ,from_user = whistle_util:to_e164(FromUser)
       ,from_domain = FromDomain
@@ -309,11 +310,11 @@ flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
     {Credit} = get_value(<<"credits">>, Acct, {[]}),
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
-    TrunksInUse = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct, Flags#route_flags.trunks_in_use)),
+    ACs = get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls),
 
     F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
 			   ,trunks = Trunks
-			   ,trunks_in_use = TrunksInUse
+			   ,active_calls = ACs
 			   ,account_doc=Doc
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Acct, {[]})),
@@ -374,13 +375,13 @@ specific_response(Routes) when is_list(Routes) ->
 
 %% update the account's trunks_in_use if flat_rate
 -spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
-update_account(#route_flags{flat_rate_enabled=true, account_doc=Doc, trunks_in_use=OldTinU}=Flags) ->
+update_account(#route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc, {[]}),
-    TinU = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct0, OldTinU)),
-    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), TinU, TinU+1]),
-    Acct1 = [{<<"trunks_in_use">>, whistle_util:to_binary(TinU+1)} | proplists:delete(<<"trunks_in_use">>, Acct0)],
+    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
+    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), ACs1, CallID]),
+    Acct1 = [{<<"active_calls">>, [CallID | ACs1]} | proplists:delete(<<"active_calls">>, Acct0)],
     Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
     {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
-    Flags#route_flags{trunks_in_use=TinU+1, account_doc=Doc2};
+    Flags#route_flags{active_calls=[CallID | ACs1], account_doc=Doc2};
 update_account(#route_flags{}=Flags) ->
     Flags.

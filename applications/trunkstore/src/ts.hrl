@@ -18,7 +18,8 @@
 -type proplist() :: list(tuple(binary(), binary())) | [].
 
 -record(route_flags, {
-	  to_user = <<>> :: binary()
+	  callid = <<>> :: binary()                     % unique call ID
+	  ,to_user = <<>> :: binary()
 	  ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
@@ -31,7 +32,7 @@
 	  ,caller_id = {} :: tuple()                     % Name and Number for Caller ID - check DID, then server, then account, then what we got from ecallmgr
           ,caller_id_e911 = {} :: tuple()                % CallerID for E911 calls - Check DID, then server, then account
 	  ,trunks = 0 :: integer()                       % Trunks available
-	  ,trunks_in_use = 0 :: integer()                % How many trunks are in use in the system
+	  ,active_calls = [] :: list(binary())           % Calls currently up
 	  ,flat_rate_enabled = false :: boolean()        % is this a flat-rate eligible call - only if trunks are available
           ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX"
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)

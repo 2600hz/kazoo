@@ -216,7 +216,7 @@ set_rate_flags(Flags, Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    %% trunks available in flags (flat_rate_enabled) and the rate has flatrate available as well
-	    UseFlatRate = Flags#route_flags.trunks > Flags#route_flags.trunks_in_use andalso get_value(<<"flatrate">>, RateData, false),
+	    UseFlatRate = Flags#route_flags.trunks > length(Flags#route_flags.active_calls) andalso get_value(<<"flatrate">>, RateData, false),
 
 	    case UseFlatRate of
 		true ->
