@@ -109,14 +109,16 @@ monitor_account_doc(#route_flags{account_doc=Doc}) ->
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
-update_account(_Duration, #route_flags{flat_rate_enabled=true, trunks_in_use=TinU, account_doc=Doc}=Flags) ->
-    format_log(info, "TS_CALL(~p): Updating trunks in use from ~p to ~p~n", [self(), TinU, TinU-1]),
+update_account(_Duration, #route_flags{flat_rate_enabled=true, account_doc=Doc}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
+    TinU = get_value(<<"trunks_in_use">>, Acct0),
+    format_log(info, "TS_CALL(~p): Updating trunks in use from ~p to ~p~n", [self(), TinU, TinU-1]),
+
     Acct1 = [{<<"trunks_in_use">>, whistle_util:to_binary(TinU-1)} | proplists:delete(<<"trunks_in_use">>, Acct0)],
     Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
     {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
     format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
-    Flags#route_flags{trunks_in_use=TinU-1, account_doc=Doc2};
+    Flags#route_flags{account_doc=Doc2};
 update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"inbound">>, credit_available=CA
 					  ,inbound_rate=R, inbound_rate_increment=RI, inbound_rate_minimum=RM, inbound_surcharge=S}=Flags) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
@@ -129,10 +131,12 @@ update_account(_Duration, #route_flags{}=Flags) ->
     Flags.
 
 -spec(update_account_balance/2 :: (AmountToDeduct :: float(), Flags :: tuple()) -> proplist()).
-update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, credit_available=CA}) ->
-    format_log(info, "TS_CALL(~p): Deducting ~p from ~p~n", [self(), AmountToDeduct, CA]),
+update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc}) ->
     {Acct0} = get_value(<<"account">>, Doc),
     {Credits0} = get_value(<<"credits">>, Acct0),
+    CA = get_value(<<"prepay">>, Credits0),
+    format_log(info, "TS_CALL(~p): Deducting ~p from ~p~n", [self(), AmountToDeduct, CA]),
+
     Credits1 = [{<<"prepay">>, whistle_util:to_binary(CA - AmountToDeduct)} | proplists:delete(<<"prepay">>, Credits0)],
     Acct1 = [{<<"credits">>, {Credits1}} | proplists:delete(<<"credits">>, Acct0)],
     Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
