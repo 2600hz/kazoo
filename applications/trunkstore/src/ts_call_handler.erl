@@ -83,7 +83,7 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    format_log(info, "TS_CALL(~p): ChanHangupCompl recv, shutting down...~n", [self()]);
 		<<"cdr">> ->
-		    update_account(get_value(<<"Billing-Seconds">>, Prop), Flags),
+		    update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
 		    ts_couch:rm_change_handler(get_value(<<"_id">>, Flags#route_flags.account_doc)),
 		    ts_responder:rm_post_handler(CallID);
 		_EvtName ->
@@ -104,14 +104,14 @@ consume_events(Host, CallID) ->
     amqp_util:bind_q_to_callevt(Host, EvtQ, CallID, cdr),
     amqp_util:basic_consume(Host, EvtQ).
 
-monitor_account_doc(#route_flags{account_doc=Doc}) ->
-    ts_couch:add_change_handler(?TS_DB, get_value(<<"_id">>, Doc)).
+monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
+    ts_couch:add_change_handler(?TS_DB, DocID).
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
 update_account(_Duration, #route_flags{flat_rate_enabled=true, account_doc=Doc}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
-    TinU = get_value(<<"trunks_in_use">>, Acct0),
+    TinU = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct0, 0)),
     format_log(info, "TS_CALL(~p): Updating trunks in use from ~p to ~p~n", [self(), TinU, TinU-1]),
 
     Acct1 = [{<<"trunks_in_use">>, whistle_util:to_binary(TinU-1)} | proplists:delete(<<"trunks_in_use">>, Acct0)],
@@ -119,14 +119,14 @@ update_account(_Duration, #route_flags{flat_rate_enabled=true, account_doc=Doc}=
     {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
     format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
     Flags#route_flags{account_doc=Doc2};
-update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"inbound">>, credit_available=CA
+update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"inbound">>
 					  ,inbound_rate=R, inbound_rate_increment=RI, inbound_rate_minimum=RM, inbound_surcharge=S}=Flags) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    Flags#route_flags{account_doc=update_account_balance(Amount, Flags), credit_available=CA-Amount};
-update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"outbound">>, credit_available=CA
+    Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
+update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"outbound">>
 					  ,outbound_rate=R, outbound_rate_increment=RI, outbound_rate_minimum=RM, outbound_surcharge=S}=Flags) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    Flags#route_flags{account_doc=update_account_balance(Amount, Flags), credit_available=CA-Amount};
+    Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
 update_account(_Duration, #route_flags{}=Flags) ->
     Flags.
 
@@ -134,7 +134,7 @@ update_account(_Duration, #route_flags{}=Flags) ->
 update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc}) ->
     {Acct0} = get_value(<<"account">>, Doc),
     {Credits0} = get_value(<<"credits">>, Acct0),
-    CA = get_value(<<"prepay">>, Credits0),
+    CA = whistle_util:to_float(get_value(<<"prepay">>, Credits0, 0.0)),
     format_log(info, "TS_CALL(~p): Deducting ~p from ~p~n", [self(), AmountToDeduct, CA]),
 
     Credits1 = [{<<"prepay">>, whistle_util:to_binary(CA - AmountToDeduct)} | proplists:delete(<<"prepay">>, Credits0)],

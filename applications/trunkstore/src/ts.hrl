@@ -44,5 +44,6 @@
           ,outbound_rate_minimum = 60 :: integer()       % time, in sec, to bill as a minimum
 	  ,outbound_surcharge = 0.0 :: float()           % rate to charge up front
 	  ,route_options = [] :: list()                  % options required to be handled by carriers
+	  ,account_doc_id = <<>> :: binary()             % doc id of the account
 	  ,account_doc = [] :: proplist()                % the full Couch document
 	 }).

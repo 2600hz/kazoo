@@ -34,14 +34,14 @@
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
 %% DBs = [{DbName, #db{}}]
-%% Views = [{ {DesignDoc, ViewName}, #view{}}]
+%% Views = [{ {#db{}, DesignDoc, ViewName}, #view{}}]
 %% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
-%% ChangeHandlers :: [ {DocID, Pid}]
+%% ChangeHandlers :: [ {DocID, ReqID, [Pid]}]
 -record(state, {
 	  connection = {} :: tuple(string(), tuple())
 	  ,dbs = [] :: list(tuple(string(), tuple()))
-	  ,views = [] :: list(tuple(tuple(string(), string()), tuple()))
-	  ,change_handlers = [] :: list(tuple(binary(), pid()))
+	  ,views = [] :: list(tuple(tuple(tuple(), string(), string()), tuple()))
+	  ,change_handlers = [] :: list(tuple(binary(), reference(), list(pid())))
 	 }).
 
 %%%===================================================================
@@ -86,7 +86,7 @@ rm_from_doc(Key, Doc) ->
     Doc1.
 
 %% save a Document to the DB
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> proplist()).
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> {ok, proplist()}).
 save_doc(DbName, Doc) ->
     gen_server:call(?MODULE, {save_doc, whistle_util:to_list(DbName), {Doc}}, infinity).
 

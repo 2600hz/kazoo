@@ -286,9 +286,7 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
--spec(options_match/2 :: (RouteOptions :: tuple(list()) | list(), RateOptions :: list()) -> boolean()).
-options_match({RouteOptions}, RateOptions) ->
-    options_match(RouteOptions, RateOptions);
+-spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary())) -> boolean()).
 options_match(RouteOptions, RateOptions) ->
     format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [RouteOptions, RateOptions]),
     lists:all(fun(Opt) -> get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
