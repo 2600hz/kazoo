@@ -145,7 +145,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ts_couch:rm_change_handler(?TS_CARRIERS_DOC),
+    whistle_couch:rm_change_handler(?TS_CARRIERS_DOC),
     ok.
 
 %%--------------------------------------------------------------------
@@ -163,7 +163,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 get_current_carriers() ->
-    case ts_couch:open_doc(?TS_DB, ?TS_CARRIERS_DOC) of
+    case whistle_couch:open_doc(?TS_DB, ?TS_CARRIERS_DOC) of
 	not_found ->
 	    format_log(info, "TS_CARRIER(~p): No document(~p) found~n", [self(), ?TS_CARRIERS_DOC]),
 	    {error, "No matching carriers"};
@@ -175,7 +175,7 @@ get_current_carriers() ->
 	    {error, "No matching carriers"};
 	Carriers when is_list(Carriers) ->
 	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Carriers)]),
-	    ts_couch:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
+	    whistle_couch:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
 	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))};
 	Other ->
 	    format_log(error, "TS_CARRIER(~p): Unexpected error ~p~n", [self(), Other]),

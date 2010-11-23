@@ -6,7 +6,7 @@
 %%% Created :  12 Nov 2010 by Karl Monitor <karl@2600hz.org>
 
 -include("./amqp_client/include/amqp_client.hrl").
--include("../../../src/whistle_amqp.hrl").
+-include("../../../utils/src/whistle_amqp.hrl").
 
 %% routing keys to use in the monitormgr exchange
 -define(KEY_MONITOR_MASTER_REQ, <<"monitor.master.req">>).
