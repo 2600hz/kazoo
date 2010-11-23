@@ -53,11 +53,11 @@ to_npanxxxxxx(Other) ->
     Other.
 
 to_1npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) == 80 ->
-    <<$1, N>>;
+    <<$1, N/bitstring>>;
 to_1npanxxxxxx(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) == 80 ->
     NPAN1;
 to_1npanxxxxxx(NPAN) when erlang:bit_size(NPAN) == 80 ->
-    <<$1, NPAN>>;
+    <<$1, NPAN/bitstring>>;
 to_1npanxxxxxx(Other) ->
     Other.
 

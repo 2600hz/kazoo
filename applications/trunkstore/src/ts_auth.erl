@@ -28,7 +28,7 @@
 %% @doc Give Prop, the Auth API request, create the API response JSON
 %% @end
 %%--------------------------------------------------------------------
--spec(handle_req/1 :: (Prop :: proplist()) -> tuple(ok | error, iolist() | string())).
+-spec(handle_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(Prop) ->
     [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
     {AuthU, AuthD} = {get_value(<<"Auth-User">>, Prop), get_value(<<"Auth-Domain">>, Prop)},
@@ -148,7 +148,7 @@ lookup_user(Name) ->
 	    {error, "Unexpeced error in lookup_user/1"}
     end.
 
--spec(response/2 :: (RespData :: proplist() | integer(), Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(response/2 :: (RespData :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 response(ViewInfo, Prop) ->
     Data = lists:umerge(specific_response(ViewInfo), Prop),
     whistle_api:auth_resp(Data).

@@ -43,6 +43,7 @@
 -include("ts.hrl").
 
 -define(WAIT_TO_UPDATE_TIMEOUT, 5000). %% 5 seconds
+-define(CALL_HEARTBEAT, 10000). %% 10 seconds, how often to query callmgr about call status
 
 -compile(export_all).
 
@@ -117,7 +118,7 @@ monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
-update_account(_Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, active_calls=ACs}=Flags) ->
+update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, account_doc_id=DocID, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
     ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
 
@@ -127,9 +128,14 @@ update_account(_Duration, #route_flags{callid=CallID, flat_rate_enabled=true, ac
 	    ACs2 = lists:filter(fun(CallID1) when CallID =:= CallID1 -> false; (_) -> true end, ACs1),
 	    Acct1 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct0)],
 	    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
-	    {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
-	    format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
-	    Flags#route_flags{account_doc=Doc2};
+	    case ts_couch:save_doc(?TS_DB, Doc1) of
+		{ok, Doc2} ->
+		    format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
+		    Flags#route_flags{account_doc=Doc2};
+		{error, conflict} ->
+		    format_log(info, "TS_CALL.up_acct(~p): Conflict saving ~p, trying again~n", [self(), DocID]),
+		    update_account(Duration, Flags#route_flags{account_doc=ts_couch:open_doc(?TS_DB, DocID)})
+	    end;
 	false ->
 	    format_log(info, "TS_CALL(~p): Updating trunks not necessary for ~p~n", [self(), CallID]),
 	    Flags
@@ -147,7 +153,7 @@ update_account(_Duration, #route_flags{}=Flags) ->
 
 %% only update if the call id is in the list of active calls
 -spec(update_account_balance/2 :: (AmountToDeduct :: float(), Flags :: tuple()) -> proplist()).
-update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=CallID, active_calls=ACs}) ->
+update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=CallID, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
     ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
 
@@ -164,9 +170,14 @@ update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=Call
 	    Acct2 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct1)],
 
 	    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct2}, Doc),
-	    {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
-	    format_log(info, "TS_CALL.up_acct_bal(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
-	    Doc2;
+	    case ts_couch:save_doc(?TS_DB, Doc1) of
+		{ok, Doc2} ->
+		    format_log(info, "TS_CALL.up_acct_bal(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
+		    Doc2;
+		{error, conflict} ->
+		    format_log(info, "TS_CALL.up_acct_bal(~p): Conflict on ~p, retrying~n", [self(), Flags#route_flags.account_doc_id]),
+		    update_account_balance(AmountToDeduct, Flags#route_flags{account_doc=ts_couch:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
+	    end;
 	false ->
 	    format_log(info, "TS_CALL.up_acct_bal(~p): No CallID in ActiveCalls; nothing to do~n", [self()]),
 	    Doc
