@@ -174,8 +174,12 @@ handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs
 	{{error, _Err}=E, _DBs} ->
 	    {reply, E, State};
 	{Db, DBs1} ->
-	    {ok, {Doc1}} = couchbeam:save_doc(Db, Doc),
-	    {reply, {ok, Doc1}, State#state{dbs=DBs1}}
+	    case couchbeam:save_doc(Db, Doc) of
+		{ok, {Doc1}} ->
+		    {reply, {ok, Doc1}, State#state{dbs=DBs1}};
+		{error, _E}=Err -> % conflict!
+		    {reply, Err, State#state{dbs=DBs1}}
+	    end
     end;
 handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) ->
     format_log(info, "TS_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
