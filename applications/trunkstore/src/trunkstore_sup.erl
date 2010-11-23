@@ -26,7 +26,7 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   , [
-	      ?CHILD(ts_couch, worker)
+	      ?CHILD(whistle_couch, worker)
 	      ,?CHILD(ts_responder, worker)
 	      ,?CHILD(ts_credit, worker)
 	      ,?CHILD(ts_carrier, worker)
