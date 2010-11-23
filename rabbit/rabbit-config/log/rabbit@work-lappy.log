@@ -1,0 +1,1112 @@
+
+=INFO REPORT==== 11-Nov-2010::11:40:42 ===
+Limiting to approx 924 file handles (829 sockets)
+
+=INFO REPORT==== 11-Nov-2010::11:40:42 ===
+Memory limit set to 803MB.
+
+=INFO REPORT==== 11-Nov-2010::11:40:42 ===
+msg_store_transient: using rabbit_msg_store_ets_index to provide index
+
+=INFO REPORT==== 11-Nov-2010::11:40:42 ===
+msg_store_persistent: using rabbit_msg_store_ets_index to provide index
+
+=WARNING REPORT==== 11-Nov-2010::11:40:42 ===
+msg_store_persistent: rebuilding indices from scratch
+
+=INFO REPORT==== 11-Nov-2010::11:40:42 ===
+started TCP Listener on 0.0.0.0:5672
+
+=INFO REPORT==== 11-Nov-2010::11:40:49 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:38809
+
+=INFO REPORT==== 11-Nov-2010::11:40:49 ===
+starting TCP connection <0.177.0> from 127.0.1.1:38809
+
+=INFO REPORT==== 11-Nov-2010::11:41:54 ===
+closing TCP connection <0.177.0> from 127.0.1.1:38809
+
+=INFO REPORT==== 11-Nov-2010::11:41:54 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:60380
+
+=INFO REPORT==== 11-Nov-2010::11:41:54 ===
+starting TCP connection <0.292.0> from 127.0.1.1:60380
+
+=WARNING REPORT==== 11-Nov-2010::11:42:37 ===
+exception on TCP connection <0.292.0> from 127.0.1.1:60380
+connection_closed_abruptly
+
+=INFO REPORT==== 11-Nov-2010::11:42:37 ===
+closing TCP connection <0.292.0> from 127.0.1.1:60380
+
+=INFO REPORT==== 11-Nov-2010::11:47:46 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:35733
+
+=INFO REPORT==== 11-Nov-2010::11:47:46 ===
+starting TCP connection <0.803.0> from 127.0.1.1:35733
+
+=INFO REPORT==== 11-Nov-2010::11:49:30 ===
+closing TCP connection <0.803.0> from 127.0.1.1:35733
+
+=INFO REPORT==== 11-Nov-2010::11:49:30 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:58743
+
+=INFO REPORT==== 11-Nov-2010::11:49:30 ===
+starting TCP connection <0.971.0> from 127.0.1.1:58743
+
+=INFO REPORT==== 11-Nov-2010::11:52:00 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:34607
+
+=INFO REPORT==== 11-Nov-2010::11:52:00 ===
+starting TCP connection <0.1198.0> from 127.0.1.1:34607
+
+=WARNING REPORT==== 11-Nov-2010::11:53:14 ===
+exception on TCP connection <0.1198.0> from 127.0.1.1:34607
+connection_closed_abruptly
+
+=INFO REPORT==== 11-Nov-2010::11:53:14 ===
+closing TCP connection <0.1198.0> from 127.0.1.1:34607
+
+=INFO REPORT==== 11-Nov-2010::11:53:40 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:38184
+
+=INFO REPORT==== 11-Nov-2010::11:53:40 ===
+starting TCP connection <0.1412.0> from 127.0.1.1:38184
+
+=WARNING REPORT==== 11-Nov-2010::18:26:43 ===
+exception on TCP connection <0.971.0> from 127.0.1.1:58743
+connection_closed_abruptly
+
+=INFO REPORT==== 11-Nov-2010::18:26:43 ===
+closing TCP connection <0.971.0> from 127.0.1.1:58743
+
+=WARNING REPORT==== 11-Nov-2010::18:26:46 ===
+exception on TCP connection <0.1412.0> from 127.0.1.1:38184
+connection_closed_abruptly
+
+=INFO REPORT==== 11-Nov-2010::18:26:46 ===
+closing TCP connection <0.1412.0> from 127.0.1.1:38184
+
+=INFO REPORT==== 11-Nov-2010::19:10:05 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.0.1:48999
+
+=INFO REPORT==== 11-Nov-2010::19:10:05 ===
+starting TCP connection <0.5643.1> from 127.0.0.1:48999
+
+=INFO REPORT==== 11-Nov-2010::19:11:42 ===
+closing TCP connection <0.5643.1> from 127.0.0.1:48999
+
+=INFO REPORT==== 11-Nov-2010::19:13:28 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.0.1:50719
+
+=INFO REPORT==== 11-Nov-2010::19:13:28 ===
+starting TCP connection <0.5937.1> from 127.0.0.1:50719
+
+=INFO REPORT==== 11-Nov-2010::19:13:31 ===
+closing TCP connection <0.5937.1> from 127.0.0.1:50719
+
+=INFO REPORT==== 12-Nov-2010::12:00:35 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:41707
+
+=INFO REPORT==== 12-Nov-2010::12:00:35 ===
+starting TCP connection <0.26686.1> from 127.0.1.1:41707
+
+=WARNING REPORT==== 12-Nov-2010::12:02:30 ===
+exception on TCP connection <0.26686.1> from 127.0.1.1:41707
+connection_closed_abruptly
+
+=INFO REPORT==== 12-Nov-2010::12:02:30 ===
+closing TCP connection <0.26686.1> from 127.0.1.1:41707
+
+=INFO REPORT==== 12-Nov-2010::12:02:43 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:42363
+
+=INFO REPORT==== 12-Nov-2010::12:02:43 ===
+starting TCP connection <0.26885.1> from 127.0.1.1:42363
+
+=WARNING REPORT==== 12-Nov-2010::13:51:22 ===
+exception on TCP connection <0.26885.1> from 127.0.1.1:42363
+connection_closed_abruptly
+
+=INFO REPORT==== 12-Nov-2010::13:51:22 ===
+closing TCP connection <0.26885.1> from 127.0.1.1:42363
+
+=INFO REPORT==== 12-Nov-2010::13:54:01 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:33486
+
+=INFO REPORT==== 12-Nov-2010::13:54:01 ===
+starting TCP connection <0.3627.2> from 127.0.1.1:33486
+
+=WARNING REPORT==== 12-Nov-2010::13:56:18 ===
+exception on TCP connection <0.3627.2> from 127.0.1.1:33486
+connection_closed_abruptly
+
+=INFO REPORT==== 12-Nov-2010::13:56:18 ===
+closing TCP connection <0.3627.2> from 127.0.1.1:33486
+
+=INFO REPORT==== 12-Nov-2010::14:00:20 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:46621
+
+=INFO REPORT==== 12-Nov-2010::14:00:20 ===
+starting TCP connection <0.4177.2> from 127.0.1.1:46621
+
+=WARNING REPORT==== 12-Nov-2010::16:28:05 ===
+exception on TCP connection <0.4177.2> from 127.0.1.1:46621
+connection_closed_abruptly
+
+=INFO REPORT==== 12-Nov-2010::16:28:05 ===
+closing TCP connection <0.4177.2> from 127.0.1.1:46621
+
+=INFO REPORT==== 13-Nov-2010::21:08:34 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:36369
+
+=INFO REPORT==== 13-Nov-2010::21:08:34 ===
+starting TCP connection <0.5482.3> from 127.0.1.1:36369
+
+=WARNING REPORT==== 13-Nov-2010::22:09:18 ===
+exception on TCP connection <0.5482.3> from 127.0.1.1:36369
+connection_closed_abruptly
+
+=INFO REPORT==== 13-Nov-2010::22:09:18 ===
+closing TCP connection <0.5482.3> from 127.0.1.1:36369
+
+=INFO REPORT==== 15-Nov-2010::11:47:03 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:37495
+
+=INFO REPORT==== 15-Nov-2010::11:47:03 ===
+starting TCP connection <0.25868.3> from 127.0.1.1:37495
+
+=WARNING REPORT==== 15-Nov-2010::11:48:57 ===
+exception on TCP connection <0.25868.3> from 127.0.1.1:37495
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::11:48:57 ===
+closing TCP connection <0.25868.3> from 127.0.1.1:37495
+
+=INFO REPORT==== 15-Nov-2010::11:52:32 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:48720
+
+=INFO REPORT==== 15-Nov-2010::11:52:32 ===
+starting TCP connection <0.26344.3> from 127.0.1.1:48720
+
+=WARNING REPORT==== 15-Nov-2010::12:01:34 ===
+exception on TCP connection <0.26344.3> from 127.0.1.1:48720
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::12:01:34 ===
+closing TCP connection <0.26344.3> from 127.0.1.1:48720
+
+=INFO REPORT==== 15-Nov-2010::13:49:32 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:38918
+
+=INFO REPORT==== 15-Nov-2010::13:49:32 ===
+starting TCP connection <0.3550.4> from 127.0.1.1:38918
+
+=WARNING REPORT==== 15-Nov-2010::13:51:44 ===
+exception on TCP connection <0.3550.4> from 127.0.1.1:38918
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::13:51:44 ===
+closing TCP connection <0.3550.4> from 127.0.1.1:38918
+
+=INFO REPORT==== 15-Nov-2010::13:52:23 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:43441
+
+=INFO REPORT==== 15-Nov-2010::13:52:23 ===
+starting TCP connection <0.3807.4> from 127.0.1.1:43441
+
+=WARNING REPORT==== 15-Nov-2010::13:53:35 ===
+exception on TCP connection <0.3807.4> from 127.0.1.1:43441
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::13:53:35 ===
+closing TCP connection <0.3807.4> from 127.0.1.1:43441
+
+=INFO REPORT==== 15-Nov-2010::13:53:42 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:42933
+
+=INFO REPORT==== 15-Nov-2010::13:53:42 ===
+starting TCP connection <0.3927.4> from 127.0.1.1:42933
+
+=WARNING REPORT==== 15-Nov-2010::13:54:34 ===
+exception on TCP connection <0.3927.4> from 127.0.1.1:42933
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::13:54:34 ===
+closing TCP connection <0.3927.4> from 127.0.1.1:42933
+
+=INFO REPORT==== 15-Nov-2010::13:59:07 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:46924
+
+=INFO REPORT==== 15-Nov-2010::13:59:07 ===
+starting TCP connection <0.4401.4> from 127.0.1.1:46924
+
+=WARNING REPORT==== 15-Nov-2010::15:26:51 ===
+exception on TCP connection <0.4401.4> from 127.0.1.1:46924
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::15:26:51 ===
+closing TCP connection <0.4401.4> from 127.0.1.1:46924
+
+=INFO REPORT==== 15-Nov-2010::17:25:44 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:60702
+
+=INFO REPORT==== 15-Nov-2010::17:25:44 ===
+starting TCP connection <0.22035.4> from 127.0.1.1:60702
+
+=WARNING REPORT==== 15-Nov-2010::17:28:31 ===
+exception on TCP connection <0.22035.4> from 127.0.1.1:60702
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::17:28:31 ===
+closing TCP connection <0.22035.4> from 127.0.1.1:60702
+
+=INFO REPORT==== 15-Nov-2010::17:29:02 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:59617
+
+=INFO REPORT==== 15-Nov-2010::17:29:02 ===
+starting TCP connection <0.22329.4> from 127.0.1.1:59617
+
+=ERROR REPORT==== 15-Nov-2010::17:30:45 ===
+connection <0.22329.4> (running), channel 3 - error:
+{amqp_error,command_invalid,"second 'channel.open' seen",'channel.open'}
+
+=INFO REPORT==== 15-Nov-2010::17:30:45 ===
+closing TCP connection <0.22329.4> from 127.0.1.1:59617
+
+=INFO REPORT==== 15-Nov-2010::17:37:01 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:59127
+
+=INFO REPORT==== 15-Nov-2010::17:37:01 ===
+starting TCP connection <0.23033.4> from 127.0.1.1:59127
+
+=INFO REPORT==== 15-Nov-2010::17:38:31 ===
+closing TCP connection <0.23033.4> from 127.0.1.1:59127
+
+=INFO REPORT==== 15-Nov-2010::17:40:15 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:35577
+
+=INFO REPORT==== 15-Nov-2010::17:40:15 ===
+starting TCP connection <0.23326.4> from 127.0.1.1:35577
+
+=INFO REPORT==== 15-Nov-2010::17:40:15 ===
+closing TCP connection <0.23326.4> from 127.0.1.1:35577
+
+=INFO REPORT==== 15-Nov-2010::17:45:43 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:52934
+
+=INFO REPORT==== 15-Nov-2010::17:45:43 ===
+starting TCP connection <0.23801.4> from 127.0.1.1:52934
+
+=INFO REPORT==== 15-Nov-2010::17:45:43 ===
+closing TCP connection <0.23801.4> from 127.0.1.1:52934
+
+=INFO REPORT==== 15-Nov-2010::17:46:10 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:59003
+
+=INFO REPORT==== 15-Nov-2010::17:46:10 ===
+starting TCP connection <0.23849.4> from 127.0.1.1:59003
+
+=INFO REPORT==== 15-Nov-2010::17:46:10 ===
+closing TCP connection <0.23849.4> from 127.0.1.1:59003
+
+=INFO REPORT==== 15-Nov-2010::17:50:56 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:52517
+
+=INFO REPORT==== 15-Nov-2010::17:50:56 ===
+starting TCP connection <0.24263.4> from 127.0.1.1:52517
+
+=INFO REPORT==== 15-Nov-2010::17:51:27 ===
+closing TCP connection <0.24263.4> from 127.0.1.1:52517
+
+=INFO REPORT==== 15-Nov-2010::17:58:43 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:32834
+
+=INFO REPORT==== 15-Nov-2010::17:58:43 ===
+starting TCP connection <0.24940.4> from 127.0.1.1:32834
+
+=INFO REPORT==== 15-Nov-2010::17:58:43 ===
+closing TCP connection <0.24940.4> from 127.0.1.1:32834
+
+=INFO REPORT==== 15-Nov-2010::18:00:54 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:55316
+
+=INFO REPORT==== 15-Nov-2010::18:00:54 ===
+starting TCP connection <0.25136.4> from 127.0.1.1:55316
+
+=ERROR REPORT==== 15-Nov-2010::18:01:33 ===
+connection <0.25136.4> (running), channel 3 - error:
+{amqp_error,command_invalid,"second 'channel.open' seen",'channel.open'}
+
+=INFO REPORT==== 15-Nov-2010::18:01:33 ===
+closing TCP connection <0.25136.4> from 127.0.1.1:55316
+
+=INFO REPORT==== 15-Nov-2010::18:03:22 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:42484
+
+=INFO REPORT==== 15-Nov-2010::18:03:22 ===
+starting TCP connection <0.25363.4> from 127.0.1.1:42484
+
+=INFO REPORT==== 15-Nov-2010::18:03:22 ===
+closing TCP connection <0.25363.4> from 127.0.1.1:42484
+
+=INFO REPORT==== 15-Nov-2010::18:04:08 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:44777
+
+=INFO REPORT==== 15-Nov-2010::18:04:08 ===
+starting TCP connection <0.25438.4> from 127.0.1.1:44777
+
+=INFO REPORT==== 15-Nov-2010::18:04:08 ===
+closing TCP connection <0.25438.4> from 127.0.1.1:44777
+
+=INFO REPORT==== 15-Nov-2010::18:05:22 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:55874
+
+=INFO REPORT==== 15-Nov-2010::18:05:22 ===
+starting TCP connection <0.25551.4> from 127.0.1.1:55874
+
+=WARNING REPORT==== 15-Nov-2010::18:06:49 ===
+exception on TCP connection <0.25551.4> from 127.0.1.1:55874
+connection_closed_abruptly
+
+=INFO REPORT==== 15-Nov-2010::18:06:49 ===
+closing TCP connection <0.25551.4> from 127.0.1.1:55874
+
+=INFO REPORT==== 16-Nov-2010::09:47:32 ===
+stopped TCP Listener on 0.0.0.0:5672
+
+=INFO REPORT==== 16-Nov-2010::09:47:33 ===
+    application: rabbit
+    exited: stopped
+    type: permanent
+
+=INFO REPORT==== 16-Nov-2010::09:47:33 ===
+    application: mnesia
+    exited: stopped
+    type: permanent
+
+=INFO REPORT==== 16-Nov-2010::09:47:33 ===
+    application: os_mon
+    exited: stopped
+    type: permanent
+
+=INFO REPORT==== 16-Nov-2010::09:47:44 ===
+    application: mnesia
+    exited: stopped
+    type: temporary
+
+=INFO REPORT==== 16-Nov-2010::09:47:49 ===
+Limiting to approx 924 file handles (829 sockets)
+
+=INFO REPORT==== 16-Nov-2010::09:47:49 ===
+    application: mnesia
+    exited: stopped
+    type: temporary
+
+=INFO REPORT==== 16-Nov-2010::09:47:50 ===
+Memory limit set to 803MB.
+
+=INFO REPORT==== 16-Nov-2010::09:47:50 ===
+Added vhost <<"/">>
+
+=INFO REPORT==== 16-Nov-2010::09:47:50 ===
+Created user <<"guest">>
+
+=INFO REPORT==== 16-Nov-2010::09:47:50 ===
+Set user admin flag for user <<"guest">> to true
+
+=INFO REPORT==== 16-Nov-2010::09:47:50 ===
+msg_store_transient: using rabbit_msg_store_ets_index to provide index
+
+=INFO REPORT==== 16-Nov-2010::09:47:50 ===
+msg_store_persistent: using rabbit_msg_store_ets_index to provide index
+
+=WARNING REPORT==== 16-Nov-2010::09:47:50 ===
+msg_store_persistent: rebuilding indices from scratch
+
+=INFO REPORT==== 16-Nov-2010::09:47:50 ===
+started TCP Listener on 0.0.0.0:5672
+
+=INFO REPORT==== 16-Nov-2010::09:48:25 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:46988
+
+=INFO REPORT==== 16-Nov-2010::09:48:25 ===
+starting TCP connection <0.30562.4> from 127.0.1.1:46988
+
+=WARNING REPORT==== 16-Nov-2010::09:48:59 ===
+exception on TCP connection <0.30562.4> from 127.0.1.1:46988
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::09:48:59 ===
+closing TCP connection <0.30562.4> from 127.0.1.1:46988
+
+=INFO REPORT==== 16-Nov-2010::09:55:56 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:56712
+
+=INFO REPORT==== 16-Nov-2010::09:55:56 ===
+starting TCP connection <0.31238.4> from 127.0.1.1:56712
+
+=WARNING REPORT==== 16-Nov-2010::09:56:04 ===
+exception on TCP connection <0.31238.4> from 127.0.1.1:56712
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::09:56:04 ===
+closing TCP connection <0.31238.4> from 127.0.1.1:56712
+
+=INFO REPORT==== 16-Nov-2010::10:00:45 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:47973
+
+=INFO REPORT==== 16-Nov-2010::10:00:45 ===
+starting TCP connection <0.31664.4> from 127.0.1.1:47973
+
+=WARNING REPORT==== 16-Nov-2010::10:01:02 ===
+exception on TCP connection <0.31664.4> from 127.0.1.1:47973
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:01:02 ===
+closing TCP connection <0.31664.4> from 127.0.1.1:47973
+
+=INFO REPORT==== 16-Nov-2010::10:03:23 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:51966
+
+=INFO REPORT==== 16-Nov-2010::10:03:23 ===
+starting TCP connection <0.31902.4> from 127.0.1.1:51966
+
+=WARNING REPORT==== 16-Nov-2010::10:03:33 ===
+exception on TCP connection <0.31902.4> from 127.0.1.1:51966
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:03:33 ===
+closing TCP connection <0.31902.4> from 127.0.1.1:51966
+
+=INFO REPORT==== 16-Nov-2010::10:11:08 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:38061
+
+=INFO REPORT==== 16-Nov-2010::10:11:08 ===
+starting TCP connection <0.32569.4> from 127.0.1.1:38061
+
+=WARNING REPORT==== 16-Nov-2010::10:11:59 ===
+exception on TCP connection <0.32569.4> from 127.0.1.1:38061
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:11:59 ===
+closing TCP connection <0.32569.4> from 127.0.1.1:38061
+
+=INFO REPORT==== 16-Nov-2010::10:16:41 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:60122
+
+=INFO REPORT==== 16-Nov-2010::10:16:41 ===
+starting TCP connection <0.283.5> from 127.0.1.1:60122
+
+=WARNING REPORT==== 16-Nov-2010::10:16:49 ===
+exception on TCP connection <0.283.5> from 127.0.1.1:60122
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:16:49 ===
+closing TCP connection <0.283.5> from 127.0.1.1:60122
+
+=INFO REPORT==== 16-Nov-2010::10:18:43 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:45187
+
+=INFO REPORT==== 16-Nov-2010::10:18:43 ===
+starting TCP connection <0.465.5> from 127.0.1.1:45187
+
+=WARNING REPORT==== 16-Nov-2010::10:18:49 ===
+exception on TCP connection <0.465.5> from 127.0.1.1:45187
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:18:49 ===
+closing TCP connection <0.465.5> from 127.0.1.1:45187
+
+=INFO REPORT==== 16-Nov-2010::10:20:09 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:43455
+
+=INFO REPORT==== 16-Nov-2010::10:20:09 ===
+starting TCP connection <0.596.5> from 127.0.1.1:43455
+
+=INFO REPORT==== 16-Nov-2010::10:20:23 ===
+closing TCP connection <0.596.5> from 127.0.1.1:43455
+
+=INFO REPORT==== 16-Nov-2010::10:28:57 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:33322
+
+=INFO REPORT==== 16-Nov-2010::10:28:57 ===
+starting TCP connection <0.1367.5> from 127.0.1.1:33322
+
+=INFO REPORT==== 16-Nov-2010::10:29:09 ===
+closing TCP connection <0.1367.5> from 127.0.1.1:33322
+
+=INFO REPORT==== 16-Nov-2010::10:37:07 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:40227
+
+=INFO REPORT==== 16-Nov-2010::10:37:07 ===
+starting TCP connection <0.2084.5> from 127.0.1.1:40227
+
+=INFO REPORT==== 16-Nov-2010::10:37:19 ===
+closing TCP connection <0.2084.5> from 127.0.1.1:40227
+
+=INFO REPORT==== 16-Nov-2010::10:37:19 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:41281
+
+=INFO REPORT==== 16-Nov-2010::10:37:19 ===
+starting TCP connection <0.2113.5> from 127.0.1.1:41281
+
+=ERROR REPORT==== 16-Nov-2010::10:37:19 ===
+connection <0.2113.5> (running), channel 1 - error:
+{amqp_error,not_found,
+            "no queue 'amq.gen-yeVbGanRMipOCGvoC8W7aQ==' in vhost '/'",
+            'queue.delete'}
+
+=INFO REPORT==== 16-Nov-2010::10:37:19 ===
+closing TCP connection <0.2113.5> from 127.0.1.1:41281
+
+=INFO REPORT==== 16-Nov-2010::10:37:19 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:59427
+
+=INFO REPORT==== 16-Nov-2010::10:37:19 ===
+starting TCP connection <0.2125.5> from 127.0.1.1:59427
+
+=WARNING REPORT==== 16-Nov-2010::10:38:05 ===
+exception on TCP connection <0.2125.5> from 127.0.1.1:59427
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:38:05 ===
+closing TCP connection <0.2125.5> from 127.0.1.1:59427
+
+=INFO REPORT==== 16-Nov-2010::10:38:21 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:46870
+
+=INFO REPORT==== 16-Nov-2010::10:38:21 ===
+starting TCP connection <0.2231.5> from 127.0.1.1:46870
+
+=WARNING REPORT==== 16-Nov-2010::10:40:56 ===
+exception on TCP connection <0.2231.5> from 127.0.1.1:46870
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:40:56 ===
+closing TCP connection <0.2231.5> from 127.0.1.1:46870
+
+=INFO REPORT==== 16-Nov-2010::10:43:20 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:54894
+
+=INFO REPORT==== 16-Nov-2010::10:43:20 ===
+starting TCP connection <0.2677.5> from 127.0.1.1:54894
+
+=INFO REPORT==== 16-Nov-2010::10:43:31 ===
+closing TCP connection <0.2677.5> from 127.0.1.1:54894
+
+=INFO REPORT==== 16-Nov-2010::10:43:31 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:43507
+
+=INFO REPORT==== 16-Nov-2010::10:43:31 ===
+starting TCP connection <0.2705.5> from 127.0.1.1:43507
+
+=WARNING REPORT==== 16-Nov-2010::10:48:39 ===
+exception on TCP connection <0.2705.5> from 127.0.1.1:43507
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:48:39 ===
+closing TCP connection <0.2705.5> from 127.0.1.1:43507
+
+=INFO REPORT==== 16-Nov-2010::10:48:54 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:39153
+
+=INFO REPORT==== 16-Nov-2010::10:48:54 ===
+starting TCP connection <0.3181.5> from 127.0.1.1:39153
+
+=INFO REPORT==== 16-Nov-2010::10:49:19 ===
+closing TCP connection <0.3181.5> from 127.0.1.1:39153
+
+=INFO REPORT==== 16-Nov-2010::10:49:19 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:58283
+
+=INFO REPORT==== 16-Nov-2010::10:49:19 ===
+starting TCP connection <0.3235.5> from 127.0.1.1:58283
+
+=WARNING REPORT==== 16-Nov-2010::10:51:52 ===
+exception on TCP connection <0.3235.5> from 127.0.1.1:58283
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:51:52 ===
+closing TCP connection <0.3235.5> from 127.0.1.1:58283
+
+=INFO REPORT==== 16-Nov-2010::10:52:03 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:38934
+
+=INFO REPORT==== 16-Nov-2010::10:52:03 ===
+starting TCP connection <0.3485.5> from 127.0.1.1:38934
+
+=INFO REPORT==== 16-Nov-2010::10:52:14 ===
+closing TCP connection <0.3485.5> from 127.0.1.1:38934
+
+=INFO REPORT==== 16-Nov-2010::10:52:14 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:47272
+
+=INFO REPORT==== 16-Nov-2010::10:52:14 ===
+starting TCP connection <0.3512.5> from 127.0.1.1:47272
+
+=WARNING REPORT==== 16-Nov-2010::10:53:12 ===
+exception on TCP connection <0.3512.5> from 127.0.1.1:47272
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:53:12 ===
+closing TCP connection <0.3512.5> from 127.0.1.1:47272
+
+=INFO REPORT==== 16-Nov-2010::10:53:21 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:54839
+
+=INFO REPORT==== 16-Nov-2010::10:53:21 ===
+starting TCP connection <0.3626.5> from 127.0.1.1:54839
+
+=WARNING REPORT==== 16-Nov-2010::10:56:35 ===
+exception on TCP connection <0.3626.5> from 127.0.1.1:54839
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:56:35 ===
+closing TCP connection <0.3626.5> from 127.0.1.1:54839
+
+=INFO REPORT==== 16-Nov-2010::10:58:50 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:39642
+
+=INFO REPORT==== 16-Nov-2010::10:58:50 ===
+starting TCP connection <0.4123.5> from 127.0.1.1:39642
+
+=WARNING REPORT==== 16-Nov-2010::10:58:52 ===
+exception on TCP connection <0.4123.5> from 127.0.1.1:39642
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:58:52 ===
+closing TCP connection <0.4123.5> from 127.0.1.1:39642
+
+=INFO REPORT==== 16-Nov-2010::10:59:48 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:42082
+
+=INFO REPORT==== 16-Nov-2010::10:59:48 ===
+starting TCP connection <0.4216.5> from 127.0.1.1:42082
+
+=WARNING REPORT==== 16-Nov-2010::10:59:50 ===
+exception on TCP connection <0.4216.5> from 127.0.1.1:42082
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::10:59:50 ===
+closing TCP connection <0.4216.5> from 127.0.1.1:42082
+
+=INFO REPORT==== 16-Nov-2010::11:01:23 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:36344
+
+=INFO REPORT==== 16-Nov-2010::11:01:23 ===
+starting TCP connection <0.4359.5> from 127.0.1.1:36344
+
+=WARNING REPORT==== 16-Nov-2010::11:01:26 ===
+exception on TCP connection <0.4359.5> from 127.0.1.1:36344
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::11:01:26 ===
+closing TCP connection <0.4359.5> from 127.0.1.1:36344
+
+=INFO REPORT==== 16-Nov-2010::11:03:24 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:37681
+
+=INFO REPORT==== 16-Nov-2010::11:03:24 ===
+starting TCP connection <0.4542.5> from 127.0.1.1:37681
+
+=WARNING REPORT==== 16-Nov-2010::11:03:27 ===
+exception on TCP connection <0.4542.5> from 127.0.1.1:37681
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::11:03:27 ===
+closing TCP connection <0.4542.5> from 127.0.1.1:37681
+
+=INFO REPORT==== 16-Nov-2010::11:04:14 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:43280
+
+=INFO REPORT==== 16-Nov-2010::11:04:14 ===
+starting TCP connection <0.4621.5> from 127.0.1.1:43280
+
+=WARNING REPORT==== 16-Nov-2010::11:04:16 ===
+exception on TCP connection <0.4621.5> from 127.0.1.1:43280
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::11:04:16 ===
+closing TCP connection <0.4621.5> from 127.0.1.1:43280
+
+=INFO REPORT==== 16-Nov-2010::11:10:53 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:47581
+
+=INFO REPORT==== 16-Nov-2010::11:10:53 ===
+starting TCP connection <0.5196.5> from 127.0.1.1:47581
+
+=WARNING REPORT==== 16-Nov-2010::11:10:55 ===
+exception on TCP connection <0.5196.5> from 127.0.1.1:47581
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::11:10:55 ===
+closing TCP connection <0.5196.5> from 127.0.1.1:47581
+
+=INFO REPORT==== 16-Nov-2010::11:54:14 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:44375
+
+=INFO REPORT==== 16-Nov-2010::11:54:14 ===
+starting TCP connection <0.8896.5> from 127.0.1.1:44375
+
+=INFO REPORT==== 16-Nov-2010::11:54:30 ===
+closing TCP connection <0.8896.5> from 127.0.1.1:44375
+
+=INFO REPORT==== 16-Nov-2010::11:56:17 ===
+stopped TCP Listener on 0.0.0.0:5672
+
+=INFO REPORT==== 16-Nov-2010::11:56:17 ===
+    application: rabbit
+    exited: stopped
+    type: temporary
+
+=INFO REPORT==== 16-Nov-2010::11:56:17 ===
+    application: mnesia
+    exited: stopped
+    type: temporary
+
+=INFO REPORT==== 16-Nov-2010::11:56:17 ===
+    application: os_mon
+    exited: stopped
+    type: temporary
+
+=INFO REPORT==== 16-Nov-2010::11:56:19 ===
+    application: mnesia
+    exited: stopped
+    type: temporary
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+Limiting to approx 924 file handles (829 sockets)
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+    application: mnesia
+    exited: stopped
+    type: temporary
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+Memory limit set to 803MB.
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+Added vhost <<"/">>
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+Created user <<"guest">>
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+Set user admin flag for user <<"guest">> to true
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+msg_store_transient: using rabbit_msg_store_ets_index to provide index
+
+=INFO REPORT==== 16-Nov-2010::11:56:21 ===
+msg_store_persistent: using rabbit_msg_store_ets_index to provide index
+
+=WARNING REPORT==== 16-Nov-2010::11:56:21 ===
+msg_store_persistent: rebuilding indices from scratch
+
+=INFO REPORT==== 16-Nov-2010::11:56:22 ===
+started TCP Listener on 0.0.0.0:5672
+
+=INFO REPORT==== 16-Nov-2010::11:57:16 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:48945
+
+=INFO REPORT==== 16-Nov-2010::11:57:16 ===
+starting TCP connection <0.9425.5> from 127.0.1.1:48945
+
+=INFO REPORT==== 16-Nov-2010::11:57:21 ===
+closing TCP connection <0.9425.5> from 127.0.1.1:48945
+
+=INFO REPORT==== 16-Nov-2010::11:59:24 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:58200
+
+=INFO REPORT==== 16-Nov-2010::11:59:24 ===
+starting TCP connection <0.9643.5> from 127.0.1.1:58200
+
+=INFO REPORT==== 16-Nov-2010::11:59:24 ===
+closing TCP connection <0.9643.5> from 127.0.1.1:58200
+
+=INFO REPORT==== 16-Nov-2010::12:00:58 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:41561
+
+=INFO REPORT==== 16-Nov-2010::12:00:58 ===
+starting TCP connection <0.9784.5> from 127.0.1.1:41561
+
+=ERROR REPORT==== 16-Nov-2010::12:00:58 ===
+connection <0.9784.5> (closing), channel 1 - error:
+{amqp_error,command_invalid,"second 'channel.open' seen",'channel.open'}
+
+=INFO REPORT==== 16-Nov-2010::12:00:58 ===
+closing TCP connection <0.9784.5> from 127.0.1.1:41561
+
+=INFO REPORT==== 16-Nov-2010::12:01:37 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:50606
+
+=INFO REPORT==== 16-Nov-2010::12:01:37 ===
+starting TCP connection <0.9849.5> from 127.0.1.1:50606
+
+=INFO REPORT==== 16-Nov-2010::12:01:37 ===
+closing TCP connection <0.9849.5> from 127.0.1.1:50606
+
+=INFO REPORT==== 16-Nov-2010::12:22:21 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:43778
+
+=INFO REPORT==== 16-Nov-2010::12:22:21 ===
+starting TCP connection <0.11626.5> from 127.0.1.1:43778
+
+=INFO REPORT==== 16-Nov-2010::12:22:21 ===
+closing TCP connection <0.11626.5> from 127.0.1.1:43778
+
+=INFO REPORT==== 16-Nov-2010::12:23:44 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:52003
+
+=INFO REPORT==== 16-Nov-2010::12:23:44 ===
+starting TCP connection <0.11754.5> from 127.0.1.1:52003
+
+=INFO REPORT==== 16-Nov-2010::12:23:44 ===
+closing TCP connection <0.11754.5> from 127.0.1.1:52003
+
+=INFO REPORT==== 16-Nov-2010::12:24:51 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:41312
+
+=INFO REPORT==== 16-Nov-2010::12:24:51 ===
+starting TCP connection <0.11858.5> from 127.0.1.1:41312
+
+=INFO REPORT==== 16-Nov-2010::12:26:01 ===
+closing TCP connection <0.11858.5> from 127.0.1.1:41312
+
+=INFO REPORT==== 16-Nov-2010::12:26:01 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:40269
+
+=INFO REPORT==== 16-Nov-2010::12:26:01 ===
+starting TCP connection <0.11975.5> from 127.0.1.1:40269
+
+=WARNING REPORT==== 16-Nov-2010::14:55:06 ===
+exception on TCP connection <0.11975.5> from 127.0.1.1:40269
+connection_closed_abruptly
+
+=INFO REPORT==== 16-Nov-2010::14:55:06 ===
+closing TCP connection <0.11975.5> from 127.0.1.1:40269
+
+=INFO REPORT==== 17-Nov-2010::11:37:58 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:35139
+
+=INFO REPORT==== 17-Nov-2010::11:37:58 ===
+starting TCP connection <0.17840.6> from 127.0.1.1:35139
+
+=WARNING REPORT==== 17-Nov-2010::12:42:46 ===
+exception on TCP connection <0.17840.6> from 127.0.1.1:35139
+connection_closed_abruptly
+
+=INFO REPORT==== 17-Nov-2010::12:42:46 ===
+closing TCP connection <0.17840.6> from 127.0.1.1:35139
+
+=INFO REPORT==== 17-Nov-2010::12:44:44 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:41596
+
+=INFO REPORT==== 17-Nov-2010::12:44:44 ===
+starting TCP connection <0.23544.6> from 127.0.1.1:41596
+
+=WARNING REPORT==== 17-Nov-2010::12:50:09 ===
+exception on TCP connection <0.23544.6> from 127.0.1.1:41596
+connection_closed_abruptly
+
+=INFO REPORT==== 17-Nov-2010::12:50:09 ===
+closing TCP connection <0.23544.6> from 127.0.1.1:41596
+
+=INFO REPORT==== 19-Nov-2010::11:05:56 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:36651
+
+=INFO REPORT==== 19-Nov-2010::11:05:56 ===
+starting TCP connection <0.11718.9> from 127.0.1.1:36651
+
+=WARNING REPORT==== 19-Nov-2010::11:07:53 ===
+exception on TCP connection <0.11718.9> from 127.0.1.1:36651
+connection_closed_abruptly
+
+=INFO REPORT==== 19-Nov-2010::11:07:53 ===
+closing TCP connection <0.11718.9> from 127.0.1.1:36651
+
+=INFO REPORT==== 19-Nov-2010::11:07:59 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:35007
+
+=INFO REPORT==== 19-Nov-2010::11:07:59 ===
+starting TCP connection <0.11902.9> from 127.0.1.1:35007
+
+=WARNING REPORT==== 19-Nov-2010::11:13:29 ===
+exception on TCP connection <0.11902.9> from 127.0.1.1:35007
+connection_closed_abruptly
+
+=INFO REPORT==== 19-Nov-2010::11:13:29 ===
+closing TCP connection <0.11902.9> from 127.0.1.1:35007
+
+=INFO REPORT==== 19-Nov-2010::11:40:56 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:46448
+
+=INFO REPORT==== 19-Nov-2010::11:40:56 ===
+starting TCP connection <0.14736.9> from 127.0.1.1:46448
+
+=WARNING REPORT==== 19-Nov-2010::11:42:20 ===
+exception on TCP connection <0.14736.9> from 127.0.1.1:46448
+connection_closed_abruptly
+
+=INFO REPORT==== 19-Nov-2010::11:42:20 ===
+closing TCP connection <0.14736.9> from 127.0.1.1:46448
+
+=INFO REPORT==== 19-Nov-2010::11:42:25 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:44804
+
+=INFO REPORT==== 19-Nov-2010::11:42:25 ===
+starting TCP connection <0.14872.9> from 127.0.1.1:44804
+
+=WARNING REPORT==== 19-Nov-2010::11:43:47 ===
+exception on TCP connection <0.14872.9> from 127.0.1.1:44804
+connection_closed_abruptly
+
+=INFO REPORT==== 19-Nov-2010::11:43:47 ===
+closing TCP connection <0.14872.9> from 127.0.1.1:44804
+
+=INFO REPORT==== 19-Nov-2010::11:44:29 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:57212
+
+=INFO REPORT==== 19-Nov-2010::11:44:29 ===
+starting TCP connection <0.15065.9> from 127.0.1.1:57212
+
+=WARNING REPORT==== 19-Nov-2010::12:49:14 ===
+exception on TCP connection <0.15065.9> from 127.0.1.1:57212
+connection_closed_abruptly
+
+=INFO REPORT==== 19-Nov-2010::12:49:14 ===
+closing TCP connection <0.15065.9> from 127.0.1.1:57212
+
+=INFO REPORT==== 19-Nov-2010::16:20:21 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:45993
+
+=INFO REPORT==== 19-Nov-2010::16:20:21 ===
+starting TCP connection <0.5811.10> from 127.0.1.1:45993
+
+=WARNING REPORT==== 19-Nov-2010::16:22:13 ===
+exception on TCP connection <0.5811.10> from 127.0.1.1:45993
+connection_closed_abruptly
+
+=INFO REPORT==== 19-Nov-2010::16:22:13 ===
+closing TCP connection <0.5811.10> from 127.0.1.1:45993
+
+=INFO REPORT==== 20-Nov-2010::11:22:05 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:41423
+
+=INFO REPORT==== 20-Nov-2010::11:22:05 ===
+starting TCP connection <0.25718.10> from 127.0.1.1:41423
+
+=WARNING REPORT==== 20-Nov-2010::11:56:14 ===
+exception on TCP connection <0.25718.10> from 127.0.1.1:41423
+connection_closed_abruptly
+
+=INFO REPORT==== 20-Nov-2010::11:56:14 ===
+closing TCP connection <0.25718.10> from 127.0.1.1:41423
+
+=INFO REPORT==== 20-Nov-2010::12:08:58 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:51877
+
+=INFO REPORT==== 20-Nov-2010::12:08:58 ===
+starting TCP connection <0.29802.10> from 127.0.1.1:51877
+
+=WARNING REPORT==== 20-Nov-2010::12:11:26 ===
+exception on TCP connection <0.29802.10> from 127.0.1.1:51877
+connection_closed_abruptly
+
+=INFO REPORT==== 20-Nov-2010::12:11:26 ===
+closing TCP connection <0.29802.10> from 127.0.1.1:51877
+
+=INFO REPORT==== 22-Nov-2010::10:37:37 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:49652
+
+=INFO REPORT==== 22-Nov-2010::10:37:39 ===
+starting TCP connection <0.4545.15> from 127.0.1.1:49652
+
+=WARNING REPORT==== 22-Nov-2010::10:38:38 ===
+exception on TCP connection <0.4545.15> from 127.0.1.1:49652
+connection_closed_abruptly
+
+=INFO REPORT==== 22-Nov-2010::10:38:38 ===
+closing TCP connection <0.4545.15> from 127.0.1.1:49652
+
+=INFO REPORT==== 22-Nov-2010::11:02:24 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:45130
+
+=INFO REPORT==== 22-Nov-2010::11:02:24 ===
+starting TCP connection <0.6699.15> from 127.0.1.1:45130
+
+=WARNING REPORT==== 22-Nov-2010::11:03:24 ===
+exception on TCP connection <0.6699.15> from 127.0.1.1:45130
+connection_closed_abruptly
+
+=INFO REPORT==== 22-Nov-2010::11:03:24 ===
+closing TCP connection <0.6699.15> from 127.0.1.1:45130
+
+=INFO REPORT==== 22-Nov-2010::11:10:21 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:55383
+
+=INFO REPORT==== 22-Nov-2010::11:10:21 ===
+starting TCP connection <0.7421.15> from 127.0.1.1:55383
+
+=INFO REPORT==== 22-Nov-2010::14:45:23 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:60929
+
+=INFO REPORT==== 22-Nov-2010::14:45:23 ===
+starting TCP connection <0.25972.15> from 127.0.1.1:60929
+
+=ERROR REPORT==== 22-Nov-2010::20:20:18 ===
+connection <0.25972.15> (running), channel 7 - error:
+{amqp_error,not_found,
+            "no queue '246b09197da1e44d19d5c4ce6bf2e62d@72.249.14.242' in vhost '/'",
+            'queue.delete'}
+
+=WARNING REPORT==== 22-Nov-2010::20:34:37 ===
+exception on TCP connection <0.25972.15> from 127.0.1.1:60929
+connection_closed_abruptly
+
+=INFO REPORT==== 22-Nov-2010::20:34:37 ===
+closing TCP connection <0.25972.15> from 127.0.1.1:60929
+
+=INFO REPORT==== 22-Nov-2010::20:35:03 ===
+accepted TCP connection on 0.0.0.0:5672 from 127.0.1.1:45399
+
+=INFO REPORT==== 22-Nov-2010::20:35:03 ===
+starting TCP connection <0.23662.16> from 127.0.1.1:45399
+
+=ERROR REPORT==== 22-Nov-2010::20:35:30 ===
+connection <0.23662.16> (running), channel 3 - error:
+{amqp_error,not_found,
+            "no queue '60479dd665f8747d59168e4553c220ff@72.249.14.242' in vhost '/'",
+            'queue.delete'}
+
+=ERROR REPORT==== 22-Nov-2010::20:40:48 ===
+connection <0.23662.16> (running), channel 3 - error:
+{amqp_error,not_found,
+            "no queue '1828a3d60e329b911ccfbdf04d9c6227@72.249.14.242' in vhost '/'",
+            'queue.delete'}
+
+=ERROR REPORT==== 22-Nov-2010::20:43:11 ===
+connection <0.23662.16> (running), channel 3 - error:
+{amqp_error,not_found,
+            "no queue '17cf09bb2462560d2f7a2b3b5c8d9935@72.249.14.242' in vhost '/'",
+            'queue.delete'}
+
+=WARNING REPORT==== 22-Nov-2010::21:08:23 ===
+exception on TCP connection <0.23662.16> from 127.0.1.1:45399
+connection_closed_abruptly
+
+=INFO REPORT==== 22-Nov-2010::21:08:23 ===
+closing TCP connection <0.23662.16> from 127.0.1.1:45399
+
+=WARNING REPORT==== 22-Nov-2010::21:08:30 ===
+exception on TCP connection <0.7421.15> from 127.0.1.1:55383
+connection_closed_abruptly
+
+=INFO REPORT==== 22-Nov-2010::21:08:30 ===
+closing TCP connection <0.7421.15> from 127.0.1.1:55383
+
+=INFO REPORT==== 23-Nov-2010::13:32:27 ===
+node 'emacs@work-lappy' up
+=INFO REPORT==== 23-Nov-2010::14:23:26 ===
+node 'emacs@work-lappy' down

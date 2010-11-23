@@ -27,7 +27,7 @@
 -import(logger, [log/2, format_log/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
--include("../../../src/whistle_amqp.hrl").
+-include("../../../utils/src/whistle_amqp.hrl").
 -include("ts.hrl").
 
 -define(SERVER, ?MODULE). 
@@ -102,7 +102,7 @@ handle_call({add_post_handler, CallID, Pid}, _From, #state{post_handlers=Posts}=
     {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
     format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
-    ts_couch:set_host(CHost),
+    whistle_couch:set_host(CHost),
     ts_carrier:force_carrier_refresh(),
     ts_credit:force_rate_refresh(),
     {reply, ok, State#state{couch_host=CHost}};

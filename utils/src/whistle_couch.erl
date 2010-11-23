@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 16 Sep 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(ts_couch).
+-module(whistle_couch).
 
 -behaviour(gen_server).
 
@@ -27,7 +27,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("ts.hrl").
+-include("whistle_api.hrl"). % get the proplists -type
 
 -define(SERVER, ?MODULE). 
 
@@ -167,7 +167,7 @@ handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host,
 		{ok, {Doc}} ->
 		    {reply, Doc, State#state{dbs=DBs1}};
 		Other ->
-		    format_log(error, "TS_COUCH(~p): Failed to find ~p: ~p~n", [self(), DocId, Other]),
+		    format_log(error, "WHISTLE_COUCH(~p): Failed to find ~p: ~p~n", [self(), DocId, Other]),
 		    {reply, {error, not_found}, State}
 	    end
     end;
@@ -184,7 +184,7 @@ handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs
 	    end
     end;
 handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) ->
-    format_log(info, "TS_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
+    format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
     case get_new_connection(Host) of
 	{error, _Error}=E ->
 	    {reply, E, State};
@@ -192,7 +192,7 @@ handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) 
 	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
     end;
 handle_call({set_host, Host}, _From, State) ->
-    format_log(info, "TS_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
+    format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
     case get_new_connection(Host) of
 	{error, _Error}=E ->
 	    {reply, E, State};
@@ -212,7 +212,7 @@ handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{connection=
 								      %% don't include these last two params if you want a stream
 								      %% of changes for the whole DB
 								     ]),
-		    format_log(info, "TS_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
+		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
 		    link(Pid),
 		    {reply, ok, State#state{change_handlers=[{DocID, ReqID, [Pid]} | CH]}}
 	    end;
@@ -221,7 +221,7 @@ handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{connection=
 		false ->
 		    {reply, ok, State#state{change_handlers=[{DocID, ReqID, [Pid | Pids]} | lists:keydelete(DocID, 1, CH)]}};
 		true ->
-		    format_log(info, "TS_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+		    format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
 		    {reply, {error, handler_exists}, State}
 	    end
     end;
@@ -240,7 +240,7 @@ handle_call({rm_change_handler, DocID}, {From, _Ref}, #state{change_handlers=CH}
 	    {reply, ok, State#state{change_handlers=CH1}}
     end;
 handle_call(_Request, _From, State) ->
-    format_log(error, "TS_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
+    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
     {reply, {error, unhandled_call}, State}.
 
 %%--------------------------------------------------------------------
@@ -267,39 +267,39 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({_ReqID, done}, State) ->
-    format_log(info, "TS_COUCH.wait(~p): DONE~n", [self()]),
+    format_log(info, "WHISTLE_COUCH.wait(~p): DONE~n", [self()]),
     {noreply, State};
 handle_info({_ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-    format_log(info, "TS_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(DocID, 1, CH)]),
+    format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(DocID, 1, CH)]),
     case lists:keyfind(DocID, 1, CH) of
 	false ->
-	    format_log(info, "TS_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
+	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
 	{DocID, _ReqID1, Pids} ->
 	    SendToPid = case get_value(<<"deleted">>, Change) of
 			    true ->
-				format_log(info, "TS_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
+				format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
 				{document_deleted, DocID}; % document deleted, no more looping
 			    undefined ->
-				format_log(info, "TS_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
+				format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
 				{document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
 			end,
 	    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids),
 	    {noreply, State}
     end;
 handle_info({_ReqID, {error, E}}, State) ->
-    format_log(info, "TS_COUCH.wait(~p): ERROR ~p for reqid ~p~n", [self(), E, _ReqID]),
+    format_log(info, "WHISTLE_COUCH.wait(~p): ERROR ~p for reqid ~p~n", [self(), E, _ReqID]),
     {noreply, State};
 handle_info({'DOWN', _MRefConn, process, _Pid, _Reason}, State) ->
-    format_log(error, "TS_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),
+    format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),
     {noreply, State};
 handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
-    format_log(error, "TS_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
+    format_log(error, "WHISTLE_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
     CH1 = lists:map(fun({_DocID, _ReqID, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info(_Info, State) ->
-    format_log(error, "TS_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
+    format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -333,13 +333,13 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(get_new_connection/1 :: (Host :: string()) -> {string(), tuple()} | {error, term()}).
 get_new_connection(Host) ->
     Conn = couchbeam:server_connection(Host, 5984, "", []),
-    format_log(info, "TS_COUCH(~p): Host ~p has conn ~p~n", [self(), Host, Conn]),
+    format_log(info, "WHISTLE_COUCH(~p): Host ~p has conn ~p~n", [self(), Host, Conn]),
     case couchbeam:server_info(Conn) of
 	{ok, _Version} ->
-	    format_log(info, "TS_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
+	    format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
 	    {Host, Conn};
 	{error, _Error}=E ->
-	    format_log(error, "TS_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, _Error]),
+	    format_log(error, "WHISTLE_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, _Error]),
 	    E
     end.
 
