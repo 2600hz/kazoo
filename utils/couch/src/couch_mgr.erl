@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 16 Sep 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
--module(whistle_couch).
+-module(couch_mgr).
 
 -behaviour(gen_server).
 
@@ -27,7 +27,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("whistle_api.hrl"). % get the proplists -type
+-include("../../src/whistle_api.hrl"). % get the proplists -type
 
 -define(SERVER, ?MODULE). 
 
