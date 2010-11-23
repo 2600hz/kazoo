@@ -584,7 +584,7 @@ build_message(Prop, ReqH, OptH) ->
 	    build_message_specific(HeadAndProp, ReqH, OptH)
     end.
 
--spec(build_message_specific/3 :: (proplist() | tuple(), list(binary()), list(binary())) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(build_message_specific/3 :: (proplist() | tuple(list(binary()), proplist()), list(binary()), list(binary())) -> tuple(ok, iolist()) | tuple(error, string())).
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
 	{error, _Reason} = Error ->
@@ -596,7 +596,6 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
     end;
 build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
-
 
 -spec(headers_to_json/1 :: (HeadersProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 headers_to_json(HeadersProp) ->
@@ -709,3 +708,30 @@ type_check(Prop, Types) ->
 				   end
 		      end
 	      end, Types).
+
+%% EUNIT TESTING
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+has_all_test() ->
+    Prop = [{<<"k1">>, <<"v1">>}
+	    ,{<<"k2">>, <<"v2">>}
+	    ,{<<"k3">>, <<"v3">>}
+	    ],
+    Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
+    ?assertEqual(true, has_all(Prop, Headers)),
+    ?assertEqual(false, has_all(Prop, [<<"k4">> | Headers])),
+    ok.
+
+has_any_test() ->
+    Prop = [{<<"k1">>, <<"v1">>}
+	    ,{<<"k2">>, <<"v2">>}
+	    ,{<<"k3">>, <<"v3">>}
+	   ],
+    Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
+    ?assertEqual(true, has_any(Prop, Headers)),
+    ?assertEqual(false, has_any(Prop, [<<"k4">>])),
+    ok.
+
+-endif.
