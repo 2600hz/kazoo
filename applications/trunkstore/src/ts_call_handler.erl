@@ -34,7 +34,7 @@
 %%%-------------------------------------------------------------------
 -module(ts_call_handler).
 
--export([start/3, init/3, loop/3]).
+-export([start/3, init/3, loop/4]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
@@ -56,13 +56,13 @@ init(CallID, Flags, AmqpHost) ->
     format_log(info, "TS_CALL(~p): Starting post handler for ~p...~n", [self(), CallID]),
     EvtQ = consume_events(AmqpHost, CallID),
     monitor_account_doc(Flags),
-    loop(CallID, Flags, {AmqpHost, <<>>, EvtQ}).
+    loop(CallID, Flags, {AmqpHost, <<>>, EvtQ}, infinity).
 
--spec(loop/3 :: (CallID :: binary(), Flags :: tuple(), Amqp :: tuple(Host :: string(), CtlQ :: binary(), EvtQ :: binary())) -> no_return()).
-loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp) ->
+-spec(loop/4 :: (CallID :: binary(), Flags :: tuple(), Amqp :: tuple(Host :: string(), CtlQ :: binary(), EvtQ :: binary()), Timeout :: infinity | integer()) -> no_return()).
+loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
     receive
 	{ctl_queue, CallID, CtlQ1} ->
-	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1, EvtQ});
+	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1, EvtQ}, Timeout);
 	{shutdown, CallID} ->
 	    amqp_util:delete_callmgr_queue(Host, CallID),
 	    ts_couch:rm_change_handler(Flags#route_flags.account_doc_id),
@@ -76,17 +76,17 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp) ->
 		       _ -> ts_couch:open_doc(?TS_DB, DocID)
 		   end,
 	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
-	    ?MODULE:loop(CallID, Flags#route_flags{account_doc=Doc1}, Amqp);
+	    ?MODULE:loop(CallID, Flags#route_flags{account_doc=Doc1}, Amqp, Timeout);
 	{_, #amqp_msg{props = _Props, payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 
 	    case get_value(<<"Event-Name">>, Prop) of
 		<<"CHANNEL_DESTROY">> ->
 		    format_log(info, "TS_CALL(~p): ChanDestroy recv, shutting down...~n", [self()]),
-		    ?MODULE:loop(CallID, Flags, Amqp);
+		    ?MODULE:loop(CallID, Flags, Amqp, ?CALL_HEARTBEAT);
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    format_log(info, "TS_CALL(~p): ChanHangupCompl recv, shutting down...~n", [self()]),
-		    ?MODULE:loop(CallID, Flags, Amqp);
+		    ?MODULE:loop(CallID, Flags, Amqp, ?CALL_HEARTBEAT);
 		<<"cdr">> ->
 		    case CtlQ of
 			<<>> ->
@@ -96,11 +96,14 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp) ->
 			end;
 		_EvtName ->
 		    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
-		    ?MODULE:loop(CallID, Flags, Amqp)
+		    ?MODULE:loop(CallID, Flags, Amqp, Timeout)
 	    end;
 	_Other ->
 	    format_log(info, "TS_CALL(~p): Received Other: ~p~n", [self(), _Other]),
-	    ?MODULE:loop(CallID, Flags, Amqp)
+	    ?MODULE:loop(CallID, Flags, Amqp, Timeout)
+    after
+	Timeout ->
+	    format_log(info, "TS_CALL(~p): Timeout ~p hit~n", [self(), Timeout])
     end.
 
 -spec(consume_events/2 :: (Host :: string(), CallID :: binary()) -> binary()).
@@ -124,7 +127,7 @@ update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, acc
 
     case lists:member(CallID, ACs1) of
 	true ->
-	    format_log(info, "TS_CALL(~p): Updating active ~p to ~p~n", [self(), ACs1, CallID]),
+	    format_log(info, "TS_CALL(~p): Removing ~p from active ~p~n", [self(), CallID, ACs1]),
 	    ACs2 = lists:filter(fun(CallID1) when CallID =:= CallID1 -> false; (_) -> true end, ACs1),
 	    Acct1 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct0)],
 	    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
@@ -213,13 +216,13 @@ wait_to_update(Prop, Flags, Host, CallID, EvtQ, Started) ->
 	    wait_to_update(Prop, Flags#route_flags{account_doc=Doc1}, Host, CallID, EvtQ, Started)
     after
 	Timeout ->
-	    
 	    close_down(Prop, Flags, Host, CallID, EvtQ)
     end.
 
 close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) ->
+    format_log(info, "TS_CALL.close_down(~p): CDR: ~p~n", [self(), Prop]),
     update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
-    format_log(log, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
+    format_log(info, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
     amqp_util:delete_callmgr_queue(Host, EvtQ),
     ts_couch:rm_change_handler(DocID),
     ts_responder:rm_post_handler(CallID).

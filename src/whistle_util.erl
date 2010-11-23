@@ -131,4 +131,35 @@ ceiling(X) ->
         false -> T + 1
     end.
 
+%% EUNIT TESTING
 
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+%-export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1]).
+%-export([a1hash/3, floor/1, ceiling/1]).
+
+to_e164_test() ->
+    Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
+    Ans = <<"+11234567890">>,
+    lists:foreach(fun(N) -> ?assertEqual(to_e164(N), Ans) end, Ns).
+
+to_npanxxxxxx_test() ->
+    Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
+    Ans = <<"1234567890">>,
+    lists:foreach(fun(N) -> ?assertEqual(to_npanxxxxxx(N), Ans) end, Ns).
+
+to_1npanxxxxxx_test() ->
+    Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
+    Ans = <<"11234567890">>,
+    lists:foreach(fun(N) -> ?assertEqual(to_1npanxxxxxx(N), Ans) end, Ns).
+
+to_integer_test() ->
+    Good = [42, 4.2, "42", <<"42">>],
+    Bad = [ an_atom, "4.2", <<"4.2">>],
+    lists:foreach(fun(G) -> ?assertEqual(is_integer(to_integer(G)), true) end, Good),
+    lists:foreach(fun(B) ->
+			  ok = try to_integer(B) catch _:_ -> ok end
+		  end, Bad).
+
+-endif.
