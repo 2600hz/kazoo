@@ -4,3 +4,4 @@
 */error_log
 */ebin/*.beam
 applications/*/ebin/*.beam
+.eunit
