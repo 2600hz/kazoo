@@ -42,6 +42,8 @@
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("ts.hrl").
 
+-define(WAIT_TO_UPDATE_TIMEOUT, 5000). %% 5 seconds
+
 -compile(export_all).
 
 -spec(start/3 :: (CallID :: binary(), Flags :: tuple(), AmqpHost :: string()) -> pid()).
@@ -51,17 +53,18 @@ start(CallID, Flags, AmqpHost) ->
 -spec(init/3 :: (CallID :: binary(), Flags :: tuple(), AmqpHost :: string()) -> no_return()).
 init(CallID, Flags, AmqpHost) ->
     format_log(info, "TS_CALL(~p): Starting post handler for ~p...~n", [self(), CallID]),
-    consume_events(AmqpHost, CallID),
+    EvtQ = consume_events(AmqpHost, CallID),
     monitor_account_doc(Flags),
-    loop(CallID, Flags, {AmqpHost, <<>>}).
+    loop(CallID, Flags, {AmqpHost, <<>>, EvtQ}).
 
--spec(loop/3 :: (CallID :: binary(), Flags :: tuple(), Amqp :: tuple(Host :: string(), CtlQ :: binary())) -> no_return()).
-loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
+-spec(loop/3 :: (CallID :: binary(), Flags :: tuple(), Amqp :: tuple(Host :: string(), CtlQ :: binary(), EvtQ :: binary())) -> no_return()).
+loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp) ->
     receive
 	{ctl_queue, CallID, CtlQ1} ->
-	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1});
+	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1, EvtQ});
 	{shutdown, CallID} ->
 	    amqp_util:delete_callmgr_queue(Host, CallID),
+	    ts_couch:rm_change_handler(Flags#route_flags.account_doc_id),
 	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
 	{document_changes, DocID, Changes} ->
 	    Doc0 = Flags#route_flags.account_doc,
@@ -79,13 +82,17 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 	    case get_value(<<"Event-Name">>, Prop) of
 		<<"CHANNEL_DESTROY">> ->
 		    format_log(info, "TS_CALL(~p): ChanDestroy recv, shutting down...~n", [self()]),
-		    ts_responder:rm_post_handler(CallID);
+		    ?MODULE:loop(CallID, Flags, Amqp);
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    format_log(info, "TS_CALL(~p): ChanHangupCompl recv, shutting down...~n", [self()]);
+		    format_log(info, "TS_CALL(~p): ChanHangupCompl recv, shutting down...~n", [self()]),
+		    ?MODULE:loop(CallID, Flags, Amqp);
 		<<"cdr">> ->
-		    update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
-		    ts_couch:rm_change_handler(get_value(<<"_id">>, Flags#route_flags.account_doc)),
-		    ts_responder:rm_post_handler(CallID);
+		    case CtlQ of
+			<<>> ->
+			    spawn(fun() -> wait_to_update(Prop, Flags, Host, CallID, EvtQ) end);
+			_ ->
+			    close_down(Prop, Flags, Host, CallID, EvtQ)
+			end;
 		_EvtName ->
 		    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
 		    ?MODULE:loop(CallID, Flags, Amqp)
@@ -95,30 +102,38 @@ loop(CallID, Flags, {Host, _CtlQ}=Amqp) ->
 	    ?MODULE:loop(CallID, Flags, Amqp)
     end.
 
--spec(consume_events/2 :: (Host :: string(), CallID :: binary()) -> no_return()).
+-spec(consume_events/2 :: (Host :: string(), CallID :: binary()) -> binary()).
 consume_events(Host, CallID) ->
     amqp_util:callevt_exchange(Host),
     EvtQ = amqp_util:new_callevt_queue(Host, <<>>),
     format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p", [self(), EvtQ, CallID]),
     amqp_util:bind_q_to_callevt(Host, EvtQ, CallID, events),
     amqp_util:bind_q_to_callevt(Host, EvtQ, CallID, cdr),
-    amqp_util:basic_consume(Host, EvtQ).
+    amqp_util:basic_consume(Host, EvtQ),
+    EvtQ.
 
 monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
     ts_couch:add_change_handler(?TS_DB, DocID).
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
-update_account(_Duration, #route_flags{flat_rate_enabled=true, account_doc=Doc}=Flags) ->
+update_account(_Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
-    TinU = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct0, 0)),
-    format_log(info, "TS_CALL(~p): Updating trunks in use from ~p to ~p~n", [self(), TinU, TinU-1]),
+    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
 
-    Acct1 = [{<<"trunks_in_use">>, whistle_util:to_binary(TinU-1)} | proplists:delete(<<"trunks_in_use">>, Acct0)],
-    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
-    {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
-    format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
-    Flags#route_flags{account_doc=Doc2};
+    case lists:member(CallID, ACs1) of
+	true ->
+	    format_log(info, "TS_CALL(~p): Updating active ~p to ~p~n", [self(), ACs1, CallID]),
+	    ACs2 = lists:filter(fun(CallID1) when CallID =:= CallID1 -> false; (_) -> true end, ACs1),
+	    Acct1 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct0)],
+	    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
+	    {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
+	    format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
+	    Flags#route_flags{account_doc=Doc2};
+	false ->
+	    format_log(info, "TS_CALL(~p): Updating trunks not necessary for ~p~n", [self(), CallID]),
+	    Flags
+    end;
 update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"inbound">>
 					  ,inbound_rate=R, inbound_rate_increment=RI, inbound_rate_minimum=RM, inbound_surcharge=S}=Flags) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
@@ -130,19 +145,32 @@ update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"ou
 update_account(_Duration, #route_flags{}=Flags) ->
     Flags.
 
+%% only update if the call id is in the list of active calls
 -spec(update_account_balance/2 :: (AmountToDeduct :: float(), Flags :: tuple()) -> proplist()).
-update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc}) ->
+update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=CallID, active_calls=ACs}) ->
     {Acct0} = get_value(<<"account">>, Doc),
-    {Credits0} = get_value(<<"credits">>, Acct0),
-    CA = whistle_util:to_float(get_value(<<"prepay">>, Credits0, 0.0)),
-    format_log(info, "TS_CALL(~p): Deducting ~p from ~p~n", [self(), AmountToDeduct, CA]),
+    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
 
-    Credits1 = [{<<"prepay">>, whistle_util:to_binary(CA - AmountToDeduct)} | proplists:delete(<<"prepay">>, Credits0)],
-    Acct1 = [{<<"credits">>, {Credits1}} | proplists:delete(<<"credits">>, Acct0)],
-    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
-    {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
-    format_log(info, "TS_CALL.up_acct_bal(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
-    Doc2.
+    case lists:member(CallID, ACs1) of
+	true ->
+	    {Credits0} = get_value(<<"credits">>, Acct0),
+	    CA = whistle_util:to_float(get_value(<<"prepay">>, Credits0, 0.0)),
+	    format_log(info, "TS_CALL(~p): Deducting ~p from ~p~n", [self(), AmountToDeduct, CA]),
+
+	    Credits1 = [{<<"prepay">>, whistle_util:to_binary(CA - AmountToDeduct)} | proplists:delete(<<"prepay">>, Credits0)],
+	    Acct1 = [{<<"credits">>, {Credits1}} | proplists:delete(<<"credits">>, Acct0)],
+
+	    ACs2 = lists:filter(fun(CallID1) when CallID =:= CallID1 -> false; (_) -> true end, ACs1),
+	    Acct2 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct1)],
+
+	    Doc1 = ts_couch:add_to_doc(<<"account">>, {Acct2}, Doc),
+	    {ok, Doc2} = ts_couch:save_doc(?TS_DB, Doc1),
+	    format_log(info, "TS_CALL.up_acct_bal(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
+	    Doc2;
+	false ->
+	    format_log(info, "TS_CALL.up_acct_bal(~p): No CallID in ActiveCalls; nothing to do~n", [self()]),
+	    Doc
+    end.
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
@@ -155,3 +183,32 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 	true -> Sur + ((RM / 60) * R);
 	false -> Sur + ((RM / 60) * R) + ( whistle_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
+
+wait_to_update(Prop, Flags, Host, CallID, EvtQ) ->
+    wait_to_update(Prop, Flags, Host, CallID, EvtQ, erlang:now()).
+
+wait_to_update(Prop, Flags, Host, CallID, EvtQ, Started) ->
+    Timeout = ?WAIT_TO_UPDATE_TIMEOUT - (timer:now_diff(erlang:now(), Started) div 1000),
+    receive
+	{document_changes, DocID, Changes} ->
+	    Doc0 = Flags#route_flags.account_doc,
+	    CurrRev = get_value(<<"_rev">>, Doc0),
+	    Doc1 = case get_value(<<"rev">>, hd(Changes)) of
+		       undefined -> Doc0;
+		       CurrRev -> Doc0;
+		       _ -> ts_couch:open_doc(?TS_DB, DocID)
+		   end,
+	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
+	    wait_to_update(Prop, Flags#route_flags{account_doc=Doc1}, Host, CallID, EvtQ, Started)
+    after
+	Timeout ->
+	    
+	    close_down(Prop, Flags, Host, CallID, EvtQ)
+    end.
+
+close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) ->
+    update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
+    format_log(log, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
+    amqp_util:delete_callmgr_queue(Host, EvtQ),
+    ts_couch:rm_change_handler(DocID),
+    ts_responder:rm_post_handler(CallID).
