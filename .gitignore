@@ -3,5 +3,6 @@
 */mnesia
 */error_log
 */ebin/*.beam
+utils/*/ebin/*.beam
 applications/*/ebin/*.beam
 .eunit
