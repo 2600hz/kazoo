@@ -38,10 +38,10 @@
 %% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
 %% ChangeHandlers :: [ {DocID, ReqID, [Pid]}]
 -record(state, {
-	  connection = {} :: tuple(string(), tuple())
-	  ,dbs = [] :: list(tuple(string(), tuple()))
-	  ,views = [] :: list(tuple(tuple(tuple(), string(), string()), tuple()))
-	  ,change_handlers = [] :: list(tuple(binary(), reference(), list(pid())))
+	  connection = {} :: tuple(string(), tuple()) | {}
+	  ,dbs = [] :: list(tuple(string(), tuple())) | []
+	  ,views = [] :: list(tuple(tuple(tuple(), string(), string()), tuple())) | []
+	  ,change_handlers = [] :: list(tuple(binary(), reference(), list(pid()))) | []
 	 }).
 
 %%%===================================================================
@@ -55,6 +55,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec(start_link/0 :: () -> tuple(ok, pid()) | ignore | tuple(error, term())).
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
@@ -63,7 +64,8 @@ set_host(HostName) ->
     gen_server:call(?MODULE, {set_host, HostName}).
 
 %% create a new Document - a tuple with a proplist
-new_doc() -> {[]}.
+-spec(new_doc/0 :: () -> []).
+new_doc() -> [].
 
 %% open a document given a docid
 %% returns not_found or the Document
@@ -86,7 +88,7 @@ rm_from_doc(Key, Doc) ->
     Doc1.
 
 %% save a Document to the DB
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> {ok, proplist()}).
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, proplist()) | tuple(error, conflict)).
 save_doc(DbName, Doc) ->
     gen_server:call(?MODULE, {save_doc, whistle_util:to_list(DbName), {Doc}}, infinity).
 
@@ -121,7 +123,7 @@ rm_change_handler(DocID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(init/1 :: (Args :: list()) -> tuple(ok, tuple())).
-init([]) ->
+init(_) ->
     process_flag(trap_exit, true),
     {ok, #state{}}.
 
@@ -269,11 +271,12 @@ handle_info({_ReqID, done}, State) ->
     {noreply, State};
 handle_info({_ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
+    format_log(info, "TS_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(DocID, 1, CH)]),
     case lists:keyfind(DocID, 1, CH) of
 	false ->
 	    format_log(info, "TS_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
-	{DocID, _ReqID, Pids} ->
+	{DocID, _ReqID1, Pids} ->
 	    SendToPid = case get_value(<<"deleted">>, Change) of
 			    true ->
 				format_log(info, "TS_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),

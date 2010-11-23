@@ -43,6 +43,7 @@
 -include("ts.hrl").
 
 -define(WAIT_TO_UPDATE_TIMEOUT, 5000). %% 5 seconds
+-define(CALL_HEARTBEAT, 10000). %% 10 seconds, how often to query callmgr about call status
 
 -compile(export_all).
 
@@ -133,7 +134,7 @@ update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, acc
 		    Flags#route_flags{account_doc=Doc2};
 		{error, conflict} ->
 		    format_log(info, "TS_CALL.up_acct(~p): Conflict saving ~p, trying again~n", [self(), DocID]),
-		    update_account(Duration, Flags#route_flags{account_doc=ts_couch:open_doc(DocID)})
+		    update_account(Duration, Flags#route_flags{account_doc=ts_couch:open_doc(?TS_DB, DocID)})
 	    end;
 	false ->
 	    format_log(info, "TS_CALL(~p): Updating trunks not necessary for ~p~n", [self(), CallID]),
@@ -175,7 +176,7 @@ update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=Call
 		    Doc2;
 		{error, conflict} ->
 		    format_log(info, "TS_CALL.up_acct_bal(~p): Conflict on ~p, retrying~n", [self(), Flags#route_flags.account_doc_id]),
-		    update_account_balance(AmountToDeduct, Flags#route_flags{account_doc=ts_couch:open_doc(Flags#route_flags.account_doc_id)})
+		    update_account_balance(AmountToDeduct, Flags#route_flags{account_doc=ts_couch:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
 	    end;
 	false ->
 	    format_log(info, "TS_CALL.up_acct_bal(~p): No CallID in ActiveCalls; nothing to do~n", [self()]),
