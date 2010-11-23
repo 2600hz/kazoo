@@ -1,0 +1,23 @@
+<configuration name="xml_cdr.conf" description="XML CDR CURL logger">
+    <settings>
+        <!--<param name="url" value="http://localhost/cdr_curl/post.php"/>-->
+        <!--<param name="cred" value="user:pass"/>-->
+        <!--<param name="retries" value="2"/>-->
+        <!--<param name="delay" value="1"/>-->
+        <param name="log-dir" value=""/>
+        <param name="log-b-leg" value="false"/>
+        <param name="prefix-a-leg" value="true"/>
+        <param name="encode" value="true"/>
+        <!--<param name="disable-100-continue" value="true"/>-->
+        <!--<param name="err-log-dir" value="/tmp"/>-->
+        <!--<param name="auth-scheme" value="basic"/>-->
+        <!--<param name="enable-cacert-check" value="true"/>-->
+        <!--<param name="enable-ssl-verifyhost" value="true"/>-->
+        <!--<param name="ssl-cert-path" value="$${base_dir}/conf/certs/public_key.pem"/>-->
+        <!--<param name="ssl-key-path" value="$${base_dir}/conf/certs/private_key.pem"/>-->
+        <!--<param name="ssl-key-password" value="MyPrivateKeyPassword"/>-->
+        <!--<param name="ssl-cacert-file" value="$${base_dir}/conf/certs/cacert.pem"/>-->
+        <!--<param name="ssl-version" value="TLSv1"/>-->
+        <!--<param name="cookie-file" value="/tmp/cookie-mod_xml_curl.txt"/>-->
+    </settings>
+</configuration>

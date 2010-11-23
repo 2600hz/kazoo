@@ -1,0 +1,6 @@
+<include>
+  <language name="en" sound-path="$${sounds_dir}/en/us/callie" tts-engine="flite" tts-voice="kal">
+    <X-PRE-PROCESS cmd="include" data="vm/sounds.xml"/>
+    <X-PRE-PROCESS cmd="include" data="dir/sounds.xml"/>
+  </language>
+</include>

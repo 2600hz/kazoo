@@ -1,0 +1,13 @@
+* ACL for applications on the Call Manager side?
+
+* Testing DIDs - 415.886.791[6-9]
+  16,17 -> fs001
+  18,19 -> fs002
+
+* Setup amqp_manager with custom host/port params for connecting to different rabbit clusters
+  * done Oct 8th, 2010
+
+* All singleton gen_servers need a diagnostics call (or calls) to get a printout of the current state of the gen_server process.
+ * Mgmt erl node to query known callmgrs, known freeswitch nodes, etc?
+ * The Diagnostics_server can connect to servers and pretty-print a diagnostics screen - approx Oct 11, 2010
+ * ecallmgr_fs_handler has a diagnostics call now - approx Oct 11, 2010

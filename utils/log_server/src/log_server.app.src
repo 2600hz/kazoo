@@ -1,0 +1,49 @@
+{application
+ ,log_server
+ ,[
+   {description, "Log Server"}
+   ,{vsn, "0.1"}
+   ,{registered, []}
+   ,{applications, [
+		    kernel
+		    ,stdlib
+		    ,crypto
+		    ,inets
+		    ,mochiweb
+		    ,log_roller_server
+                 ]}
+   ,{mod, { log_server_app
+	    ,[
+	      log_server
+	      ,log_server_app
+	      ,log_server_sup
+	      ,log_server_deps
+	     ]
+	  }
+    }
+   ,{env, [
+	   {log_roller_server, [
+				{address, "127.0.1.1"}
+				,{logs, [
+					{calls, [
+						{cache_size, 10485760}
+						,{maxbytes, 10485760}
+						,{maxfiles, 10}
+						,{filters, [
+							    {grep, ["[[:alnum:]]{8}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{12}"]}
+							   ]
+						 }
+					       ]}
+					,{all, [
+						{cache_size, 10485760}
+						,{maxbytes, 10485760}
+						,{maxfiles, 10}
+						,{filters, []}
+					       ]}
+				       ]}
+			       ]
+	   }
+	  ]
+    }
+  ]
+}.

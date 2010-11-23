@@ -1,0 +1,12 @@
+<configuration name="erlang_event.conf" description="Erlang Socket Client">
+    <settings>
+        <param name="listen-ip" value="0.0.0.0"/>
+        <param name="listen-port" value="8031"/>
+        <param name="cookie-file" value="$${base_dir}/conf/autoload_configs/.erlang.cookie" />
+        <param name="shortname" value="false"/>
+        <param name="nodename" value="freeswitch@%HOSTNAME%" />
+        <!--<param name="apply-inbound-acl" value="lan"/>-->
+        <param name="encoding" value="binary"/>
+        <!--<param name="compat-rel" value="12"/> -->
+    </settings>
+</configuration>

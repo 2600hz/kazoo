@@ -1,0 +1,67 @@
+<configuration name="modules.conf" description="Modules">
+    <modules>
+        <!-- Loggers -->
+        <load module="mod_console"/>
+        <load module="mod_logfile"/>
+        <!--<load module="mod_syslog"/>-->
+
+        <!-- XML Interfaces -->
+        <!--<load module="mod_xml_cdr"/>-->
+
+        <!-- Event Handlers -->
+        <load module="mod_event_socket"/>
+        <!--<load module="mod_event_multicast"/>-->
+        <load module="mod_erlang_event" />
+
+        <!-- Directory Interfaces -->
+        <load module="mod_dialplan_xml"/>
+
+        <!-- Endpoints -->
+        <load module="mod_sofia"/>
+        <load module="mod_loopback"/>
+
+        <!-- Applications -->
+        <load module="mod_commands"/>
+        <load module="mod_conference"/>
+        <load module="mod_dptools"/>
+        <load module="mod_expr"/>
+        <load module="mod_fifo"/>
+        <load module="mod_voicemail"/>
+        <load module="mod_directory"/>
+        <load module="mod_esf"/>
+        <load module="mod_valet_parking"/>
+        <load module="mod_hash"/>
+
+        <!-- Codec Interfaces -->
+        <load module="mod_spandsp"/>
+        <!--<load module="mod_g723_1"/>-->
+        <load module="mod_g729"/>
+        <!--<load module="mod_amr"/>-->
+        <!--<load module="mod_ilbc"/>-->
+        <!--<load module="mod_speex"/>-->
+        <!--<load module="mod_h26x"/>-->
+        <load module="mod_siren"/>
+        <!--<load module="mod_celt"/>-->
+
+        <!-- File Format Interfaces -->
+        <load module="mod_sndfile"/>
+        <load module="mod_native_file"/>
+        <load module="mod_local_stream"/>
+        <load module="mod_tone_stream"/>
+        <load module="mod_file_string"/>
+
+        <!-- Timers -->
+
+        <!-- Languages -->
+
+        <!-- ASR /TTS -->
+        <load module="mod_flite"/>
+
+        <!-- Say -->
+        <load module="mod_say_en"/>
+        <!--<load module="mod_say_ru"/>-->
+
+        <!-- Third party modules -->
+        
+    </modules>
+</configuration>

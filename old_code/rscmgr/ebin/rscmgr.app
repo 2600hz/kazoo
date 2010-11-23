@@ -1,0 +1,9 @@
+{application,rscmgr,
+             [{description,[]},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib,amqp]},
+              {mod,{rscmgr_app,[]}},
+              {env,[]},
+              {modules,[logger,rscmgr,rscmgr_app,rscmgr_deps,rscmgr_req,
+                        rscmgr_res,rscmgr_sup]}]}.

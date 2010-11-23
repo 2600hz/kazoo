@@ -1,0 +1,56 @@
+<configuration name="logfile.conf" description="File Logging">
+    <settings>
+        <param name="rotate-on-hup" value="true"/>
+    </settings>
+
+    <profiles>
+        <profile name="debug">
+            <settings>
+                <param name="logfile" value="$${base_dir}/log/debug.log"/>
+                <param name="rollover" value="0"/>
+                <param name="uuid" value="true" />
+            </settings>
+            <mappings>
+                <map name="all" value="debug,info,notice,warning,err,crit,alert"/>
+            </mappings>
+        </profile>
+
+        <profile name="error">
+            <settings>
+                <param name="logfile" value="$${base_dir}/log/error.log"/>
+                <param name="rollover" value="0"/>
+                <param name="uuid" value="true" />
+            </settings>
+            <mappings>
+                <map name="all" value="warning,err,crit,alert"/>
+            </mappings>
+        </profile>
+
+        <profile name="erlang">
+            <settings>
+                <param name="logfile" value="$${base_dir}/log/erlang.log"/>
+                <param name="rollover" value="0"/>
+                <param name="uuid" value="true" />
+            </settings>
+            <mappings>
+                <map name="mod_erlang_event.c" value="debug,info,notice,warning,err,crit,alert"/>
+            </mappings>
+        </profile>
+
+        <profile name="sofia">
+            <settings>
+                <param name="logfile" value="$${base_dir}/log/sofia.log"/>
+                <param name="rollover" value="0"/>
+                <param name="uuid" value="true" />
+            </settings>
+            <mappings>
+                <map name="mod_sofia.c" value="info,notice,warning,err,crit,alert"/>
+                <map name="sofia.c" value="info,notice,warning,err,crit,alert"/>
+                <map name="sofia_glue.c" value="info,notice,warning,err,crit,alert"/>
+                <map name="sofia_reg.c" value="all"/>
+                <map name="sofia_sla.c" value="info,notice,warning,err,crit,alert"/>
+                <map name="sofia_presence.c" value="info,notice,warning,err,crit,alert"/>
+            </mappings>
+        </profile>
+    </profiles>
+</configuration>

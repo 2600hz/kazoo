@@ -1,0 +1,10 @@
+<configuration name="acl.conf" description="Network Lists">
+    <network-lists>
+        <list name="inbound_carriers" default="deny">
+            <node type="allow" cidr="172.203.215.241/32"/>
+            <node type="allow" cidr="72.249.14.242/32"/>
+        </list>
+    </network-lists>
+</configuration>
+
+

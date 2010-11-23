@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<include>
+    <profile name="sipinterface_1">
+        <domains>
+            <domain name="all" alias="true" parse="false"/>
+        </domains>
+        
+        <settings>
+            <!-- SIP -->
+            <param name="sip-ip" value="$${local_ip_v4}"/>
+            <param name="ext-sip-ip" value="auto"/>            
+            <param name="user-agent-string" value="2600hz.org"/>
+            <param name="debug" value="0"/>
+            <param name="sip-trace" value="no"/>
+            <param name="enable-100rel" value="false"/>
+            <param name="max-proceeding" value="1000"/>
+            <param name="sip-port" value="5060"/>        
+            <param name="inbound-use-callid-as-uuid" value="true"/>
+            <param name="outbound-use-uuid-as-callid" value="true"/>
+            <param name="nat-options-ping" value="true"/>
+            <!--<param name="disable-srv" value="false" />-->
+            <!--<param name="disable-naptr" value="false" />-->    
+            <!--<param name="enable-3pcc" value="true"/>-->
+            <!--<param name="auto-restart" value="false"/> -->    
+            
+            
+            <!-- TLS -->
+            <param name="tls" value="false"/>
+            <param name="tls-bind-params" value="transport=tls"/>
+            <param name="tls-sip-port" value="5070"/>
+            <param name="tls-version" value="tlsv1"/>        
+                    
+            
+            <!-- Media -->
+            <param name="rtp-ip" value="$${local_ip_v4}"/>     
+            <param name="ext-rtp-ip" value="auto"/>            
+            <param name="rtp-timer-name" value="soft"/>
+            <param name="rtp-autoflush-during-bridge" value="true"/>
+            <!--<param name="rtp-rewrite-timestamps" value="true"/>-->
+            <param name="pass-rfc2833" value="true"/>   
+            <!--<param name="inbound-bypass-media" value="true"/>-->
+            <!--<param name="rtp-timeout-sec" value="true"/>-->    
+            <param name="hold-music" value="local_stream://default"/>
+            <!--<param name="media-option" value="resume-media-on-hold"/>-->
+            <!--<param name="media-option" value="bypass-media-after-att-xfer"/>-->
+            <!--<param name="disable-rtp-auto-adjust" value="true"/>-->
+            <!--<param name="rtp-autofix-timing" value="false"/>-->
+            <!--<param name="auto-rtp-bugs" data="clear"/>-->
+            <!--<param name="suppress-cng" value="true"/> -->    
+            <param name="record-path" value="$${recordings_dir}"/>
+            <param name="record-template" value="${caller_id_number}.${target_domain}.${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>
+        
+            
+            <!-- DTMF -->
+            <param name="dtmf-duration" value="100"/>
+            <param name="rfc2833-pt" value="101"/>
+            <param name="dtmf-type" value="rfc2833"/>
+            
+            
+            <!-- Dialplan -->
+            <param name="context" value="context_2"/>
+            <param name="dialplan" value="XML"/>
+            <param name="manual-redirect" value="true"/>
+            <param name="disable-transfer" value="false"/>
+                    
+            
+            <!-- ACL -->
+            <param name="apply-nat-acl" value="nat.auto"/>
+            <param name="apply-inbound-acl" value="inbound_carriers"/>
+            <param name="local-network-acl" value="localnet.auto"/>
+            <!--<param name="apply-register-acl" value="domains"/>-->
+            <param name="auth-calls" value="true"/>   
+            
+            
+            <!-- Presence -->
+            <param name="manage-presence" value="true"/>
+            <!--<param name="manage-shared-appearance" value="true"/>-->
+            <!--<param name="dbname" value="share_presence"/>-->
+            <!--<param name="presence-hosts" value=".2600hz.org"/>-->
+            <param name="force-subscription-expires" value="360"/>
+            <param name="send-message-query-on-register" value="true"/>
+
+            
+            <!-- Codecs -->
+            <param name="inbound-codec-negotiation" value="generous"/>
+            <param name="inbound-late-negotiation" value="true"/>
+            <param name="codec-prefs" value="G7221@32000h,G7221@16000h,G722,PCMU,PCMA,GSM"/>            
+            <!--<param name="bitpacking" value="aal2"/> -->   
+            <param name="disable-transcoding" value="true"/>
+            
+            
+            <!-- Session Timers -->    
+            <param name="rtp-timeout-sec" value="300"/>
+            <param name="rtp-hold-timeout-sec" value="1800"/>    
+            <param name="minimum-session-expires" value="120"/>
+            <param name="session-timeout" value="120"/>
+            <!--<param name="enable-timer" value="false"/>-->            
+            <!--<param name="timer-T1" value="500"/>-->
+            <!--<param name="timer-T1X64" value="32000"/>-->
+            <!--<param name="timer-T2" value="4000"/>-->
+            <!--<param name="timer-T4" value="4000"/> -->
+
+
+            <!-- Authentication -->
+            <param name="challenge-realm" value="auto_from"/>
+            <param name="multiple-registrations" value="false"/>
+            <!--<param name="unregister-on-options-fail" value="true"/>-->
+            <param name="accept-blind-reg" value="false"/>
+            <param name="accept-blind-auth" value="false"/>
+            <param name="nonce-ttl" value="86400"/>
+            <param name="disable-register" value="false"/>
+            <!--<param name="NDLB-broken-auth-hash" value="true"/>-->
+            <!--<param name="NDLB-received-in-nat-reg-contact" value="true"/>-->
+            <!--<param name="NDLB-force-rport" value="true"/>-->
+            <param name="inbound-reg-force-matching-username" value="true"/>
+            <param name="auth-all-packets" value="false"/>
+            <param name="force-register-domain" value="trunks.2600hz.com"/>
+            <param name="force-register-db-domain" value="trunks.2600hz.com"/>
+
+
+            <!-- ODBC -->
+            <!--<param name="odbc-dsn" value="fs_sofia"/>-->
+        
+        
+            <!-- LOGGING -->
+            <param name="log-level" value="3"/>
+            <param name="debug-presence" value="3"/>
+            <param name="log-auth-failures" value="true"/>
+        </settings>
+    </profile>
+</include>
