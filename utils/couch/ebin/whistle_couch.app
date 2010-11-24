@@ -1,0 +1,10 @@
+{application,whistle_couch,
+             [{description,[]},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{whistle_couch_app,[]}},
+              {env,[]},
+              {modules,[couch_mgr,logger,props,whistle_couch,
+                        whistle_couch_app,whistle_couch_deps,
+                        whistle_couch_sup,whistle_util]}]}.
