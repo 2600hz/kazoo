@@ -6,28 +6,24 @@
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    trunkstore_deps:ensure(),
-    ensure_started(sasl),
-    ensure_started(crypto),
-    ensure_started(whistle_amqp),
-    ensure_started(dynamic_compile),
-    ensure_started(log_roller),
-    ensure_started(ibrowse),
-    ensure_started(couchbeam),
+    start_deps(),
     trunkstore_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the callmgr server.
 start() ->
+    start_deps(),
+    application:start(trunkstore).
+
+start_deps() ->
     trunkstore_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(whistle_amqp),
+    ensure_started(whistle_couch),
     ensure_started(dynamic_compile),
     ensure_started(log_roller),
-    ensure_started(ibrowse),
-    ensure_started(couchbeam),
-    application:start(trunkstore).
+    ensure_started(ibrowse).
 
 %% @spec stop() -> ok
 %% @doc Stop the callmgr server.

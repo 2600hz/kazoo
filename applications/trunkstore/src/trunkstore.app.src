@@ -9,6 +9,7 @@
 		     kernel
 		     ,stdlib
 		     ,whistle_amqp
+		     ,whistle_couch
 		    ]
      }
     ,{mod, { trunkstore_app, []}}

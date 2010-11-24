@@ -65,7 +65,7 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1, EvtQ}, Timeout);
 	{shutdown, CallID} ->
 	    amqp_util:delete_callmgr_queue(Host, CallID),
-	    whistle_couch:rm_change_handler(Flags#route_flags.account_doc_id),
+	    couch_mgr:rm_change_handler(Flags#route_flags.account_doc_id),
 	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
 	{document_changes, DocID, Changes} ->
 	    Doc0 = Flags#route_flags.account_doc,
@@ -73,7 +73,7 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	    Doc1 = case get_value(<<"rev">>, hd(Changes)) of
 		       undefined -> Doc0;
 		       CurrRev -> Doc0;
-		       _ -> whistle_couch:open_doc(?TS_DB, DocID)
+		       _ -> couch_mgr:open_doc(?TS_DB, DocID)
 		   end,
 	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
 	    ?MODULE:loop(CallID, Flags#route_flags{account_doc=Doc1}, Amqp, Timeout);
@@ -117,7 +117,7 @@ consume_events(Host, CallID) ->
     EvtQ.
 
 monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
-    whistle_couch:add_change_handler(?TS_DB, DocID).
+    couch_mgr:add_change_handler(?TS_DB, DocID).
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
@@ -130,14 +130,14 @@ update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, acc
 	    format_log(info, "TS_CALL(~p): Removing ~p from active ~p~n", [self(), CallID, ACs1]),
 	    ACs2 = lists:filter(fun(CallID1) when CallID =:= CallID1 -> false; (_) -> true end, ACs1),
 	    Acct1 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct0)],
-	    Doc1 = whistle_couch:add_to_doc(<<"account">>, {Acct1}, Doc),
-	    case whistle_couch:save_doc(?TS_DB, Doc1) of
+	    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
+	    case couch_mgr:save_doc(?TS_DB, Doc1) of
 		{ok, Doc2} ->
 		    format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
 		    Flags#route_flags{account_doc=Doc2};
 		{error, conflict} ->
 		    format_log(info, "TS_CALL.up_acct(~p): Conflict saving ~p, trying again~n", [self(), DocID]),
-		    update_account(Duration, Flags#route_flags{account_doc=whistle_couch:open_doc(?TS_DB, DocID)})
+		    update_account(Duration, Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, DocID)})
 	    end;
 	false ->
 	    format_log(info, "TS_CALL(~p): Updating trunks not necessary for ~p~n", [self(), CallID]),
@@ -172,14 +172,14 @@ update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=Call
 	    ACs2 = lists:filter(fun(CallID1) when CallID =:= CallID1 -> false; (_) -> true end, ACs1),
 	    Acct2 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct1)],
 
-	    Doc1 = whistle_couch:add_to_doc(<<"account">>, {Acct2}, Doc),
-	    case whistle_couch:save_doc(?TS_DB, Doc1) of
+	    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct2}, Doc),
+	    case couch_mgr:save_doc(?TS_DB, Doc1) of
 		{ok, Doc2} ->
 		    format_log(info, "TS_CALL.up_acct_bal(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
 		    Doc2;
 		{error, conflict} ->
 		    format_log(info, "TS_CALL.up_acct_bal(~p): Conflict on ~p, retrying~n", [self(), Flags#route_flags.account_doc_id]),
-		    update_account_balance(AmountToDeduct, Flags#route_flags{account_doc=whistle_couch:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
+		    update_account_balance(AmountToDeduct, Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
 	    end;
 	false ->
 	    format_log(info, "TS_CALL.up_acct_bal(~p): No CallID in ActiveCalls; nothing to do~n", [self()]),
@@ -210,7 +210,7 @@ wait_to_update(Prop, Flags, Host, CallID, EvtQ, Started) ->
 	    Doc1 = case get_value(<<"rev">>, hd(Changes)) of
 		       undefined -> Doc0;
 		       CurrRev -> Doc0;
-		       _ -> whistle_couch:open_doc(?TS_DB, DocID)
+		       _ -> couch_mgr:open_doc(?TS_DB, DocID)
 		   end,
 	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
 	    wait_to_update(Prop, Flags#route_flags{account_doc=Doc1}, Host, CallID, EvtQ, Started)
@@ -224,5 +224,5 @@ close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) -
     update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
     format_log(info, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
     amqp_util:delete_callmgr_queue(Host, EvtQ),
-    whistle_couch:rm_change_handler(DocID),
+    couch_mgr:rm_change_handler(DocID),
     ts_responder:rm_post_handler(CallID).
