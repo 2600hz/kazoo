@@ -145,7 +145,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    whistle_couch:rm_change_handler(?TS_RATES_DOC),
+    couch_mgr:rm_change_handler(?TS_RATES_DOC),
     ok.
 
 %%--------------------------------------------------------------------
@@ -163,19 +163,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 get_current_rates() ->
-    case whistle_couch:open_doc(?TS_DB, ?TS_RATES_DOC) of
+    case couch_mgr:open_doc(?TS_DB, ?TS_RATES_DOC) of
 	not_found ->
 	    format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
 	    {error, "No matching rates"};
 	{error, unhandled_call} ->
-	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call whistle_couch:set_host/1~n", [self()]),
+	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
 	    {error, "No database host"};
 	[] ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
 	Rates when is_list(Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
-	    whistle_couch:add_change_handler(?TS_DB, ?TS_RATES_DOC),
+	    couch_mgr:add_change_handler(?TS_DB, ?TS_RATES_DOC),
 	    {ok, lists:map(fun process_rates/1, Rates)};
 	Error ->
 	    format_log(error, "TS_CREDIT(~p): Fail ~p~n", [self(), Error]),
