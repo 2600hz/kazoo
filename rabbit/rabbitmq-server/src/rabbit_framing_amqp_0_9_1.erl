@@ -125,42 +125,42 @@
        | #'basic.recover_ok'{} | #'tx.select'{} | #'tx.select_ok'{} | #'tx.commit'{}
        | #'tx.commit_ok'{} | #'tx.rollback'{} | #'tx.rollback_ok'{} )).
 -type(amqp_method_field_name() ::
-       ( known_hosts | arguments | reply_code | delivery_tag
-       | challenge | exclusive | routing_key | mechanism
-       | locale | consumer_tag | message_count | read
-       | arguments | queue | nowait | ticket
-       | requeue | capabilities | arguments | mandatory
-       | exchange | heartbeat | ticket | exclusive
-       | if_empty | exchange | exchange | channel_max
-       | durable | passive | consumer_tag | ticket
-       | response | reply_text | multiple | consumer_tag
-       | version_minor | queue | no_local | out_of_band
-       | reply_code | redelivered | ticket | routing_key
-       | nowait | delivery_tag | ticket | immediate
-       | cluster_id | durable | reply_code | client_properties
-       | server_properties | realm | type | passive
-       | nowait | delivery_tag | routing_key | nowait
-       | reply_text | routing_key | destination | response
-       | ticket | routing_key | requeue | if_unused
-       | exchange | version_major | source | auto_delete
-       | mechanisms | nowait | exclusive | reply_text
-       | exchange | arguments | redelivered | channel_id
-       | destination | queue | source | frame_max
-       | nowait | if_unused | ticket | virtual_host
-       | arguments | prefetch_count | locales | passive
-       | active | exchange | message_count | class_id
-       | class_id | exchange | ticket | method_id
-       | ticket | insist | ticket | ticket
-       | channel_max | internal | ticket | queue
-       | consumer_tag | nowait | active | requeue
-       | consumer_count | method_id | heartbeat | active
-       | routing_key | routing_key | nowait | global
-       | no_ack | auto_delete | consumer_tag | queue
-       | frame_max | delivery_tag | arguments | no_ack
-       | arguments | write | message_count | nowait
-       | queue | queue | prefetch_size | message_count
-       | queue | nowait | exchange | routing_key
-       | ticket )).
+       ( heartbeat | passive | ticket | routing_key
+       | ticket | routing_key | response | server_properties
+       | version_minor | known_hosts | consumer_tag | queue
+       | exclusive | out_of_band | reply_code | locale
+       | arguments | redelivered | ticket | channel_max
+       | exclusive | ticket | durable | if_empty
+       | exchange | ticket | realm | queue
+       | prefetch_count | reply_code | no_local | ticket
+       | delivery_tag | reply_text | exchange | routing_key
+       | ticket | mechanisms | virtual_host | passive
+       | message_count | channel_max | queue | ticket
+       | auto_delete | exchange | reply_code | queue
+       | consumer_tag | durable | routing_key | requeue
+       | channel_id | class_id | passive | capabilities
+       | heartbeat | type | arguments | mandatory
+       | no_ack | arguments | challenge | queue
+       | locales | delivery_tag | method_id | message_count
+       | nowait | class_id | destination | exchange
+       | read | if_unused | source | queue
+       | ticket | insist | global | ticket
+       | reply_text | if_unused | redelivered | delivery_tag
+       | reply_text | queue | requeue | nowait
+       | exchange | active | message_count | auto_delete
+       | nowait | active | immediate | exclusive
+       | consumer_tag | routing_key | destination | nowait
+       | nowait | requeue | consumer_tag | nowait
+       | ticket | response | ticket | arguments
+       | client_properties | exchange | write | frame_max
+       | queue | exchange | nowait | consumer_tag
+       | prefetch_size | internal | multiple | nowait
+       | ticket | arguments | consumer_count | frame_max
+       | message_count | routing_key | nowait | mechanism
+       | routing_key | delivery_tag | version_major | cluster_id
+       | arguments | method_id | active | source
+       | arguments | no_ack | exchange | nowait
+       | routing_key )).
 -type(amqp_property_record() ::
        ( #'P_connection'{} | #'P_channel'{} | #'P_access'{} | #'P_exchange'{}
        | #'P_queue'{} | #'P_basic'{} | #'P_tx'{} )).
