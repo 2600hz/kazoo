@@ -2,7 +2,7 @@
              [{description,"Trunk Store Backend - Authentication and Routing"},
               {vsn,"0.3.1"},
               {registered,[]},
-              {applications,[kernel,stdlib,whistle_amqp]},
+              {applications,[kernel,stdlib,whistle_amqp,whistle_couch]},
               {mod,{trunkstore_app,[]}},
               {env,[]},
               {modules,[logger,props,trunkstore,trunkstore_app,
