@@ -124,7 +124,7 @@ find_route(Flags, ApiProp, ServerID) ->
 		{ok, Routes} ->
 		    %%format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
 		    Flags1 = update_account(Flags),
-		    response(Routes, ApiProp, Flags1, ServerID);
+		    response(Routes, ApiProp, Flags1#route_flags{routes_generated=Routes}, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)
@@ -134,7 +134,7 @@ find_route(Flags, ApiProp, ServerID) ->
 		{ok, Routes} ->
 		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
 		    Flags1 = update_account(Flags),
-		    response(Routes, ApiProp, Flags1, ServerID);
+		    response(Routes, ApiProp, Flags1#route_flags{routes_generated=Routes}, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)

@@ -5,4 +5,5 @@
 */ebin/*.beam
 utils/*/ebin/*.beam
 applications/*/ebin/*.beam
+rabbit/{rabbitmq-}*/ebin/*.beam
 .eunit

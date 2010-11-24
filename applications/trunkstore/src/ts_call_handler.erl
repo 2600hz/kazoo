@@ -78,6 +78,8 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
 	    ?MODULE:loop(CallID, Flags#route_flags{account_doc=Doc1}, Amqp, Timeout);
 	{_, #amqp_msg{props = _Props, payload = Payload}} ->
+	    format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
+
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 
 	    case get_value(<<"Event-Name">>, Prop) of
@@ -222,7 +224,11 @@ wait_to_update(Prop, Flags, Host, CallID, EvtQ, Started) ->
 close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) ->
     format_log(info, "TS_CALL.close_down(~p): CDR: ~p~n", [self(), Prop]),
     update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
+
+    spawn(fun() -> ts_cdr:store_cdr(Prop, Flags) end),
+
     format_log(info, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
+
     amqp_util:delete_callmgr_queue(Host, EvtQ),
     couch_mgr:rm_change_handler(DocID),
     ts_responder:rm_post_handler(CallID).
