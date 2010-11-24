@@ -3,6 +3,8 @@
 echo "Compiling utils"
 cd ../utils/amqp/
 rebar clean compile
+cd ../couch
+rebar clean compile
 cd ../diagnostics
 rebar clean compile
 
