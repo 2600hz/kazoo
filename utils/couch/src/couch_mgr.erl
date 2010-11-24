@@ -353,7 +353,7 @@ get_db(DbName, Conn, DBs) ->
 get_db(DbName, Conn, DBs, Options) ->
     case lists:keyfind(DbName, 1, DBs) of
 	false ->
-	    {ok, Db} = couchbeam:open_db(Conn, DbName, Options),
+	    {ok, Db} = couchbeam:open_or_create_db(Conn, DbName, Options),
 	    case couchbeam:db_info(Db) of
 		{ok, _JSON} ->
 		    {Db, [{DbName, Db} | DBs]};
