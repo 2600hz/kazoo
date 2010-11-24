@@ -1,8 +1,0 @@
-{release,{"rabbit","%%VSN%%"},
-         {erts,"5.8"},
-         [{mnesia,"4.4.14"},
-          {stdlib,"1.17"},
-          {rabbit,"%%VSN%%"},
-          {kernel,"2.14"},
-          {sasl,"2.1.9.2"},
-          {os_mon,"2.2.5"}]}.
