@@ -151,6 +151,7 @@ update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"in
     Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
 update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"outbound">>
 					  ,outbound_rate=R, outbound_rate_increment=RI, outbound_rate_minimum=RM, outbound_surcharge=S}=Flags) ->
+    format_log(info, "TS_CALL(~p): Calc cost: R: ~p RI: ~p RM: ~p S: ~p, Dur: ~p~n", [self(), R, RI, RM, S, Duration]),
     Amount = calculate_cost(R, RI, RM, S, Duration),
     Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
 update_account(_Duration, #route_flags{}=Flags) ->
