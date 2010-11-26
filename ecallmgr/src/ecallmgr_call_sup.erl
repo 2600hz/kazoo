@@ -19,7 +19,7 @@
 -define(SERVER, ?MODULE).
 
 %% only restart if they die abnormally - transient
--define(CHILD(I, Type, Args), {I, {I, start, Args}, transient, 5000, Type, [I]}).
+-define(CHILD(ID, Mod, Type, Args), {ID, {Mod, start, Args}, transient, 5000, Type, [Mod]}).
 
 %%%===================================================================
 %%% API functions
@@ -36,10 +36,10 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 add_call_process(Node, UUID, Amqp, CtlPid) ->
-    supervisor:start_child(?MODULE, ?CHILD(ecallmgr_call_events, worker, [Node, UUID, Amqp, CtlPid])).
+    supervisor:start_child(?MODULE, ?CHILD(<<"events-", UUID/bitstring>>, ecallmgr_call_events, worker, [Node, UUID, Amqp, CtlPid])).
 
 add_call_process(Node, UUID, Amqp) ->
-    supervisor:start_child(?MODULE, ?CHILD(ecallmgr_call_control, worker, [Node, UUID, Amqp])).
+    supervisor:start_child(?MODULE, ?CHILD(<<"control-", UUID/bitstring>>, ecallmgr_call_control, worker, [Node, UUID, Amqp])).
 
 %%%===================================================================
 %%% Supervisor callbacks
