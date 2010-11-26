@@ -247,22 +247,22 @@ has_credit(Flags, <<"outbound">>) ->
     Flags#route_flags.credit_available > (Flags#route_flags.outbound_rate * Flags#route_flags.outbound_rate_minimum).
 
 set_rate_flags(Flags, <<"inbound">>=In, RateData, RateName) ->
-    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateData]),
+    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateName]),
     Flags#route_flags{
-      inbound_rate = get_value(<<"rate_cost">>, RateData)
-      ,inbound_rate_increment = get_value(<<"rate_increment">>, RateData)
-      ,inbound_rate_minimum = get_value(<<"rate_minimum">>, RateData)
-      ,inbound_surcharge = get_value(<<"rate_surcharge">>, RateData)
+      inbound_rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
+      ,inbound_rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
+      ,inbound_rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
+      ,inbound_surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
       ,inbound_rate_name = RateName
       ,flat_rate_enabled = false
      };
 set_rate_flags(Flags, <<"outbound">>=Out, RateData, RateName) ->
-    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateData]),
+    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateName]),
     Flags#route_flags{
-      outbound_rate = get_value(<<"rate_cost">>, RateData)
-      ,outbound_rate_increment = get_value(<<"rate_increment">>, RateData)
-      ,outbound_rate_minimum = get_value(<<"rate_minimum">>, RateData)
-      ,outbound_surcharge = get_value(<<"rate_surcharge">>, RateData)
+      outbound_rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
+      ,outbound_rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
+      ,outbound_rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
+      ,outbound_surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
       ,outbound_rate_name = RateName
       ,flat_rate_enabled = false
      }.
