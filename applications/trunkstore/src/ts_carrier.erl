@@ -227,7 +227,8 @@ sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
     get_value(<<"weight_cost">>, CarrierAData, 0) >= get_value(<<"weight_cost">>, CarrierBData, 0).
 
 %% transform Carriers proplist() into a list of Routes for the API
--spec(create_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
+-type routes() :: list(tuple(struct, proplist())).
+-spec(create_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> tuple(ok, routes()) | tuple(error, string())).
 create_routes(Flags, Carriers) ->
     CallerID = case Flags#route_flags.caller_id of
 		   {} -> [];
@@ -254,6 +255,8 @@ create_routes(Flags, Carriers) ->
 	    {ok, Routes}
     end.
 
+-type c2r_acc() :: tuple(routes(), binary(), proplist()).
+-spec(carrier_to_routes/2 :: (tuple(binary(), proplist()), c2r_acc()) -> c2r_acc()).
 carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
     CallerIDData = case get_value(<<"callerid_type">>, CarrierData) of
 			undefined -> CallerID;
@@ -274,6 +277,8 @@ carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
 				     ,get_value(<<"options">>, CarrierData)),
     {GatewayRoutes, User, CallerID}.
 
+-type g2r_acc() :: tuple(routes(), binary(), proplist()).
+-spec(gateway_to_route/2 :: (Gateway :: proplist(), Acc :: g2r_acc()) -> g2r_acc()).
 gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
     case get_value(<<"enabled">>, Gateway, <<"0">>) of
 	<<"1">> ->

@@ -52,7 +52,7 @@
 
 %% Node, UUID, {AmqpHost, CtlQueue}
 start(Node, UUID, Amqp) ->
-    spawn(ecallmgr_call_control, init, [Node, UUID, Amqp]).
+    spawn_link(ecallmgr_call_control, init, [Node, UUID, Amqp]).
 
 init(Node, UUID, {AmqpHost, CtlQueue}) ->
     amqp_util:basic_consume(AmqpHost, CtlQueue),

@@ -64,9 +64,13 @@ set_amqp_host(Host) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    H = net_adm:localhost(),
-    Q = start_amqp(H, "", <<>>),
-    {ok, #state{amqp_host=H, callmgr_q=Q}}.
+    try
+	H = net_adm:localhost(),
+	Q = start_amqp(H, "", <<>>),
+	{ok, #state{amqp_host=H, callmgr_q=Q}}
+    catch
+	_:_ -> {ok, #state{}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

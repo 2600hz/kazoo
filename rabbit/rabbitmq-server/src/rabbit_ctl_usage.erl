@@ -42,7 +42,7 @@ Commands:
     add_vhost <vhostpath>
     delete_vhost <vhostpath>
     list_vhosts
-    set_permissions [-p <vhostpath>] [-s <scope>] <user> <conf> <write> <read>
+    set_permissions [-p <vhostpath>] <user> <conf> <write> <read>
     clear_permissions [-p <vhostpath>] <username>
     list_permissions [-p <vhostpath>]
     list_user_permissions [-p <vhostpath>] <username>

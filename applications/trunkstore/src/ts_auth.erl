@@ -14,7 +14,6 @@
 -define(APP_NAME, <<"ts_responder.auth">>).
 -define(APP_VERSION, <<"0.3.0">>).
 
--include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 -include("ts.hrl").
 
 -import(proplists, [get_value/2, get_value/3]).
@@ -86,7 +85,7 @@ handle_req(Prop) ->
 %% will most likely return false everytime
 -spec(is_inbound/1 :: (Domain :: binary()) -> boolean()).
 is_inbound(Domain) ->
-    IP = find_ip(Domain),
+    IP = ts_util:find_ip(Domain),
     Options = [{"key", IP}],
     format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
@@ -110,7 +109,7 @@ is_inbound(Domain) ->
 
 -spec(lookup_user/2 :: (Name :: binary(), Domain :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name, Domain) ->
-    IP = find_ip(Domain),
+    IP = ts_util:find_ip(Domain),
     Options = [{"key", IP}],
     format_log(info, "TS_AUTH(~p): lookup_user with ~p and ~p(~p) in ~p.~p~n"
 	       ,[self(), Name, Domain, IP, ?TS_DB, ?TS_VIEW_IPAUTH]),
@@ -173,22 +172,3 @@ specific_response(403) ->
      ,{<<"Auth-Password">>, <<"403 Forbidden">>}
      ,{<<"Access-Group">>, <<"ignore">>}
      ,{<<"Tenant-ID">>, <<"ignore">>}].
-
--spec(find_ip/1 :: (Domain :: binary() | list()) -> list()).
-find_ip(Domain) when is_binary(Domain) ->
-    find_ip(binary_to_list(Domain));
-find_ip(Domain) when is_list(Domain) ->
-    case inet:gethostbyname(Domain, inet) of %% eventually we'll want to support both IPv4 and IPv6
-	{error, Err} ->
-	    format_log(error, "TS_AUTH(~p): Failed to find ip for ~p: ~p~n", [self(), Domain, Err]),
-	    Domain;
-	{ok, Hostent} when is_record(Hostent, hostent) ->
-	    case Hostent#hostent.h_addr_list of
-		[] ->
-		    format_log(error, "TS_AUTH(~p): Failed to find addrs for ~p: ~p~n", [self(), Domain, Hostent]),
-		    Domain;
-		[Addr | _Rest] ->
-		    format_log(info, "TS_AUTH(~p): Found ~p, other addrs (maybe): ~p~n", [self(), Addr, _Rest]),
-		    inet_parse:ntoa(Addr)
-	    end
-    end.

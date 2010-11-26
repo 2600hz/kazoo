@@ -13,7 +13,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    ecallmgr_sup:start_link().
+    ecallmgr:start_link().
 
 stop(_State) ->
     ok.
