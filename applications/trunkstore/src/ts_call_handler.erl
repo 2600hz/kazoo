@@ -194,6 +194,7 @@ update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=Call
 %% Sur :: surcharge, in dollars, (0.05, 5 cents to connect the call)
 %% Secs :: billable seconds
 -spec(calculate_cost/5 :: (R :: float() | integer(), RI :: integer(), RM :: integer(), Sur :: float() | integer(), Secs :: integer()) -> float()).
+calculate_cost(_, _, _, _, 0) -> 0;
 calculate_cost(R, RI, RM, Sur, Secs) ->
     case Secs =< RM of
 	true -> Sur + ((RM / 60) * R);
