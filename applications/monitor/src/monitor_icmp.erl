@@ -30,9 +30,9 @@ ping(Dest) ->
 ping(Dest, Count) ->
     Cmd = io_lib:format("echo -n `echo -n $(ping -i 0.5 -W 1 -n -q -c ~p ~p) | cut -d' ' -f3,13,16,18,22,26 | sed -r 's/\\/| /,/g' | sed 's/[^0-9.,]//g'`", [Count, Dest]),
     Result = string:tokens(os:cmd(Cmd), ","),
-    case length(Result) of
-        0 -> [{"Error", "Agent could not execute ping"}];
-        1 -> [{"Error", lists:nth(1, Result)}];
+    case Result of
+        [] -> [{"Error", "Agent could not execute ping"}];
+        [E] -> [{"Error", E}];
         _ -> create_proplist(?RESULT_FIELDS, Result, [])
     end.
 
