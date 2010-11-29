@@ -19,5 +19,7 @@ cd ../cdr
 rebar clean compile
 cd ../monitor
 rebar clean compile
+cd ../hangups
+rebar clean compile
 cd ../../bin
 echo "Done compiling"
