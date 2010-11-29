@@ -57,4 +57,6 @@
                     {default_user_is_admin,true},
                     {default_vhost,<<"/">>},
                     {default_permissions,[<<".*">>,<<".*">>,<<".*">>]},
+                    {cluster_nodes,[]},
+                    {server_properties,[]},
                     {collect_statistics,none}]}]}.
