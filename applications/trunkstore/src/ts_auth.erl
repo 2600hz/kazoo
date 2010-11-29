@@ -28,7 +28,7 @@
 %% @doc Give Prop, the Auth API request, create the API response JSON
 %% @end
 %%--------------------------------------------------------------------
--spec(handle_req/1 :: (Prop :: proplist()) -> tuple(ok | error, iolist() | string())).
+-spec(handle_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(Prop) ->
     [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
     {AuthU, AuthD} = {get_value(<<"Auth-User">>, Prop), get_value(<<"Auth-Domain">>, Prop)},
@@ -89,7 +89,7 @@ is_inbound(Domain) ->
     IP = find_ip(Domain),
     Options = [{"key", IP}],
     format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
+    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
 	false ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
 		       ,[self(), ?TS_VIEW_CARRIERIP, Domain, IP]),
@@ -114,7 +114,7 @@ lookup_user(Name, Domain) ->
     Options = [{"key", IP}],
     format_log(info, "TS_AUTH(~p): lookup_user with ~p and ~p(~p) in ~p.~p~n"
 	       ,[self(), Name, Domain, IP, ?TS_DB, ?TS_VIEW_IPAUTH]),
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_IPAUTH, Options) of
+    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_IPAUTH, Options) of
 	false ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
 		       ,[self(), ?TS_VIEW_IPAUTH, Domain, IP]),
@@ -133,7 +133,7 @@ lookup_user(Name, Domain) ->
 -spec(lookup_user/1 :: (Name :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name) ->
     Options = [{"key", Name}],
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
+    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
 	false ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_USERAUTH, Name]),
 	    {error, "No view found."};
@@ -148,7 +148,7 @@ lookup_user(Name) ->
 	    {error, "Unexpeced error in lookup_user/1"}
     end.
 
--spec(response/2 :: (RespData :: proplist() | integer(), Prop :: proplist()) -> {ok, iolist()} | {error, string()}).
+-spec(response/2 :: (RespData :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 response(ViewInfo, Prop) ->
     Data = lists:umerge(specific_response(ViewInfo), Prop),
     whistle_api:auth_resp(Data).

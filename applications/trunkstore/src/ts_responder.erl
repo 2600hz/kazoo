@@ -17,6 +17,7 @@
 
 %% API
 -export([start_link/0, set_couch_host/1, set_amqp_host/1, add_post_handler/2, rm_post_handler/1]).
+-export([start_post_handler/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -26,7 +27,8 @@
 -import(logger, [log/2, format_log/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
--include("../../../src/whistle_amqp.hrl").
+-include("../../../utils/src/whistle_amqp.hrl").
+-include("ts.hrl").
 
 -define(SERVER, ?MODULE). 
 
@@ -34,7 +36,7 @@
 		,couch_host = "" :: string()
 		,callmgr_q = <<>> :: binary()
                 ,tar_q = <<>> :: binary()
-		,post_handlers = [] :: list(tuple(binary(), pid())) %% [ {CallID, PostHandlerPid} ]
+		,post_handlers = [] :: list(tuple(binary(), pid())) | [] %% [ {CallID, PostHandlerPid} ]
 	       }).
 
 %%%===================================================================
@@ -100,7 +102,7 @@ handle_call({add_post_handler, CallID, Pid}, _From, #state{post_handlers=Posts}=
     {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
     format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
-    ts_couch:set_host(CHost),
+    couch_mgr:set_host(CHost),
     ts_carrier:force_carrier_refresh(),
     ts_credit:force_rate_refresh(),
     {reply, ok, State#state{couch_host=CHost}};
@@ -154,7 +156,7 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
     format_log(error, "TS_RESPONDER(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
     {noreply, Reason, State};
 %% receive resource requests from Apps
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
 %% catch all so we don't lose state
@@ -194,19 +196,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-handle_req(ContentType, Payload, State) ->
-    case ContentType of
-	<<"application/json">> ->
-	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "TS_RESPONDER(~p): Recv CT: ~p~nPayload: ~p~n", [self(), ContentType, Prop]),
-	    process_req(get_msg_type(Prop), Prop, State);
-	_ ->
-	    format_log(info, "TS_RESPONDER(~p): recieved unknown msg type: ~p~n", [self(), ContentType])
-    end.
+-spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
+handle_req(<<"application/json">>, Payload, State) ->
+    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "TS_RESPONDER(~p): Recv JSON~nPayload: ~p~n", [self(), Prop]),
+    process_req(get_msg_type(Prop), Prop, State);
+handle_req(_ContentType, _Payload, _State) ->
+    format_log(info, "TS_RESPONDER(~p): recieved unknown msg type: ~p~n", [self(), _ContentType]).
 
+-spec(get_msg_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary())).
 get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
 
+-spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
 process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
     case whistle_api:auth_req_v(Prop) of
 	false ->
@@ -228,7 +230,7 @@ process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{tar_q=TQ}=State) ->
 	{ok, JSON, Flags} ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    send_resp(JSON, RespQ, State),
-	    start_post_handler(Prop, Flags, State);
+	    ?MODULE:start_post_handler(Prop, Flags, State);
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~p~n", [self(), _Msg])
     end,
@@ -253,6 +255,7 @@ process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
 %% Prop - RouteReq API Proplist
+-spec(start_post_handler/3 :: (Prop :: proplist(), Flags :: tuple(), State :: #state{}) -> no_return()).
 start_post_handler(Prop, Flags, #state{amqp_host=AmqpHost}) ->
     CallID = get_value(<<"Call-ID">>, Prop),
     Pid = ts_call_handler:start(CallID, Flags, AmqpHost),
@@ -260,7 +263,6 @@ start_post_handler(Prop, Flags, #state{amqp_host=AmqpHost}) ->
 
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
-    format_log(info, "TS_RESPONDER(~p): Sending to ~p~n", [self(), RespQ]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
 
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).

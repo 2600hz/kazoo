@@ -26,38 +26,36 @@ start(Node, UUID, Amqp, CtlPid) ->
 
 init(Node, UUID, Amqp, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
-    loop(UUID, Amqp, CtlPid).
+    loop(Node, UUID, Amqp, CtlPid).
 
--spec(loop/3 :: (UUID :: binary(), Amqp :: string(), CtlPid :: pid()) -> no_return()).
-loop(UUID, Amqp, CtlPid) ->
+-spec(loop/4 :: (Node :: atom(), UUID :: binary(), Amqp :: string(), CtlPid :: pid()) -> no_return()).
+loop(Node, UUID, Amqp, CtlPid) ->
     receive
 	{call, {event, [UUID | Data]}} ->
 	    format_log(info, "EVT(~p): {Call, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
 	    publish_msg(Amqp, UUID, Data),
-	    loop(UUID, Amqp, CtlPid);
+	    loop(Node, UUID, Amqp, CtlPid);
 	{call_event, {event, [ UUID | Data ] } } ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    AppName = get_value(<<"Application">>, Data),
 	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p~n"
 		       ,[self(), UUID, AppName, EvtName]),
 
-%	    case EvtName of
-%		<<"CHANNEL_HANGUP">> -> format_log(info, "HANGUP ~p~n", [Data]);
-%		<<"CHANNEL_HANGUP_COMPLETE">> ->
-%		    format_log(info, "HANGUP_C ~p~n", [Data]),
-%		    ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data);
-%		_ -> ok
-%	    end,
+	    case EvtName of
+		<<"CHANNEL_HANGUP_COMPLETE">> ->
+		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data) end);
+		_ -> ok
+	    end,
 
 	    publish_msg(Amqp, UUID, Data),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
-	    loop(UUID, Amqp, CtlPid);
+	    loop(Node, UUID, Amqp, CtlPid);
 	call_hangup ->
 	    CtlPid ! {hangup, UUID},
 	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
-	    loop(UUID, Amqp, CtlPid)
+	    loop(Node, UUID, Amqp, CtlPid)
     end.
 
 %% let the ctl process know a command finished executing
@@ -84,7 +82,7 @@ publish_msg(AmqpHost, UUID, Prop) ->
 
 	    case whistle_api:call_event(EvtProp1) of
 		{ok, JSON} ->
-		    amqp_util:callevt_publish(AmqpHost, UUID, JSON, <<"application/json">>);
+		    amqp_util:callevt_publish(AmqpHost, UUID, JSON, event);
 		{error, Msg} ->
 		    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
 	    end;

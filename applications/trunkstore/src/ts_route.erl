@@ -11,7 +11,7 @@
 %% API
 -export([handle_req/2]).
 
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
 -include("ts.hrl").
@@ -60,17 +60,17 @@ outbound_handler(ApiProp, ServerID) ->
 -spec(lookup_user/1 :: (Name :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name) ->
     Options = [{"keys", [Name]}],
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
+    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_USERAUTH, Name]),
 	    {error, "No view found."};
 	[] ->
 	    format_log(info, "TS_ROUTE(~p): No Name matching ~p~n", [self(), Name]),
-	    [];
+	    {error, "No user found"};
 	[{ViewProp} | _Rest] ->
 	    format_log(info, "TS_ROUTE(~p): Using user ~p, retrieved~n~p~n", [self(), Name, ViewProp]),
 	    DocID = get_value(<<"id">>, ViewProp),
-	    case ts_couch:open_doc(?TS_DB, DocID) of
+	    case couch_mgr:open_doc(?TS_DB, DocID) of
 		{error, E}=Error ->
 		    format_log(error, "TS_ROUTE(~p): Failed to retrieve doc ~p: ~p~n", [self(), DocID, E]),
 		    Error;
@@ -85,7 +85,7 @@ lookup_user(Name) ->
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_did(Did) ->
     Options = [{"keys", [Did]}],
-    case ts_couch:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
+    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	false ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
@@ -97,7 +97,7 @@ lookup_did(Did) ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
 	    {Value} = get_value(<<"value">>, ViewProp),
-	    {ok, Value};
+	    {ok, [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value]};
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
@@ -122,8 +122,9 @@ find_route(Flags, ApiProp, ServerID) ->
 	    %% handle inbound routing
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
-		    format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, Flags, ServerID);
+		    %%format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
+		    Flags1 = update_account(Flags),
+		    response(Routes, ApiProp, Flags1, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)
@@ -131,15 +132,16 @@ find_route(Flags, ApiProp, ServerID) ->
 	true ->
 	    case ts_carrier:route(Flags) of
 		{ok, Routes} ->
-		    format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, Flags, ServerID);
+		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
+		    Flags1 = update_account(Flags),
+		    response(Routes, ApiProp, Flags1, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)
 	    end
     end.
 
--spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok | error, proplist() | string())).
+-spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok, proplist()) | tuple(error, string())).
 inbound_route(Flags) ->
     format_log(info, "TS_ROUTE(~p): Inbound route flags: ~p~n", [self(), Flags]),
     DID = case Flags#route_flags.inbound_format of
@@ -178,7 +180,7 @@ add_failover_route({<<"e164">>, DID}, Flags, InboundRoute) ->
 	{ok, OutBFlags1} ->
 	    case ts_carrier:route(OutBFlags1) of
 		{ok, Routes} ->
-		    format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
+		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
 		    [InboundRoute | Routes];
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), Error]),
@@ -218,10 +220,13 @@ create_flags(Did, ApiProp) ->
 		 #route_flags{}
 	 end,
     F3 = case Doc of
-	     {error, _E1} -> F1;
-	     D when is_list(D) ->
-		 F2 = flags_from_srv(AuthUser, D, F1),
-		 flags_from_account(D, F2);
+	     {error, _E1} ->
+		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
+		     {error, _E2} -> F1;
+		     Doc1 ->
+			 F2 = flags_from_srv(AuthUser, Doc1, F1),
+			 flags_from_account(Doc1, F2)
+		 end;
 	     {ok, D} ->
 		 F2 = flags_from_srv(AuthUser, D, F1),
 		 flags_from_account(D, F2)
@@ -240,7 +245,8 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 	     _CID -> Flags
 	 end,
     F0#route_flags{
-      to_user = whistle_util:to_e164(ToUser)
+      callid = get_value(<<"Call-ID">>, ApiProp)
+      ,to_user = whistle_util:to_e164(ToUser)
       ,to_domain = ToDomain
       ,from_user = whistle_util:to_e164(FromUser)
       ,from_domain = FromDomain
@@ -263,13 +269,14 @@ flags_from_did(DidProp, Flags) ->
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, AcctOpts, 0)),
     format_log(info, "Got ~p trunks from ~p~n", [Trunks, AcctOpts]),
 
-    Opts = get_value(<<"options">>, DidProp, {[]}),
+    {Opts} = get_value(<<"options">>, DidProp, {[]}),
 
     F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {[]})),
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {[]})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
 		   ,trunks = Trunks
+		   ,account_doc_id = get_value(<<"id">>, DidProp)
 		   ,credit_available = whistle_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 		  }.
 
@@ -301,13 +308,14 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 -spec(flags_from_account(Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
-    {Credit} = get_value(<<"credit">>, Acct, {[]}),
+    {Credit} = get_value(<<"credits">>, Acct, {[]}),
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
-    TrunksInUse = whistle_util:to_integer(get_value(<<"trunks_in_use">>, Acct, Flags#route_flags.trunks_in_use)),
+    ACs = lists:usort(get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls)), % only uniques
 
     F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
 			   ,trunks = Trunks
-			   ,trunks_in_use = TrunksInUse
+			   ,active_calls = ACs
+			   ,account_doc=Doc
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Acct, {[]})),
     add_failover(F1, get_value(<<"failover">>, Acct, {[]})).
@@ -364,3 +372,20 @@ specific_response(Routes) when is_list(Routes) ->
     [{<<"Routes">>, Routes}
      ,{<<"Method">>, <<"bridge">>}
     ].
+
+%% update the account's trunks_in_use if flat_rate
+-spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
+update_account(#route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, active_calls=ACs}=Flags) ->
+    {Acct0} = get_value(<<"account">>, Doc, {[]}),
+    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
+    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), ACs1, CallID]),
+    Acct1 = [{<<"active_calls">>, [CallID | ACs1]} | proplists:delete(<<"active_calls">>, Acct0)],
+    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
+    case couch_mgr:save_doc(?TS_DB, Doc1) of
+	{ok, Doc2} ->
+	    Flags#route_flags{active_calls=lists:usort([CallID | ACs1]), account_doc=Doc2};
+	{error, conflict} ->
+	    update_account(Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
+    end;
+update_account(#route_flags{}=Flags) ->
+    Flags.

@@ -112,25 +112,21 @@
 -include("whistle_api.hrl").
 
 -define(SERVER, ?MODULE).
--define(OPTIONS_POS, 2).
 -define(AUTH_MOD, ecallmgr_fs_auth).
--define(AUTH_MOD_POS, 3).
 -define(ROUTE_MOD, ecallmgr_fs_route).
--define(ROUTE_MOD_POS, 4).
 -define(NODE_MOD, ecallmgr_fs_node).
--define(NODE_MOD_POS, 5).
 
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 300000). % 5 minutes
 
--define(START_HANDLERS, [fun start_auth_handler/3, fun start_route_handler/3, fun start_node_handler/3]).
--define(HANDLER_POSS, [{?AUTH_MOD_POS, fun start_auth_handler/3}
-		       ,{?ROUTE_MOD_POS, fun start_route_handler/3}
-		       ,{?NODE_MOD_POS, fun start_node_handler/3}
-		      ]).
+-record(node_handler, {node = 'undefined' :: atom()
+		       ,options = [] :: proplist()
+		       ,auth_handler_pid = undefined :: pid() | undefined
+                       ,route_handler_pid = undefined :: pid() | undefined
+                       ,node_handler_pid = undefined :: pid() | undefined
+                       ,node_watch_pid = undefined :: pid() | undefined % If a node goes down, this pid is responsible for watching for the node to restart
+		      }).
 
-%% fs_nodes = [{FSNode, Options, AuthHandlerPid, RouteHandlerPid, FSNodeHandlerPid}]
--type node_handlers() :: tuple(atom(), pid(), pid(), pid(), proplist()).
--record(state, {fs_nodes = [] :: list(node_handlers())
+-record(state, {fs_nodes = [] :: list(#node_handler{})
 		,amqp_host = "" :: string()
 	       }).
 
@@ -164,7 +160,7 @@ set_amqp_host(Host) ->
 %% Returns - Proplist
 %%   {max_channels_available, 4}
 %%   {bias, 1}
--spec(request_resource/2 :: (Type :: binary(), Options :: proplist()) -> proplist()).
+-spec(request_resource/2 :: (Type :: binary(), Options :: proplist()) -> list(proplist())).
 request_resource(Type, Options) ->
     gen_server:call(?MODULE, {request_resource, Type, Options}).
 
@@ -185,7 +181,7 @@ request_resource(Type, Options) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, #state{}}.
+    {ok, #state{amqp_host=net_adm:localhost()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -211,11 +207,11 @@ handle_call({set_amqp_host, Host}, _From, #state{amqp_host=H}=State) ->
     {reply, ok, State#state{amqp_host=Host}};
 handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    {KnownNodes, HandlerD} = lists:foldl(fun(Tup, {KN, HD}) ->
-						 FSNode = element(1, Tup),
-						 AuthHandlerD = diagnostics_query(element(?AUTH_MOD_POS, Tup)),
-						 RteHandlerD = diagnostics_query(element(?ROUTE_MOD_POS, Tup)),
-						 NodeHandlerD = diagnostics_query(element(?NODE_MOD_POS, Tup)),
+    {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}
+					     ,{KN, HD}) ->
+						 AuthHandlerD = diagnostics_query(AHP),
+						 RteHandlerD = diagnostics_query(RHP),
+						 NodeHandlerD = diagnostics_query(NHP),
 						 {[FSNode | KN], [{FSNode
 								   ,{auth_handler, AuthHandlerD}
 								   ,{route_handler, RteHandlerD}
@@ -272,22 +268,19 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
-    format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n", [self(), HPid, Reason]),
-    Funs = ?START_HANDLERS,
-    NewNodes = check_down_pid(Nodes, HPid, Host, Funs),
+    format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n~p~n", [self(), HPid, Reason, Nodes]),
+    NewNodes = check_down_pid(Nodes, HPid, Host),
     {noreply, State#state{fs_nodes=NewNodes}};
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	false ->
+    case lists:filter(fun(#node_handler{node=Node1}) when Node =:= Node1 -> true; (_) -> false end, Nodes) of
+	[] ->
 	    format_log(info, "FS_HANDLER(~p): Received nodedown for ~p but node is not known~n", [self(), Node]),
 	    {noreply, State};
-	N ->
-	    Node = element(1, N),
-	    Opts = element(?OPTIONS_POS, N),
+	[#node_handler{node=Node, options=Opts}=N|_] ->
 	    erlang:monitor_node(Node, false),
-	    spawn(fun() -> watch_node_for_restart(Node, Opts) end),
+	    WatchPid = spawn_link(fun() -> watch_node_for_restart(Node, Opts) end),
 	    format_log(info, "FS_HANDLER(~p): Node ~p has gone down~n", [self(), Node]),
-	    {noreply, State}
+	    {noreply, State#state{fs_nodes=[N#node_handler{node_watch_pid=WatchPid} | lists:keydelete(Node, 2, Nodes)]}}
     end;
 handle_info(_Info, State) ->
     format_log(info, "FS_HANDLER(~p): Unhandled Info: ~p~n", [self(), _Info]),
@@ -337,14 +330,16 @@ watch_node_for_restart(Node, Opts, Timeout) ->
     is_node_up(Node, Opts, Timeout * 2).
 
 is_node_up(Node, Opts, Timeout) ->
-    lib:flush_receive(),
     case net_adm:ping(Node) of
-	pong -> ?MODULE:add_fs_node(Node, Opts);
+	pong ->
+	    format_log(info, "FS_HANDLER.is_node_up(~p): ~p has risen~n", [self(), Node]),
+	    ?MODULE:add_fs_node(Node, Opts);
 	pang ->
 	    receive
+		shutdown -> format_log(info, "FS_HANDLER(~p): watcher going down for ~p~n", [self(), Node])
 	    after
 		Timeout ->
-		    format_log(info, "FS_HANDLER.is_node_up(~p): ~p still down, trying again in ~p secs~n", [self(), Node, Timeout div 1000]),
+		    format_log(info, "FS_HANDLER.is_node_up(~p): trying ~p again, then waiting for ~p secs~n", [self(), Node, Timeout div 1000]),
 		    watch_node_for_restart(Node, Opts, Timeout)
 	    end
     end.
@@ -362,47 +357,48 @@ check_options(Opts) ->
 	_ -> Opts0
     end.
 
--spec(check_down_pid/4 :: (Nodes :: list(node_handlers()), HPid :: pid(), Host :: string(), Fs :: list(fun())) -> list(node_handlers())).
-check_down_pid(Nodes, HPid, Host, Fs) ->
-    Ps = [?AUTH_MOD_POS, ?ROUTE_MOD_POS, ?NODE_MOD_POS],
-    check_down_pid(Nodes, HPid, Host, Fs, Ps).
+-spec(check_down_pid/3 :: (Nodes :: list(#node_handler{}), HPid :: pid(), Host :: string()) -> list(#node_handler{})).
+check_down_pid(Nodes, HPid, Host) ->
+    lists:foldl(fun(#node_handler{auth_handler_pid=AHP
+				  ,route_handler_pid=RHP
+				  ,node_handler_pid=NHP
+				  ,node_watch_pid=undefined
+				  ,options=Options
+				  ,node=Node
+				 }=N, Nodes0) ->
+			Restart = fun(CurrHPid, StartFun) -> restart_handler(Node, Options, Host, HPid, CurrHPid, StartFun) end,
+			NewAHP = Restart(AHP, fun start_auth_handler/3),
+			NewRHP = Restart(RHP, fun start_route_handler/3),
+			NewNHP = Restart(NHP, fun start_node_handler/3),
+			[N#node_handler{auth_handler_pid=NewAHP
+					,route_handler_pid=NewRHP
+					,node_handler_pid=NewNHP}
+			 | Nodes0];
+		   (#node_handler{node_watch_pid=NWP}=N, Nodes0) when NWP =:= HPid ->
+			[N#node_handler{node_watch_pid=undefined} | Nodes0];
+		   (#node_handler{node_watch_pid=NWP}, Nodes0) when is_pid(NWP) ->
+			Nodes0
+		end, [], Nodes).
 
--spec(check_down_pid/5 :: (Nodes :: list(node_handlers()), HPid :: pid(), Host :: string(), Fs :: list(fun()), Ps :: list(integer())) ->
- list(node_handlers())).
-check_down_pid(Nodes, HPid, Host, [F | Fs], [Pos | Ps]) ->
-    case restart_handler(Nodes, HPid, Pos, Host, F) of
-	Tuple when is_tuple(Tuple) ->
-	    Node = element(1, Tuple),
-	    erlang:monitor_node(Node, true),
-	    [Tuple | lists:keydelete(Node, 1, Nodes)];
-	false ->
-	    check_down_pid(Nodes, HPid, Host, Fs, Ps)
+-spec(restart_handler/6 :: (Node :: atom(), Options :: proplist(), Host :: string(), DownPid :: pid() | undefined, CurrPid :: pid() | undefined, StartFun :: fun()) ->
+				pid() | undefined).
+restart_handler(Node, Options, Host, _, undefined, StartFun) ->
+    case StartFun(Node, Options, Host) of
+	{error, Err} ->
+	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
+	    undefined;
+	Pid when is_pid(Pid) -> Pid
     end;
-check_down_pid(Nodes, _, _, [], []) -> % not a handler pid
-    Nodes.
-
--spec(restart_handler/5 :: (Nodes :: list(node_handlers()), HPid :: pid(), Pos :: integer(), Host :: string(), StartFun :: fun()) -> node_handlers() | false).
-restart_handler(Nodes, HPid, Pos, Host, StartFun) ->
-    case lists:keyfind(HPid, Pos, Nodes) of
-	Tuple when is_tuple(Tuple) ->
-	    Node = element(1, Tuple),
-	    case element(Pos, Tuple) of
-		HPid ->
-		    Opts = element(?OPTIONS_POS, Tuple),
-		    case StartFun(Node, Opts, Host) of
-			{error, Err} ->
-			    format_log(error, "FS_HANDLER(~p): Handler(pos ~p) failed to restart for ~p: ~p~n", [self(), Pos, Node, Err]),
-			    setelement(Pos, Tuple, undefined);
-			NewHPid when is_pid(NewHPid) ->
-			    format_log(info, "FS_HANDLER(~p): Handler down(~p @ ~p), restarting handler(~p).~n", [self(), HPid, Pos, NewHPid]),
-			    setelement(Pos, Tuple, NewHPid)
-		    end;
-		_ ->
-		    Tuple
-	    end;
-	false ->
-	    false
-    end.
+restart_handler(Node, Options, Host, HPid, HPid, StartFun) ->
+    case StartFun(Node, Options, Host) of
+	{error, Err} ->
+	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
+	    undefined;
+	Pid when is_pid(Pid) ->
+	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
+	    Pid
+    end;
+restart_handler(_, _, _, _, Pid, _) -> Pid.
 
 %% query a pid for its diagnostics info
 -spec(diagnostics_query/1 :: (Pid :: pid()) -> tuple(ok, proplist()) | tuple(error, atom(), term())).
@@ -421,65 +417,75 @@ diagnostics_query(Pid) when is_pid(Pid) ->
 diagnostics_query(X) ->
     {error, handler_down, X}.
 
-
 -spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: tuple()) -> tuple(ok, tuple()) | tuple(tuple(error, atom()), tuple())).
 add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	T when is_tuple(T) ->
-	    format_log(info, "FS_HANDLER(~p): handlers known ~p~n", [self(), T]),
-	    NewL = lists:foldl(fun({Pos, StartFun}, Acc) ->
-				       case element(Pos, T) of
-					   Pid when is_pid(Pid) ->
-					       Pid ! {update_options, Options},
-					       [Pid | Acc];
-					   _Other ->
-					       [StartFun(Node, Options, Host) | Acc]
-				       end
-			       end, [Options, Node], ?HANDLER_POSS),
-	    NewT = list_to_tuple(lists:reverse(NewL)),
-	    format_log(info, "FS_HANDLER(~p): Restarted handlers. Old: ~p New ~p~n", [self(), T, NewT]),
-	    {ok, State#state{fs_nodes=[NewT | lists:keydelete(Node, 1, Nodes)]}};
-	false ->
+    case lists:filter(fun(#node_handler{node=Node1}) when Node =:= Node1 -> true; (_) -> false end, Nodes) of
+	[] ->
 	    case net_adm:ping(Node) of
 		pong ->
 		    erlang:monitor_node(Node, true),
-		    HPids = lists:map(fun(StartFun) -> StartFun(Node, Options, Host) end, ?START_HANDLERS),
-		    Tuple = erlang:list_to_tuple([Node, Options | HPids]),
-		    {ok, State#state{fs_nodes=[Tuple | Nodes]}};
+		    Restart = fun(StartFun) -> restart_handler(Node, Options, Host, undefined, undefined, StartFun) end,
+
+		    AHP = Restart(fun start_auth_handler/3),
+		    RHP = Restart(fun start_route_handler/3),
+		    NHP = Restart(fun start_node_handler/3),
+
+		    {ok, State#state{fs_nodes=[#node_handler{node=Node
+							     ,options=Options
+							     ,auth_handler_pid=AHP
+							     ,route_handler_pid=RHP
+							     ,node_handler_pid=NHP
+							    }
+					       | Nodes]}};
 		pang ->
 		    format_log(error, "FS_HANDLER(~p): ~p not responding~n", [self(), Node]),
 		    {{error, no_connection}, State}
-	    end
+	    end;
+	[#node_handler{node=Node, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}=N] ->
+	    format_log(info, "FS_HANDLER(~p): handlers known ~p~n", [self(), N]),
+	    Restart = fun(Pid, _StartFun) when is_pid(Pid) ->
+			      Pid ! {update_options, Options},
+			      Pid;
+			 (_, StartFun) ->
+			      case StartFun(Node, Options, Host) of
+				  {error, E} ->
+				      format_log(error, "FS_HANDLER.add(~p): Handler start on ~p failed because ~p~n", [self(), Node, E]),
+				      undefined;
+				  Pid -> Pid
+			      end
+		      end,
+	    {ok, State#state{fs_nodes=[N#node_handler{auth_handler_pid=Restart(AHP, fun start_auth_handler/3)
+						      ,route_handler_pid=Restart(RHP, fun start_route_handler/3)
+						      ,node_handler_pid=Restart(NHP, fun start_route_handler/3)
+						      ,options=Options}
+				       | lists:keydelete(Node, 2, Nodes)]}}
     end.
 
 -spec(rm_fs_node/2 :: (Node :: atom(), State :: tuple()) -> {ok | tuple(error, no_node, atom()), tuple()}).
 rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
-    case lists:keyfind(Node, 1, Nodes) of
-	N when is_tuple(N) ->
-	    Res = close_node(N),
-	    {{ok, Res}, State#state{fs_nodes=lists:keydelete(Node, 1, Nodes)}};
+    case lists:keyfind(Node, 2, Nodes) of
 	false ->
 	    format_log(error, "FS_HANDLER(~p): No handlers found for ~p~n", [self(), Node]),
-	    {{error, no_node, Node}, State}
+	    {{error, no_node, Node}, State};
+	N ->
+	    Res = close_node(N),
+	    {{ok, Res}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
--spec(close_node/1 :: (N :: node_handlers()) -> tuple(atom(), ok | tuple(), ok | tuple(), ok | tuple())).
-close_node(N) ->
-    Node = element(1, N),
-    Options = element(?OPTIONS_POS, N),
+-spec(close_node/1 :: (N :: #node_handler{}) -> tuple(atom(), ok | tuple(), ok | tuple(), ok | tuple())).
+close_node(#node_handler{node=Node
+			 ,auth_handler_pid=AHP
+			 ,route_handler_pid=RHP
+			 ,node_handler_pid=NHP}) ->
     erlang:monitor_node(Node, false),
-    Ps = [?AUTH_MOD_POS, ?ROUTE_MOD_POS, ?NODE_MOD_POS],
-    close_node(N, Ps, [Node, Options]).
+    {Node, close_handler(AHP), close_handler(RHP), close_handler(NHP)}.
 
-close_node(_N, [], L) ->
-    list_to_tuple(lists:reverse(L));
-close_node(N, [P | Ps], L) ->
-    Pid = element(P, N),
-    Res = case is_pid(Pid) andalso erlang:is_process_alive(Pid) of
-	      true -> Pid ! shutdown, ok;
-	      false -> {error, handler_down}
-	  end,
-    close_node(N, Ps, [Res | L]).
+-spec(close_handler/1 :: (Pid :: pid()) -> ok | tuple(error, handler_down)).
+close_handler(Pid) ->
+    case is_pid(Pid) andalso erlang:is_process_alive(Pid) of
+	true -> Pid ! shutdown, ok;
+	false -> {error, handler_down}
+    end.
 
 -spec(start_auth_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid() | tuple(error, term())).
 start_auth_handler(Node, Options, Host) ->
@@ -510,10 +516,9 @@ start_handler(Node, Options, Host, Mod) ->
 	    {error, Why}
     end.
 
--spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(node_handlers()), Options :: proplist()) -> list(proplist()) | list()).
+-spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(#node_handler{}), Options :: proplist()) -> list(proplist()) | []).
 process_resource_request(<<"audio">>=Type, Nodes, Options) ->
-    NodesResp = lists:map(fun(N) ->
-				  NodePid = element(?NODE_MOD_POS, N),
+    NodesResp = lists:map(fun(#node_handler{node_handler_pid=NodePid}=N) ->
 				  format_log(info, "FS_HANDLER.prr: NodePid ~p N ~p~n", [NodePid, N]),
 				  NodePid ! {resource_request, self(), Type, Options},
 				  receive

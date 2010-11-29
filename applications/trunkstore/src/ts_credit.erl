@@ -145,6 +145,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    couch_mgr:rm_change_handler(?TS_RATES_DOC),
     ok.
 
 %%--------------------------------------------------------------------
@@ -162,19 +163,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 get_current_rates() ->
-    case ts_couch:open_doc(?TS_DB, ?TS_RATES_DOC) of
+    case couch_mgr:open_doc(?TS_DB, ?TS_RATES_DOC) of
 	not_found ->
 	    format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
 	    {error, "No matching rates"};
 	{error, unhandled_call} ->
-	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call ts_couch:set_host/1~n", [self()]),
+	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
 	    {error, "No database host"};
 	[] ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
 	Rates when is_list(Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
-	    ts_couch:add_change_handler(?TS_DB, ?TS_RATES_DOC),
+	    couch_mgr:add_change_handler(?TS_DB, ?TS_RATES_DOC),
 	    {ok, lists:map(fun process_rates/1, Rates)};
 	Error ->
 	    format_log(error, "TS_CREDIT(~p): Fail ~p~n", [self(), Error]),
@@ -215,7 +216,7 @@ set_rate_flags(Flags, Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    %% trunks available in flags (flat_rate_enabled) and the rate has flatrate available as well
-	    UseFlatRate = Flags#route_flags.trunks > Flags#route_flags.trunks_in_use andalso get_value(<<"flatrate">>, RateData, false),
+	    UseFlatRate = Flags#route_flags.trunks > length(Flags#route_flags.active_calls) andalso get_value(<<"flatrate">>, RateData, false),
 
 	    case UseFlatRate of
 		true ->
@@ -285,9 +286,7 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
--spec(options_match/2 :: (RouteOptions :: tuple(list()) | list(), RateOptions :: list()) -> boolean()).
-options_match({RouteOptions}, RateOptions) ->
-    options_match(RouteOptions, RateOptions);
+-spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary())) -> boolean()).
 options_match(RouteOptions, RateOptions) ->
     format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [RouteOptions, RateOptions]),
     lists:all(fun(Opt) -> get_value(Opt, RateOptions, false) =/= false end, RouteOptions).

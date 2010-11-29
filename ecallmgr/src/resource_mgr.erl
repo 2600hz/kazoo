@@ -181,7 +181,7 @@ handle_resource_req(Payload, AmqpHost) ->
 	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validated ~p~n", [self(), Prop])
     end.
 
--spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | list()).
+-spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
 get_resources({<<"originate">>, <<"resource_req">>, <<"audio">>=Type}, Options) ->
     format_log(info, "RSCMGR.get_res(~p): Type ~p Options: ~p~n", [self(), Type, Options]),
     FSAvail = ecallmgr_fs_handler:request_resource(Type, Options), % merge other switch results into this list as well (eventually)

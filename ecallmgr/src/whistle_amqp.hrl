@@ -1,1 +1,1 @@
-../../src/whistle_amqp.hrl
+../../utils/src/whistle_amqp.hrl
