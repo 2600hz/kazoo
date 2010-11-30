@@ -13,7 +13,7 @@
 %% API
 -export([start_link/1]).
 -export([set_amqp_host/1]).
--export([start_job/1, start_job/2, list_jobs/0]).
+-export([start_job/1, start_job/2, rm_job/1, list_jobs/0]).
 -export([set_interval/2, pause/1, resume/1]).
 -export([add_task/4, rm_task/2, list_tasks/1]).
 
@@ -61,6 +61,9 @@ start_job(Job_ID) ->
 
 start_job(Job_ID, Tasks) ->
     gen_server:call(?SERVER, {start_job, Job_ID, Tasks}, infinity).
+
+rm_job(Job_ID) ->
+    gen_server:call(?SERVER, {rm_job, Job_ID}, infinity).
 
 list_jobs() ->
     gen_server:call(?SERVER, {list_jobs}, infinity).
@@ -116,12 +119,14 @@ init([AHost]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ}=State) ->
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ, jobs = Jobs}=State) ->
     format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
-    amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
-    amqp_manager:close_channel(self(), CurrentAHost),
-    {ok, Monitor_Q} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, monitor_q=Monitor_Q}};
+    %%amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
+    %%amqp_manager:close_channel(self(), CurrentAHost),
+    %%{ok, Monitor_Q} = start_amqp(AHost),
+    update_jobs_amqp(AHost, Jobs),
+    %%{reply, ok, State#state{amqp_host=AHost, monitor_q=Monitor_Q}};
+    {reply, ok, State#state{amqp_host=AHost}};
 
 handle_call({start_job, Job_ID, Tasks}, _From, #state{amqp_host = AHost, jobs = Jobs} = State) ->
     case monitor_job_sup:start_job(Job_ID, Tasks, AHost) of
@@ -131,6 +136,9 @@ handle_call({start_job, Job_ID, Tasks}, _From, #state{amqp_host = AHost, jobs = 
         {error, E} ->
             {reply, {error, E}, State}
     end;
+
+handle_call({rm_job, Job_ID}, _From, #state{jobs = Jobs} = State) ->
+    {reply, ok, State};
 
 handle_call({list_jobs}, _From, #state{jobs = Jobs} = State) ->
     {reply, Jobs, State};
@@ -237,3 +245,9 @@ msg_job(Job_ID, Jobs, Msg) ->
         undefined ->
             {error, job_not_found}
     end.
+
+update_jobs_amqp(_, []) ->
+    ok;
+update_jobs_amqp(AHost, [{_Job_ID, #job{processID = Pid}}|T]) ->
+    gen_server:call(Pid, {set_amqp_host, AHost}, infinity),    
+    update_jobs_amqp(AHost, T).
