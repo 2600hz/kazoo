@@ -119,7 +119,7 @@ init([AHost]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ, jobs = Jobs}=State) ->
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ}=State) ->
     format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
     %%amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
     %%amqp_manager:close_channel(self(), CurrentAHost),
@@ -246,6 +246,7 @@ msg_job(Job_ID, Jobs, Msg) ->
         undefined ->
             {error, job_not_found}
     end.
+
 update_sup_children(_, []) ->
     ok;
 update_sup_children(AHost, [{_,Pid,_,_}|T])->
