@@ -132,14 +132,18 @@ handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monito
 handle_call({start_job, Job_ID, Tasks}, _From, #state{amqp_host = AHost, jobs = Jobs} = State) ->
     case monitor_job_sup:start_job(Job_ID, Tasks, AHost) of
         {ok, Pid} -> 
-            Job = #job{processID = Pid, monitorRef = monitor(process, Pid)},
+            %%Job = #job{processID = Pid, monitorRef = monitor(process, Pid)},
+            Job = #job{processID = Pid},
             {reply, ok, State#state{jobs = [{Job_ID, Job}|Jobs]}};
         {error, E} ->
             {reply, {error, E}, State}
     end;
 
 handle_call({rm_job, Job_ID}, _From, #state{jobs = Jobs} = State) ->
-    {reply, ok, State};
+    stop_job(Job_ID, Jobs),
+    NewJobs = proplists:delete(Job_ID, Jobs),
+    format_log(info, "MONITOR_MASTER(~p): Removed job ~p~n", [self(), Job_ID]),
+    {reply, {ok, job_removed}, State#state{jobs = NewJobs}};
 
 handle_call({list_jobs}, _From, #state{jobs = Jobs} = State) ->
     {reply, Jobs, State};
@@ -203,6 +207,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    format_log(error, "MONITOR_MASTER(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -243,6 +248,14 @@ msg_job(Job_ID, Jobs, Msg) ->
     case get_value(Job_ID, Jobs) of
         #job{processID = Pid} ->
             {ok, gen_server:call(Pid, Msg, infinity)};
+        undefined ->
+            {error, job_not_found}
+    end.
+
+stop_job(Job_ID, Jobs) ->
+    case get_value(Job_ID, Jobs) of
+        #job{processID = Pid} ->
+            {ok, Pid ! stop};
         undefined ->
             {error, job_not_found}
     end.

@@ -153,16 +153,22 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'EXIT', _Pid, Reason}, State) ->
-    format_log(error, "MONITOR_JOB(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
-    {noreply, Reason, State};
+handle_info(stop, State) ->
+    {stop, normal, State};
+
+handle_info({'EXIT', _Pid, _Reason}, State) ->
+    format_log(error, "MONITOR_JOB(~p): Received EXIT(~p) from ~p...~n", [self(), _Reason, _Pid]),
+    {stop, normal, State};
+
 %% Spawn tasks to process the incomming responses
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     spawn(fun() -> handle_resp(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
+
 handle_info({heartbeat}, #state{tasks=Tasks, job_id=Job_ID}=State) ->
     format_log(info, "MONITOR_JOB(~p): Job ~p woke up by timer~n", [self(), Job_ID]), 
     {noreply, run_tasks(Tasks, State)};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -177,7 +183,13 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(_Reason, #state{amqp_host=AHost, job_q=Job_Q}) ->
+    amqp_util:queue_delete(AHost, Job_Q),
+    format_log(info, "MONITOR_JOB(~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
+    ok;
+
 terminate(_Reason, _State) ->
+    format_log(info, "MONITOR_JOB(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------

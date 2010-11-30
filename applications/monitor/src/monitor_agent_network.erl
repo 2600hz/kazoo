@@ -137,10 +137,10 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{amqp_host=AHost, agent_q=Agent_Q}) ->
     amqp_util:queue_delete(AHost, Agent_Q),
-    format_log(error, "MONITOR_AGENT_NETWORK~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
+    format_log(error, "MONITOR_AGENT_NETWORK(~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
     ok;
 terminate(_Reason, _State) ->
-    format_log(error, "MONITOR_AGENT_NETWORK~p): Going down(~p)...~n", [self(), _Reason]),
+    format_log(error, "MONITOR_AGENT_NETWORK(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
