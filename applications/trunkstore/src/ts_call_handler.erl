@@ -78,6 +78,8 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
 	    ?MODULE:loop(CallID, Flags#route_flags{account_doc=Doc1}, Amqp, Timeout);
 	{_, #amqp_msg{props = _Props, payload = Payload}} ->
+	    format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
+
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 
 	    case get_value(<<"Event-Name">>, Prop) of
@@ -149,6 +151,7 @@ update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"in
     Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
 update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"outbound">>
 					  ,outbound_rate=R, outbound_rate_increment=RI, outbound_rate_minimum=RM, outbound_surcharge=S}=Flags) ->
+    format_log(info, "TS_CALL(~p): Calc cost: R: ~p RI: ~p RM: ~p S: ~p, Dur: ~p~n", [self(), R, RI, RM, S, Duration]),
     Amount = calculate_cost(R, RI, RM, S, Duration),
     Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
 update_account(_Duration, #route_flags{}=Flags) ->
@@ -192,6 +195,7 @@ update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=Call
 %% Sur :: surcharge, in dollars, (0.05, 5 cents to connect the call)
 %% Secs :: billable seconds
 -spec(calculate_cost/5 :: (R :: float() | integer(), RI :: integer(), RM :: integer(), Sur :: float() | integer(), Secs :: integer()) -> float()).
+calculate_cost(_, _, _, _, 0) -> 0;
 calculate_cost(R, RI, RM, Sur, Secs) ->
     case Secs =< RM of
 	true -> Sur + ((RM / 60) * R);
@@ -222,7 +226,11 @@ wait_to_update(Prop, Flags, Host, CallID, EvtQ, Started) ->
 close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) ->
     format_log(info, "TS_CALL.close_down(~p): CDR: ~p~n", [self(), Prop]),
     update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
+
+    spawn(fun() -> ts_cdr:store_cdr(Prop, Flags) end),
+
     format_log(info, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
+
     amqp_util:delete_callmgr_queue(Host, EvtQ),
     couch_mgr:rm_change_handler(DocID),
     ts_responder:rm_post_handler(CallID).

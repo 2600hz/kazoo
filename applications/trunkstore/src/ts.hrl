@@ -3,6 +3,9 @@
 %% couch params for the trunk store and its views
 -define(TS_DB, "ts").
 
+%% cdr doc store
+-define(TS_CDR_DB, "ts_cdr").
+
 -define(TS_VIEW_IPAUTH, {"LookUpIPAuth", "LookUpIPAuth"}).
 -define(TS_VIEW_USERAUTH, {"LookUpUserAuth","LookUpUserAuth"}).
 -define(TS_VIEW_DIDLOOKUP, {"LookUpDID","LookUpDID"}).
@@ -18,7 +21,7 @@
 -type proplist() :: list(tuple(binary(), binary())) | [].
 
 -record(route_flags, {
-	  callid = <<>> :: binary()                     % unique call ID
+	  callid = <<>> :: binary()                      % unique call ID
 	  ,to_user = <<>> :: binary()
 	  ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
@@ -40,11 +43,14 @@
 	  ,inbound_rate_increment = 60 :: integer()      % time, in sec, to bill per
           ,inbound_rate_minimum = 60 :: integer()        % time, in sec, to bill as a minimum
 	  ,inbound_surcharge = 0.0 :: float()            % rate to charge up front
+          ,inbound_rate_name = <<>> :: binary()          % name of the rate
 	  ,outbound_rate = 0.0 :: float()                % rate for the outbound leg, per minute
 	  ,outbound_rate_increment = 60 :: integer()     % time, in sec, to bill per
           ,outbound_rate_minimum = 60 :: integer()       % time, in sec, to bill as a minimum
 	  ,outbound_surcharge = 0.0 :: float()           % rate to charge up front
+          ,outbound_rate_name = <<>> :: binary()         % name of the rate
 	  ,route_options = [] :: list()                  % options required to be handled by carriers
 	  ,account_doc_id = <<>> :: binary()             % doc id of the account
 	  ,account_doc = [] :: proplist()                % the full Couch document
+          ,routes_generated = [] :: proplist()           % the routes generated during the routing phase
 	 }).

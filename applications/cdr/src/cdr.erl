@@ -13,18 +13,16 @@
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    cdr_deps:ensure(),
-    ensure_started(sasl),
-    ensure_started(crypto),
-    ensure_started(whistle_amqp),
-    ensure_started(dynamic_compile),
-    ensure_started(log_roller),
-    ensure_started(couchbeam),
+    start_deps(),
     cdr_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the callmgr server.
 start() ->
+    start_deps(),
+    application:start(cdr).
+
+start_deps() ->
     cdr_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
@@ -32,7 +30,7 @@ start() ->
     ensure_started(dynamic_compile),
     ensure_started(log_roller),
     ensure_started(couchbeam),
-    application:start(cdr).
+    ensure_started(whistle_couch).
 
 %% @spec stop() -> ok
 %% @doc Stop the cdr server.
