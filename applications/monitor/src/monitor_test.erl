@@ -9,8 +9,6 @@
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
--define(AMQP_HOST, net_adm:localhost()).
-
 create_jobs(Count) ->
    do_create_jobs(Count).
 

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+cd `dirname $0`
+
 echo "Compiling utils"
 cd ../utils/amqp/
 rebar clean compile
