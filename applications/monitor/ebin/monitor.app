@@ -5,7 +5,8 @@
               {applications,[kernel,stdlib,whistle_amqp]},
               {mod,{monitor_app,[]}},
               {env,[]},
-              {modules,[logger,monitor,monitor_agent_network,monitor_api,
-                        monitor_app,monitor_deps,monitor_icmp,monitor_job,
+              {modules,[logger,monitor,monitor_agent_network,
+                        monitor_agent_sup,monitor_api,monitor_app,
+                        monitor_deps,monitor_icmp,monitor_job,monitor_job_sup,
                         monitor_master,monitor_sup,monitor_test,monitor_util,
                         props,whistle_util]}]}.
