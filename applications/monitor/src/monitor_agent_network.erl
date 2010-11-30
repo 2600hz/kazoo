@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 
 -export([set_amqp_host/1]).
 
@@ -42,8 +42,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(AHost) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [AHost], []).
 
 set_amqp_host(AHost) ->
     gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
@@ -63,8 +63,10 @@ set_amqp_host(AHost) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{}}.
+init([AHost]) ->
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Starting server with amqp host ~p~n", [self(), AHost]),
+    {ok, Agent_Q} = start_amqp(AHost),
+    {ok, #state{amqp_host=AHost, agent_q=Agent_Q}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -80,10 +82,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Setting amqp host to ~p~n", [self(), AHost]),
-    {ok, Agent_Q} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, agent_q=Agent_Q}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, agent_q=CurrentAgentQ}=State) ->
     format_log(info, "MONITOR_AGENT_NETWORK(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
     amqp_util:queue_delete(CurrentAHost, CurrentAgentQ),
@@ -139,6 +137,9 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{amqp_host=AHost, agent_q=Agent_Q}) ->
     amqp_util:queue_delete(AHost, Agent_Q),
+    format_log(error, "MONITOR_AGENT_NETWORK~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
+    ok;
+terminate(_Reason, _State) ->
     format_log(error, "MONITOR_AGENT_NETWORK~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
