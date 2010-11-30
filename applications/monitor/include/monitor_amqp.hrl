@@ -8,6 +8,8 @@
 -include("./amqp_client/include/amqp_client.hrl").
 -include("../../../utils/src/whistle_amqp.hrl").
 
+-define(AMQP_HOST, "localhost").
+
 %% routing keys to use in the monitormgr exchange
 -define(KEY_MONITOR_MASTER_REQ, <<"monitor.master.req">>).
 
