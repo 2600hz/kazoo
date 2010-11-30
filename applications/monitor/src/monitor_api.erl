@@ -84,7 +84,7 @@ prepare_amqp_prop([{_, _}|_]=Prop) ->
     lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, Prop);
 
 prepare_amqp_prop(ListOfPropLists) ->
-    lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, lists:append(ListOfPropLists)).
+    prepare_amqp_prop(lists:append(ListOfPropLists)).
 
 %%--------------------------------------------------------------------
 %% @doc Monitor Agent Ping Request - see wiki
