@@ -124,7 +124,8 @@ handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monito
     %%amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
     %%amqp_manager:close_channel(self(), CurrentAHost),
     %%{ok, Monitor_Q} = start_amqp(AHost),
-    update_jobs_amqp(AHost, Jobs),
+    update_sup_children(AHost, supervisor:which_children(monitor_job_sup)),
+    update_sup_children(AHost, supervisor:which_children(monitor_agent_sup)),
     %%{reply, ok, State#state{amqp_host=AHost, monitor_q=Monitor_Q}};
     {reply, ok, State#state{amqp_host=AHost}};
 
@@ -245,9 +246,8 @@ msg_job(Job_ID, Jobs, Msg) ->
         undefined ->
             {error, job_not_found}
     end.
-
-update_jobs_amqp(_, []) ->
+update_sup_children(_, []) ->
     ok;
-update_jobs_amqp(AHost, [{_Job_ID, #job{processID = Pid}}|T]) ->
+update_sup_children(AHost, [{_,Pid,_,_}|T])->
     gen_server:call(Pid, {set_amqp_host, AHost}, infinity),    
-    update_jobs_amqp(AHost, T).
+    update_sup_children(AHost, T).
