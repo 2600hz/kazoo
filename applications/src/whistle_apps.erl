@@ -19,7 +19,6 @@ start_link() ->
 %% @spec start() -> ok
 %% @doc Start the callmgr server.
 start() ->
-    start_deps(),
     application:start(whistle_apps).
 
 start_deps() ->

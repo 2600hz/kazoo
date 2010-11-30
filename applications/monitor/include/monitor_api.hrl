@@ -37,6 +37,9 @@
      ,{<<"Task-Iteration">>, fun is_binary/1}
     ]).
 
+%% The nameclature that is used for the API messages is
+%% {TASK}_{AGENT SHORT NAME}_REQ|RESP_{DEFINITION} 
+
 %% Monitor Ping Request
 -define(PING_NET_REQ_HEADERS, 
     [

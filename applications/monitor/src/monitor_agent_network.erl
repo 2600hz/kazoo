@@ -180,15 +180,15 @@ get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
 
 get_msg_destination(Prop) ->
-        Dest = get_value(<<"Destination">>, Prop, <<"localhost">>),
-        binary_to_list(Dest).
+     Dest = get_value(<<"Destination">>, Prop, <<"localhost">>),
+     binary_to_list(Dest).
 
 get_msg_count(Prop) ->
-        Count = get_value(<<"Count">>, Prop, <<"1">>),
-        case binary_to_list(Count) of
-            C when is_number(C) -> C;
-            _ -> 1
-        end.
+     Count = get_value(<<"Count">>, Prop, <<"1">>),
+     case binary_to_list(Count) of
+     C when is_number(C) -> C;
+     _ -> 1
+    end.
 
 handle_req(ContentType, Payload, State) ->
     case ContentType of
