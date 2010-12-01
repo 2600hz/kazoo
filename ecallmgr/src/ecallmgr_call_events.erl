@@ -81,7 +81,7 @@ loop(Node, UUID, Amqp, CtlPid) ->
 -spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
 send_ctl_event(undefined, _, _, _) ->
     ok;
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
+send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pid(CtlPid) ->
     case erlang:is_process_alive(CtlPid) of
 	true ->
 	    format_log(info, "EVT.send_ctl(~p): Pid: ~p UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName]),
@@ -90,6 +90,7 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
 	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
     end;
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
+    format_log(error, "EVT(~p): unknown ctlpid ~p~n", [self(), _CtlPid]),
     ok.
 
 -spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
