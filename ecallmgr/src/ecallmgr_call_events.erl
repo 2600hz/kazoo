@@ -63,11 +63,15 @@ loop(Node, UUID, Amqp, CtlPid) ->
     end.
 
 %% let the ctl process know a command finished executing
+-spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
+send_ctl_event(undefined, _, _, _) ->
+    ok;
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
     CtlPid ! {execute_complete, UUID, AppName};
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
+-spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 publish_msg(AmqpHost, UUID, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
 

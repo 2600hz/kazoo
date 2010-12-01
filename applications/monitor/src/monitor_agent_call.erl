@@ -2,16 +2,16 @@
 %%% @author Karl Anderson <karl@2600hz.com>
 %%% @copyright (C) 2010, Karl Anderson
 %%% @doc
-%%% Responsible for runnning the call monitoring tasks
+%%% Responsible for runnning the call server monitoring tasks
 %%% @end
-%%% Created : 11 Nov 2010 by Karl Anderson <karl@2600hz.com>
+%%% Created : 30 Nov 2010 by Karl Anderson <karl@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(monitor_agent_call).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 
 -export([set_amqp_host/1]).
 
@@ -42,8 +42,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(AHost) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [AHost], []).
 
 set_amqp_host(AHost) ->
     gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
@@ -63,8 +63,10 @@ set_amqp_host(AHost) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{}}.
+init([AHost]) ->
+    format_log(info, "MONITOR_AGENT_CALL(~p): Starting server with amqp host ~p~n", [self(), AHost]),
+    {ok, Agent_Q} = start_amqp(AHost),
+    {ok, #state{amqp_host=AHost, agent_q=Agent_Q}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -80,16 +82,13 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
-    format_log(info, "MONITOR_AGENT_CALL(~p): Setting amqp host to ~p~n", [self(), AHost]),
-    {ok, Agent_Q} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, agent_q=Agent_Q}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, agent_q=CurrentAgentQ}=State) ->
     format_log(info, "MONITOR_AGENT_CALL(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
     amqp_util:queue_delete(CurrentAHost, CurrentAgentQ),
     amqp_manager:close_channel(self(), CurrentAHost),
     {ok, Agent_Q} = start_amqp(AHost),
     {reply, ok, State#state{amqp_host=AHost, agent_q=Agent_Q}};
+
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -119,10 +118,12 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', _Pid, Reason}, State) ->
     format_log(error, "MONITOR_AGENT_CALL(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
     {noreply, Reason, State};
+
 %% Spawn tasks to process the incomming requests
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -139,7 +140,11 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{amqp_host=AHost, agent_q=Agent_Q}) ->
     amqp_util:queue_delete(AHost, Agent_Q),
-    format_log(error, "MONITOR_AGENT_CALL~p): Going down(~p)...~n", [self(), _Reason]),
+    format_log(error, "MONITOR_AGENT_CALL(~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
+    ok;
+
+terminate(_Reason, _State) ->
+    format_log(error, "MONITOR_AGENT_CALL(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -176,19 +181,21 @@ start_amqp(AHost) ->
 
     {ok, Agent_Q}.
 
+create_task_q(AHost) ->
+    Q = amqp_util:new_monitor_queue(AHost),
+
+    %% Bind the queue to the targeted exchange
+    format_log(info, "MONITOR_AGENT_CALL(~p): Bind ~p as a targeted queue for task~n", [self(), Q]),
+    amqp_util:bind_q_to_targeted(AHost, Q),
+
+    %% Register a consumer to listen to the queue
+    format_log(info, "MONITOR_AGENT_CALL(~p): Consume on ~p for task~n", [self(), Q]),
+    amqp_util:basic_consume(AHost, Q),
+
+    {ok, Q}.
+
 get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
-
-get_msg_destination(Prop) ->
-        Dest = get_value(<<"Destination">>, Prop, <<"localhost">>),
-        binary_to_list(Dest).
-
-get_msg_count(Prop) ->
-        Count = get_value(<<"Count">>, Prop, <<"1">>),
-        case binary_to_list(Count) of
-            C when is_number(C) -> C;
-            _ -> 1
-        end.
 
 handle_req(ContentType, Payload, State) ->
     case ContentType of
@@ -200,26 +207,82 @@ handle_req(ContentType, Payload, State) ->
         format_log(info, "MONITOR_AGENT_CALL(~p): recieved unknown msg type: ~p~n", [self(), ContentType])
     end.
 
-process_req({<<"task">>, <<"ping_req">>}, Prop, State) ->
-    case monitor_api:ping_req_v(Prop) of
+process_req({<<"task">>, <<"basic_call_req">>}, Prop, #state{amqp_host = AHost}=State) ->
+    case monitor_api:basic_call_req_v(Prop) of
     true ->
-        Resp = monitor_icmp:ping_test(get_msg_destination(Prop), get_msg_count(Prop)),
-        create_send_resp(Resp, Prop, State);
+        Route = [<<"user:2600pbx">>, <<"4158867903">>],
+        basic_call(AHost, Prop, Route);
     _ ->
-        format_log(error, "MONITOR_AGENT_CALL.ping(~p): Failed to validate ping_req~n", [self()])
+        format_log(error, "MONITOR_AGENT_CALL.basic(~p): Failed to validate basic_call_req~n", [self()])
     end,
     State;
+
 process_req(_MsgType, _Prop, _State) ->
     format_log(info, "MONITOR_AGENT_CALL(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
-
-create_send_resp(Resp, Prop, #state{amqp_host=AHost, agent_q=Agent_Q})->
-    RespQ = get_value(<<"Server-ID">>, Prop),
-    Defaults = monitor_util:prop_updates([{<<"Server-ID">>, Agent_Q}, {<<"Event-Name">>, <<"basic_call_resp">>}], Prop),
-    Headers = monitor_api:prepare_amqp_prop([Resp, Defaults]),
-    format_log(info, "MONITOR_AGENT_CALL(~p): Created reply headers:~nPayload:~p~n", [self(), Headers]),
-    {ok, JSON} = monitor_api:ping_resp(Headers),
-    send_resp(JSON, RespQ, AHost).
 
 send_resp(JSON, RespQ, AHost) ->
     format_log(info, "MONITOR_AGENT_CALL(~p): Sending reply to ~p~n", [self(), RespQ]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
+    
+originate_call_req(Agent_Q, Msg_ID, Route) ->
+    Req = [
+        {<<"Event-Category">>, <<"originate">>}
+       ,{<<"Event-Name">>, <<"resource_req">>}
+       ,{<<"Server-ID">>, Agent_Q}
+       ,{<<"Msg-ID">>, Msg_ID}
+       ,{<<"App-Name">>, <<"monitor">>}
+       ,{<<"App-Version">>, <<"0.1.0">>}    
+       ,{<<"Resource-Type">>, <<"audio">>}
+       ,{<<"Route">>, Route}
+    ],
+    format_log(info, "MONITOR_AGENT_CALL(~p): Generated originate req~nPayload: ~p~n", [self(), Req]),
+    whistle_api:resource_req(Req).
+
+basic_call(AHost, Prop, Route) ->
+    Msg_ID = get_value(<<"Msg-ID">>, Prop),
+    {ok, Task_Q} = create_task_q(AHost),
+    {ok, JSON} = originate_call_req(Task_Q, Msg_ID, Route),
+    amqp_util:callmgr_publish(AHost, JSON, <<"application/json">>, ?KEY_RESOURCE_REQ),
+    basic_call_loop(AHost, Task_Q).
+
+basic_call_loop(AHost, Task_Q) ->
+    receive
+        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
+            {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+            format_log(info, "MONITOR_AGENT_CALL(~p).basic: Recv message~nPayload: ~p~n", [self(), Prop]),
+            case get_msg_type(Prop) of
+                {<<"originate">>, <<"resource_resp">>} ->
+                    CQ = get_value(<<"Control-Queue">>, Prop),
+                    Call_ID = get_value(<<"Call-ID">>, Prop),
+                    basic_call_dialplan(AHost, Task_Q, CQ, Call_ID),
+                    basic_call_loop(AHost, Task_Q);
+                _ ->
+                    format_log(error, "MONITOR_AGENT_CALL.basic(~p): Failed to validate basic_call_req~n", [self()]),    
+                    basic_call_loop(AHost, Task_Q)
+            end;
+        _ ->
+            basic_call_loop(AHost, Task_Q)
+    after
+        10000 -> {error, timed_out}
+    end.
+
+basic_call_dialplan(AHost, Task_Q, CQ, Call_ID) ->
+    receive after 1000 -> ok end,
+    Req = [
+        {<<"Event-Category">>, <<"call_control">>}
+       ,{<<"Event-Name">>, <<"command">>}
+       ,{<<"Server-ID">>, Task_Q}
+       ,{<<"App-Name">>, <<"monitor">>}
+       ,{<<"App-Version">>, <<"0.1.0">>}   
+       ,{<<"Application-Name">>, <<"tones">>}
+       ,{<<"Call-ID">>, Call_ID}
+       ,{<<"Tones">>, [
+                         {<<"Frequencies">>, <<"500">>} 
+                        ,{<<"Duration-ON">>, <<"2000">>}
+                        ,{<<"Duration-OFF">>, <<"1000">>}
+                      ]
+        }
+    ],
+    format_log(info, "MONITOR_AGENT_CALL.basic(~p): Basic call dialplan~nPayload: ~p~n", [self(), Req]),
+    {ok, JSON} = whistle_api:tones_req(Req),
+    amqp_util:targeted_publish(AHost, CQ, JSON, <<"application/json">>).

@@ -88,6 +88,7 @@ handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, agent_
     amqp_manager:close_channel(self(), CurrentAHost),
     {ok, Agent_Q} = start_amqp(AHost),
     {reply, ok, State#state{amqp_host=AHost, agent_q=Agent_Q}};
+
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -117,10 +118,12 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', _Pid, Reason}, State) ->
     format_log(error, "MONITOR_AGENT_NETWORK(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
     {noreply, Reason, State};
+
 %% Spawn tasks to process the incomming requests
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -139,6 +142,7 @@ terminate(_Reason, #state{amqp_host=AHost, agent_q=Agent_Q}) ->
     amqp_util:queue_delete(AHost, Agent_Q),
     format_log(error, "MONITOR_AGENT_NETWORK(~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
     ok;
+
 terminate(_Reason, _State) ->
     format_log(error, "MONITOR_AGENT_NETWORK(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
@@ -203,6 +207,7 @@ process_req({<<"task">>, <<"ping_net_req">>}, Prop, State) ->
         format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_net_req~n", [self()])
     end,
     State;
+
 process_req(_MsgType, _Prop, _State) ->
     format_log(info, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
 
