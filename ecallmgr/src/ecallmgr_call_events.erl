@@ -82,7 +82,13 @@ loop(Node, UUID, Amqp, CtlPid) ->
 send_ctl_event(undefined, _, _, _) ->
     ok;
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
-    CtlPid ! {execute_complete, UUID, AppName};
+    case erlang:is_process_alive(CtlPid) of
+	true ->
+	    format_log(info, "EVT.send_ctl(~p): Pid: ~p UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName]),
+	    CtlPid ! {execute_complete, UUID, AppName};
+	false ->
+	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
+    end;
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
