@@ -125,13 +125,13 @@ monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
 update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, account_doc_id=DocID, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
-    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
+    {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
 
     case lists:member(CallID, ACs1) of
 	true ->
 	    format_log(info, "TS_CALL(~p): Removing ~p from active ~p~n", [self(), CallID, ACs1]),
 	    ACs2 = ts_util:filter_active_calls(CallID, ACs1),
-	    Acct1 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct0)],
+	    Acct1 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct0)],
 	    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
 	    case couch_mgr:save_doc(?TS_DB, Doc1) of
 		{ok, Doc2} ->
@@ -161,7 +161,7 @@ update_account(_Duration, #route_flags{}=Flags) ->
 -spec(update_account_balance/2 :: (AmountToDeduct :: float(), Flags :: tuple()) -> proplist()).
 update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=CallID, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
-    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
+    {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
 
     case lists:member(CallID, ACs1) of
 	true ->
@@ -173,7 +173,7 @@ update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=Call
 	    Acct1 = [{<<"credits">>, {Credits1}} | proplists:delete(<<"credits">>, Acct0)],
 
 	    ACs2 = ts_util:filter_active_calls(CallID, ACs1),
-	    Acct2 = [{<<"active_calls">>, ACs2} | proplists:delete(<<"active_calls">>, Acct1)],
+	    Acct2 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct1)],
 
 	    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct2}, Doc),
 	    case couch_mgr:save_doc(?TS_DB, Doc1) of
