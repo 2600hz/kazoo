@@ -127,7 +127,7 @@ update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, acc
     {Acct0} = get_value(<<"account">>, Doc),
     {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
 
-    case lists:member(CallID, ACs1) of
+    case lists:member({CallID, flat_rate}, ACs1) of
 	true ->
 	    format_log(info, "TS_CALL(~p): Removing ~p from active ~p~n", [self(), CallID, ACs1]),
 	    ACs2 = ts_util:filter_active_calls(CallID, ACs1),
@@ -163,7 +163,7 @@ update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=Call
     {Acct0} = get_value(<<"account">>, Doc),
     {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
 
-    case lists:member(CallID, ACs1) of
+    case lists:member({CallID, per_min}, ACs1) of
 	true ->
 	    {Credits0} = get_value(<<"credits">>, Acct0),
 	    CA = whistle_util:to_float(get_value(<<"prepay">>, Credits0, 0.0)),
