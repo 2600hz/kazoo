@@ -377,7 +377,10 @@ specific_response(Routes) when is_list(Routes) ->
 -spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
 update_account(#route_flags{callid=CallID, flat_rate_enabled=FRE, account_doc=Doc, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc, {[]}),
-    {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
+    ACs1 = case get_value(<<"active_calls">>, Acct0, ACs) of
+	       [] -> [];
+	       {T} -> T
+	   end,
     Type = case FRE of
 	       true -> flat_rate;
 	       false -> per_min
