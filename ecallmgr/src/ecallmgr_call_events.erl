@@ -62,7 +62,7 @@ loop(Node, UUID, Amqp, CtlPid) ->
 	    publish_msg(Amqp, UUID, Data),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName)
 	    catch
-		What:Why -> format_log(error, "EVT.call_event(~p): Caught ~p: ~p~n", [self(), What, Why])
+		What:Why -> format_log(error, "EVT.call_event(~p): Caught ~p: ~p CtlPid: ~p~n", [self(), What, Why, CtlPid])
 	    end,
 	    loop(Node, UUID, Amqp, CtlPid);
 	call_hangup ->
