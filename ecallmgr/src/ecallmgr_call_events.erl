@@ -46,8 +46,11 @@ loop(Node, UUID, Amqp, CtlPid) ->
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data) end);
 		<<"CHANNEL_BRIDGE">> ->
-		    OtherUUID = get_value(<<"Other-Leg-Unique-ID">>, Data),
-		    ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined);
+		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
+			undefined -> ok;
+			OtherUUID ->
+			    ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)
+		    end;
 		_ -> ok
 	    end,
 
