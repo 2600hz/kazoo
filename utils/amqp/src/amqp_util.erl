@@ -312,9 +312,6 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
      },
     amqp_channel:call(Channel, QB).
 
-callctl_consume(Host, CallId) ->
-    basic_consume(Host, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])).
-
 %% create a consumer for a Queue
 basic_consume(Host, Queue) ->
     basic_consume(Host, Queue, []).
