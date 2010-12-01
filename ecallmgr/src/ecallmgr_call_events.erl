@@ -37,7 +37,7 @@ loop(Node, UUID, Amqp, CtlPid) ->
 	    format_log(info, "EVT(~p): {Call, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
 	    publish_msg(Amqp, UUID, Data)
 	    catch
-		What:Why -> format_log(error, "EVT(~p): Caught ~p: ~p~n", [self(), What, Why])
+		What:Why -> format_log(error, "EVT.call(~p): Caught ~p: ~p~n", [self(), What, Why])
 	    end,
 	    loop(Node, UUID, Amqp, CtlPid);
 	{call_event, {event, [ UUID | Data ] } } ->
@@ -62,7 +62,7 @@ loop(Node, UUID, Amqp, CtlPid) ->
 	    publish_msg(Amqp, UUID, Data),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName)
 	    catch
-		What:Why -> format_log(error, "EVT(~p): Caught ~p: ~p~n", [self(), What, Why])
+		What:Why -> format_log(error, "EVT.call_event(~p): Caught ~p: ~p~n", [self(), What, Why])
 	    end,
 	    loop(Node, UUID, Amqp, CtlPid);
 	call_hangup ->
@@ -70,7 +70,7 @@ loop(Node, UUID, Amqp, CtlPid) ->
 	    CtlPid ! {hangup, UUID},
 	    format_log(info, "EVT(~p): Call Hangup~n", [self()])
 	    catch
-		What:Why -> format_log(error, "EVT(~p): Caught ~p: ~p~n", [self(), What, Why])
+		What:Why -> format_log(error, "EVT.call_hangup(~p): Caught ~p: ~p~n", [self(), What, Why])
 	    end;
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
