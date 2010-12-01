@@ -215,8 +215,8 @@ set_rate_flags(Flags, Rates) ->
 	[{RateName, RateData} | _] ->
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
-	    %% trunks available in flags (flat_rate_enabled) and the rate has flatrate available as well
-	    UseFlatRate = Flags#route_flags.trunks > length(Flags#route_flags.active_calls) andalso get_value(<<"flatrate">>, RateData, false),
+	    %% Count active calls with the flat_rate tag, filtering out per_min callids
+	    UseFlatRate = Flags#route_flags.trunks > length(ts_util:filter_active_calls(per_min, Flags#route_flags.active_calls)) andalso get_value(<<"flatrate">>, RateData, false),
 
 	    case UseFlatRate of
 		true ->

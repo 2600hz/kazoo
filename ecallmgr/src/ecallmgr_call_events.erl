@@ -63,19 +63,24 @@ loop(Node, UUID, Amqp, CtlPid) ->
     end.
 
 %% let the ctl process know a command finished executing
+-spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
+send_ctl_event(undefined, _, _, _) ->
+    ok;
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
     CtlPid ! {execute_complete, UUID, AppName};
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
     ok.
 
+-spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 publish_msg(AmqpHost, UUID, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
 
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
 	    EvtProp = [{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
-		       ,{<<"Event-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
+		       ,{<<"Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
 		       ,{<<"Call-ID">>, UUID}
+		       ,{<<"Call-Direction">>, get_value(<<"Call-Direction">>, Prop)}
 		       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
 		       | event_specific(EvtName, Prop) ] ++
 		whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APPNAME, ?APPVER),
@@ -136,12 +141,16 @@ event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
      ,{<<"Other-Leg-Caller-ID-Name">>, get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>,get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
+     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+    ];
 event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
     [{<<"Other-Leg-Direction">>, get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>,get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop)}];
+     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop)}
+     ,{<<"Hangup-Cause">>, get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+    ];
 event_specific(_Evt, _Prop) ->
     [].

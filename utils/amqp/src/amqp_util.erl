@@ -19,8 +19,6 @@
 -export([bind_q_to_resource/2, bind_q_to_resource/3]).
 -export([bind_q_to_callmgr/3]).
 
--export([callctl_consume/2]).
-
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2, new_callmgr_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
 
@@ -311,9 +309,6 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
       ,arguments = []
      },
     amqp_channel:call(Channel, QB).
-
-callctl_consume(Host, CallId) ->
-    basic_consume(Host, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])).
 
 %% create a consumer for a Queue
 basic_consume(Host, Queue) ->

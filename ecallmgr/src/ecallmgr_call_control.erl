@@ -56,7 +56,7 @@ start(Node, UUID, Amqp) ->
 
 init(Node, UUID, {AmqpHost, CtlQueue}) ->
     amqp_util:basic_consume(AmqpHost, CtlQueue),
-    format_log(info, "CONTROL(~p): initial loop call~n", [self()]),
+    format_log(info, "CONTROL(~p): initial loop call, consuming on ~p~n", [self(), CtlQueue]),
     loop(Node, UUID, queue:new(), <<>>, CtlQueue, erlang:now(), AmqpHost).
 
 %% CurrApp is the Whistle Application that is currently running in FS (or empty)

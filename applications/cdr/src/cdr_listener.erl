@@ -11,15 +11,25 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, set_amqp_host/1, set_couch_host/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE). 
+-define(CDR_DB, "cdrs").
 
--record(state, {}).
+-include("../include/amqp_client/include/amqp_client.hrl").
+-include("../../../utils/src/whistle_amqp.hrl").
+
+-import(logger, [format_log/3]).
+
+-record(state, {
+	  couch_host = "" :: string()
+	  ,amqp_host = "" :: string()
+	  ,q = <<>> :: binary()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -34,6 +44,12 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+set_amqp_host(H) ->
+    gen_server:cast(?MODULE, {set_amqp_host, H}).
+
+set_couch_host(H) ->
+    gen_server:cast(?MODULE, {set_couch_host, H}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -51,7 +67,15 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    try
+	H = net_adm:localhost(),
+	Q = start_amqp(H),
+	couch_mgr:set_host(H),
+	{ok, #state{couch_host=H, amqp_host=H, q=Q}}
+    catch
+	_:_ ->
+	    {ok, #state{}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -81,6 +105,28 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({set_amqp_host, H}, #state{q = <<>>}=State) ->
+    try
+	Q = start_amqp(H),
+	{noreply, State#state{amqp_host=H, q=Q}}
+    catch
+	_:_ -> {noreply, State}
+    end;
+handle_cast({set_amqp_host, H}, #state{amqp_host=OldH, q=OldQ}=State) ->
+    try
+	Q = start_amqp(H),
+	amqp_util:delete_queue(OldH, OldQ),
+	{noreply, State#state{amqp_host=H, q=Q}}
+    catch
+	_:_ -> {noreply, State}
+    end;
+handle_cast({set_couch_host, H}, #state{}=State) ->
+    try
+	ok = couch_mgr:set_host(H),
+	{noreply, State#state{couch_host=H}}
+    catch
+	_:_ -> {noreply, State}
+    end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -94,6 +140,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
+    spawn(fun() -> handle_cdr(Props#'P_basic'.content_type, Payload) end),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -108,7 +157,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{q=Q}) ->
+    amqp_util:delete_queue(Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -125,3 +175,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(start_amqp/1 :: (Host :: string()) -> binary()).
+start_amqp(Host) ->
+    amqp_util:callevt_exchange(Host),
+    Q = amqp_util:new_callevt_queue(Host, <<>>),
+    amqp_util:bind_q_to_callevt(Host, Q, <<"*">>, cdr), % bind to all CDR events
+    amqp_util:basic_consume(Host, Q),
+    Q.
+
+handle_cdr(<<"application/json">>, JSON) ->
+    {struct, Prop} = mochijson2:decode(binary_to_list(JSON)),
+    format_log(info, "CDR_L(~p): Recv ~s~n", [self(), JSON]),
+    {ok, _} = couch_mgr:save_doc(?CDR_DB, Prop).

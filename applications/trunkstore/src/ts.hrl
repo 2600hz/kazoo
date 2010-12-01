@@ -19,6 +19,7 @@
 
 % just want to deal with binary K/V pairs
 -type proplist() :: list(tuple(binary(), binary())) | [].
+-type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
 
 -record(route_flags, {
 	  callid = <<>> :: binary()                      % unique call ID
