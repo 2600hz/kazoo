@@ -49,7 +49,7 @@ loop(Node, UUID, Amqp, CtlPid) ->
 		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
 			undefined -> ok;
 			OtherUUID ->
-			    ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)
+			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)])
 		    end;
 		_ -> ok
 	    end,
