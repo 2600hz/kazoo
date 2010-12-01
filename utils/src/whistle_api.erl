@@ -50,6 +50,7 @@
 
 -import(props, [get_value/2, get_value/3]).
 -import(proplists, [delete/2, is_defined/2]).
+-import(logger, [format_log/3]).
 
 -include("whistle_api.hrl").
 
@@ -578,7 +579,7 @@ validate_message(Prop, ReqH, Vals, Types) ->
 build_message(Prop, ReqH, OptH) ->
     case defaults(Prop) of
 	{error, _Reason}=Error ->
-	    io:format("Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    format_log(error,"Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
 	HeadAndProp ->
 	    build_message_specific(HeadAndProp, ReqH, OptH)
@@ -588,7 +589,7 @@ build_message(Prop, ReqH, OptH) ->
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
 	{error, _Reason} = Error ->
-	    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
+	    format_log(error,"Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
 	    Error;
 	{Headers1, Prop1} ->
 	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
@@ -661,7 +662,7 @@ has_all(Prop, Headers) ->
 		      case is_defined(Header, Prop) of
 			  true -> true;
 			  false ->
-			      io:format("WHISTLE_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
+			      format_log(error,"WHISTLE_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
 			      false
 		      end
 	      end, Headers).
@@ -680,7 +681,7 @@ values_check(Prop, Values) ->
 			  V -> case lists:member(V, Vs) of
 				   true -> true;
 				   false ->
-				       io:format("WHISTLE_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
+				       format_log(error,"WHISTLE_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
 				       false
 			       end
 		      end;
@@ -689,7 +690,7 @@ values_check(Prop, Values) ->
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
 			  V -> true;
 			  _Val ->
-			      io:format("WHISTLE_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
+			      format_log(error,"WHISTLE_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
 			      false
 		      end
 	      end, Values).
@@ -703,7 +704,7 @@ type_check(Prop, Types) ->
 			  Value -> case Fun(Value) of % returns boolean
 				       true -> true;
 				       false ->
-					   io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
+					   format_log(error,"WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
 					   false
 				   end
 		      end
