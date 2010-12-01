@@ -35,4 +35,6 @@ filter_active_calls(flat_rate, ActiveCalls) ->
 filter_active_calls(per_min, ActiveCalls) ->
     lists:filter(fun({_,per_min}) -> false; (_) -> true end, ActiveCalls);
 filter_active_calls(CallID, ActiveCalls) ->
-    lists:filter(fun({CallID1,_}) when CallID =:= CallID1 -> false; (_) -> true end, ActiveCalls).
+    lists:filter(fun({CallID1,_}) when CallID =:= CallID1 -> false;
+		    (CallID1) when CallID =:= CallID1 -> false;
+		    (_) -> true end, ActiveCalls).
