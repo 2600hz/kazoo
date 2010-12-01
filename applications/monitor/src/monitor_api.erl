@@ -25,9 +25,11 @@
 
 %% Monitor Agent Ping
 -export([ping_net_req/1, ping_net_resp/1]).
-
-%% Validation functions
 -export([ping_net_req_v/1, ping_net_resp_v/1]).
+
+%% Monitor Agent Basic Call
+-export([basic_call_req/1, basic_call_resp/1]).
+-export([basic_call_req_v/1, basic_call_resp_v/1]).
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
@@ -87,14 +89,14 @@ prepare_amqp_prop(ListOfPropLists) ->
     prepare_amqp_prop(lists:append(ListOfPropLists)).
 
 %%--------------------------------------------------------------------
-%% @doc Monitor Agent Ping Request - see wiki
+%% @doc Monitor Agent Network Ping Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
 -spec(ping_net_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 ping_net_req(Prop) ->
     case ping_net_req_v(Prop) of
-	true -> build_message(Prop, ?PING_NET_REQ_HEADERS, ?OPTIONAL_PING_NET_RESP_HEADERS);
+	true -> build_message(Prop, ?PING_NET_REQ_HEADERS, ?OPTIONAL_PING_NET_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for ping_net_req"}
     end.
 
@@ -103,7 +105,7 @@ ping_net_req_v(Prop) ->
     validate(Prop, ?PING_NET_REQ_HEADERS, ?PING_NET_REQ_VALUES, ?PING_NET_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Monitor Agent Ping Response - see wiki
+%% @doc Monitor Agent Network Ping Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -117,6 +119,39 @@ ping_net_resp(Prop) ->
 -spec(ping_net_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 ping_net_resp_v(Prop) ->
     validate(Prop, ?PING_NET_RESP_HEADERS, ?PING_NET_RESP_VALUES, ?PING_NET_RESP_TYPES).
+
+
+%%--------------------------------------------------------------------
+%% @doc Monitor Agent Basic Call Request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(basic_call_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+basic_call_req(Prop) ->
+    case basic_call_req_v(Prop) of
+    true -> build_message(Prop, ?BASIC_CALL_REQ_HEADERS, ?OPTIONAL_BASIC_CALL_REQ_HEADERS);
+    false -> {error, "Proplist failed validation for basic_call_req"}
+    end.
+
+-spec(basic_call_req_v/1 :: (Prop :: proplist()) -> boolean()).
+basic_call_req_v(Prop) ->
+    validate(Prop, ?BASIC_CALL_REQ_HEADERS, ?BASIC_CALL_REQ_VALUES, ?BASIC_CALL_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Monitor Agent Basic Call Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(basic_call_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+basic_call_resp(Prop) ->
+    case basic_call_resp_v(Prop) of
+    true -> build_message(Prop, ?BASIC_CALL_RESP_HEADERS, ?OPTIONAL_BASIC_CALL_RESP_HEADERS);
+    false -> {error, "Proplist failed validation for ping_net_resp"}
+    end.
+
+-spec(basic_call_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+basic_call_resp_v(Prop) ->
+    validate(Prop, ?BASIC_CALL_RESP_HEADERS, ?BASIC_CALL_RESP_VALUES, ?BASIC_CALL_RESP_TYPES).
 
 %%%===================================================================
 %%% Internal functions

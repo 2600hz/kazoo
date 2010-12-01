@@ -85,3 +85,40 @@
     [
       {<<"Success">>, fun is_binary/1}
     ]).
+
+%% Monitor Basic Call Request
+-define(BASIC_CALL_REQ_HEADERS,
+    [
+      <<"Destination">>
+    ]).
+-define(OPTIONAL_BASIC_CALL_REQ_HEADERS, []).
+-define(BASIC_CALL_REQ_VALUES,
+    [
+      {<<"Event-Category">>, <<"task">>}
+     ,{<<"Event-Name">>, <<"basic_call_req">>}
+    ]).
+-define(BASIC_CALL_REQ_TYPES,
+    [
+      {<<"Destination">>, fun is_binary/1}
+    ]).
+
+%% Monitor Basic Call Response
+-define(BASIC_CALL_RESP_HEADERS,
+    [
+      <<"Success">>
+    ]).
+-define(OPTIONAL_BASIC_CALL_RESP_HEADERS,
+    [
+      <<"Target">>
+     ,<<"Error">>
+    ]).
+-define(BASIC_CALL_RESP_VALUES,
+    [
+      {<<"Event-Category">>, <<"task">>}
+     ,{<<"Event-Name">>, <<"basic_call_resp">>}
+     ,{<<"Success">>, [<<"true">>, <<"false">>]}
+    ]).
+-define(BASIC_CALL_RESP_TYPES,
+    [
+      {<<"Success">>, fun is_binary/1}
+    ]).
