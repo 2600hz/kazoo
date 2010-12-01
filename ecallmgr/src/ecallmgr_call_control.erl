@@ -81,8 +81,10 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	    case (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= <<>> of
 		true ->
 		    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
+		    format_log(info, "CONTROL(~p): CmdQ not empty, running ~p~n", [self(), Cmd]),
 		    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd, AmqpHost),
-		    loop(Node, UUID, NewCmdQ1, Cmd, CtlQ, StartT, AmqpHost);
+		    AppName = get_value(<<"Application-Name">>, Cmd),
+		    loop(Node, UUID, NewCmdQ1, AppName, CtlQ, StartT, AmqpHost);
 		false ->
 		    loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT, AmqpHost)
 	    end;
