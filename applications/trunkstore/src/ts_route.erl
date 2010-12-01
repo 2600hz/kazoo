@@ -312,7 +312,7 @@ flags_from_account(Doc, Flags) ->
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
     ACs = case get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls) of
 	      [] -> [];
-	      {T} -> T
+	      {T} -> lists:usort(T)
 	  end,
 
     F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
