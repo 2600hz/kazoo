@@ -389,11 +389,12 @@ update_account(#route_flags{callid=CallID, flat_rate_enabled=FRE, account_doc=Do
 	       false -> per_min
 	   end,
     format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), ACs1, CallID]),
-    Acct1 = [{<<"active_calls">>, {[{CallID, Type} | ACs1]}} | proplists:delete(<<"active_calls">>, Acct0)],
+    ACs2 = lists:usort([{CallID, Type} | ACs1]),
+    Acct1 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct0)],
     Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
     case couch_mgr:save_doc(?TS_DB, Doc1) of
 	{ok, Doc2} ->
-	    Flags#route_flags{active_calls=lists:usort([CallID | ACs1]), account_doc=Doc2};
+	    Flags#route_flags{active_calls=ACs2, account_doc=Doc2};
 	{error, conflict} ->
 	    update_account(Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
     end.
