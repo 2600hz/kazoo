@@ -377,13 +377,13 @@ specific_response(Routes) when is_list(Routes) ->
 -spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
 update_account(#route_flags{callid=CallID, flat_rate_enabled=FRE, account_doc=Doc, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc, {[]}),
-    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
+    {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
     Type = case FRE of
 	       true -> flat_rate;
 	       false -> per_min
 	   end,
     format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), ACs1, CallID]),
-    Acct1 = [{<<"active_calls">>, [{CallID, Type} | ACs1]} | proplists:delete(<<"active_calls">>, Acct0)],
+    Acct1 = [{<<"active_calls">>, {[{CallID, Type} | ACs1]}} | proplists:delete(<<"active_calls">>, Acct0)],
     Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
     case couch_mgr:save_doc(?TS_DB, Doc1) of
 	{ok, Doc2} ->
