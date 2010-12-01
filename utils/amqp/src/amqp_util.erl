@@ -106,15 +106,8 @@ targeted_publish(Host, Queue, Payload, ContentType) ->
 callctl_publish(Host, CallId, Payload) ->
     callctl_publish(Host, CallId, Payload, undefined).
 
-callctl_publish(Host, CallId, Payload, ContentType) when is_binary(CallId) ->
-    callctl_publish(Host, binary_to_list(CallId), Payload, ContentType);
 callctl_publish(Host, CallId, Payload, ContentType) ->
-    Route = case string:str(CallId, binary_to_list(?EXCHANGE_CALLCTL)) of
-		0 -> list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]);
-		_ -> list_to_binary(CallId)
-	    end,
-    basic_publish(Host, ?EXCHANGE_CALLCTL, Route, Payload, ContentType).
-
+    basic_publish(Host, ?EXCHANGE_CALLCTL, CallId, Payload, ContentType).
 
 callevt_publish(Host, CallId, Payload) ->
     callevt_publish(Host, CallId, Payload, event).
