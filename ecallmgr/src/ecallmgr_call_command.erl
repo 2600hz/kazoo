@@ -138,7 +138,7 @@ get_fs_app(_Node, _UUID, _Prop, _AmqpHost, <<"park">>=App) ->
 get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"sleep">>=App) ->
     case whistle_api:sleep_req_v(Prop) of
 	false -> {error, "sleep failed to execute as Prop did not validate."};
-	true -> {App, whistle_util:to_binary(get_value(<<"Amount">>, Prop))}
+	true -> {App, whistle_util:to_binary(get_value(<<"Time">>, Prop))}
     end;
 get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"say">>=App) ->
     case whistle_api:say_req_v(Prop) of
