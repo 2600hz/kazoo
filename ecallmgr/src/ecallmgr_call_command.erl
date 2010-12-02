@@ -174,15 +174,18 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
 	false -> {error, "tone detect failed to execute as Prop did not validate"};
 	true ->
 	    Key = get_value(<<"Tone-Detect-Name">>, Prop),
-	    Freqs = lists:map(fun binary_to_list/1, get_value(<<"Frequencies">>, Prop)),
+	    Freqs = lists:map(fun whistle_util:to_list/1, get_value(<<"Frequencies">>, Prop)),
 	    FreqsStr = string:join(Freqs, ","),
 	    Flags = get_value(<<"Sniff-Direction">>, Prop, <<"read">>),
 	    Timeout = get_value(<<"Timeout">>, Prop, <<"+1000">>),
 	    HitsNeeded = get_value(<<"Hits-Needed">>, Prop, <<"1">>),
 
-	    SuccessProp = get_value(<<"On-Success">>, Prop, []) ++ whistle_api:extract_defaults(Prop), %% app command lacks the default headers
+	    SuccessProp = case get_value(<<"On-Success">>, Prop, []) of
+			      [] -> [{<<"Application-Name">>, <<"park">>} | whistle_api:extract_defaults(Prop)]; % default to parking the call
+			      AppProp -> AppProp ++ whistle_api:extract_defaults(Prop)
+			  end,
 	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessProp, AmqpHost, get_value(<<"Application-Name">>, SuccessProp)) of
-					       {error, _Str} -> {<<>>, <<>>};
+					       {error, _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
 					       {_, _}=Success -> Success
 					   end,
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
