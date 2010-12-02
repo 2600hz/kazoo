@@ -443,6 +443,7 @@
 				 ,{<<"bridge">>, <<"bridge">>}
 				 ,{<<"signal_bridge">>, <<"bridge">>}
 				 ,{<<"answer">>, <<"answer">>}
+				 ,{<<"tone_detect">>, <<"tone_detect">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				]).
 
