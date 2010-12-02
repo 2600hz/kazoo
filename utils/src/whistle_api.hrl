@@ -293,7 +293,7 @@
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"tone_detect">>}
 				 ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
-				 ]).
+				]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
 				,{<<"Timeout">>, fun(<<"+", T/binary>>) ->
 							 try whistle_util:to_integer(T), true

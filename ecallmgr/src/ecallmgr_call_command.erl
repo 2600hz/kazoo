@@ -176,7 +176,10 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
 	    Key = get_value(<<"Tone-Detect-Name">>, Prop),
 	    Freqs = lists:map(fun whistle_util:to_list/1, get_value(<<"Frequencies">>, Prop)),
 	    FreqsStr = string:join(Freqs, ","),
-	    Flags = get_value(<<"Sniff-Direction">>, Prop, <<"read">>),
+	    Flags = case get_value(<<"Sniff-Direction">>, Prop, <<"read">>) of
+			<<"read">> -> <<"r">>;
+			<<"write">> -> <<"w">>
+		    end,
 	    Timeout = get_value(<<"Timeout">>, Prop, <<"+1000">>),
 	    HitsNeeded = get_value(<<"Hits-Needed">>, Prop, <<"1">>),
 
