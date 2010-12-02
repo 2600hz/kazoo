@@ -310,7 +310,10 @@ flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
     {Credit} = get_value(<<"credits">>, Acct, {[]}),
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
-    ACs = lists:usort(get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls)), % only uniques
+    ACs = case get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls) of
+	      [] -> [];
+	      {T} -> lists:usort(T)
+	  end,
 
     F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
 			   ,trunks = Trunks
@@ -375,17 +378,23 @@ specific_response(Routes) when is_list(Routes) ->
 
 %% update the account's trunks_in_use if flat_rate
 -spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
-update_account(#route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, active_calls=ACs}=Flags) ->
+update_account(#route_flags{callid=CallID, flat_rate_enabled=FRE, account_doc=Doc, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc, {[]}),
-    ACs1 = get_value(<<"active_calls">>, Acct0, ACs),
+    ACs1 = case get_value(<<"active_calls">>, Acct0, ACs) of
+	       [] -> [];
+	       {T} -> T
+	   end,
+    Type = case FRE of
+	       true -> flat_rate;
+	       false -> per_min
+	   end,
     format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), ACs1, CallID]),
-    Acct1 = [{<<"active_calls">>, [CallID | ACs1]} | proplists:delete(<<"active_calls">>, Acct0)],
+    ACs2 = lists:usort([{CallID, Type} | ACs1]),
+    Acct1 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct0)],
     Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
     case couch_mgr:save_doc(?TS_DB, Doc1) of
 	{ok, Doc2} ->
-	    Flags#route_flags{active_calls=lists:usort([CallID | ACs1]), account_doc=Doc2};
+	    Flags#route_flags{active_calls=ACs2, account_doc=Doc2};
 	{error, conflict} ->
 	    update_account(Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
-    end;
-update_account(#route_flags{}=Flags) ->
-    Flags.
+    end.

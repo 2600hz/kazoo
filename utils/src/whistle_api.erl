@@ -26,7 +26,7 @@
 -export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
 
 %% Resources
--export([resource_req/1, resource_resp/1]).
+-export([resource_req/1, resource_resp/1, resource_error/1]).
 
 %% In-Call
 -export([call_event/1, error_resp/1, call_cdr/1]).
@@ -42,7 +42,7 @@
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
-	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1
+	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1
 	]).
 
 %% FS-specific routines
@@ -50,6 +50,7 @@
 
 -import(props, [get_value/2, get_value/3]).
 -import(proplists, [delete/2, is_defined/2]).
+-import(logger, [format_log/3]).
 
 -include("whistle_api.hrl").
 
@@ -78,7 +79,13 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
 %%--------------------------------------------------------------------
 -spec(extract_defaults/1 :: (Prop :: proplist()) -> proplist()).
 extract_defaults(Prop) ->
-    lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS).
+    ReqH = lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS),
+    lists:foldl(fun(H, Acc) ->
+			case get_value(H, Prop) of
+			    undefined -> Acc;
+			    V -> [{H, V} | Acc]
+			end
+		end, ReqH, ?OPTIONAL_DEFAULT_HEADERS).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Request - see wiki
@@ -207,6 +214,22 @@ resource_resp(Prop) ->
 -spec(resource_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 resource_resp_v(Prop) ->
     validate(Prop, ?RESOURCE_RESP_HEADERS, ?RESOURCE_RESP_VALUES, ?RESOURCE_RESP_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Resource Error - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(resource_error/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+resource_error(Prop) ->
+    case resource_error_v(Prop) of
+	true -> build_message(Prop, ?RESOURCE_ERROR_HEADERS, ?OPTIONAL_RESOURCE_ERROR_HEADERS);
+	false -> {error, "Proplist failed validation for resource_error"}
+    end.
+
+-spec(resource_error_v/1 :: (Prop :: proplist()) -> boolean()).
+resource_error_v(Prop) ->
+    validate(Prop, ?RESOURCE_ERROR_HEADERS, ?RESOURCE_ERROR_VALUES, ?RESOURCE_ERROR_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener
@@ -578,7 +601,7 @@ validate_message(Prop, ReqH, Vals, Types) ->
 build_message(Prop, ReqH, OptH) ->
     case defaults(Prop) of
 	{error, _Reason}=Error ->
-	    io:format("Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+	    format_log(error,"Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
 	HeadAndProp ->
 	    build_message_specific(HeadAndProp, ReqH, OptH)
@@ -588,7 +611,7 @@ build_message(Prop, ReqH, OptH) ->
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
 	{error, _Reason} = Error ->
-	    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
+	    format_log(error,"Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
 	    Error;
 	{Headers1, Prop1} ->
 	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
@@ -661,7 +684,7 @@ has_all(Prop, Headers) ->
 		      case is_defined(Header, Prop) of
 			  true -> true;
 			  false ->
-			      io:format("WHISTLE_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
+			      format_log(error,"WHISTLE_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
 			      false
 		      end
 	      end, Headers).
@@ -680,7 +703,7 @@ values_check(Prop, Values) ->
 			  V -> case lists:member(V, Vs) of
 				   true -> true;
 				   false ->
-				       io:format("WHISTLE_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
+				       format_log(error,"WHISTLE_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
 				       false
 			       end
 		      end;
@@ -689,7 +712,7 @@ values_check(Prop, Values) ->
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
 			  V -> true;
 			  _Val ->
-			      io:format("WHISTLE_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
+			      format_log(error,"WHISTLE_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
 			      false
 		      end
 	      end, Values).
@@ -703,7 +726,7 @@ type_check(Prop, Types) ->
 			  Value -> case Fun(Value) of % returns boolean
 				       true -> true;
 				       false ->
-					   io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
+					   format_log(error,"WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
 					   false
 				   end
 		      end

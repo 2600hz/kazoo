@@ -5,14 +5,14 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
+-include("../include/monitor_amqp.hrl").
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    monitor_master:start_link(),
-    monitor_agent_network:start_link().
-    %% monitor_sup:start_link().
+    monitor:start_link(?AMQP_HOST).
 
 stop(_State) ->
     ok.
