@@ -108,7 +108,7 @@ get_fs_app(_Node, UUID, Prop, AmqpHost, <<"store">>) ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
 	    end
     end;
-get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"tones">>) ->
+get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"tone">>) ->
     case whistle_api:tones_req_v(Prop) of
 	false -> {error, "tones failed to execute as Prop did not validate."};
 	true ->
@@ -189,7 +189,8 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
 	    {App, Data}
     end;
 get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
-    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
+    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]),
+    {error, "Application unknown"}.
 
 %%%===================================================================
 %%% Internal helper functions
