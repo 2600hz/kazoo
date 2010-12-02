@@ -275,7 +275,7 @@
 -define(OPTIONAL_TONES_REQ_HEADERS, []).
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			   ,{<<"Event-Name">>, <<"command">>}
-			   ,{<<"Application-Name">>, <<"tones">>}
+			   ,{<<"Application-Name">>, <<"tone">>}
 			  ]).
 -define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}]).
 
