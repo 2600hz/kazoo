@@ -74,7 +74,7 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 			      DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
 			      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
 					     ({struct, Cmd}, TmpQ) ->
-						  format_log(info, "CONTROL.queue: Cmd: ~p~n", [Cmd]),
+						  format_log(info, "CONTROL.queue: Cmd: ~p~n", [DefProp ++ Cmd]),
 						  queue:in(DefProp ++ Cmd, TmpQ)
 					  end, CmdQ, get_value(<<"Commands">>, Prop));
 			  _AppName ->
