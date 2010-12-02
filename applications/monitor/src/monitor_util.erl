@@ -10,12 +10,16 @@
 
 -export([to_binary/1]).
 -export([prop_update/3, prop_updates/2]).
+-export([to_list/1]).
 -export([uuid/0, uuid_v4/0, uuid_to_string/1, uuid_get_parts/1]).
 
 -import(random).
 
 to_binary(Term) ->
     whistle_util:to_binary(Term).
+
+to_list(Term) ->
+    whistle_util:to_list(Term).
 
 prop_update(Key, Value, Prop) ->
     [{Key, Value} | proplists:delete(Key, Prop)].

@@ -46,8 +46,11 @@ loop(Node, UUID, Amqp, CtlPid) ->
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data) end);
 		<<"CHANNEL_BRIDGE">> ->
-		    OtherUUID = get_value(<<"Other-Leg-Unique-ID">>, Data),
-		    ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined);
+		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
+			undefined -> ok;
+			OtherUUID ->
+			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)])
+		    end;
 		_ -> ok
 	    end,
 
@@ -63,11 +66,19 @@ loop(Node, UUID, Amqp, CtlPid) ->
     end.
 
 %% let the ctl process know a command finished executing
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
-    CtlPid ! {execute_complete, UUID, AppName};
-send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
-    ok.
+-spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
+send_ctl_event(undefined, _, _, _) -> ok;
+send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pid(CtlPid) ->
+    case erlang:is_process_alive(CtlPid) of
+	true ->
+	    format_log(info, "EVT.send_ctl(~p): Pid: ~p UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName]),
+	    CtlPid ! {execute_complete, UUID, AppName};
+	false ->
+	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
+    end;
+send_ctl_event(_CtlPid, _UUID, _Evt, _Data) -> ok.
 
+-spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 publish_msg(AmqpHost, UUID, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
 
@@ -147,6 +158,12 @@ event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
      ,{<<"Other-Leg-Destination-Number">>,get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop)}
      ,{<<"Hangup-Cause">>, get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+    ];
+event_specific(<<"DETECTED_TONE">>, Prop) ->
+    [{<<"Detected-Tone">>, get_value(<<"Detected-Tone">>, Prop, <<>>)}];
+event_specific(<<"DTMF">>, Prop) ->
+    [{<<"DTMF-Digit">>, get_value(<<"Digit">>, Prop, <<>>)}
+     ,{<<"DTMF-Duration">>, get_value(<<"Duration">>, Prop, <<>>)}
     ];
 event_specific(_Evt, _Prop) ->
     [].

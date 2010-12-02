@@ -180,9 +180,14 @@ handle_resource_req(Payload, AmqpHost) ->
 	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
 	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
 	    Route = get_value(<<"Route">>, Prop),
-	    start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min);
+	    case start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min) of
+		{error, failed_starting, Failed} ->
+		    send_failed_req(Prop, AmqpHost, Failed),
+		    fail;
+		ok -> ok
+	    end;
 	false ->
-	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validated ~p~n", [self(), Prop])
+	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validate ~p~n", [self(), Prop])
     end.
 
 -spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
@@ -251,7 +256,20 @@ send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
     format_log(info, "RSC_MGR: Sending resp to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
-%% sort first by percentage utilized (less utilized first), then by available channels (more available first)
+-spec(send_failed_req/3 :: (Prop :: proplist(), Host :: string(), Failed :: integer()) -> no_return()).
+send_failed_req(Prop, Host, Failed) ->
+    Msg = get_value(<<"Msg-ID">>, Prop),
+    AppQ = get_value(<<"Server-ID">>, Prop),
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+
+    RespProp = [{<<"Msg-ID">>, Msg}
+		,{<<"Failed-Attempts">>, Failed}
+		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
+    {ok, JSON} = whistle_api:resource_resp(RespProp),
+    format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
+    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+
+%% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first) 
 %% [
 %%   [{node, 1}, {p_u, 80}, {a_c, 3}, ...]
 %%  ,[{node, 2}, {p_u, 50}, {a_c, 5}, ...]
@@ -262,17 +280,20 @@ send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
 %%    least util,  more chan    most chan    most util
 -spec(sort_resources/2 :: (PropA :: proplist(), PropB :: proplist()) -> boolean()).
 sort_resources(PropA, PropB) ->
-    UtilA = get_value(percent_utilized, PropA),
     UtilB = get_value(percent_utilized, PropB),
-    case UtilA of
+    case get_value(percent_utilized, PropA) of
         UtilB ->                   % same utilization, use node with more available channels
-	    ACA = get_value(available_channels, PropA),
-	    ACB = get_value(available_channels, PropB),
-	    case ACA of
-		ACB ->
-		    get_value(bias, PropA, 1) >= get_value(bias, PropB, 1);
-		_ -> false
+	    BiasB = get_value(bias, PropB, 1),
+	    case get_value(bias, PropA, 1) of
+		BiasB -> %% same bias, use node with more available channels
+		    ACB = get_value(available_channels, PropB),
+		    case get_value(available_channels, PropA) of
+			C when C >= ACB -> true;
+			_ -> false
+		    end;
+		B when B > BiasB -> true; % A has bigger bias
+		_B -> true
 	    end;
-	X when X > UtilB -> false; % B is less utilized
-	_X -> true                 % A is less utilized
+	A when A > UtilB -> false; % B is less utilized
+	_A -> true                 % A is less utilized
     end.

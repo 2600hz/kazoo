@@ -108,25 +108,25 @@ get_fs_app(_Node, UUID, Prop, AmqpHost, <<"store">>) ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
 	    end
     end;
-get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"tones">>) ->
+get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"tone">>) ->
     case whistle_api:tones_req_v(Prop) of
-	false -> {error, "store failed to execute as Prop did not validate."};
+	false -> {error, "tones failed to execute as Prop did not validate."};
 	true ->
 	    Tones = get_value(<<"Tones">>, Prop, []),
 	    FSTones = lists:map(fun({struct, Tone}) ->
 					Vol = case get_value(<<"Volume">>, Tone) of
 						  undefined -> [];
 						  %% need to map V (0-100) to FS values
-						  V -> list_to_binary(["v=", integer_to_list(V), ";"])
+						  V -> list_to_binary(["v=", whistle_util:to_list(V), ";"])
 					      end,
 					Repeat = case get_value(<<"Repeat">>, Tone) of
 						     undefined -> [];
-						     R -> list_to_binary(["l=", integer_to_list(R), ";"])
+						     R -> list_to_binary(["l=", whistle_util:to_list(R), ";"])
 						 end,
-					Freqs = string:join(lists:map(fun erlang:integer_to_list/1, get_value(<<"Frequencies">>, Tone)), ","),
-					On = integer_to_list(get_value(<<"Duration-ON">>, Tone)),
-					Off = integer_to_list(get_value(<<"Duration-OFF">>, Tone)),
-					binary_to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+					Freqs = string:join(lists:map(fun whistle_util:to_list/1, get_value(<<"Frequencies">>, Tone)), ","),
+					On = whistle_util:to_list(get_value(<<"Duration-ON">>, Tone)),
+					Off = whistle_util:to_list(get_value(<<"Duration-OFF">>, Tone)),
+					whistle_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
 				end, Tones),
 	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
 	    {<<"playback">>, Arg}
@@ -174,36 +174,38 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
 	false -> {error, "tone detect failed to execute as Prop did not validate"};
 	true ->
 	    Key = get_value(<<"Tone-Detect-Name">>, Prop),
-	    Freqs = lists:map(fun binary_to_list/1, get_value(<<"Frequencies">>, Prop)),
+	    Freqs = lists:map(fun whistle_util:to_list/1, get_value(<<"Frequencies">>, Prop)),
 	    FreqsStr = string:join(Freqs, ","),
 	    Flags = get_value(<<"Sniff-Direction">>, Prop, <<"read">>),
 	    Timeout = get_value(<<"Timeout">>, Prop, <<"+1000">>),
 	    HitsNeeded = get_value(<<"Hits-Needed">>, Prop, <<"1">>),
 
-	    SuccessProp = get_value(<<"On-Success">>, Prop, []) ++ whistle_api:extract_defaults(Prop), %% app command lacks the default headers
+	    SuccessProp = case get_value(<<"On-Success">>, Prop, []) of
+			      [] -> [{<<"Application-Name">>, <<"park">>} | whistle_api:extract_defaults(Prop)]; % default to parking the call
+			      AppProp -> AppProp ++ whistle_api:extract_defaults(Prop)
+			  end,
 	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessProp, AmqpHost, get_value(<<"Application-Name">>, SuccessProp)) of
-					       {error, _Str} -> {<<>>, <<>>};
+					       {error, _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
 					       {_, _}=Success -> Success
 					   end,
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
 	    {App, Data}
     end;
 get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
-    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
+    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]),
+    {error, "Application unknown"}.
 
 %%%===================================================================
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
 -spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
-send_cmd(Node, UUID, AppName, Args) when is_binary(Args) ->
-    send_cmd(Node, UUID, AppName, binary_to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->
-    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n"
-	       ,[self(), Node, UUID, AppName, Args]),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				    ,{"execute-app-name", AppName}
-				    ,{"execute-app-arg", Args}
+    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, AppName, Args]),
+    freeswitch:sendmsg(Node, UUID, [
+				    {"call-command", "execute"}
+				    ,{"execute-app-name", whistle_util:to_list(AppName)}
+				    ,{"execute-app-arg", whistle_util:to_list(Args)}
 				   ]).
 
 %% take an endpoint (/sofia/foo/bar), and optionally a caller id name and number
@@ -317,18 +319,14 @@ set_eff_call_id_name(_Node, _UUID, undefined) ->
     ok;
 set_eff_call_id_name(Node, UUID, Name) ->
     N = list_to_binary(["effective_caller_id_name=", Name]),
-    set(Node, UUID, binary_to_list(N)).
+    set(Node, UUID, N).
 
 -spec(set_eff_call_id_number/3 :: (Node :: atom(), UUID :: binary(), Num :: undefined | integer() | list() | binary()) -> ok | timeout | {error, string()}).
 set_eff_call_id_number(_Node, _UUID, undefined) ->
     ok;
-set_eff_call_id_number(Node, UUID, Num) when is_integer(Num) ->
-    set_eff_call_id_number(Node, UUID, integer_to_list(Num));
-set_eff_call_id_number(Node, UUID, Num) when is_list(Num) ->
-    set_eff_call_id_number(Node, UUID, list_to_binary(Num));
-set_eff_call_id_number(Node, UUID, Num) when is_binary(Num) ->
-    N = list_to_binary(["effective_caller_id_number", Num]),
-    set(Node, UUID, binary_to_list(N)).
+set_eff_call_id_number(Node, UUID, Num) ->
+    N = list_to_binary(["effective_caller_id_number=", whistle_util:to_list(Num)]),
+    set(Node, UUID, N).
 
 -spec(set_bypass_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_bypass_media(_Node, _UUID, undefined) ->
@@ -341,19 +339,17 @@ set_bypass_media(Node, UUID, <<"false">>) ->
 -spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
 set_timeout(_Node, _UUID, undefined) ->
     ok;
-set_timeout(Node, UUID, N) when is_integer(N) ->
-    set_timeout(Node, UUID, integer_to_list(N));
 set_timeout(Node, UUID, N) ->
-    Timeout = [ $c,$a,$l,$l,$_,$t,$i,$m,$e,$o,$u,$t,$= | N],
+    Timeout = [ $c,$a,$l,$l,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
     set(Node, UUID, Timeout).
 
 -spec(set_terminators/3 :: (Node :: atom(), UUID :: binary(), Terminators :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_terminators(_Node, _UUID, undefined) ->
     ok;
-set_terminators(Node, UUID, <<"">>) ->
+set_terminators(Node, UUID, <<>>) ->
     set(Node, UUID, "none");
 set_terminators(Node, UUID, Ts) ->
-    Terms = binary_to_list(list_to_binary(["playback_terminators=", Ts])),
+    Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).
 
 -spec(set_ringback/3 :: (Node :: atom(), UUID :: binary(), RingBack :: undefined | binary()) -> ok | timeout | {error, string()}).
@@ -361,8 +357,8 @@ set_ringback(_Node, _UUID, undefined) ->
     ok;
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=${", RingBack, "}"]),
-    set(Node, UUID, binary_to_list(RB)).
+    set(Node, UUID, RB).
 
--spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list()) -> ok | timeout | {error, string()}).
+-spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
-    send_cmd(Node, UUID, "set", Arg).
+    send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).

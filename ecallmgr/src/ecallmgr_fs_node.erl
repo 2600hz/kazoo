@@ -113,6 +113,7 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    monitor_loop(Node, S)
     end.
 
+-spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
 originate_channel(Node, Host, Pid, Route, AvailChan) ->
     DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
     format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
@@ -136,8 +137,8 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 start_call_handling(Node, Host, UUID) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
-    CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
-    ecallmgr_call_sup:add_call_process(Node, UUID, Host, CtlPid),
+    {ok, CtlPid} = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
+    {ok, _} = ecallmgr_call_sup:add_call_process(Node, UUID, Host, CtlPid),
     CtlQueue.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).

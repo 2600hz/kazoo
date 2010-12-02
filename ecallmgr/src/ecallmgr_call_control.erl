@@ -56,7 +56,7 @@ start(Node, UUID, Amqp) ->
 
 init(Node, UUID, {AmqpHost, CtlQueue}) ->
     amqp_util:basic_consume(AmqpHost, CtlQueue),
-    format_log(info, "CONTROL(~p): initial loop call~n", [self()]),
+    format_log(info, "CONTROL(~p): initial loop call, consuming on ~p~n", [self(), CtlQueue]),
     loop(Node, UUID, queue:new(), <<>>, CtlQueue, erlang:now(), AmqpHost).
 
 %% CurrApp is the Whistle Application that is currently running in FS (or empty)
@@ -72,7 +72,9 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 			  <<"queue">> -> %% list of commands that need to be added
 			      format_log(info, "CONTROL(~p): Recv App Cmd: Queue~n", [self()]),
 			      DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
-			      lists:foldl(fun({struct, Cmd}, TmpQ) ->
+			      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
+					     ({struct, Cmd}, TmpQ) ->
+						  format_log(info, "CONTROL.queue: Cmd: ~p~n", [DefProp ++ Cmd]),
 						  queue:in(DefProp ++ Cmd, TmpQ)
 					  end, CmdQ, get_value(<<"Commands">>, Prop));
 			  _AppName ->
@@ -81,13 +83,15 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	    case (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= <<>> of
 		true ->
 		    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
+		    format_log(info, "CONTROL(~p): CmdQ not empty, running ~p~n", [self(), Cmd]),
 		    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd, AmqpHost),
-		    loop(Node, UUID, NewCmdQ1, Cmd, CtlQ, StartT, AmqpHost);
+		    AppName = get_value(<<"Application-Name">>, Cmd),
+		    loop(Node, UUID, NewCmdQ1, AppName, CtlQ, StartT, AmqpHost);
 		false ->
 		    loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT, AmqpHost)
 	    end;
 	{execute_complete, UUID, EvtName} ->
-	    format_log(info, "CONTROL(~p): CurrApp: ~p execute_complete: ~p~n", [self(), CurrApp, EvtName]),
+	    format_log(info, "CONTROL(~p): CurrApp: ~p(~p) execute_complete: ~p~n", [self(), CurrApp, whistle_api:convert_whistle_app_name(CurrApp), EvtName]),
 	    case whistle_api:convert_whistle_app_name(CurrApp) of
 		<<>> ->
 		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
