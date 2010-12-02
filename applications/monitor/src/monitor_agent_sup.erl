@@ -2,11 +2,11 @@
 %%% @author Karl Anderson <karl@2600hz.com>
 %%% @copyright (C) 2010, Karl Anderson
 %%% @doc
-%%% Responsible for supervising the whistle monitoring application
+%%% Responsible for supervising the whistle monitoring agents
 %%% @end
-%%% Created : 11 Nov 2010 by Karl Anderson <karl@2600hz.com>
+%%% Created : 29 Nov 2010 by Karl Anderson <karl@2600hz.com>
 %%%-------------------------------------------------------------------
--module(monitor_sup).
+-module(monitor_agent_sup).
 
 -behaviour(supervisor).
 
@@ -28,12 +28,10 @@ start_link(AHost) ->
 %% ===================================================================
 
 init([AHost]) ->
-    MonitorMaster = {monitor_master, {monitor_master, start_link, [AHost]},
-                    permanent, 2000, worker, [monitor_master]},
-    AgentSup = {monitor_agent_sup, {monitor_agent_sup, start_link, [AHost]},
-                    permanent, 2000, supervisor, [monitor_agent_sup]},
-    JobSup = {monitor_job_sup, {monitor_job_sup, start_link, []},
-                    permanent, 2000, supervisor, [monitor_job_sup]},
-    Children = [MonitorMaster, AgentSup, JobSup],
+    NetworkAgent = {monitor_agent_network, {monitor_agent_network, start_link, [AHost]},
+                    permanent, 2000, worker, [monitor_agent_network]},
+    CallAgent = {monitor_agent_call, {monitor_agent_call, start_link, [AHost]},
+                    permanent, 2000, worker, [monitor_agent_call]},
+    Children = [NetworkAgent, CallAgent],
     RestartStrategy = {one_for_one, 5, 10},
     {ok, {RestartStrategy, Children}}.
