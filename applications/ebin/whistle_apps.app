@@ -6,4 +6,4 @@
               {mod,{whistle_apps_app,[]}},
               {env,[]},
               {modules,[whistle_apps,whistle_apps_app,whistle_apps_deps,
-                        whistle_apps_sup,whistle_util]}]}.
+                        whistle_apps_sup,whistle_controller,whistle_util]}]}.
