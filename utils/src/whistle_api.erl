@@ -79,7 +79,13 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
 %%--------------------------------------------------------------------
 -spec(extract_defaults/1 :: (Prop :: proplist()) -> proplist()).
 extract_defaults(Prop) ->
-    lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS).
+    ReqH = lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS),
+    lists:foldl(fun(H, Acc) ->
+			case get_value(H, Prop) of
+			    undefined -> Acc;
+			    V -> [{H, V} | Acc]
+			end
+		end, ReqH, ?OPTIONAL_DEFAULT_HEADERS).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Request - see wiki
