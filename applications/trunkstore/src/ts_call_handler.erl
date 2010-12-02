@@ -125,7 +125,7 @@ monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
 update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, account_doc_id=DocID, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
-    {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
+    {ACs1} = get_value(<<"active_calls">>, Acct0, {ACs}),
 
     case lists:member({CallID, flat_rate}, ACs1) of
 	true ->
@@ -161,7 +161,7 @@ update_account(_Duration, #route_flags{}=Flags) ->
 -spec(update_account_balance/2 :: (AmountToDeduct :: float(), Flags :: tuple()) -> proplist()).
 update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=CallID, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
-    {ACs1} = get_value(<<"active_calls">>, Acct0, ACs),
+    {ACs1} = get_value(<<"active_calls">>, Acct0, {ACs}),
 
     case lists:member({CallID, per_min}, ACs1) of
 	true ->
