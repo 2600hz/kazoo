@@ -33,15 +33,10 @@ init(Node, UUID, Amqp, CtlPid) ->
 loop(Node, UUID, Amqp, CtlPid) ->
     receive
 	{call, {event, [UUID | Data]}} ->
-	    try
 	    format_log(info, "EVT(~p): {Call, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
-	    publish_msg(Amqp, UUID, Data)
-	    catch
-		What:Why -> format_log(error, "EVT.call(~p): Caught ~p: ~p~n", [self(), What, Why])
-	    end,
+	    publish_msg(Amqp, UUID, Data),
 	    loop(Node, UUID, Amqp, CtlPid);
 	{call_event, {event, [ UUID | Data ] } } ->
-	    try
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    AppName = get_value(<<"Application">>, Data),
 	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p~n"
@@ -60,18 +55,11 @@ loop(Node, UUID, Amqp, CtlPid) ->
 	    end,
 
 	    publish_msg(Amqp, UUID, Data),
-	    send_ctl_event(CtlPid, UUID, EvtName, AppName)
-	    catch
-		What:Why -> format_log(error, "EVT.call_event(~p): Caught ~p: ~p CtlPid: ~p~n", [self(), What, Why, CtlPid])
-	    end,
+	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
 	    loop(Node, UUID, Amqp, CtlPid);
 	call_hangup ->
-	    try
 	    CtlPid ! {hangup, UUID},
-	    format_log(info, "EVT(~p): Call Hangup~n", [self()])
-	    catch
-		What:Why -> format_log(error, "EVT.call_hangup(~p): Caught ~p: ~p~n", [self(), What, Why])
-	    end;
+	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
 	    loop(Node, UUID, Amqp, CtlPid)
@@ -90,12 +78,10 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
 	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
     end;
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
-    format_log(error, "EVT(~p): unknown ctlpid ~p~n", [self(), _CtlPid]),
     ok.
 
 -spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 publish_msg(AmqpHost, UUID, Prop) ->
-    try
     EvtName = get_value(<<"Event-Name">>, Prop),
 
     case lists:member(EvtName, ?FS_EVENTS) of
@@ -121,9 +107,6 @@ publish_msg(AmqpHost, UUID, Prop) ->
 	false ->
 	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName]),
 	    ok
-    end
-    catch
-	What:Why -> format_log(error, "EVT.pub_msg(~p): Caught ~p: ~p~n", [self(), What, Why])
     end.
 
 %% return a proplist of k/v pairs specific to the event
