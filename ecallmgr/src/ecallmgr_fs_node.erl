@@ -113,6 +113,7 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    monitor_loop(Node, S)
     end.
 
+-spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
 originate_channel(Node, Host, Pid, Route, AvailChan) ->
     DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
     format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
