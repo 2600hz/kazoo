@@ -72,7 +72,9 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 			  <<"queue">> -> %% list of commands that need to be added
 			      format_log(info, "CONTROL(~p): Recv App Cmd: Queue~n", [self()]),
 			      DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
-			      lists:foldl(fun({struct, Cmd}, TmpQ) ->
+			      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
+					     ({struct, Cmd}, TmpQ) ->
+						  format_log(info, "CONTROL.queue: Cmd: ~p~n", [Cmd]),
 						  queue:in(DefProp ++ Cmd, TmpQ)
 					  end, CmdQ, get_value(<<"Commands">>, Prop));
 			  _AppName ->
@@ -89,7 +91,7 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 		    loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT, AmqpHost)
 	    end;
 	{execute_complete, UUID, EvtName} ->
-	    format_log(info, "CONTROL(~p): CurrApp: ~p execute_complete: ~p~n", [self(), CurrApp, EvtName]),
+	    format_log(info, "CONTROL(~p): CurrApp: ~p(~p) execute_complete: ~p~n", [self(), CurrApp, whistle_api:convert_whistle_app_name(CurrApp), EvtName]),
 	    case whistle_api:convert_whistle_app_name(CurrApp) of
 		<<>> ->
 		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
