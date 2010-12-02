@@ -447,6 +447,8 @@
 				]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
-			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>]).
+			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+			,<<"DETECTED_TONE">>, <<"DTMF">>
+		   ]).
 
 -type proplist() :: list(tuple(atom() | binary(), binary() | list() | fun() | integer() )).

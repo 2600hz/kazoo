@@ -161,5 +161,11 @@ event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
      ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop)}
      ,{<<"Hangup-Cause">>, get_value(<<"Hangup-Cause">>, Prop, <<>>)}
     ];
+event_specific(<<"DETECTED_TONE">>, Prop) ->
+    [{<<"Detected-Tone">>, get_value(<<"Detected-Tone">>, Prop, <<>>)}];
+event_specific(<<"DTMF">>, Prop) ->
+    [{<<"DTMF-Digit">>, get_value(<<"Digit">>, Prop, <<>>)}
+     ,{<<"DTMF-Duration">>, get_value(<<"Duration">>, Prop, <<>>)}
+    ];
 event_specific(_Evt, _Prop) ->
     [].
