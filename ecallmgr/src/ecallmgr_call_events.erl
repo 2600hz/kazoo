@@ -78,7 +78,6 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
 	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
     end;
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
-    format_log(error, "EVT(~p): unknown ctlpid ~p~n", [self(), _CtlPid]),
     ok.
 
 -spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
