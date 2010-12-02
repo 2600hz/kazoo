@@ -180,9 +180,14 @@ handle_resource_req(Payload, AmqpHost) ->
 	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
 	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
 	    Route = get_value(<<"Route">>, Prop),
-	    start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min);
+	    case start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min) of
+		{error, failed_starting, Failed} ->
+		    send_failed_req(Prop, AmqpHost, Failed),
+		    fail;
+		ok -> ok
+	    end;
 	false ->
-	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validated ~p~n", [self(), Prop])
+	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validate ~p~n", [self(), Prop])
     end.
 
 -spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
@@ -249,6 +254,19 @@ send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
 		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
     format_log(info, "RSC_MGR: Sending resp to ~p~n~s~n", [AppQ, JSON]),
+    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+
+-spec(send_failed_req/3 :: (Prop :: proplist(), Host :: string(), Failed :: integer()) -> no_return()).
+send_failed_req(Prop, Host, Failed) ->
+    Msg = get_value(<<"Msg-ID">>, Prop),
+    AppQ = get_value(<<"Server-ID">>, Prop),
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+
+    RespProp = [{<<"Msg-ID">>, Msg}
+		,{<<"Failed-Attempts">>, Failed}
+		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
+    {ok, JSON} = whistle_api:resource_resp(RespProp),
+    format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 %% sort first by percentage utilized (less utilized first), then by available channels (more available first)

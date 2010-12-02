@@ -170,11 +170,13 @@
 %% Resource Request - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Route">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>]).
--define(RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"originate">>}
+-define(RESOURCE_REQ_VALUES, [
+			      {<<"Event-Category">>, <<"originate">>}
 			      ,{<<"Event-Name">>, <<"resource_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
-			      ]).
--define(RESOURCE_REQ_TYPES, [{<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
+			     ]).
+-define(RESOURCE_REQ_TYPES, [
+			     {<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
 					      ([<<"user:", _/binary>>, DID]) when is_binary(DID) -> true;
 					      (_) -> false
 					   end}
@@ -183,10 +185,17 @@
 %% Resource Response - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Response
 -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_RESOURCE_RESP_HEADERS, []).
--define(RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"originate">>}
-			      ,{<<"Event-Name">>, <<"resource_resp">>}
+-define(RESOURCE_RESP_VALUES, [
+			       {<<"Event-Category">>, <<"originate">>}
+			       ,{<<"Event-Name">>, <<"resource_resp">>}
 			      ]).
 -define(RESOURCE_RESP_TYPES, []).
+
+%% Resource Error - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Error_Response
+-define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>, <<"Failed-Attempts">>]).
+-define(OPTIONAL_RESOURCE_ERROR_HEADERS, []).
+-define(RESOURCE_ERROR_VALUES, [{<<"Event-Name">>, <<"resource_error">>}]).
+-define(RESOURCE_ERROR_TYPES, []).
 
 %% Call Events - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Receiving_Call_Events
 -define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
