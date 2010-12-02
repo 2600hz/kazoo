@@ -269,7 +269,7 @@ send_failed_req(Prop, Host, Failed) ->
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
-%% sort first by percentage utilized (less utilized first), then by available channels (more available first)
+%% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first) 
 %% [
 %%   [{node, 1}, {p_u, 80}, {a_c, 3}, ...]
 %%  ,[{node, 2}, {p_u, 50}, {a_c, 5}, ...]
@@ -280,17 +280,20 @@ send_failed_req(Prop, Host, Failed) ->
 %%    least util,  more chan    most chan    most util
 -spec(sort_resources/2 :: (PropA :: proplist(), PropB :: proplist()) -> boolean()).
 sort_resources(PropA, PropB) ->
-    UtilA = get_value(percent_utilized, PropA),
     UtilB = get_value(percent_utilized, PropB),
-    case UtilA of
+    case get_value(percent_utilized, PropA) of
         UtilB ->                   % same utilization, use node with more available channels
-	    ACA = get_value(available_channels, PropA),
-	    ACB = get_value(available_channels, PropB),
-	    case ACA of
-		ACB ->
-		    get_value(bias, PropA, 1) >= get_value(bias, PropB, 1);
-		_ -> false
+	    BiasB = get_value(bias, PropB, 1),
+	    case get_value(bias, PropA, 1) of
+		BiasB -> %% same bias, use node with more available channels
+		    ACB = get_value(available_channels, PropB),
+		    case get_value(available_channels, PropA) of
+			C when C >= ACB -> true;
+			_ -> false
+		    end;
+		B when B > BiasB -> true; % A has bigger bias
+		_B -> true
 	    end;
-	X when X > UtilB -> false; % B is less utilized
-	_X -> true                 % A is less utilized
+	A when A > UtilB -> false; % B is less utilized
+	_A -> true                 % A is less utilized
     end.
