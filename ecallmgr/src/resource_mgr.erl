@@ -279,7 +279,7 @@ send_failed_consume(Route, {Host, Prop}, E) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Route">>, Route}
 		,{<<"Failure-Message">>, E}
-		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
+		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
