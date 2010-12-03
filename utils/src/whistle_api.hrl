@@ -293,7 +293,7 @@
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"tone_detect">>}
 				 ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
-				 ]).
+				]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
 				,{<<"Timeout">>, fun(<<"+", T/binary>>) ->
 							 try whistle_util:to_integer(T), true
@@ -443,10 +443,13 @@
 				 ,{<<"bridge">>, <<"bridge">>}
 				 ,{<<"signal_bridge">>, <<"bridge">>}
 				 ,{<<"answer">>, <<"answer">>}
+				 ,{<<"tone_detect">>, <<"tone_detect">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
-			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>]).
+			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+			,<<"DETECTED_TONE">>, <<"DTMF">>
+		   ]).
 
 -type proplist() :: list(tuple(atom() | binary(), binary() | list() | fun() | integer() )).

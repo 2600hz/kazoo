@@ -310,7 +310,7 @@ flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
     {Credit} = get_value(<<"credits">>, Acct, {[]}),
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
-    ACs = case get_value(<<"active_calls">>, Acct, Flags#route_flags.active_calls) of
+    ACs = case get_value(<<"active_calls">>, Acct, {Flags#route_flags.active_calls}) of
 	      [] -> [];
 	      {T} -> lists:usort(T)
 	  end,
@@ -382,6 +382,7 @@ update_account(#route_flags{callid=CallID, flat_rate_enabled=FRE, account_doc=Do
     {Acct0} = get_value(<<"account">>, Doc, {[]}),
     ACs1 = case get_value(<<"active_calls">>, Acct0, ACs) of
 	       [] -> [];
+	       [_|_]=T -> T;
 	       {T} -> T
 	   end,
     Type = case FRE of

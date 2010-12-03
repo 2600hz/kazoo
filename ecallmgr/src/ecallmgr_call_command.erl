@@ -108,7 +108,7 @@ get_fs_app(_Node, UUID, Prop, AmqpHost, <<"store">>) ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, Prop])
 	    end
     end;
-get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"tones">>) ->
+get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"tone">>) ->
     case whistle_api:tones_req_v(Prop) of
 	false -> {error, "tones failed to execute as Prop did not validate."};
 	true ->
@@ -138,7 +138,7 @@ get_fs_app(_Node, _UUID, _Prop, _AmqpHost, <<"park">>=App) ->
 get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"sleep">>=App) ->
     case whistle_api:sleep_req_v(Prop) of
 	false -> {error, "sleep failed to execute as Prop did not validate."};
-	true -> {App, whistle_util:to_binary(get_value(<<"Amount">>, Prop))}
+	true -> {App, whistle_util:to_binary(get_value(<<"Time">>, Prop))}
     end;
 get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"say">>=App) ->
     case whistle_api:say_req_v(Prop) of
@@ -174,22 +174,29 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
 	false -> {error, "tone detect failed to execute as Prop did not validate"};
 	true ->
 	    Key = get_value(<<"Tone-Detect-Name">>, Prop),
-	    Freqs = lists:map(fun binary_to_list/1, get_value(<<"Frequencies">>, Prop)),
+	    Freqs = lists:map(fun whistle_util:to_list/1, get_value(<<"Frequencies">>, Prop)),
 	    FreqsStr = string:join(Freqs, ","),
-	    Flags = get_value(<<"Sniff-Direction">>, Prop, <<"read">>),
+	    Flags = case get_value(<<"Sniff-Direction">>, Prop, <<"read">>) of
+			<<"read">> -> <<"r">>;
+			<<"write">> -> <<"w">>
+		    end,
 	    Timeout = get_value(<<"Timeout">>, Prop, <<"+1000">>),
 	    HitsNeeded = get_value(<<"Hits-Needed">>, Prop, <<"1">>),
 
-	    SuccessProp = get_value(<<"On-Success">>, Prop, []) ++ whistle_api:extract_defaults(Prop), %% app command lacks the default headers
+	    SuccessProp = case get_value(<<"On-Success">>, Prop, []) of
+			      [] -> [{<<"Application-Name">>, <<"park">>} | whistle_api:extract_defaults(Prop)]; % default to parking the call
+			      AppProp -> AppProp ++ whistle_api:extract_defaults(Prop)
+			  end,
 	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessProp, AmqpHost, get_value(<<"Application-Name">>, SuccessProp)) of
-					       {error, _Str} -> {<<>>, <<>>};
+					       {error, _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
 					       {_, _}=Success -> Success
 					   end,
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
 	    {App, Data}
     end;
 get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
-    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]).
+    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]),
+    {error, "Application unknown"}.
 
 %%%===================================================================
 %%% Internal helper functions
@@ -197,14 +204,12 @@ get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
 %% send the SendMsg proplist to the freeswitch node
 -spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) ->
-    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n"
-	       ,[self(), Node, UUID, AppName, Args]),
-    format_log(info, "CONTROL(~p): SendMsg returned ~p~n", [self()
-							    , freeswitch:sendmsg(Node, UUID, [
-											      {"call-command", "execute"}
-											      ,{"execute-app-name", whistle_util:to_list(AppName)}
-											      ,{"execute-app-arg", whistle_util:to_list(Args)}
-											     ])]).
+    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, AppName, Args]),
+    freeswitch:sendmsg(Node, UUID, [
+				    {"call-command", "execute"}
+				    ,{"execute-app-name", whistle_util:to_list(AppName)}
+				    ,{"execute-app-arg", whistle_util:to_list(Args)}
+				   ]).
 
 %% take an endpoint (/sofia/foo/bar), and optionally a caller id name and number
 %% and create the dial string ([origination_caller_id_name=Name,origination_caller_id_number=Num]Endpoint)
