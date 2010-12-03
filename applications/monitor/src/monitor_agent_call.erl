@@ -25,7 +25,6 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 -include("../include/monitor_amqp.hrl").
--include("../include/monitor_agent_call.hrl").
 
 -record(state, {
         amqp_host = "" :: string()
@@ -191,7 +190,7 @@ start_amqp(AHost) ->
 process_req({<<"task">>, <<"basic_call_req">>}, Msg, #state{amqp_host = AHost}=State) ->
     case monitor_api:basic_call_req_v(Msg) of
         true ->
-            Route = [<<"user:2600pbx">>, <<"4158867903">>],
+            Route = get_value(<<"Destination">>, Msg),
             monitor_call_basic:start(AHost, Msg, Route);
         _ ->
             format_log(error, "MONITOR_AGENT_CALL(~p): Failed to validate basic_call_req~n", [self()])
