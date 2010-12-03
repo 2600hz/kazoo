@@ -27,6 +27,8 @@ start_link(AHost) ->
 %% Supervisor callbacks
 %% ===================================================================
 
+init([]) ->
+    init([""]);
 init([AHost]) ->
     MonitorMaster = {monitor_master, {monitor_master, start_link, [AHost]},
                     permanent, 2000, worker, [monitor_master]},

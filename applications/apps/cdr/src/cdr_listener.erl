@@ -67,15 +67,7 @@ set_couch_host(H) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    try
-	H = net_adm:localhost(),
-	Q = start_amqp(H),
-	couch_mgr:set_host(H),
-	{ok, #state{couch_host=H, amqp_host=H, q=Q}}
-    catch
-	_:_ ->
-	    {ok, #state{}}
-    end.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

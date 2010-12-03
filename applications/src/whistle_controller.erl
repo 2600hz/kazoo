@@ -11,11 +11,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_app/1]).
+-export([start_link/0, start_app/1, set_amqp_host/1, set_couch_host/1, stop_app/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
+
+-import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE). 
 
@@ -39,7 +41,16 @@ start_link() ->
 
 -spec(start_app/1 :: (App :: atom()) -> ok | tuple(error, term())).
 start_app(App) ->
-    gen_server:call(?MODULE, {start_app, App}, infinity).
+    gen_server:cast(?MODULE, {start_app, App}).
+
+stop_app(App) ->
+    gen_server:cast(?MODULE, {stop_app, App}).
+
+set_amqp_host(H) ->
+    gen_server:cast(?MODULE, {set_amqp_host, H}).
+
+set_couch_host(H) ->
+    couch_mgr:set_host(H).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -74,9 +85,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({start_app, App}, _From, #state{apps=As}=State) ->
-    {Resp, As1} = add_app(App, As),
-    {reply, Resp, State#state{apps=As1}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -91,6 +99,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({start_app, App}, #state{apps=As}=State) ->
+    As1 = add_app(App, As),
+    {noreply, State#state{apps=As1}};
+handle_cast({stop_app, App}, #state{apps=As}=State) ->
+    As1 = rm_app(App, As),
+    {noreply, State#state{apps=As1}};
+handle_cast({set_amqp_host, H}, #state{apps=As}=State) ->
+    lists:foreach(fun(A) -> A:set_amqp_host(H) end, As),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -109,7 +126,7 @@ handle_info(start_apps, #state{apps=As}=State) ->
     As1 = case file:consult(Config) of
 	      {ok, Ts} ->
 		  lists:foldl(fun(App, Acc) ->
-				      {_, Acc1} = add_app(App, Acc),
+				      Acc1 = add_app(App, Acc),
 				      Acc1
 			      end, As, proplists:get_value(start, Ts, []));
 	      _ -> As
@@ -148,9 +165,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> tuple(ok, list(atom())) | tuple(tuple(), list(atom()))).
 add_app(App, As) ->
+    format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
     case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
 	false -> {ok, As};
-	{ok, _} -> application:start(App), {ok, [App  | As]};
-	{ok, _, _} -> application:start(App), {ok, [App | As]};
-	E -> {E, As}
+	{ok, _} -> application:start(App), [App  | As];
+	{ok, _, _} -> application:start(App), [App | As];
+	_ -> As
+    end.
+
+rm_app(App, As) ->
+    format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
+    case lists:member(App, As) of
+	true -> whistle_apps_sup:stop_app(App), application:stop(App), lists:delete(App, As);
+	false -> As
     end.

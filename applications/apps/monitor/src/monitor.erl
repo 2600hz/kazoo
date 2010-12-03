@@ -8,10 +8,14 @@
 -module(monitor).
 
 -author('Karl Anderson <karl@2600hz.com>').
--export([start/0, start_link/1, stop/0]).
+-export([start/0, start_link/0, start_link/1, stop/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the monitor for inclusion in a supervisor tree
+start_link() ->
+    start_deps(),
+    monitor_sup:start_link().
+
 start_link(AHost) ->
     start_deps(),
     monitor_sup:start_link(AHost).
@@ -19,7 +23,6 @@ start_link(AHost) ->
 %% @spec start() -> ok
 %% @doc Start the monitor server.
 start() ->
-    start_deps(),
     application:start(monitor).
     
 start_deps() ->
@@ -29,7 +32,8 @@ start_deps() ->
     ensure_started(whistle_amqp),
     ensure_started(dynamic_compile),
     ensure_started(log_roller),
-    ensure_started(couchbeam).
+    ensure_started(couchbeam),
+    ensure_started(whistle_couch).
 
 %% @spec stop() -> ok
 %% @doc Stop the monitor server.

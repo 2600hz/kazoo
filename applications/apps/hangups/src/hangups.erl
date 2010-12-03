@@ -8,7 +8,7 @@
 -module(hangups).
 
 -author('James Aimonetti <james@2600hz.com>').
--export([start/0, start_link/0, stop/0]).
+-export([start/0, start_link/0, stop/0, set_amqp_host/1, set_couch_host/1]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
@@ -44,3 +44,9 @@ ensure_started(App) ->
 	{error, {already_started, App}} ->
 	    ok
     end.
+
+set_amqp_host(H) ->
+    hangups_listener:set_amqp_host(H).
+
+set_couch_host(H) ->
+    hangups_listener:set_couch_host(H).
