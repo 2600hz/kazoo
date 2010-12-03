@@ -28,6 +28,9 @@
 
 -export([access_request/0, access_request/1]).
 
+-export([get_msg_type/1, is_json/1]).
+
+
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange
 %% - One consumer of the queue, many publishers of the queue.
@@ -104,7 +107,7 @@ targeted_publish(Host, Queue, Payload, ContentType) ->
     basic_publish(Host, ?EXCHANGE_TARGETED, Queue, Payload, ContentType).
 
 callctl_publish(Host, CallId, Payload) ->
-    callctl_publish(Host, CallId, Payload, undefined).
+    callctl_publish(Host, CallId, Payload, <<"application/json">>).
 
 callctl_publish(Host, CallId, Payload, ContentType) ->
     basic_publish(Host, ?EXCHANGE_CALLCTL, CallId, Payload, ContentType).
@@ -393,3 +396,9 @@ access_request(Options) ->
       ,write = get_value(write, Options, true)
       ,read = get_value(read, Options, true)
      }.
+
+get_msg_type(Msg) ->
+    { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) }.
+
+is_json(Props) ->
+    Props#'P_basic'.content_type == <<"application/json">>.
