@@ -12,12 +12,12 @@
 -export([start/3]).
 
 -define(SERVER, ?MODULE).
+-define(FREQ, <<"2600">>).
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
 -include("../include/monitor_amqp.hrl").
--include("../include/monitor_agent_call.hrl").
 
 start(AHost, Msg, Route) ->
     Msg_ID = get_value(<<"Msg-ID">>, Msg),
@@ -25,9 +25,60 @@ start(AHost, Msg, Route) ->
     {ok, {CQ, Call_ID}} = originate_call_req(AHost, Msg_ID, Route, Task_Q),
     amqp_util:bind_q_to_callevt(AHost, Task_Q, Call_ID),
     answer_call(AHost, CQ, Call_ID, Task_Q),
-    test_tones(AHost, CQ, Call_ID, Task_Q),
+    Result = test_tones(AHost, CQ, Call_ID, Task_Q),
     hangup_call(AHost, CQ, Call_ID, Task_Q),
-    format_log(info, "MONITOR_CALL_BASIC(~p): Task complete, thanks for all the fish~n", [self()]).
+    case Result of 
+        {{ok, Start}, {ok, End}} ->
+            Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, End)) - whistle_util:to_integer(get_value(<<"Timestamp">>, Start)),
+            format_log(info, "MONITOR_CALL_BASIC(~p): TASK SUCCEEDED: delay ~p~n", [self(), Delay]);
+        {_, {error, timeout}} ->
+            format_log(info, "MONITOR_CALL_BASIC(~p): TASK FAILED~n", [self()]);
+        _ ->
+            format_log(info, "MONITOR_CALL_BASIC(~p): TASK FAILED~n", [self()])
+    end,
+    amqp_util:queue_delete(AHost, Task_Q).
+
+originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
+    Def = monitor_api:default_headers(Server_ID, <<"originate">>, <<"resource_req">>, Msg_ID),
+    Req = [
+         {<<"Resource-Type">>, <<"audio">>}
+        ,{<<"Route">>, Route}
+    ],
+    format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p~n", [self(), Route]),
+    {ok, JSON} = whistle_api:resource_req(lists:append([Def, Req])),
+    amqp_util:callmgr_publish(AHost, JSON, <<"application/json">>, ?KEY_RESOURCE_REQ),
+    {ok, Msg} = wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 15000),
+    CQ = get_value(<<"Control-Queue">>, Msg),
+    Call_ID = get_value(<<"Call-ID">>, Msg),
+    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p connected to ~p~n", [self(), Call_ID, Route]),
+    {ok, {CQ, Call_ID}}.
+
+answer_call(AHost, CQ, Call_ID, Server_ID) ->
+    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p answer~n", [self(), Call_ID]),
+    Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
+    Req = [
+         {<<"Call-ID">>, Call_ID}
+        ,{<<"Application-Name">>, <<"answer">>}
+    ],
+    {ok, JSON} = whistle_api:answer_req(lists:append([Def, Req])),
+    amqp_util:callctl_publish(AHost, CQ, JSON).
+
+test_tones(AHost, CQ, Call_ID, Server_ID) ->
+    arm_tone_detector(AHost, CQ, Call_ID, Server_ID),
+    generate_tone(AHost, CQ, Call_ID, Server_ID),    
+    Start = wait_for_call_event_exec(<<"play">>, 5000),
+    End = wait_for_call_event_complete(<<"park">>, 5000),
+    {Start, End}.
+
+hangup_call(AHost, CQ, Call_ID, Server_ID) ->
+    format_log(info, "MONITOR_CALL_BASIC(~p): Hangup ~p~n", [self(), Call_ID]),
+    Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
+    Req = [
+         {<<"Call-ID">>, Call_ID}
+        ,{<<"Application-Name">>, <<"hangup">>}
+    ],
+    {ok, JSON} = whistle_api:hangup_req(lists:append([Def, Req])),
+    amqp_util:callctl_publish(AHost, CQ, JSON).
 
 create_task_q(AHost) ->
     Q = amqp_util:new_monitor_queue(AHost),
@@ -42,50 +93,14 @@ create_task_q(AHost) ->
 
     {ok, Q}.
 
-originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
-    Def = monitor_api:default_headers(Server_ID, <<"originate">>, <<"resource_req">>, Msg_ID),
-    Req = [
-         {<<"Resource-Type">>, <<"audio">>}
-        ,{<<"Route">>, Route}
-    ],
-    {ok, JSON} = whistle_api:resource_req(lists:append([Def, Req])),
-    format_log(info, "MONITOR_CALL_BASIC(~p): Generated originate req~nPayload: ~p~n", [self(), Req]),
-    amqp_util:callmgr_publish(AHost, JSON, <<"application/json">>, ?KEY_RESOURCE_REQ),
-    {ok, Msg} = wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 15000),
-    CQ = get_value(<<"Control-Queue">>, Msg),
-    Call_ID = get_value(<<"Call-ID">>, Msg),
-    {ok, {CQ, Call_ID}}.
-
-answer_call(AHost, CQ, Call_ID, Server_ID) ->
-    Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
-    Req = [
-         {<<"Call-ID">>, Call_ID}
-        ,{<<"Application-Name">>, <<"answer">>}
-    ],
-    {ok, JSON} = whistle_api:answer_req(lists:append([Def, Req])),
-    amqp_util:callctl_publish(AHost, CQ, JSON).
-
-test_tones(AHost, CQ, Call_ID, Server_ID) ->
-    arm_tone_detector(AHost, CQ, Call_ID, Server_ID),
-    generate_tone(AHost, CQ, Call_ID, Server_ID),
-    {ok, _Msg} = wait_for_call_event_complete(<<"park">>, 2000).
-
-hangup_call(AHost, CQ, Call_ID, Server_ID) ->
-    Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
-    Req = [
-         {<<"Call-ID">>, Call_ID}
-        ,{<<"Application-Name">>, <<"hangup">>}
-    ],
-    {ok, JSON} = whistle_api:hangup_req(lists:append([Def, Req])),
-    amqp_util:callctl_publish(AHost, CQ, JSON).
-
 arm_tone_detector(AHost, CQ, Call_ID, Server_ID) ->
+    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p arm tone detection~n", [self(), Call_ID]),
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
          {<<"Call-ID">>, Call_ID}
         ,{<<"Application-Name">>, <<"tone_detect">>}
         ,{<<"Tone-Detect-Name">>, Call_ID}
-        ,{<<"Frequencies">>, [<<"2600">>]}
+        ,{<<"Frequencies">>, [?FREQ]}
         ,{<<"Sniff-Direction">>, <<"read">>}
         ,{<<"Timeout">>, <<"0">>}
     ],
@@ -93,15 +108,16 @@ arm_tone_detector(AHost, CQ, Call_ID, Server_ID) ->
     amqp_util:callctl_publish(AHost, CQ, JSON).
 
 generate_tone(AHost, CQ, Call_ID, Server_ID) ->
+    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p generate tones~n", [self(), Call_ID]),
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
          {<<"Call-ID">>, Call_ID}
         ,{<<"Application-Name">>, <<"tone">>}
         ,{<<"Tones">>, [
             {struct, [
-                 {<<"Frequencies">>, [<<"2600">>]}
-                ,{<<"Duration-ON">>, <<"2000">>}
-                ,{<<"Duration-OFF">>, <<"500">>}
+                 {<<"Frequencies">>, [?FREQ]}
+                ,{<<"Duration-ON">>, <<"5000">>}
+                ,{<<"Duration-OFF">>, <<"10">>}
             ]}
         ]}
     ],
@@ -125,19 +141,30 @@ wait_for_msg_type(Category, Name, Timeout) ->
             {error, timeout}
     end.
 
-wait_for_call_event_complete(Name, Timeout) ->
+wait_for_call_event_exec(Application, Timeout) ->
+    wait_for_call_event(<<"CHANNEL_EXECUTE">>, Application, Timeout).
+
+wait_for_call_event_complete(Application, Timeout) ->
+    wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Timeout).
+
+wait_for_call_event(Name, Application, Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                { <<"Call-Event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Name } ->                
+                { <<"Call-Event">>, Name, Application } ->                
+                    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p published anticipated event ~p~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
                     {ok, Msg};
+                { <<"Call-Event">>, <<"CHANNEL_HANGUP">>, _Name } ->
+                    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p hungup before anticipated event ~p~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
+                    {error, channel_hungup};
                 _ ->
-                    wait_for_call_event_complete(Name, Timeout)
+                    wait_for_call_event(Name, Application, Timeout)
             end;
         _ ->
-            wait_for_call_event_complete(Name, Timeout)
+            wait_for_call_event(Name, Application, Timeout)
     after
         Timeout ->
+            format_log(info, "MONITOR_CALL_BASIC(~p): Timeout while waiting for call event ~p~n", [self(), Application]),
             {error, timeout}
     end.
