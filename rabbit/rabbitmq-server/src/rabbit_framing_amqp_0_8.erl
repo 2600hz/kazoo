@@ -149,6 +149,7 @@
        | #'test.string_ok'{} | #'test.table'{} | #'test.table_ok'{} | #'test.content'{}
        | #'test.content_ok'{} )).
 -type(amqp_method_field_name() ::
+<<<<<<< HEAD
        ( arguments | exchange | ticket | exchange
        | consumer_tag | routing_key | delivery_tag | virtual_host
        | ticket | dtx_identifier | queue | routing_key
@@ -203,6 +204,62 @@
        | global | out_of_band | reply_code | insist
        | nowait | realm | ticket | delivery_tag
        | ticket | result )).
+=======
+       ( arguments | exchange | integer_1 | requeue
+       | queue | table | routing_key | routing_key
+       | content_size | virtual_host | queue | exchange
+       | string_1 | exchange | queue | routing_key
+       | identifier | locale | ticket | server_properties
+       | ticket | exchange | consumer_tag | integer_op
+       | consumer_tag | reply_text | reply_text | multiple
+       | queue | arguments | routing_key | redelivered
+       | no_local | consumer_tag | queue | nowait
+       | nowait | delivery_tag | prefetch_count | integer_3
+       | string_2 | consumer_tag | if_unused | exchange
+       | consumer_tag | message_count | internal | exclusive
+       | no_ack | consumer_tag | heartbeat | routing_key
+       | global | immediate | passive | integer_2
+       | content_checksum | no_ack | class_id | active
+       | consumer_tag | prefetch_size | exchange | consumer_tag
+       | routing_key | ticket | queue | exchange
+       | multiple | ticket | passive | class_id
+       | reply_code | queue | queue | insist
+       | exchange | ticket | integer_result | nowait
+       | ticket | requeue | challenge | exchange
+       | operation | staged_size | reply_text | locales
+       | auto_delete | method_id | redelivered | consume_rate
+       | reply_code | mechanisms | nowait | immediate
+       | message_count | mandatory | nowait | durable
+       | routing_key | integer_4 | string_result | delivery_tag
+       | message_count | nowait | cluster_id | arguments
+       | prefetch_count | no_local | reply_text | message_count
+       | consumer_tag | write | exchange | consumer_tag
+       | queue | durable | if_empty | consumer_tag
+       | nowait | exchange | meta_data | consumer_count
+       | exclusive | routing_key | result | exclusive
+       | routing_key | prefetch_size | client_properties | exclusive
+       | channel_max | string_op | known_hosts | capabilities
+       | reply_code | exchange | global | frame_max
+       | reply_code | delivery_tag | exclusive | response
+       | result | immediate | read | prefetch_size
+       | mandatory | nowait | redelivered | requeue
+       | details | no_ack | operation | dtx_identifier
+       | known_hosts | global | out_of_band | auto_delete
+       | version_minor | nowait | delivery_tag | ticket
+       | prefetch_count | active | ticket | exchange
+       | heartbeat | consumer_tag | passive | if_unused
+       | delivery_tag | mechanism | ticket | version_major
+       | consumer_tag | identifier | frame_max | ticket
+       | routing_key | consumer_tag | reply_text | reply_text
+       | active | type | identifier | requeue
+       | nowait | method_id | no_local | mandatory
+       | delivery_tag | host | reply_code | delivery_tag
+       | ticket | channel_max | delivery_tag | ticket
+       | response | queue | ticket | consumer_tag
+       | realm | ticket | queue | reply_code
+       | nowait | exchange | ticket | routing_key
+       | arguments | nowait )).
+>>>>>>> production
 -type(amqp_property_record() ::
        ( #'P_connection'{} | #'P_channel'{} | #'P_access'{} | #'P_exchange'{}
        | #'P_queue'{} | #'P_basic'{} | #'P_file'{} | #'P_stream'{}

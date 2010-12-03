@@ -21,8 +21,9 @@
 -define(EVENT_CAT, <<"Call-Event">>).
 
 %% Node, UUID, AmqpHost, CtlPid
+-spec(start/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: tuple(string(), binary()), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
 start(Node, UUID, Amqp, CtlPid) ->
-    spawn(ecallmgr_call_events, init, [Node, UUID, Amqp, CtlPid]).
+    {ok, spawn_link(ecallmgr_call_events, init, [Node, UUID, Amqp, CtlPid])}.
 
 init(Node, UUID, Amqp, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
@@ -44,6 +45,12 @@ loop(Node, UUID, Amqp, CtlPid) ->
 	    case EvtName of
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data) end);
+		<<"CHANNEL_BRIDGE">> ->
+		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
+			undefined -> ok;
+			OtherUUID ->
+			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)])
+		    end;
 		_ -> ok
 	    end,
 
@@ -59,21 +66,30 @@ loop(Node, UUID, Amqp, CtlPid) ->
     end.
 
 %% let the ctl process know a command finished executing
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) ->
-    CtlPid ! {execute_complete, UUID, AppName};
-send_ctl_event(_CtlPid, _UUID, _Evt, _Data) ->
-    ok.
+-spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
+send_ctl_event(undefined, _, _, _) -> ok;
+send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pid(CtlPid) ->
+    case erlang:is_process_alive(CtlPid) of
+	true ->
+	    format_log(info, "EVT.send_ctl(~p): Pid: ~p UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName]),
+	    CtlPid ! {execute_complete, UUID, AppName};
+	false ->
+	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
+    end;
+send_ctl_event(_CtlPid, _UUID, _Evt, _Data) -> ok.
 
+-spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 publish_msg(AmqpHost, UUID, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
+
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
 	    EvtProp = [{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
-		       ,{<<"Event-Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
+		       ,{<<"Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
 		       ,{<<"Call-ID">>, UUID}
+		       ,{<<"Call-Direction">>, get_value(<<"Call-Direction">>, Prop)}
 		       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
-		       | event_specific(EvtName, Prop)
-		      ] ++
+		       | event_specific(EvtName, Prop) ] ++
 		whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APPNAME, ?APPVER),
 	    EvtProp1 = case ecallmgr_util:custom_channel_vars(Prop) of
 			   [] -> EvtProp;
@@ -91,6 +107,7 @@ publish_msg(AmqpHost, UUID, Prop) ->
 	    ok
     end.
 
+%% return a proplist of k/v pairs specific to the event
 -spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
     Application = get_value(<<"Application">>, Prop),
@@ -114,5 +131,39 @@ event_specific(<<"CHANNEL_EXECUTE">>, Prop) ->
 	     ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop, <<"">>)}
 	    ]
     end;
+event_specific(<<"CHANNEL_BRIDGE">>, Prop) ->
+    [{<<"Other-Leg-Direction">>, get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Destination-Number">>,get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
+event_specific(<<"CHANNEL_UNBRIDGE">>, Prop) ->
+    [{<<"Other-Leg-Direction">>, get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Destination-Number">>,get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
+event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
+    [{<<"Other-Leg-Direction">>, get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Destination-Number">>,get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+    ];
+event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
+    [{<<"Other-Leg-Direction">>, get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Destination-Number">>,get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop)}
+     ,{<<"Hangup-Cause">>, get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+    ];
+event_specific(<<"DETECTED_TONE">>, Prop) ->
+    [{<<"Detected-Tone">>, get_value(<<"Detected-Tone">>, Prop, <<>>)}];
+event_specific(<<"DTMF">>, Prop) ->
+    [{<<"DTMF-Digit">>, get_value(<<"Digit">>, Prop, <<>>)}
+     ,{<<"DTMF-Duration">>, get_value(<<"Duration">>, Prop, <<>>)}
+    ];
 event_specific(_Evt, _Prop) ->
     [].

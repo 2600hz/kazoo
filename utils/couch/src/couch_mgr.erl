@@ -60,6 +60,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% set the host to connect to
+-spec(set_host/1 :: (HostName :: string()) -> ok | tuple(error, term())).
 set_host(HostName) ->
     gen_server:call(?MODULE, {set_host, HostName}).
 
@@ -239,6 +240,14 @@ handle_call({rm_change_handler, DocID}, {From, _Ref}, #state{change_handlers=CH}
 		  end,
 	    {reply, ok, State#state{change_handlers=CH1}}
     end;
+handle_call(Req, From, #state{connection={}}=State) ->
+    format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p)~n", [self(), net_adm:localhost()]),
+    case get_new_connection(net_adm:localhost()) of
+	{error, _Error}=E ->
+	    {reply, E, State};
+	{_Host, _Conn}=HC ->
+	    handle_call(Req, From, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]})
+    end;
 handle_call(_Request, _From, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
     {reply, {error, unhandled_call}, State}.
@@ -353,7 +362,7 @@ get_db(DbName, Conn, DBs) ->
 get_db(DbName, Conn, DBs, Options) ->
     case lists:keyfind(DbName, 1, DBs) of
 	false ->
-	    {ok, Db} = couchbeam:open_db(Conn, DbName, Options),
+	    {ok, Db} = couchbeam:open_or_create_db(Conn, DbName, Options),
 	    case couchbeam:db_info(Db) of
 		{ok, _JSON} ->
 		    {Db, [{DbName, Db} | DBs]};
