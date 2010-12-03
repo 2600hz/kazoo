@@ -211,16 +211,16 @@ get_request_options(Prop) ->
     ].
 
 -spec(start_channels/5 :: (Nodes :: list(), Amqp :: tuple(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> no_return()).
-start_channels(_Ns, _Amqp, _Route, 0, 0) -> ok;
-start_channels([], _Amqp, _Route, 0, _) -> ok;
-start_channels([], _Amqp, _Route, M, _) -> {error, failed_starting, M};
-start_channels([N | Ns]=Nodes, Amqp, Route, 0, Max) ->
+start_channels(_Ns, _Amqp, _Route, 0, 0) -> ok; %% started all channels requested
+start_channels([], _Amqp, _Route, 0, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
+start_channels([], _Amqp, _Route, M, _) -> {error, failed_starting, M}; %% failed to start the minimum channels before server resources ran out
+start_channels([N | Ns]=Nodes, Amqp, Route, 0, Max) -> %% these are bonus channels not required but desired
     case start_channel(N, Route, Amqp) of
 	{ok, 0} -> start_channels(Ns, Amqp, Route, 0, Max-1);
 	{ok, _Left} -> start_channels(Nodes, Amqp, Route, 0, Max-1);
 	{error, _} -> start_channels(Ns, Amqp, Route, 0, Max)
     end;
-start_channels([N | Ns]=Nodes, Amqp, Route, Min, Max) ->
+start_channels([N | Ns]=Nodes, Amqp, Route, Min, Max) -> %% start the minimum channels
     case start_channel(N, Route, Amqp) of
 	{ok, 0} -> start_channels(Ns, Amqp, Route, Min-1, Max);
 	{ok, _Left} -> start_channels(Nodes, Amqp, Route, Min-1, Max);
@@ -237,6 +237,7 @@ start_channel(N, Route, Amqp) ->
 	    {ok, AvailableChan};
 	{resource_error, E} ->
 	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
+	    send_failed_consume(Route, Amqp, E),
 	    {error, E}
     after
 	10000 -> {error, timeout}
@@ -265,7 +266,21 @@ send_failed_req(Prop, Host, Failed) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Attempts">>, Failed}
 		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
-    {ok, JSON} = whistle_api:resource_resp(RespProp),
+    {ok, JSON} = whistle_api:resource_error(RespProp),
+    format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
+    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+
+-spec(send_failed_consume/3 :: (Route :: binary(), Amqp :: tuple(Host :: string(), Prop :: proplist()), E :: binary()) -> no_return()).				    
+send_failed_consume(Route, {Host, Prop}, E) ->
+    Msg = get_value(<<"Msg-ID">>, Prop),
+    AppQ = get_value(<<"Server-ID">>, Prop),
+    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+
+    RespProp = [{<<"Msg-ID">>, Msg}
+		,{<<"Failed-Route">>, Route}
+		,{<<"Failure-Message">>, E}
+		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
+    {ok, JSON} = whistle_api:resource_error(RespProp),
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
