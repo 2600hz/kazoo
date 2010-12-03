@@ -14,8 +14,12 @@ echo "Compiling ecallmgr"
 cd ../../ecallmgr
 rebar clean compile
 
+echo "Compiling Apps container"
+cd ../applications
+rebar clean compile
+
 echo "Compiling applications"
-cd ../applications/apps/trunkstore
+cd apps/trunkstore
 rebar clean compile
 cd ../cdr
 rebar clean compile
