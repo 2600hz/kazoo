@@ -1,9 +1,0 @@
-{application,hangups,
-             [{description,[]},
-              {vsn,"1"},
-              {registered,[]},
-              {applications,[kernel,stdlib]},
-              {mod,{hangups_app,[]}},
-              {env,[]},
-              {modules,[hangups,hangups_app,hangups_deps,hangups_listener,
-                        hangups_sup]}]}.

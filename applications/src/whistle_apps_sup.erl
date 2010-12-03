@@ -4,7 +4,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_app/1]).
+-export([start_link/0, start_app/1, stop_app/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -22,16 +22,11 @@ start_link() ->
 -spec(start_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
 start_app(App) -> supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
 
+stop_app(App) -> supervisor:terminate_child(?MODULE, App).
+
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init([]) ->
-    Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
-    Startup = case file:consult(Config) of
-		  {ok, Ts} ->
-		      lists:map(fun(App) -> ?CHILD(App, supervisor) end, proplists:get_value(start, Ts, []));
-		  _ -> []
-	      end,
-    io:format("Starting up ~p~n", [Startup]),
-    {ok, { {one_for_one, 5, 10}, Startup} }.
+    {ok, { {one_for_one, 5, 10}, [?CHILD(whistle_controller, worker)]} }.

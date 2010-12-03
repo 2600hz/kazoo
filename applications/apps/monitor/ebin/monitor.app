@@ -1,0 +1,12 @@
+{application,monitor,
+             [{description,[]},
+              {vsn,"0.1"},
+              {registered,[]},
+              {applications,[kernel,stdlib,whistle_amqp]},
+              {mod,{monitor_app,[]}},
+              {env,[]},
+              {modules,[monitor,monitor_agent_call,monitor_agent_network,
+                        monitor_agent_sup,monitor_api,monitor_app,
+                        monitor_call_basic,monitor_deps,monitor_icmp,
+                        monitor_job,monitor_job_sup,monitor_master,
+                        monitor_sup,monitor_test,monitor_util]}]}.

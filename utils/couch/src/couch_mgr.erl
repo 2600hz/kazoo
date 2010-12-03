@@ -239,6 +239,14 @@ handle_call({rm_change_handler, DocID}, {From, _Ref}, #state{change_handlers=CH}
 		  end,
 	    {reply, ok, State#state{change_handlers=CH1}}
     end;
+handle_call(Req, From, #state{connection={}}=State) ->
+    format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p)~n", [self(), net_adm:localhost()]),
+    case get_new_connection(net_adm:localhost()) of
+	{error, _Error}=E ->
+	    {reply, E, State};
+	{_Host, _Conn}=HC ->
+	    handle_call(Req, From, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]})
+    end;
 handle_call(_Request, _From, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
     {reply, {error, unhandled_call}, State}.
