@@ -14,18 +14,8 @@ echo "Compiling ecallmgr"
 cd ../../ecallmgr
 rebar clean compile
 
-echo "Compiling Apps container"
+echo "Compiling Apps container and Apps"
 cd ../applications
-rebar clean compile
-
-echo "Compiling applications"
-cd apps/trunkstore
-rebar clean compile
-cd ../cdr
-rebar clean compile
-cd ../monitor
-rebar clean compile
-cd ../hangups
 rebar clean compile
 
 cd `readlink -f $0` # realpath
