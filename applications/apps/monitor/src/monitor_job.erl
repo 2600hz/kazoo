@@ -216,8 +216,8 @@ type_to_routing_key(Type) ->
 run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = Iteration}) ->
     {ok, Job_Q} = create_job_q(AHost),
     Started = start_tasks(Tasks, AHost, Job_Q, Job_ID, Iteration, []),
-    Def = monitor_api:default_headers(Job_Q, <<"logger">>, <<"job_completion">>),
-    Headers = lists:append([Def, [{<<"Success">>, <<"true">>}, {<<"Tasks-Reply">>, []}]]),
+    Default = monitor_api:default_headers(Job_Q, <<"logger">>, <<"job_completion">>),
+    Headers = lists:append([Default, [{<<"Success">>, <<"true">>}]]),
     Resp = wait_for_tasks(Started, Headers),
     %% Convert Resp to JSON
     %% Send JSON
@@ -245,7 +245,7 @@ wait_for_tasks(Tasks, Resp) ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
             StillPending = proplists:delete(get_value(<<"Task-Name">>, Msg), Tasks),
             TaskReply = [{struct, monitor_api:extract_nondefault(Msg)}],
-            TasksReply = lists:append([get_value(<<"Tasks-Reply">>, Resp), TaskReply]),
+            TasksReply = lists:append([get_value(<<"Tasks-Reply">>, Resp, []), TaskReply]),
             UpdatedResp = monitor_util:prop_update(<<"Tasks-Reply">>, TasksReply, Resp),
             case get_value(<<"Success">>, Msg) of
                 <<"true">> ->
@@ -259,9 +259,9 @@ wait_for_tasks(Tasks, Resp) ->
     end.
 
 create_req(Task, Job_Q, Name, Job_ID, Iteration) ->
-    Defaults = monitor_api:default_headers(Job_Q, <<"task">>, monitor_util:to_binary(Task#task.type)),
+    Default = monitor_api:default_headers(Job_Q, <<"task">>, monitor_util:to_binary(Task#task.type)),
     Details = monitor_api:optional_default_headers(Job_ID, Name, Iteration),
-    Headers = monitor_api:prepare_amqp_prop([Details, Defaults, Task#task.options]),
+    Headers = monitor_api:prepare_amqp_prop([Details, Default, Task#task.options]),
     apply(monitor_api, list_to_atom(Task#task.type), [Headers]).
 
 send_req(AHost, JSON, RoutingKey) ->
