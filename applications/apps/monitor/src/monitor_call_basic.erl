@@ -2,7 +2,7 @@
 %%% @author Karl Anderson <karl@2600hz.com>
 %%% @copyright (C) 2010, Karl Anderson
 %%% @doc
-%%% Responsible for runnning the call server monitoring tasks
+%%% Responsible for runnning the basic call task
 %%% @end
 %%% Created : 2 Dec 2010 by Karl Anderson <karl@2600hz.com>
 %%%-------------------------------------------------------------------
@@ -63,7 +63,7 @@ test_tones(AHost, CQ, Call_ID, Server_ID) ->
     arm_tone_detector(AHost, CQ, Call_ID, Server_ID),
     generate_tone(AHost, CQ, Call_ID, Server_ID),    
     Start = wait_for_call_event_exec(<<"play">>, 10000),
-    End = wait_for_call_event_complete(<<"park">>, 10000),
+    End = wait_for_call_event_exec(<<"park">>, 10000),
     case {Start, End} of
         {{ok, StartMsg}, {ok, EndMsg}} ->
             Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, EndMsg)) 
@@ -147,9 +147,7 @@ wait_for_msg_type(Category, Name, Timeout) ->
                     {error, resources_unavaliable};
                 _ ->
                     wait_for_msg_type(Category, Name, Timeout)
-            end;
-        _ ->
-            wait_for_msg_type(Category, Name, Timeout)
+            end
     after
         Timeout ->
             format_log(info, "MONITOR_CALL_BASIC(~p): Timed out waiting for orignate response~n", [self()]),
@@ -159,8 +157,8 @@ wait_for_msg_type(Category, Name, Timeout) ->
 wait_for_call_event_exec(Application, Timeout) ->
     wait_for_call_event(<<"CHANNEL_EXECUTE">>, Application, Timeout).
 
-wait_for_call_event_complete(Application, Timeout) ->
-    wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Timeout).
+%wait_for_call_event_complete(Application, Timeout) ->
+%    wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Timeout).
 
 wait_for_call_event(Name, Application, Timeout) ->
     receive
@@ -175,9 +173,7 @@ wait_for_call_event(Name, Application, Timeout) ->
                     {error, channel_hungup};
                 _ ->
                     wait_for_call_event(Name, Application, Timeout)
-            end;
-        _ ->
-            wait_for_call_event(Name, Application, Timeout)
+            end
     after
         Timeout ->
             format_log(info, "MONITOR_CALL_BASIC(~p): Timeout while waiting for call event ~p~n", [self(), Application]),

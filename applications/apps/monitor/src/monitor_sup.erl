@@ -16,12 +16,14 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("../include/monitor_amqp.hrl").
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [?AMQP_HOST]).
 start_link(AHost) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, [AHost]).
 
