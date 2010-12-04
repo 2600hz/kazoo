@@ -100,8 +100,10 @@ load() ->
         format_log(info, "MONITOR_MASTER(~p): No monitoring required~n", [self()]),
         false;  
     [{ViewProp} | _Rest] ->
-        {Value} = get_value(<<"value">>, ViewProp, []),
-        load_jobs(get_value(<<"tasks">>, Value, []), get_value(<<"job_id">>, Value, "")),
+        Job_ID = get_value(<<"key">>, ViewProp, []),
+        Tasks = get_value(<<"value">>, ViewProp, []),
+        start_job(Job_ID, []),
+        load_jobs(Tasks, Job_ID),
         true;
     _Else ->
         format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
@@ -152,22 +154,23 @@ init([AHost]) ->
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ}=State) ->
     format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
-    %%amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
-    %%amqp_manager:close_channel(self(), CurrentAHost),
-    %%{ok, Monitor_Q} = start_amqp(AHost),
     update_sup_children(AHost, supervisor:which_children(monitor_job_sup)),
     update_sup_children(AHost, supervisor:which_children(monitor_agent_sup)),
-    %%{reply, ok, State#state{amqp_host=AHost, monitor_q=Monitor_Q}};
     {reply, ok, State#state{amqp_host=AHost}};
 
 handle_call({start_job, Job_ID, Tasks}, _From, #state{amqp_host = AHost, jobs = Jobs} = State) ->
+    case get_value(Job_ID, Jobs) of
+        #job{processID = Pid} ->
+            {reply, {ok, Pid}, State};
+        undefined ->
     case monitor_job_sup:start_job(Job_ID, Tasks, AHost) of
         {ok, Pid} -> 
             %%Job = #job{processID = Pid, monitorRef = monitor(process, Pid)},
             Job = #job{processID = Pid},
-            {reply, ok, State#state{jobs = [{Job_ID, Job}|Jobs]}};
+            {reply, {ok, Pid}, State#state{jobs = [{Job_ID, Job}|Jobs]}};
         {error, E} ->
             {reply, {error, E}, State}
+    end
     end;
 
 handle_call({rm_job, Job_ID}, _From, #state{jobs = Jobs} = State) ->
