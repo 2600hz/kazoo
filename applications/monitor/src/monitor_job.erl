@@ -254,17 +254,13 @@ create_req(Task, Job_Q, Name, Job_ID) ->
     Defaults = monitor_api:default_headers(Job_Q, <<"task">>, monitor_util:to_binary(Task#task.type)),
     Details = monitor_api:optional_default_headers(Job_ID, Name, Task#task.iteration),
     Headers = monitor_api:prepare_amqp_prop([Details, Defaults, Task#task.options]),
-    format_log(info, "MONITOR_JOB(~p): Created task headers:~nPayload: ~p~n", [self(), Headers]),
-    case erlang:function_exported(monitor_api, list_to_atom(Task#task.type), 1) of
-        true -> apply(monitor_api, list_to_atom(Task#task.type), [Headers]);
-        _ -> {error, invalid_api}
-    end.
+    apply(monitor_api, list_to_atom(Task#task.type), [Headers]).
 
 send_req(AHost, JSON, RoutingKey) ->
-    format_log(info, "MONITOR_JOB(~p): Sending request to ~p~n", [self(), RoutingKey]),
+    format_log(info, "MONITOR_JOB(~p): Sending request to monitor queue on ~p with key ~p~n", [self(), AHost, RoutingKey]),
     amqp_util:monitor_publish(AHost, JSON, <<"application/json">>, RoutingKey).
 
-handle_resp(ContentType, Payload, State) ->
+handle_resp(ContentType, Payload, _State) ->
     case ContentType of
     <<"application/json">> ->
         {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),

@@ -187,19 +187,24 @@ start_amqp(AHost) ->
 
     {ok, Agent_Q}.
 
-process_req({<<"task">>, <<"basic_call_req">>}, Msg, #state{amqp_host = AHost}=State) ->
+process_req({<<"task">>, <<"basic_call_req">>}, Msg, #state{amqp_host = AHost, agent_q = Agent_Q}=State) ->
     case monitor_api:basic_call_req_v(Msg) of
         true ->
             Route = get_value(<<"Destination">>, Msg),
-            monitor_call_basic:start(AHost, Msg, Route);
+            {_Status, Resp} = monitor_call_basic:start(AHost, Msg, Route),
+            RespQ = get_value(<<"Server-ID">>, Msg),
+            Defaults = monitor_util:prop_updates([{<<"Server-ID">>, Agent_Q}, {<<"Event-Name">>, <<"basic_call_resp">>}], Msg),
+            Headers = monitor_api:prepare_amqp_prop([Resp, Defaults]),
+            {ok, JSON} = monitor_api:basic_call_resp(Headers),
+            send_resp(JSON, RespQ, AHost);
         _ ->
             format_log(error, "MONITOR_AGENT_CALL(~p): Failed to validate basic_call_req~n", [self()])
     end,
     State;
 
 process_req(_MsgType, _Msg, _State) ->
-    format_log(info, "MONITOR_AGENT_CALL(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Msg]).
+    format_log(error, "MONITOR_AGENT_CALL(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Msg]).
 
 send_resp(JSON, RespQ, AHost) ->
-    format_log(info, "MONITOR_AGENT_CALL(~p): Sending reply to ~p~n", [self(), RespQ]),
+    format_log(info, "MONITOR_AGENT_CALL(~p): Sending response to ~p at ~p~n", [self(), RespQ, AHost]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
