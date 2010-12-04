@@ -8,7 +8,7 @@
 -module(monitor).
 
 -author('Karl Anderson <karl@2600hz.com>').
--export([start/0, start_link/0, start_link/1, stop/0, start_amqp_host/1]).
+-export([start/0, start_link/0, start_link/1, stop/0, set_amqp_host/1]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the monitor for inclusion in a supervisor tree
@@ -48,5 +48,5 @@ ensure_started(App) ->
             ok
     end.
 
-start_amqp_host(_) ->
+set_amqp_host(_) ->
     ok.
