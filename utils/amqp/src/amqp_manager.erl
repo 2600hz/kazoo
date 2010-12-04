@@ -53,11 +53,13 @@ open_channel(Pid) ->
     format_log(error, "AMQP_MGR: open_channel/1 is deprecated. Please use open_channel/2 (Pid, Host)~n", []),
     gen_server:call(?SERVER, {open_channel, Pid, ?DEFAULT_AMQP_HOST}, infinity).
 
--spec(open_channel/2 :: ( Pid :: pid(), Host :: string() ) -> {ok, pid(), integer()}).
+-spec(open_channel/2 :: ( Pid :: pid(), Host :: string() ) -> tuple(ok, pid(), integer()) | tuple(error, no_amqp_host)).
+open_channel(_Pid, "") -> {error, no_amqp_host};
 open_channel(Pid, Host) ->
     gen_server:call(?SERVER, {open_channel, Pid, Host}, infinity).
 
--spec(close_channel/2 :: (Pid :: pid(), Host :: string() ) -> ok).
+-spec(close_channel/2 :: (Pid :: pid(), Host :: string() ) -> ok | tuple(error, no_amqp_host)).
+close_channel(_Pid, "") -> {error, no_amqp_host};
 close_channel(Pid, Host) ->
     gen_server:cast(?SERVER, {close_channel, Pid, Host}).
 

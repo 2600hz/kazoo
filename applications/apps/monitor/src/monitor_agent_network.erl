@@ -121,7 +121,13 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 
 %% Spawn tasks to process the incomming requests
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
+    case amqp_util:is_json(Props) of
+        true ->
+            {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
+            spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
+        _ ->
+            format_log(info, "MONITOR_AGENT_NETWORK(~p): Recieved non JSON AMQP msg content type~n", [self()])
+    end,
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -181,44 +187,27 @@ start_amqp(AHost) ->
 
     {ok, Agent_Q}.
 
-get_msg_type(Prop) ->
-    { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
-
 get_msg_destination(Prop) ->
      Dest = get_value(<<"Destination">>, Prop, <<"localhost">>),
      binary_to_list(Dest).
 
-handle_req(ContentType, Payload, State) ->
-    case ContentType of
-    <<"application/json">> ->
-        {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-        format_log(info, "MONITOR_AGENT_NETWORK(~p): Recv CT: ~p~nPayload: ~p~n", [self(), ContentType, Prop]),
-        process_req(get_msg_type(Prop), Prop, State);
-    _ ->
-        format_log(info, "MONITOR_AGENT_NETWORK(~p): recieved unknown msg type: ~p~n", [self(), ContentType])
-    end.
-
-process_req({<<"task">>, <<"ping_net_req">>}, Prop, State) ->
+process_req({<<"task">>, <<"ping_net_req">>}, Prop, #state{amqp_host = AHost, agent_q = Agent_Q} = State) ->
     case monitor_api:ping_net_req_v(Prop) of
-    true ->
-        Resp = monitor_icmp:ping_test(get_msg_destination(Prop)),
-        create_send_ping_resp(Resp, Prop, State);
-    _ ->
-        format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_net_req~n", [self()])
+        true ->
+            Resp = monitor_icmp:ping_test(get_msg_destination(Prop)),
+            RespQ = get_value(<<"Server-ID">>, Prop),
+            Defaults = monitor_util:prop_updates([{<<"Server-ID">>, Agent_Q}, {<<"Event-Name">>, <<"ping_net_resp">>}], Prop),
+            Headers = monitor_api:prepare_amqp_prop([Resp, Defaults]),
+            {ok, JSON} = monitor_api:ping_net_resp(Headers),
+            send_resp(JSON, RespQ, AHost);
+        _ ->
+            format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_net_req~n", [self()])
     end,
     State;
 
 process_req(_MsgType, _Prop, _State) ->
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
-
-create_send_ping_resp(Resp, Prop, #state{amqp_host=AHost, agent_q=Agent_Q})->
-    RespQ = get_value(<<"Server-ID">>, Prop),
-    Defaults = monitor_util:prop_updates([{<<"Server-ID">>, Agent_Q}, {<<"Event-Name">>, <<"ping_net_resp">>}], Prop),
-    Headers = monitor_api:prepare_amqp_prop([Resp, Defaults]),
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Created reply headers:~nPayload: ~p~n", [self(), Headers]),
-    {ok, JSON} = monitor_api:ping_net_resp(Headers),
-    send_resp(JSON, RespQ, AHost).
+    format_log(error, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
 
 send_resp(JSON, RespQ, AHost) ->
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Sending reply to ~p~n", [self(), RespQ]),
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Sending response to ~p at ~p~n", [self(), RespQ, AHost]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
