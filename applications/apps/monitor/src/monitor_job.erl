@@ -28,7 +28,6 @@
 -record(state, {
          amqp_host = "" :: string()
         ,job_id = "" :: string()
-        ,job_q = <<>> :: binary()
         ,tref
         ,tasks = []
         ,iteration = 0
@@ -71,9 +70,8 @@ start_link(Job_ID, Tasks, AHost) ->
 %%--------------------------------------------------------------------
 init([Job_ID, Tasks, AHost]) ->
     format_log(info, "MONITOR_JOB(~p): Starting new job with id ~p and amqp host ~p~n", [self(), Job_ID, AHost]),
-    {ok, Job_Q} = start_amqp(AHost, Job_ID),
     {ok, TRef} = timer:send_interval(?DEFAULT_INTERVAL, {heartbeat}),
-    {ok, #state{amqp_host=AHost, job_id=Job_ID, job_q=Job_Q, tref=TRef, tasks=Tasks}}.
+    {ok, #state{amqp_host=AHost, job_id=Job_ID, tref=TRef, tasks=Tasks}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,12 +87,9 @@ init([Job_ID, Tasks, AHost]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, job_q=CurrentMonitorQ, job_id=Job_ID}=State) ->
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost}=State) ->
     format_log(info, "MONITOR_JOB(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
-    amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
-    amqp_manager:close_channel(self(), CurrentAHost),
-    {ok, Job_Q} = start_amqp(AHost, Job_ID),
-    {reply, amqp_host_updated, State#state{amqp_host=AHost, job_q=Job_Q}};
+    {reply, amqp_host_updated, State#state{amqp_host=AHost}};
 
 handle_call({set_interval, Interval}, _From, #state{tref=CurrentTRef, job_id=Job_ID}=State) ->
     timer:cancel(CurrentTRef),
@@ -160,15 +155,10 @@ handle_info({'EXIT', _Pid, _Reason}, State) ->
     format_log(error, "MONITOR_JOB(~p): Received EXIT(~p) from ~p...~n", [self(), _Reason, _Pid]),
     {stop, normal, State};
 
-%% Spawn tasks to process the incomming responses
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    spawn(fun() -> handle_resp(Props#'P_basic'.content_type, Payload, State) end),
-    {noreply, State};
-
-handle_info({heartbeat}, #state{job_id=Job_ID}=State) ->
+handle_info({heartbeat}, #state{job_id = Job_ID, iteration = Iteration}=State) ->
     format_log(info, "MONITOR_JOB(~p): Job ~p woke up by timer~n", [self(), Job_ID]), 
     spawn_link(fun() -> run_job(State) end),
-    {noreply, State#state{iteration = State#state.iteration+1}};
+    {noreply, State#state{iteration = Iteration + 1}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -184,11 +174,6 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_host=AHost, job_q=Job_Q}) ->
-    amqp_util:queue_delete(AHost, Job_Q),
-    format_log(info, "MONITOR_JOB(~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
-    ok;
-
 terminate(_Reason, _State) ->
     format_log(info, "MONITOR_JOB(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
@@ -207,37 +192,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_amqp(AHost, Job_ID) ->
-    Job_Key = monitor_util:to_binary("monitor.job." ++ Job_ID),
-
-    amqp_util:monitor_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
-
-    Job_Q = amqp_util:new_monitor_queue(AHost),
-
-    %% Bind the queue to the targeted exchange
-    format_log(info, "MONITOR_JOB(~p): Bind ~p as a targeted queue~n", [self(), Job_Q]),
-    amqp_util:bind_q_to_targeted(AHost, Job_Q),
-
-    %% Bind the queue to an exchange
-    format_log(info, "MONITOR_JOB(~p): Bind ~p for ~p~n", [self(), Job_Q, Job_Key]),
-    amqp_util:bind_q_to_monitor(AHost, Job_Q, Job_Key),
-
-    %% Register a consumer to listen to the queue
-    format_log(info, "MONITOR_JOB(~p): Consume on ~p~n", [self(), Job_Q]),
-    amqp_util:basic_consume(AHost, Job_Q),
-
-    {ok, Job_Q}.
-
-create_task_q(AHost) ->
+create_job_q(AHost) ->
     Q = amqp_util:new_monitor_queue(AHost),
 
     %% Bind the queue to the targeted exchange
-    format_log(info, "MONITOR_CALL_BASIC(~p): Bind ~p as a targeted queue for task~n", [self(), Q]),
+    format_log(info, "MONITOR_JOB(~p): Bind ~p as a targeted queue for job~n", [self(), Q]),
     amqp_util:bind_q_to_targeted(AHost, Q),
 
     %% Register a consumer to listen to the queue
-    format_log(info, "MONITOR_CALL_BASIC(~p): Consume on ~p for task~n", [self(), Q]),
+    format_log(info, "MONITOR_JOB~p): Consume on ~p for job~n", [self(), Q]),
     amqp_util:basic_consume(AHost, Q),
 
     {ok, Q}.
@@ -251,7 +214,7 @@ type_to_routing_key(Type) ->
     end.
 
 run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = Iteration}) ->
-    {ok, Job_Q} = create_task_q(AHost),
+    {ok, Job_Q} = create_job_q(AHost),
     Started = start_tasks(Tasks, AHost, Job_Q, Job_ID, Iteration, []),
     Def = monitor_api:default_headers(Job_Q, <<"logger">>, <<"job_completion">>),
     Headers = lists:append([Def, [{<<"Success">>, <<"true">>}, {<<"Tasks-Reply">>, []}]]),
@@ -304,13 +267,3 @@ create_req(Task, Job_Q, Name, Job_ID, Iteration) ->
 send_req(AHost, JSON, RoutingKey) ->
     format_log(info, "MONITOR_JOB(~p): Sending request to monitor queue on ~p with key ~p~n", [self(), AHost, RoutingKey]),
     amqp_util:monitor_publish(AHost, JSON, <<"application/json">>, RoutingKey).
-
-handle_resp(ContentType, Payload, _State) ->
-    case ContentType of
-        <<"application/json">> ->
-            {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-            format_log(info, "MONITOR_JOB(~p): Recv CT: ~p~nPayload: ~p~n", [self(), ContentType, Prop]);
-            %% process_req(get_msg_type(Prop), Prop, State);
-        _ ->
-            format_log(info, "MONITOR_JOB(~p): recieved unknown msg type: ~p~n", [self(), ContentType])
-    end.
