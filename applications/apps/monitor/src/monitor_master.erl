@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, load/0]).
 -export([set_amqp_host/1]).
 -export([start_job/1, start_job/2, rm_job/1, list_jobs/0]).
 -export([set_interval/2, pause/1, resume/1]).
@@ -27,6 +27,7 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 -include("../include/monitor_amqp.hrl").
+-include("../include/monitor_couch.hrl").
 
 -record(state, {
          amqp_host = "" :: string()
@@ -85,6 +86,36 @@ rm_task(Job_ID, Name) ->
 
 list_tasks(Job_ID) ->
     gen_server:call(?SERVER, {list_tasks, Job_ID}, infinity).
+
+load() ->
+    couch_mgr:set_host("whistle-erl001-fmt.2600hz.org"),
+    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_MONITOR, []) of
+    false ->
+        format_log(error, "MONITOR_MASTER(~p): Missing view ~p~n", [self(), ?TS_VIEW_MONITOR]),
+        false;
+    {error, not_found} ->
+        format_log(info, "MONITOR_MASTER(~p): Something was not found~n", [self()]),
+        false;
+    [] ->
+        format_log(info, "MONITOR_MASTER(~p): No monitoring required~n", [self()]),
+        false;  
+    [{ViewProp} | _Rest] ->
+        {Value} = get_value(<<"value">>, ViewProp, []),
+        load_jobs(get_value(<<"tasks">>, Value, []), get_value(<<"job_id">>, Value, "")),
+        true;
+    _Else ->
+        format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
+        false
+    end.
+
+load_jobs([], _Job_ID) ->
+    ok;
+load_jobs([{H}|T], Job_ID) ->
+    Task_ID = whistle_util:to_list(get_value(<<"task_id">>, H, <<"unknown">>)),
+    Type = whistle_util:to_list(get_value(<<"type">>, H, <<"unknown">>)),
+    {Options} = get_value(<<"options">>, H, <<"unknown">>),
+    gen_server:call(?SERVER, {add_task, Job_ID, Task_ID, Type, Options}, infinity),
+    load_jobs(T, Job_ID).
 
 
 %%%===================================================================
