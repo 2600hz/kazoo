@@ -192,9 +192,9 @@
 -define(RESOURCE_RESP_TYPES, []).
 
 %% Resource Error - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Error_Response
--define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>, <<"Failed-Attempts">>]).
--define(OPTIONAL_RESOURCE_ERROR_HEADERS, []).
--define(RESOURCE_ERROR_VALUES, [{<<"Event-Name">>, <<"resource_error">>}]).
+-define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>]).
+-define(RESOURCE_ERROR_VALUES, [{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}]).
 -define(RESOURCE_ERROR_TYPES, []).
 
 %% Call Events - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Receiving_Call_Events

@@ -126,8 +126,9 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 	    CtlQ = start_call_handling(Node, Host, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
-	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, Y]),
-	    Pid ! {resource_error, Y};
+	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
+	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, ErrMsg]),
+	    Pid ! {resource_error, ErrMsg};
 	timeout ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
 	    Pid ! {resource_error, timeout}
