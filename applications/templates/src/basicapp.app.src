@@ -1,4 +1,4 @@
-{application, basicapp,
+{application, {{appid}},
  [
   {description, "Your App Description"},
   {vsn, "0.1.0"},
@@ -7,6 +7,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { basicapp_app, []}},
+  {mod, { {{appid}}_app, []}},
   {env, []}
  ]}.

@@ -1,5 +1,5 @@
 
--module(basicapp_sup).
+-module({{appid}}_sup).
 
 -behaviour(supervisor).
 
@@ -25,6 +25,6 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
-				  %% Put list of ?CHILD(basicapp_server, worker) or ?CHILD(basicapp_other_sup, supervisor)
+				  %% Put list of ?CHILD({{appid}}_server, worker) or ?CHILD({{appid}}_other_sup, supervisor)
 				 ]} }.
 

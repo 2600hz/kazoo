@@ -1,4 +1,4 @@
--module(basicapp_app).
+-module({{appid}}_app).
 
 -behaviour(application).
 
@@ -11,7 +11,7 @@
 
 -spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
 start(_StartType, _StartArgs) ->
-    case basicapp:start_link() of
+    case {{appid}}:start_link() of
 	{ok, P} -> {ok, P};
 	{error,{already_started, P}} -> {ok, P};
 	{error, _}=E -> E
