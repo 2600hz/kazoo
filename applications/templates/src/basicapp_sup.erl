@@ -1,4 +1,9 @@
-
+%%% @author {{author}} <{{email}}>
+%%% @copyright (C) {{created}} {{author}}
+%%% @doc
+%%% 
+%%% @end
+%%% Created :  {{created}}: {{author}} <{{email}}>
 -module({{appid}}_sup).
 
 -behaviour(supervisor).

@@ -1,8 +1,11 @@
-{variables, [{appid, "basicapp"}]}.
-{template, "basicapp.app.src", "src/{{appid}}.app.src"}.
-{template, "basicapp_app.erl", "src/{{appid}}_app.erl"}.
-{template, "basicapp_sup.erl", "src/{{appid}}_sup.erl"}.
-{template, "basicapp.erl", "src/{{appid}}.erl"}.
+{variables, [
+	     {appid, "basicapp"}
+	     ,{author, "James Aimonetti"}
+	     ,{email, "james@2600hz.org"}
+	     ,{created, httpd_util:rfc1123_date()}
+	    ]}.
+{template, "src/basicapp.app.src", "src/{{appid}}.app.src"}.
+{template, "src/basicapp_app.erl", "src/{{appid}}_app.erl"}.
+{template, "src/basicapp_sup.erl", "src/{{appid}}_sup.erl"}.
+{template, "src/basicapp.erl", "src/{{appid}}.erl"}.
 {template, "rebar.config", "rebar.config"}.
-{template, "amqp_client", "includes/amqp_client"}.
-{template, "rabbit_common", "includes/rabbit_common"}.

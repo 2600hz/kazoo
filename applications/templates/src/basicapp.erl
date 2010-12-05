@@ -1,13 +1,13 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010 James Aimonetti
+%%% @author {{author}} <{{email}}>
+%%% @copyright (C) {{created}} {{author}}
 %%% @doc
 %%% 
 %%% @end
-%%% Created :  4 Dec 2010 at 16:12: James Aimonetti <james@2600hz.org>
+%%% Created :  {{created}}: {{author}} <{{email}}>
 
 -module({{appid}}).
 
--author('James Aimonetti <james@2600hz.org>').
+-author('{{author}} <{{email}}>').
 -export([start/0, start_link/0, stop/0, set_amqp_host/1, set_couch_host/1]).
 
 %% @spec start_link() -> {ok,Pid::pid()}

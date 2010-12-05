@@ -1,3 +1,9 @@
+%%% @author {{author}} <{{email}}>
+%%% @copyright (C) {{created}} {{author}}
+%%% @doc
+%%% 
+%%% @end
+%%% Created :  {{created}}: {{author}} <{{email}}>
 -module({{appid}}_app).
 
 -behaviour(application).
@@ -13,7 +19,7 @@
 start(_StartType, _StartArgs) ->
     case {{appid}}:start_link() of
 	{ok, P} -> {ok, P};
-	{error,{already_started, P}} -> {ok, P};
+	{error, {already_started, P} } -> {ok, P};
 	{error, _}=E -> E
     end.
 
