@@ -1,0 +1,12 @@
+{application, restful,
+ [
+  {description, "Your App Description"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { restful_app, []} },
+  {env, []}
+ ]}.
