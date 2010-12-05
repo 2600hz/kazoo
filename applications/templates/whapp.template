@@ -3,7 +3,7 @@
 	     ,{author, "James Aimonetti"}
 	     ,{email, "james@2600hz.org"}
 	     ,{created, httpd_util:rfc1123_date()}
-	     ,{year, (fun() -> {{Y, _, _},_} = calendar:universal_time(), Y end)()}
+	     ,{year, (fun() -> {Date, _} = calendar:universal_time(), {Y,_,_} = Date, integer_to_list(Y) end)()}
 	    ]}.
 {template, "src/basicapp.app.src", "src/{{appid}}.app.src"}.
 {template, "src/basicapp_app.erl", "src/{{appid}}_app.erl"}.

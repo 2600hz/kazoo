@@ -242,7 +242,7 @@ consult(Cont, Str, Acc) ->
 consult_exprs(Str) when is_list(Str) ->
     consult_exprs([], Str, []);
 consult_exprs(Bin) when is_binary(Bin)->
-    consult_exprs([], binary_to_list(Bin), []).
+    consult_exprs(binary_to_list(Bin)).
 
 consult_exprs(Cont, Str, Acc) ->
     case erl_scan:tokens(Cont, Str, 0) of
