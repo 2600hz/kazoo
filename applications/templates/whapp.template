@@ -4,3 +4,5 @@
 {template, "basicapp_sup.erl", "src/{{appid}}_sup.erl"}.
 {template, "basicapp.erl", "src/{{appid}}.erl"}.
 {template, "rebar.config", "rebar.config"}.
+{template, "amqp_client", "includes/amqp_client"}.
+{template, "rabbit_common", "includes/rabbit_common"}.
