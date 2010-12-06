@@ -36,10 +36,12 @@ init([]) ->
 init([AHost]) ->
     MonitorMaster = {monitor_master, {monitor_master, start_link, [AHost]},
                     permanent, 2000, worker, [monitor_master]},
+    MonitorImport = {monitor_import, {monitor_import, start_link, []},
+                    permanent, 2000, worker, [monitor_import]},
     AgentSup = {monitor_agent_sup, {monitor_agent_sup, start_link, [AHost]},
                     permanent, 2000, supervisor, [monitor_agent_sup]},
     JobSup = {monitor_job_sup, {monitor_job_sup, start_link, []},
                     permanent, 2000, supervisor, [monitor_job_sup]},
-    Children = [MonitorMaster, AgentSup, JobSup],
+    Children = [MonitorMaster, MonitorImport, AgentSup, JobSup],
     RestartStrategy = {one_for_one, 5, 10},
     {ok, {RestartStrategy, Children}}.

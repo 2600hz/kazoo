@@ -18,7 +18,7 @@
      terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_INTERVAL, 10000).
+-define(DEFAULT_INTERVAL, 60000).
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
