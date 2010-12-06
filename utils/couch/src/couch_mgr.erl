@@ -15,7 +15,7 @@
 
 %% Document manipulation
 -export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3]).
--export([add_change_handler/2, rm_change_handler/1]).
+-export([add_change_handler/2, rm_change_handler/2]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -104,8 +104,8 @@ get_results(DbName, DesignDoc, ViewOptions) ->
 add_change_handler(DBName, DocID) ->
     gen_server:call(?MODULE, {add_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).
 
-rm_change_handler(DocID) ->
-    gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_binary(DocID)}).
+rm_change_handler(DBName, DocID) ->
+    gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -199,45 +199,20 @@ handle_call({set_host, Host}, _From, State) ->
 	{_Host, _Conn}=HC ->
 	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
     end;
-handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{connection={_H, Conn}, dbs=DBs, change_handlers=CH}=State) ->
-    case lists:keyfind(DocID, 1, CH) of
-	false ->
-	    case get_db(DBName, Conn, DBs) of
-		{{error, _Err}=E, _DBs} ->
-		    {reply, E, State};
-		{Db, _DBs1} ->
-		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"}
-								      ,{filter, <<"filter/by_doc">>}
-								      ,{name, DocID}
-								      %% don't include these last two params if you want a stream
-								      %% of changes for the whole DB
-								     ]),
-		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
-		    link(Pid),
-		    {reply, ok, State#state{change_handlers=[{DocID, ReqID, [Pid]} | CH]}}
-	    end;
-	{DocID, ReqID, Pids} ->
-	    case lists:member(Pid, Pids) of
-		false ->
-		    {reply, ok, State#state{change_handlers=[{DocID, ReqID, [Pid | Pids]} | lists:keydelete(DocID, 1, CH)]}};
-		true ->
-		    format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
-		    {reply, {error, handler_exists}, State}
-	    end
+handle_call({add_change_handler, DBName, <<>>}, {Pid, _Ref}, State) ->
+    case start_change_handler(DBName, <<>>, Pid, State) of
+	{ok, _R, State1} -> {reply, ok, State1};
+	{error, E, State2} -> {reply, {error, E}, State2}
     end;
-handle_call({rm_change_handler, DocID}, {From, _Ref}, #state{change_handlers=CH}=State) ->
-    case lists:keyfind(DocID, 1, CH) of
-	false ->
-	    {reply, ok, State};
-	{DocID, ReqID, Pids} when is_list(Pids) ->
-	    CH1 = case lists:delete(From, Pids) of
-		      [] ->
-			  %% unreg from couchbeam
-			  lists:keydelete(DocID, 1, CH);
-		      Pids1 ->
-			  [ {DocID, ReqID, Pids1} | lists:keydelete(DocID, 1, CH)]
-		  end,
-	    {reply, ok, State#state{change_handlers=CH1}}
+handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
+    case start_change_handler(DBName, DocID, Pid, State) of
+	{ok, _R, State1} -> {reply, ok, State1};
+	{error, E, State2} -> {reply, {error, E}, State2}
+    end;
+handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, State) ->
+    case stop_change_handler(DBName, DocID, From, State) of
+	{ok, State1} -> {reply, ok, State1};
+	{error, E, State2} -> {reply, {error, E}, State2}
     end;
 handle_call(Req, From, #state{connection={}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p)~n", [self(), net_adm:localhost()]),
@@ -277,14 +252,14 @@ handle_cast(_Msg, State) ->
 handle_info({_ReqID, done}, State) ->
     format_log(info, "WHISTLE_COUCH.wait(~p): DONE~n", [self()]),
     {noreply, State};
-handle_info({_ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
+handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-    format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(DocID, 1, CH)]),
-    case lists:keyfind(DocID, 1, CH) of
+    format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
+    case lists:keyfind(ReqID, 2, CH) of
 	false ->
 	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
-	{DocID, _ReqID1, Pids} ->
+	{{_, DocID}, _, Pids} ->
 	    SendToPid = case get_value(<<"deleted">>, Change) of
 			    true ->
 				format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
@@ -338,6 +313,51 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(stop_change_handler/4 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}) -> tuple(ok, #state{}) | tuple(error, term(), #state{})).
+stop_change_handler(DBName, DocID, Pid, #state{change_handlers=CH}=State) ->
+    case lists:keyfind({DBName, DocID}, 1, CH) of
+	false -> {error, doc_unmonitored, State};
+	{{DBName, DocID}, ReqID, Pids} when is_list(Pids) ->
+	    CH1 = case lists:delete(Pid, Pids) of
+		      [] ->
+			  %% unreg from couchbeam
+			  unlink(Pid),
+			  lists:keydelete({DBName, DocID}, 1, CH);
+		      Pids1 ->
+			  [ {{DBName, DocID}, ReqID, Pids1} | lists:keydelete({DBName, DocID}, 1, CH)]
+		  end,
+	    {ok, State#state{change_handlers=CH1}}
+    end.
+
+-spec(start_change_handler/4 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}) -> tuple(ok, term(), #state{}) | tuple(error, term(), #state{})).
+start_change_handler(DBName, <<>>, Pid, State) ->
+    start_change_handler(DBName, <<>>, Pid, State, []);
+start_change_handler(DBName, DocID, Pid, State) ->
+    start_change_handler(DBName, DocID, Pid, State, [{filter, <<"filter/by_doc">>}, {name, DocID}]).
+
+-spec(start_change_handler/5 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}, Opts :: proplist()) -> tuple(ok, term(), #state{}) | tuple(error, term(), #state{})).
+start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, dbs=DBs, change_handlers=CH}=State, Opts) ->
+    case lists:keyfind({DBName, DocID}, 1, CH) of
+	false ->
+	    case get_db(DBName, Conn, DBs) of
+		{{error, Err}, _DBs} ->
+		    {error, Err, State};
+		{Db, _DBs1} ->
+		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"} | Opts]),
+		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
+		    link(Pid),
+		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid]} | CH]}}
+	    end;
+	{{DBName, DocID}, ReqID, Pids} ->
+	    case lists:member(Pid, Pids) of
+		false ->
+		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid | Pids]} | lists:keydelete({DBName, DocID}, 1, CH)]}};
+		true ->
+		    format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+		    {error, handler_exists, State}
+	    end
+    end.
+
 -spec(get_new_connection/1 :: (Host :: string()) -> {string(), tuple()} | {error, term()}).
 get_new_connection(Host) ->
     Conn = couchbeam:server_connection(Host, 5984, "", []),
