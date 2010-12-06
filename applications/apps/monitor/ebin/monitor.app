@@ -8,5 +8,5 @@
               {modules,[monitor,monitor_agent_call,monitor_agent_network,
                         monitor_agent_sup,monitor_api,monitor_app,
                         monitor_call_basic,monitor_deps,monitor_icmp,
-                        monitor_job,monitor_job_sup,monitor_master,
-                        monitor_sup,monitor_util]}]}.
+                        monitor_import,monitor_job,monitor_job_sup,
+                        monitor_master,monitor_sup,monitor_util]}]}.
