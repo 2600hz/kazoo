@@ -99,6 +99,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({add_post_handler, CallID, Pid}, _From, #state{post_handlers=Posts}=State) ->
     format_log(info, "TS_RESPONDER(~p): Add handler(~p) for ~p~n", [self(), Pid, CallID]),
+    link(Pid),
     {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
     format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
@@ -152,9 +153,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'EXIT', _Pid, Reason}, State) ->
-    format_log(error, "TS_RESPONDER(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
-    {noreply, Reason, State};
+handle_info({'EXIT', Pid, Reason}, #state{post_handlers=Posts}=State) ->
+    case lists:keyfind(Pid, 2, Posts) of
+	false ->
+	    format_log(error, "TS_RESPONDER(~p): Received EXIT(~p) from unknown ~p...~n", [self(), Reason, Pid]),
+	    {noreply, State};
+	{CallID, _} ->
+	    format_log(error, "TS_RESPONDER(~p): Received EXIT(~p) from call handler(~p) for call ~p...~n", [self(), Reason, Pid, CallID]),
+	    {noreply, State#state{post_handlers=lists:keydelete(CallID, 1, Posts)}}
+    end;
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
