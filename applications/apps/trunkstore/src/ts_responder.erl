@@ -35,7 +35,6 @@
 -record(state, {amqp_host = "" :: string()
 		,couch_host = "" :: string()
 		,callmgr_q = <<>> :: binary()
-                ,tar_q = <<>> :: binary()
 		,post_handlers = [] :: list(tuple(binary(), pid())) | [] %% [ {CallID, PostHandlerPid} ]
 	       }).
 
@@ -103,22 +102,18 @@ handle_call({add_post_handler, CallID, Pid}, _From, #state{post_handlers=Posts}=
     {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
     format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
-    couch_mgr:set_host(CHost),
     ts_carrier:force_carrier_refresh(),
     ts_credit:force_rate_refresh(),
     {reply, ok, State#state{couch_host=CHost}};
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
     format_log(info, "TS_RESPONDER(~p): Setting amqp host to ~p~n", [self(), AHost]),
-    {ok, CQ, TQ} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}};
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, callmgr_q=OCQ, tar_q=OTQ}=State) ->
+    {ok, CQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ}};
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, callmgr_q=OCQ}=State) ->
     format_log(info, "TS_RESPONDER(~p): Updating amqp host from ~p to ~p~n", [self(), OldAHost, AHost]),
     amqp_util:queue_delete(OldAHost, OCQ),
-    amqp_util:queue_delete(OldAHost, OTQ),
-    amqp_manager:close_channel(self(), OldAHost),
-
-    {ok, CQ, TQ} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}};
+    {ok, CQ} = start_amqp(AHost),
+    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ}};
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -182,9 +177,8 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_host=AHost, callmgr_q=CQ, tar_q=TQ}) ->
+terminate(_Reason, #state{amqp_host=AHost, callmgr_q=CQ}) ->
     amqp_util:queue_delete(AHost, CQ),
-    amqp_util:queue_delete(AHost, TQ),
     format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
@@ -230,8 +224,8 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 	    end
     end,
     State;
-process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{tar_q=TQ}=State) ->
-    case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop, TQ) of
+process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{callmgr_q=CQ}=State) ->
+    case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop, CQ) of
 	false ->
 	    format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
 	{ok, JSON, Flags} ->
@@ -272,22 +266,20 @@ start_post_handler(Prop, Flags, #state{amqp_host=AmqpHost}) ->
 send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
 
--spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary(), binary())).
+-spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).
 start_amqp(AHost) ->
     amqp_util:callmgr_exchange(AHost),
     amqp_util:targeted_exchange(AHost),
 
     CallmgrQueue = amqp_util:new_callmgr_queue(AHost, <<>>),
-    TarQueue = amqp_util:new_targeted_queue(AHost, <<>>),
 
     %% Bind the queue to an exchange
     amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
     amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
-    amqp_util:bind_q_to_targeted(AHost, TarQueue, TarQueue),
+    amqp_util:bind_q_to_targeted(AHost, CallmgrQueue, CallmgrQueue),
 
     %% Register a consumer to listen to the queue
     amqp_util:basic_consume(AHost, CallmgrQueue),
-    amqp_util:basic_consume(AHost, TarQueue),
 
-    format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p) and T(~p)~n", [self(), CallmgrQueue, TarQueue]),
-    {ok, CallmgrQueue, TarQueue}.
+    format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p)~n", [self(), CallmgrQueue]),
+    {ok, CallmgrQueue}.
