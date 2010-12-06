@@ -19,7 +19,7 @@
 -define(FAIL_LOSS, 2).
 
 ping(Dest) ->
-    ping(Dest, 3).
+    ping(Dest, 1).
 
 ping(Dest, Count) ->
     Cmd = io_lib:format(?PING_CMD, [Count, Dest]),
