@@ -2,6 +2,8 @@
 
 -define(DB_HOST, "whistle-erl001-fmt.2600hz.org").
 
--define(TS_DB, "ts").
+-define(MONITOR_DB, "ts").
 
--define(TS_VIEW_MONITOR, {"LookUpMonitor", "LookUpMonitor"}).
+-define(MONITOR_DOCS, "sys_info").
+
+-define(MONITOR_VIEW, {"LookUpMonitor", "LookUpMonitor"}).
