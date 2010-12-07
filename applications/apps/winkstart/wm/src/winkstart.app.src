@@ -1,0 +1,17 @@
+%%-*- mode: erlang -*-
+{application, winkstart,
+ [
+  {description, "winkstart"},
+  {vsn, "1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  crypto,
+                  mochiweb,
+                  webmachine
+                 ]},
+  {mod, { winkstart_app, []}},
+  {env, []}
+ ]}.

@@ -1,0 +1,9 @@
+{application,winkstart,
+             [{description,"winkstart"},
+              {vsn,"1"},
+              {modules,[winkstart,winkstart_app,winkstart_resource,
+                        winkstart_sup]},
+              {registered,[]},
+              {applications,[kernel,stdlib,crypto,mochiweb,webmachine]},
+              {mod,{winkstart_app,[]}},
+              {env,[]}]}.
