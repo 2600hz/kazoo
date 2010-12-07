@@ -21,7 +21,7 @@
 
 %% API
 -export([default_headers/4, default_headers/3, optional_default_headers/3]).
--export([prepare_amqp_prop/1, extract_defaults/1]).
+-export([prepare_amqp_prop/1, extract_defaults/1, extract_nondefault/1]).
 
 %% Monitor Agent Ping
 -export([ping_net_req/1, ping_net_resp/1]).
@@ -81,6 +81,9 @@ optional_default_headers(Job_ID, Name, Iteration) ->
 -spec(extract_defaults/1 :: (Prop :: proplist()) -> proplist()).
 extract_defaults(Prop) ->
     lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS).
+
+extract_nondefault(Prop) ->
+    lists:foldl(fun(H, Acc) -> proplists:delete(H, Acc) end, Prop, ?DEFAULT_HEADERS).
 
 prepare_amqp_prop([{_, _}|_]=Prop) ->
     lists:map(fun({K,V}) -> {monitor_util:to_binary(K), monitor_util:to_binary(V)} end, Prop);

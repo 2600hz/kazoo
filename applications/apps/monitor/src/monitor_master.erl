@@ -27,6 +27,7 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 -include("../include/monitor_amqp.hrl").
+-include("../include/monitor_couch.hrl").
 
 -record(state, {
          amqp_host = "" :: string()
@@ -86,7 +87,6 @@ rm_task(Job_ID, Name) ->
 list_tasks(Job_ID) ->
     gen_server:call(?SERVER, {list_tasks, Job_ID}, infinity).
 
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -121,22 +121,23 @@ init([AHost]) ->
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ}=State) ->
     format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
-    %%amqp_util:queue_delete(CurrentAHost, CurrentMonitorQ),
-    %%amqp_manager:close_channel(self(), CurrentAHost),
-    %%{ok, Monitor_Q} = start_amqp(AHost),
     update_sup_children(AHost, supervisor:which_children(monitor_job_sup)),
     update_sup_children(AHost, supervisor:which_children(monitor_agent_sup)),
-    %%{reply, ok, State#state{amqp_host=AHost, monitor_q=Monitor_Q}};
     {reply, ok, State#state{amqp_host=AHost}};
 
 handle_call({start_job, Job_ID, Tasks}, _From, #state{amqp_host = AHost, jobs = Jobs} = State) ->
+    case get_value(Job_ID, Jobs) of
+        #job{processID = Pid} ->
+            {reply, {ok, Pid}, State};
+        undefined ->
     case monitor_job_sup:start_job(Job_ID, Tasks, AHost) of
         {ok, Pid} -> 
             %%Job = #job{processID = Pid, monitorRef = monitor(process, Pid)},
             Job = #job{processID = Pid},
-            {reply, ok, State#state{jobs = [{Job_ID, Job}|Jobs]}};
+            {reply, {ok, Pid}, State#state{jobs = [{Job_ID, Job}|Jobs]}};
         {error, E} ->
             {reply, {error, E}, State}
+    end
     end;
 
 handle_call({rm_job, Job_ID}, _From, #state{jobs = Jobs} = State) ->
@@ -146,7 +147,7 @@ handle_call({rm_job, Job_ID}, _From, #state{jobs = Jobs} = State) ->
     {reply, {ok, job_removed}, State#state{jobs = NewJobs}};
 
 handle_call({list_jobs}, _From, #state{jobs = Jobs} = State) ->
-    {reply, Jobs, State};
+    {reply, {ok, Jobs}, State};
 
 handle_call({set_interval, Job_ID, Interval}, _From, #state{jobs = Jobs} = State) ->
     {reply, msg_job(Job_ID, Jobs, {set_interval, Interval}), State};

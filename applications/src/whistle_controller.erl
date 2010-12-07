@@ -146,7 +146,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{apps=As}) ->
+    lists:foreach(fun(App) -> rm_app(App, As) end, As),
     ok.
 
 %%--------------------------------------------------------------------
@@ -163,7 +164,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> tuple(ok, list(atom())) | tuple(tuple(), list(atom()))).
+-spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 add_app(App, As) ->
     format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
     case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
@@ -173,6 +174,7 @@ add_app(App, As) ->
 	_ -> As
     end.
 
+-spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
     format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
     case lists:member(App, As) of

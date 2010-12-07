@@ -232,5 +232,5 @@ close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) -
     format_log(info, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
 
     amqp_util:delete_callmgr_queue(Host, EvtQ),
-    couch_mgr:rm_change_handler(DocID),
+    couch_mgr:rm_change_handler(?TS_DB, DocID),
     ts_responder:rm_post_handler(CallID).
