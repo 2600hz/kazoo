@@ -146,7 +146,7 @@ handle_call({start_job, Job_ID, Interval}, _From, #state{amqp_host = AHost, jobs
         undefined ->
             case monitor_job_sup:start_job(Job_ID, AHost, Interval, Database) of
                 {ok, Pid} -> 
-                    Job = #job{processID = Pid, monitorRef = monitor(process, Pid)},
+                    Job = #job{processID = Pid, monitorRef = erlang:monitor(process, Pid)},
                     {reply, {ok, Pid}, State#state{jobs = [{Job_ID, Job}|Jobs]}};
                 {error, E} ->
                     {reply, {error, E}, State}
