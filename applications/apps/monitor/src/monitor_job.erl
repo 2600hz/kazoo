@@ -11,27 +11,28 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
      terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_INTERVAL, 60000).
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
 -include("../include/monitor_amqp.hrl").
+-include("../include/monitor_couch.hrl").
 
 -record(state, {
-         amqp_host = "" :: string()
-        ,job_id = "" :: string()
+         amqp_host = ""
+        ,database = ""
+        ,job_id = ""
         ,tref
         ,tasks = []
         ,iteration = 0
-        ,interval = ?DEFAULT_INTERVAL
+        ,interval = 300000
     }).
 
 -record(task, {
@@ -50,8 +51,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Job_ID, Tasks, AHost) ->
-    gen_server:start_link(?MODULE, [monitor_util:to_list(Job_ID), Tasks, AHost], []).
+start_link(Job_ID, AHost, Interval, DB) ->
+    gen_server:start_link(?MODULE, [Job_ID, AHost, Interval, DB], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -68,13 +69,13 @@ start_link(Job_ID, Tasks, AHost) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Job_ID, Tasks, AHost]) ->
-    format_log(info, "MONITOR_JOB(~p): Starting new job with id ~p and amqp host ~p~n", [self(), Job_ID, AHost]),
-    {ok, TRef} = timer:send_interval(?DEFAULT_INTERVAL, {heartbeat}),
-    {ok, #state{amqp_host=AHost, job_id=Job_ID, tref=TRef, tasks=Tasks}}.
+init([Job_ID, AHost, Interval, DB]) ->
+    format_log(info, "MONITOR_JOB(~p): Starting new job with id ~p and amqp host ~p on a interval of ~p~n", [self(), Job_ID, AHost, Interval]),
+    {ok, TRef} = timer:send_interval(Interval, {heartbeat}),
+    couch_mgr:add_change_handler(DB, Job_ID),
+    {ok, #state{amqp_host = AHost, job_id = Job_ID, tref = TRef, interval = Interval, database = DB}}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%-----------------------------------------------------------------Task_ID%% @private
 %% @doc
 %% Handling call messages
 %%
@@ -87,40 +88,51 @@ init([Job_ID, Tasks, AHost]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost}=State) ->
-    format_log(info, "MONITOR_JOB(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
-    {reply, amqp_host_updated, State#state{amqp_host=AHost}};
+handle_call({set_amqp_host, AHost}, _From, #state{job_id = Job_ID} = State) ->
+    format_log(info, "MONITOR_JOB(~p): Job ~p updated Updating amqp host to ~p~n", [self(), Job_ID, AHost]),
+    {reply, amqp_host_updated, State#state{amqp_host = AHost}};
 
-handle_call({set_interval, Interval}, _From, #state{tref=CurrentTRef, job_id=Job_ID}=State) ->
-    timer:cancel(CurrentTRef),
+handle_call({set_interval, Interval}, _From, #state{tref = CurTRef, job_id = Job_ID, interval = CurInterval} = State)  when Interval /= CurInterval->
+    timer:cancel(CurTRef),
     {ok, TRef} = timer:send_interval(Interval, {heartbeat}), 
     format_log(info, "MONITOR_JOB(~p): Job ~p updated the interval to ~p~n", [self(), Job_ID, Interval]), 
-    {reply, interval_set, State#state{tref=TRef, interval=Interval}};
+    {reply, interval_set, State#state{tref = TRef, interval = Interval}};
 
-handle_call({pause}, _From, #state{tref=TRef, job_id=Job_ID}=State) ->
+handle_call({pause}, _From, #state{tref = TRef, job_id = Job_ID} = State) ->
     timer:cancel(TRef),
     format_log(info, "MONITOR_JOB(~p): Job ~p has been paused~n", [self(), Job_ID]), 
-    {reply, paused, State#state{tref=""}};
+    {reply, paused, State#state{tref = ""}};
 
-handle_call({resume}, _From, #state{tref=CurrentTRef, interval=Interval, job_id=Job_ID}=State) ->
+handle_call({resume}, _From, #state{tref = CurrentTRef, interval = Interval, job_id = Job_ID} = State) ->
     timer:cancel(CurrentTRef),
     {ok, TRef} = timer:send_interval(Interval, {heartbeat}),
     format_log(info, "MONITOR_JOB(~p): Job ~p has been resumed with an interval of ~p~n", [self(), Job_ID, Interval]), 
-    {reply, resumed, State#state{tref=TRef}};
+    {reply,  resumed, State#state{tref = TRef}};
 
-handle_call({add_task, Name, Type, Options}, _From, #state{tasks=Tasks, job_id=Job_ID}=State) ->
-    Task = #task{type=Type, options=Options},
-    format_log(info, "MONITOR_JOB(~p): Job ~p added a new task~n~p~n", [self(), Job_ID, Task]), 
-    UpdatedTasks = proplists:delete(Name, Tasks),
-    {reply, task_added, State#state{tasks=[{Name, Task}|UpdatedTasks]}};
+handle_call({update_task, Task_ID, Type, Options}, _From, #state{tasks = Tasks, job_id = Job_ID} = State) ->
+    Task = #task{type = Type, options = Options},
+    format_log(info, "MONITOR_JOB(~p): Job ~p updated task~n~p~n", [self(), Job_ID, Task]), 
+    UpdatedTasks = proplists:delete(Task_ID, Tasks),
+    {reply, task_updated, State#state{tasks = [{Task_ID, Task}|UpdatedTasks]}};
 
-handle_call({rm_task, Name}, _From, #state{tasks=Tasks, job_id=Job_ID}=State) ->
-    NewTasks = proplists:delete(Name, Tasks),
-    format_log(info, "MONITOR_JOB(~p): Job ~p removed task ~p~n", [self(), Job_ID, Name]), 
-    {reply, task_removed, State#state{tasks=NewTasks}};
+handle_call({rm_task, Task_ID}, _From, #state{tasks = Tasks, job_id = Job_ID} = State) ->
+    NewTasks = proplists:delete(Task_ID, Tasks),
+    format_log(info, "MONITOR_JOB(~p): Job ~p removed task ~p~n", [self(), Job_ID, Task_ID]), 
+    {reply, task_removed, State#state{tasks = NewTasks}};
 
-handle_call({list_tasks}, _From, #state{tasks=Tasks}=State) ->
+handle_call({list_tasks}, _From, #state{tasks = Tasks} = State) ->
     {reply, Tasks, State};
+
+handle_call({run_tasks}, _From, #state{tref = CurrentTRef, interval = Interval} = State) ->
+    TimerStop = timer:cancel(CurrentTRef),
+    self() ! {hearbeat},
+    case TimerStop of
+        {ok, cancel} ->
+            {ok, TRef} = timer:send_interval(Interval, {heartbeat}),
+            {reply, cycle_started, State#state{tref = TRef}};
+        _ ->
+            {reply, one_shot_started, State}
+    end;
 
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
@@ -156,9 +168,15 @@ handle_info({'EXIT', _Pid, _Reason}, State) ->
     {stop, normal, State};
 
 handle_info({heartbeat}, #state{job_id = Job_ID, iteration = Iteration}=State) ->
-    format_log(info, "MONITOR_JOB(~p): Job ~p woke up by timer~n", [self(), Job_ID]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p woke up~n", [self(), Job_ID]), 
     spawn_link(fun() -> run_job(State) end),
     {noreply, State#state{iteration = Iteration + 1}};
+
+handle_info({document_changes, DocID, Changes}, State) ->
+    format_log(info, "MONITOR_JOB(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
+    Job_PID = self(),
+    spawn(fun() -> get_job(State, Job_PID) end),
+    {noreply, State};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -174,7 +192,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{tref = TRef, database = DB, job_id = Job_ID}) ->
+    timer:cancel(TRef),
+    couch_mgr:rm_change_handler(DB, Job_ID),
     format_log(info, "MONITOR_JOB(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
@@ -205,6 +225,40 @@ create_job_q(AHost) ->
 
     {ok, Q}.
 
+get_job(#state{database = DB, job_id = Job_ID, tasks = Tasks}, Job_PID) ->
+    case couch_mgr:get_results(DB, ?MONITOR_VIEW, [{"key", monitor_util:to_binary(Job_ID)}]) of
+        false ->
+            format_log(error, "MONITOR_JOB(~p): Job missing view ~p~n", [self(), ?MONITOR_VIEW]),
+            {error, missing_view};
+        {error, not_found} ->
+            format_log(info, "MONITOR_JOB(~p): Job result not found~n", [self()]),
+            {error, not_found};
+        [{Doc}] ->
+            {Job} = get_value(<<"value">>, Doc),
+            case get_value(<<"interval">>, Job) of
+                undefined ->
+                    ok;
+                Interval ->
+                    gen_server:call(Job_PID, {set_interval, Interval})
+            end, 
+            sync_tasks(get_value(<<"tasks">>, Job, []), Tasks, Job_PID),            
+            {ok, Job};
+        _Else ->
+            {error, unknown_return}
+    end.
+
+sync_tasks([], [], _Job_PID) ->
+    ok;
+sync_tasks([], [{Task_ID, _Task}|T], Job_PID) -> 
+    gen_server:call(Job_PID, {rm_task, Task_ID}, infinity),
+    sync_tasks([], T, Job_PID);
+sync_tasks([{H}|T], Tasks, Job_PID) ->
+    Task_ID = whistle_util:to_list(get_value(<<"task_id">>, H, <<"unknown">>)),
+    Type = whistle_util:to_list(get_value(<<"type">>, H, <<"unknown">>)),
+    {Options} = get_value(<<"options">>, H, <<"unknown">>),
+    gen_server:call(Job_PID, {update_task, Task_ID, Type, Options}, infinity),
+    sync_tasks(T, proplists:delete(Task_ID, Tasks), Job_PID).
+
 type_to_routing_key(Type) ->
     case Type of 
         "ping_net_req" -> ?KEY_AGENT_NET_REQ;
@@ -216,7 +270,7 @@ type_to_routing_key(Type) ->
 run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = Iteration}) ->
     {ok, Job_Q} = create_job_q(AHost),
     Started = start_tasks(Tasks, AHost, Job_Q, Job_ID, Iteration, []),
-    Default = monitor_api:default_headers(Job_Q, <<"logger">>, <<"job_completion">>),
+    Default = monitor_api:default_headers(Job_Q, <<"log">>, <<"job_completion">>),
     Headers = lists:append([Default, [{<<"Success">>, <<"true">>}]]),
     Resp = wait_for_tasks(Started, Headers),
     %% Convert Resp to JSON
@@ -226,12 +280,12 @@ run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = It
 
 start_tasks([], _AHost, _Job_Q, _Job_ID, _Iteration, Started) ->
     Started;
-start_tasks([{Name, Task}|T], AHost, Job_Q, Job_ID, Iteration, Started) ->
-    case create_req(Task, Job_Q, Name, Job_ID, Iteration) of
+start_tasks([{Task_ID, Task}|T], AHost, Job_Q, Job_ID, Iteration, Started) ->
+    case create_req(Task, Job_Q, Task_ID, Job_ID, Iteration) of
         {ok, JSON} -> 
-            format_log(info, "MONITOR_JOB(~p): Job ~p started task ~p~n~p~n", [self(), Job_ID, Name, Task]),
+            format_log(info, "MONITOR_JOB(~p): Job ~p started task ~p~n~p~n", [self(), Job_ID, Task_ID, Task]),
             send_req(AHost, JSON, type_to_routing_key(Task#task.type)),
-            start_tasks(T, AHost, Job_Q, Job_ID, Iteration, [{monitor_util:to_binary(Name), Task}|Started]);
+            start_tasks(T, AHost, Job_Q, Job_ID, Iteration, [{monitor_util:to_binary(Task_ID), Task}|Started]);
         {error, Error} -> 
             format_log(error, "MONITOR_JOB(~p): Create task request error ~p~n ", [self(), Error]),
             start_tasks(T, AHost, Job_Q, Job_ID, Iteration, Started)
@@ -258,9 +312,9 @@ wait_for_tasks(Tasks, Resp) ->
             wait_for_tasks([], monitor_util:prop_update(<<"Success">>, <<"false">>, Resp))
     end.
 
-create_req(Task, Job_Q, Name, Job_ID, Iteration) ->
+create_req(Task, Job_Q, Task_ID, Job_ID, Iteration) ->
     Default = monitor_api:default_headers(Job_Q, <<"task">>, monitor_util:to_binary(Task#task.type)),
-    Details = monitor_api:optional_default_headers(Job_ID, Name, Iteration),
+    Details = monitor_api:optional_default_headers(Job_ID, Task_ID, Iteration),
     Headers = monitor_api:prepare_amqp_prop([Details, Default, Task#task.options]),
     apply(monitor_api, list_to_atom(Task#task.type), [Headers]).
 
