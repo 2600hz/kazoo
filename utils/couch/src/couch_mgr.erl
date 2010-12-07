@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1]).
+-export([start_link/0, set_host/1, get_host/0]).
 
 %% Document manipulation
 -export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3]).
@@ -62,7 +62,10 @@ start_link() ->
 %% set the host to connect to
 -spec(set_host/1 :: (HostName :: string()) -> ok | tuple(error, term())).
 set_host(HostName) ->
-    gen_server:call(?MODULE, {set_host, HostName}).
+    gen_server:call(?MODULE, {set_host, HostName}, infinity).
+
+get_host() ->
+    gen_server:call(?MODULE, get_host).
 
 %% create a new Document - a tuple with a proplist
 -spec(new_doc/0 :: () -> []).
@@ -184,6 +187,8 @@ handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs
 		    {reply, Err, State#state{dbs=DBs1}}
 	    end
     end;
+handle_call(get_host, _From, #state{connection={H,_}}=State) ->
+    {reply, H, State};
 handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
     case get_new_connection(Host) of
@@ -221,6 +226,7 @@ handle_call(Req, From, #state{connection={}}=State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
+	    close_handlers(State#state.change_handlers),
 	    handle_call(Req, From, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]})
     end;
 handle_call(_Request, _From, State) ->
@@ -314,6 +320,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec(close_handlers/1 :: (CHs :: list(tuple(tuple(string(), binary()), term(), list(pid())))) -> no_return()).
+close_handlers(CHs) ->
+    lists:foreach(fun({{_, DocID}, _, Pids}) ->
+			  lists:foreach(fun(P) -> unlink(P), P ! {change_handler_down, DocID} end, Pids)
+		  end, CHs).
+
 -spec(stop_change_handler/4 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}) -> tuple(ok, #state{}) | tuple(error, term(), #state{})).
 stop_change_handler(DBName, DocID, Pid, #state{change_handlers=CH}=State) ->
     case lists:keyfind({DBName, DocID}, 1, CH) of
@@ -323,6 +336,7 @@ stop_change_handler(DBName, DocID, Pid, #state{change_handlers=CH}=State) ->
 		      [] ->
 			  %% unreg from couchbeam
 			  unlink(Pid),
+			  Pid ! {change_handler_down, DocID},
 			  lists:keydelete({DBName, DocID}, 1, CH);
 		      Pids1 ->
 			  [ {{DBName, DocID}, ReqID, Pids1} | lists:keydelete({DBName, DocID}, 1, CH)]
