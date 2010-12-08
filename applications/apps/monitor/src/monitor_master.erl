@@ -13,7 +13,7 @@
 %% API
 -export([start_link/1]).
 -export([set_amqp_host/1]).
--export([start_job/1, start_job/2, sync_jobs/0, sync_jobs/1]).
+-export([start_job/1, start_job/2, sync_jobs/0, sync_job/1]).
 -export([rm_job/1, list_jobs/0, run_job/1]).
 -export([set_interval/2, pause/1, resume/1]).
 -export([update_task/4, rm_task/2, list_tasks/1]).
@@ -34,7 +34,6 @@
 -record(state, {
          amqp_host = "" :: string()
         ,monitor_q = <<>> :: binary()
-        ,db_host = ?DB_HOST :: string()
         ,database = ?MONITOR_DB :: string()
         ,db_view = ?MONITOR_VIEW :: string()
         ,jobs = [] :: list()
@@ -69,10 +68,10 @@ start_job(Job_ID, Interval) ->
     gen_server:call(?SERVER, {start_job, Job_ID, Interval}, infinity).
 
 sync_jobs() ->
-    sync_jobs([]).
+    gen_server:call(?SERVER, {sync_jobs}, infinity).
 
-sync_jobs(Options) ->
-    gen_server:call(?SERVER, {sync_jobs, Options}, infinity).
+sync_job(Options) ->
+    gen_server:call(?SERVER, {sync_job, Options}, infinity).
 
 rm_job(Job_ID) ->
     gen_server:call(?SERVER, {rm_job, Job_ID}, infinity).
@@ -117,6 +116,7 @@ list_tasks(Job_ID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AHost]) ->
+    couch_mgr:add_change_handler(?MONITOR_DB, <<"">>),
     {ok, #state{amqp_host = AHost}}.
 
 %%--------------------------------------------------------------------
@@ -139,12 +139,12 @@ handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monito
     update_sup_children(AHost, supervisor:which_children(monitor_agent_sup)),
     {reply, ok, State#state{amqp_host=AHost}};
 
-handle_call({start_job, Job_ID, Interval}, _From, #state{amqp_host = AHost, jobs = Jobs, database = Database} = State) ->
+handle_call({start_job, Job_ID, Interval}, _From, #state{amqp_host = AHost, jobs = Jobs} = State) ->
     case get_value(Job_ID, Jobs) of
         #job{processID = Pid} ->
             {reply, {ok, Pid}, State};
         undefined ->
-            case monitor_job_sup:start_job(Job_ID, AHost, Interval, Database) of
+            case monitor_job_sup:start_job(Job_ID, AHost, Interval) of
                 {ok, Pid} -> 
                     Job = #job{processID = Pid, monitorRef = monitor(process, Pid)},
                     {reply, {ok, Pid}, State#state{jobs = [{Job_ID, Job}|Jobs]}};
@@ -218,8 +218,25 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _MonitorRef, _Type, Job_PID, _Info}, State) ->
-    format_log(error, "MONITOR_MASTER(~p): Job PID ~p died unexpectedly!~n", [self(), Job_PID]),
+handle_info({'DOWN', _MonitorRef, _Type, _Job_PID, _Info}, State) ->
+    %%format_log(error, "MONITOR_MASTER(~p): Job PID ~p died unexpectedly!~n", [self(), Job_PID]),
+    {noreply, State};
+
+handle_info({document_deleted, Doc_ID}, #state{jobs = Jobs} = State) ->
+    Job_ID = monitor_util:to_binary(Doc_ID),
+    spawn(fun() -> case proplists:is_defined(Job_ID, Jobs) of true -> rm_job(Job_ID); _ -> ok end end),
+    {noreply, State};
+    
+handle_info({document_changes, Doc_ID, _Changes}, #state{db_view = View, database = DB, jobs = Jobs} = State) ->
+    Job_ID = monitor_util:to_binary(Doc_ID),
+    case couch_mgr:get_results(DB, View, [{"key", Job_ID}]) of
+        [] ->
+            spawn(fun() -> case proplists:is_defined(Job_ID, Jobs) of true -> rm_job(Job_ID); _ -> ok end end);
+        [{Job}] ->
+            spawn(fun() -> sync_job(Job, Jobs) end);
+        _ ->
+            ok
+    end,
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -274,8 +291,7 @@ start_amqp(AHost) ->
 
     {ok, Monitor_Q}.
 
-get_jobs(#state{db_host = DBHost, database = DB, db_view = View}, Options) ->
-    couch_mgr:set_host(DBHost),
+get_jobs(#state{database = DB, db_view = View}, Options) ->
     case couch_mgr:get_results(DB, View, Options) of
         false ->
             format_log(error, "MONITOR_MASTER(~p): Sync jobs missing view ~p~n", [self(), View]),
@@ -295,6 +311,11 @@ sync_jobs([], [{Job_ID, _Job}|T]) ->
     sync_jobs([], T);
 sync_jobs([{Props}|T], Running) ->
     Job_ID = get_value(<<"id">>, Props),
+    sync_job(Props, Running),
+    sync_jobs(T, proplists:delete(Job_ID, Running)).
+
+sync_job(Props, Running) ->
+    Job_ID = get_value(<<"id">>, Props),
     {Job} = get_value(<<"value">>, Props),
     Interval = get_value(<<"interval">>, Job, ?DEFAULT_INTERVAL),
     %% Tasks = get_value(<<"tasks">>, Job, []),
@@ -303,8 +324,7 @@ sync_jobs([{Props}|T], Running) ->
             set_interval(Job_ID, Interval);
         _ ->
             start_job(Job_ID, Interval)
-    end,
-    sync_jobs(T, proplists:delete(Job_ID, Running)).
+    end.
 
 msg_job(Job_ID, Jobs, Msg) ->
     case get_value(Job_ID, Jobs) of

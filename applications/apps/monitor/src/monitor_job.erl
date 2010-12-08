@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4]).
+-export([start_link/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,7 +27,6 @@
 
 -record(state, {
          amqp_host = ""
-        ,database = ""
         ,job_id = ""
         ,tref
         ,tasks = []
@@ -51,8 +50,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Job_ID, AHost, Interval, DB) ->
-    gen_server:start_link(?MODULE, [Job_ID, AHost, Interval, DB], []).
+start_link(Job_ID, AHost, Interval) ->
+    gen_server:start_link(?MODULE, [Job_ID, AHost, Interval], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,13 +68,13 @@ start_link(Job_ID, AHost, Interval, DB) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Job_ID, AHost, Interval, DB]) ->
+init([Job_ID, AHost, Interval]) ->
     format_log(info, "MONITOR_JOB(~p): Starting new job with id ~p and amqp host ~p on a interval of ~p~n", [self(), Job_ID, AHost, Interval]),
     {ok, TRef} = timer:send_interval(Interval, {heartbeat}),
-    couch_mgr:add_change_handler(DB, Job_ID),
-    {ok, #state{amqp_host = AHost, job_id = Job_ID, tref = TRef, interval = Interval, database = DB}}.
+    {ok, #state{amqp_host = AHost, job_id = Job_ID, tref = TRef, interval = Interval}}.
 
-%%-----------------------------------------------------------------Task_ID%% @private
+%%-------------------------------------------------------------------- 
+%% @private
 %% @doc
 %% Handling call messages
 %%
@@ -172,12 +171,6 @@ handle_info({heartbeat}, #state{job_id = Job_ID, iteration = Iteration}=State) -
     spawn_link(fun() -> run_job(State) end),
     {noreply, State#state{iteration = Iteration + 1}};
 
-handle_info({document_changes, DocID, Changes}, State) ->
-    format_log(info, "MONITOR_JOB(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
-    Job_PID = self(),
-    spawn(fun() -> get_job(State, Job_PID) end),
-    {noreply, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -192,9 +185,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{tref = TRef, database = DB, job_id = Job_ID}) ->
+terminate(_Reason, #state{tref = TRef}) ->
     timer:cancel(TRef),
-    couch_mgr:rm_change_handler(DB, Job_ID),
     format_log(info, "MONITOR_JOB(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
@@ -225,27 +217,27 @@ create_job_q(AHost) ->
 
     {ok, Q}.
 
-get_job(#state{database = DB, job_id = Job_ID, tasks = Tasks}, Job_PID) ->
-    case couch_mgr:get_results(DB, ?MONITOR_VIEW, [{"key", monitor_util:to_binary(Job_ID)}]) of
-        false ->
-            format_log(error, "MONITOR_JOB(~p): Job missing view ~p~n", [self(), ?MONITOR_VIEW]),
-            {error, missing_view};
-        {error, not_found} ->
-            format_log(info, "MONITOR_JOB(~p): Job result not found~n", [self()]),
-            {error, not_found};
-        [{Doc}] ->
-            {Job} = get_value(<<"value">>, Doc),
-            case get_value(<<"interval">>, Job) of
-                undefined ->
-                    ok;
-                Interval ->
-                    gen_server:call(Job_PID, {set_interval, Interval})
-            end, 
-            sync_tasks(get_value(<<"tasks">>, Job, []), Tasks, Job_PID),            
-            {ok, Job};
-        _Else ->
-            {error, unknown_return}
-    end.
+%get_job(#state{database = DB, job_id = Job_ID, tasks = Tasks}, Job_PID) ->
+%    case couch_mgr:get_results(DB, ?MONITOR_VIEW, [{"key", monitor_util:to_binary(Job_ID)}]) of
+%        false ->
+%            format_log(error, "MONITOR_JOB(~p): Job missing view ~p~n", [self(), ?MONITOR_VIEW]),
+%            {error, missing_view};
+%        {error, not_found} ->
+%            format_log(info, "MONITOR_JOB(~p): Job result not found~n", [self()]),
+%            {error, not_found};
+%        [{Doc}] ->
+%            {Job} = get_value(<<"value">>, Doc),
+%            case get_value(<<"interval">>, Job) of
+%                undefined ->
+%                    ok;
+%                Interval ->
+%                    gen_server:call(Job_PID, {set_interval, Interval})
+%            end, 
+%            sync_tasks(get_value(<<"tasks">>, Job, []), Tasks, Job_PID),            
+%            {ok, Job};
+%        _Else ->
+%            {error, unknown_return}
+%    end.
 
 sync_tasks([], [], _Job_PID) ->
     ok;
