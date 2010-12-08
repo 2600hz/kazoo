@@ -10,4 +10,4 @@
 init([]) -> {ok, undefined}.
 
 to_html(ReqData, State) ->
-    {"<html><body>Hello, new world</body></html>", ReqData, State}.
+    {"<html><head><script type='text/javascript' src='main.js'></script></head><body><img src='foo.jpg' alt='foo missing' /></body></html>", ReqData, State}.
