@@ -1,6 +1,6 @@
 {application,whistle_couch,
-             [{description,[]},
-              {vsn,"1"},
+             [{description,"Simplified interface to CouchDB"},
+              {vsn,"0.5.0"},
               {registered,[]},
               {applications,[kernel,stdlib]},
               {mod,{whistle_couch_app,[]}},
