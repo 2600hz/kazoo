@@ -293,6 +293,7 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 
     F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Srv, <<"NPANXXXXXX">>)
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
+			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			   %,trunks = Trunks
 			   %,credit_available = whistle_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 			  },
@@ -319,6 +320,7 @@ flags_from_account(Doc, Flags) ->
 			   ,trunks = Trunks
 			   ,active_calls = ACs
 			   ,account_doc=Doc
+			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Acct, {[]})),
     add_failover(F1, get_value(<<"failover">>, Acct, {[]})).
