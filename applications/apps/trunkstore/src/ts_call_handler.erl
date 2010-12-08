@@ -66,6 +66,7 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	{shutdown, CallID} ->
 	    amqp_util:delete_callmgr_queue(Host, CallID),
 	    couch_mgr:rm_change_handler(Flags#route_flags.account_doc_id),
+	    ts_responder:rm_post_handler(CallID),
 	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
 	{document_changes, DocID, Changes} ->
 	    Doc0 = Flags#route_flags.account_doc,
@@ -105,6 +106,7 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	    ?MODULE:loop(CallID, Flags, Amqp, Timeout)
     after
 	Timeout ->
+	    ts_responder:rm_post_handler(CallID),
 	    format_log(info, "TS_CALL(~p): Timeout ~p hit~n", [self(), Timeout])
     end.
 
