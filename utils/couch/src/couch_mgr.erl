@@ -257,9 +257,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_ReqID, done}, State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): DONE~n", [self()]),
-    {noreply, State};
+handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
+    format_log(info, "WHISTLE_COUCH.wait(~p): DONE change handler ref ~p~n", [self(), ReqID]),
+    case lists:keyfind(ReqID, 2, CH) of
+	false -> {noreply, State};
+	{{_, DocID},_,Pids} ->
+	    lists:foreach(fun(P) -> P ! {change_handler_done, DocID} end, Pids),
+	    {noreply, State#state{change_handlers=lists:keydelete(ReqID, 2, CH)}}
+    end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
     format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
@@ -279,15 +284,24 @@ handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids),
 	    {noreply, State}
     end;
+handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
+    format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
+    CH1 = lists:foldl(fun({{_, DocID}, _, RID, Pids}, Acc) when RID =:= ReqID ->
+			      lists:foreach(fun(P) -> P ! {change_handler_down, DocID} end, Pids),
+			      Acc;
+			 (C, Acc) -> [C | Acc]
+		      end, [], CH),
+    {noreply, State#state{change_handlers=CH1}};
 handle_info({_ReqID, {error, E}}, State) ->
     format_log(info, "WHISTLE_COUCH.wait(~p): ERROR ~p for reqid ~p~n", [self(), E, _ReqID]),
     {noreply, State};
-handle_info({'DOWN', _MRefConn, process, _Pid, _Reason}, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),
-    {noreply, State};
+handle_info({'DOWN', _MRefConn, process, Pid, _Reason}, #state{change_handlers=CH}=State) ->
+    format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), Pid, _Reason]),
+    CH1 = lists:map(fun({_, _, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
+    {noreply, State#state{change_handlers=CH1}};
 handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
     format_log(error, "WHISTLE_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
-    CH1 = lists:map(fun({_DocID, _ReqID, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
+    CH1 = lists:map(fun({_, _, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info(_Info, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
