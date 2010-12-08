@@ -60,5 +60,8 @@ init([]) ->
                  {log_dir, "priv/log"},
                  {dispatch, Dispatch}],
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
-    Processes = [Web], %% Put list of ?CHILD(winkstart_server, worker) or ?CHILD(winkstart_other_sup, supervisor)
+    BindingServer = ?CHILD(winkstart_bindings, worker),
+    Processes = [Web
+		 ,BindingServer
+		], %% Put list of ?CHILD(winkstart_server, worker) or ?CHILD(winkstart_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.
