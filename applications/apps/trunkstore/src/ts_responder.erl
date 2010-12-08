@@ -17,7 +17,7 @@
 
 %% API
 -export([start_link/0, set_couch_host/1, set_amqp_host/1, add_post_handler/2, rm_post_handler/1]).
--export([start_post_handler/3]).
+-export([start_post_handler/3, flush_handlers/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -59,10 +59,13 @@ set_amqp_host(AHost) ->
     gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
 
 add_post_handler(CallID, Pid) ->
-    gen_server:call(?SERVER, {add_post_handler, CallID, Pid}, infinity).
+    gen_server:cast(?SERVER, {add_post_handler, CallID, Pid}).
 
 rm_post_handler(CallID) ->
     gen_server:cast(?SERVER, {rm_post_handler, CallID}).
+
+flush_handlers() ->
+    gen_server:cast(?SERVER, flush_handlers).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -96,10 +99,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({add_post_handler, CallID, Pid}, _From, #state{post_handlers=Posts}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Add handler(~p) for ~p~n", [self(), Pid, CallID]),
-    link(Pid),
-    {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
     format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
     ts_carrier:force_carrier_refresh(),
@@ -127,12 +126,27 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(flush_handlers, #state{post_handlers=Posts}=State) ->
+    Posts1 = lists:foldr(fun({_, Pid}=Handler, Acc) ->
+				 case erlang:is_process_alive(Pid) of
+				     true -> [Handler | Acc];
+				     false ->
+					 unlink(Pid),
+					 Acc
+				 end
+			 end, [], Posts),
+    {noreply, State#state{post_handlers=Posts1}};
+handle_cast({add_post_handler, CallID, Pid}, #state{post_handlers=Posts}=State) ->
+    format_log(info, "TS_RESPONDER(~p): Add handler(~p) for ~p~n", [self(), Pid, CallID]),
+    link(Pid),
+    {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_cast({rm_post_handler, CallID}, #state{post_handlers=Posts}=State) ->
     format_log(info, "TS_RESPONDER(~p): Remove handler for ~p~n", [self(), CallID]),
     case lists:keyfind(CallID, 1, Posts) of
 	false ->
-	    {reply, {error, no_handler, CallID}, State};
-	{CallID, _Pid} ->
+	    {noreply, State};
+	{CallID, Pid} ->
+	    unlink(Pid),
 	    {noreply, State#state{post_handlers=lists:keydelete(CallID, 1, Posts)}}
     end;
 handle_cast(_Msg, State) ->
