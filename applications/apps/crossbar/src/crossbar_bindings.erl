@@ -17,7 +17,7 @@
 %%% @end
 %%% Created :  7 Dec 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(winkstart_bindings).
+-module(crossbar_bindings).
 
 -behaviour(gen_server).
 
