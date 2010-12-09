@@ -273,16 +273,11 @@ handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
 	{{_, DocID}, _, Pids} ->
-	    SendToPid = case get_value(<<"deleted">>, Change) of
-			    true ->
-				format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
-				{document_deleted, DocID}; % document deleted, no more looping
-			    undefined ->
-				format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
-				{document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
-			end,
-	    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids),
-	    {noreply, State}
+        notify_pids(Change, DocID, Pids),
+	    {noreply, State};
+    {{_, <<>>}, _, Pids} ->
+        notify_pids(Change, DocID, Pids),
+        {noreply, State}    
     end;
 handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
     format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
@@ -453,6 +448,19 @@ init_state() ->
 	    end;
 	_ -> #state{}
     end.
+
+%% notify_pids, sends change notifications to a list of PIDs, return void
+-spec(notify_pids/3 :: (Change :: tuple(), DocID :: binary(), Pids :: list()) -> no_return).
+notify_pids(Change, DocID, Pids) ->
+    SendToPid = case get_value(<<"deleted">>, Change) of
+        true ->
+            format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
+            {document_deleted, DocID}; % document deleted, no more looping
+        undefined ->
+            format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
+            {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
+        end,
+    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids).
 
 -spec(get_startup_config/0 :: () -> tuple(ok, proplist()) | tuple(error, term())).
 get_startup_config() ->
