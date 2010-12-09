@@ -76,7 +76,7 @@
 %% - monitor manager publishes to the exchange with a routing key; consumers bind their queue with the
 %%   routing keys they want messages for.
 -export([monitor_exchange/1, monitor_publish/4]).
--export([new_monitor_queue/1, delete_monitor_queue/2]).
+-export([new_monitor_queue/1, new_monitor_queue/2, delete_monitor_queue/2]).
 -export([bind_q_to_monitor/3]).
 
 -define(EXCHANGE_MONITOR, <<"monitor">>).
@@ -90,6 +90,9 @@ monitor_exchange(Host) ->
 
 new_monitor_queue(Host) ->
     new_queue(Host, <<"">>, [{exclusive, false}, {auto_delete, true}]).
+
+new_monitor_queue(Host, Name) ->
+    new_queue(Host, whistle_util:to_binary(Name), [{exclusive, false}, {auto_delete, true}]).
 
 delete_monitor_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).

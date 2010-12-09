@@ -28,20 +28,22 @@
 -import(props, [get_value/2, get_value/3]).
 
 -include("../../src/whistle_api.hrl"). % get the proplists -type
+-include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
+-define(STARTUP_FILE, lists:concat([filename:dirname(filename:dirname(code:which(?MODULE))), "/priv/startup.config"])).
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
 %% DBs = [{DbName, #db{}}]
 %% Views = [{ {#db{}, DesignDoc, ViewName}, #view{}}]
 %% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
-%% ChangeHandlers :: [ {DocID, ReqID, [Pid]}]
+%% ChangeHandlers :: [{DBName, DocID}, ReqID, [Pid]]
 -record(state, {
-	  connection = {} :: tuple(string(), tuple()) | {}
-	  ,dbs = [] :: list(tuple(string(), tuple())) | []
-	  ,views = [] :: list(tuple(tuple(tuple(), string(), string()), tuple())) | []
-	  ,change_handlers = [] :: list(tuple(binary(), reference(), list(pid()))) | []
+	  connection = {} :: tuple(string(), #server{}) | {}
+	  ,dbs = [] :: list(tuple(string(), #db{})) | []
+	  ,views = [] :: list(tuple(tuple(#db{}, string(), string()), #view{})) | []
+	  ,change_handlers = [] :: list(tuple( tuple(binary(), binary()), reference(), list(pid()) | []) ) | []
 	 }).
 
 %%%===================================================================
@@ -128,7 +130,7 @@ rm_change_handler(DBName, DocID) ->
 -spec(init/1 :: (Args :: list()) -> tuple(ok, tuple())).
 init(_) ->
     process_flag(trap_exit, true),
-    {ok, #state{}}.
+    {ok, init_state()}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,12 +190,12 @@ handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs
     end;
 handle_call(get_host, _From, #state{connection={H,_}}=State) ->
     {reply, H, State};
-handle_call({set_host, Host}, _From, #state{connection={OldHost, _Conn}}=State) ->
+handle_call({set_host, Host}, _From, #state{connection={OldHost, _}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
     case get_new_connection(Host) of
 	{error, _Error}=E ->
 	    {reply, E, State};
-	{_Host, _Conn}=HC ->
+	HC ->
 	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
     end;
 handle_call({set_host, Host}, _From, State) ->
@@ -255,9 +257,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_ReqID, done}, State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): DONE~n", [self()]),
-    {noreply, State};
+handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
+    format_log(info, "WHISTLE_COUCH.wait(~p): DONE change handler ref ~p~n", [self(), ReqID]),
+    case lists:keyfind(ReqID, 2, CH) of
+	false -> {noreply, State};
+	{{_, DocID},_,Pids} ->
+	    lists:foreach(fun(P) -> P ! {change_handler_done, DocID} end, Pids),
+	    {noreply, State#state{change_handlers=lists:keydelete(ReqID, 2, CH)}}
+    end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
     format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
@@ -266,26 +273,30 @@ handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
 	{{_, DocID}, _, Pids} ->
-	    SendToPid = case get_value(<<"deleted">>, Change) of
-			    true ->
-				format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
-				{document_deleted, DocID}; % document deleted, no more looping
-			    undefined ->
-				format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
-				{document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
-			end,
-	    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids),
-	    {noreply, State}
+        notify_pids(Change, DocID, Pids),
+	    {noreply, State};
+    {{_, <<>>}, _, Pids} ->
+        notify_pids(Change, DocID, Pids),
+        {noreply, State}    
     end;
+handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
+    format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
+    CH1 = lists:foldl(fun({{_, DocID}, _, RID, Pids}, Acc) when RID =:= ReqID ->
+			      lists:foreach(fun(P) -> P ! {change_handler_down, DocID} end, Pids),
+			      Acc;
+			 (C, Acc) -> [C | Acc]
+		      end, [], CH),
+    {noreply, State#state{change_handlers=CH1}};
 handle_info({_ReqID, {error, E}}, State) ->
     format_log(info, "WHISTLE_COUCH.wait(~p): ERROR ~p for reqid ~p~n", [self(), E, _ReqID]),
     {noreply, State};
-handle_info({'DOWN', _MRefConn, process, _Pid, _Reason}, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), _Pid, _Reason]),
-    {noreply, State};
+handle_info({'DOWN', _MRefConn, process, Pid, _Reason}, #state{change_handlers=CH}=State) ->
+    format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), Pid, _Reason]),
+    CH1 = lists:map(fun({_, _, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
+    {noreply, State#state{change_handlers=CH1}};
 handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
     format_log(error, "WHISTLE_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
-    CH1 = lists:map(fun({_DocID, _ReqID, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
+    CH1 = lists:map(fun({_, _, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info(_Info, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
@@ -349,14 +360,14 @@ start_change_handler(DBName, <<>>, Pid, State) ->
 start_change_handler(DBName, DocID, Pid, State) ->
     start_change_handler(DBName, DocID, Pid, State, [{filter, <<"filter/by_doc">>}, {name, DocID}]).
 
--spec(start_change_handler/5 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}, Opts :: proplist()) -> tuple(ok, term(), #state{}) | tuple(error, term(), #state{})).
+-spec(start_change_handler/5 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}, Opts :: proplist()) -> tuple(ok, reference(), #state{}) | tuple(error, term(), #state{})).
 start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, dbs=DBs, change_handlers=CH}=State, Opts) ->
     case lists:keyfind({DBName, DocID}, 1, CH) of
 	false ->
 	    case get_db(DBName, Conn, DBs) of
 		{{error, Err}, _DBs} ->
 		    {error, Err, State};
-		{Db, _DBs1} ->
+		{#db{}=Db, _DBs1} ->
 		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"} | Opts]),
 		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
 		    link(Pid),
@@ -372,26 +383,27 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, dbs=DBs, 
 	    end
     end.
 
--spec(get_new_connection/1 :: (Host :: string()) -> {string(), tuple()} | {error, term()}).
+-spec(get_new_connection/1 :: (Host :: string()) -> tuple(string(), tuple()) | tuple(error, term())).
 get_new_connection(Host) ->
     Conn = couchbeam:server_connection(Host, 5984, "", []),
     format_log(info, "WHISTLE_COUCH(~p): Host ~p has conn ~p~n", [self(), Host, Conn]),
     case couchbeam:server_info(Conn) of
 	{ok, _Version} ->
 	    format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
+	    spawn(fun() -> save_config(Host) end),
 	    {Host, Conn};
-	{error, _Error}=E ->
-	    format_log(error, "WHISTLE_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, _Error]),
+	{error, Err}=E ->
+	    format_log(error, "WHISTLE_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, Err]),
 	    E
     end.
 
 %% get_db, if DbName is known, returns the {#db{}, DBs}, else returns {#db{}, [{DbName, #db{}} | DBs]}
 %% an error in opening the db will cause a {{error, Err}, DBs} to be returned
--spec(get_db/3 :: (DbName :: string(), Conn :: tuple(), DBs :: list()) -> tuple(tuple(), list())).
+-spec(get_db/3 :: (DbName :: string(), Conn :: #server{}, DBs :: list(#db{}) | []) -> tuple(tuple(error, term()) | #db{}, list(tuple(string(), #db{})) | [] )).
 get_db(DbName, Conn, DBs) ->
     get_db(DbName, Conn, DBs, []).
 
--spec(get_db/4 :: (DbName :: string(), Conn :: tuple(), DBs :: list(), Options :: list()) -> tuple(tuple(), list())).
+-spec(get_db/4 :: (DbName :: string(), Conn :: #server{}, DBs :: list(#db{}) | [], Options :: list()) -> tuple(tuple(error, term()) | #db{}, list(tuple(string(), #db{})) | [] )).
 get_db(DbName, Conn, DBs, Options) ->
     case lists:keyfind(DbName, 1, DBs) of
 	false ->
@@ -407,7 +419,7 @@ get_db(DbName, Conn, DBs, Options) ->
     end.
 
 %% get_view, if Db/DesignDoc is known, return {#view{}, Views}, else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
--spec(get_view/4 :: (Db :: tuple(), DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list(), Views :: list()) -> tuple(tuple(), list())).
+-spec(get_view/4 :: (Db :: #db{}, DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list(), Views :: list()) -> tuple(#view{}, list()) | tuple(tuple(error, term()), list())).
 get_view(Db, DesignDoc, ViewOptions, Views) ->
     case lists:keyfind({Db, DesignDoc, ViewOptions}, 1, Views) of
 	{{Db, DesignDoc, ViewOptions}, View} ->
@@ -420,3 +432,45 @@ get_view(Db, DesignDoc, ViewOptions, Views) ->
 		    {View, [{{Db, DesignDoc, ViewOptions}, View} | Views]}
 	    end
     end.
+
+-spec(init_state/0 :: () -> #state{}).
+init_state() ->
+    case get_startup_config() of
+	{ok, Ts} ->
+	    Host = case props:get_value(couch_host, Ts, props:get_value(default_couch_host, Ts)) of
+		       undefined -> net_adm:localhost();
+		       "localhost" -> net_adm:localhost();
+		       H -> H
+		   end,
+	    case get_new_connection(Host) of
+		{error, _} -> #state{};
+		{Host, _}=C -> #state{connection=C}
+	    end;
+	_ -> #state{}
+    end.
+
+%% notify_pids, sends change notifications to a list of PIDs, return void
+-spec(notify_pids/3 :: (Change :: tuple(), DocID :: binary(), Pids :: list()) -> no_return).
+notify_pids(Change, DocID, Pids) ->
+    SendToPid = case get_value(<<"deleted">>, Change) of
+        true ->
+            format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
+            {document_deleted, DocID}; % document deleted, no more looping
+        undefined ->
+            format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
+            {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
+        end,
+    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids).
+
+-spec(get_startup_config/0 :: () -> tuple(ok, proplist()) | tuple(error, term())).
+get_startup_config() ->
+    file:consult(?STARTUP_FILE).
+
+-spec(save_config/1 :: (H :: string()) -> no_return()).
+save_config(H) ->
+    {ok, Config} = get_startup_config(),
+    file:write_file(?STARTUP_FILE
+		    ,lists:foldl(fun({K,V}, Acc) ->
+					 [io_lib:format("{~p, ~p}.~n", [K, V]) | Acc]
+				 end, "", [{couch_host, H} | lists:keydelete(couch_host, 1, Config)])
+		   ).

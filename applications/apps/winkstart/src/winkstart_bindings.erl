@@ -24,15 +24,20 @@
 -compile(export_all).
 
 %% API
--export([start_link/0, bind/1, run/2]).
+-export([start_link/0, bind/1, run/2, flush/0, flush/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-import(logger, [format_log/3]).
+-import(props, [get_value/2, get_value/3]).
 
--record(state, {bindings = [] :: list(tuple(binary(), pid())) | []}).
+-define(SERVER, ?MODULE).
+
+-type binding() :: tuple(binary(), list(pid() | atom())).
+
+-record(state, {bindings = [] :: list(binding()) | []}).
 
 %%%===================================================================
 %%% API
@@ -54,9 +59,15 @@ bind(Binding) ->
 
 %% return [ {Result, Payload1} ], a list of tuples, the first element of which is the result of the bound handler,
 %% and the second element is the payload, possibly modified
--spec(run/2 :: (Binding :: binary(), Payload :: term()) -> list(tuple(term(), term()))).
-run(Binding, Payload) ->
-    gen_server:call(?MODULE, {run, Binding, Payload}, infinity).
+-spec(run/2 :: (Routing :: binary(), Payload :: term()) -> list(tuple(term(), term()))).
+run(Routing, Payload) ->
+    gen_server:call(?MODULE, {run, Routing, Payload}, infinity).
+
+flush() ->
+    gen_server:cast(?MODULE, flush).
+
+flush(Binding) ->
+    gen_server:cast(?MODULE, {flush, Binding}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -74,6 +85,7 @@ run(Binding, Payload) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    process_flag(trap_exit, true),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -100,7 +112,18 @@ handle_call({run, Binding, Payload}, _, #state{bindings=Bs}=State) ->
     {reply, Res, State};
 			
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
-    {reply, ok, State#state{bindings=[{Binding, From} | Bs]}};
+    case lists:keysearch(Binding, 1, Bs) of
+	false ->
+	    link(From),
+	    {reply, ok, State#state{bindings=[{Binding, [From]} | Bs]}};
+	{_, Subscribers} ->
+	    case lists:member(From, Subscribers) of
+		true -> {reply, exists, State};
+		false ->
+		    link(From),
+		    {reply, ok, State#state{bindings=[{Binding, [From|Subscribers]} | lists:keydelete(Binding, 1, Bs)]}}
+	    end
+    end;
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -116,6 +139,16 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(flush, #state{bindings=Bs}=State) ->
+    lists:foreach(fun flush_binding/1, Bs),
+    {noreply, State#state{bindings=[]}};
+handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
+    case lists:keysearch(Binding, 1, Bs) of
+	false -> {noreply, State};
+	{_, _}=B ->
+	    flush_binding(B),
+	    {noreply, State#state{bindings=lists:keydelete(Binding, Bs)}}
+    end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -129,6 +162,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
+    format_log(info, "WS_BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
+    Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
+			      [{B, lists:delete(Pid, Subs)} | Acc]
+		      end, [], Bs),
+    {noreply, State#state{bindings=Bs1}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -143,7 +182,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{bindings=Bs}) ->
+    lists:foreach(fun flush_binding/1, Bs),
     ok.
 
 %%--------------------------------------------------------------------
@@ -173,6 +213,14 @@ binding_matches(B, R) ->
 %% if both are empty, we made it!
 matches([], []) -> true;
 matches([<<"#">>], []) -> true;
+
+matches([<<"#">>, <<"*">>], []) -> false;
+matches([<<"#">>, <<"*">>], [_]) -> true; % match one item:  #.* matches foo
+
+matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
+    matches(Bs, []);           % so keep checking by stipping of the first #
+
+
 %% if one runs out without a wildcard, no matchy
 matches([], [_|_]) -> false; % foo.*   foo
 matches([_|_], []) -> false;
@@ -184,6 +232,9 @@ matches([<<"*">> | Bs], [_|Rs]) ->
 %% # can match 0 or more segments
 matches([<<"#">>, B | Bs], [B | Rs]) ->
     matches(Bs, Rs); % if the proceeding values match, strip them out, as we've finished matching the #
+matches([<<"#">>, <<"*">> | _]=Bs, [_ | Rs]) ->
+    matches(Bs, Rs);
+
 matches([<<"#">> | _]=Bs, [_ | Rs]) ->
     matches(Bs, Rs); % otherwise leave the # in to continue matching
 
@@ -200,6 +251,11 @@ get_bind_result(Pid, Payload) ->
     after
 	1000 -> {undefined, Payload}
     end.
+
+%% let those bound know their binding is flushed
+-spec(flush_binding/1 :: (Binding :: binding()) -> no_return()).
+flush_binding({B, Subs}) ->
+    lists:foreach(fun(S) -> S ! {binding_flushed, B} end, Subs).
 	    
 %% EUNIT TESTING
 
@@ -207,15 +263,18 @@ get_bind_result(Pid, Payload) ->
 -ifdef(TEST).
 
 bindings_match_test() ->
-    Routings = [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>],
+    Routings = [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>],
     Bindings = [
-		{<<"#">>, [true, true, true, true]}
-		,{<<"foo.*.zot">>, [true, true, false, false]}
-		,{<<"foo.#.zot">>, [true, true, true, true]}
-		,{<<"*.bar.#">>, [true, false, true, false]}
-		,{<<"*">>, [false, false, false, false]}
-		,{<<"#.tow">>, [false, false, false, false]}
-		,{<<"#.quux.zot">>, [false, true, true, false]}
+		{<<"#">>, [true, true, true, true, true, true]}
+		,{<<"foo.*.zot">>, [true, true, false, false, false, false]}
+		,{<<"foo.#.zot">>, [true, true, true, true, false, false]}
+		,{<<"*.bar.#">>, [true, false, true, false, false, false]}
+		,{<<"*">>, [false, false, false, false, true, true]}
+		,{<<"#.tow">>, [false, false, false, false, false, false]}
+		,{<<"#.quux.zot">>, [false, true, true, false, false, false]}
+		,{<<"xap.#">>, [false, false, false, false, false, true]}
+		,{<<"#.*">>, [true, true, true, true, true, true]}
+		,{<<"#.bar.*">>, [true, false, false, false, false, false]}
 	       ],
     lists:foreach(fun({B, _}=Expected) ->
 			  Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], Routings),
