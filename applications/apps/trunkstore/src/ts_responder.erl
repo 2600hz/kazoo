@@ -83,6 +83,7 @@ flush_handlers() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    process_flag(trap_exit, true),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -247,7 +248,7 @@ process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{callmgr_q=CQ}=State) 
 	    send_resp(JSON, RespQ, State),
 	    ?MODULE:start_post_handler(Prop, Flags, State);
 	{error, _Msg} ->
-	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~p~n", [self(), _Msg])
+	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
     end,
     State;
 %% What to do with post route processing?

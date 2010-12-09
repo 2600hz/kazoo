@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
@@ -48,7 +48,10 @@ inbound_handler(ApiProp, ServerID) ->
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     Did = whistle_util:to_e164(ToUser),
     Flags = create_flags(Did, ApiProp),
-    process_routing(inbound_features(Flags), ApiProp, ServerID).
+    case Flags#route_flags.account_doc_id of
+	<<>> -> response(404, ApiProp, Flags, ServerID);
+	_ -> process_routing(inbound_features(Flags), ApiProp, ServerID)
+    end.
 
 -spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
 outbound_handler(ApiProp, ServerID) ->
@@ -68,7 +71,7 @@ lookup_user(Name) ->
 	    format_log(info, "TS_ROUTE(~p): No Name matching ~p~n", [self(), Name]),
 	    {error, "No user found"};
 	[{ViewProp} | _Rest] ->
-	    format_log(info, "TS_ROUTE(~p): Using user ~p, retrieved~n~p~n", [self(), Name, ViewProp]),
+	    format_log(info, "TS_ROUTE(~p): Using user ~p~n", [self(), Name]),
 	    DocID = get_value(<<"id">>, ViewProp),
 	    case couch_mgr:open_doc(?TS_DB, DocID) of
 		{error, E}=Error ->
@@ -95,7 +98,7 @@ lookup_did(Did) ->
 	    {error, "No matching DID"};
 	[{ViewProp} | _Rest] ->
 	    OurDid = get_value(<<"key">>, ViewProp),
-	    format_log(info, "TS_ROUTE(~p): DID found for ~p~n~p~n", [self(), OurDid, ViewProp]),
+	    format_log(info, "TS_ROUTE(~p): DID doc found for ~p~n", [self(), OurDid]),
 	    {Value} = get_value(<<"value">>, ViewProp),
 	    {ok, [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value]};
 	_Else ->
@@ -267,7 +270,7 @@ flags_from_did(DidProp, Flags) ->
     {AuthOpts} = get_value(<<"auth">>, DidProp, {[]}),
 
     Trunks = whistle_util:to_integer(get_value(<<"trunks">>, AcctOpts, 0)),
-    format_log(info, "Got ~p trunks from ~p~n", [Trunks, AcctOpts]),
+    %format_log(info, "Got ~p trunks from ~p~n", [Trunks, AcctOpts]),
 
     {Opts} = get_value(<<"options">>, DidProp, {[]}),
 
@@ -391,7 +394,7 @@ update_account(#route_flags{callid=CallID, flat_rate_enabled=FRE, account_doc=Do
 	       true -> flat_rate;
 	       false -> per_min
 	   end,
-    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use from ~p to ~p~n", [self(), ACs1, CallID]),
+    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use ~p with ~p~n", [self(), ACs1, CallID]),
     ACs2 = lists:usort([{CallID, Type} | ACs1]),
     Acct1 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct0)],
     Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
