@@ -10,6 +10,13 @@
 
 -behaviour(gen_server).
 
+-include("../include/monitor_amqp.hrl").
+-include("../include/monitor_couch.hrl").
+
+-import(logger, [format_log/3]).
+-import(proplists, [get_value/2, get_value/3]).
+-import(whistle_util, [to_binary/1]).
+
 %% API
 -export([start_link/1]).
 -export([set_amqp_host/1]).
@@ -19,29 +26,23 @@
 -export([update_task/4, rm_task/2, list_tasks/1]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-     terminate/2, code_change/3]).
+-export([init/1, terminate/2, code_change/3]).
+-export([handle_call/3, handle_cast/2, handle_info/2]).
 
 -define(SERVER, ?MODULE).
 -define(DEFAULT_INTERVAL, 300000).
 
--import(logger, [format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
-
--include("../include/monitor_amqp.hrl").
--include("../include/monitor_couch.hrl").
-
 -record(state, {
-         amqp_host = "" :: string()
-        ,monitor_q = <<>> :: binary()
-        ,database = ?MONITOR_DB :: string()
-        ,db_view = ?MONITOR_VIEW :: string()
-        ,jobs = [] :: list()
+         amqp_host   = false          :: string() | false
+        ,monitor_q   = false          :: binary() | false
+        ,database    = ?MONITOR_DB    :: string()
+        ,db_view     = ?MONITOR_VIEW  :: string()
+        ,jobs        = []             :: list()
     }).
 
 -record(job, {
-         monitorRef = unknown
-        ,processID = unknown
+         monitorRef  = false          :: reference() | false
+        ,processID   = false          :: reference() | false
     }).
 
 %%%===================================================================
@@ -65,40 +66,40 @@ start_job(Job_ID) ->
     start_job(Job_ID, ?DEFAULT_INTERVAL).
 
 start_job(Job_ID, Interval) ->
-    gen_server:call(?SERVER, {start_job, Job_ID, Interval}, infinity).
+    gen_server:call(?SERVER, {start_job, to_binary(Job_ID), Interval}, infinity).
 
 sync_jobs() ->
     gen_server:call(?SERVER, {sync_jobs}, infinity).
 
-sync_job(Options) ->
-    gen_server:call(?SERVER, {sync_job, Options}, infinity).
+sync_job(Job_ID) ->
+    gen_server:call(?SERVER, {sync_job, to_binary(Job_ID)}, infinity).
 
 rm_job(Job_ID) ->
-    gen_server:call(?SERVER, {rm_job, Job_ID}, infinity).
+    gen_server:call(?SERVER, {rm_job, to_binary(Job_ID)}, infinity).
 
 list_jobs() ->
     gen_server:call(?SERVER, {list_jobs}, infinity).
 
 run_job(Job_ID) ->
-    gen_server:call(?SERVER, {run_job, Job_ID}, infinity).
+    gen_server:call(?SERVER, {run_job, to_binary(Job_ID)}, infinity).
 
 set_interval(Job_ID, Interval) ->
-    gen_server:call(?SERVER, {set_interval, Job_ID, Interval}, infinity).
+    gen_server:call(?SERVER, {set_interval, to_binary(Job_ID), Interval}, infinity).
 
 pause(Job_ID) ->
-    gen_server:call(?SERVER, {pause, Job_ID}, infinity).
+    gen_server:call(?SERVER, {pause, to_binary(Job_ID)}, infinity).
 
 resume(Job_ID) ->
-    gen_server:call(?SERVER, {resume, Job_ID}, infinity).
+    gen_server:call(?SERVER, {resume, to_binary(Job_ID)}, infinity).
 
 update_task(Job_ID, Task_ID, Type, Options) ->
-    gen_server:call(?SERVER, {update_task, Job_ID, Task_ID, Type, Options}, infinity).
+    gen_server:call(?SERVER, {update_task, to_binary(Job_ID), Task_ID, Type, Options}, infinity).
 
 rm_task(Job_ID, Task_ID) ->
-    gen_server:call(?SERVER, {rm_task, Job_ID, Task_ID}, infinity).
+    gen_server:call(?SERVER, {rm_task, to_binary(Job_ID), Task_ID}, infinity).
 
 list_tasks(Job_ID) ->
-    gen_server:call(?SERVER, {list_tasks, Job_ID}, infinity).
+    gen_server:call(?SERVER, {list_tasks, to_binary(Job_ID)}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -133,11 +134,21 @@ init([AHost]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, monitor_q=CurrentMonitorQ}=State) ->
-    format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
-    update_sup_children(AHost, supervisor:which_children(monitor_job_sup)),
-    update_sup_children(AHost, supervisor:which_children(monitor_agent_sup)),
-    {reply, ok, State#state{amqp_host=AHost}};
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host = CurAHost} = State) ->
+    format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurAHost, AHost]),
+    lists:foreach(fun({_,Pid,_,_}) -> 
+        gen_server:call(Pid, {set_amqp_host, AHost}, infinity) end, supervisor:which_children(monitor_job_sup)),
+    lists:foreach(fun({_,Pid,_,_}) -> 
+        gen_server:call(Pid, {set_amqp_host, AHost}, infinity) end, supervisor:which_children(monitor_agent_sup)),
+    {reply, ok, State#state{amqp_host = AHost}};
+
+handle_call({start_job, Job_ID, Interval}, _From, State) ->
+    case ensure_running(Job_ID, State, Interval) of
+        {_Pid, NewState} ->
+            {reply, ok, NewState};
+        _ ->
+            {reply, error, State}
+    end;
 
 handle_call({start_job, Job_ID, Interval}, _From, #state{amqp_host = AHost, jobs = Jobs} = State) ->
     case get_value(Job_ID, Jobs) of
@@ -153,23 +164,33 @@ handle_call({start_job, Job_ID, Interval}, _From, #state{amqp_host = AHost, jobs
             end
     end;
 
-handle_call({sync_jobs, Options}, _From, #state{jobs = Running_Jobs} = State) ->
-    case get_jobs(State, Options) of
-        {ok, Jobs} ->
-            spawn(fun() -> sync_jobs(Jobs, Running_Jobs) end),
-            {reply, {ok, sync_started}, State};
+handle_call({sync_job, Job_ID}, _From, State) ->
+    case get_jobs(State, Job_ID) of
         {error, _Error} = E ->
-            {reply, E, State}
-    end;    
+            {reply, E, State};
+        [] ->
+            spawn(fun() -> rm_job(Job_ID) end),
+            {reply, ok, State};
+        [{Job}] ->
+            case ensure_running(Job_ID, State) of
+                {Pid, NewState} ->
+                    gen_server:call(Pid, {sync, get_value(<<"value">>, Job, [])}, infinity),
+                    {reply, ok, NewState};
+                _ ->
+                    {reply, ok, State}
+            end
+    end;
 
 handle_call({rm_job, Job_ID}, _From, #state{jobs = Jobs} = State) ->
-    stop_job(Job_ID, Jobs),
-    NewJobs = proplists:delete(Job_ID, Jobs),
-    format_log(info, "MONITOR_MASTER(~p): Removed job ~p~n", [self(), Job_ID]),
-    {reply, {ok, job_removed}, State#state{jobs = NewJobs}};
+    case get_value(Job_ID, Jobs) of
+        #job{processID = Pid} -> 
+            {reply, {ok, Pid ! stop}, State};
+        undefined -> 
+            {reply, {ok, not_running}, State}
+    end;
 
 handle_call({list_jobs}, _From, #state{jobs = Jobs} = State) ->
-    {reply, {ok, Jobs}, State};
+    {reply, Jobs, State};
 
 handle_call({set_interval, Job_ID, Interval}, _From, #state{jobs = Jobs} = State) ->
     {reply, msg_job(Job_ID, Jobs, {set_interval, Interval}), State};
@@ -189,8 +210,8 @@ handle_call({rm_task, Job_ID, Task_ID}, _From, #state{jobs = Jobs} = State) ->
 handle_call({list_tasks, Job_ID}, _From, #state{jobs = Jobs} = State) ->
     {reply, msg_job(Job_ID, Jobs, {list_tasks}), State};
 
-handle_call({run_tasks, Job_ID}, _From, #state{jobs = Jobs} = State) ->
-    {reply, msg_job(Job_ID, Jobs, {run_tasks}), State};
+handle_call({run_job, Job_ID}, _From, #state{jobs = Jobs} = State) ->
+    {reply, msg_job(Job_ID, Jobs, {run_job}), State};
 
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
@@ -218,25 +239,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _MonitorRef, _Type, _Job_PID, _Info}, State) ->
-    %%format_log(error, "MONITOR_MASTER(~p): Job PID ~p died unexpectedly!~n", [self(), Job_PID]),
-    {noreply, State};
+handle_info({'DOWN', _MonitorRef, _Type, Job_PID, _Info}, #state{jobs = CurJobs} = State) ->
+    Jobs = lists:filter(fun({_, #job{processID = Pid}}) -> Pid /= Job_PID end, CurJobs),
+    format_log(info, "MONITOR_MASTER(~p): Job PID ~p went down (~p)~n", [self(), Job_PID, _Info]),
+    {noreply, State#state{jobs = Jobs}};
 
-handle_info({document_deleted, Doc_ID}, #state{jobs = Jobs} = State) ->
-    Job_ID = monitor_util:to_binary(Doc_ID),
-    spawn(fun() -> case proplists:is_defined(Job_ID, Jobs) of true -> rm_job(Job_ID); _ -> ok end end),
+handle_info({document_deleted, Doc_ID}, State) ->
+    spawn(fun() -> rm_job(Doc_ID) end),
     {noreply, State};
     
-handle_info({document_changes, Doc_ID, _Changes}, #state{db_view = View, database = DB, jobs = Jobs} = State) ->
-    Job_ID = monitor_util:to_binary(Doc_ID),
-    case couch_mgr:get_results(DB, View, [{"key", Job_ID}]) of
-        [] ->
-            spawn(fun() -> case proplists:is_defined(Job_ID, Jobs) of true -> rm_job(Job_ID); _ -> ok end end);
-        [{Job}] ->
-            spawn(fun() -> sync_job(Job, Jobs) end);
-        _ ->
-            ok
-    end,
+handle_info({document_changes, Doc_ID, _Changes}, State) ->
+    spawn(fun() -> sync_job(Doc_ID) end),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -254,7 +267,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    format_log(error, "MONITOR_MASTER(~p): Going down(~p)...~n", [self(), _Reason]),
+    format_log(error, "MONITOR_MASTER(~p): Going down (~p)...~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -271,61 +284,43 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_amqp(AHost) ->
-    amqp_util:monitor_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
 
-    Monitor_Q = amqp_util:new_monitor_queue(AHost),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Looks up job definitions from the database with an optional
+%% key, if provided will return only definitions for that key
+%%
+%% @spec(get_jobs/2 :: (State :: #state{}, Key :: string) -> 
+%%        touple(error, atom()) | proplist()).
+%% @end
+%%--------------------------------------------------------------------
+get_jobs(State) ->
+    get_jobs(State, "").
 
-    %% Bind the queue to the targeted exchange
-    format_log(info, "MONITOR_MASTER(~p): Bind ~p as a targeted queue~n", [self(), Monitor_Q]),
-    amqp_util:bind_q_to_targeted(AHost, Monitor_Q),
-
-    %% Bind the queue to an exchange
-    format_log(info, "MONITOR_MASTER(~p): Bind ~p for ~p~n", [self(), Monitor_Q, ?KEY_MONITOR_MASTER_REQ]),
-    amqp_util:bind_q_to_monitor(AHost, Monitor_Q, ?KEY_MONITOR_MASTER_REQ),
-
-    %% Register a consumer to listen to the queue
-    format_log(info, "MONITOR_MASTER(~p): Consume on ~p~n", [self(), Monitor_Q]),
-    amqp_util:basic_consume(AHost, Monitor_Q),
-
-    {ok, Monitor_Q}.
-
-get_jobs(#state{database = DB, db_view = View}, Options) ->
+get_jobs(#state{database = DB, db_view = View}, Key) ->
+    Options = case to_binary(Key) of <<>> -> []; K -> [{"key", K}] end, 
     case couch_mgr:get_results(DB, View, Options) of
         false ->
-            format_log(error, "MONITOR_MASTER(~p): Sync jobs missing view ~p~n", [self(), View]),
+            format_log(error, "MONITOR_MASTER(~p): Missing view ~p~n", [self(), View]),
             {error, missing_view};
         {error, not_found} ->
-            format_log(info, "MONITOR_MASTER(~p): Sync jobs result not found~n", [self()]),
+            format_log(info, "MONITOR_MASTER(~p): Result not found~n", [self()]),
             {error, not_found};
         Jobs ->
-            format_log(info, "MONITOR_MASTER(~p): Found ~p jobs in the database~n", [self(), length(Jobs)]),
-            {ok, Jobs}
+            format_log(info, "MONITOR_MASTER(~p): Found ~p jobs in the database ~p using options ~p~n", [self(), length(Jobs), DB, Options]), 
+            Jobs
     end.
 
-sync_jobs([], []) ->
-    sync_complete;
-sync_jobs([], [{Job_ID, _Job}|T]) ->
-    rm_job(Job_ID),
-    sync_jobs([], T);
-sync_jobs([{Props}|T], Running) ->
-    Job_ID = get_value(<<"id">>, Props),
-    sync_job(Props, Running),
-    sync_jobs(T, proplists:delete(Job_ID, Running)).
-
-sync_job(Props, Running) ->
-    Job_ID = get_value(<<"id">>, Props),
-    {Job} = get_value(<<"value">>, Props),
-    Interval = get_value(<<"interval">>, Job, ?DEFAULT_INTERVAL),
-    %% Tasks = get_value(<<"tasks">>, Job, []),
-    case proplists:is_defined(Job_ID, Running)  of
-        true ->
-            set_interval(Job_ID, Interval);
-        _ ->
-            start_job(Job_ID, Interval)
-    end.
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Messages a job server
+%%
+%% @spec(msg_job/2 :: (State :: binary(), Jobs :: proplist(), 
+%%  Msg :: any()) -> touple(ok, Msg) | tuple(error, job_not_found).
+%% @end
+%%--------------------------------------------------------------------
 msg_job(Job_ID, Jobs, Msg) ->
     case get_value(Job_ID, Jobs) of
         #job{processID = Pid} ->
@@ -334,16 +329,30 @@ msg_job(Job_ID, Jobs, Msg) ->
             {error, job_not_found}
     end.
 
-stop_job(Job_ID, Jobs) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Finds the PID of a running job or starts a new job serve if it 
+%% does not exist
+%%
+%% @spec(ensure_running/3 :: (Job_ID :: binary, State :: binary(), 
+%%      Interval :: pos_integer()) -> 
+%%      tuple(pid(), #state{}) | tuple(error, #state{}).
+%% @end
+%%--------------------------------------------------------------------
+ensure_running(Job_ID, State) ->
+    ensure_running(Job_ID, State, ?DEFAULT_INTERVAL).
+
+ensure_running(Job_ID, #state{jobs = Jobs, amqp_host = AHost} = State, Interval) ->
     case get_value(Job_ID, Jobs) of
         #job{processID = Pid} ->
-            {ok, Pid ! stop};
+            {Pid, State};
         undefined ->
-            {error, job_not_found}
+            case monitor_job_sup:start_job(Job_ID, AHost, Interval) of
+                {ok, Pid} ->
+                    Job = #job{processID = Pid, monitorRef = erlang:monitor(process, Pid)},
+                    {Pid, State#state{jobs = [{Job_ID, Job}|Jobs]}};
+                _Else ->
+                    {error, State}
+            end 
     end.
-
-update_sup_children(_, []) ->
-    ok;
-update_sup_children(AHost, [{_,Pid,_,_}|T])->
-    gen_server:call(Pid, {set_amqp_host, AHost}, infinity),    
-    update_sup_children(AHost, T).
