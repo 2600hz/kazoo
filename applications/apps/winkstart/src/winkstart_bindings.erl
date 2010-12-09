@@ -106,9 +106,7 @@ init([]) ->
 handle_call({run, Routing, Payload}, _, #state{bindings=Bs}=State) ->
     Res = lists:foldl(fun({B, Ps}, Acc) ->
 			      case binding_matches(B, Routing) of
-				  true ->
-				      io:format("WS: GetBind(~p) - Pay: ~p, Pids: ~p Routing: ~p~n", [B, Payload, Ps, Routing]),
-				      get_bind_results(Ps, Payload, Acc);
+				  true -> get_bind_results(Ps, Payload, Acc);
 				  false -> Acc
 			      end
 		      end, [], Bs),
@@ -252,7 +250,7 @@ get_bind_results(Pids, Payload, Results) ->
     lists:foldr(fun(Pid, Acc) ->
 			Pid ! {binding_fired, self(), Payload},
 			receive
-			    {binding_result, Pid, Res} -> [Res | Acc]
+			    {binding_result, Resp, Pay1} -> [{Resp, Pay1} | Acc]
 			after
 			    1000 -> [{timeout, Payload} | Acc]
 			end
@@ -288,18 +286,15 @@ bindings_match_test() ->
 		  end, Bindings).
 
 bindings_server(B) ->
-    ?debugVal(B),
     ?MODULE:bind(B),
     bindings_loop().
 
 bindings_loop() ->
     receive
-	{binding_fired, Pid, Payload}=Msg ->
-	    ?debugVal(Msg),
+	{binding_fired, Pid, Payload} ->
 	    Pid ! {binding_result, looks_good, Payload},
 	    bindings_loop();
-	{binding_flushed, _}=Msg1 ->
-	    ?debugVal(Msg1),
+	{binding_flushed, _} ->
 	    bindings_loop();
 	shutdown -> ok
     end.
@@ -319,12 +314,9 @@ bind_and_route_test() ->
     Bindings = [ <<"#">>, <<"foo.*.zot">>, <<"foo.#.zot">>, <<"*">>, <<"#.quux">>],
 
     BoundPids = [ spawn(fun() -> bindings_server(B) end) || B <- Bindings ],
-    ?debugVal(BoundPids),
     timer:sleep(500),
     lists:foreach(fun({R, N}) ->
 			  Res = ?MODULE:run(R, R),
-			  ?debugVal(Res),
-
 			  ?assertEqual({R, N}, {R, length(Res)})
 		  end, Routings),
     lists:foreach(fun(P) -> P ! shutdown end, BoundPids).
