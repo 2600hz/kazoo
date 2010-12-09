@@ -83,6 +83,7 @@ flush_handlers() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    process_flag(trap_exit, true),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -139,7 +140,7 @@ handle_cast(flush_handlers, #state{post_handlers=Posts}=State) ->
 handle_cast({add_post_handler, CallID, Pid}, #state{post_handlers=Posts}=State) ->
     format_log(info, "TS_RESPONDER(~p): Add handler(~p) for ~p~n", [self(), Pid, CallID]),
     link(Pid),
-    {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
+    {noreply, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_cast({rm_post_handler, CallID}, #state{post_handlers=Posts}=State) ->
     format_log(info, "TS_RESPONDER(~p): Remove handler for ~p~n", [self(), CallID]),
     case lists:keyfind(CallID, 1, Posts) of
@@ -247,7 +248,7 @@ process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{callmgr_q=CQ}=State) 
 	    send_resp(JSON, RespQ, State),
 	    ?MODULE:start_post_handler(Prop, Flags, State);
 	{error, _Msg} ->
-	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~p~n", [self(), _Msg])
+	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
     end,
     State;
 %% What to do with post route processing?

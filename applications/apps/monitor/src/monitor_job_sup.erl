@@ -34,8 +34,8 @@ start_job(Job_ID, AHost, Interval) ->
 %% ===================================================================
 
 init([]) ->
-    Job = {monitor_job, {monitor_job, start_link, []},
-           temporary, brutal_kill, worker, [monitor_job]},
+    Job      = {monitor_job, {monitor_job, start_link, []},
+                temporary, brutal_kill, worker, [monitor_job]},
     Children = [Job],
-    RestartStrategy = {simple_one_for_one, 0, 1},
-    {ok, {RestartStrategy, Children}}.
+    Restart  = {simple_one_for_one, 0, 1},
+    {ok, {Restart, Children}}.

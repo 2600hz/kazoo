@@ -8,16 +8,16 @@
 %%%-------------------------------------------------------------------
 -module(monitor_call_basic).
 
+-include("../include/monitor_amqp.hrl").
+
+-import(logger, [format_log/3]).
+-import(proplists, [get_value/2, get_value/3]).
+
 %% API
 -export([start/3]).
 
 -define(SERVER, ?MODULE).
 -define(FREQ, <<"2600">>).
-
--import(logger, [format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
-
--include("../include/monitor_amqp.hrl").
 
 start(AHost, Msg, Route) ->
     Msg_ID = get_value(<<"Msg-ID">>, Msg),
