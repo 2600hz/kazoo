@@ -139,7 +139,7 @@ handle_cast(flush_handlers, #state{post_handlers=Posts}=State) ->
 handle_cast({add_post_handler, CallID, Pid}, #state{post_handlers=Posts}=State) ->
     format_log(info, "TS_RESPONDER(~p): Add handler(~p) for ~p~n", [self(), Pid, CallID]),
     link(Pid),
-    {reply, ok, State#state{post_handlers=[{CallID, Pid} | Posts]}};
+    {noreply, State#state{post_handlers=[{CallID, Pid} | Posts]}};
 handle_cast({rm_post_handler, CallID}, #state{post_handlers=Posts}=State) ->
     format_log(info, "TS_RESPONDER(~p): Remove handler for ~p~n", [self(), CallID]),
     case lists:keyfind(CallID, 1, Posts) of

@@ -20,7 +20,7 @@ reload_app(App) ->
 	Mods ->
 	    lists:foreach(fun(M) ->
 				  io:format("Reloading Mod ~p~n", [M]),
-				  code:purge(M),
+				  code:soft_purge(M),
 				  code:load_file(M)
 			  end, Mods)
     end,
