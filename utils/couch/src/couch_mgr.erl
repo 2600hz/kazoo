@@ -14,7 +14,7 @@
 -export([start_link/0, set_host/1, get_host/0]).
 
 %% Document manipulation
--export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3]).
+-export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
 -export([add_change_handler/2, rm_change_handler/2]).
 
 %% Views
@@ -74,9 +74,11 @@ new_doc() -> [].
 
 %% open a document given a docid
 %% returns not_found or the Document
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> proplist() | not_found).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | not_found).
 open_doc(DbName, DocId, Options) ->
     gen_server:call(?MODULE, {open_doc, whistle_util:to_list(DbName), whistle_util:to_binary(DocId), Options}, infinity).
 
@@ -96,6 +98,10 @@ rm_from_doc(Key, Doc) ->
 -spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, proplist()) | tuple(error, conflict)).
 save_doc(DbName, Doc) ->
     gen_server:call(?MODULE, {save_doc, whistle_util:to_list(DbName), {Doc}}, infinity).
+
+-spec(del_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok | error, term())).
+del_doc(DbName, Doc) ->
+    gen_server:call(?MODULE, {del_doc, whistle_util:to_list(DbName), {Doc}}, infinity).
 
 %% get the results of the view
 %% {Total, Offset, Meta, Rows}
@@ -176,6 +182,7 @@ handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host,
 		    {reply, {error, not_found}, State}
 	    end
     end;
+
 handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
     case get_db(DbName, Conn, DBs) of
 	{{error, _Err}=E, _DBs} ->
@@ -188,6 +195,15 @@ handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs
 		    {reply, Err, State#state{dbs=DBs1}}
 	    end
     end;
+
+handle_call({del_doc, DbName, Doc}, _From, #state{connection={_, Conn}, dbs=DBs}=State) ->
+    case get_db(DbName, Conn, DBs) of
+	{{error, _Err}=E, _DBs} ->
+	    {reply, E, State};
+	{Db, DBs1} ->
+	    {reply, couchbeam:delete_doc(Db, Doc), State#state{dbs=DBs1}}
+    end;
+
 handle_call(get_host, _From, #state{connection={H,_}}=State) ->
     {reply, H, State};
 handle_call({set_host, Host}, _From, #state{connection={OldHost, _}}=State) ->
