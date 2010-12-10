@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010, James Aimonetti
+%%% @doc
+%%% Event publish REST point
+%%% @end
+%%% Created :  9 Dec 2010 by James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 -module(evtpub_resource).
 
 -export([init/1]).
@@ -6,11 +14,13 @@
 -export([generate_etag/2, encodings_provided/2, finish_request/2, is_authorized/2]).
 -export([content_types_provided/2]).
 
+-include("crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
 
 -record(context, {
 	  content_types_provided = [] :: list(tuple(atom(), list(string()))) | []
 	  ,amqp_host = "" :: string()
+	  ,session = #session{} :: #session{}
 	 }).
 
 init(Opts) ->
@@ -23,18 +33,16 @@ init(Opts) ->
       }}.
 
 content_types_provided(RD, #context{content_types_provided=CTP}=Context) ->
-    Path = wrq:disp_path(RD),
-    Mime = webmachine_util:guess_mime(Path),
-    io:format("Guessed MIME: ~p~n", [Mime]),
     {CTP, RD, Context}.
 
 is_authorized(RD, Context) ->
-    case crossbar_session:is_authorized(RD) of
-        true -> {true, RD, Context};
-        {false, Redirect} ->
+    S = crossbar_session:start_session(RD),
+    case crossbar_session:is_authorized(S) of
+        true -> {true, RD, Context#context{session=S}};
+        false ->
             RD0 = wrq:do_redirect(true, RD),
-            RD1 = wrq:set_resp_header("Location", Redirect, RD0),
-            {{halt, 307}, RD1, Context}
+            RD1 = wrq:set_resp_header("Location", "/", RD0),
+            {{halt, 307}, RD1, Context#context{session=S}}
     end.
 
 generate_etag(RD, Context) ->
@@ -45,9 +53,8 @@ encodings_provided(RD, Context) ->
        {"gzip", fun(X) -> zlib:gzip(X) end}],
       RD, Context}.
 
-finish_request(RD, Context) ->
-    {true, RD, Context}.
-%%    {true, sbm_session:finish(Context#context.session, RD), Context}.
+finish_request(RD, #context{session=S}=Context) ->
+    {true, crossbar_session:finish_session(S, RD), Context}.
 
 %% Convert the input to Erlang
 from_text(RD, Context) ->
