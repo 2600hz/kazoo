@@ -1,0 +1,6 @@
+127.0.0.1 - - [07/Dec/2010:18:02:05 -0800] "GET / HTTP/1.1" 200 132 "" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.12) Gecko/20101027 Ubuntu/10.10 (maverick) Firefox/3.6.12"
+127.0.0.1 - - [07/Dec/2010:18:02:05 -0800] "GET /main.js HTTP/1.1" 200 50 "http://localhost:8000/" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.12) Gecko/20101027 Ubuntu/10.10 (maverick) Firefox/3.6.12"
+127.0.0.1 - - [07/Dec/2010:18:02:05 -0800] "GET /foo.jpg HTTP/1.1" 200 22184 "http://localhost:8000/" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.12) Gecko/20101027 Ubuntu/10.10 (maverick) Firefox/3.6.12"
+127.0.0.1 - - [07/Dec/2010:18:09:42 -0800] "GET / HTTP/1.1" 200 132 "" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.12) Gecko/20101027 Ubuntu/10.10 (maverick) Firefox/3.6.12"
+127.0.0.1 - - [07/Dec/2010:18:09:43 -0800] "GET /main.js HTTP/1.1" 304 0 "http://localhost:8000/" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.12) Gecko/20101027 Ubuntu/10.10 (maverick) Firefox/3.6.12"
+127.0.0.1 - - [07/Dec/2010:18:09:43 -0800] "GET /foo.jpg HTTP/1.1" 304 0 "http://localhost:8000/" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.12) Gecko/20101027 Ubuntu/10.10 (maverick) Firefox/3.6.12"
