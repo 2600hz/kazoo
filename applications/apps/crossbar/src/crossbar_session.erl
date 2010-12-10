@@ -219,7 +219,7 @@ get_session_doc(RD) ->
 %% get_session_rec(request()) -> session_rec()
 get_session(RD) ->
     case get_session_doc(RD) of
-        not_found -> new();
+        {error, _} -> new();
         Doc when is_list(Doc) -> from_couch(Doc)
     end.
 
