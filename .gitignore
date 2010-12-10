@@ -3,5 +3,5 @@
 */mnesia
 */error_log
 .eunit
-rabbit/rabbit-config/log/*.log
+rabbit/rabbit-config/log/*.log*
 rabbit/rabbit-config/mnesia/*
