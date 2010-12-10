@@ -4,7 +4,7 @@
 %%% 
 %%% @end
 %%% Created :  Tue, 07 Dec 2010 19:26:22 GMT: James Aimonetti <james@2600hz.org>
--module(winkstart_sup).
+-module(crossbar_sup).
 
 -behaviour(supervisor).
 
@@ -60,8 +60,10 @@ init([]) ->
                  {log_dir, "priv/log"},
                  {dispatch, Dispatch}],
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
-    BindingServer = ?CHILD(winkstart_bindings, worker),
+    BindingServer = ?CHILD(crossbar_bindings, worker),
+    SessionServer = ?CHILD(crossbar_session, worker),
     Processes = [Web
 		 ,BindingServer
-		], %% Put list of ?CHILD(winkstart_server, worker) or ?CHILD(winkstart_other_sup, supervisor)
+		 ,SessionServer
+		], %% Put list of ?CHILD(crossbar_server, worker) or ?CHILD(crossbar_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.

@@ -1,7 +1,7 @@
-{application, winkstart,
+{application, crossbar,
  [
-  {description, "Winkstart - REST Interface to the stars"}
-  ,{vsn, "0.0.1"}
+  {description, "Crossbar - REST Interface to the stars"}
+  ,{vsn, "0.0.2"}
   ,{modules, []}
   ,{registered, []}
   ,{applications, [
@@ -11,6 +11,6 @@
 		   ,mochiweb
 		   ,webmachine
 		  ]}
-  ,{mod, { winkstart_app, []} }
+  ,{mod, { crossbar_app, []} }
   ,{env, []}
  ]}.

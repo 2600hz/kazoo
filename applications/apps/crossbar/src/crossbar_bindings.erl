@@ -17,7 +17,7 @@
 %%% @end
 %%% Created :  7 Dec 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(winkstart_bindings).
+-module(crossbar_bindings).
 
 -behaviour(gen_server).
 
@@ -36,6 +36,7 @@
 -define(SERVER, ?MODULE).
 
 -type binding() :: tuple(binary(), list(pid() | atom())).
+-type binding_result() :: tuple(binding_result, term(), term()).
 
 -record(state, {bindings = [] :: list(binding()) | []}).
 
@@ -102,17 +103,17 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({run, Binding, Payload}, _, #state{bindings=Bs}=State) ->
-    Res = lists:foldl(fun({B, P}, Acc) ->
-			      case binding_matches(B, Binding) of
-				  true -> [ get_bind_result(P, Payload) | Acc];
+handle_call({run, Routing, Payload}, _, #state{bindings=Bs}=State) ->
+    Res = lists:foldl(fun({B, Ps}, Acc) ->
+			      case binding_matches(B, Routing) of
+				  true -> get_bind_results(Ps, Payload, Acc);
 				  false -> Acc
 			      end
 		      end, [], Bs),
     {reply, Res, State};
 			
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
-    case lists:keysearch(Binding, 1, Bs) of
+    case lists:keyfind(Binding, 1, Bs) of
 	false ->
 	    link(From),
 	    {reply, ok, State#state{bindings=[{Binding, [From]} | Bs]}};
@@ -143,7 +144,7 @@ handle_cast(flush, #state{bindings=Bs}=State) ->
     lists:foreach(fun flush_binding/1, Bs),
     {noreply, State#state{bindings=[]}};
 handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
-    case lists:keysearch(Binding, 1, Bs) of
+    case lists:keyfind(Binding, 1, Bs) of
 	false -> {noreply, State};
 	{_, _}=B ->
 	    flush_binding(B),
@@ -200,6 +201,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(binding_matches/2 :: (B :: binary(), R :: binary()) -> boolean()).
 binding_matches(B, B) -> true;
 %% foo.* matches foo.bar, foo.baz, but not bip.bar
 %% B is what was bound, R is the routing key being used
@@ -208,9 +210,8 @@ binding_matches(B, R) ->
     Opts = [global],
     matches(binary:split(B, <<".">>, Opts), binary:split(R, <<".">>, Opts)).
 
-%% foo.*.zot   foo.bar.zot
-
 %% if both are empty, we made it!
+-spec(matches/2 :: (Bs :: list(binary()), Rs :: list(binary())) -> boolean()).
 matches([], []) -> true;
 matches([<<"#">>], []) -> true;
 
@@ -219,7 +220,6 @@ matches([<<"#">>, <<"*">>], [_]) -> true; % match one item:  #.* matches foo
 
 matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
     matches(Bs, []);           % so keep checking by stipping of the first #
-
 
 %% if one runs out without a wildcard, no matchy
 matches([], [_|_]) -> false; % foo.*   foo
@@ -244,13 +244,17 @@ matches([B | Bs], [B | Rs]) ->
 %% otherwise no match
 matches(_, _) -> false.
 
-get_bind_result(Pid, Payload) ->
-    Pid ! {self(), Payload},
-    receive
-	{Pid, Res} -> Res
-    after
-	1000 -> {undefined, Payload}
-    end.
+%% returns the results for each pid and their modification (if any) to the payload
+-spec(get_bind_results/3 :: (Pids :: list(pid()), Payload :: term(), Results :: list(binding_result())) -> list(tuple(term() | timeout, term()))).
+get_bind_results(Pids, Payload, Results) ->
+    lists:foldr(fun(Pid, Acc) ->
+			Pid ! {binding_fired, self(), Payload},
+			receive
+			    {binding_result, Resp, Pay1} -> [{Resp, Pay1} | Acc]
+			after
+			    1000 -> [{timeout, Payload} | Acc]
+			end
+		end, Results, Pids).
 
 %% let those bound know their binding is flushed
 -spec(flush_binding/1 :: (Binding :: binding()) -> no_return()).
@@ -280,5 +284,41 @@ bindings_match_test() ->
 			  Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], Routings),
 			  ?assertEqual(Expected, {B, Actual})
 		  end, Bindings).
+
+bindings_server(B) ->
+    ?MODULE:bind(B),
+    bindings_loop().
+
+bindings_loop() ->
+    receive
+	{binding_fired, Pid, Payload} ->
+	    Pid ! {binding_result, looks_good, Payload},
+	    bindings_loop();
+	{binding_flushed, _} ->
+	    bindings_loop();
+	shutdown -> ok
+    end.
+
+bind_and_route_test() ->
+    ?MODULE:start_link(),
+    ?MODULE:flush(),
+    Routings = [
+		%% routing, # responses
+		{<<"foo.bar.zot">>, 3}
+		,{<<"foo.quux.zot">>, 3}
+		,{<<"foo.bar.quux.zot">>, 2}
+		,{<<"foo.zot">>, 2}
+		,{<<"foo">>, 2}
+		,{<<"xap">>, 2}
+	       ],
+    Bindings = [ <<"#">>, <<"foo.*.zot">>, <<"foo.#.zot">>, <<"*">>, <<"#.quux">>],
+
+    BoundPids = [ spawn(fun() -> bindings_server(B) end) || B <- Bindings ],
+    timer:sleep(500),
+    lists:foreach(fun({R, N}) ->
+			  Res = ?MODULE:run(R, R),
+			  ?assertEqual({R, N}, {R, length(Res)})
+		  end, Routings),
+    lists:foreach(fun(P) -> P ! shutdown end, BoundPids).
 
 -endif.
