@@ -220,7 +220,12 @@ get_session_doc(RD) ->
 get_session(RD) ->
     case get_session_doc(RD) of
         {error, _} -> new();
-        Doc when is_list(Doc) -> from_couch(Doc)
+        Doc when is_list(Doc) ->
+	    S = from_couch(Doc),
+	    case has_expired(S) of
+		true -> new();
+		false -> S
+	    end
     end.
 
 -spec(save_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
@@ -293,6 +298,8 @@ clean_expired() ->
     format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]).
 
 %% pass the secs representation of the expires time and compare to now
--spec(has_expired/1 :: (Secs :: integer()) -> boolean()).
-has_expired(Secs) ->
-    Secs < calendar:datetime_to_gregorian_seconds(calendar:local_time()).
+-spec(has_expired/1 :: (S :: integer() | #session{}) -> boolean()).
+has_expired(#session{created=C, expires=E}) ->
+    has_expired(C+E);
+has_expired(S) when is_integer(S) ->
+    S < calendar:datetime_to_gregorian_seconds(calendar:local_time()).
