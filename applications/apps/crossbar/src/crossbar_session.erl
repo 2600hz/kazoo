@@ -126,12 +126,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({start_session, RD}, _, #state{active_sessions=Sess}=State) ->
-    S = get_session(RD),
-    case lists:member(S#session.'_id', Sess) of
-	true -> {reply, S, State};
-	false -> {reply, S, State#state{active_sessions=[S | Sess]}}
-    end;
+handle_call({start_session, RD}, _, #state{}=State) ->
+    {reply, get_session(RD), State};
 
 %% return the modified request datastructure with the updated session
 handle_call({finish_session, S, RD}, _, State) ->
@@ -220,6 +216,7 @@ get_session_doc(RD) ->
 get_session(RD) ->
     case get_session_doc(RD) of
         {error, _} -> new();
+	not_found -> new();
         Doc when is_list(Doc) ->
 	    S = from_couch(Doc),
 	    case has_expired(S) of
@@ -245,27 +242,39 @@ delete_session(S, RD) ->
     couch_mgr:del_doc(?SESSION_DB, to_couch(S)),
     set_cookie_header(RD, S, calendar:local_time(), -1).
 
-
+-spec(to_couch/1 :: (S :: #session{}) -> proplist()).
 to_couch(S) -> to_couch(S, S#session.created).
 
+-spec(to_couch/2 :: (S :: #session{}, Now :: integer()) -> proplist()).
 to_couch(#session{'_rev'=undefined, storage=Storage}=S, Now) ->
     [{<<"_id">>, S#session.'_id'}
-     ,{<<"session">>, tuple_to_list(S#session{created=Now,expires=?MAX_AGE, storage=encode_storage(Storage)})}
+     ,{<<"session">>, tuple_to_list(S#session{created=whistle_util:to_binary(Now)
+					      ,expires=?MAX_AGE
+					      ,storage=encode_storage(Storage)
+					     })}
     ];
 to_couch(#session{storage=Storage}=S, Now) ->
     [{<<"_id">>, S#session.'_id'}
      ,{<<"_rev">>, S#session.'_rev'}
-     ,{<<"session">>, tuple_to_list(S#session{created=Now,expires=?MAX_AGE, storage=encode_storage(Storage)})}
+     ,{<<"session">>, tuple_to_list(S#session{created= whistle_util:to_binary(Now)
+					      ,expires=?MAX_AGE
+					      ,storage=encode_storage(Storage)
+					     })}
     ].
 
+-spec(encode_storage/1 :: (L :: list()) -> [] | tuple(list())).
 encode_storage([]) -> [];
 encode_storage(L) when is_list(L) -> {L}.
 
+-spec(from_couch/1 :: (Doc :: proplist()) -> #session{}).
 from_couch(Doc) ->
     Id = props:get_value(<<"_id">>, Doc),
     Rev = props:get_value(<<"_rev">>, Doc),
     S = setelement(1, list_to_tuple(props:get_value(<<"session">>, Doc)), session),
-    S#session{'_id'=Id, '_rev'=Rev}.
+    S#session{'_id'=Id, '_rev'=Rev
+	      ,created=whistle_util:to_integer(S#session.created)
+	      ,expires=whistle_util:to_integer(S#session.expires)
+	     }.
 
 %% create a new session record
 %% new() -> #session()

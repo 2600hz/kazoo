@@ -17,6 +17,8 @@
 -export([generate_etag/2, encodings_provided/2, finish_request/2, is_authorized/2]).
 -export([content_types_provided/2]).
 
+-import(logger, [format_log/3]).
+
 -include("crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
 
@@ -40,13 +42,9 @@ content_types_provided(RD, #context{content_types_provided=CTP}=Context) ->
 
 is_authorized(RD, Context) ->
     S = crossbar_session:start_session(RD),
-    case crossbar_session:is_authorized(S) of
-        true -> {true, RD, Context#context{session=S}};
-        false ->
-            RD0 = wrq:do_redirect(true, RD),
-            RD1 = wrq:set_resp_header("Location", "/", RD0),
-            {{halt, 307}, RD1, Context#context{session=S}}
-    end.
+    Res = crossbar_bindings:run(<<"evtsub.is_authorized">>, RD),
+    format_log(info, "EVTSUB_RSC(~p): is_auth bindings result: ~p~n", [self(), Res]),
+    {true, RD, Context#context{session=S}}.
 
 generate_etag(RD, Context) ->
     { mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context }.
@@ -72,14 +70,14 @@ from_xml(RD, Context) ->
 
 %% Generate the response
 to_html(RD, Context) ->
-    Page = "evtpub html",
+    Page = "evtsub html",
     {Page, RD, Context}.
 
 to_json(RD, Context) ->
-    {mochijson2:encode("evtpub json"), RD, Context}.
+    {mochijson2:encode("evtsub json"), RD, Context}.
 
 to_xml(RD, Context) ->
-    {"<xml><evtpub type='xml' /></xml>", RD, Context}.
+    {"<xml><evtsub type='xml' /></xml>", RD, Context}.
 
 to_text(RD, Context) ->
-    {"evtpub txt", RD, Context}.
+    {"evtsub txt", RD, Context}.
