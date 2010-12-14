@@ -1,22 +1,21 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010 James Aimonetti
 %%% @doc
-%%% 
+%%% Add crossbar modules dynamically
 %%% @end
 %%% Created :  Tue, 07 Dec 2010 19:26:22 GMT: James Aimonetti <james@2600hz.org>
--module(crossbar_sup).
+-module(crossbar_module_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, upgrade/0]).
+-export([start_link/0, upgrade/0, start_mod/2, stop_mod/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
--define(CHILD(I, Type, Args), {I, {I, start, [Args]}, permanent, 5000, Type, dynamic}).
+-define(CHILD(I, Type, Args), {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
 
 %% ===================================================================
 %% API functions
@@ -24,6 +23,13 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+start_mod(Mod, Args) ->
+    supervisor:start_child(?MODULE, ?CHILD(Mod, worker, Args)).
+
+stop_mod(Mod) ->
+    supervisor:terminate_child(?MODULE, Mod),
+    supervisor:delete_child(?MODULE, Mod).
 
 %% @spec upgrade() -> ok
 %% @doc Add processes if necessary.
@@ -50,23 +56,4 @@ upgrade() ->
 %% ===================================================================
 
 init([]) ->
-    Ip = case os:getenv("WEBMACHINE_IP") of false -> "0.0.0.0"; Any -> Any end,
-    {ok, Dispatch} = file:consult(filename:join(
-                         [filename:dirname(code:which(?MODULE)),
-                          "..", "priv", "dispatch.conf"])),
-    WebConfig = [
-                 {ip, Ip},
-                 {port, 8000},
-                 {log_dir, "priv/log"},
-                 {dispatch, Dispatch}],
-    Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
-    ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
-    BindingServer = ?CHILD(crossbar_bindings, worker),
-    SessionServer = ?CHILD(crossbar_session, worker),
-    Processes = [
-		 ModuleSup
-		 ,Web
-		 ,BindingServer
-		 ,SessionServer
-		], %% Put list of ?CHILD(crossbar_server, worker) or ?CHILD(crossbar_other_sup, supervisor)
-    {ok, { {one_for_one, 10, 10}, Processes} }.
+    {ok, { {one_for_one, 10, 10}, []} }.

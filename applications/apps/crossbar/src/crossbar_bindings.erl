@@ -106,7 +106,7 @@ init([]) ->
 handle_call({run, Routing, Payload}, _, #state{bindings=Bs}=State) ->
     Res = lists:foldl(fun({B, Ps}, Acc) ->
 			      case binding_matches(B, Routing) of
-				  true -> get_bind_results(Ps, Payload, Acc);
+				  true -> get_bind_results(Ps, Payload, Acc, Routing);
 				  false -> Acc
 			      end
 		      end, [], Bs),
@@ -245,10 +245,10 @@ matches([B | Bs], [B | Rs]) ->
 matches(_, _) -> false.
 
 %% returns the results for each pid and their modification (if any) to the payload
--spec(get_bind_results/3 :: (Pids :: list(pid()), Payload :: term(), Results :: list(binding_result())) -> list(tuple(term() | timeout, term()))).
-get_bind_results(Pids, Payload, Results) ->
+-spec(get_bind_results/4 :: (Pids :: list(pid()), Payload :: term(), Results :: list(binding_result()), Route :: binary()) -> list(tuple(term() | timeout, term()))).
+get_bind_results(Pids, Payload, Results, Route) ->
     lists:foldr(fun(Pid, Acc) ->
-			Pid ! {binding_fired, self(), Payload},
+			Pid ! {binding_fired, self(), Route, Payload},
 			receive
 			    {binding_result, Resp, Pay1} -> [{Resp, Pay1} | Acc]
 			after
