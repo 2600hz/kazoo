@@ -54,10 +54,11 @@ init([]) ->
     {ok, Dispatch} = file:consult(filename:join(
                          [filename:dirname(code:which(?MODULE)),
                           "..", "priv", "dispatch.conf"])),
+    LogDir = filename:join([filename:dirname(code:which(?MODULE)), "..", "log"]),
     WebConfig = [
                  {ip, Ip},
                  {port, 8000},
-                 {log_dir, "priv/log"},
+                 {log_dir, LogDir},
                  {dispatch, Dispatch}],
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
     ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
