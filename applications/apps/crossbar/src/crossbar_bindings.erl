@@ -148,7 +148,7 @@ handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
 	false -> {noreply, State};
 	{_, _}=B ->
 	    flush_binding(B),
-	    {noreply, State#state{bindings=lists:keydelete(Binding, Bs)}}
+	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}}
     end;
 handle_cast(_Msg, State) ->
     {noreply, State}.

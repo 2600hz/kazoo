@@ -37,9 +37,10 @@ pull_from_body_and_qs(RD) ->
 
 -spec(winkstart_envelope/2 :: (Status :: crossbar_status(), Data :: proplist()) -> iolist()).
 winkstart_envelope(success, Data) ->
-    mochijson2:encode([{status, <<"success">>}
-		       ,{data, {struct, Data}}
-		      ]);
+    format_log(info, "Envelope: D: ~p~n", [Data]),
+    mochijson2:encode({struct, [{status, <<"success">>}
+				,{data, {struct, Data}}
+			       ]});
 winkstart_envelope(error, Data) ->
     winkstart_envelope(error, Data, "An unspecified error has occurred");
 winkstart_envelope(fatal, Data) ->
@@ -47,33 +48,33 @@ winkstart_envelope(fatal, Data) ->
 
 -spec(winkstart_envelope/3 :: (Status :: crossbar_status(), Data :: proplist(), Msg :: string()) -> iolist()).
 winkstart_envelope(success, Data, Msg) ->
-    mochijson2:encode([{status, <<"success">>}
-		       ,{message, whistle_util:to_binary(Msg)}
-		       ,{data, {struct, Data}}
-		      ]);
+    mochijson2:encode({struct, [{status, <<"success">>}
+				,{message, whistle_util:to_binary(Msg)}
+				,{data, {struct, Data}}
+			       ]});
 winkstart_envelope(error, Data, Msg) ->
-    mochijson2:encode([{status, <<"error">>}
-		       ,{message, whistle_util:to_binary(Msg)}
-		       ,{data, {struct, Data}}
-		      ]);
+    mochijson2:encode({struct, [{status, <<"error">>}
+				,{message, whistle_util:to_binary(Msg)}
+				,{data, {struct, Data}}
+			       ]});
 winkstart_envelope(fatal, Data, Msg) ->
-    mochijson2:encode([{status, <<"fatal">>}
-		       ,{message, whistle_util:to_binary(Msg)}
-		       ,{data, {struct, Data}}
-		      ]).
+    mochijson2:encode({struct, [{status, <<"fatal">>}
+				,{message, whistle_util:to_binary(Msg)}
+				,{data, {struct, Data}}
+			       ]}).
 
 -spec(winkstart_envelope/4 :: (Status :: crossbar_status(), Data :: proplist(), ErrorMsg :: string(), ErrorCode :: integer()) -> iolist()).
 winkstart_envelope(success, Data, Msg, _) ->
     winkstart_envelope(success, Data, Msg);
 winkstart_envelope(error, Data, ErrorMsg, ErrorCode) ->
-    mochijson2:encode([{status, <<"error">>}
-		       ,{error, ErrorCode}
-		       ,{message, whistle_util:to_binary(ErrorMsg)}
-		       ,{data, {struct, Data}}
-		      ]);
+    mochijson2:encode({struct, [{status, <<"error">>}
+				,{error, ErrorCode}
+				,{message, whistle_util:to_binary(ErrorMsg)}
+				,{data, {struct, Data}}
+			       ]});
 winkstart_envelope(fatal, Data, ErrorMsg, ErrorCode) ->
-    mochijson2:encode([{status, <<"fatal">>}
-		       ,{error, ErrorCode}
-		       ,{message, whistle_util:to_binary(ErrorMsg)}
-		       ,{data, {struct, Data}}
-		      ]).
+    mochijson2:encode({struct, [{status, <<"fatal">>}
+				,{error, ErrorCode}
+				,{message, whistle_util:to_binary(ErrorMsg)}
+				,{data, {struct, Data}}
+			       ]}).

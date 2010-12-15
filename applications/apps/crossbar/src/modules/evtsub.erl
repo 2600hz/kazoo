@@ -24,6 +24,8 @@
 
 -import(logger, [format_log/3]).
 
+-include("../crossbar.hrl").
+
 -define(SERVER, ?MODULE).
 
 %% { auth_token, queue_name, [{<<"route.one">>, Options}, {<<"route.two.#">>, Options}]}
@@ -46,7 +48,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 -spec(add/1 :: (Request :: list(tuple(binary(), binary()))) -> list(tuple(binary(), term()))).
-add(Request) -> [<<"add">>, <<"me">>].
+add(Request) -> [{<<"add">>, <<"me">>}].
 rm(Request) -> "rm".
 clear(Request) -> "clear".
 status(Request) -> "status".
@@ -131,8 +133,12 @@ handle_info({binding_fired, Pid, <<"evtsub.init">>=Route, Payload}, State) ->
     Opts = lists:umerge(Payload, InitOpts),
     Pid ! {binding_result, true, Opts},
     {noreply, State};
+handle_info({binding_fired, Pid, <<"evtsub.is_authenticated">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p acct: ~p~n", [self(), Route, Acct]),
+    Pid ! {binding_result, (not (Acct =:= <<>>)), Payload},
+    {noreply, State};
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
+    format_log(info, "EVTSUB(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 handle_info({binding_flushed, _B}, State) ->
