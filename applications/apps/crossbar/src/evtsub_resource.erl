@@ -28,7 +28,7 @@
 -export([to_html/2, to_json/2, to_xml/2, to_text/2]).
 -export([from_json/2, from_xml/2, from_text/2]).
 -export([generate_etag/2, encodings_provided/2, finish_request/2, is_authorized/2]).
--export([content_types_accepted/2, content_types_provided/2, resource_exists/2, allowed_methods/2]).
+-export([content_types_provided/2, content_types_accepted/2, resource_exists/2, allowed_methods/2]).
 -export([process_post/2]). %, post_is_create/2, create_path/2]).
 
 -import(logger, [format_log/3]).
@@ -38,7 +38,7 @@
 
 -record(context, {
 	  content_types_provided = [] :: list(tuple(atom(), list(string()))) | []
-	  ,content_types_accepted = [] :: list(tuple(atom(), list(string()))) | []
+          ,content_types_accepted = [] :: list(tuple(atom(), list(string()))) | []
 	  ,amqp_host = "" :: string()
 	  ,session = #session{} :: #session{}
           ,request = undefined % function to call in evtsub.erl
@@ -53,62 +53,78 @@ init(Opts) ->
     Accepted = lists:foldr(fun({Fun, L}, Acc) ->
 				   lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
 			   end, [], props:get_value(content_types_accepted, Opts1, [])),
-    {ok, #context{
+    format_log(info, "EVTSUB_R: init opts ~p~n", [Opts1]),
+    {ok % {wmtrace, "/tmp"} %% for debugging, then run wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp"). in the VM
+                            %% Run your request, then go to http://HOST/wmtrace/ and select a file to view 
+                            %% Remove tracing by running wmtrace_resource:remove_dispatch_rules(). in the VM
+     ,#context{
        content_types_provided = Provided
        ,content_types_accepted = Accepted
        ,amqp_host = props:get_value(amqp_host, Opts1)
       }}.
 
 resource_exists(RD, Context) ->
-    case wrq:path_info(request, RD) of
-	undefined -> {{error, "Invalid request"}, RD, Context};
-	Req when is_list(Req) ->
-	    try
-		Fun = list_to_existing_atom(Req),
-		case erlang:function_exported(evtsub, Fun, 1) of
-		    true ->
-			format_log(info, "EVTSUB_R: ~p found.~n", [Fun]),
-			{true, RD, Context#context{request=Fun}};
-		    false ->
-			format_log(info, "EVTSUB_R: ~p/1 not exported~n", [Fun]),
-			{false, RD, Context}
-		end
-	    catch
-		error:badarg ->
-		    format_log(info, "EVTSUB_R: ~p doesn't exist~n", [Req]),
-		    {false, RD, Context}
+    crossbar_bindings:run(<<"evtsub.resource_exists">>, []),
+    case erlang:whereis(evtsub) of
+	undefined -> {false, RD, Context};
+	P when is_pid(P) ->
+	    case wrq:path_info(request, RD) of
+		undefined -> {{error, "Invalid request"}, RD, Context};
+		Req when is_list(Req) ->
+		    try
+			Fun = list_to_existing_atom(Req),
+			case erlang:function_exported(evtsub, Fun, 1) of
+			    true ->
+				format_log(info, "EVTSUB_R: ~p/1 found.~n", [Fun]),
+				{true, RD, Context#context{request=Fun}};
+			    false ->
+				format_log(info, "EVTSUB_R: ~p/1 not exported~n", [Fun]),
+				{false, RD, Context}
+			end
+		    catch
+			error:badarg ->
+			    format_log(info, "EVTSUB_R: ~p doesn't exist~n", [Req]),
+			    {false, RD, Context}
+		    end
 	    end
     end.
 
 content_types_provided(RD, #context{content_types_provided=CTP}=Context) ->
+    crossbar_bindings:run(<<"evtsub.content_types_provided">>, CTP),
     {CTP, RD, Context}.
 
 content_types_accepted(RD, #context{content_types_accepted=CTA}=Context) ->
+    crossbar_bindings:run(<<"evtsub.content_types_accepted">>, CTA),
     {CTA, RD, Context}.
 
 allowed_methods(RD, Context) ->
-    {['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], RD, Context}.
+    crossbar_bindings:run(<<"evtsub.allowed_methods">>, []),
+    {['POST', 'PUT', 'DELETE'], RD, Context}.
 
 is_authorized(RD, Context) ->
     S = crossbar_session:start_session(RD),
-    Res = crossbar_bindings:run(<<"evtsub.is_authorized">>, RD),
-    %% TODO - process results of bindings and 
+    AuthenticatedRes = crossbar_bindings:run(<<"evtsub.is_authenticated">>, S),
+    AuthorizedRes = crossbar_bindings:run(<<"evtsub.is_authorized">>, S),
+    %% TODO - process results of bindings
     {true, RD, Context#context{session=S}}.
 
 generate_etag(RD, Context) ->
+    crossbar_bindings:run(<<"evtsub.generate_etag">>, []),
     { mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context }.
 
 encodings_provided(RD, Context) ->
-    { [{"identity", fun(X) -> X end},
-       {"gzip", fun(X) -> zlib:gzip(X) end}],
-      RD, Context}.
+    crossbar_bindings:run(<<"evtsub.encodings_provided">>, []),
+    { [ {"identity", fun(X) -> X end}
+       ,{"gzip", fun(X) -> zlib:gzip(X) end}]
+      ,RD, Context}.
 
 process_post(RD, #context{request=Fun}=Context) ->
-    PostBody = mochiweb_util:parse_qs(wrq:req_body(RD)),
-    QS = wrq:req_qs(RD),
-    Params = lists:ukeymerge(1, lists:ukeysort(1, PostBody), lists:ukeysort(1, QS)),
+    crossbar_bindings:run(<<"evtsub.process_post">>, []),
+    Params = crossbar_util:get_request_params(RD),
+    format_log(info, "EVTSUB_R: process_post params ~p~n", [Params]),
     %% maybe assume JSON if we hit here?
-    {true, wrq:append_to_response_body(whistle_util:to_binary(evtsub:Fun(Params)), RD), Context}.
+    Resp = mochijson2:encode(whistle_util:to_binary(evtsub:Fun(Params))),
+    {true, wrq:append_to_response_body(Resp, RD), Context}.
 
 %post_is_create(RD, Context) ->
 %    {false, RD, Context}.
@@ -117,6 +133,7 @@ process_post(RD, #context{request=Fun}=Context) ->
 %    {"/cp", RD, Context}.
 
 finish_request(RD, #context{session=S}=Context) ->
+    crossbar_bindings:run(<<"evtsub.finish_request">>, RD),
     {true, crossbar_session:finish_session(S, RD), Context}.
 
 %% Convert the input to Erlang
@@ -124,8 +141,10 @@ from_text(RD, Context) ->
     format_log(info, "EVTSUB_R: from_text: QS: ~p ReqB: ~p~n", [wrq:req_qs(RD), wrq:req_body(RD)]),
     {true, RD, Context}.
 
-from_json(RD, Context) ->
-    format_log(info, "EVTSUB_R: from_json: QS: ~p ReqB: ~p~n", [wrq:req_qs(RD), wrq:req_body(RD)]),
+from_json(RD, #context{request=Fun}=Context) ->
+    Params = crossbar_util:get_request_params(RD),
+    Res = evtsub:Fun(Params),
+    format_log(info, "EVTSUB_R: from_json: Params ~p Res: ~p~n", [Params, Res]),
     {true, RD, Context}.
 
 from_xml(RD, Context) ->
@@ -136,7 +155,9 @@ from_xml(RD, Context) ->
 %% Generate the response
 to_html(RD, #context{request=Fun}=Context) ->
     format_log(info, "EVTSUB_R: to_html: ReqB: ~p~n", [wrq:resp_body(RD)]),
-    {evtsub:Fun(RD), RD, Context}.
+    Params = crossbar_util:get_request_params(RD),
+    Page = io_lib:format("<html><body><span>add: </span><strong>~s</strong></body></html>", [evtsub:Fun(Params)]),
+    {Page, RD, Context}.
 
 to_json(RD, #context{request=Fun}=Context) ->
     format_log(info, "EVTSUB_R: to_json: ReqB: ~p resp: ~s~n", [wrq:resp_body(RD), mochijson2:encode(evtsub:Fun(RD))]),

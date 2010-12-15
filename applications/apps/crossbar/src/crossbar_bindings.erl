@@ -164,7 +164,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
-    format_log(info, "WS_BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
+    format_log(info, "BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, lists:delete(Pid, Subs)} | Acc]
 		      end, [], Bs),
@@ -291,7 +291,7 @@ bindings_server(B) ->
 
 bindings_loop() ->
     receive
-	{binding_fired, Pid, Payload} ->
+	{binding_fired, Pid, _R, Payload} ->
 	    Pid ! {binding_result, looks_good, Payload},
 	    bindings_loop();
 	{binding_flushed, _} ->

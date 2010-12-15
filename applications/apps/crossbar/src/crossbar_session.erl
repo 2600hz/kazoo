@@ -210,7 +210,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-get_session_id(RD) -> wrq:get_cookie_value(?COOKIE_NAME, RD).
+get_session_id(RD) ->
+    case wrq:get_cookie_value(?COOKIE_NAME, RD) of
+	undefined -> props:get_value("auth_token", crossbar_util:get_request_params(RD));
+	ID -> ID
+    end.
 
 %% get_session_doc(request()) -> not_found | json_object()
 get_session_doc(RD) ->
@@ -311,8 +315,8 @@ clean_expired() ->
 			,lists:map(fun({Prop}) ->
 					   couch_mgr:open_doc(?SESSION_DB, props:get_value(<<"id">>, Prop))
 				   end, Sessions)),
-    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs),
-    format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]).
+    %format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
+    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs).
 
 %% pass the secs representation of the expires time and compare to now
 -spec(has_expired/1 :: (S :: integer() | #session{}) -> boolean()).

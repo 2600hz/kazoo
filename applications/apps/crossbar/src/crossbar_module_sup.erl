@@ -56,4 +56,9 @@ upgrade() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 10, 10}, []} }.
+    {ok, Startup} = file:consult(filename:join(
+				    [filename:dirname(code:which(?MODULE)),
+				     "..", "priv", "crossbar.conf"])),
+    {ok, { {one_for_one, 10, 10}
+	   , lists:map(fun(M) -> ?CHILD(M, worker, []) end, props:get_value(autoload_modules, Startup, []))
+	 } }.

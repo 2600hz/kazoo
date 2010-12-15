@@ -68,8 +68,7 @@ poll(Request) -> "poll".
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    crossbar_bindings:bind(<<"evtsub.#">>), %% all evtsub events
-    crossbar_bindings:bind(<<"session.destroy">>), %% session destroy events
+    start_bindings(),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -113,7 +112,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"evtsub.init">>=Route, Payload}, State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
     InitOpts = [{amqp_host, whapp_default_amqp}
 		,{content_types_provided, [{to_json, ["application/json", "application/x-json"]}
 					   ,{to_html, ["text/html"]}
@@ -122,11 +122,22 @@ handle_info({binding_fired, Pid, Payload}, State) ->
 					  ]
 		 }
 		,{content_types_accepted, [{from_json, ["application/json", "application/x-json"]}
+					   ,{from_html, ["text/html"]}
 					   ,{from_text, ["text/plain"]}
 					   ,{from_xml, ["application/xml"]}
 					  ]
-		 }],
-    Pid ! {binding_result, true, InitOpts},
+		 }
+	       ],
+    Opts = lists:umerge(Payload, InitOpts),
+    Pid ! {binding_result, true, Opts},
+    {noreply, State};
+handle_info({binding_fired, Pid, Route, Payload}, State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
+    Pid ! {binding_result, true, Payload},
+    {noreply, State};
+handle_info({binding_flushed, _B}, State) ->
+    format_log(info, "EVTSUB(~p): binding ~p flushed~n", [self(), _B]),
+    start_bindings(),
     {noreply, State};
 handle_info(_Info, State) ->
     format_log(info, "EVTSUB(~p): unhandled info ~p~n", [self(), _Info]),
@@ -160,3 +171,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+start_bindings() ->
+    crossbar_bindings:bind(<<"evtsub.#">>),        %% all evtsub events
+    crossbar_bindings:bind(<<"session.destroy">>). %% session destroy events
