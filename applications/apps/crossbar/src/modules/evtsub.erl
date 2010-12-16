@@ -61,7 +61,8 @@ dispatch_config() ->
 %% AKA the crossbar_module_result() type
 -spec(add/1 :: (Request :: list(tuple(binary(), binary()))) -> crossbar_module_result()).
 add(ReqParams) ->
-    {success, [{<<"add">>, <<"me">>}]}.
+    gen_server:call(?SERVER, {add, ReqParams}).
+
 rm(Request) -> "rm".
 clear(Request) -> "clear".
 status(Request) -> "status".
@@ -100,6 +101,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({add, ReqParams}, _, State) ->
+    {reply, {success, [{<<"add">>, <<"me">>}]}, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
