@@ -16,6 +16,8 @@
 %% API
 -export([start_link/0]).
 
+-export([dispatch_config/0]).
+
 -export([add/1, rm/1, clear/1, status/1, poll/1]).
 
 %% gen_server callbacks
@@ -47,8 +49,19 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec(add/1 :: (Request :: list(tuple(binary(), binary()))) -> list(tuple(binary(), term()))).
-add(Request) -> [{<<"add">>, <<"me">>}].
+%% Define this function if you want to dynamically add a dispatch rule to webmachine
+%% for calls to webmachine_router:add_route/1
+dispatch_config() ->
+    {["evtsub", request, '*'], evtsub_resource, []}.
+
+%% Exposed API calls can return one of three results:
+%% {success | error | fatal, data proplist}
+%% {success | error | fatal, data proplist, message}
+%% {success | error | fatal, data proplist, message, error code}
+%% AKA the crossbar_module_result() type
+-spec(add/1 :: (Request :: list(tuple(binary(), binary()))) -> crossbar_module_result()).
+add(ReqParams) ->
+    {success, [{<<"add">>, <<"me">>}]}.
 rm(Request) -> "rm".
 clear(Request) -> "clear".
 status(Request) -> "status".

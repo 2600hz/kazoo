@@ -93,7 +93,8 @@ resource_exists(RD, Context) ->
 
 -spec(is_authed/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #context{})).
 is_authed(RD, Context) ->
-    S = crossbar_session:start_session(RD),
+    S0 = crossbar_session:start_session(RD),
+    S = S0#session{account_id = <<"test">>},
     Params = crossbar_util:get_request_params(RD),
     AuthenticatedRes = crossbar_bindings:run(<<"evtsub.is_authenticated">>, {S, Params}),
     IsAuthenticated = lists:any(fun({true, _}) -> true; ({timeout, _}) -> true; (_) -> false end, AuthenticatedRes),
@@ -133,7 +134,7 @@ encodings_provided(RD, Context) ->
 process_post(RD, #context{request=Fun, req_params=Params}=Context) ->
     crossbar_bindings:run(<<"evtsub.process_post">>, []),
     format_log(info, "EVTSUB_R: process_post params ~p~n", [Params]),
-    Resp = crossbar_util:winkstart_envelope(success, evtsub:Fun(Params)),
+    Resp = crossbar_util:winkstart_envelope(evtsub:Fun(Params)),
     {true, wrq:append_to_response_body(Resp, RD), Context}.
 
 finish_request(RD, #context{session=S}=Context) ->
@@ -146,7 +147,7 @@ from_text(RD, Context) ->
     {true, RD, Context}.
 
 from_json(RD, #context{request=Fun, req_params=Params}=Context) ->
-    Res = crossbar_util:winkstart_envelope(success, evtsub:Fun(Params)),
+    Res = crossbar_util:winkstart_envelope(evtsub:Fun(Params)),
     format_log(info, "EVTSUB_R: from_json: Params ~p Res: ~p~n", [Params, Res]),
     {true, wrq:append_to_response_body(Res, RD), Context}.
 
@@ -157,12 +158,13 @@ from_xml(RD, Context) ->
 %% Generate the response
 to_html(RD, #context{request=Fun, req_params=Params}=Context) ->
     format_log(info, "EVTSUB_R: to_html: ReqB: ~p~n", [wrq:resp_body(RD)]),
-    Page = io_lib:format("<html><body><span>add: </span><strong>~s</strong></body></html>", [evtsub:Fun(Params)]),
+    Res = evtsub:Fun(Params),
+    Page = io_lib:format("<html><body><span>add: </span><strong>~s</strong></body></html>", [Res]),
     {Page, RD, Context}.
 
 to_json(RD, #context{request=Fun, req_params=Params}=Context) ->
-    format_log(info, "EVTSUB_R: to_json: ReqB: ~p resp: ~s~n", [wrq:resp_body(RD), mochijson2:encode(evtsub:Fun(Params))]),
-    Resp = crossbar_util:winkstart_envelope(success, evtsub:Fun(Params)),
+    Resp = crossbar_util:winkstart_envelope(evtsub:Fun(Params)),
+    format_log(info, "EVTSUB_R: to_json: ~s~n", [Resp]),
     {Resp, RD, Context}.
 
 to_xml(RD, Context) ->

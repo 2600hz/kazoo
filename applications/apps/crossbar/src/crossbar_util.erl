@@ -9,6 +9,7 @@
 -module(crossbar_util).
 
 -export([get_request_params/1]).
+-export([winkstart_envelope/1]).
 -export([winkstart_envelope/2, winkstart_envelope/3, winkstart_envelope/4]).
 
 -include("crossbar.hrl").
@@ -34,6 +35,11 @@ pull_from_body_and_qs(RD) ->
 	       end,
     QS = wrq:req_qs(RD),
     lists:ukeymerge(1, lists:ukeysort(1, PostBody), lists:ukeysort(1, QS)).
+
+-spec(winkstart_envelope/1 :: (ApiResult :: crossbar_module_result()) -> iolist()).
+winkstart_envelope({Status, Data}) -> winkstart_envelope(Status, Data);    
+winkstart_envelope({Status, Data, Msg}) -> winkstart_envelope(Status, Data, Msg);
+winkstart_envelope({Status, Data, Msg, Code}) -> winkstart_envelope(Status, Data, Msg, Code).
 
 -spec(winkstart_envelope/2 :: (Status :: crossbar_status(), Data :: proplist()) -> iolist()).
 winkstart_envelope(success, Data) ->

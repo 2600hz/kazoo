@@ -113,6 +113,7 @@ handle_call({run, Routing, Payload}, _, #state{bindings=Bs}=State) ->
     {reply, Res, State};
 			
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
+    format_log(info, "CB_BINDING(~p): ~p binding ~p~n", [self(), From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
 	false ->
 	    link(From),

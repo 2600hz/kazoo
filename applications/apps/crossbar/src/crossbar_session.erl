@@ -305,18 +305,20 @@ set_cookie_header(RD, Session, DateTime, MaxAge) ->
 %% Maintenance Functions
 
 %% Retrieve expired sessions and delete them from the DB
-%% clean_expired() -> integer().
 -spec(clean_expired/0 :: () -> no_return()).
 clean_expired() ->
-    Sessions = couch_mgr:get_results(?SESSION_DB, {"session", "expired_time"}, [{"startkey", 0},
-										{"endkey", calendar:datetime_to_gregorian_seconds(calendar:local_time())}
-									       ]),
-    Docs = lists:filter(fun(not_found) -> false; (_) -> true end
-			,lists:map(fun({Prop}) ->
-					   couch_mgr:open_doc(?SESSION_DB, props:get_value(<<"id">>, Prop))
-				   end, Sessions)),
-    %format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
-    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs).
+    case couch_mgr:get_results(?SESSION_DB, {"session", "expired_time"}, [{"startkey", 0},
+									  {"endkey", calendar:datetime_to_gregorian_seconds(calendar:local_time())}
+									 ]) of
+	{error, _} -> ok;
+	Sessions ->
+	    Docs = lists:filter(fun(not_found) -> false; (_) -> true end
+				,lists:map(fun({Prop}) ->
+						   couch_mgr:open_doc(?SESSION_DB, props:get_value(<<"id">>, Prop))
+					   end, Sessions)),
+						%format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
+	    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs)
+    end.
 
 %% pass the secs representation of the expires time and compare to now
 -spec(has_expired/1 :: (S :: integer() | #session{}) -> boolean()).
