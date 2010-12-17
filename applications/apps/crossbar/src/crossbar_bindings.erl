@@ -106,7 +106,7 @@ init([]) ->
 handle_call({run, Routing, Payload}, _, #state{bindings=Bs}=State) ->
     Res = lists:foldl(fun({B, Ps}, Acc) ->
 			      case binding_matches(B, Routing) of
-				  true -> get_bind_results(Ps, Payload, Acc);
+				  true -> get_bind_results(Ps, Payload, Acc, Routing);
 				  false -> Acc
 			      end
 		      end, [], Bs),
@@ -148,7 +148,7 @@ handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
 	false -> {noreply, State};
 	{_, _}=B ->
 	    flush_binding(B),
-	    {noreply, State#state{bindings=lists:keydelete(Binding, Bs)}}
+	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}}
     end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -164,7 +164,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
-    format_log(info, "WS_BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
+    format_log(info, "BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, lists:delete(Pid, Subs)} | Acc]
 		      end, [], Bs),
@@ -245,10 +245,10 @@ matches([B | Bs], [B | Rs]) ->
 matches(_, _) -> false.
 
 %% returns the results for each pid and their modification (if any) to the payload
--spec(get_bind_results/3 :: (Pids :: list(pid()), Payload :: term(), Results :: list(binding_result())) -> list(tuple(term() | timeout, term()))).
-get_bind_results(Pids, Payload, Results) ->
+-spec(get_bind_results/4 :: (Pids :: list(pid()), Payload :: term(), Results :: list(binding_result()), Route :: binary()) -> list(tuple(term() | timeout, term()))).
+get_bind_results(Pids, Payload, Results, Route) ->
     lists:foldr(fun(Pid, Acc) ->
-			Pid ! {binding_fired, self(), Payload},
+			Pid ! {binding_fired, self(), Route, Payload},
 			receive
 			    {binding_result, Resp, Pay1} -> [{Resp, Pay1} | Acc]
 			after
@@ -291,7 +291,7 @@ bindings_server(B) ->
 
 bindings_loop() ->
     receive
-	{binding_fired, Pid, Payload} ->
+	{binding_fired, Pid, _R, Payload} ->
 	    Pid ! {binding_result, looks_good, Payload},
 	    bindings_loop();
 	{binding_flushed, _} ->

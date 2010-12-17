@@ -14,7 +14,7 @@
 -export([start_link/0, is_authorized/1, start_session/1, finish_session/2, end_session/2]).
 
 %% Access functions to the session storage
--export([incr/2, incr/3, store/3, retrieve/2, retrieve/3, delete/2]).
+-export([incr/2, incr/3, decr/2, decr/3, store/3, retrieve/2, retrieve/3, delete/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -31,7 +31,6 @@
 -include("crossbar.hrl").
 
 -record(state, {
-	  active_sessions = [] :: list(#session{})
 	 }).
 
 %%%===================================================================
@@ -50,46 +49,54 @@ start_link() ->
 
 %% Begin or resume a session, returning the session record
 -spec(start_session/1 :: (RD :: #wm_reqdata{}) -> #session{}).
-start_session(RD) ->
+start_session(#wm_reqdata{}=RD) ->
     gen_server:call(?MODULE, {start_session, RD}, infinity).
 
 %% return the modified request datastructure with the updated session
 -spec(finish_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
-finish_session(#session{}=S, RD) ->
+finish_session(#session{}=S, #wm_reqdata{}=RD) ->
     gen_server:call(?MODULE, {finish_session, S, RD}, infinity).
 
 %% close the session and delete the cookie from the request datastructure
 -spec(end_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
-end_session(#session{}=S, RD) ->
+end_session(#session{}=S, #wm_reqdata{}=RD) ->
     gen_server:call(?MODULE, {stop_session, S, RD}, infinity).
 
 -spec(is_authorized/1 :: (S :: #session{}) -> boolean()).
-is_authorized(S) ->
+is_authorized(#session{}=S) ->
     gen_server:call(?MODULE, {is_authorized, S}, infinity).
 
 %% increment the field's value
-%% incr(#session(), key()) -> #session().
-incr(S, K) -> incr(S, K, 0).
+-spec(incr/2 :: (S :: #session{}, K :: term()) -> #session{}).
+incr(#session{}=S, K) -> incr(S, K, 0).
 
-%% incr(#session(), key(), default()) -> #session().
-incr(S, K, D) ->
-    L = S#session.storage,
-    case proplists:get_value(K, L) of
+-spec(incr/3 :: (S :: #session{}, K :: term(), D :: integer()) -> #session{}).
+incr(#session{}=S, K, D) ->
+    case props:get_value(K, S#session.storage) of
         undefined -> store(S, K, D);
         V -> store(S, K, V+1)
     end.
 
+-spec(decr/2 :: (S :: #session{}, K :: term()) -> #session{}).
+decr(#session{}=S, K) -> decr(S, K, 0).
+-spec(decr/3 :: (S :: #session{}, K :: term(), D :: integer()) -> #session{}).
+decr(#session{}=S, K, D) ->
+    case props:get_value(K, S#session.storage) of
+	undefined -> store(S, K, D);
+	V -> store(S, K, V-1)
+    end.
+
 %% store(#session(), key(), value()) -> #session().
-store(S, K, V) ->
+store(#session{}=S, K, V) ->
     S#session{storage=[{K, V} | proplists:delete(K, S#session.storage)]}.
 
 %% retrieve(#session(), key()) -> undefined | term()
-retrieve(S, K) -> retrieve(S, K, undefined).
+retrieve(#session{}=S, K) -> retrieve(S, K, undefined).
 %% retrieve(#session(), key()) -> D | term()
-retrieve(S, K, D) -> props:get_value(K, S#session.storage, D).
+retrieve(#session{}=S, K, D) -> props:get_value(K, S#session.storage, D).
 
 %% delete(#session(), key()) -> #session().
-delete(S, K) ->
+delete(#session{}=S, K) ->
     S#session{storage=proplists:delete(K, S#session.storage)}.
 
 
@@ -126,22 +133,18 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({start_session, RD}, _, #state{active_sessions=Sess}=State) ->
-    S = get_session(RD),
-    case lists:member(S#session.'_id', Sess) of
-	true -> {reply, S, State};
-	false -> {reply, S, State#state{active_sessions=[S | Sess]}}
-    end;
+handle_call({start_session, #wm_reqdata{}=RD}, _, #state{}=State) ->
+    {reply, get_session(RD), State};
 
 %% return the modified request datastructure with the updated session
-handle_call({finish_session, S, RD}, _, State) ->
+handle_call({finish_session, #session{}=S, #wm_reqdata{}=RD}, _, #state{}=State) ->
     {reply, save_session(S, RD), State};
 
 %% close the session and delete the cookie from the request datastructure
-handle_call({stop_session, S, RD}, _, State) ->
+handle_call({stop_session, #session{}=S, #wm_reqdata{}=RD}, _, #state{}=State) ->
     {reply, delete_session(S, RD), State};
 
-handle_call({is_authorized, S}, _, State) ->
+handle_call({is_authorized, #session{}=S}, _, #state{}=State) ->
     Valid = S#session.account_id =/= undefined andalso
         not has_expired(S#session.created + S#session.expires),
     {reply, Valid, State};
@@ -207,7 +210,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-get_session_id(RD) -> wrq:get_cookie_value(?COOKIE_NAME, RD).
+get_session_id(RD) ->
+    case wrq:get_cookie_value(?COOKIE_NAME, RD) of
+	undefined -> props:get_value("auth_token", crossbar_util:get_request_params(RD));
+	ID -> ID
+    end.
 
 %% get_session_doc(request()) -> not_found | json_object()
 get_session_doc(RD) ->
@@ -220,7 +227,13 @@ get_session_doc(RD) ->
 get_session(RD) ->
     case get_session_doc(RD) of
         {error, _} -> new();
-        Doc when is_list(Doc) -> from_couch(Doc)
+	not_found -> new();
+        Doc when is_list(Doc) ->
+	    S = from_couch(Doc),
+	    case has_expired(S) of
+		true -> new();
+		false -> S
+	    end
     end.
 
 -spec(save_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
@@ -237,30 +250,43 @@ save_session(S, RD) ->
 
 -spec(delete_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
 delete_session(S, RD) ->
+    crossbar_bindings:run(<<"session.delete">>, S),
     couch_mgr:del_doc(?SESSION_DB, to_couch(S)),
     set_cookie_header(RD, S, calendar:local_time(), -1).
 
-
+-spec(to_couch/1 :: (S :: #session{}) -> proplist()).
 to_couch(S) -> to_couch(S, S#session.created).
 
+-spec(to_couch/2 :: (S :: #session{}, Now :: integer()) -> proplist()).
 to_couch(#session{'_rev'=undefined, storage=Storage}=S, Now) ->
     [{<<"_id">>, S#session.'_id'}
-     ,{<<"session">>, tuple_to_list(S#session{created=Now,expires=?MAX_AGE, storage=encode_storage(Storage)})}
+     ,{<<"session">>, tuple_to_list(S#session{created=whistle_util:to_binary(Now)
+					      ,expires=?MAX_AGE
+					      ,storage=encode_storage(Storage)
+					     })}
     ];
 to_couch(#session{storage=Storage}=S, Now) ->
     [{<<"_id">>, S#session.'_id'}
      ,{<<"_rev">>, S#session.'_rev'}
-     ,{<<"session">>, tuple_to_list(S#session{created=Now,expires=?MAX_AGE, storage=encode_storage(Storage)})}
+     ,{<<"session">>, tuple_to_list(S#session{created= whistle_util:to_binary(Now)
+					      ,expires=?MAX_AGE
+					      ,storage=encode_storage(Storage)
+					     })}
     ].
 
+-spec(encode_storage/1 :: (L :: list()) -> [] | tuple(list())).
 encode_storage([]) -> [];
 encode_storage(L) when is_list(L) -> {L}.
 
+-spec(from_couch/1 :: (Doc :: proplist()) -> #session{}).
 from_couch(Doc) ->
     Id = props:get_value(<<"_id">>, Doc),
     Rev = props:get_value(<<"_rev">>, Doc),
     S = setelement(1, list_to_tuple(props:get_value(<<"session">>, Doc)), session),
-    S#session{'_id'=Id, '_rev'=Rev}.
+    S#session{'_id'=Id, '_rev'=Rev
+	      ,created=whistle_util:to_integer(S#session.created)
+	      ,expires=whistle_util:to_integer(S#session.expires)
+	     }.
 
 %% create a new session record
 %% new() -> #session()
@@ -289,10 +315,12 @@ clean_expired() ->
 			,lists:map(fun({Prop}) ->
 					   couch_mgr:open_doc(?SESSION_DB, props:get_value(<<"id">>, Prop))
 				   end, Sessions)),
-    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs),
-    format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]).
+    %format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
+    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs).
 
 %% pass the secs representation of the expires time and compare to now
--spec(has_expired/1 :: (Secs :: integer()) -> boolean()).
-has_expired(Secs) ->
-    Secs < calendar:datetime_to_gregorian_seconds(calendar:local_time()).
+-spec(has_expired/1 :: (S :: integer() | #session{}) -> boolean()).
+has_expired(#session{created=C, expires=E}) ->
+    has_expired(C+E);
+has_expired(S) when is_integer(S) ->
+    S < calendar:datetime_to_gregorian_seconds(calendar:local_time()).
