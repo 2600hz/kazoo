@@ -39,11 +39,12 @@
 %% Views = [{ {#db{}, DesignDoc, ViewName}, #view{}}]
 %% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
 %% ChangeHandlers :: [{DBName, DocID}, ReqID, [Pid]]
+-type change_handler_entry() :: tuple( tuple(string(), binary()), reference(), list(pid()) | []).
 -record(state, {
 	  connection = {} :: tuple(string(), #server{}) | {}
 	  ,dbs = [] :: list(tuple(string(), #db{})) | []
 	  ,views = [] :: list(tuple(tuple(#db{}, string(), string()), #view{})) | []
-	  ,change_handlers = [] :: list(tuple( tuple(binary(), binary()), reference(), list(pid()) | []) ) | []
+	  ,change_handlers = [] :: list(change_handler_entry()) | []
 	 }).
 
 %%%===================================================================
@@ -232,10 +233,10 @@ handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
 	{ok, _R, State1} -> {reply, ok, State1};
 	{error, E, State2} -> {reply, {error, E}, State2}
     end;
-handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, State) ->
-    case stop_change_handler(DBName, DocID, From, State) of
-	{ok, State1} -> {reply, ok, State1};
-	{error, E, State2} -> {reply, {error, E}, State2}
+handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, #state{change_handlers=CH}=State) ->
+    case stop_change_handler({DBName, DocID}, From, CH) of
+	{ok, CH1} -> {reply, ok, State#state{change_handlers=CH1}};
+	{{error, _}=E, CH2} -> {reply, E, State#state{change_handlers=CH2}}
     end;
 handle_call(Req, From, #state{connection={}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p)~n", [self(), net_adm:localhost()]),
@@ -277,8 +278,12 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
     format_log(info, "WHISTLE_COUCH.wait(~p): DONE change handler ref ~p~n", [self(), ReqID]),
     case lists:keyfind(ReqID, 2, CH) of
 	false -> {noreply, State};
-	{{_, DocID},_,Pids} ->
-	    lists:foreach(fun(P) -> P ! {change_handler_done, DocID} end, Pids),
+	{{_, DocID}=Key,_,Pids}=Item ->
+	    TmpCH = [Item],
+	    lists:foreach(fun(P) ->
+				  stop_change_handler(Key, P, TmpCH),
+				  P ! {change_handler_done, DocID}
+			  end, Pids),
 	    {noreply, State#state{change_handlers=lists:keydelete(ReqID, 2, CH)}}
     end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
@@ -289,16 +294,20 @@ handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
 	{{_, DocID}, _, Pids} ->
-        notify_pids(Change, DocID, Pids),
+	    notify_pids(Change, DocID, Pids),
 	    {noreply, State};
-    {{_, <<>>}, _, Pids} ->
-        notify_pids(Change, DocID, Pids),
-        {noreply, State}    
+	{{_, <<>>}, _, Pids} ->
+	    notify_pids(Change, DocID, Pids),
+	    {noreply, State}    
     end;
 handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
     format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
-    CH1 = lists:foldl(fun({{_, DocID}, _, RID, Pids}, Acc) when RID =:= ReqID ->
-			      lists:foreach(fun(P) -> P ! {change_handler_down, DocID} end, Pids),
+    CH1 = lists:foldl(fun({{_, DocID}=Key, RID, Pids}=Item, Acc) when RID =:= ReqID ->
+			      TmpCH = [Item],
+			      lists:foreach(fun(P) ->
+						    stop_change_handler(Key, P, TmpCH),
+						    P ! {change_handler_down, DocID}
+					    end, Pids),
 			      Acc;
 			 (C, Acc) -> [C | Acc]
 		      end, [], CH),
@@ -308,11 +317,21 @@ handle_info({_ReqID, {error, E}}, State) ->
     {noreply, State};
 handle_info({'DOWN', _MRefConn, process, Pid, _Reason}, #state{change_handlers=CH}=State) ->
     format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), Pid, _Reason]),
-    CH1 = lists:map(fun({_, _, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
+    CH1 = lists:foldl(fun({Key, _, _}=Item, Acc) ->
+			      case stop_change_handler(Key, Pid, [Item]) of
+				  {_, []} -> Acc;
+				  {_, [Item1]} -> [ Item1 | Acc]
+			      end
+		    end, [], CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
     format_log(error, "WHISTLE_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
-    CH1 = lists:map(fun({_, _, Pids}=T) -> setelement(3, T, lists:delete(Pid, Pids)) end, CH),
+    CH1 = lists:foldl(fun({Key, _, _}=Item, Acc) ->
+			      case stop_change_handler(Key, Pid, [Item]) of
+				  {_, []} -> Acc;
+				  {_, [Item1]} -> [ Item1 | Acc]
+			      end
+		    end, [], CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info(_Info, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
@@ -353,21 +372,25 @@ close_handlers(CHs) ->
 			  lists:foreach(fun(P) -> unlink(P), P ! {change_handler_down, DocID} end, Pids)
 		  end, CHs).
 
--spec(stop_change_handler/4 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}) -> tuple(ok, #state{}) | tuple(error, term(), #state{})).
-stop_change_handler(DBName, DocID, Pid, #state{change_handlers=CH}=State) ->
-    case lists:keyfind({DBName, DocID}, 1, CH) of
-	false -> {error, doc_unmonitored, State};
-	{{DBName, DocID}, ReqID, Pids} when is_list(Pids) ->
-	    CH1 = case lists:delete(Pid, Pids) of
-		      [] ->
-			  %% unreg from couchbeam
-			  unlink(Pid),
-			  Pid ! {change_handler_down, DocID},
-			  lists:keydelete({DBName, DocID}, 1, CH);
-		      Pids1 ->
-			  [ {{DBName, DocID}, ReqID, Pids1} | lists:keydelete({DBName, DocID}, 1, CH)]
-		  end,
-	    {ok, State#state{change_handlers=CH1}}
+-spec(stop_change_handler/3 :: (Key :: tuple(string(), binary()), Pid :: pid(), CH :: list(change_handler_entry())) -> tuple(ok, list(change_handler_entry())) | tuple(tuple(error, term()), list(change_handler_entry()))).
+stop_change_handler({_,_}=Key, Pid, CH) ->
+    unlink(Pid),
+    case lists:keyfind(Key, 1, CH) of
+	false -> {{error, doc_unmonitored}, CH};
+	{Key, ReqID, Pids} when is_list(Pids) ->
+	    Pids1 = lists:foldl(fun(P, AccPids) when P =:= Pid -> AccPids;
+				   (P, AccPids) ->
+					case erlang:is_process_alive(P) of
+					    true -> [P | AccPids];
+					    false -> AccPids
+					end
+				end, [], Pids),
+	    case Pids1 of
+		[] ->
+		    {ok, lists:keydelete(Key, 1, CH)};
+		_ ->
+		    {ok, [ {Key, ReqID, Pids1} | lists:keydelete(Key, 1, CH)]}
+	    end
     end.
 
 -spec(start_change_handler/4 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}) -> tuple(ok, term(), #state{}) | tuple(error, term(), #state{})).
@@ -466,7 +489,7 @@ init_state() ->
     end.
 
 %% notify_pids, sends change notifications to a list of PIDs, return void
--spec(notify_pids/3 :: (Change :: tuple(), DocID :: binary(), Pids :: list()) -> no_return).
+-spec(notify_pids/3 :: (Change :: proplist(), DocID :: binary(), Pids :: list()) -> ok).
 notify_pids(Change, DocID, Pids) ->
     SendToPid = case get_value(<<"deleted">>, Change) of
         true ->
@@ -476,7 +499,7 @@ notify_pids(Change, DocID, Pids) ->
             format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
             {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
         end,
-    lists:foreach(fun(Pid) -> Pid ! SendToPid end, Pids).
+    lists:foreach(fun(P) -> P ! SendToPid end, Pids).
 
 -spec(get_startup_config/0 :: () -> tuple(ok, proplist()) | tuple(error, term())).
 get_startup_config() ->
