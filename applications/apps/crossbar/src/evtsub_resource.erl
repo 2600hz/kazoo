@@ -93,7 +93,8 @@ resource_exists(RD, Context) ->
 
 -spec(is_authed/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #context{})).
 is_authed(RD, Context) ->
-    S = crossbar_session:start_session(RD),
+    S0 = crossbar_session:start_session(RD),
+    S = S0#session{account_id = <<"test">>},
     Params = crossbar_util:get_request_params(RD),
     AuthenticatedRes = crossbar_bindings:run(<<"evtsub.is_authenticated">>, {S, Params}),
     IsAuthenticated = lists:any(fun({true, _}) -> true; ({timeout, _}) -> true; (_) -> false end, AuthenticatedRes),
