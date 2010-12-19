@@ -5,6 +5,8 @@
 				  | tuple(crossbar_status(), proplist(), string())
 				  | tuple(crossbar_status(), proplist(), string(), integer()).
 
+-type crossbar_content_handler() :: tuple(atom(), list(string())).
+
 -record(session, {
           '_id' = undefined :: binary() | undefined
 	  ,'_rev' = undefined :: binary() | undefined

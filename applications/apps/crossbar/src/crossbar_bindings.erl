@@ -26,12 +26,17 @@
 %% API
 -export([start_link/0, bind/1, run/2, flush/0, flush/1]).
 
+%% Helper Functions for Results of a run/{1,2}
+-export([any/1, all/1]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
+
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -69,6 +74,17 @@ flush() ->
 
 flush(Binding) ->
     gen_server:cast(?MODULE, {flush, Binding}).
+
+%%-------------------------------------------------------------------
+%% @doc
+%% Helper functions for working on a result set of bindings
+%% @end
+%%-------------------------------------------------------------------
+-spec(any/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
+
+-spec(all/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -261,6 +277,17 @@ get_bind_results(Pids, Payload, Results, Route) ->
 -spec(flush_binding/1 :: (Binding :: binding()) -> no_return()).
 flush_binding({B, Subs}) ->
     lists:foreach(fun(S) -> S ! {binding_flushed, B} end, Subs).
+
+
+%%-------------------------------------------------------------------------
+%% @doc
+%% Helpers for the result set helpers
+%% @end
+%%-------------------------------------------------------------------------
+-spec(check_bool/1 :: (tuple(boolean(), term()) | term()) -> boolean()).
+check_bool({true, _}) -> true;
+check_bool({timeout, _}) -> true;
+check_bool(_) -> false.
 	    
 %% EUNIT TESTING
 

@@ -37,8 +37,8 @@
 -include_lib("webmachine/include/webmachine.hrl").
 
 -record(context, {
-	  content_types_provided = [] :: list(tuple(atom(), list(string()))) | []
-          ,content_types_accepted = [] :: list(tuple(atom(), list(string()))) | []
+	  content_types_provided = [] :: list(crossbar_content_handler()) | []
+          ,content_types_accepted = [] :: list(crossbar_content_handler()) | []
 	  ,amqp_host = "" :: string()
 	  ,session = #session{} :: #session{}
 	  ,req_params = [] :: proplist()
@@ -73,7 +73,7 @@ resource_exists(RD, Context) ->
 		Req when is_list(Req) ->
 		    try
 			Fun = list_to_existing_atom(Req),
-			case erlang:function_exported(evtsub, Fun, 1) andalso is_authed(RD, Context) of
+			case erlang:function_exported(evtsub, Fun, 1) andalso is_valid(RD, Context) of
 			    {true, Context1} ->
 				format_log(info, "EVTSUB_R: ~p/1 found and authed.~n", [Fun]),
 				{true, RD, Context1#context{request=Fun}};
@@ -91,19 +91,19 @@ resource_exists(RD, Context) ->
 	    end
     end.
 
--spec(is_authed/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #context{})).
-is_authed(RD, Context) ->
+-spec(is_valid/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #context{})).
+is_valid(RD, Context) ->
     S0 = crossbar_session:start_session(RD),
     S = S0#session{account_id = <<"test">>},
     Params = crossbar_util:get_request_params(RD),
-    AuthenticatedRes = crossbar_bindings:run(<<"evtsub.is_authenticated">>, {S, Params}),
-    IsAuthenticated = lists:any(fun({true, _}) -> true; ({timeout, _}) -> true; (_) -> false end, AuthenticatedRes),
-    AuthorizedRes = crossbar_bindings:run(<<"evtsub.is_authorized">>, {S, Params}),
-    IsAuthorized = lists:any(fun({true, _}) -> true; ({timeout, _}) -> true; (_) -> false end, AuthorizedRes),
+
+    IsAuthenticated = crossbar_bindings:any(crossbar_bindings:run(<<"evtsub.authenticate">>, {S, Params})),
+    IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(<<"evtsub.authorize">>, {S, Params})),
+    ValidParams = crossbar_bindings:any(crossbar_bindings:run(<<"evtsub.validate">>, {wrq:path_info(request, RD), Params})),
 
     format_log(info, "EVTSUB_R: IsAuthen: ~p IsAuthor: ~p~n", [IsAuthenticated, IsAuthorized]),
 
-    {IsAuthenticated andalso IsAuthorized, Context#context{session=S, req_params=Params}}.
+    {ValidParams andalso IsAuthenticated andalso IsAuthorized, Context#context{session=S, req_params=Params}}.
 
 content_types_provided(RD, #context{content_types_provided=CTP}=Context) ->
     crossbar_bindings:run(<<"evtsub.content_types_provided">>, CTP),

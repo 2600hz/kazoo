@@ -17,14 +17,12 @@
 -import(logger, [format_log/3]).
 
 get_request_params(RD) ->
-    Method = wrq:method(RD),
-    Res = case Method of
-	      'GET' -> wrq:req_qs(RD);
-	      _ -> pull_from_body_and_qs(RD)
-	  end,
-    format_log(info, "CB_UTIL:get_req_params: ~p: ~p~n", [Method, Res]),
-    Res.
+    case wrq:method(RD) of
+	'GET' -> wrq:req_qs(RD);
+	_ -> pull_from_body_and_qs(RD)
+    end.
 
+%% Favor body paramaters when key exists in both body and qs
 pull_from_body_and_qs(RD) ->
     ReqBody = wrq:req_body(RD),
     PostBody = try

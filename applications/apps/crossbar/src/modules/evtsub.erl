@@ -149,9 +149,17 @@ handle_info({binding_fired, Pid, <<"evtsub.init">>=Route, Payload}, State) ->
     Opts = lists:umerge(Payload, InitOpts),
     Pid ! {binding_result, true, Opts},
     {noreply, State};
-handle_info({binding_fired, Pid, <<"evtsub.is_authenticated">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
+handle_info({binding_fired, Pid, <<"evtsub.authenticate">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
     format_log(info, "EVTSUB(~p): binding: ~p acct: ~p~n", [self(), Route, Acct]),
     Pid ! {binding_result, (not (Acct =:= <<>>)), Payload},
+    {noreply, State};
+handle_info({binding_fired, Pid, <<"evtsub.authorize">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p acct: ~p~n", [self(), Route, Acct]),
+    Pid ! {binding_result, true, Payload},
+    {noreply, State};
+handle_info({binding_fired, Pid, <<"evtsub.validate">>=Route, Payload}, State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
+    spawn(fun() -> Pid ! {binding_result, validate(Payload), Payload} end),
     {noreply, State};
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
     format_log(info, "EVTSUB(~p): unhandled binding: ~p~n", [self(), Route]),
@@ -193,6 +201,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(start_bindings/0 :: () -> no_return()).
 start_bindings() ->
     crossbar_bindings:bind(<<"evtsub.#">>),        %% all evtsub events
     crossbar_bindings:bind(<<"session.destroy">>). %% session destroy events
+
+-spec(validate/1 :: (tuple(string(), proplist())) -> boolean()).
+validate({"add", Params}) ->
+    true;
+validate({"rm", Params}) ->
+    true;
+validate({"clear", Params}) ->
+    true;
+validate({"status", Params}) ->
+    true;
+validate({"poll", Params}) ->
+    true;
+validate(_) ->
+    false.
