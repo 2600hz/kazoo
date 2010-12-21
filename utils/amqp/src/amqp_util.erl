@@ -19,8 +19,6 @@
 -export([bind_q_to_resource/2, bind_q_to_resource/3]).
 -export([bind_q_to_callmgr/3]).
 
--export([callctl_consume/2]).
-
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2, new_callmgr_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
 
@@ -29,6 +27,9 @@
 	 ,channel_close/3, queue_delete/2, queue_delete/3]).
 
 -export([access_request/0, access_request/1]).
+
+-export([get_msg_type/1, is_json/1]).
+
 
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange
@@ -75,7 +76,7 @@
 %% - monitor manager publishes to the exchange with a routing key; consumers bind their queue with the
 %%   routing keys they want messages for.
 -export([monitor_exchange/1, monitor_publish/4]).
--export([new_monitor_queue/1, delete_monitor_queue/2]).
+-export([new_monitor_queue/1, new_monitor_queue/2, delete_monitor_queue/2]).
 -export([bind_q_to_monitor/3]).
 
 -define(EXCHANGE_MONITOR, <<"monitor">>).
@@ -89,6 +90,9 @@ monitor_exchange(Host) ->
 
 new_monitor_queue(Host) ->
     new_queue(Host, <<"">>, [{exclusive, false}, {auto_delete, true}]).
+
+new_monitor_queue(Host, Name) ->
+    new_queue(Host, whistle_util:to_binary(Name), [{exclusive, false}, {auto_delete, true}]).
 
 delete_monitor_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
@@ -106,17 +110,10 @@ targeted_publish(Host, Queue, Payload, ContentType) ->
     basic_publish(Host, ?EXCHANGE_TARGETED, Queue, Payload, ContentType).
 
 callctl_publish(Host, CallId, Payload) ->
-    callctl_publish(Host, CallId, Payload, undefined).
+    callctl_publish(Host, CallId, Payload, <<"application/json">>).
 
-callctl_publish(Host, CallId, Payload, ContentType) when is_binary(CallId) ->
-    callctl_publish(Host, binary_to_list(CallId), Payload, ContentType);
 callctl_publish(Host, CallId, Payload, ContentType) ->
-    Route = case string:str(CallId, binary_to_list(?EXCHANGE_CALLCTL)) of
-		0 -> list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]);
-		_ -> list_to_binary(CallId)
-	    end,
-    basic_publish(Host, ?EXCHANGE_CALLCTL, Route, Payload, ContentType).
-
+    basic_publish(Host, ?EXCHANGE_CALLCTL, CallId, Payload, ContentType).
 
 callevt_publish(Host, CallId, Payload) ->
     callevt_publish(Host, CallId, Payload, event).
@@ -312,9 +309,6 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
      },
     amqp_channel:call(Channel, QB).
 
-callctl_consume(Host, CallId) ->
-    basic_consume(Host, list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])).
-
 %% create a consumer for a Queue
 basic_consume(Host, Queue) ->
     basic_consume(Host, Queue, []).
@@ -405,3 +399,9 @@ access_request(Options) ->
       ,write = get_value(write, Options, true)
       ,read = get_value(read, Options, true)
      }.
+
+get_msg_type(Msg) ->
+    { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) }.
+
+is_json(Props) ->
+    Props#'P_basic'.content_type == <<"application/json">>.

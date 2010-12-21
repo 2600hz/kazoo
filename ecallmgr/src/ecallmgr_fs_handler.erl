@@ -181,7 +181,13 @@ request_resource(Type, Options) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, #state{amqp_host=net_adm:localhost()}}.
+    try
+	H = net_adm:localhost(),
+	start_amqp(H),
+	{ok, #state{amqp_host=H}}
+    catch
+	_:_ -> {ok, #state{}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -199,11 +205,8 @@ init([]) ->
 %% #state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, Host}, _From, #state{amqp_host=H}=State) ->
-    format_log(info, "FS_HANDLER(~p): Setting AMQP Host to ~p from ~p~n", [self(), Host, H]),
-    amqp_util:targeted_exchange(Host),
-    amqp_util:callmgr_exchange(Host),
-    amqp_util:callevt_exchange(Host),
-    amqp_util:callctl_exchange(Host),
+    format_log(info, "FS_HANDLER(~p): Switching AMQP hosts from ~p to ~p~n", [self(), H, Host]),
+    start_amqp(Host),
     {reply, ok, State#state{amqp_host=Host}};
 handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
@@ -297,10 +300,11 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{fs_nodes=Nodes}) ->
+terminate(_Reason, #state{fs_nodes=Nodes, amqp_host=H}) ->
     Self = self(),
     format_log(error, "FS_HANDLER(~p): terminating: ~p~n", [Self, _Reason]),
     lists:foreach(fun close_node/1, Nodes),
+    amqp_util:channel_close(H),
     ok.
 
 %%--------------------------------------------------------------------
@@ -532,3 +536,10 @@ process_resource_request(<<"audio">>=Type, Nodes, Options) ->
 process_resource_request(Type, _Nodes, _Options) ->
     format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),
     [].
+
+-spec(start_amqp/1 :: (Host :: string()) -> no_return()).
+start_amqp(Host) ->
+    amqp_util:targeted_exchange(Host),
+    amqp_util:callmgr_exchange(Host),
+    amqp_util:callevt_exchange(Host),
+    amqp_util:callctl_exchange(Host).

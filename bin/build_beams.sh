@@ -1,5 +1,7 @@
 #!/bin/sh
 
+cd `dirname $0`
+
 echo "Compiling utils"
 cd ../utils/amqp/
 rebar clean compile
@@ -12,12 +14,9 @@ echo "Compiling ecallmgr"
 cd ../../ecallmgr
 rebar clean compile
 
-echo "Compiling applications"
-cd ../applications/trunkstore
+echo "Compiling Apps container and Apps"
+cd ../applications
 rebar clean compile
-cd ../cdr
-rebar clean compile
-cd ../monitor
-rebar clean compile
-cd ../../bin
+
+cd `readlink -f $0` # realpath
 echo "Done compiling"

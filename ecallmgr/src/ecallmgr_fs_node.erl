@@ -23,8 +23,8 @@
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
 		       ,amqp_host = "" :: string()
-		       ,app_vsn = [] :: binary()
-		       ,stats = #node_stats{} :: tuple()
+		       ,app_vsn = <<>> :: binary()
+		       ,stats = #node_stats{} :: #node_stats{}
 		       ,options = [] :: proplist()
 		       }).
 
@@ -113,6 +113,7 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    monitor_loop(Node, S)
     end.
 
+-spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
 originate_channel(Node, Host, Pid, Route, AvailChan) ->
     DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
     format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
@@ -125,8 +126,9 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 	    CtlQ = start_call_handling(Node, Host, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
-	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, Y]),
-	    Pid ! {resource_error, Y};
+	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
+	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, ErrMsg]),
+	    Pid ! {resource_error, ErrMsg};
 	timeout ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
 	    Pid ! {resource_error, timeout}
@@ -137,7 +139,7 @@ start_call_handling(Node, Host, UUID) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
     CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
-    ecallmgr_call_events:start(Node, UUID, Host, CtlPid),
+    ecallmgr_call_sup:add_call_process(Node, UUID, Host, CtlPid),
     CtlQueue.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).

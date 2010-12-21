@@ -33,6 +33,7 @@ get_sip_from(Prop) ->
 		    , get_value(<<"sip_from_host">>, Prop, get_value(<<"variable_sip_from_host">>, Prop, ""))
 		   ]).
 
+-spec(get_orig_ip/1 :: (Prop :: proplist()) -> binary()).
 get_orig_ip(Prop) ->
     get_value(<<"ip">>, Prop).
 
@@ -44,17 +45,18 @@ custom_channel_vars(Prop) ->
 			  end, Prop),
     lists:map(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}) -> {Key, V} end, Custom).
 
-to_hex(Bin) when is_binary(Bin) ->
-    to_hex(binary_to_list(Bin));
-to_hex(L) when is_list(L) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+-spec(to_hex/1 :: (S :: term()) -> string()).
+to_hex(S) ->
+    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- whistle_util:to_list(S)])).
 
+-spec(route_to_dialstring/2 :: (Route :: binary() | list(binary()), Domain :: binary() | string()) -> binary()).
 route_to_dialstring(<<"sip:", _Rest/binary>>=DS, _D) -> DS;
 route_to_dialstring([<<"user:", User/binary>>, DID], Domain) ->
     list_to_binary([DID, "${regex(${sofia_contact(sipinterface_1/",User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
 route_to_dialstring(DS, _D) -> DS.
 
 %% for some commands, like originate, macros are not run; need to progressively build the dialstring
+-spec(route_to_dialstring/3 :: (Route :: list(binary()), Domain :: string() | binary(), FSNode :: atom()) -> binary()).
 route_to_dialstring([<<"user:", User/binary>>, DID], Domain, FSNode) ->
     {ok, SC} = freeswitch:api(FSNode, sofia_contact, binary_to_list(list_to_binary(["sipinterface_1/",User, "@", Domain]))),
     {ok, Regex} = re:compile("^[^\@]+"),
