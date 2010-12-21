@@ -16,6 +16,8 @@
 %% API
 -export([start_link/0]).
 
+-export([dispatch_config/0]).
+
 -export([add/1, rm/1, clear/1, status/1, poll/1]).
 
 %% gen_server callbacks
@@ -47,8 +49,20 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec(add/1 :: (Request :: list(tuple(binary(), binary()))) -> list(tuple(binary(), term()))).
-add(Request) -> [{<<"add">>, <<"me">>}].
+%% Define this function if you want to dynamically add a dispatch rule to webmachine
+%% for calls to webmachine_router:add_route/1
+dispatch_config() ->
+    {["evtsub", request, '*'], evtsub_resource, []}.
+
+%% Exposed API calls can return one of three results:
+%% {success | error | fatal, data proplist}
+%% {success | error | fatal, data proplist, message}
+%% {success | error | fatal, data proplist, message, error code}
+%% AKA the crossbar_module_result() type
+-spec(add/1 :: (Request :: list(tuple(binary(), binary()))) -> crossbar_module_result()).
+add(ReqParams) ->
+    gen_server:call(?SERVER, {add, ReqParams}).
+
 rm(Request) -> "rm".
 clear(Request) -> "clear".
 status(Request) -> "status".
@@ -87,6 +101,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({add, ReqParams}, _, State) ->
+    {reply, {success, [{<<"add">>, <<"me">>}]}, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -133,9 +149,17 @@ handle_info({binding_fired, Pid, <<"evtsub.init">>=Route, Payload}, State) ->
     Opts = lists:umerge(Payload, InitOpts),
     Pid ! {binding_result, true, Opts},
     {noreply, State};
-handle_info({binding_fired, Pid, <<"evtsub.is_authenticated">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
+handle_info({binding_fired, Pid, <<"evtsub.authenticate">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
     format_log(info, "EVTSUB(~p): binding: ~p acct: ~p~n", [self(), Route, Acct]),
     Pid ! {binding_result, (not (Acct =:= <<>>)), Payload},
+    {noreply, State};
+handle_info({binding_fired, Pid, <<"evtsub.authorize">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p acct: ~p~n", [self(), Route, Acct]),
+    Pid ! {binding_result, true, Payload},
+    {noreply, State};
+handle_info({binding_fired, Pid, <<"evtsub.validate">>=Route, Payload}, State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
+    spawn(fun() -> Pid ! {binding_result, validate(Payload), Payload} end),
     {noreply, State};
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
     format_log(info, "EVTSUB(~p): unhandled binding: ~p~n", [self(), Route]),
@@ -177,6 +201,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(start_bindings/0 :: () -> no_return()).
 start_bindings() ->
     crossbar_bindings:bind(<<"evtsub.#">>),        %% all evtsub events
     crossbar_bindings:bind(<<"session.destroy">>). %% session destroy events
+
+-spec(validate/1 :: (tuple(string(), proplist())) -> boolean()).
+validate({"add", Params}) ->
+    true;
+validate({"rm", Params}) ->
+    true;
+validate({"clear", Params}) ->
+    true;
+validate({"status", Params}) ->
+    true;
+validate({"poll", Params}) ->
+    true;
+validate(_) ->
+    false.

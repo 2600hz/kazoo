@@ -9,6 +9,7 @@
 -module(crossbar_util).
 
 -export([get_request_params/1]).
+-export([winkstart_envelope/1]).
 -export([winkstart_envelope/2, winkstart_envelope/3, winkstart_envelope/4]).
 
 -include("crossbar.hrl").
@@ -16,14 +17,12 @@
 -import(logger, [format_log/3]).
 
 get_request_params(RD) ->
-    Method = wrq:method(RD),
-    Res = case Method of
-	      'GET' -> wrq:req_qs(RD);
-	      _ -> pull_from_body_and_qs(RD)
-	  end,
-    format_log(info, "CB_UTIL:get_req_params: ~p: ~p~n", [Method, Res]),
-    Res.
+    case wrq:method(RD) of
+	'GET' -> wrq:req_qs(RD);
+	_ -> pull_from_body_and_qs(RD)
+    end.
 
+%% Favor body paramaters when key exists in both body and qs
 pull_from_body_and_qs(RD) ->
     ReqBody = wrq:req_body(RD),
     PostBody = try
@@ -34,6 +33,11 @@ pull_from_body_and_qs(RD) ->
 	       end,
     QS = wrq:req_qs(RD),
     lists:ukeymerge(1, lists:ukeysort(1, PostBody), lists:ukeysort(1, QS)).
+
+-spec(winkstart_envelope/1 :: (ApiResult :: crossbar_module_result()) -> iolist()).
+winkstart_envelope({Status, Data}) -> winkstart_envelope(Status, Data);    
+winkstart_envelope({Status, Data, Msg}) -> winkstart_envelope(Status, Data, Msg);
+winkstart_envelope({Status, Data, Msg, Code}) -> winkstart_envelope(Status, Data, Msg, Code).
 
 -spec(winkstart_envelope/2 :: (Status :: crossbar_status(), Data :: proplist()) -> iolist()).
 winkstart_envelope(success, Data) ->

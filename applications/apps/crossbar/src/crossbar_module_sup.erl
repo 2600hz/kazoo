@@ -24,9 +24,15 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+-spec(start_mod/2 :: (Mod :: atom, Args :: list(term())) -> no_return()).
 start_mod(Mod, Args) ->
-    supervisor:start_child(?MODULE, ?CHILD(Mod, worker, Args)).
+    supervisor:start_child(?MODULE, ?CHILD(Mod, worker, Args)),
+    case erlang:function_exported(Mod, dispatch_config, 0) of
+	true -> webmachine_router:add_route(Mod:dispatch_config());
+	_ -> ok
+    end.
 
+-spec(stop_mod/1 :: (Mod :: atom()) -> no_return()).
 stop_mod(Mod) ->
     supervisor:terminate_child(?MODULE, Mod),
     supervisor:delete_child(?MODULE, Mod).

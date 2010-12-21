@@ -27,6 +27,7 @@ start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     ensure_started(sasl), % logging
     ensure_started(crypto), % random
+    ensure_started(inets),
     ensure_started(mochiweb),
     application:set_env(webmachine, webmachine_logger_module, webmachine_logger),
     ensure_started(webmachine),
