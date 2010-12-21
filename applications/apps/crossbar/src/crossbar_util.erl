@@ -8,13 +8,63 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_util).
 
--export([get_request_params/1]).
+-export([get_request_params/1, param_exists/2, find_failed/2]).
 -export([winkstart_envelope/1]).
 -export([winkstart_envelope/2, winkstart_envelope/3, winkstart_envelope/4]).
 
 -include("crossbar.hrl").
 
 -import(logger, [format_log/3]).
+
+%% If using a fun to validate, it should return a boolean
+-spec(param_exists/2 :: (Params :: proplist()
+			 , tuple(Key :: binary(), function() | proplist())
+			  | tuple(Key :: binary(), function() | proplist(), optional)
+			) -> tuple(binary(), boolean() | proplist())).
+param_exists(Params, {Key, Fun}) when is_function(Fun) ->
+    case props:get_value(Key, Params) of
+	undefined -> {Key, false};
+	Val ->
+	    try
+		{Key, Fun(Val)}
+	    catch
+		_:_ -> {Key, false}
+	    end
+    end;
+param_exists(Params, {Key, NestedParams}) ->
+    case props:get_value(Key, Params) of
+	undefined -> {Key, false};
+	{struct, SubParams} ->
+	    {Key, lists:map(fun(R) -> param_exists(SubParams, R) end, NestedParams)};
+	_ -> {Key, true}
+    end;
+param_exists(Params, {Key, Fun, optional}) when is_function(Fun) ->
+    case props:get_value(Key, Params) of
+	undefined -> {Key, true};
+	Val ->
+	    try
+		{Key, Fun(Val)}
+	    catch
+		_:_ -> {Key, false}
+	    end
+    end;
+param_exists(Params, {Key, NestedParams, optional}) ->
+    case props:get_value(Key, Params) of
+	undefined -> {Key, true};
+	{struct, SubParams} ->
+	    {Key, lists:map(fun(R) -> param_exists(SubParams, R) end, NestedParams)};
+	_ -> {Key, true}
+    end.
+
+%% searches for any keys that have failed
+-spec(find_failed/2 :: (tuple(binary(), boolean() | proplist()), list(binary())) -> list(binary())).
+find_failed({_, true}, Acc) -> Acc;
+find_failed({K, false}, Acc) -> [K | Acc];
+find_failed({K, L}, Acc) when is_list(L) ->
+    case lists:foldl(fun find_failed/2, [], L) of
+	[] -> Acc; % no nested K/V pairs failed
+	L1 -> [K | Acc ++ L1] %% if one or more nested failed, Key failed
+    end.
 
 get_request_params(RD) ->
     case wrq:method(RD) of

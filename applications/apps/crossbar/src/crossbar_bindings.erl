@@ -27,7 +27,7 @@
 -export([start_link/0, bind/1, run/2, flush/0, flush/1]).
 
 %% Helper Functions for Results of a run/{1,2}
--export([any/1, all/1]).
+-export([any/1, all/1, succeeded/1, failed/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -85,6 +85,12 @@ any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 
 -spec(all/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
+
+-spec(failed/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+failed(Res) when is_list(Res) -> lists:filter(fun filter_out_succeeded/1, Res).
+
+-spec(succeeded/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+succeeded(Res) when is_list(Res) -> lists:filter(fun filter_out_failed/1, Res).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -288,6 +294,14 @@ flush_binding({B, Subs}) ->
 check_bool({true, _}) -> true;
 check_bool({timeout, _}) -> true;
 check_bool(_) -> false.
+
+-spec(filter_out_failed/1 :: (tuple(boolean(), _)) -> boolean()).
+filter_out_failed({true, _}) -> true;
+filter_out_failed({false, _}) -> false.
+
+-spec(filter_out_succeeded/1 :: (tuple(boolean(), _)) -> boolean()).
+filter_out_succeeded({true, _}) -> false;
+filter_out_succeeded({false, _}) -> true.
 	    
 %% EUNIT TESTING
 

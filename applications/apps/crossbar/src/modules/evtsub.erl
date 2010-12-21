@@ -16,7 +16,7 @@
 %% API
 -export([start_link/0]).
 
--export([dispatch_config/0]).
+-export([dispatch_config/0, set_amqp_host/1]).
 
 -export([add/1, rm/1, clear/1, status/1, poll/1]).
 
@@ -29,11 +29,15 @@
 -include("../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
+-define(DEFAULT_RESPONSE_SIZE, 100).
 
-%% { auth_token, queue_name, [{<<"route.one">>, Options}, {<<"route.two.#">>, Options}]}
--type client_sub() :: tuple(term(), binary(), list(tuple(binary(), term()))).
+%% { account_id, queue_name, [{<<"exchange">>, <<"binding_data">>, Options}]}
+-type client_sub() :: tuple(term(), binary(), list(tuple(binary(), binary(), term()))).
 
--record(state, {client_subs = [] :: list(client_sub())}).
+-record(state, {
+	  amqp_host = "" :: string()
+	 ,client_subs = [] :: list(client_sub())
+	 }).
 
 %%%===================================================================
 %%% API
@@ -53,6 +57,9 @@ start_link() ->
 %% for calls to webmachine_router:add_route/1
 dispatch_config() ->
     {["evtsub", request, '*'], evtsub_resource, []}.
+
+set_amqp_host(H) ->
+    gen_server:cast(?SERVER, {set_amqp_host, H}).
 
 %% Exposed API calls can return one of three results:
 %% {success | error | fatal, data proplist}
@@ -84,6 +91,7 @@ poll(Request) -> "poll".
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    amqp_util:module_info(), %% loads all exported function names into the atoms table - for list_to_existing_atom/1
     start_bindings(),
     {ok, #state{}}.
 
@@ -101,8 +109,23 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({add, ReqParams}, _, State) ->
-    {reply, {success, [{<<"add">>, <<"me">>}]}, State};
+handle_call({add, ReqParams}, _, #state{amqp_host=H, client_subs=Subs}=State) ->
+    Client = props:get_value(<<"account_id">>, ReqParams),
+    {struct, Data} = props:get_value(<<"data">>, ReqParams),
+    Exchange = props:get_value(<<"exchange">>, Data),
+    Binding = props:get_value(<<"binding">>, Data),
+    MaxRespSize = case whistle_util:to_integer(props:get_value(<<"max_response_size">>, Data, ?DEFAULT_RESPONSE_SIZE)) of
+		      V when V > ?DEFAULT_RESPONSE_SIZE -> ?DEFAULT_RESPONSE_SIZE;
+		      V1 -> V1
+		  end,
+    case lists:keyfind(Client, 1, Subs) of
+	false ->
+	    {reply, {success, [{<<"subscribed">>, [Binding]}]}, State#state{client_subs=[new_sub(Client, Exchange, Binding, MaxRespSize, H) | Subs]}};
+	ClientSub ->
+	    ClientSub1 = edit_sub(ClientSub, Exchange, Binding, MaxRespSize, H),
+	    Bindings = client_bindings(ClientSub1),
+	    {reply, {success, [{<<"subscribed">>, Bindings}]}, State#state{client_subs=[ClientSub1 | lists:keydelete(Client, 1, Subs)]}}
+    end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -117,6 +140,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({set_amqp_host, H}, #state{amqp_host=_OH}=State) ->
+    {noreply, State#state{amqp_host=H}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -159,7 +184,10 @@ handle_info({binding_fired, Pid, <<"evtsub.authorize">>=Route, {#session{account
     {noreply, State};
 handle_info({binding_fired, Pid, <<"evtsub.validate">>=Route, Payload}, State) ->
     format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
-    spawn(fun() -> Pid ! {binding_result, validate(Payload), Payload} end),
+    spawn(fun() ->
+		  {Result, Payload1} = validate(Payload),
+		  Pid ! {binding_result, Result, Payload1}
+	  end),
     {noreply, State};
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
     format_log(info, "EVTSUB(~p): unhandled binding: ~p~n", [self(), Route]),
@@ -208,14 +236,76 @@ start_bindings() ->
 
 -spec(validate/1 :: (tuple(string(), proplist())) -> boolean()).
 validate({"add", Params}) ->
-    true;
+    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
+	   ,{<<"data">>, [{<<"binding">>, fun erlang:is_binary/1}
+			  ,{<<"exchange">>, fun(E) ->
+						    try 
+							format_log(info, "util fun: ~p~n", [binary_to_list(<<E/binary, "_exchange">>)]),
+							F = list_to_existing_atom(binary_to_list(<<E/binary, "_exchange">>)),
+							erlang:function_exported(amqp_util, F, 1)
+						    catch
+							_:_ -> false
+						    end
+					    end}
+			  ,{<<"max_response_size">>, fun(X) -> try whistle_util:to_integer(X), true catch _:_ -> false end end, optional}
+			 ]}
+	  ],
+    validate(Params, Req);
 validate({"rm", Params}) ->
-    true;
+    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
+	   ,{<<"data">>, [{<<"binding">>, fun erlang:is_binary/1}
+			  ,{<<"exchange">>, fun(E) ->
+						    F = list_to_existing_atom(binary_to_list(<<E/binary, "_exchange">>)),
+						    erlang:function_exported(amqp_util, F, 1)
+					    end}
+			  ,{<<"flush">>, fun(<<"true">>) -> true; (<<"false">>) -> true; (_) -> false end, optional}
+			 ]}
+	  ],
+    validate(Params, Req);
 validate({"clear", Params}) ->
-    true;
+    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
+	   ,{<<"data">>, [
+			  {<<"flush">>, fun(<<"true">>) -> true; (<<"false">>) -> true; (_) -> false end, optional}
+			 ]}
+	  ],
+    validate(Params, Req);
 validate({"status", Params}) ->
-    true;
+    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
+	   ,{<<"data">>, fun(_) -> true end}
+	  ],
+    validate(Params, Req);
 validate({"poll", Params}) ->
-    true;
+    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
+	   ,{<<"data">>, fun(_) -> true end}
+	  ],
+    validate(Params, Req);
 validate(_) ->
-    false.
+    {false, [<<"unknown_request">>]}.
+
+validate(Params, Req) ->
+    Scanned = lists:map(fun(R) -> crossbar_util:param_exists(Params, R) end, Req),
+    Failed = lists:foldl(fun crossbar_util:find_failed/2, [], Scanned),
+    {Failed =:= [], Failed}.
+
+-spec(new_sub/5 :: (Client :: binary(), Exchange :: binary(), Binding :: binary(), MaxRespSize :: integer(), H :: string()) -> client_sub()).
+new_sub(Client, Exchange, Binding, MaxRespSize, H) ->
+    Q = amqp_util:new_queue(H, <<>>),
+    F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
+    amqp_util:F(H, Q, Binding), % bind our queue
+    {Client, Q, [{Exchange, Binding, MaxRespSize}]}.
+
+edit_sub({Client, Q, Bindings}=ClientSub, Exchange, Binding, MaxRespSize, H) ->
+    case lists:keyfind(Exchange, 1, Bindings) of
+	false ->
+	    F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
+	    amqp_util:F(H, Q, Binding), % bind our queue
+	    {Client, Q, [{Exchange, Binding, MaxRespSize} | Bindings]};
+	{_, Binding, _} ->
+	    ClientSub;
+	_ ->
+	    F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
+	    amqp_util:F(H, Q, Binding), % bind our queue
+	    {Client, Q, [{Exchange, Binding, MaxRespSize} | Bindings]}
+    end.
+
+client_bindings({_, _, Bindings}) -> lists:map(fun(B) -> tuple_to_list(B) end, Bindings).
