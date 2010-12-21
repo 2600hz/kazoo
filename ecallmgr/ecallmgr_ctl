@@ -1,0 +1,23 @@
+#!/bin/sh
+# Copyright 2010, Scatterbit, Inc. & Jayson Vantuyl <jvantuyl@scatterbit.com>
+#
+# This file is part of erlctl.
+#
+# Erlctl is open source.  See LICENSE.txt for details.
+
+# Adapting rabbitmqctl pieces into here
+
+EBIN=`pwd`/ebin
+DIAG_EBIN=`pwd`/../utils/diagnostics/ebin
+COOKIE_FILE=`pwd`/../confs/fs_conf/autoload_configs/.erlang.cookie
+
+exec erl \
+    -pa $EBIN \
+    -pa $DIAG_EBIN \
+    -name ecallmgrctl@`hostname -f` \
+    -setcookie `cat $COOKIE_FILE` \
+    +Bd \
+    -noshell \
+    -mode interactive \
+    -s erlctl_cmd \
+    -extra "$0" "$@"
