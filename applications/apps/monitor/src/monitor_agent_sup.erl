@@ -29,9 +29,9 @@ start_link(AHost) ->
 
 init([AHost]) ->
     NetworkAgent = {monitor_agent_network, {monitor_agent_network, start_link, [AHost]},
-                    permanent, 2000, worker, [monitor_agent_network]},
-    CallAgent = {monitor_agent_call, {monitor_agent_call, start_link, [AHost]},
-                    permanent, 2000, worker, [monitor_agent_call]},
-    Children = [NetworkAgent, CallAgent],
-    RestartStrategy = {one_for_one, 5, 10},
-    {ok, {RestartStrategy, Children}}.
+                     permanent, 2000, worker, [monitor_agent_network]},
+    CallAgent    = {monitor_agent_call, {monitor_agent_call, start_link, [AHost]},
+                     permanent, 2000, worker, [monitor_agent_call]},
+    Children     = [NetworkAgent, CallAgent],
+    Restart      = {one_for_one, 5, 10},
+    {ok, {Restart, Children}}.

@@ -10,25 +10,24 @@
 
 -behaviour(gen_server).
 
-%% API
--export([start_link/1]).
-
--export([set_amqp_host/1]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-     terminate/2, code_change/3]).
-
--define(SERVER, ?MODULE).
+-include("../include/monitor_amqp.hrl").
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
 
--include("../include/monitor_amqp.hrl").
+%% API
+-export([start_link/1]).
+-export([set_amqp_host/1]).
+
+%% gen_server callbacks
+-export([init/1, terminate/2, code_change/3]).
+-export([handle_call/3, handle_cast/2, handle_info/2]).
+
+-define(SERVER, ?MODULE).
 
 -record(state, {
-        amqp_host = "" :: string()
-        ,agent_q = <<>> :: binary()
+         amqp_host  = false  :: string() | false
+        ,agent_q    = false  :: binary() | false
     }).
 
 %%%===================================================================
@@ -82,12 +81,11 @@ init([AHost]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurrentAHost, agent_q=CurrentAgentQ}=State) ->
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Updating amqp host from ~p to ~p~n", [self(), CurrentAHost, AHost]),
-    amqp_util:queue_delete(CurrentAHost, CurrentAgentQ),
-    amqp_manager:close_channel(self(), CurrentAHost),
+handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurAHost} = State) ->
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Updating amqp host from ~p to ~p~n", [self(), CurAHost, AHost]),
+    amqp_manager:close_channel(self(), CurAHost),
     {ok, Agent_Q} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, agent_q=Agent_Q}};
+    {reply, ok, State#state{amqp_host = AHost, agent_q = Agent_Q}};
 
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
@@ -116,10 +114,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', _Pid, Reason}, State) ->
-    format_log(error, "MONITOR_AGENT_NETWORK(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
-    {noreply, Reason, State};
+    format_log(error, "MONITOR_AGENT_CALL(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
+    {stop, Reason, State};
 
-%% Spawn tasks to process the incomming requests
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     case amqp_util:is_json(Props) of
         true ->
@@ -144,11 +141,6 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_host=AHost, agent_q=Agent_Q}) ->
-    amqp_util:queue_delete(AHost, Agent_Q),
-    format_log(error, "MONITOR_AGENT_NETWORK(~p): Killed queue, going down(~p)...~n", [self(), _Reason]),
-    ok;
-
 terminate(_Reason, _State) ->
     format_log(error, "MONITOR_AGENT_NETWORK(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
@@ -167,15 +159,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures the monitor exchange exists, then creates a named queue
+%% and places a consumer on it
+%%
+%% @spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).
+%% @end
+%%--------------------------------------------------------------------
+
 start_amqp(AHost) ->
     amqp_util:monitor_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
 
-    Agent_Q = amqp_util:new_monitor_queue(AHost),
-
-    %% Bind the queue to the targeted exchange
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p as a targeted queue~n", [self(), Agent_Q]),
-    amqp_util:bind_q_to_targeted(AHost, Agent_Q),
+    Agent_Q = amqp_util:new_monitor_queue(AHost, ?SERVER),
 
     %% Bind the queue to the topic exchange
     format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p for ~p~n", [self(), Agent_Q, ?KEY_AGENT_NET_REQ]),
@@ -183,31 +181,57 @@ start_amqp(AHost) ->
 
     %% Register a consumer to listen to the queue
     format_log(info, "MONITOR_AGENT_NETWORK(~p): Consume on ~p~n", [self(), Agent_Q]),
-    amqp_util:basic_consume(AHost, Agent_Q),
+    amqp_util:basic_consume(AHost, Agent_Q, [{exclusive, false}]),
 
     {ok, Agent_Q}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Extracts destination from the proplist
+%%
+%% @spec(get_msg_destination/1 :: (Prop :: proplist()) -> list()).
+%% @end
+%%--------------------------------------------------------------------
 get_msg_destination(Prop) ->
      Dest = get_value(<<"Destination">>, Prop, <<"localhost">>),
      binary_to_list(Dest).
 
-process_req({<<"task">>, <<"ping_net_req">>}, Prop, #state{amqp_host = AHost, agent_q = Agent_Q} = State) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Process the requests recieved from AMQP
+%%
+%% @spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), 
+%%      Prop :: proplist(), State :: #state{}) -> no_return()).
+%% @end
+%%--------------------------------------------------------------------
+process_req({<<"task">>, <<"ping_net_req">>}, Prop, #state{amqp_host = AHost, agent_q = Agent_Q}) ->
     case monitor_api:ping_net_req_v(Prop) of
         true ->
-            Resp = monitor_icmp:ping_test(get_msg_destination(Prop)),
-            RespQ = get_value(<<"Server-ID">>, Prop),
-            Defaults = monitor_util:prop_updates([{<<"Server-ID">>, Agent_Q}, {<<"Event-Name">>, <<"ping_net_resp">>}], Prop),
-            Headers = monitor_api:prepare_amqp_prop([Resp, Defaults]),
+            Resp       = monitor_icmp:ping_test(get_msg_destination(Prop)),
+            RespQ      = get_value(<<"Server-ID">>, Prop),
+            Defaults   = monitor_util:prop_updates([{<<"Server-ID">>, Agent_Q}, {<<"Event-Name">>, <<"ping_net_resp">>}], Prop),
+            Headers    = monitor_api:prepare_amqp_prop([Resp, Defaults]),
             {ok, JSON} = monitor_api:ping_net_resp(Headers),
             send_resp(JSON, RespQ, AHost);
         _ ->
             format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_net_req~n", [self()])
-    end,
-    State;
+    end;
 
 process_req(_MsgType, _Prop, _State) ->
     format_log(error, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Places the given JSON into an AMQP payload on the provided hosts
+%% targeted exchange for delievery to RespQ.
+%%
+%% @spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), 
+%%      AHost :: string()) -> no_return()).
+%% @end
+%%--------------------------------------------------------------------
 send_resp(JSON, RespQ, AHost) ->
     format_log(info, "MONITOR_AGENT_NETWORK(~p): Sending response to ~p at ~p~n", [self(), RespQ, AHost]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).

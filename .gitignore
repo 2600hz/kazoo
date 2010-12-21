@@ -5,3 +5,4 @@
 .eunit
 rabbit/rabbit-config/log/*.log
 rabbit/rabbit-config/mnesia/*
+applications/apps/*/log/*

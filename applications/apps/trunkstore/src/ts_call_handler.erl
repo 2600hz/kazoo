@@ -66,6 +66,7 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	{shutdown, CallID} ->
 	    amqp_util:delete_callmgr_queue(Host, CallID),
 	    couch_mgr:rm_change_handler(Flags#route_flags.account_doc_id),
+	    ts_responder:rm_post_handler(CallID),
 	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
 	{document_changes, DocID, Changes} ->
 	    Doc0 = Flags#route_flags.account_doc,
@@ -105,6 +106,7 @@ loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
 	    ?MODULE:loop(CallID, Flags, Amqp, Timeout)
     after
 	Timeout ->
+	    ts_responder:rm_post_handler(CallID),
 	    format_log(info, "TS_CALL(~p): Timeout ~p hit~n", [self(), Timeout])
     end.
 
@@ -118,11 +120,14 @@ consume_events(Host, CallID) ->
     amqp_util:basic_consume(Host, EvtQ),
     EvtQ.
 
+monitor_account_doc(#route_flags{account_doc_id = <<>>}) ->
+    ok;
 monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
     couch_mgr:add_change_handler(?TS_DB, DocID).
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
+update_account(_, #route_flags{account_doc_id = <<>>}=F) -> F;
 update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, account_doc_id=DocID, active_calls=ACs}=Flags) ->
     {Acct0} = get_value(<<"account">>, Doc),
     {ACs1} = get_value(<<"active_calls">>, Acct0, {ACs}),
