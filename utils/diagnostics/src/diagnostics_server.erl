@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_node/1, rm_node/1, view/0, view/1]).
+-export([start_link/0, add_node/1, rm_node/1, view/0, view/1, display_fs_data/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -225,7 +225,7 @@ show_line(Type, {error, Error, Reason}) ->
     io:format("  |  ~11.s | ERROR(~p): ~p~n", [Type, Error, Reason]);
 show_line(Type, {'EXIT', _Pid, Cause}) ->
     io:format("  |  ~11.s | ERROR(exit): ~p~n", [Type, Cause]);
-show_line(node_handler=Handler, Data) ->
+show_line(node_handler=Handler, {ok, Data}) ->
     io:format("~n", []),
     io:format(?NODE_LINE_HEADER, []),
     Type = lists:takewhile(fun(C) -> C =/= $_ end, atom_to_list(Handler)),
@@ -234,7 +234,7 @@ show_line(node_handler=Handler, Data) ->
     A = whistle_util:to_list(get_value(active_channels, Data, 0)),
     U = get_uptime(get_value(uptime, Data, 0)),
     io:format(?NODE_LINE, [Type, R, S, A, U]);
-show_line(Handler, Data) when is_list(Data) ->
+show_line(Handler, {ok, Data}) when is_list(Data) ->
     Type = lists:takewhile(fun(C) -> C =/= $_ end, atom_to_list(Handler)),
     LR = get_value(lookups_requested, Data, 0),
     R = integer_to_list(LR),
@@ -249,7 +249,10 @@ show_line(Handler, Data) when is_list(Data) ->
     F = Format(get_value(lookups_failed, Data, 0)),
     A = Format(length(get_value(active_lookups, Data, []))),
     U = get_uptime(get_value(uptime, Data, 0)),
-    io:format(?HANDLER_LINE, [Type, R, S, T, F, A, U]).
+    io:format(?HANDLER_LINE, [Type, R, S, T, F, A, U]);
+show_line(Handler, {error, E, _}) ->
+    io:format(" ~p: ~p~n", [Handler, E]).
+
 
 %% uptime, in microseconds
 get_uptime(0) ->
