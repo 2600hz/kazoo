@@ -12,12 +12,12 @@
 -export([resource_exchange/1, resource_publish/2, resource_publish/3]).
 -export([callmgr_exchange/1, callmgr_publish/4]).
 
--export([bind_q_to_targeted/2, bind_q_to_targeted/3]).
--export([bind_q_to_callctl/2, bind_q_to_callctl/3]).
--export([bind_q_to_callevt/3, bind_q_to_callevt/4]).
--export([bind_q_to_broadcast/2, bind_q_to_broadcast/3]).
--export([bind_q_to_resource/2, bind_q_to_resource/3]).
--export([bind_q_to_callmgr/3]).
+-export([bind_q_to_targeted/2, bind_q_to_targeted/3, unbind_q_from_targeted/3]).
+-export([bind_q_to_callctl/2, bind_q_to_callctl/3, unbind_q_from_callctl/3]).
+-export([bind_q_to_callevt/3, bind_q_to_callevt/4, unbind_q_from_callevt/3]).
+-export([bind_q_to_broadcast/2, bind_q_to_broadcast/3, unbind_q_from_broadcast/3]).
+-export([bind_q_to_resource/2, bind_q_to_resource/3, unbind_q_from_resource/3]).
+-export([bind_q_to_callmgr/3, unbind_q_from_callmgr/3]).
 
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2, new_callmgr_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
@@ -76,7 +76,7 @@
 %% - monitor manager publishes to the exchange with a routing key; consumers bind their queue with the
 %%   routing keys they want messages for.
 -export([monitor_exchange/1, monitor_publish/4]).
--export([new_monitor_queue/1, delete_monitor_queue/2]).
+-export([new_monitor_queue/1, new_monitor_queue/2, delete_monitor_queue/2]).
 -export([bind_q_to_monitor/3]).
 
 -define(EXCHANGE_MONITOR, <<"monitor">>).
@@ -90,6 +90,9 @@ monitor_exchange(Host) ->
 
 new_monitor_queue(Host) ->
     new_queue(Host, <<"">>, [{exclusive, false}, {auto_delete, true}]).
+
+new_monitor_queue(Host, Name) ->
+    new_queue(Host, whistle_util:to_binary(Name), [{exclusive, false}, {auto_delete, true}]).
 
 delete_monitor_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
@@ -305,6 +308,30 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
       ,arguments = []
      },
     amqp_channel:call(Channel, QB).
+
+unbind_q_from_callevt(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLEVT).
+unbind_q_from_callctl(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLCTL).
+unbind_q_from_resource(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_RESOURCE).
+unbind_q_from_broadcast(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_BROADCAST).
+unbind_q_from_callmgr(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLMGR).
+unbind_q_from_targeted(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_TARGETED).
+
+unbind_q_from_exchange(Host, Queue, Routing, Exchange) ->
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
+    QU = #'queue.unbind'{
+      ticket = Ticket
+      ,queue = Queue
+      ,exchange = Exchange
+      ,routing_key = Routing
+      ,arguments = []
+     },
+    amqp_channel:call(Channel, QU).
 
 %% create a consumer for a Queue
 basic_consume(Host, Queue) ->

@@ -5,7 +5,7 @@
 %%% @end
 %%% Created :  Tue, 07 Dec 2010 19:26:22 GMT: James Aimonetti <james@2600hz.org>
 
--module(winkstart).
+-module(crossbar).
 
 -author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0, set_amqp_host/1, set_couch_host/1]).
@@ -14,19 +14,20 @@
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
     start_deps(),
-    winkstart_sup:start_link().
+    crossbar_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the app
 start() ->
     start_deps(),
-    application:start(winkstart).
+    application:start(crossbar).
 
 start_deps() ->
     reloader:start(),
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     ensure_started(sasl), % logging
     ensure_started(crypto), % random
+    ensure_started(inets),
     ensure_started(mochiweb),
     application:set_env(webmachine, webmachine_logger_module, webmachine_logger),
     ensure_started(webmachine),
@@ -38,7 +39,7 @@ start_deps() ->
 %% @spec stop() -> ok
 %% @doc Stop the basicapp server.
 stop() ->
-    application:stop(winkstart),
+    application:stop(crossbar),
     ok.
 
 set_amqp_host(H) ->
