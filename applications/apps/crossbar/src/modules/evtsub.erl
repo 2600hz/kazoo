@@ -31,8 +31,8 @@
 -define(SERVER, ?MODULE).
 -define(DEFAULT_RESPONSE_SIZE, 100).
 
-%% { account_id, queue_name, [{<<"exchange">>, <<"binding_data">>, Options}]}
--type client_sub() :: tuple(term(), binary(), list(tuple(binary(), binary(), term()))).
+%% { account_id, queue_name, [{{<<"exchange">>, <<"binding_data">>}, Options}]}
+-type client_sub() :: tuple(term(), binary(), list(tuple(tuple(binary(), binary()), term()))).
 
 -record(state, {
 	  amqp_host = "" :: string()
@@ -66,14 +66,20 @@ set_amqp_host(H) ->
 %% {success | error | fatal, data proplist, message}
 %% {success | error | fatal, data proplist, message, error code}
 %% AKA the crossbar_module_result() type
--spec(add/1 :: (Request :: list(tuple(binary(), binary()))) -> crossbar_module_result()).
-add(ReqParams) ->
-    gen_server:call(?SERVER, {add, ReqParams}).
+-spec(add/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
+add(ReqParams) -> gen_server:call(?SERVER, {add, ReqParams}).
 
-rm(Request) -> "rm".
-clear(Request) -> "clear".
-status(Request) -> "status".
-poll(Request) -> "poll".
+-spec(rm/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
+rm(ReqParams) -> gen_server:call(?SERVER, {rm, ReqParams}).
+
+-spec(clear/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
+clear(ReqParams) -> gen_server:call(?SERVER, {clear, ReqParams}).
+
+-spec(status/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
+status(ReqParams) -> gen_server:call(?SERVER, {status, ReqParams}).
+
+-spec(poll/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
+poll(ReqParams) -> gen_server:call(?SERVER, {poll, ReqParams}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -90,6 +96,7 @@ poll(Request) -> "poll".
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
     amqp_util:module_info(), %% loads all exported function names into the atoms table - for list_to_existing_atom/1
     start_bindings(),
@@ -118,13 +125,54 @@ handle_call({add, ReqParams}, _, #state{amqp_host=H, client_subs=Subs}=State) ->
 		      V when V > ?DEFAULT_RESPONSE_SIZE -> ?DEFAULT_RESPONSE_SIZE;
 		      V1 -> V1
 		  end,
+    ClientSub = case lists:keyfind(Client, 1, Subs) of
+		    false -> new_sub(Client, Exchange, Binding, MaxRespSize, H);
+		    CSub -> edit_sub(CSub, Exchange, Binding, MaxRespSize, H)
+		end,
+    Bindings = client_bindings(ClientSub),
+    {reply, {success, [{<<"subscribed">>, Bindings}]}, State#state{client_subs=[ClientSub | lists:keydelete(Client, 1, Subs)]}};
+handle_call({rm, ReqParams}, _, #state{amqp_host=H, client_subs=Subs}=State) ->
+    Client = props:get_value(<<"account_id">>, ReqParams),
+    {struct, Data} = props:get_value(<<"data">>, ReqParams),
+    Exchange = props:get_value(<<"exchange">>, Data),
+    Binding = props:get_value(<<"binding">>, Data),
     case lists:keyfind(Client, 1, Subs) of
 	false ->
-	    {reply, {success, [{<<"subscribed">>, [Binding]}]}, State#state{client_subs=[new_sub(Client, Exchange, Binding, MaxRespSize, H) | Subs]}};
+	    {reply, {error, [], "No client found"}, State};
 	ClientSub ->
-	    ClientSub1 = edit_sub(ClientSub, Exchange, Binding, MaxRespSize, H),
-	    Bindings = client_bindings(ClientSub1),
-	    {reply, {success, [{<<"subscribed">>, Bindings}]}, State#state{client_subs=[ClientSub1 | lists:keydelete(Client, 1, Subs)]}}
+	    case rm_sub(ClientSub, Exchange, Binding, H) of
+		{_, _, []} -> {reply, {success, [], "All bindings cleared"}, State#state{client_subs=lists:keydelete(Client, 1, Subs)}};
+		ClientSub1 ->
+		    Bindings = client_bindings(ClientSub1),
+		    {reply, {success, [{<<"subscribed">>, Bindings}]}, State#state{client_subs=[ClientSub1 | lists:keydelete(Client, 1, Subs) ]}}
+	    end
+    end;
+handle_call({clear, ReqParams}, _, #state{amqp_host=H, client_subs=Subs}=State) ->
+    Client = props:get_value(<<"account_id">>, ReqParams),
+    case lists:keyfind(Client, 1, Subs) of
+	false ->
+	    {reply, {error, [], "No client found"}, State};
+	ClientSub ->
+	    clear_sub(ClientSub, H),
+	    {reply, {success, [{<<"subscribed">>, []}], "All bindings cleared"}, State#state{client_subs=lists:keydelete(Client, 1, Subs)}}
+    end;
+handle_call({status, ReqParams}, _, #state{client_subs=Subs}=State) ->
+    Client = props:get_value(<<"account_id">>, ReqParams),
+    case lists:keyfind(Client, 1, Subs) of
+	false ->
+	    {reply, {error, [], "No client found"}, State};
+	ClientSub ->
+	    Bindings = client_bindings(ClientSub),
+	    {reply, {success, [{<<"subscribed">>, Bindings}]}, State}
+    end;
+handle_call({poll, ReqParams}, _, #state{client_subs=Subs, amqp_host=H}=State) ->
+    Client = props:get_value(<<"account_id">>, ReqParams),
+    case lists:keyfind(Client, 1, Subs) of
+	false ->
+	    {reply, {error, [], "No client found"}, State};
+	ClientSub ->
+	    Events = client_events(ClientSub, H),
+	    {reply, {success, [{<<"events">>, Events}]}, State}
     end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -234,7 +282,7 @@ start_bindings() ->
     crossbar_bindings:bind(<<"evtsub.#">>),        %% all evtsub events
     crossbar_bindings:bind(<<"session.destroy">>). %% session destroy events
 
--spec(validate/1 :: (tuple(string(), proplist())) -> boolean()).
+-spec(validate/1 :: (tuple(string(), proplist())) -> tuple(boolean(), list())).
 validate({"add", Params}) ->
     Req = [{<<"auth_token">>, fun erlang:is_binary/1}
 	   ,{<<"data">>, [{<<"binding">>, fun erlang:is_binary/1}
@@ -282,6 +330,7 @@ validate({"poll", Params}) ->
 validate(_) ->
     {false, [<<"unknown_request">>]}.
 
+-spec(validate/2 :: (Params :: proplist(), Req :: proplist()) -> tuple(boolean(), proplist())).
 validate(Params, Req) ->
     Scanned = lists:map(fun(R) -> crossbar_util:param_exists(Params, R) end, Req),
     Failed = lists:foldl(fun crossbar_util:find_failed/2, [], Scanned),
@@ -292,20 +341,56 @@ new_sub(Client, Exchange, Binding, MaxRespSize, H) ->
     Q = amqp_util:new_queue(H, <<>>),
     F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
     amqp_util:F(H, Q, Binding), % bind our queue
-    {Client, Q, [{Exchange, Binding, MaxRespSize}]}.
+    {Client, Q, [{{Exchange, Binding}, MaxRespSize}]}.
 
+-spec(edit_sub/5 :: (ClientSub :: client_sub(), Exchange :: binary(), Binding :: binary(), MaxRespSize :: integer(), H :: string()) -> client_sub()).
 edit_sub({Client, Q, Bindings}=ClientSub, Exchange, Binding, MaxRespSize, H) ->
-    case lists:keyfind(Exchange, 1, Bindings) of
+    case lists:keyfind({Exchange, Binding}, 1, Bindings) of
 	false ->
 	    F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
 	    amqp_util:F(H, Q, Binding), % bind our queue
-	    {Client, Q, [{Exchange, Binding, MaxRespSize} | Bindings]};
-	{_, Binding, _} ->
-	    ClientSub;
-	_ ->
-	    F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
-	    amqp_util:F(H, Q, Binding), % bind our queue
-	    {Client, Q, [{Exchange, Binding, MaxRespSize} | Bindings]}
+	    {Client, Q, [{{Exchange, Binding}, MaxRespSize} | Bindings]};
+	{_, _} -> ClientSub
     end.
 
-client_bindings({_, _, Bindings}) -> lists:map(fun(B) -> tuple_to_list(B) end, Bindings).
+-spec(rm_sub/4 :: (ClientSub :: client_sub(), Exchange :: binary(), Binding :: binary(), H :: string()) -> client_sub()).
+rm_sub({Client, Q, Bindings}=ClientSub, Exchange, Binding, H) ->
+    case lists:keyfind({Exchange, Binding}, 1, Bindings) of
+	false -> ClientSub;
+	{_,_} ->
+	    F = list_to_existing_atom(binary_to_list(<<"unbind_q_from_", Exchange/binary>>)),
+	    amqp_util:F(H, Q, Binding),
+	    {Client, Q, lists:keydelete({Exchange, Binding}, 1, Bindings)}
+    end.
+
+-spec(clear_sub/2 :: (ClientSub :: client_sub(), H :: string()) -> no_return()).
+clear_sub({_Client, Q, Bindings}=ClientSub, H) ->
+    lists:foreach(fun({E,B}) -> rm_sub(ClientSub, E, B, H) end, Bindings),
+    amqp_util:delete_queue(H, Q).
+
+-spec(client_bindings/1 :: (client_sub()) -> list(list())).				
+client_bindings({_, _, Bindings}) -> lists:map(fun({{E,B},_}) -> [E, B] end, Bindings).
+
+client_events({_,_,[]}, _) -> [];
+client_events({_,Q,B}, H) ->
+    Self = self(),
+    MaxResp = lists:foldl(fun({_,X}, Y) when X > Y -> X; (_, Y) -> Y end, 0, B),
+    spawn(fun() ->
+		  amqp_util:basic_consume(H, Q),
+		  receive_events(Self, MaxResp, 0, [])
+		      %% look to basic.qos{prefetch_count} to pull specified # of messages
+	  end),
+    receive
+	{events, Events} -> {ok, Events}
+    after
+	2000 -> {error, timeout}
+    end.
+
+receive_events(Pid, Max, Max, Evts) ->
+    Pid ! {events, Evts};
+receive_events(Pid, Max, Cur, Evts) ->
+    receive
+	AmqpMsg -> receive_events(Pid, Max, Cur+1, [AmqpMsg | Evts])
+    after
+	2000 -> receive_events(Pid, Max, Max, Evts)
+    end.

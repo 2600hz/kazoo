@@ -86,10 +86,10 @@ any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 -spec(all/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec(failed/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+-spec(failed/1 :: (Res :: list(tuple(boolean(), term()))) -> list()).
 failed(Res) when is_list(Res) -> lists:filter(fun filter_out_succeeded/1, Res).
 
--spec(succeeded/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+-spec(succeeded/1 :: (Res :: list(tuple(boolean(), term()))) -> list()).
 succeeded(Res) when is_list(Res) -> lists:filter(fun filter_out_failed/1, Res).
 
 %%%===================================================================

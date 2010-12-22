@@ -36,7 +36,11 @@ param_exists(Params, {Key, NestedParams}) ->
 	undefined -> {Key, false};
 	{struct, SubParams} ->
 	    {Key, lists:map(fun(R) -> param_exists(SubParams, R) end, NestedParams)};
-	_ -> {Key, true}
+	_ ->
+	    case NestedParams of
+		[] -> {Key, true};
+		[_|_] -> {Key, false}
+	    end
     end;
 param_exists(Params, {Key, Fun, optional}) when is_function(Fun) ->
     case props:get_value(Key, Params) of
@@ -53,7 +57,11 @@ param_exists(Params, {Key, NestedParams, optional}) ->
 	undefined -> {Key, true};
 	{struct, SubParams} ->
 	    {Key, lists:map(fun(R) -> param_exists(SubParams, R) end, NestedParams)};
-	_ -> {Key, true}
+	_ ->
+	    case NestedParams of
+		[] -> {Key, true};
+		[_|_] -> {Key, false}
+	    end
     end.
 
 %% searches for any keys that have failed
