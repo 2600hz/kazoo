@@ -125,6 +125,43 @@
        | #'basic.recover_ok'{} | #'tx.select'{} | #'tx.select_ok'{} | #'tx.commit'{}
        | #'tx.commit_ok'{} | #'tx.rollback'{} | #'tx.rollback_ok'{} )).
 -type(amqp_method_field_name() ::
+<<<<<<< HEAD
+       ( known_hosts | arguments | routing_key | exclusive
+       | routing_key | exchange | mechanism | locale
+       | nowait | delivery_tag | routing_key | read
+       | immediate | cluster_id | arguments | queue
+       | client_properties | ticket | arguments | mandatory
+       | exchange | nowait | heartbeat | server_properties
+       | nowait | routing_key | channel_max | durable
+       | ticket | routing_key | passive | requeue
+       | challenge | method_id | consumer_tag | queue
+       | no_local | out_of_band | reply_code | redelivered
+       | arguments | redelivered | ticket | version_minor
+       | frame_max | durable | passive | queue
+       | realm | type | arguments | prefetch_count
+       | reply_code | delivery_tag | ticket | exchange
+       | message_count | reply_text | virtual_host | response
+       | ticket | ticket | exchange | source
+       | auto_delete | ticket | ticket | mechanisms
+       | nowait | ticket | exclusive | exclusive
+       | consumer_tag | consumer_tag | reply_text | exchange
+       | requeue | channel_id | response | class_id
+       | queue | capabilities | ticket | queue
+       | if_unused | global | no_ack | ticket
+       | destination | consumer_tag | queue | locales
+       | delivery_tag | message_count | active | class_id
+       | destination | exchange | nowait | source
+       | queue | insist | ticket | queue
+       | routing_key | channel_max | internal | reply_code
+       | delivery_tag | version_major | nowait | ticket
+       | consumer_count | active | if_unused | method_id
+       | heartbeat | message_count | active | routing_key
+       | routing_key | nowait | nowait | requeue
+       | auto_delete | frame_max | arguments | no_ack
+       | arguments | if_empty | exchange | exchange
+       | write | passive | nowait | consumer_tag
+       | prefetch_size | message_count | reply_text | multiple
+=======
        ( known_hosts | arguments | exclusive | routing_key
        | mechanism | locale | nowait | delivery_tag
        | read | immediate | cluster_id | arguments
@@ -160,6 +197,7 @@
        | exchange | if_empty | exchange | exchange
        | write | message_count | nowait | consumer_tag
        | prefetch_size | ticket | reply_text | multiple
+>>>>>>> production
        | nowait )).
 -type(amqp_property_record() ::
        ( #'P_connection'{} | #'P_channel'{} | #'P_access'{} | #'P_exchange'{}
