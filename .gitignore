@@ -3,8 +3,6 @@
 */mnesia
 */error_log
 .eunit
-<<<<<<< HEAD
-=======
-rabbit/rabbit-config/log/*.log
+rabbit/rabbit-config/log/*.log*
 rabbit/rabbit-config/mnesia/*
->>>>>>> production
+applications/apps/*/log/*

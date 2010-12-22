@@ -125,14 +125,16 @@ handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
     As1 = case file:consult(Config) of
 	      {ok, Ts} ->
+		  couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
 		  lists:foldl(fun(App, Acc) ->
 				      Acc1 = add_app(App, Acc),
 				      Acc1
-			      end, As, proplists:get_value(start, Ts, []));
+			      end, As, props:get_value(start, Ts, []));
 	      _ -> As
 	  end,
     {noreply, State#state{apps=As1}};
 handle_info(_Info, State) ->
+    format_log(info, "WHAPPS(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -146,7 +148,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{apps=As}) ->
+    format_log(info, "WHAPPS(~p): Terminating(~p)~n", [self(), _Reason]),
+    lists:foreach(fun(App) -> spawn(fun() -> rm_app(App, []) end) end, As),
     ok.
 
 %%--------------------------------------------------------------------
@@ -163,7 +167,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> tuple(ok, list(atom())) | tuple(tuple(), list(atom()))).
+-spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 add_app(App, As) ->
     format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
     case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
@@ -173,9 +177,12 @@ add_app(App, As) ->
 	_ -> As
     end.
 
+-spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
     format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
+    whistle_apps_sup:stop_app(App),
+    application:stop(App),
     case lists:member(App, As) of
-	true -> whistle_apps_sup:stop_app(App), application:stop(App), lists:delete(App, As);
+	true -> lists:delete(App, As);
 	false -> As
     end.

@@ -20,7 +20,7 @@ reload_app(App) ->
 	Mods ->
 	    lists:foreach(fun(M) ->
 				  io:format("Reloading Mod ~p~n", [M]),
-				  code:purge(M),
+				  code:soft_purge(M),
 				  code:load_file(M)
 			  end, Mods)
     end,
@@ -75,7 +75,11 @@ to_integer(X) when is_integer(X) ->
 to_float(X) when is_binary(X) ->
     list_to_float(binary_to_list(X));
 to_float(X) when is_list(X) ->
-    list_to_float(X);
+    try
+	list_to_float(X)
+    catch
+	error:badarg -> to_float(to_integer(X)) %% "500"
+    end;
 to_float(X) when is_integer(X) ->
     X * 1.0;
 to_float(X) when is_float(X) ->

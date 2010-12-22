@@ -2,11 +2,16 @@
 %%% @author Karl Anderson <karl@2600hz.com>
 %%% @copyright (C) 2010, Karl Anderson
 %%% @doc
-%%% Responsible for runnning the call server monitoring tasks
+%%% Responsible for runnning the basic call task
 %%% @end
 %%% Created : 2 Dec 2010 by Karl Anderson <karl@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(monitor_call_basic).
+
+-include("../include/monitor_amqp.hrl").
+
+-import(logger, [format_log/3]).
+-import(proplists, [get_value/2, get_value/3]).
 
 %% API
 -export([start/3]).
@@ -14,29 +19,24 @@
 -define(SERVER, ?MODULE).
 -define(FREQ, <<"2600">>).
 
--import(logger, [format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
-
--include("../include/monitor_amqp.hrl").
-
 start(AHost, Msg, Route) ->
     Msg_ID = get_value(<<"Msg-ID">>, Msg),
     {ok, Task_Q} = create_task_q(AHost),
-    {ok, {CQ, Call_ID}} = originate_call_req(AHost, Msg_ID, Route, Task_Q),
-    amqp_util:bind_q_to_callevt(AHost, Task_Q, Call_ID),
-    answer_call(AHost, CQ, Call_ID, Task_Q),
-    Result = test_tones(AHost, CQ, Call_ID, Task_Q),
-    hangup_call(AHost, CQ, Call_ID, Task_Q),
-    case Result of 
-        {{ok, Start}, {ok, End}} ->
-            Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, End)) - whistle_util:to_integer(get_value(<<"Timestamp">>, Start)),
-            format_log(info, "MONITOR_CALL_BASIC(~p): TASK SUCCEEDED: delay ~p~n", [self(), Delay]);
-        {_, {error, timeout}} ->
-            format_log(info, "MONITOR_CALL_BASIC(~p): TASK FAILED~n", [self()]);
-        _ ->
-            format_log(info, "MONITOR_CALL_BASIC(~p): TASK FAILED~n", [self()])
+    Result = case originate_call_req(AHost, Msg_ID, Route, Task_Q) of 
+        {ok, Resource} ->
+            CQ = get_value(<<"Control-Queue">>, Resource),
+            Call_ID = get_value(<<"Call-ID">>, Resource),
+            format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p connected to ~p~n", [self(), Call_ID, Route]),
+            amqp_util:bind_q_to_callevt(AHost, Task_Q, Call_ID),
+            answer_call(AHost, CQ, Call_ID, Task_Q),
+            Rslt = test_tones(AHost, CQ, Call_ID, Task_Q),
+            hangup_call(AHost, CQ, Call_ID, Task_Q), Rslt;
+        {error, E} ->
+            {error, [{<<"Error">>, E}, {<<"Success">>, <<"false">>}]}
     end,
-    amqp_util:queue_delete(AHost, Task_Q).
+    amqp_util:queue_delete(AHost, Task_Q),
+    format_log(info, "MONITOR_CALL_BASIC(~p): Basic call test completed~n~p~n", [self(), Result]),
+    Result.
 
 originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
     Def = monitor_api:default_headers(Server_ID, <<"originate">>, <<"resource_req">>, Msg_ID),
@@ -47,11 +47,7 @@ originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
     format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p~n", [self(), Route]),
     {ok, JSON} = whistle_api:resource_req(lists:append([Def, Req])),
     amqp_util:callmgr_publish(AHost, JSON, <<"application/json">>, ?KEY_RESOURCE_REQ),
-    {ok, Msg} = wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 15000),
-    CQ = get_value(<<"Control-Queue">>, Msg),
-    Call_ID = get_value(<<"Call-ID">>, Msg),
-    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p connected to ~p~n", [self(), Call_ID, Route]),
-    {ok, {CQ, Call_ID}}.
+    wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 10000).
 
 answer_call(AHost, CQ, Call_ID, Server_ID) ->
     format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p answer~n", [self(), Call_ID]),
@@ -66,9 +62,20 @@ answer_call(AHost, CQ, Call_ID, Server_ID) ->
 test_tones(AHost, CQ, Call_ID, Server_ID) ->
     arm_tone_detector(AHost, CQ, Call_ID, Server_ID),
     generate_tone(AHost, CQ, Call_ID, Server_ID),    
-    Start = wait_for_call_event_exec(<<"play">>, 5000),
-    End = wait_for_call_event_complete(<<"park">>, 5000),
-    {Start, End}.
+    Start = wait_for_call_event_exec(<<"play">>, 10000),
+    End = wait_for_call_event_exec(<<"park">>, 10000),
+    case {Start, End} of
+        {{ok, StartMsg}, {ok, EndMsg}} ->
+            Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, EndMsg)) 
+                    - whistle_util:to_integer(get_value(<<"Timestamp">>, StartMsg)),
+            {ok, [{<<"Delay">>, Delay}, {<<"Success">>, <<"true">>}]};
+        {{error, E}, _} ->
+            {error, [{<<"Error">>, E}, {<<"Success">>, <<"false">>}]};
+        {_, {error, E}} ->
+            {error, [{<<"Error">>, E}, {<<"Success">>, <<"false">>}]};
+        _ ->
+            {error, [{<<"Error">>, <<"unspecified">>}, {<<"Success">>, <<"false">>}]}
+    end.
 
 hangup_call(AHost, CQ, Call_ID, Server_ID) ->
     format_log(info, "MONITOR_CALL_BASIC(~p): Hangup ~p~n", [self(), Call_ID]),
@@ -131,21 +138,27 @@ wait_for_msg_type(Category, Name, Timeout) ->
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
                 { Category, Name } ->
                     {ok, Msg};
+                { <<"originate">>, <<"originate_error">> } ->
+                    Error = get_value(<<"Failure-Message">>, Msg),
+                    format_log(info, "MONITOR_CALL_BASIC(~p): Recieved originator error ~p~n", [self(), Error]),
+                    {error, Error};
+                { <<"originate">>, <<"resource_error">> } ->
+                    format_log(info, "MONITOR_CALL_BASIC(~p): Recieved originator error resource_unavliable~n", [self()]),
+                    {error, resources_unavaliable};
                 _ ->
                     wait_for_msg_type(Category, Name, Timeout)
-            end;
-        _ ->
-            wait_for_msg_type(Category, Name, Timeout)
+            end
     after
         Timeout ->
+            format_log(info, "MONITOR_CALL_BASIC(~p): Timed out waiting for orignate response~n", [self()]),
             {error, timeout}
     end.
 
 wait_for_call_event_exec(Application, Timeout) ->
     wait_for_call_event(<<"CHANNEL_EXECUTE">>, Application, Timeout).
 
-wait_for_call_event_complete(Application, Timeout) ->
-    wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Timeout).
+%wait_for_call_event_complete(Application, Timeout) ->
+%    wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Timeout).
 
 wait_for_call_event(Name, Application, Timeout) ->
     receive
@@ -160,9 +173,7 @@ wait_for_call_event(Name, Application, Timeout) ->
                     {error, channel_hungup};
                 _ ->
                     wait_for_call_event(Name, Application, Timeout)
-            end;
-        _ ->
-            wait_for_call_event(Name, Application, Timeout)
+            end
     after
         Timeout ->
             format_log(info, "MONITOR_CALL_BASIC(~p): Timeout while waiting for call event ~p~n", [self(), Application]),

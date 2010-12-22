@@ -8,6 +8,7 @@
 -include("./amqp_client/include/amqp_client.hrl").
 -include("../../../utils/src/whistle_amqp.hrl").
 
+%-define(AMQP_HOST, "whistle-apps001-fmt.2600hz.org").
 -define(AMQP_HOST, "localhost").
 
 %% routing keys to use in the monitormgr exchange
@@ -16,3 +17,5 @@
 -define(KEY_AGENT_NET_REQ, <<"monitor.net.req">>).
 -define(KEY_AGENT_SIP_REQ, <<"monitor.sip.req">>).
 -define(KEY_AGENT_CALL_REQ, <<"monitor.call.req">>).
+
+-type proplist() :: list(tuple(binary(), (binary() | list() | fun()) )).

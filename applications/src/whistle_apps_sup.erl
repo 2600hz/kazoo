@@ -22,7 +22,9 @@ start_link() ->
 -spec(start_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
 start_app(App) -> supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
 
-stop_app(App) -> supervisor:terminate_child(?MODULE, App).
+stop_app(App) ->
+    supervisor:terminate_child(?MODULE, App),
+    supervisor:delete_child(?MODULE, App).
 
 %% ===================================================================
 %% Supervisor callbacks
