@@ -350,6 +350,10 @@ basic_consume(Host, Queue, Options) ->
       ,exclusive = get_value(exclusive, Options, true)
       ,nowait = get_value(nowait, Options, false)
      },
+
+    QoS = #'basic.qos'{prefetch_count = get_value(prefetch_count, Options, 0)},
+    amqp_channel:call(Channel, QoS),
+
     amqp_channel:subscribe(Channel, BC, self()).
 
 %% generic publisher for an Exchange.Queue
