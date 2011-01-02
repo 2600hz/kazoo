@@ -202,12 +202,28 @@
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
 					  ,<<"Msg-ID">>
 				     ]).
--define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"Call-Event">>}]).
+-define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
 							       true;
 							  (_) -> false
 						       end}
 			  ]).
+
+%% Call Status Request
+-define(CALL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_CALL_STATUS_REQ_HEADERS, []).
+-define(CALL_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+			     ,{<<"Event-Name">>, <<"status_req">>}
+			    ]).
+-define(CALL_STATUS_REQ_TYPES, []).
+
+%% Call Status Response
+-define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
+-define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>]).
+-define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+				  ,{<<"Event-Name">>, <<"status_resp">>}
+				 ]).
+-define(CALL_STATUS_RESP_TYPES, []).
 
 %% Call CDR - http://corp.switchfreedom.com/mediawiki/index.php/CallmgrCDRSpec
 -define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
