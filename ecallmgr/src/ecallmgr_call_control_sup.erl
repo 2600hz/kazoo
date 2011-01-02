@@ -53,7 +53,7 @@ start_proc(Args) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Restart = permanent,
+    Restart = transient,
     Shutdown = 2000,
     Type = worker,
 
