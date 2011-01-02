@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
 
--export([start/4, init/4]).
+-export([start_link/4, init/4]).
 
 -include("whistle_api.hrl").
 
@@ -21,8 +21,8 @@
 -define(EVENT_CAT, <<"Call-Event">>).
 
 %% Node, UUID, AmqpHost, CtlPid
--spec(start/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: string(), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
-start(Node, UUID, Amqp, CtlPid) ->
+-spec(start_link/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: string(), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
+start_link(Node, UUID, Amqp, CtlPid) ->
     {ok, spawn_link(ecallmgr_call_events, init, [Node, UUID, Amqp, CtlPid])}.
 
 init(Node, UUID, Amqp, CtlPid) ->
@@ -50,7 +50,7 @@ loop(Node, UUID, Amqp, CtlPid) ->
 			undefined -> ok;
 			OtherUUID ->
 			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n"
-				       ,[self(), OtherUUID, ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)]
+				       ,[self(), OtherUUID, ecallmgr_call_sup:start_event_process(Node, OtherUUID, Amqp, undefined)]
 				      )
 		    end;
 		_ -> ok
