@@ -21,7 +21,7 @@
 -define(EVENT_CAT, <<"Call-Event">>).
 
 %% Node, UUID, AmqpHost, CtlPid
--spec(start/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: tuple(string(), binary()), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
+-spec(start/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: string(), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
 start(Node, UUID, Amqp, CtlPid) ->
     {ok, spawn_link(ecallmgr_call_events, init, [Node, UUID, Amqp, CtlPid])}.
 
@@ -49,7 +49,9 @@ loop(Node, UUID, Amqp, CtlPid) ->
 		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
 			undefined -> ok;
 			OtherUUID ->
-			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)])
+			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n"
+				       ,[self(), OtherUUID, ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)]
+				      )
 		    end;
 		_ -> ok
 	    end,
@@ -58,7 +60,10 @@ loop(Node, UUID, Amqp, CtlPid) ->
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
 	    loop(Node, UUID, Amqp, CtlPid);
 	call_hangup ->
-	    CtlPid ! {hangup, UUID},
+	    case CtlPid of
+		undefined -> ok;
+		_ -> CtlPid ! {hangup, UUID}
+	    end,
 	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
