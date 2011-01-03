@@ -28,7 +28,7 @@ start_link(Node, UUID, Host, CtlPid) ->
 
 init(Node, UUID, Host, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
-    add_amqp_listener(Host),
+    add_amqp_listener(Host, UUID),
     loop(Node, UUID, Host, CtlPid).
 
 -spec(loop/4 :: (Node :: atom(), UUID :: binary(), Host :: string(), CtlPid :: pid()) -> no_return()).
@@ -70,6 +70,7 @@ loop(Node, UUID, Host, CtlPid) ->
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "EVT(~p): AMQP Msg ~p~n", [self(), Prop]),
 	    loop(Node, UUID, Host, CtlPid);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
