@@ -222,6 +222,7 @@
 -define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
 				  ,{<<"Event-Name">>, <<"status_resp">>}
+				  ,{<<"Status">>, <<"active">>}
 				 ]).
 -define(CALL_STATUS_RESP_TYPES, []).
 
