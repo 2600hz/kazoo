@@ -186,8 +186,8 @@ bind_channel_qs(Host, UUID, Node) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
 
-    {ok, CtlPid} = ecallmgr_call_sup:add_call_process(Node, UUID, {Host, CtlQueue}),
-    {ok, _} = ecallmgr_call_sup:add_call_process(Node, UUID, Host, CtlPid),
+    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
+    {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
     CtlQueue.
 
 send_control_queue(_Host, _Q, undefined) ->
