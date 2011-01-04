@@ -51,7 +51,12 @@ diagnostics(always, _) ->
 set_amqp_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     format("Setting AMQP host to ~p on ~p~n", [Host, Node]),
-    rpc_call(Node, ecallmgr_fs_handler, set_amqp_host, Arg).
+    case rpc_call(Node, ecallmgr_fs_handler, set_amqp_host, Arg) of
+	{ok, ok} ->
+	    {ok, "Set ecallmgr's amqp host to ~p", [Host]};
+	{ok, Other} ->
+	    {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
+    end.
 
 add_fs_node(always, [FSNode]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
