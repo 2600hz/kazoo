@@ -126,8 +126,7 @@ find_route(Flags, ApiProp, ServerID) ->
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
 		    %%format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
-		    Flags1 = update_account(Flags),
-		    response(Routes, ApiProp, Flags1#route_flags{routes_generated=Routes}, ServerID);
+		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)
@@ -136,8 +135,7 @@ find_route(Flags, ApiProp, ServerID) ->
 	    case ts_carrier:route(Flags) of
 		{ok, Routes} ->
 		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
-		    Flags1 = update_account(Flags),
-		    response(Routes, ApiProp, Flags1#route_flags{routes_generated=Routes}, ServerID);
+		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
 		    response(404, ApiProp, Flags, ServerID)
@@ -266,11 +264,7 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 -spec(flags_from_did/2 :: (DidProp :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_did(DidProp, Flags) ->
     {DidOptions} = get_value(<<"DID_Opts">>, DidProp, {[]}),
-    {AcctOpts} = get_value(<<"account">>, DidProp, {[]}),
     {AuthOpts} = get_value(<<"auth">>, DidProp, {[]}),
-
-    Trunks = whistle_util:to_integer(get_value(<<"trunks">>, AcctOpts, 0)),
-    %format_log(info, "Got ~p trunks from ~p~n", [Trunks, AcctOpts]),
 
     {Opts} = get_value(<<"options">>, DidProp, {[]}),
 
@@ -278,9 +272,7 @@ flags_from_did(DidProp, Flags) ->
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {[]})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
-		   ,trunks = Trunks
 		   ,account_doc_id = get_value(<<"id">>, DidProp)
-		   ,credit_available = whistle_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 		  }.
 
 %% Flags from the Server
@@ -297,8 +289,6 @@ flags_from_srv(AuthUser, Doc, Flags) ->
     F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Srv, <<"NPANXXXXXX">>)
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
-			   %,trunks = Trunks
-			   %,credit_available = whistle_util:to_float(get_value(<<"account_credit">>, DidProp, 0.0))
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {[]})),
     add_failover(F1, get_value(<<"failover">>, Srv, {[]})).
@@ -312,20 +302,9 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 -spec(flags_from_account(Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_account(Doc, Flags) ->
     {Acct} = get_value(<<"account">>, Doc, {[]}),
-    {Credit} = get_value(<<"credits">>, Acct, {[]}),
-    Trunks = whistle_util:to_integer(get_value(<<"trunks">>, Acct, Flags#route_flags.trunks)),
-    ACs = case get_value(<<"active_calls">>, Acct, {Flags#route_flags.active_calls}) of
-	      [] -> [];
-	      {T} -> lists:usort(T)
-	  end,
 
-    F0 = Flags#route_flags{credit_available = whistle_util:to_float(get_value(<<"prepay">>, Credit, 0.0))
-			   ,trunks = Trunks
-			   ,active_calls = ACs
-			   ,account_doc=Doc
-			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
-			  },
-    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Acct, {[]})),
+    F1 = add_caller_id(Flags#route_flags{account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)}
+		       ,get_value(<<"caller_id">>, Acct, {[]})),
     add_failover(F1, get_value(<<"failover">>, Acct, {[]})).
 
 -spec(add_failover/2 :: (F0 :: tuple(), FOver :: tuple(proplist())) -> tuple()).
@@ -380,27 +359,3 @@ specific_response(Routes) when is_list(Routes) ->
     [{<<"Routes">>, Routes}
      ,{<<"Method">>, <<"bridge">>}
     ].
-
-%% update the account's trunks_in_use if flat_rate
--spec(update_account/1 :: (Flags :: tuple()) -> tuple()).
-update_account(#route_flags{callid=CallID, flat_rate_enabled=FRE, account_doc=Doc, active_calls=ACs}=Flags) ->
-    {Acct0} = get_value(<<"account">>, Doc, {[]}),
-    ACs1 = case get_value(<<"active_calls">>, Acct0, ACs) of
-	       [] -> [];
-	       [_|_]=T -> T;
-	       {T} -> T
-	   end,
-    Type = case FRE of
-	       true -> flat_rate;
-	       false -> per_min
-	   end,
-    format_log(info, "TS_ROUTE.up_acct(~p): Updating trunks in use ~p with ~p~n", [self(), ACs1, CallID]),
-    ACs2 = lists:usort([{CallID, Type} | ACs1]),
-    Acct1 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct0)],
-    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
-    case couch_mgr:save_doc(?TS_DB, Doc1) of
-	{ok, Doc2} ->
-	    Flags#route_flags{active_calls=ACs2, account_doc=Doc2};
-	{error, conflict} ->
-	    update_account(Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
-    end.
