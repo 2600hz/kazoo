@@ -18,8 +18,8 @@
 -import(props, [get_value/2, get_value/3]).
 
 -define(APPNAME, <<"ecallmgr.call.event">>).
--define(APPVER, <<"0.4.0">>).
--define(EVENT_CAT, <<"Call-Event">>).
+-define(APPVER, <<"0.4.1">>).
+-define(EVENT_CAT, <<"call_event">>).
 
 %% Node, UUID, Host, CtlPid
 -spec(start_link/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: string(), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
