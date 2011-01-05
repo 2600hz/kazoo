@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, add_call_process/3, add_call_process/4]).
+-export([start_link/0, start_control_process/3, start_event_process/4]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -19,7 +19,7 @@
 -define(SERVER, ?MODULE).
 
 %% only restart if they die abnormally - transient
--define(CHILD(ID, Mod, Type, Args), {ID, {Mod, start, Args}, transient, 5000, Type, [Mod]}).
+-define(CHILD(Mod, Type), {Mod, {Mod, start_link, []}, transient, 5000, Type, [Mod]}).
 
 %%%===================================================================
 %%% API functions
@@ -35,11 +35,11 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-add_call_process(Node, UUID, Amqp, CtlPid) ->
-    supervisor:start_child(?MODULE, ?CHILD(<<"events-", UUID/bitstring>>, ecallmgr_call_events, worker, [Node, UUID, Amqp, CtlPid])).
+start_event_process(Node, UUID, Amqp, CtlPid) ->
+    ecallmgr_call_event_sup:start_proc([Node, UUID, Amqp, CtlPid]).
 
-add_call_process(Node, UUID, Amqp) ->
-    supervisor:start_child(?MODULE, ?CHILD(<<"control-", UUID/bitstring>>, ecallmgr_call_control, worker, [Node, UUID, Amqp])).
+start_control_process(Node, UUID, Amqp) ->
+    ecallmgr_call_control_sup:start_proc([Node, UUID, Amqp]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -62,7 +62,9 @@ init([]) ->
     {ok
      ,{
        {one_for_one, 5, 10}
-       ,[]
+       ,[?CHILD(ecallmgr_call_event_sup, supervisor)
+	 ,?CHILD(ecallmgr_call_control_sup, supervisor)
+	]
       }
     }.
 
