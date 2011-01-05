@@ -9,9 +9,10 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
 
--export([start/4, init/4]).
+-export([start_link/4, init/4]).
 
 -include("whistle_api.hrl").
+-include("../include/amqp_client/include/amqp_client.hrl").
 
 -import(logger, [log/2, format_log/3]).
 -import(props, [get_value/2, get_value/3]).
@@ -20,22 +21,23 @@
 -define(APPVER, <<"0.4.0">>).
 -define(EVENT_CAT, <<"Call-Event">>).
 
-%% Node, UUID, AmqpHost, CtlPid
--spec(start/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: tuple(string(), binary()), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
-start(Node, UUID, Amqp, CtlPid) ->
-    {ok, spawn_link(ecallmgr_call_events, init, [Node, UUID, Amqp, CtlPid])}.
+%% Node, UUID, Host, CtlPid
+-spec(start_link/4 :: (Node :: atom(), UUID :: binary(), Aqmp :: string(), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
+start_link(Node, UUID, Host, CtlPid) ->
+    {ok, spawn_link(ecallmgr_call_events, init, [Node, UUID, Host, CtlPid])}.
 
-init(Node, UUID, Amqp, CtlPid) ->
+init(Node, UUID, Host, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
-    loop(Node, UUID, Amqp, CtlPid).
+    add_amqp_listener(Host, UUID),
+    loop(Node, UUID, Host, CtlPid).
 
--spec(loop/4 :: (Node :: atom(), UUID :: binary(), Amqp :: string(), CtlPid :: pid()) -> no_return()).
-loop(Node, UUID, Amqp, CtlPid) ->
+-spec(loop/4 :: (Node :: atom(), UUID :: binary(), Host :: string(), CtlPid :: pid()) -> no_return()).
+loop(Node, UUID, Host, CtlPid) ->
     receive
 	{call, {event, [UUID | Data]}} ->
 	    format_log(info, "EVT(~p): {Call, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
-	    publish_msg(Amqp, UUID, Data),
-	    loop(Node, UUID, Amqp, CtlPid);
+	    publish_msg(Host, UUID, Data),
+	    loop(Node, UUID, Host, CtlPid);
 	{call_event, {event, [ UUID | Data ] } } ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    AppName = get_value(<<"Application">>, Data),
@@ -44,25 +46,35 @@ loop(Node, UUID, Amqp, CtlPid) ->
 
 	    case EvtName of
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Amqp, Data) end);
+		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Host, Data) end);
 		<<"CHANNEL_BRIDGE">> ->
 		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
 			undefined -> ok;
 			OtherUUID ->
-			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, ecallmgr_call_sup:add_call_process(Node, OtherUUID, Amqp, undefined)])
+			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n"
+				       ,[self(), OtherUUID, ecallmgr_call_sup:start_event_process(Node, OtherUUID, Host, undefined)]
+				      )
 		    end;
 		_ -> ok
 	    end,
 
-	    publish_msg(Amqp, UUID, Data),
+	    publish_msg(Host, UUID, Data),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
-	    loop(Node, UUID, Amqp, CtlPid);
+	    loop(Node, UUID, Host, CtlPid);
 	call_hangup ->
-	    CtlPid ! {hangup, UUID},
+	    case CtlPid of
+		undefined -> ok;
+		_ -> CtlPid ! {hangup, UUID}
+	    end,
 	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
+	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
+				       ,payload = Payload}} ->
+	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "EVT(~p): AMQP Msg ~p~n", [self(), Prop]),
+	    loop(Node, UUID, Host, CtlPid);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
-	    loop(Node, UUID, Amqp, CtlPid)
+	    loop(Node, UUID, Host, CtlPid)
     end.
 
 %% let the ctl process know a command finished executing
@@ -78,8 +90,8 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
     end;
 send_ctl_event(_CtlPid, _UUID, _Evt, _Data) -> ok.
 
--spec(publish_msg/3 :: (AmqpHost :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
-publish_msg(AmqpHost, UUID, Prop) ->
+-spec(publish_msg/3 :: (Host :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
+publish_msg(Host, UUID, Prop) ->
     EvtName = get_value(<<"Event-Name">>, Prop),
 
     case lists:member(EvtName, ?FS_EVENTS) of
@@ -98,7 +110,7 @@ publish_msg(AmqpHost, UUID, Prop) ->
 
 	    case whistle_api:call_event(EvtProp1) of
 		{ok, JSON} ->
-		    amqp_util:callevt_publish(AmqpHost, UUID, JSON, event);
+		    amqp_util:callevt_publish(Host, UUID, JSON, event);
 		{error, Msg} ->
 		    format_log(error, "EVT(~p): Bad event API ~p~n", [self(), Msg])
 	    end;
@@ -106,6 +118,12 @@ publish_msg(AmqpHost, UUID, Prop) ->
 	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName]),
 	    ok
     end.
+
+%% Setup process to listen for call.status_req api calls and respond in the affirmative
+add_amqp_listener(Host, CallID) ->
+    Q = amqp_util:new_queue(Host, <<>>),
+    amqp_util:bind_q_to_callevt(Host, Q, CallID, status_req),
+    amqp_util:basic_consume(Host, Q).
 
 %% return a proplist of k/v pairs specific to the event
 -spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).

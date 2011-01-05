@@ -68,8 +68,7 @@ set_couch_host(H) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    timer:send_after(1000, ?MODULE, start_apps),
-    {ok, #state{}}.
+    {ok, #state{}, 0}. % causes a timeout immediately, which we can use to do initialization things for state
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,11 +120,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, State) -> handle_info(start_apps, State);
 handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
     As1 = case file:consult(Config) of
 	      {ok, Ts} ->
 		  couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
+		  start_mnesia(),
 		  lists:foldl(fun(App, Acc) ->
 				      Acc1 = add_app(App, Acc),
 				      Acc1
@@ -186,3 +187,6 @@ rm_app(App, As) ->
 	true -> lists:delete(App, As);
 	false -> As
     end.
+
+start_mnesia() ->
+    whistle_apps_mnesia:init().

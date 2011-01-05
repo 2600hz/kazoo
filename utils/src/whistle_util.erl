@@ -78,7 +78,7 @@ to_float(X) when is_list(X) ->
     try
 	list_to_float(X)
     catch
-	error:badarg -> to_float(to_integer(X)) %% "500"
+	error:badarg -> to_float(list_to_integer(X)) %% "500" -> 500.0
     end;
 to_float(X) when is_integer(X) ->
     X * 1.0;

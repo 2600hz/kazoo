@@ -41,15 +41,22 @@ diagnostics(always, _) ->
     Res = rpc_call(Node, ecallmgr_fs_handler, diagnostics, []),
     case Res of 
 	{ok, _, _} -> Res;
+	{ok, Data} ->
+	    diagnostics_server:display_fs_data(Data),
+	    ok;
 	_ ->
-	    diagnostics_server:display_fs_data(Res),
-	    ok
+	    format("Diagnostics error: ~p~n", [Res])
     end.
 
 set_amqp_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     format("Setting AMQP host to ~p on ~p~n", [Host, Node]),
-    rpc_call(Node, ecallmgr_fs_handler, set_amqp_host, Arg).
+    case rpc_call(Node, ecallmgr_fs_handler, set_amqp_host, Arg) of
+	{ok, ok} ->
+	    {ok, "Set ecallmgr's amqp host to ~p", [Host]};
+	{ok, Other} ->
+	    {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
+    end.
 
 add_fs_node(always, [FSNode]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
@@ -65,8 +72,8 @@ rm_fs_node(always, [FSNode]) ->
     case rpc_call(Node, ecallmgr_fs_handler, rm_fs_node, [list_to_atom(FSNode)]) of
 	{ok, _} ->
 	    {ok, "Removed ~p successfully~n", [FSNode]};
-	{ok, Res} ->
-	    {ok, "Failed to remove node(~p): ~p~n", [FSNode, Res]}
+	Other -> %{ok, Res} ->
+	    {ok, "Failed to remove node(~p): ~p~n", [FSNode, Other]}
     end.
 
 rpc_call(Node, M, F, A) ->

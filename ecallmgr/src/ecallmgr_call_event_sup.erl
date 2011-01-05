@@ -1,25 +1,22 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2011, James Aimonetti
 %%% @doc
-%%% Manage call-specific processes (events and control)
+%%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
-%%% Created : 24 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% Created :  2 Jan 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ecallmgr_call_sup).
+-module(ecallmgr_call_event_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_control_process/3, start_event_process/4]).
+-export([start_link/0, start_proc/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
-
-%% only restart if they die abnormally - transient
--define(CHILD(Mod, Type), {Mod, {Mod, start_link, []}, transient, 5000, Type, [Mod]}).
 
 %%%===================================================================
 %%% API functions
@@ -35,11 +32,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_event_process(Node, UUID, Amqp, CtlPid) ->
-    ecallmgr_call_event_sup:start_proc([Node, UUID, Amqp, CtlPid]).
-
-start_control_process(Node, UUID, Amqp) ->
-    ecallmgr_call_control_sup:start_proc([Node, UUID, Amqp]).
+start_proc(Args) ->
+    supervisor:start_child(?SERVER, Args).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -59,14 +53,14 @@ start_control_process(Node, UUID, Amqp) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok
-     ,{
-       {one_for_one, 5, 10}
-       ,[?CHILD(ecallmgr_call_event_sup, supervisor)
-	 ,?CHILD(ecallmgr_call_control_sup, supervisor)
-	]
-      }
-    }.
+    Restart = transient,
+    Shutdown = 2000,
+    Type = worker,
+
+    AChild = {ecallmgr_call_events, {ecallmgr_call_events, start_link, []},
+	      Restart, Shutdown, Type, [ecallmgr_call_events]},
+
+    {ok, {{simple_one_for_one, 5, 10}, [AChild]}}.
 
 %%%===================================================================
 %%% Internal functions
