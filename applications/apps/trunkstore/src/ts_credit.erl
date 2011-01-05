@@ -146,7 +146,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    couch_mgr:rm_change_handler(?TS_RATES_DOC),
+    couch_mgr:rm_change_handler(?TS_DB, ?TS_RATES_DOC),
     ok.
 
 %%--------------------------------------------------------------------
@@ -218,10 +218,10 @@ set_rate_flags(Flags, Rates) ->
 
 	    case ts_acctmgr:reserve_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid
 					  ,(Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)) of
-		{ok, Ref, flat_rate} ->
-		    {ok, set_flat_flags(Flags#route_flags{trunk_ref=Ref}, Dir)};
-		{ok, Ref, per_min} ->
-		    {ok, set_rate_flags(Flags#route_flags{trunk_ref=Ref}, Dir, RateData, RateName)};
+		{ok, flat_rate} ->
+		    {ok, set_flat_flags(Flags, Dir)};
+		{ok, per_min} ->
+		    {ok, set_rate_flags(Flags, Dir, RateData, RateName)};
 		{error, _Fail} ->
 		    format_log(error, "TS_CREDIT(~p): Failed to reserve trunk: ~p~n", [self(), _Fail]),
 		    {error, lacking_credit}

@@ -23,7 +23,6 @@
 
 -record(route_flags, {
 	  callid = <<>> :: binary()                      % unique call ID
-          ,trunk_ref = undefined :: undefined | reference() % reference to the reserved trunk for this call
 	  ,to_user = <<>> :: binary()
 	  ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()

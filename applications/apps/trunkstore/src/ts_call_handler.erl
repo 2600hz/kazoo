@@ -109,16 +109,18 @@ consume_events(Host, CallID) ->
     EvtQ.
 
 %% Duration - billable seconds
--spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
+-spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> #route_flags{}).
 update_account(_, #route_flags{account_doc_id = <<>>}=F) -> F;
-update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}=Flags) ->
+update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}=Flags) ->
     ts_acctmgr:release_trunk(DocID, CallID),
-    update_me;
-update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID
-					  ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S}=Flags) ->
+    Flags;
+update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
+				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S}=Flags) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    ts_acctmgr:deduct_credit(DocID, Amount);
-update_account(_Duration, Flags) ->
+    ts_acctmgr:deduct_credit(DocID, Amount),
+    ts_acctmgr:release_trunk(DocID, CallID),
+    Flags;
+update_account(_, Flags) ->
     Flags.
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
@@ -140,7 +142,7 @@ wait_to_update(Prop, Flags, Host, CallID, EvtQ) ->
 	    close_down(Prop, Flags, Host, CallID, EvtQ)
     end.
 
-close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) ->
+close_down(Prop, Flags, Host, CallID, EvtQ) ->
     format_log(info, "TS_CALL.close_down(~p): CDR: ~p~n", [self(), Prop]),
     update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
 

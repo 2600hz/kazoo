@@ -15,7 +15,9 @@
 -export([start_link/0]).
 
 %% Data Access API
--export([has_credit/1, deduct_credit/2, reserve_trunk/2, reserve_trunk/3, release_trunk/2]).
+-export([has_credit/1, has_credit/2, deduct_credit/2, reserve_trunk/2, reserve_trunk/3, release_trunk/2]).
+
+-export([update_table/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -23,19 +25,36 @@
 
 -include("ts.hrl").
 
+-import(logger, [format_log/3]).
+
 -define(SERVER, ?MODULE).
 
-%% { {AccountID, Reference}, CallID, flat_rate | per_min}
--type active_call() :: tuple(tuple(binary(), reference()), binary(), flat_rate | per_min).
+%% { CallID, flat_rate | per_min }
+-type active_call() :: tuple(binary(), flat_rate | per_min).
 
--record(acct, {
+
+-record(ts_acct, {
 	  account_id = <<>> :: binary()
-         ,active_calls = [] :: list(active_call())
+         ,account_rev = <<>> :: binary()
+         ,reference = undefined :: undefined | reference()
+         ,account_credit = 0 :: integer() %% thousand-ths of a cent, so 1000 = $0.01
+	 ,delta_credit = 0 :: integer() %% deductions go here
+         ,max_trunks = 0 :: integer() %% number of flat-rate trunks purchased
+	 ,active_calls = [] :: list(active_call())
+	 ,writes_since_sync = 0 :: integer()
 	 }).
 
--record(state, {
-	  accounts = [] :: list(#acct{})
-	 }).
+%% -record(old_ts_acct, {
+	 %%  account_id = <<>> :: binary()
+         %% ,reference = undefined :: undefined | reference()
+         %% ,account_credit = 0 :: integer() %% thousand-ths of a cent, so 1000 = $0.01
+         %% ,max_trunks = 0 :: integer() %% number of flat-rate trunks purchased
+	 %% ,active_calls = [] :: list(active_call())
+	 %% ,writes_since_sync = 0 :: integer()
+	 %% }).
+
+-define(DOLLARS_TO_UNITS, 100000). %% $1.00 = 100,000 thousand-ths of a cent
+-define(CENTS_TO_UNITS, 1000). %% 100 cents = 100,000 thousand-ths of a cent
 
 %%%===================================================================
 %%% API
@@ -51,6 +70,21 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+update_table() ->
+    %% old_ts_acct -> ts_acct
+    whistle_apps_mnesia:update_table(ts_acct, fun({ts_acct, AcctId, Ref, AC, MT, ACs, WSS}) ->
+    						      #ts_acct{
+    						   account_id = AcctId
+    						   ,reference = Ref
+    						   ,account_credit = AC
+    						   ,max_trunks = MT
+    						   ,active_calls = ACs
+    						   ,writes_since_sync = WSS
+    						  };
+						 (Rec) -> Rec
+    					      end
+    				     , record_info(fields, ts_acct)).
+
 %%%===================================================================
 %%% Data Access API
 %%%===================================================================
@@ -61,29 +95,29 @@ has_credit(Acct) ->
 %% Does the account have enough credit to cover Amt
 -spec(has_credit/2 :: (Acct :: binary(), Amt :: integer()) -> boolean()).
 has_credit(Acct, Amt) ->
-    gen_server:call(?SERVER, {has_credit, Acct, Amt}, infinity).
+    gen_server:call(?SERVER, {has_credit, Acct, [Amt]}, infinity).
 
 %% Deduct the cost of the call from the account, returning the remaining balance; or return an error
--spec(deduct_credit/2 :: (Acct :: binary(), Amt :: integer()) -> tuple(ok, integer()) | tuple(error, term())).
+-spec(deduct_credit/2 :: (Acct :: binary(), Amt :: float()) -> tuple(ok, float()) | tuple(error, term())).
 deduct_credit(Acct, Amt) ->
-    gen_server:call(?SERVER, {deduct_credit, Acct, Amt}, infinity).
+    gen_server:call(?SERVER, {deduct_credit, Acct, [Amt]}, infinity).
 
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
--spec(reserve_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> tuple(ok, reference(), flat_rate | per_min) | tuple(error, term())).
+-spec(reserve_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> tuple(ok, flat_rate | per_min) | tuple(error, term())).
 reserve_trunk(Acct, CallID) ->
-    reserve_trunk(Acct, CallID, 0).
+    reserve_trunk(Acct, CallID, 0.0).
 
--spec(reserve_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: integer()) -> tuple(ok, reference(), flat_rate | per_min) | tuple(error, term())).
+-spec(reserve_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> tuple(ok, flat_rate | per_min) | tuple(error, term())).
 reserve_trunk(Acct, CallID, Amt) ->
-    gen_server:call(?SERVER, {reserve_trunk, Acct, CallID, Amt}, infinity).
+    gen_server:call(?SERVER, {reserve_trunk, Acct, [CallID, Amt]}, infinity).
 
 %% release a reserved trunk
-%% pass the account and the reference from the reserve_trunk/2 call to release the trunk back to the account
--spec(release_trunk/2 :: (Acct :: binary(), Ref :: reference()) -> no_return()).
-release_trunk(Acct, Ref) ->
-    gen_server:cast(?SERVER, {release_trunk, Acct, Ref}).
+%% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
+-spec(release_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> no_return()).
+release_trunk(Acct, CallID) ->
+    gen_server:cast(?SERVER, {release_trunk, Acct, [CallID]}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -101,7 +135,10 @@ release_trunk(Acct, Ref) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    whistle_apps_mnesia:create_table(ts_acct, [{attributes, record_info(fields, ts_acct)}
+					       ,{type, set}
+					      ]),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,10 +154,13 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call({Action, Acct, Args}, _, S) ->
+    case get_acct(Acct) of
+	{error, _}=E -> {reply, E, S};
+	AcctRec when is_record(AcctRec, ts_acct)->
+	    format_log(info, "TS_ACCTMGR(~p): Loaded ~p: ~p, running ~p~n", [self(), Acct, AcctRec, Action]),
+	    {reply, run(Action, AcctRec, Args), S}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -132,8 +172,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({Action, Acct, Args}, S) ->
+    case get_acct(Acct) of
+	{error, _}=E -> {reply, E, S};
+	AcctRec when is_record(AcctRec, ts_acct)->
+	    format_log(info, "TS_ACCTMGR(~p): Loaded ~p: ~p, running ~p~n", [self(), Acct, AcctRec, Action]),
+	    format_log(info, "TS_ACCTMGR(~p): Cast resulted in ~p~n", [self(), run(Action, AcctRec, Args)]),
+	    {noreply, S}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -145,8 +191,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info({document_changes, DocID, Changes}, S) ->
+    format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
+    update_from_couch(DocID, Changes),
+    {noreply, S}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -176,3 +224,154 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(get_acct/1 :: (AcctId :: binary()) -> #ts_acct{} | tuple(error, doc_not_found)).
+get_acct(AcctId) ->
+    case mnesia:transaction(fun() -> mnesia:read(ts_acct, AcctId) end) of
+	{atomic, []} -> load_from_couch(AcctId);
+	{atomic, [R]} when is_record(R, ts_acct) -> R;
+	{aborted, Reason} ->
+	    format_log(error, "TS_ACCTMGR(~p): get_acct failed: ~p~n", [self(), Reason]),
+	    {error, Reason}
+    end.
+
+-spec(load_from_couch/1 :: (AcctId :: binary()) -> #ts_acct{} | tuple(error, doc_not_found)).
+load_from_couch(AcctId) ->
+    case couch_mgr:open_doc(?TS_DB, AcctId) of
+	{error, not_found} -> {error, doc_not_found};
+	Doc when is_list(Doc) ->
+	    couch_mgr:add_change_handler(?TS_DB, AcctId),
+	    Rec = build_rec_from_doc(Doc),
+	    format_log(info, "TS_ACCTMGR(~p): Creating ~p in m_table~n", [self(), Rec]),
+	    case mnesia:transaction(fun() ->
+					    case mnesia:read(ts_acct, AcctId) of
+						[] -> mnesia:write(Rec);
+						[Rec0] when is_record(Rec0, ts_acct) -> Rec0
+					    end
+				    end) of
+		{atomic, ok} -> Rec;
+		{atomic, Rec1} when is_record(Rec1, ts_acct) -> Rec1;
+		{aborted, {bad_type, _}=E} -> {error, E};
+		_Other -> format_log(error, "load from couch other: ~p~n", [_Other]), Rec
+	    end
+    end.
+
+update_from_couch(AcctId, Changes) ->
+    AcctRec = lists:foldl(fun(ChangeProp, AcctRec0) ->
+				  NewRev = props:get_value(<<"rev">>, ChangeProp),
+				  case AcctRec0#ts_acct.account_rev of
+				      NewRev -> AcctRec0;
+				      _ ->
+					  D = couch_mgr:open_doc(?TS_DB, AcctId),
+					  AcctRec1 = build_rec_from_doc(D),
+					  AcctRec0#ts_acct{
+					    account_rev = AcctRec1#ts_acct.account_rev
+					    ,reference = AcctRec1#ts_acct.reference
+					    ,account_credit = AcctRec1#ts_acct.account_credit
+					    ,max_trunks = AcctRec1#ts_acct.max_trunks
+					   }
+				  end
+			  end, get_acct(AcctId), Changes),
+    update_rec(AcctRec, AcctRec).
+
+-spec(build_rec_from_doc/1 :: (Doc :: proplist()) -> #ts_acct{}).
+build_rec_from_doc(Doc) ->
+    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
+    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+    Credit0 = props:get_value(<<"prepay">>, Credits, 0),
+    Credit = case whistle_util:to_float(Credit0) of
+		 0.0 -> 0;
+		 F when is_float(F) -> whistle_util:to_integer(F * ?DOLLARS_TO_UNITS) %% convert $450.12 -> 45012000
+	     end,
+
+    MaxTrunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
+    #ts_acct{
+	      account_id = props:get_value(<<"_id">>, Doc)
+	      ,account_rev = props:get_value(<<"_rev">>, Doc)
+	      ,reference = erlang:make_ref()
+	      ,account_credit = Credit
+	      ,delta_credit = 0
+	      ,max_trunks = MaxTrunks
+	      ,active_calls = []
+	      ,writes_since_sync = 0
+	    }.
+
+update_rec(#ts_acct{account_id=AcctId, reference=Ref, writes_since_sync=WSS}=OldRec, NewRec) ->
+    {atomic, ok} = mnesia:transaction(fun() ->
+					      case mnesia:wread({ts_acct, AcctId}) of % lock
+						  [#ts_acct{reference = Ref1}] when Ref =:= Ref1 -> mnesia:write(NewRec#ts_acct{reference = erlang:make_ref()
+																,writes_since_sync = WSS+1
+															       });
+						  [OtherRec] when is_record(OtherRec, ts_acct) ->
+						      %% someone else saved this record; create a merged record
+						      format_log(info, "TS_ACCTMGR: Update out of date~nOld: ~p~nCurr: ~p~nNew: ~p~n", [OldRec, OtherRec, NewRec]),
+
+						      OldCalls = OldRec#ts_acct.active_calls,
+						      NewCalls = NewRec#ts_acct.active_calls,
+						      CallDiff = case NewCalls =:= OldCalls of
+								     true -> [];
+								     false ->
+									 case hd(OldCalls) =/= hd(NewCalls) of
+									     true -> [hd(NewCalls)];
+									     false ->
+										 lists:foldl(fun(K, Acc) ->
+												     case lists:member(K, NewCalls) of
+													 true -> Acc;
+													 false -> [K | Acc]
+												     end
+											     end, [], OldCalls)
+									 end
+								 end,
+						      DiffDelta = NewRec#ts_acct.delta_credit - OldRec#ts_acct.delta_credit,
+						      mnesia:write(OtherRec#ts_acct{
+								     delta_credit = OtherRec#ts_acct.delta_credit + DiffDelta
+								     ,active_calls = lists:umerge(OtherRec#ts_acct.active_calls, CallDiff)
+								     ,reference = erlang:make_ref()
+								     ,writes_since_sync = OtherRec#ts_acct.writes_since_sync + 1
+								    })
+					      end
+				      end),
+    ok.
+
+run(has_credit, #ts_acct{account_credit=0}, _) -> false;
+run(has_credit, #ts_acct{account_credit=Credit, delta_credit=Delta}, [Amt]) ->
+    (Credit - Delta) > whistle_util:to_integer(Amt * ?DOLLARS_TO_UNITS);
+run(deduct_credit, #ts_acct{account_credit=C, delta_credit=Delta}=AcctRec, [Amt]) ->
+    Delta1 = Delta + whistle_util:to_integer(Amt * ?DOLLARS_TO_UNITS),
+    try
+	ok = update_rec(AcctRec, AcctRec#ts_acct{delta_credit=Delta1}),
+	{ok, ((C - Delta1) / ?DOLLARS_TO_UNITS)}
+    catch
+	_:E -> {error, E}
+    end;
+run(reserve_trunk, #ts_acct{active_calls=ACs}=AcctRec, [CallID, Amt]) ->
+    case props:get_value(CallID, ACs) of
+	flat_rate -> {error, {callid_exists, flat_rate}};
+	per_min -> {error, {callid_exists, per_min}};
+	undefined ->
+	    case flat_rates_in_use(ACs) < AcctRec#ts_acct.max_trunks of
+		true ->
+		    update_rec(AcctRec, AcctRec#ts_acct{active_calls=[{CallID, flat_rate} | ACs]}),
+		    {ok, flat_rate};
+		false ->
+		    case run(has_credit, AcctRec, [Amt]) of
+			true ->
+			    update_rec(AcctRec, AcctRec#ts_acct{active_calls=[{CallID, per_min} | ACs]}),
+			    {ok, per_min};
+			false ->
+			    {error, no_available_trunks}
+		    end
+	    end
+    end;
+run(release_trunk, #ts_acct{active_calls=ACs}=AcctRec, [CallID]) ->
+    case props:get_value(CallID, ACs) of
+	undefined -> ok;
+	_ ->
+	    ACs1 = lists:keydelete(CallID, 1, ACs),
+	    update_rec(AcctRec, AcctRec#ts_acct{active_calls=ACs1})
+    end;
+run(Action, _AcctRec, _Args) ->
+    format_log(error, "TS_ACCTMGR(~p): Unknown action ~p, ~p, ~p~n", [self(), Action, _AcctRec, _Args]),
+    {error, unknown_action}.
+
+flat_rates_in_use(ACs) ->
+    lists:foldl(fun({_, flat_rate}, Cnt) -> Cnt+1; (_, Cnt) -> Cnt end, 0, ACs).
