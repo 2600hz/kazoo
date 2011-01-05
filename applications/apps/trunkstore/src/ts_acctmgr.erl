@@ -256,22 +256,25 @@ load_from_couch(AcctId) ->
     end.
 
 update_from_couch(AcctId, Changes) ->
-    AcctRec = lists:foldl(fun(ChangeProp, AcctRec0) ->
-				  NewRev = props:get_value(<<"rev">>, ChangeProp),
-				  case AcctRec0#ts_acct.account_rev of
-				      NewRev -> AcctRec0;
-				      _ ->
-					  D = couch_mgr:open_doc(?TS_DB, AcctId),
-					  AcctRec1 = build_rec_from_doc(D),
-					  AcctRec0#ts_acct{
-					    account_rev = AcctRec1#ts_acct.account_rev
-					    ,reference = AcctRec1#ts_acct.reference
-					    ,account_credit = AcctRec1#ts_acct.account_credit
-					    ,max_trunks = AcctRec1#ts_acct.max_trunks
-					   }
-				  end
-			  end, get_acct(AcctId), Changes),
-    update_rec(AcctRec, AcctRec).
+    _ = lists:foldl(fun(ChangeProp, AcctRec0) ->
+			    NewRev = props:get_value(<<"rev">>, ChangeProp),
+			    format_log(info, "up_from_c: mn_rev: ~p c_rev: ~p~n", [AcctRec0#ts_acct.account_rev, NewRev]),
+			    case AcctRec0#ts_acct.account_rev of
+				NewRev -> AcctRec0;
+				_ ->
+				    D = couch_mgr:open_doc(?TS_DB, AcctId),
+				    AcctRec1 = build_rec_from_doc(D),
+				    format_log(info, "up_from_c: m_rec: ~p~nc_rec: ~p~n", [AcctRec0, AcctRec1]),
+				    AcctRec01 = AcctRec0#ts_acct{
+						  account_rev = AcctRec1#ts_acct.account_rev
+						  ,reference = AcctRec1#ts_acct.reference
+						  ,account_credit = AcctRec1#ts_acct.account_credit
+						  ,max_trunks = AcctRec1#ts_acct.max_trunks
+						 },
+				    update_rec(AcctRec0, AcctRec01),
+				    AcctRec01
+			    end
+		    end, get_acct(AcctId), Changes).
 
 -spec(build_rec_from_doc/1 :: (Doc :: proplist()) -> #ts_acct{}).
 build_rec_from_doc(Doc) ->
