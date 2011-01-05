@@ -236,7 +236,7 @@
 					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
 					,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
 				   ]).
--define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call-detail">>}
+-define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call_detail">>}
 			  ,{<<"Event-Name">>, <<"cdr">>}
 			  ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
 			  ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
