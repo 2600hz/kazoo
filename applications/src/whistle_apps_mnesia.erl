@@ -40,7 +40,7 @@
 
 %% create_tables/0 exported for helping embed RabbitMQ in or alongside
 %% other mnesia-using Erlang applications, such as ejabberd
--export([create_tables/0, create_table/2]).
+-export([create_tables/0, create_table/2, update_table/3]).
 
 -define(SCHEMA_VERSION_SET, []).
 -define(SCHEMA_VERSION_FILENAME, "schema_version").
@@ -261,8 +261,7 @@ read_cluster_nodes_config() ->
     case read_term_file(FileName) of
         {ok, [ClusterNodes]} -> ClusterNodes;
         {error, enoent} ->
-            {ok, ClusterNodes} = application:get_env(rabbit, cluster_nodes),
-            ClusterNodes;
+            [node()];
         {error, Reason} ->
             throw({error, {cannot_read_cluster_nodes_config,
                            FileName, Reason}})
@@ -341,10 +340,8 @@ init_db(ClusterNodes, Force) ->
 
 create_schema() ->
     mnesia:stop(),
-    rabbit_misc:ensure_ok(mnesia:create_schema([node()]),
-                          cannot_create_schema),
-    rabbit_misc:ensure_ok(mnesia:start(),
-                          cannot_start_mnesia),
+    ok = mnesia:create_schema([node()]),
+    ok = mnesia:start(),
     ok = create_tables(),
     ok = ensure_schema_integrity(),
     ok = wait_for_tables().
@@ -368,7 +365,7 @@ move_db() ->
                                           MnesiaDir, BackupDir, Reason}})
     end,
     ok = ensure_mnesia_dir(),
-    rabbit_misc:ensure_ok(mnesia:start(), cannot_start_mnesia),
+    ok = mnesia:start(),
     ok.
 
 create_tables() ->
@@ -385,7 +382,14 @@ create_tables() ->
     ok.
 
 create_table(Tab, TabDef) ->
-    mnesia:create_table(Tab, TabDef).
+    case  mnesia:create_table(Tab, TabDef) of
+	{atomic, ok} -> ok;
+	{aborted, {already_exists, Tab}} -> ok;
+	E -> throw(E)
+    end.
+
+update_table(Tab, F, NewAttrs) ->
+    {atomic, ok} = mnesia:transform_table(Tab, F, NewAttrs, Tab).
 
 table_has_copy_type(TabDef, DiscType) ->
     lists:member(node(), proplists:get_value(DiscType, TabDef, [])).
@@ -436,7 +440,7 @@ wait_for_replicated_tables() -> wait_for_tables(replicated_table_names()).
 wait_for_tables() -> wait_for_tables(table_names()).
 
 wait_for_tables(TableNames) ->
-    case mnesia:wait_for_tables(TableNames, 30000) of
+    case mnesia:wait_for_tables(TableNames, 3000) of
         ok -> ok;
         {timeout, BadTabs} ->
             throw({error, {timeout_waiting_for_tables, BadTabs}});
@@ -451,7 +455,7 @@ reset(Force) ->
         true  -> ok;
         false ->
             ok = ensure_mnesia_dir(),
-            rabbit_misc:ensure_ok(mnesia:start(), cannot_start_mnesia),
+            mnesia:start(),
             {Nodes, RunningNodes} =
                 try
                     ok = init(),
@@ -461,12 +465,11 @@ reset(Force) ->
                     mnesia:stop()
                 end,
             leave_cluster(Nodes, RunningNodes),
-            rabbit_misc:ensure_ok(mnesia:delete_schema([Node]),
-                                  cannot_delete_schema)
+            mnesia:delete_schema([Node])
     end,
     ok = delete_cluster_nodes_config(),
     %% remove persisted messages and any other garbage we find
-    ok = rabbit_misc:recursive_delete(filelib:wildcard(dir() ++ "/*")),
+    ok = recursive_delete(filelib:wildcard(dir() ++ "/*")),
     ok.
 
 leave_cluster([], _) -> ok;
@@ -497,3 +500,37 @@ read_term_file(File) -> file:consult(File).
 write_term_file(File, Terms) ->
     file:write_file(File, list_to_binary([io_lib:format("~w.~n", [Term]) ||
                                              Term <- Terms])).
+
+recursive_delete(Files) ->
+    lists:foldl(fun (Path,  ok                   ) -> recursive_delete1(Path);
+                    (_Path, {error, _Err} = Error) -> Error
+                end, ok, Files).
+
+recursive_delete1(Path) ->
+    case filelib:is_dir(Path) of
+        false -> case file:delete(Path) of
+                     ok              -> ok;
+                     {error, enoent} -> ok; %% Path doesn't exist anyway
+                     {error, Err}    -> {error, {Path, Err}}
+                 end;
+        true  -> case file:list_dir(Path) of
+                     {ok, FileNames} ->
+                         case lists:foldl(
+                                fun (FileName, ok) ->
+                                        recursive_delete1(
+                                          filename:join(Path, FileName));
+                                    (_FileName, Error) ->
+                                        Error
+                                end, ok, FileNames) of
+                             ok ->
+                                 case file:del_dir(Path) of
+                                     ok           -> ok;
+                                     {error, Err} -> {error, {Path, Err}}
+                                 end;
+                             {error, _Err} = Error ->
+                                 Error
+                         end;
+                     {error, Err} ->
+                         {error, {Path, Err}}
+                 end
+    end.
