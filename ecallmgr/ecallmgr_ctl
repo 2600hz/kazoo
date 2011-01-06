@@ -7,9 +7,14 @@
 
 # Adapting rabbitmqctl pieces into here
 
-EBIN=`pwd`/ebin
-DIAG_EBIN=`pwd`/../utils/diagnostics/ebin
-COOKIE_FILE=`pwd`/../confs/fs_conf/autoload_configs/.erlang.cookie
+#!/bin/sh
+
+cd `dirname $0`
+export ERL_LIBS=$PWD/../lib/
+
+EBIN=ebin
+DIAG_EBIN=$PWD/../utils/diagnostics/ebin
+COOKIE_FILE=$PWD/../confs/fs_conf/autoload_configs/.erlang.cookie
 
 exec erl \
     -pa $EBIN \

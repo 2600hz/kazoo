@@ -28,6 +28,7 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
+-define(WRITES_THRESHOLD, 4). %% how many writes should a mnesia record have before persisting to couch
 
 %% { CallID, flat_rate | per_min }
 -type active_call() :: tuple(binary(), flat_rate | per_min).
@@ -81,7 +82,8 @@ update_table() ->
     						   ,active_calls = ACs
     						   ,writes_since_sync = WSS
     						  };
-						 (Rec) -> Rec
+						 (Rec) when is_record(Rec, ts_acct) -> Rec;
+						 (Other) -> format_log(info, "Update table: failed to update ~p~n", [Other]), Other
     					      end
     				     , record_info(fields, ts_acct)).
 
@@ -135,9 +137,10 @@ release_trunk(Acct, CallID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    whistle_apps_mnesia:create_table(ts_acct, [{attributes, record_info(fields, ts_acct)}
-					       ,{type, set}
-					      ]),
+    R = whistle_apps_mnesia:create_table(ts_acct, [{attributes, record_info(fields, ts_acct)}
+						   ,{type, set}
+						  ]),
+    format_log(info, "TS_ACCTMGR.init: Create table returned ~p~n", [R]),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -227,8 +230,11 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(get_acct/1 :: (AcctId :: binary()) -> #ts_acct{} | tuple(error, doc_not_found)).
 get_acct(AcctId) ->
     case mnesia:transaction(fun() -> mnesia:read(ts_acct, AcctId) end) of
-	{atomic, []} -> load_from_couch(AcctId);
-	{atomic, [R]} when is_record(R, ts_acct) -> R;
+	{atomic, []} ->
+	    load_from_couch(AcctId);
+	{atomic, [R]} when is_record(R, ts_acct) ->
+	    couch_mgr:add_change_handler(?TS_DB, AcctId),
+	    R;
 	{aborted, Reason} ->
 	    format_log(error, "TS_ACCTMGR(~p): get_acct failed: ~p~n", [self(), Reason]),
 	    {error, Reason}
@@ -236,6 +242,7 @@ get_acct(AcctId) ->
 
 -spec(load_from_couch/1 :: (AcctId :: binary()) -> #ts_acct{} | tuple(error, doc_not_found)).
 load_from_couch(AcctId) ->
+    format_log(info, "TS_ACCTMGR(~p): load_from_couch ~p~n", [self(), AcctId]),
     case couch_mgr:open_doc(?TS_DB, AcctId) of
 	{error, not_found} -> {error, doc_not_found};
 	Doc when is_list(Doc) ->
@@ -256,22 +263,48 @@ load_from_couch(AcctId) ->
     end.
 
 update_from_couch(AcctId, Changes) ->
-    AcctRec = lists:foldl(fun(ChangeProp, AcctRec0) ->
-				  NewRev = props:get_value(<<"rev">>, ChangeProp),
-				  case AcctRec0#ts_acct.account_rev of
-				      NewRev -> AcctRec0;
-				      _ ->
-					  D = couch_mgr:open_doc(?TS_DB, AcctId),
-					  AcctRec1 = build_rec_from_doc(D),
-					  AcctRec0#ts_acct{
-					    account_rev = AcctRec1#ts_acct.account_rev
-					    ,reference = AcctRec1#ts_acct.reference
-					    ,account_credit = AcctRec1#ts_acct.account_credit
-					    ,max_trunks = AcctRec1#ts_acct.max_trunks
-					   }
-				  end
-			  end, get_acct(AcctId), Changes),
-    update_rec(AcctRec, AcctRec).
+    _ = lists:foldl(fun(ChangeProp, AcctRec0) ->
+			    NewRev = props:get_value(<<"rev">>, ChangeProp),
+			    format_log(info, "up_from_c: mn_rev: ~p c_rev: ~p~n", [AcctRec0#ts_acct.account_rev, NewRev]),
+			    case AcctRec0#ts_acct.account_rev of
+				NewRev -> AcctRec0;
+				_ ->
+				    D = couch_mgr:open_doc(?TS_DB, AcctId),
+				    AcctRec1 = build_rec_from_doc(D),
+				    format_log(info, "up_from_c: m_rec: ~p~nc_rec: ~p~n", [AcctRec0, AcctRec1]),
+				    AcctRec01 = AcctRec0#ts_acct{
+						  account_rev = AcctRec1#ts_acct.account_rev
+						  ,reference = AcctRec1#ts_acct.reference
+						  ,account_credit = AcctRec1#ts_acct.account_credit
+						  ,max_trunks = AcctRec1#ts_acct.max_trunks
+						 },
+				    update_rec(AcctRec0, AcctRec01),
+				    AcctRec01
+			    end
+		    end, get_acct(AcctId), Changes).
+
+-spec(save_to_couch/1 :: (#ts_acct{}) -> tuple(ok, proplist()) | tuple(error, conflict | bad_revision)).
+save_to_couch(#ts_acct{account_id=AcctId, account_rev=AcctRev, delta_credit=DC}) ->
+    Doc = couch_mgr:open_doc(?TS_DB, AcctId),
+    DocRev = props:get_value(<<"_rev">>, Doc),
+    case DocRev =:= AcctRev of
+	false ->
+	    format_log(info, "Bad rev: MN ~p Doc: ~p~n", [AcctRev, DocRev]),
+	    {error, bad_revision};
+	true ->
+	    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
+	    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+	    DocCredit = case whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0)) of
+			 0.0 -> 0;
+			 F when is_float(F) -> whistle_util:to_integer(F * ?DOLLARS_TO_UNITS) %% convert $450.12 -> 45012000
+		     end,
+
+	    Credits1 = [ {<<"prepay">>, DocCredit - DC} | lists:keydelete(<<"prepay">>, 1, Credits)],
+	    Acct1 = [ {<<"credits">>, {Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
+	    Doc1 = [ {<<"account">>, {Acct1}} | lists:keydelete(<<"account">>, 1, Doc) ],
+	    format_log(info, "Saving ~p~nWas ~p~n", [Doc1, Doc]),
+	    couch_mgr:save_doc(?TS_DB, Doc1)
+    end.
 
 -spec(build_rec_from_doc/1 :: (Doc :: proplist()) -> #ts_acct{}).
 build_rec_from_doc(Doc) ->
@@ -287,7 +320,7 @@ build_rec_from_doc(Doc) ->
     #ts_acct{
 	      account_id = props:get_value(<<"_id">>, Doc)
 	      ,account_rev = props:get_value(<<"_rev">>, Doc)
-	      ,reference = erlang:make_ref()
+	      ,reference = undefined
 	      ,account_credit = Credit
 	      ,delta_credit = 0
 	      ,max_trunks = MaxTrunks
@@ -296,40 +329,57 @@ build_rec_from_doc(Doc) ->
 	    }.
 
 update_rec(#ts_acct{account_id=AcctId, reference=Ref, writes_since_sync=WSS}=OldRec, NewRec) ->
-    {atomic, ok} = mnesia:transaction(fun() ->
-					      case mnesia:wread({ts_acct, AcctId}) of % lock
-						  [#ts_acct{reference = Ref1}] when Ref =:= Ref1 -> mnesia:write(NewRec#ts_acct{reference = erlang:make_ref()
-																,writes_since_sync = WSS+1
-															       });
-						  [OtherRec] when is_record(OtherRec, ts_acct) ->
-						      %% someone else saved this record; create a merged record
-						      format_log(info, "TS_ACCTMGR: Update out of date~nOld: ~p~nCurr: ~p~nNew: ~p~n", [OldRec, OtherRec, NewRec]),
-
-						      OldCalls = OldRec#ts_acct.active_calls,
-						      NewCalls = NewRec#ts_acct.active_calls,
-						      CallDiff = case NewCalls =:= OldCalls of
-								     true -> [];
-								     false ->
-									 case hd(OldCalls) =/= hd(NewCalls) of
-									     true -> [hd(NewCalls)];
-									     false ->
-										 lists:foldl(fun(K, Acc) ->
-												     case lists:member(K, NewCalls) of
-													 true -> Acc;
-													 false -> [K | Acc]
-												     end
-											     end, [], OldCalls)
-									 end
-								 end,
-						      DiffDelta = NewRec#ts_acct.delta_credit - OldRec#ts_acct.delta_credit,
-						      mnesia:write(OtherRec#ts_acct{
-								     delta_credit = OtherRec#ts_acct.delta_credit + DiffDelta
-								     ,active_calls = lists:umerge(OtherRec#ts_acct.active_calls, CallDiff)
-								     ,reference = erlang:make_ref()
-								     ,writes_since_sync = OtherRec#ts_acct.writes_since_sync + 1
-								    })
-					      end
-				      end),
+    {atomic, SavedRec} = mnesia:transaction(fun() ->
+						    case mnesia:wread({ts_acct, AcctId}) of % lock
+							[#ts_acct{reference = Ref1}] when Ref =:= Ref1 ->
+							    mnesia:write(NewRec#ts_acct{reference = erlang:make_ref()
+											,writes_since_sync = WSS+1
+										       }),
+							    NewRec;
+							[OtherRec] when is_record(OtherRec, ts_acct) ->
+							    %% someone else saved this record; create a merged record
+							    format_log(info, "TS_ACCTMGR: Update out of date~nOld: ~p~nCurr: ~p~nNew: ~p~n", [OldRec, OtherRec, NewRec]),
+							    
+							    OldCalls = OldRec#ts_acct.active_calls,
+							    NewCalls = NewRec#ts_acct.active_calls,
+							    CallDiff = case NewCalls =:= OldCalls of
+									   true -> [];
+									   false ->
+									       case hd(OldCalls) =/= hd(NewCalls) of
+										   true -> [hd(NewCalls)];
+										   false ->
+										       lists:foldl(fun(K, Acc) ->
+													   case lists:member(K, NewCalls) of
+													       true -> Acc;
+													       false -> [K | Acc]
+													   end
+												   end, [], OldCalls)
+									       end
+								       end,
+							    DiffDelta = NewRec#ts_acct.delta_credit - OldRec#ts_acct.delta_credit,
+							    OtherRec1 = OtherRec#ts_acct{
+									  delta_credit = OtherRec#ts_acct.delta_credit + DiffDelta
+									  ,active_calls = lists:umerge(OtherRec#ts_acct.active_calls, CallDiff)
+									  ,reference = erlang:make_ref()
+									  ,writes_since_sync = OtherRec#ts_acct.writes_since_sync + 1
+									 },
+							    mnesia:write(OtherRec1),
+							    OtherRec1;
+							Other -> format_log(info, "update_rec other: ~p~n", [Other]),
+								 OldRec
+						    end
+					    end),
+    case SavedRec#ts_acct.writes_since_sync > ?WRITES_THRESHOLD of
+	true ->
+	    case save_to_couch(SavedRec) of
+		{error, _}=E -> format_log(info, "Failed to save doc: ~p~n", [E]);
+		{ok, Doc} ->
+		    NewRec = build_rec_from_doc(Doc),
+		    format_log(info, "Saved couch doc.~nOldRec: ~p~nNewRec: ~p~n", [SavedRec, NewRec]),
+		    update_rec(NewRec, NewRec)
+	    end;
+	false -> ok
+    end,
     ok.
 
 run(has_credit, #ts_acct{account_credit=0}, _) -> false;
