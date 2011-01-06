@@ -1,9 +1,0 @@
-#!/usr/bin/env escript
-
-main( [] ) -> done;
-main([ AppName | Apps ]) -> 
-  io:format("Generating documentation for ~p...~n",[AppName]),
-  App = list_to_atom(AppName),
-  Opts = [todo],
-  edoc:application(App,Opts), main(Apps).
-

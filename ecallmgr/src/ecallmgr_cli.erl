@@ -10,7 +10,7 @@
 
 -export([help/2, diagnostics/2, set_amqp_host/2, add_fs_node/2, rm_fs_node/2]).
 
--include_lib("erlctl/include/erlctl.hrl").
+-include_lib("../../lib/erlctl/lib/erlctl-0.3/include/erlctl.hrl").
 
 help(always,_) ->
   lists:foreach(
