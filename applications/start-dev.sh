@@ -8,8 +8,9 @@ sname="whistle_apps"
 
 exec erl -setcookie `cat ../confs/fs_conf/autoload_configs/.erlang.cookie` \
     -pa $PWD/ebin -pa $PWD/deps/*/ebin -pa $PWD/apps/*/ebin \
-    -sasl errlog_type error \
     -mnesia dir '"priv/mnesia"' \
+    -mnedia debug true \
     -boot start_sasl -name $sname -s whistle_apps
+#     -sasl errlog_type error \
 #    -kernel error_logger '{file, "log/error_log"}' \
 
