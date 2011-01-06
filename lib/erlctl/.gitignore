@@ -1,0 +1,10 @@
+cover/*.coverdata
+cover/*.html
+*.beam
+erl_crash.dump
+Mnesia.*
+*.swp
+*.boot
+*.script
+*.tar.gz
+releases/relup
