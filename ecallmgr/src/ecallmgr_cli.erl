@@ -38,6 +38,7 @@ usage() ->
 
 diagnostics(always, _) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
+    format("Retrieving data for ~s~n", [Node]),
     Res = rpc_call(Node, ecallmgr_fs_handler, diagnostics, []),
     case Res of 
 	{ok, _, _} -> Res;
