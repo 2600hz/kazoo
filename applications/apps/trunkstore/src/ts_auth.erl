@@ -96,6 +96,9 @@ is_inbound(Domain) ->
 	{error, not_found} ->
 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
 	    false;
+	{error, view_not_found} ->
+	    format_log(info, "TS_AUTH(~p): View ~p missing~n", [self(), ?TS_VIEW_CARRIERIP]),
+	    false;
 	[] ->
 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
 	    false;
@@ -108,26 +111,32 @@ is_inbound(Domain) ->
     end.
 
 -spec(lookup_user/2 :: (Name :: binary(), Domain :: binary()) -> tuple(ok | error, proplist() | string())).
-lookup_user(Name, Domain) ->
-    IP = ts_util:find_ip(Domain),
-    Options = [{"key", IP}],
-    format_log(info, "TS_AUTH(~p): lookup_user with ~p and ~p(~p) in ~p.~p~n"
-	       ,[self(), Name, Domain, IP, ?TS_DB, ?TS_VIEW_IPAUTH]),
-    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_IPAUTH, Options) of
-	false ->
-	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
-		       ,[self(), ?TS_VIEW_IPAUTH, Domain, IP]),
-	    {error, "No view found."};
-	[] ->
-	    format_log(info, "TS_AUTH(~p): No Domain matching ~p(~p)~n", [self(), Domain, IP]),
-	    lookup_user(Name);
-	[{ViewProp} | _Rest] ->
-	    format_log(info, "TS_AUTH(~p): Using ~p(~p), retrieved~n~p~n", [self(), Domain, IP, ViewProp]),
-	    {ok, ViewProp};
-	_Else ->
-	    format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
-	    {error, "Unexpected error in lookup_user/2"}
-    end.
+lookup_user(Name, _Domain) ->
+    lookup_user(Name).
+
+    %% commented out until we actually care about the domain - currently hardcoded in ecallmgr/FS
+    %% format_log(info, "Finding IP for ~p~n", [Domain]),
+    %% IP = ts_util:find_ip(Domain),
+    %% format_log(info, "Finding Options~n", []),
+    %% Options = [{"key", IP}],
+    %% format_log(info, "TS_AUTH(~p): lookup_user with ~p and ~p(~p) in ~p.~p~n"
+    %% 	       ,[self(), Name, Domain, IP, ?TS_DB, ?TS_VIEW_IPAUTH]),
+    %% format_log(info, "Getting results~n", []),
+    %% case couch_mgr:get_results(?TS_DB, ?TS_VIEW_IPAUTH, Options) of
+    %% 	false ->
+    %% 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
+    %% 		       ,[self(), ?TS_VIEW_IPAUTH, Domain, IP]),
+    %% 	    {error, "No view found."};
+    %% 	[] ->
+    %% 	    format_log(info, "TS_AUTH(~p): No Domain matching ~p(~p)~n", [self(), Domain, IP]),
+    %% 	    lookup_user(Name);
+    %% 	[{ViewProp} | _Rest] ->
+    %% 	    format_log(info, "TS_AUTH(~p): Retrieved by ~p(~p)~n", [self(), Domain, IP]),
+    %% 	    {ok, ViewProp};
+    %% 	_Else ->
+    %% 	    format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),
+    %% 	    {error, "Unexpected error in lookup_user/2"}
+    %% end.
 
 -spec(lookup_user/1 :: (Name :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name) ->
@@ -140,7 +149,7 @@ lookup_user(Name) ->
 	    format_log(info, "TS_AUTH(~p): No Name matching ~p~n", [self(), Name]),
 	    [];
 	[{ViewProp} | _Rest] ->
-	    format_log(info, "TS_AUTH(~p): Using ~p, retrieved~n~p~n", [self(), Name, ViewProp]),
+	    format_log(info, "TS_AUTH(~p): Retrieved by username ~p~n", [self(), Name]),
 	    {ok, ViewProp};
 	_Else ->
 	    format_log(error, "TS_AUTH(~p): Got something unexpected~n~p~n", [self(), _Else]),

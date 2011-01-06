@@ -43,7 +43,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control).
 
--export([start/3, init/3]).
+-export([start_link/3, init/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 
@@ -51,7 +51,7 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 %% Node, UUID, {AmqpHost, CtlQueue}
-start(Node, UUID, Amqp) ->
+start_link(Node, UUID, Amqp) ->
     {ok, spawn_link(ecallmgr_call_control, init, [Node, UUID, Amqp])}.
 
 init(Node, UUID, {AmqpHost, CtlQueue}) ->

@@ -120,6 +120,8 @@ callevt_publish(Host, CallId, Payload) ->
 
 callevt_publish(Host, CallId, Payload, event) ->
     basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallId/binary>>, Payload, <<"application/json">>);
+callevt_publish(Host, CallID, Payload, status_req) ->
+    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, <<"application/json">>);
 callevt_publish(Host, CallId, Payload, cdr) ->
     basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>).
 
@@ -274,6 +276,8 @@ bind_q_to_callevt(Host, Queue, CallId) ->
 
 bind_q_to_callevt(Host, Queue, CallId, events) ->
     bind_q_to_exchange(Host, Queue, <<?KEY_CALL_EVENT/binary, CallId/binary>>, ?EXCHANGE_CALLEVT);
+bind_q_to_callevt(Host, Queue, CallID, status_req) ->
+    bind_q_to_exchange(Host, Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Host, Queue, CallId, cdr) ->
     bind_q_to_exchange(Host, Queue, <<?KEY_CALL_CDR/binary, CallId/binary>>, ?EXCHANGE_CALLEVT).
 

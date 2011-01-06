@@ -19,15 +19,11 @@
 -include("ts.hrl").
 
 -spec(store_cdr/2 :: (CDRProp :: proplist(), Flags :: #route_flags{}) -> no_return()).
-store_cdr(CDRProp, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID}=Flags) ->
-    RateUsed = case Dir of
-		   <<"inbound">> -> Flags#route_flags.inbound_rate_name;
-		   <<"outbound">> -> Flags#route_flags.outbound_rate_name
-	       end,
+store_cdr(CDRProp, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}=Flags) ->
     TScdr = [{<<"_id">>, get_value(<<"Call-ID">>, CDRProp)}
 	     ,{<<"Routes-Available">>, RGs}
 	     ,{<<"Route-Used">>, find_route_used(Dir, get_value(<<"To-Uri">>, CDRProp), RGs)}
-	     ,{<<"Rate-Used">>, RateUsed}
+	     ,{<<"Rate-Used">>, RateName}
 	     ,{<<"Customer-Account-ID">>, DocID}
 	     | CDRProp],
     format_log(info, "TS_CDR: Saving ~p~n", [TScdr]),
