@@ -1,0 +1,4 @@
+<%? {data, Nodes, ActiveNodes} = Data %>
+<% [nod3(Node, ActiveNodes) || Node <- Nodes] %>
+<%@ nod3(Node, ActiveNodes) %>
+<option value="<% atom_to_list(Node) %>" class="<% case lists:member(Node, ActiveNodes) of true ->  "node_up";  false -> "node_down" end %>"><% atom_to_list(Node) %></option>

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+VERSION=${1}
+MODULES=`ls -1 src/*.erl | awk -F[/.] '{ print "\t\t" $2 }' | sed '$q;s/$/,/g'`
+
+cat > ebin/dynamic_compile.app << EOF
+{application, dynamic_compile, [
+    {description, "dynamic_compile"},
+    {vsn, "${VERSION}"},
+    {modules, [
+${MODULES}
+    ]},
+    {registered, []},
+    {applications, [kernel, stdlib]}
+]}.
+EOF
