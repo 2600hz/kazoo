@@ -1,6 +1,7 @@
 #!/bin/sh
 
 cd `dirname $0`
+export ERL_LIBS=$PWD/../lib/
 
 echo "Compiling utils"
 cd ../utils/amqp/

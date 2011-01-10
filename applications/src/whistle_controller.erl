@@ -128,8 +128,7 @@ handle_info(start_apps, #state{apps=As}=State) ->
 		  couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
 		  start_mnesia(),
 		  lists:foldl(fun(App, Acc) ->
-				      Acc1 = add_app(App, Acc),
-				      Acc1
+				      add_app(App, Acc)
 			      end, As, props:get_value(start, Ts, []));
 	      _ -> As
 	  end,
@@ -172,7 +171,7 @@ code_change(_OldVsn, State, _Extra) ->
 add_app(App, As) ->
     format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
     case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
-	false -> {ok, As};
+	false -> As;
 	{ok, _} -> application:start(App), [App  | As];
 	{ok, _, _} -> application:start(App), [App | As];
 	_ -> As

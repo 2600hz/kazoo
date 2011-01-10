@@ -135,7 +135,7 @@ lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
 			amqp_util:queue_delete(AmqpHost, Q),
 			Result;
 		    {error, _Msg} ->
-			format_log(error, "L/U.user(~p): Auth_Req API error ~p~n", [self(), _Msg]),
+			format_log(error, "L/U.user(~p): Auth_Req API error ~s~n", [self(), _Msg]),
 			amqp_util:queue_delete(AmqpHost, Q),
 			failed
 		end,
