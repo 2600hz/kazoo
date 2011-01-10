@@ -196,12 +196,12 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
-    spawn(fun() -> load_views(WDB) end),
+    load_views(WDB),
     case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
 	[] -> [];
-	Accts ->
+	Accts when is_list(Accts) ->
 	    AcctIds = lists:map(fun({A}) -> props:get_value(<<"id">>, A) end, Accts),
-	    spawn(fun() -> lists:foreach(fun(Id) -> load_account(Id, WDB) end, AcctIds) end),
+	    lists:foreach(fun(Id) -> load_account(Id, WDB) end, AcctIds),
 	    start_change_handlers(AcctIds)
     end,
     {noreply, S};
