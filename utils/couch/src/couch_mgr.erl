@@ -78,11 +78,11 @@ new_doc() -> [].
 
 %% open a document given a docid
 %% returns not_found or the Document
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> proplist() | not_found).
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> proplist() | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | not_found).
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId, Options) ->
     gen_server:call(?MODULE, {open_doc, whistle_util:to_list(DbName), whistle_util:to_binary(DocId), Options}, infinity).
 

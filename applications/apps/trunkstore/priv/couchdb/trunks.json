@@ -1,0 +1,17 @@
+{ "_id":"_design/trunks"
+  ,"language":"javascript"
+  ,"views":{
+     "trunk_status":{
+       "map": "function(doc) { if ( doc.trunk_type == 'flat_rate' ) { if ( doc.type == 'debit' ) { emit([doc.acct_id, doc.call_id], doc.trunks * -1); } else { emit([doc.acct_id, doc.call_id], doc.trunks); } } if ( doc.trunk_type == 'per_min' ) { emit([doc.acct_id, doc.call_id], doc.amount); } return; }"
+       ,"reduce":"function(k, vs, rereduce) { if ( rereduce ) return vs; return vs.length == 2 ? 'inactive' : 'active'; }"
+      }
+     ,"trunk_type":{
+	"map": "function(doc) { if ( typeof doc.trunk_type == 'undefined' ) return; emit([doc.acct_id, doc.call_id], doc.trunk_type); }"
+	,"reduce": "function(k, vs) { return vs[0]; }"
+       }
+     ,"flat_rates_available":{
+	"map": "function(doc) { if ( doc.type == 'debit' ) { emit(doc.acct_id, doc.trunks * -1); } else { emit(doc.acct_id, doc.trunks); } }"
+	,"reduce": "function(k, vs) { return sum(vs); }"
+       }
+    }
+}

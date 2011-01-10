@@ -117,8 +117,7 @@ update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_do
 update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
 				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S}=Flags) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    ts_acctmgr:deduct_credit(DocID, Amount),
-    ts_acctmgr:release_trunk(DocID, CallID),
+    ts_acctmgr:release_trunk(DocID, CallID, Amount),
     Flags;
 update_account(_, Flags) ->
     Flags.
