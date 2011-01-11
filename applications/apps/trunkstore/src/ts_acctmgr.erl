@@ -131,11 +131,13 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_read_db=RDB}=S) ->
+handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    load_account(AcctId, WDB),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     {reply, has_credit(RDB, AcctId, Amt), S};
 handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Reserve trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+    load_account(AcctId, WDB),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
 			   [] ->
@@ -172,6 +174,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_
 %%--------------------------------------------------------------------
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+    load_account(AcctId, WDB),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     case trunk_type(RDB, AcctId, CallID) of
 	non_existant ->
@@ -197,13 +200,7 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
     load_views(WDB),
-    case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
-	[] -> [];
-	Accts when is_list(Accts) ->
-	    AcctIds = lists:map(fun({A}) -> props:get_value(<<"id">>, A) end, Accts),
-	    lists:foreach(fun(Id) -> load_account(Id, WDB) end, AcctIds),
-	    start_change_handlers(AcctIds)
-    end,
+    load_accounts_from_ts(WDB),
     {noreply, S};
 handle_info(?EOD, S) ->
     DB = todays_db_name(),
@@ -212,13 +209,14 @@ handle_info(?EOD, S) ->
 
     self() ! reconcile_accounts,
 
-    spawn(fun() -> load_views(DB) end),
+    load_views(DB),
+    load_accounts_from_ts(DB),
 
     {noreply, S#state{
 		current_write_db = DB % all new writes should go in new DB, but old DB is needed still
 	       }};
 handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
-    spawn( fun() -> lists:foreach(fun(Acct) -> transfer_acct(Acct, RDB, WDB) end, get_accts(RDB)) end),
+    spawn( fun() -> lists:foreach(fun(Acct) -> transfer_acct(Acct, RDB, WDB), transfer_active_calls(Acct, RDB, WDB) end, get_accts(RDB)) end),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
@@ -254,6 +252,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec(load_accounts_from_ts/1 :: (DB :: binary()) -> no_return()).
+load_accounts_from_ts(DB) ->
+    case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
+	[] -> ok;
+	Accts when is_list(Accts) ->
+	    AcctIds = lists:map(fun({A}) -> props:get_value(<<"id">>, A) end, Accts),
+	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds),
+	    start_change_handlers(AcctIds)
+    end.
+
 start_change_handlers([]) -> ok;
 start_change_handlers([I | Ids]) ->
     couch_mgr:add_change_handler(?TS_DB, I),
@@ -285,7 +293,7 @@ trunk_type(DB, AcctId, CallID) ->
 
 -spec(trunk_status/3 :: (DB :: binary(), AcctId :: binary(), CallID :: binary()) -> active | inactive).
 trunk_status(DB, AcctId, CallID) ->
-    case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, <<"true">>}]) of
+    case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group_level">>, <<"2">>}]) of
 	[] -> in_active;
 	[{[{<<"key">>,_},{<<"value">>,<<"active">>}]}] -> active;
 	[{[{<<"key">>,_},{<<"value">>,<<"inactive">>}]}] -> inactive
@@ -360,6 +368,7 @@ load_views(DB) ->
 			  end
 		  end, Docs).
 
+-spec(get_accts/1 :: (DB :: binary()) -> list(binary())).
 get_accts(DB) ->
     case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
 	[] -> [];
@@ -367,16 +376,29 @@ get_accts(DB) ->
     end.
 
 transfer_acct(AcctId, RDB, WDB) ->
-    %% read account balance, trunks_available from RDB
+    %% read account balance, from RDB
     Bal = credit_available(RDB, AcctId),
-    Ts = trunks_available(RDB, AcctId),
+    Acct = couch_mgr:open_doc(RDB, AcctId),
+    Acct1 = [ {<<"amount">>, Bal} | lists:keydelete(<<"amount">>, 1, Acct)],
+
+    format_log(info, "TS_ACCTMGR.transfer: ~p has ~p balance~n", [AcctId, ?UNITS_TO_DOLLARS(Bal)]),
 
     %% create credit entry in WDB for balance/trunks
-    couch_mgr:save_doc(WDB, account_doc(AcctId, Bal, Ts)),
-    
+    couch_mgr:save_doc(WDB, lists:keydelete(<<"_rev">>, 1, Acct1)),
+
     %% update info_* doc with account balance
     update_account(AcctId, Bal).
 
+transfer_active_calls(AcctId, RDB, WDB) ->
+    case couch_mgr:get_results(RDB, {"trunks", "trunk_status"}, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, {[]}]}, {<<"group">>, <<"true">>}]) of
+	[] -> ok;
+	Calls when is_list(Calls) ->
+	    lists:foreach(fun({[{<<"key">>, [_Acct, _CallId, DocId]}, {<<"value">>, <<"active">>}]}) ->
+				  D = couch_mgr:open_doc(RDB, DocId),
+				  couch_mgr:save_doc(WDB, lists:keydelete(<<"_rev">>, 1, D));
+			     (_) -> ok
+			  end, Calls)
+    end.
 
 update_from_couch(AcctId, WDB, RDB) ->
     Doc = couch_mgr:open_doc(?TS_DB, AcctId),
