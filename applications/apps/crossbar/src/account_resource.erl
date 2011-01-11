@@ -224,11 +224,9 @@ allow_content_types(Responses, Available) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This method will extract the function and parameters from the 
-%% context record.  It will then call that function and wait for a 
-%% response.  If no response is recieved with in the allotted time
-%% a generic error is produced.  Otherwise the reply from the function
-%% is loaded into the appropriate record fields for use in the response. 
+%% This method will find the intersection of the allowed methods
+%% among event respsonses.  The responses can only veto the list of
+%% methods, it can not add.
 %% @end
 %%--------------------------------------------------------------------
 -spec(allow_methods/2  :: (Reponses :: proplist(), Avaliable :: proplist()) -> #context{}).
