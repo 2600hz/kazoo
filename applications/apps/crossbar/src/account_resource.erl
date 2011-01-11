@@ -75,59 +75,8 @@ init(Opts) ->
 resource_exists(RD, Context) ->
     Event = list_to_binary([?SERVER, <<".resource_exists">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-
-    Mod = list_to_existing_atom(?SERVER),
-    case erlang:whereis(Mod) of
-	undefined -> 
-	    {false, RD, Context};
-	P when is_pid(P) ->
-	    case wrq:path_info(request, RD) of
-		undefined -> 
-		    {false, RD, Context};
-		Req when is_list(Req) ->
-		    try
-			Fun = list_to_existing_atom(Req),
-			case erlang:function_exported(Mod, Fun, 1) andalso is_valid(RD, Context) of
-			    {true, RD0, Context1} ->
-				format_log(info, "ACCOUNT_R: ~p/1 found and authed.~n", [Fun]),
-				{true, RD0, Context1#context{request=Fun}};
-			    {false, RD1, Context2} ->
-				{{error, 417}, RD1, Context2};
-			    false ->
-				format_log(info, "ACCOUNT_R: ~p/1 not exported~n", [Fun]),
-				{false, RD, Context}
-			end
-		    catch
-			error:badarg ->
-			    format_log(info, "ACCOUNT_R: ~p doesn't exist~n", [Req]),
-			    {false, RD, Context}
-		    end
-	    end
-    end.
-
--spec(is_valid/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #wm_reqdata{}, #context{})).
-is_valid(RD, Context) ->
-    S0 = crossbar_session:start_session(RD),
-    S = S0#session{account_id = <<"test">>},
-    io:format("~p~n", [wrq:req_body(RD)]),
-    Params = [{<<"account_id">>, S#session.account_id} | crossbar_util:get_request_params(RD)],
-
-    Event = list_to_binary([?SERVER, <<".validate">>]),
-    ValidatedResults = crossbar_bindings:run(Event, {wrq:path_info(request, RD), Params}),
-    case crossbar_bindings:failed(ValidatedResults) of
-	[] ->
-            Event1 = list_to_binary([?SERVER, <<".authenticate">>]),
-	    IsAuthenticated = crossbar_bindings:any(crossbar_bindings:run(Event1, {S, Params})),
-            Event2 = list_to_binary([?SERVER, <<".authorize">>]),
-	    IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(Event2, {S, Params})),
-	    {IsAuthenticated andalso IsAuthorized, RD, Context#context{session=S, req_params=Params}};
-	[{false, FailedKeys} | _] -> %% some listener returned false, take the first one
-	    Resp = crossbar_util:winkstart_envelope(error
-						    ,[{<<"failed_keys">>, FailedKeys}]
-						    ,"Some keys failed to validate"),
-	    {false, wrq:append_to_response_body(Resp, RD), Context#context{session=S}}
-    end.
-
+    find_and_auth(RD, Context).
+		     
 content_types_provided(RD, #context{content_types_provided=CTP}=Context) ->
     Event = list_to_binary([?SERVER, <<".content_types_provided">>]),
     Responses = crossbar_bindings:run(Event, CTP),
@@ -263,6 +212,17 @@ allow_methods(Responses, Available) ->
             end, Available, Succeeded)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will extract the function and parameters from the 
+%% context record.  It will then call that function and wait for a 
+%% response.  If no response is recieved with in the allotted time
+%% a generic error is produced.  Otherwise the reply from the function
+%% is loaded into the appropriate record fields for use in the response. 
+%% @end
+%%--------------------------------------------------------------------
+-spec(do_request/1 :: (Context :: #context{}) -> #context{}).
 do_request(#context{request=Fun, req_params=Params}=Context) ->
     Mod = list_to_existing_atom(?SERVER),
     apply(Mod, Fun, [Params]),
@@ -284,6 +244,90 @@ do_request(#context{request=Fun, req_params=Params}=Context) ->
           }
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function maps the request to a function exported by the 
+%% appropriate module.  If the request has not specified path other than
+%% the module, then we will look for an index function.  If the
+%% function has been exported then we will validate the request and
+%% load it into the record, for later execution by do_request. Any
+%% failure at this level will return 404 or 417
+%% @end
+%%--------------------------------------------------------------------
+-spec(find_and_auth/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #wm_reqdata{}, #context{})).
+find_and_auth(RD, Context) ->
+    try
+	Mod = list_to_existing_atom(?SERVER),           
+	case erlang:whereis(Mod) of 
+	    undefined ->
+		throw(unknown_module);
+	    _->
+		ok
+	end,
+	Fun = case wrq:path_info(request, RD) of
+		  undefined ->
+		      index;
+		  Req when is_list(Req) ->
+		      list_to_existing_atom(Req);
+		  _ ->
+		      throw(unknown_fun)
+	      end,  
+	case erlang:function_exported(Mod, Fun, 1) andalso is_valid(RD, Context) of
+	    {true, RD0, Context1} ->		
+		format_log(info, "ACCOUNT_R: ~p:~p/1 found and authed.~n", [Mod, Fun]),
+		{true, RD0, Context1#context{request=Fun}};
+	    {false, RD1, Context2} ->
+		format_log(info, "ACCOUNT_R: ~p:~p/1 found but not authed.~n", [Mod, Fun]),
+		{{error, 417}, RD1, Context2};
+            false ->
+		throw(not_exported)
+       end
+    catch
+	Exception:Reason ->
+	    format_log(info, "ACCOUNT_R: Could not satify req (~p:~p)~n", [Exception, Reason]),
+	    {false, RD, Context}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will authenticate and check the authorization of the
+%% the request with regards to the user.  It also is responsible for
+%% maintaining the users session.  
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_valid/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #wm_reqdata{}, #context{})).
+is_valid(RD, Context) ->
+    S0 = crossbar_session:start_session(RD),
+    S = S0#session{account_id = <<"test">>},
+    io:format("~p~n", [wrq:req_body(RD)]),
+    Params = [{<<"account_id">>, S#session.account_id} | crossbar_util:get_request_params(RD)],
+    
+    Event = list_to_binary([?SERVER, <<".validate">>]),
+    ValidatedResults = crossbar_bindings:run(Event, {wrq:path_info(request, RD), Params}),
+        case crossbar_bindings:failed(ValidatedResults) of
+        [] ->
+		Event1 = list_to_binary([?SERVER, <<".authenticate">>]),
+		IsAuthenticated = crossbar_bindings:any(crossbar_bindings:run(Event1, {S, Params})),
+		Event2 = list_to_binary([?SERVER, <<".authorize">>]),
+		IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(Event2, {S, Params})),
+		{IsAuthenticated andalso IsAuthorized, RD, Context#context{session=S, req_params=Params}};
+	            [{false, FailedKeys} | _] -> %% some listener returned false, take the first one
+            Resp = crossbar_util:winkstart_envelope(error
+                                                    ,[{<<"failed_keys">>, FailedKeys}]
+                                                    ,"Some keys failed to validate"),
+            {false, wrq:append_to_response_body(Resp, RD), Context#context{session=S}}
+    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will authenticate and check the authorization of the
+%% the request with regards to the user.  It also is responsible for
+%% maintaining the users session.  
+%% @end
+%%--------------------------------------------------------------------
+-spec(format_json/2 :: (RD :: string(), Json :: json_object()) -> iolist()).
 format_json(Format, Json) ->
     {Result, _} = lists:foldl(fun({K, V}, {Acc, Count}) ->
 			Str = case V of
@@ -335,7 +379,8 @@ thing_to_string(Thing) when is_atom(Thing) ->
 thing_to_string(Thing) when is_integer(Thing) -> 
     integer_to_list(Thing).
     
-create_resp_prop(#context{resp_data=D, resp_status=S, resp_error_msg=E, resp_error_code=C}) ->
+create_resp_prop(#context{resp_data=D, resp_status
+=S, resp_error_msg=E, resp_error_code=C}) ->
     case {S, C} of
 	{success, _} ->	     
 	    [{"status", S}, {"data", {struct, D}}];
