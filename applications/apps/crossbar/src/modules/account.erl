@@ -16,7 +16,7 @@
 %% API
 -export([start_link/0]).
 
--export([dispatch_config/0, status/1, all/1, single/1]).
+-export([index/2, create/2, read/2, update/2, delete/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -44,38 +44,31 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-all(_) ->
-    self() ! [
-             {status, error}
-            ,{message, <<"Not yet implemented">>}
-	    ,{error, 501}
-           ].
+index(Params, RD) ->
+    case wrq:method(RD) of
+	      'PUT' -> 
+		    create(Params, RD);
+	      'GET' ->
+		    read(Params, RD);
+	      'POST' ->
+		    update(Params, RD);
+	      'DELETE' ->
+		    delete(Params, RD);
+	      _ ->
+		    self() ! [{status, error}, {error, 417}, {message, <<"CRUD!">>}]
+    end.
+
+read(Params, RD) ->
+    gen_server:cast({local, ?SERVER}, {read, Params, RD, self()}).
+
+create(Params, RD) ->
+    gen_server:cast({local, ?SERVER}, {create, Params, RD, self()}).
     
-single(Params) ->
-    self() ! case proplists:get_value("id", Params) of
-	undefined ->
-	    [
-             {status, error}
-            ,{message, <<"Please provide an ID">>}
-            ,{error, 400}
-           ];
-	Id ->		            
-	   Doc = couch_mgr:open_doc("ts", list_to_binary(Id)),
-           Str = couchbeam_util:json_encode({Doc}),
-           {struct, Json} = mochijson2:decode(Str),
-           [
-	     {status, success}
-	    ,{data, Json}
-	   ]
-   end.
+update(Params, RD) ->
+    gen_server:cast({local, ?SERVER}, {update, Params, RD, self()}).
 
-status(_) ->
-    ok.
-
-%% Define this function if you want to dynamically add a dispatch rule to webmachine
-%% for calls to webmachine_router:add_route/1
-dispatch_config() ->
-    {["account"], account_resource, []}.
+delete(Params, RD) ->
+    gen_server:cast({local, ?SERVER}, {delete, Params, RD, self()}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -128,6 +121,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({read, Params, RD, Pid}, State) ->
+    Id = proplists:get_value("id", Params),
+    Doc = couch_mgr:open_doc("ts", list_to_binary(Id)),
+    Str = couchbeam_util:json_encode({Doc}),
+    {struct, Json} = mochijson2:decode(Str),
+    Pid ! [{status, success}, {data, Json}];
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -155,7 +155,6 @@ handle_info({binding_fired, Pid, <<"account.allowed_methods">>, _Payload}, State
     Reply = ['POST', 'GET', 'PUT'],
     Pid ! {binding_result, true, Reply},
     {noreply, State};
-
 
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
     format_log(info, "ACCOUNT(~p): unhandled binding: ~p~n", [self(), Route]),
