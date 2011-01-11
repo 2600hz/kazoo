@@ -1,0 +1,10 @@
+{ "_id":"_design/accounts"
+  ,"language":"javascript"
+  ,"views":{
+     "listing":{
+       "map":"function(doc) { emit(doc.acct_id, null); }"
+       ,"reduce":"function(k, vs) { return true;}"
+      }
+    }
+}
+

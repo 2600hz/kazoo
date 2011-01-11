@@ -15,9 +15,10 @@
 -export([start_link/0]).
 
 %% Data Access API
--export([has_credit/1, has_credit/2, deduct_credit/2, reserve_trunk/2, reserve_trunk/3, release_trunk/2]).
-
--export([update_table/0]).
+-export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
+	 ,reserve_trunk/2, reserve_trunk/3 %% reserve_trunk(AcctId, CallID[, Amount]) - only reserve if avail_credit > Amt (0 if unspecified)
+	 ,release_trunk/2, release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
+	]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -28,34 +29,16 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
--define(WRITES_THRESHOLD, 4). %% how many writes should a mnesia record have before persisting to couch
+-define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
+-define(UNITS_TO_DOLLARS(X), whistle_util:to_list(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
+-define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
+-define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
+-define(EOD, end_of_day).
 
-%% { CallID, flat_rate | per_min }
--type active_call() :: tuple(binary(), flat_rate | per_min).
-
-
--record(ts_acct, {
-	  account_id = <<>> :: binary()
-         ,account_rev = <<>> :: binary()
-         ,reference = undefined :: undefined | reference()
-         ,account_credit = 0 :: integer() %% thousand-ths of a cent, so 1000 = $0.01
-	 ,delta_credit = 0 :: integer() %% deductions go here
-         ,max_trunks = 0 :: integer() %% number of flat-rate trunks purchased
-	 ,active_calls = [] :: list(active_call())
-	 ,writes_since_sync = 0 :: integer()
+-record(state, {
+	  current_write_db = ""
+	  ,current_read_db = "" %% possibly different during transition from yesterday to today
 	 }).
-
-%% -record(old_ts_acct, {
-	 %%  account_id = <<>> :: binary()
-         %% ,reference = undefined :: undefined | reference()
-         %% ,account_credit = 0 :: integer() %% thousand-ths of a cent, so 1000 = $0.01
-         %% ,max_trunks = 0 :: integer() %% number of flat-rate trunks purchased
-	 %% ,active_calls = [] :: list(active_call())
-	 %% ,writes_since_sync = 0 :: integer()
-	 %% }).
-
--define(DOLLARS_TO_UNITS, 100000). %% $1.00 = 100,000 thousand-ths of a cent
--define(CENTS_TO_UNITS, 1000). %% 100 cents = 100,000 thousand-ths of a cent
 
 %%%===================================================================
 %%% API
@@ -71,22 +54,6 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-update_table() ->
-    %% old_ts_acct -> ts_acct
-    whistle_apps_mnesia:update_table(ts_acct, fun({ts_acct, AcctId, Ref, AC, MT, ACs, WSS}) ->
-    						      #ts_acct{
-    						   account_id = AcctId
-    						   ,reference = Ref
-    						   ,account_credit = AC
-    						   ,max_trunks = MT
-    						   ,active_calls = ACs
-    						   ,writes_since_sync = WSS
-    						  };
-						 (Rec) when is_record(Rec, ts_acct) -> Rec;
-						 (Other) -> format_log(info, "Update table: failed to update ~p~n", [Other]), Other
-    					      end
-    				     , record_info(fields, ts_acct)).
-
 %%%===================================================================
 %%% Data Access API
 %%%===================================================================
@@ -97,29 +64,28 @@ has_credit(Acct) ->
 %% Does the account have enough credit to cover Amt
 -spec(has_credit/2 :: (Acct :: binary(), Amt :: integer()) -> boolean()).
 has_credit(Acct, Amt) ->
-    gen_server:call(?SERVER, {has_credit, Acct, [Amt]}, infinity).
-
-%% Deduct the cost of the call from the account, returning the remaining balance; or return an error
--spec(deduct_credit/2 :: (Acct :: binary(), Amt :: float()) -> tuple(ok, float()) | tuple(error, term())).
-deduct_credit(Acct, Amt) ->
-    gen_server:call(?SERVER, {deduct_credit, Acct, [Amt]}, infinity).
+    gen_server:call(?SERVER, {has_credit, whistle_util:to_binary(Acct), [Amt]}, infinity).
 
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
--spec(reserve_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> tuple(ok, flat_rate | per_min) | tuple(error, term())).
+-spec(reserve_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> tuple(ok, flat_rate | per_min) | tuple(error, no_funds)).
 reserve_trunk(Acct, CallID) ->
-    reserve_trunk(Acct, CallID, 0.0).
+    reserve_trunk(Acct, CallID, 0).
 
 -spec(reserve_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> tuple(ok, flat_rate | per_min) | tuple(error, term())).
 reserve_trunk(Acct, CallID, Amt) ->
-    gen_server:call(?SERVER, {reserve_trunk, Acct, [CallID, Amt]}, infinity).
+    gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt]}, infinity).
 
 %% release a reserved trunk
 %% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
 -spec(release_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> no_return()).
 release_trunk(Acct, CallID) ->
-    gen_server:cast(?SERVER, {release_trunk, Acct, [CallID]}).
+    release_trunk(Acct, CallID, 0).
+
+-spec(release_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> no_return()).
+release_trunk(Acct, CallID, Amt) ->
+    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -137,11 +103,19 @@ release_trunk(Acct, CallID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    R = whistle_apps_mnesia:create_table(ts_acct, [{attributes, record_info(fields, ts_acct)}
-						   ,{type, set}
-						  ]),
-    format_log(info, "TS_ACCTMGR.init: Create table returned ~p~n", [R]),
-    {ok, ok}.
+    {_, {H,Min,S}} = calendar:universal_time(),
+    
+    DB = todays_db_name(),
+
+    format_log(info, "TS_ACCTMGR: Starting DB ~p~n", [DB]),
+
+    MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
+    timer:send_after(MillisecsToMidnight, ?EOD),
+
+    {ok, #state{
+       current_write_db = DB
+       ,current_read_db = DB
+      }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -157,12 +131,33 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({Action, Acct, Args}, _, S) ->
-    case get_acct(Acct) of
-	{error, _}=E -> {reply, E, S};
-	AcctRec when is_record(AcctRec, ts_acct)->
-	    format_log(info, "TS_ACCTMGR(~p): Loaded ~p: ~p, running ~p~n", [self(), Acct, AcctRec, Action]),
-	    {reply, run(Action, AcctRec, Args), S}
+handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_read_db=RDB}=S) ->
+    couch_mgr:add_change_handler(?TS_DB, AcctId),
+    {reply, has_credit(RDB, AcctId, Amt), S};
+handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    format_log(info, "TS_ACCTMGR(~p): Reserve trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+    couch_mgr:add_change_handler(?TS_DB, AcctId),
+    {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
+			   [] ->
+			       case has_credit(RDB, AcctId, Amt) of
+				   true -> {reserve_doc(AcctId, CallID, per_min), per_min};
+				   false -> {[], no_funds}
+			       end;
+			   [{[{<<"key">>, _}, {<<"value">>, 0}]}] ->
+			       case has_credit(RDB, AcctId, Amt) of
+				   true -> {reserve_doc(AcctId, CallID, per_min), per_min};
+				   false -> no_funds
+			       end;
+			   [{[{<<"key">>, _}, {<<"value">>, _}]}] ->
+			       {reserve_doc(AcctId, CallID, flat_rate), flat_rate}
+		       end,
+    case Type of
+	no_funds -> {reply, {error, no_funds}, S};
+	_ ->
+	    case couch_mgr:save_doc(WDB, DebitDoc) of
+		{ok, _} -> {reply, {ok, Type}, S};
+		{error, conflict} -> {reply, {error, entry_exists}, S}
+	    end
     end.
 
 %%--------------------------------------------------------------------
@@ -175,14 +170,20 @@ handle_call({Action, Acct, Args}, _, S) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({Action, Acct, Args}, S) ->
-    case get_acct(Acct) of
-	{error, _}=E -> {reply, E, S};
-	AcctRec when is_record(AcctRec, ts_acct)->
-	    format_log(info, "TS_ACCTMGR(~p): Loaded ~p: ~p, running ~p~n", [self(), Acct, AcctRec, Action]),
-	    format_log(info, "TS_ACCTMGR(~p): Cast resulted in ~p~n", [self(), run(Action, AcctRec, Args)]),
-	    {noreply, S}
-    end.
+handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+    couch_mgr:add_change_handler(?TS_DB, AcctId),
+    case trunk_type(RDB, AcctId, CallID) of
+	non_existant ->
+	    case trunk_type(WDB, AcctId, CallID) of
+		non_existant -> format_log(info, "TS_ACCTMGR(~p): Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
+		per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
+		flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+	    end;
+	per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
+	flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+    end,
+    {noreply, S}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -194,9 +195,34 @@ handle_cast({Action, Acct, Args}, S) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({document_changes, DocID, Changes}, S) ->
+handle_info(timeout, #state{current_write_db=WDB}=S) ->
+    load_views(WDB),
+    case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
+	[] -> [];
+	Accts when is_list(Accts) ->
+	    AcctIds = lists:map(fun({A}) -> props:get_value(<<"id">>, A) end, Accts),
+	    lists:foreach(fun(Id) -> load_account(Id, WDB) end, AcctIds),
+	    start_change_handlers(AcctIds)
+    end,
+    {noreply, S};
+handle_info(?EOD, S) ->
+    DB = todays_db_name(),
+
+    timer:send_after(?MILLISECS_PER_DAY, ?EOD),
+
+    self() ! reconcile_accounts,
+
+    spawn(fun() -> load_views(DB) end),
+
+    {noreply, S#state{
+		current_write_db = DB % all new writes should go in new DB, but old DB is needed still
+	       }};
+handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
+    spawn( fun() -> lists:foreach(fun(Acct) -> transfer_acct(Acct, RDB, WDB) end, get_accts(RDB)) end),
+    {noreply, S#state{current_read_db=WDB}};
+handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
-    update_from_couch(DocID, Changes),
+    update_from_couch(DocID, WDB, RDB),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -227,201 +253,166 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(get_acct/1 :: (AcctId :: binary()) -> #ts_acct{} | tuple(error, doc_not_found)).
-get_acct(AcctId) ->
-    case mnesia:transaction(fun() -> mnesia:read(ts_acct, AcctId) end) of
-	{atomic, []} ->
-	    load_from_couch(AcctId);
-	{atomic, [R]} when is_record(R, ts_acct) ->
-	    couch_mgr:add_change_handler(?TS_DB, AcctId),
-	    R;
-	{aborted, Reason} ->
-	    format_log(error, "TS_ACCTMGR(~p): get_acct failed: ~p~n", [self(), Reason]),
-	    {error, Reason}
+
+start_change_handlers([]) -> ok;
+start_change_handlers([I | Ids]) ->
+    couch_mgr:add_change_handler(?TS_DB, I),
+    start_change_handlers(Ids).
+
+-spec(todays_db_name/0 :: () -> binary()).
+todays_db_name() ->
+    {{Y,M,D}, _} = calendar:universal_time(),
+    iolist_to_binary(io_lib:format("ts_usage_~4B_~2..0B_~2..0B", [Y,M,D])).
+
+-spec(has_credit/3 :: (DB :: binary(), AcctId :: binary(), Amt :: integer() | float()) -> boolean()).
+has_credit(DB, AcctId, Amt) ->
+    credit_available(DB, AcctId) > ?DOLLARS_TO_UNITS(Amt).
+
+-spec(credit_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
+credit_available(DB, AcctId) ->
+    case couch_mgr:get_results(DB, {"credit","credit_available"}, [{<<"group">>, <<"true">>}, {<<"key">>, AcctId}]) of
+	[] -> 0;
+	[{[{<<"key">>, _}, {<<"value">>, Avail}]}] -> Avail
     end.
 
--spec(load_from_couch/1 :: (AcctId :: binary()) -> #ts_acct{} | tuple(error, doc_not_found)).
-load_from_couch(AcctId) ->
-    format_log(info, "TS_ACCTMGR(~p): load_from_couch ~p~n", [self(), AcctId]),
-    case couch_mgr:open_doc(?TS_DB, AcctId) of
-	{error, not_found} -> {error, doc_not_found};
-	Doc when is_list(Doc) ->
-	    couch_mgr:add_change_handler(?TS_DB, AcctId),
-	    Rec = build_rec_from_doc(Doc),
-	    format_log(info, "TS_ACCTMGR(~p): Creating ~p in m_table~n", [self(), Rec]),
-	    case mnesia:transaction(fun() ->
-					    case mnesia:read(ts_acct, AcctId) of
-						[] -> mnesia:write(Rec);
-						[Rec0] when is_record(Rec0, ts_acct) -> Rec0
-					    end
-				    end) of
-		{atomic, ok} -> Rec;
-		{atomic, Rec1} when is_record(Rec1, ts_acct) -> Rec1;
-		{aborted, {bad_type, _}=E} -> {error, E};
-		_Other -> format_log(error, "load from couch other: ~p~n", [_Other]), Rec
-	    end
+-spec(trunk_type/3 :: (RDB :: binary(), AcctId :: binary(), CallID :: binary()) -> flat_rate | per_min | non_existant).
+trunk_type(DB, AcctId, CallID) ->
+    case couch_mgr:get_results(DB, {"trunks", "trunk_type"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, <<"true">>}]) of
+	[] -> non_existant;
+	[{[{<<"key">>,_}, {<<"value">>, <<"flat_rate">>}]}] -> flat_rate;
+	[{[{<<"key">>,_}, {<<"value">>, <<"per_min">>}]}] -> per_min
     end.
 
-update_from_couch(AcctId, Changes) ->
-    _ = lists:foldl(fun(ChangeProp, AcctRec0) ->
-			    NewRev = props:get_value(<<"rev">>, ChangeProp),
-			    format_log(info, "up_from_c: mn_rev: ~p c_rev: ~p~n", [AcctRec0#ts_acct.account_rev, NewRev]),
-			    case AcctRec0#ts_acct.account_rev of
-				NewRev -> AcctRec0;
-				_ ->
-				    D = couch_mgr:open_doc(?TS_DB, AcctId),
-				    AcctRec1 = build_rec_from_doc(D),
-				    format_log(info, "up_from_c: m_rec: ~p~nc_rec: ~p~n", [AcctRec0, AcctRec1]),
-				    AcctRec01 = AcctRec0#ts_acct{
-						  account_rev = AcctRec1#ts_acct.account_rev
-						  ,reference = AcctRec1#ts_acct.reference
-						  ,account_credit = AcctRec1#ts_acct.account_credit
-						  ,max_trunks = AcctRec1#ts_acct.max_trunks
-						 },
-				    update_rec(AcctRec0, AcctRec01),
-				    AcctRec01
-			    end
-		    end, get_acct(AcctId), Changes).
+-spec(trunk_status/3 :: (DB :: binary(), AcctId :: binary(), CallID :: binary()) -> active | inactive).
+trunk_status(DB, AcctId, CallID) ->
+    case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, <<"true">>}]) of
+	[] -> in_active;
+	[{[{<<"key">>,_},{<<"value">>,<<"active">>}]}] -> active;
+	[{[{<<"key">>,_},{<<"value">>,<<"inactive">>}]}] -> inactive
+    end.
 
--spec(save_to_couch/1 :: (#ts_acct{}) -> tuple(ok, proplist()) | tuple(error, conflict | bad_revision)).
-save_to_couch(#ts_acct{account_id=AcctId, account_rev=AcctRev, delta_credit=DC}) ->
+-spec(trunks_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
+trunks_available(DB, AcctId) ->
+    case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
+	[] -> 0;
+	[{[{<<"key">>,_},{<<"value">>, Ts}]}] -> whistle_util:to_integer(Ts)
+    end.
+
+%% should be the diffs from the last account update to now
+account_doc(AcctId, Credit, Trunks) ->
+    credit_doc(AcctId, Credit, Trunks, [{<<"_id">>, AcctId}]).
+
+reserve_doc(AcctId, CallID, flat_rate) ->
+    Extra = [{<<"call_id">>, CallID}
+	     ,{<<"trunk_type">>, flat_rate}
+	     ,{<<"trunks">>, 1}
+	     ,{<<"amount">>, 0}
+	    ],
+    debit_doc(AcctId, Extra);
+reserve_doc(AcctId, CallID, per_min) ->
+    Extra = [{<<"call_id">>, CallID}
+	     ,{<<"trunk_type">>, per_min}
+	     ,{<<"amount">>, 0}
+	    ],
+    debit_doc(AcctId, Extra).
+
+release_doc(AcctId, CallID, flat_rate) ->
+    credit_doc(AcctId, 0, 1, [{<<"call_id">>, CallID}, {<<"trunk_type">>, flat_rate}]).
+
+release_doc(AcctId, CallID, per_min, Amt) ->
+    Extra = [{<<"call_id">>, CallID}
+	     ,{<<"trunk_type">>, per_min}
+	     ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
+	    ],
+    debit_doc(AcctId, Extra).
+
+credit_doc(AcctId, Credit, Trunks, Extra) ->
+    [{<<"acct_id">>, AcctId}
+     ,{<<"amount">>, Credit}
+     ,{<<"trunks">>, Trunks}
+     ,{<<"type">>, <<"credit">>}
+     | Extra
+    ].
+
+debit_doc(AcctId, Extra) ->
+    [{<<"acct_id">>, AcctId}
+     ,{<<"type">>, <<"debit">>}
+     | Extra
+    ].
+
+load_views(DB) ->
+    Dir = lists:flatten([code:priv_dir(trunkstore), "/couchdb/"]),
+    format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Dir]),
+    {ok, Docs} = file:list_dir(Dir),
+    format_log(info, "LoadViews: ~p~n", [Docs]),
+    lists:foreach(fun(Doc) ->
+			  case lists:suffix(".json", Doc) of
+			      false -> ok;
+			      true ->
+				  try
+				      {ok, ViewStr} = file:read_file(Dir ++ Doc),
+				      {CDoc} = couchbeam_util:json_decode(ViewStr),
+				      couch_mgr:save_doc(DB, CDoc)
+				  catch
+				      _A:_B ->
+					  format_log(error, "Error reading ~p into couch: ~p:~p~n", [Doc, _A, _B])
+				  end
+			  end
+		  end, Docs).
+
+get_accts(DB) ->
+    case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
+	[] -> [];
+	AcctsDoc -> lists:map(fun({AcctDoc}) -> props:get_value(<<"key">>, AcctDoc) end, AcctsDoc)
+    end.
+
+transfer_acct(AcctId, RDB, WDB) ->
+    %% read account balance, trunks_available from RDB
+    Bal = credit_available(RDB, AcctId),
+    Ts = trunks_available(RDB, AcctId),
+
+    %% create credit entry in WDB for balance/trunks
+    couch_mgr:save_doc(WDB, account_doc(AcctId, Bal, Ts)),
+    
+    %% update info_* doc with account balance
+    update_account(AcctId, Bal).
+
+
+update_from_couch(AcctId, WDB, RDB) ->
     Doc = couch_mgr:open_doc(?TS_DB, AcctId),
-    DocRev = props:get_value(<<"_rev">>, Doc),
-    case DocRev =:= AcctRev of
-	false ->
-	    format_log(info, "Bad rev: MN ~p Doc: ~p~n", [AcctRev, DocRev]),
-	    {error, bad_revision};
-	true ->
-	    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
-	    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
-	    DocCredit = case whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0)) of
-			 0.0 -> 0;
-			 F when is_float(F) -> whistle_util:to_integer(F * ?DOLLARS_TO_UNITS) %% convert $450.12 -> 45012000
-		     end,
+    couch_mgr:add_change_handler(?TS_DB, AcctId),
 
-	    Credits1 = [ {<<"prepay">>, DocCredit - DC} | lists:keydelete(<<"prepay">>, 1, Credits)],
-	    Acct1 = [ {<<"credits">>, {Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
-	    Doc1 = [ {<<"account">>, {Acct1}} | lists:keydelete(<<"account">>, 1, Doc) ],
-	    format_log(info, "Saving ~p~nWas ~p~n", [Doc1, Doc]),
-	    couch_mgr:save_doc(?TS_DB, Doc1)
-    end.
-
--spec(build_rec_from_doc/1 :: (Doc :: proplist()) -> #ts_acct{}).
-build_rec_from_doc(Doc) ->
     {Acct} = props:get_value(<<"account">>, Doc, {[]}),
     {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
-    Credit0 = props:get_value(<<"prepay">>, Credits, 0),
-    Credit = case whistle_util:to_float(Credit0) of
-		 0.0 -> 0;
-		 F when is_float(F) -> whistle_util:to_integer(F * ?DOLLARS_TO_UNITS) %% convert $450.12 -> 45012000
-	     end,
+    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
+    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
 
-    MaxTrunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
-    #ts_acct{
-	      account_id = props:get_value(<<"_id">>, Doc)
-	      ,account_rev = props:get_value(<<"_rev">>, Doc)
-	      ,reference = undefined
-	      ,account_credit = Credit
-	      ,delta_credit = 0
-	      ,max_trunks = MaxTrunks
-	      ,active_calls = []
-	      ,writes_since_sync = 0
-	    }.
+    UsageDoc = couch_mgr:open_doc(RDB, AcctId),
+    T0 = props:get_value(<<"trunks">>, UsageDoc),
+    C0 = props:get_value(<<"amount">>, UsageDoc),
+    
+    UD1 = [ {<<"trunks">>, T0 + (Trunks - T0)} | lists:keydelete(<<"trunks">>, 1, UsageDoc)],
+    UD2 = [ {<<"amount">>, C0 + (Balance - C0)} | lists:keydelete(<<"amount">>, 1, UD1)],
+    couch_mgr:save_doc(WDB, UD2).
 
-update_rec(#ts_acct{account_id=AcctId, reference=Ref, writes_since_sync=WSS}=OldRec, NewRec) ->
-    {atomic, SavedRec} = mnesia:transaction(fun() ->
-						    case mnesia:wread({ts_acct, AcctId}) of % lock
-							[#ts_acct{reference = Ref1}] when Ref =:= Ref1 ->
-							    mnesia:write(NewRec#ts_acct{reference = erlang:make_ref()
-											,writes_since_sync = WSS+1
-										       }),
-							    NewRec;
-							[OtherRec] when is_record(OtherRec, ts_acct) ->
-							    %% someone else saved this record; create a merged record
-							    format_log(info, "TS_ACCTMGR: Update out of date~nOld: ~p~nCurr: ~p~nNew: ~p~n", [OldRec, OtherRec, NewRec]),
-							    
-							    OldCalls = OldRec#ts_acct.active_calls,
-							    NewCalls = NewRec#ts_acct.active_calls,
-							    CallDiff = case NewCalls =:= OldCalls of
-									   true -> [];
-									   false ->
-									       case hd(OldCalls) =/= hd(NewCalls) of
-										   true -> [hd(NewCalls)];
-										   false ->
-										       lists:foldl(fun(K, Acc) ->
-													   case lists:member(K, NewCalls) of
-													       true -> Acc;
-													       false -> [K | Acc]
-													   end
-												   end, [], OldCalls)
-									       end
-								       end,
-							    DiffDelta = NewRec#ts_acct.delta_credit - OldRec#ts_acct.delta_credit,
-							    OtherRec1 = OtherRec#ts_acct{
-									  delta_credit = OtherRec#ts_acct.delta_credit + DiffDelta
-									  ,active_calls = lists:umerge(OtherRec#ts_acct.active_calls, CallDiff)
-									  ,reference = erlang:make_ref()
-									  ,writes_since_sync = OtherRec#ts_acct.writes_since_sync + 1
-									 },
-							    mnesia:write(OtherRec1),
-							    OtherRec1;
-							Other -> format_log(info, "update_rec other: ~p~n", [Other]),
-								 OldRec
-						    end
-					    end),
-    case SavedRec#ts_acct.writes_since_sync > ?WRITES_THRESHOLD of
-	true ->
-	    case save_to_couch(SavedRec) of
-		{error, _}=E -> format_log(info, "Failed to save doc: ~p~n", [E]);
-		{ok, Doc} ->
-		    NewRec = build_rec_from_doc(Doc),
-		    format_log(info, "Saved couch doc.~nOldRec: ~p~nNewRec: ~p~n", [SavedRec, NewRec]),
-		    update_rec(NewRec, NewRec)
-	    end;
-	false -> ok
-    end,
-    ok.
 
-run(has_credit, #ts_acct{account_credit=0}, _) -> false;
-run(has_credit, #ts_acct{account_credit=Credit, delta_credit=Delta}, [Amt]) ->
-    (Credit - Delta) > whistle_util:to_integer(Amt * ?DOLLARS_TO_UNITS);
-run(deduct_credit, #ts_acct{account_credit=C, delta_credit=Delta}=AcctRec, [Amt]) ->
-    Delta1 = Delta + whistle_util:to_integer(Amt * ?DOLLARS_TO_UNITS),
-    try
-	ok = update_rec(AcctRec, AcctRec#ts_acct{delta_credit=Delta1}),
-	{ok, ((C - Delta1) / ?DOLLARS_TO_UNITS)}
-    catch
-	_:E -> {error, E}
-    end;
-run(reserve_trunk, #ts_acct{active_calls=ACs}=AcctRec, [CallID, Amt]) ->
-    case props:get_value(CallID, ACs) of
-	flat_rate -> {error, {callid_exists, flat_rate}};
-	per_min -> {error, {callid_exists, per_min}};
-	undefined ->
-	    case flat_rates_in_use(ACs) < AcctRec#ts_acct.max_trunks of
-		true ->
-		    update_rec(AcctRec, AcctRec#ts_acct{active_calls=[{CallID, flat_rate} | ACs]}),
-		    {ok, flat_rate};
-		false ->
-		    case run(has_credit, AcctRec, [Amt]) of
-			true ->
-			    update_rec(AcctRec, AcctRec#ts_acct{active_calls=[{CallID, per_min} | ACs]}),
-			    {ok, per_min};
-			false ->
-			    {error, no_available_trunks}
-		    end
-	    end
-    end;
-run(release_trunk, #ts_acct{active_calls=ACs}=AcctRec, [CallID]) ->
-    case props:get_value(CallID, ACs) of
-	undefined -> ok;
-	_ ->
-	    ACs1 = lists:keydelete(CallID, 1, ACs),
-	    update_rec(AcctRec, AcctRec#ts_acct{active_calls=ACs1})
-    end;
-run(Action, _AcctRec, _Args) ->
-    format_log(error, "TS_ACCTMGR(~p): Unknown action ~p, ~p, ~p~n", [self(), Action, _AcctRec, _Args]),
-    {error, unknown_action}.
+update_account(AcctId, Bal) ->
+    Doc = couch_mgr:open_doc(?TS_DB, AcctId),
+    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
+    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+    Credits1 = [ {<<"prepay">>, ?UNITS_TO_DOLLARS(Bal)} | lists:keydelete(<<"prepay">>, 1, Credits)],
+    Acct1 = [ {<<"credits">>, {Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
+    Doc1 = [ {<<"account">>, {Acct1}} | lists:keydelete(<<"account">>, 1, Doc)],
+    couch_mgr:save_doc(?TS_DB, Doc1).
 
-flat_rates_in_use(ACs) ->
-    lists:foldl(fun({_, flat_rate}, Cnt) -> Cnt+1; (_, Cnt) -> Cnt end, 0, ACs).
+load_account(AcctId, DB) ->
+    Doc = couch_mgr:open_doc(?TS_DB, AcctId),
+    couch_mgr:add_change_handler(?TS_DB, AcctId),
+
+    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
+    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
+    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
+    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)).
+				     
+%% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
