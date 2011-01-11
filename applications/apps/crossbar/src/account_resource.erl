@@ -59,13 +59,16 @@
 	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
 	  ,session = #session{} :: #session{}
 	  ,req_params = [] :: proplist()
-          ,request = undefined
-	  ,resp_status = success
-	  ,resp_error_msg = undefined
-	  ,resp_error_code = undefined
-	  ,resp_data = []
+          ,request = undefined :: undefined | atom()
+	  ,resp_status = success :: crossbar_status()
+	  ,resp_error_msg = undefined :: string() | undefined
+	  ,resp_error_code = undefined :: integer() | undefined
+	  ,resp_data = [] :: list() | []
 	 }).
 
+%%%===================================================================
+%%% WebMachine API
+%%%===================================================================
 init(Opts) ->
     Event = list_to_binary([?SERVER, <<".init">>]),
     crossbar_bindings:run(Event, Opts),
@@ -126,7 +129,9 @@ finish_request(RD, #context{session=S}=Context) ->
     crossbar_bindings:run(Event, {RD, Context}),
     {true, crossbar_session:finish_session(S, RD), Context}.
 
-%% Convert the input to Erlang
+%%%===================================================================
+%%% Content Acceptors
+%%%===================================================================
 from_text(RD, Context) ->
     Event = list_to_binary([?SERVER, <<".from_text">>]),
     crossbar_bindings:run(Event, {RD, Context}),
@@ -151,11 +156,13 @@ from_form(RD, Context) ->
     Req_Params = crossbar_util:get_request_params(RD),
     {true, RD, Context#context{req_params=Req_Params}}.
 
-%% Generate the response
+%%%===================================================================
+%%% Content Providers
+%%%===================================================================
 to_html(RD, Context) ->
     Event = list_to_binary([?SERVER, <<".to_html">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    Context1 = do_request(Context),
+    Context1 = do_request(RD, Context),
     Body = format_json(?HTML_FORMAT, create_resp_prop(Context1)), 
     Page = io_lib:format("<html><body>~s</body></html>", [Body]),
     {Page, RD, Context1}.
@@ -163,14 +170,14 @@ to_html(RD, Context) ->
 to_json(RD, Context) ->
     Event = list_to_binary([?SERVER, <<".to_json">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    Context1 = do_request(Context),
+    Context1 = do_request(RD, Context),
     Resp = mochijson2:encode({struct, create_resp_prop(Context1)}),
     {Resp, RD, Context1}.
 
 to_xml(RD, Context) ->
     Event = list_to_binary([?SERVER, <<".to_xml">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    Context1 = do_request(Context),
+    Context1 = do_request(RD, Context),
     Body = format_json(?XML_FORMAT, create_resp_prop(Context1)),
     Page = io_lib:format("<xml>~s</xml>", [Body]),
     {Page, RD, Context1}.
@@ -178,11 +185,25 @@ to_xml(RD, Context) ->
 to_text(RD, Context) ->
     Event = list_to_binary([?SERVER, <<".to_text">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    Context1 = do_request(Context),
+    Context1 = do_request(RD, Context),
     Resp = format_json(?TEXT_FORMAT, create_resp_prop(Context1)),
     {Resp, RD, Context1}.
 
-%% Helper functions
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will find the intersection of the content_type lists 
+%% for both provided and accepts returned by bindings to the events.
+%% The resulting list is then reformated into the expected proplist
+%% for webmachine.  Notice, this allows the event bindings to veto
+%% (remove) a content type, but they can not add one that this module
+%% can not handle.
+%% @end
+%%--------------------------------------------------------------------
+-spec(allow_content_types/2 :: (Reponses :: proplist(), Avaliable :: proplist()) -> proplist()).
 allow_content_types(Responses, Available) ->
     Results = case crossbar_bindings:succeeded(Responses) of
         [] ->	    
@@ -200,6 +221,15 @@ allow_content_types(Responses, Available) ->
         lists:foldr(fun(EncType, Acc1) ->[ {EncType, Fun} | Acc1 ] end, Acc, L)
     end, [], Results).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will find the intersection of the allowed methods
+%% among event respsonses.  The responses can only veto the list of
+%% methods, it can not add.
+%% @end
+%%--------------------------------------------------------------------
+-spec(allow_methods/2  :: (Reponses :: proplist(), Avaliable :: proplist()) -> #context{}).
 allow_methods(Responses, Available) ->    
     case crossbar_bindings:succeeded(Responses) of
         [] ->
@@ -222,10 +252,10 @@ allow_methods(Responses, Available) ->
 %% is loaded into the appropriate record fields for use in the response. 
 %% @end
 %%--------------------------------------------------------------------
--spec(do_request/1 :: (Context :: #context{}) -> #context{}).
-do_request(#context{request=Fun, req_params=Params}=Context) ->
+-spec(do_request/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> #context{}).
+do_request(RD, #context{request=Fun, req_params=Params}=Context) ->
     Mod = list_to_existing_atom(?SERVER),
-    apply(Mod, Fun, [Params]),
+    apply(Mod, Fun, [Params, RD]),
     receive 
 	Resp ->
 	  Context#context{
@@ -273,7 +303,7 @@ find_and_auth(RD, Context) ->
 		  _ ->
 		      throw(unknown_fun)
 	      end,  
-	case erlang:function_exported(Mod, Fun, 1) andalso is_valid(RD, Context) of
+	case erlang:function_exported(Mod, Fun, 2) andalso is_valid(RD, Context) of
 	    {true, RD0, Context1} ->		
 		format_log(info, "ACCOUNT_R: ~p:~p/1 found and authed.~n", [Mod, Fun]),
 		{true, RD0, Context1#context{request=Fun}};
@@ -319,15 +349,16 @@ is_valid(RD, Context) ->
                                                     ,"Some keys failed to validate"),
             {false, wrq:append_to_response_body(Resp, RD), Context#context{session=S}}
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will authenticate and check the authorization of the
-%% the request with regards to the user.  It also is responsible for
-%% maintaining the users session.  
+%% This function applies the format string to json objects.  This is
+%% used to parse JSON into xml, plain text, and html.  The expected
+%% JSON structure is that of mochiweb.  
 %% @end
 %%--------------------------------------------------------------------
--spec(format_json/2 :: (RD :: string(), Json :: json_object()) -> iolist()).
+-spec(format_json/2 :: (Format :: string(), Json :: json_object()) -> iolist()).
 format_json(Format, Json) ->
     {Result, _} = lists:foldl(fun({K, V}, {Acc, Count}) ->
 			Str = case V of
@@ -346,18 +377,27 @@ format_json(Format, Json) ->
 					      end;
 					  _->
 					      {SubStr, _} = lists:foldl(fun(V2, {Acc2, Count2}) -> 
-								  Str2 = io_lib:format(Format, [integer_to_list(Count2), thing_to_string(V2)]),
+								  Str2 = io_lib:format(Format, [integer_to_list(Count2), whistle_util:to_list(V2)]),
 								  {string:concat(Acc2, Str2), Count2 + 1}
 							  end, {"", 0}, V1),
 					      io_lib:format(Format, [K, SubStr])
 				     end;
 			    _ ->
-				      io_lib:format(Format, [K, thing_to_string(V)])
+				      io_lib:format(Format, [K, whistle_util:to_list(V)])
 			end,
 			{string:concat(Acc, Str), Count + 1}
 		end, {"", 0}, Json),
 	Result.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will determine if a list is a proplist, this is used
+%% above to distinquish lists in the JSON payload from recursive 
+%% structs
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_proplist/1 :: (Thing :: term()) -> boolean()).
 is_proplist(Thing) when is_list(Thing) ->
     lists:all(fun(Elem) ->
 		       case Elem of 
@@ -369,18 +409,16 @@ is_proplist(Thing) when is_list(Thing) ->
 	      end, Thing);
 is_proplist(_) ->
     false.
-
-thing_to_string(Thing) when is_list(Thing) -> 
-    Thing;
-thing_to_string(Thing) when is_binary(Thing) -> 
-    binary_to_list(Thing);
-thing_to_string(Thing) when is_atom(Thing) ->
-    atom_to_list(Thing);
-thing_to_string(Thing) when is_integer(Thing) -> 
-    integer_to_list(Thing).
     
-create_resp_prop(#context{resp_data=D, resp_status
-=S, resp_error_msg=E, resp_error_code=C}) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function extracts the reponse atoms, and creates the JSON
+%% proplist format.
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_resp_prop/1 :: (Context :: #context{}) -> proplist()).
+create_resp_prop(#context{resp_data=D, resp_status=S, resp_error_msg=E, resp_error_code=C}) ->
     case {S, C} of
 	{success, _} ->	     
 	    [{"status", S}, {"data", {struct, D}}];
