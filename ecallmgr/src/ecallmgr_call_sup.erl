@@ -18,8 +18,8 @@
 
 -define(SERVER, ?MODULE).
 
-%% only restart if they die abnormally - transient
--define(CHILD(Mod, Type), {Mod, {Mod, start_link, []}, transient, 5000, Type, [Mod]}).
+%% supervisors should never die for good
+-define(CHILD(Mod, Type), {Mod, {Mod, start_link, []}, permanent, 5000, Type, [Mod]}).
 
 %%%===================================================================
 %%% API functions
