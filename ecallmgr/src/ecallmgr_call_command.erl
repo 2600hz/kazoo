@@ -16,7 +16,8 @@
 
 -define(LOCAL_MEDIA_PATH, "/tmp/").
 
--type proplist() :: list(tuple(binary(), binary())). % just want to deal with binary K/V pairs
+-include("whistle_api.hrl").
+
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
@@ -25,8 +26,10 @@ exec_cmd(Node, UUID, Prop, AmqpHost) ->
     DestID = get_value(<<"Call-ID">>, Prop),
     case DestID =:= UUID of
 	true ->
-	    case get_fs_app(Node, UUID, Prop, AmqpHost, get_value(<<"Application-Name">>, Prop)) of
+	    AppName = get_value(<<"Application-Name">>, Prop),
+	    case get_fs_app(Node, UUID, Prop, AmqpHost, AppName) of
 		{error, _Msg}=Err -> Err;
+		{_, noop} -> format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]), ok;
 		{App, AppData} -> send_cmd(Node, UUID, App, AppData)
 	    end;
 	false ->
@@ -34,6 +37,7 @@ exec_cmd(Node, UUID, Prop, AmqpHost) ->
 	    {error, "Command not for this node"}
     end.
 
+%% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
 -spec(get_fs_app/5 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), AmqpHost :: string(), Application :: binary()) -> tuple(binary(), binary()) | tuple(error, string())).
 get_fs_app(Node, UUID, Prop, _AmqpHost, <<"play">>) ->
     case whistle_api:play_req_v(Prop) of
@@ -194,6 +198,13 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
 	    {App, Data}
     end;
+get_fs_app(Node, UUID, Prop, _AmqpHost, <<"set">>=AppName) ->
+    Custom = get_value(<<"Custom-Channel-Vars">>, Prop, []),
+    lists:foreach(fun({K,V}) ->
+			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
+			  set(Node, UUID, Arg)
+		  end, Custom),
+    {AppName, noop};
 get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _Prop]),
     {error, "Application unknown"}.
