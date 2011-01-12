@@ -31,7 +31,7 @@ init(Node, UUID, Host, CtlPid) ->
     add_amqp_listener(Host, UUID),
     loop(Node, UUID, Host, CtlPid).
 
--spec(loop/4 :: (Node :: atom(), UUID :: binary(), Host :: string(), CtlPid :: pid()) -> no_return()).
+-spec(loop/4 :: (Node :: atom(), UUID :: binary(), Host :: string(), CtlPid :: pid() | undefined) -> no_return()).
 loop(Node, UUID, Host, CtlPid) ->
     receive
 	{call, {event, [UUID | Data]}} ->
@@ -66,7 +66,7 @@ loop(Node, UUID, Host, CtlPid) ->
 		undefined -> ok;
 		_ -> CtlPid ! {hangup, UUID}
 	    end,
-	    format_log(info, "EVT(~p): Call Hangup~n", [self()]);
+	    format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]);
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
@@ -88,7 +88,7 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
 	false ->
 	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
     end;
-send_ctl_event(_CtlPid, _UUID, _Evt, _Data) -> ok.
+send_ctl_event(_, _, _, _) -> ok.
 
 -spec(publish_msg/3 :: (Host :: string(), UUID :: binary(), Prop :: proplist()) -> no_return()).
 publish_msg(Host, UUID, Prop) ->
