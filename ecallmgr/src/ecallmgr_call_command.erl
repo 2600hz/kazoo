@@ -38,7 +38,7 @@ exec_cmd(Node, UUID, Prop, AmqpHost) ->
     end.
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec(get_fs_app/5 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), AmqpHost :: string(), Application :: binary()) -> tuple(binary(), binary()) | tuple(error, string())).
+-spec(get_fs_app/5 :: (Node :: atom(), UUID :: binary(), Prop :: proplist(), AmqpHost :: string(), Application :: binary()) -> tuple(binary(), binary() | noop) | tuple(error, string())).
 get_fs_app(Node, UUID, Prop, _AmqpHost, <<"play">>) ->
     case whistle_api:play_req_v(Prop) of
 	false -> {error, "play failed to execute as Prop did not validate."};
