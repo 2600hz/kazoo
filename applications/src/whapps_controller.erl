@@ -6,7 +6,7 @@
 %%% @end
 %%% Created :  1 Dec 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(whistle_controller).
+-module(whapps_controller).
 
 -behaviour(gen_server).
 
