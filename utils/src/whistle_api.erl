@@ -33,7 +33,7 @@
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
-	 ,sleep_req/1, tone_detect_req/1
+	 ,sleep_req/1, tone_detect_req/1, set_req/1
 	]).
 
 %% Validation functions
@@ -43,7 +43,7 @@
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
 	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
-	 ,call_status_resp_v/1
+	 ,call_status_resp_v/1, set_req_v/1
 	]).
 
 %% FS-specific routines
@@ -535,6 +535,22 @@ park_req(Prop) ->
 -spec(park_req_v/1 :: (Prop :: proplist()) -> boolean()).
 park_req_v(Prop) ->
     validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Set Custom Channel variables - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(set_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+set_req(Prop) ->
+    case set_req_v(Prop) of
+	true -> build_message(Prop, ?SET_REQ_HEADERS, ?OPTIONAL_SET_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for set_req"}
+    end.
+
+-spec(set_req_v/1 :: (Prop :: proplist()) -> boolean()).
+set_req_v(Prop) ->
+    validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Play media and record digits - see wiki

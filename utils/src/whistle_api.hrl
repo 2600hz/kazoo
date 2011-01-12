@@ -379,6 +379,23 @@
 			 ]).
 -define(PARK_REQ_TYPES, []).
 
+%% Set - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FSet
+-define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>]).
+-define(OPTIONAL_SET_REQ_HEADERS, []).
+-define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+			  ,{<<"Event-Name">>, <<"command">>}
+			  ,{<<"Application-Name">>, <<"set">>}
+			 ]).
+-define(SET_REQ_TYPES, [
+			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
+							    lists:all(fun({K, V}) when is_binary(K) andalso
+										       (is_binary(V) orelse is_number(V)) -> true;
+									 (_) -> false
+								      end, L);
+						       (_) -> false
+						    end}
+		       ]).
+
 %% Call Pickup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Call_Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, []).

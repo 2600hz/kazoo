@@ -199,7 +199,7 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"tone_detect">>=App) ->
 	    {App, Data}
     end;
 get_fs_app(Node, UUID, Prop, _AmqpHost, <<"set">>=AppName) ->
-    Custom = get_value(<<"Custom-Channel-Vars">>, Prop, []),
+    {struct, Custom} = get_value(<<"Custom-Channel-Vars">>, Prop, {struct, []}),
     lists:foreach(fun({K,V}) ->
 			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
 			  set(Node, UUID, Arg)
