@@ -8,4 +8,4 @@
               {modules,[logger,props,whapps_controller,whistle_api,
                         whistle_apps,whistle_apps_app,whistle_apps_cli,
                         whistle_apps_deps,whistle_apps_mnesia,
-                        whistle_apps_sup,whistle_controller,whistle_util]}]}.
+                        whistle_apps_sup,whistle_util]}]}.
