@@ -277,7 +277,7 @@ get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
 			[ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
 		end, Vars, Custom);
 get_channel_vars({_K, _V}, Vars) ->
-    format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
+    %format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
 handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid, Data) ->
