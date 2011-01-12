@@ -31,4 +31,4 @@ stop_app(App) ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(whistle_controller, worker)]} }.
+    {ok, { {one_for_one, 5, 10}, [?CHILD(whapps_controller, worker)]} }.
