@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_app/1, set_amqp_host/1, set_couch_host/1, stop_app/1]).
+-export([start_link/0, start_app/1, set_amqp_host/1, set_couch_host/1, stop_app/1, running_apps/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -52,6 +52,9 @@ set_amqp_host(H) ->
 set_couch_host(H) ->
     couch_mgr:set_host(H).
 
+running_apps() ->
+    gen_server:call(?SERVER, running_apps).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -84,6 +87,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(running_apps, _, #state{apps=As}=S) ->
+    {reply, As, S};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
