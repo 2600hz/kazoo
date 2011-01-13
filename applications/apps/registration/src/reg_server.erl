@@ -114,6 +114,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec(terminate/2 :: (_, #state{}) -> no_return()).
 terminate(_Reason, #state{amqp_host=Host, my_q=Q}) ->
     stop_amqp(Host, Q),
     ok.
