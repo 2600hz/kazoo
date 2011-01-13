@@ -82,10 +82,12 @@ allowed_methods(RD, #context{allowed_methods=Methods}=Context) ->
 
 is_authorized(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".is_authorized">>]),
-    Auth = crossbar_bindings:any(crossbar_bindings:run(Event, {RD, Context})),
+    %%Auth = crossbar_bindings:any(crossbar_bindings:run(Event, {RD, Context})),
+    crossbar_bindings:run(Event, {RD, Context}),
     S0 = crossbar_session:start_session(RD),
     S = S0#session{account_id = <<"test">>},
-    {Auth, RD, Context#context{session=S}}.
+%%    {Auth, RD, Context#context{session=S}}.
+    {true, RD, Context#context{session=S}}.
 
 known_content_type(RD, #context{cb_module=CbM, session=S}=Context) ->
     Event = list_to_binary([CbM, <<".known_content_type">>]),
@@ -94,10 +96,10 @@ known_content_type(RD, #context{cb_module=CbM, session=S}=Context) ->
 	QS = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- wrq:req_qs(RD)],	
         Prop = case wrq:req_body(RD) of
 		   <<>> ->
-		       [];
+		       [{<<"data">>, {struct, []}}];
 		   Content ->
 		       {struct, Json} = mochijson2:decode(Content),
-		       Json
+		       lists:ukeymerge(1, lists:ukeysort(1, Json), [{<<"data">>, {struct,[]}}])
 	       end,
 	Prop1 = [{<<"account_id">>, S#session.account_id} | Prop],
         Req_Params = wrq:path_tokens(RD) ++ [lists:ukeymerge(1, lists:ukeysort(1, Prop1), lists:ukeysort(1, QS))],
@@ -105,7 +107,13 @@ known_content_type(RD, #context{cb_module=CbM, session=S}=Context) ->
     catch
         Exception:Reason ->
             format_log(info, "API_1_0_R: Unknown content type (~p:~p)~n", [Exception, Reason]),
-            {{error, "Invalid Content"}, RD, Context}
+	    Context1 = Context#context{
+			  resp_status = error
+			 ,resp_error_msg = <<"Invalid or malformed content">>
+			 ,resp_error_code = 400
+			},
+	    RD1 = wrq:set_resp_body(create_body(Context1), RD),
+            {{halt, 400}, RD1, Context1}
     end.
 
 resource_exists(RD, #context{cb_module=CbM}=Context) ->
@@ -127,11 +135,10 @@ content_types_accepted(RD, #context{content_types_accepted=CTA, cb_module=CbM}=C
 
 generate_etag(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".generate_etag">>]),
-    ETag = mochihex:to_hex(crypto:md5(wrq:resp_body(RD))),
-    Responses = crossbar_bindings:run(Event, {ETag, RD, Context}),
+    Responses = crossbar_bindings:run(Event, {undefined, RD, Context}),
     case crossbar_bindings:succeeded(Responses) of
 	[] ->
-	    { ETag, RD, Context };
+	    { undefined, RD, Context };
 	[{true, Response} | _] ->
 	    Response
     end.
@@ -336,13 +343,13 @@ find_and_auth(RD, #context{cb_module=CbM, req_params=Params}=Context) ->
 	Find = atom_to_list(Fun),
 	Params1 = lists:filter(fun(Elem) ->  Find /= Elem end, Params),	
 	Arity = length(Params1) + 1,
-	case erlang:function_exported(Mod, Fun, Arity) andalso is_valid(RD, Context) of
-	    {true, RD0, Context1} ->		
+	case erlang:function_exported(Mod, Fun, Arity) andalso is_valid(RD, Context#context{request=Fun, req_params=Params1}) of
+	    {true, _RD, _Context} ->		
 		format_log(info, "API_1_0_R: ~p:~p/~p found and authed.~n", [Mod, Fun, Arity]),
-		{true, RD0, Context1#context{request=Fun, req_params=Params1}};
-	    {false, RD1, Context2} ->
+		{true, RD, Context#context{request=Fun, req_params=Params1}};
+	    {false, RD1, Context1} ->
 		format_log(info, "API_1_0_R: ~p:~p/~p found but not authed.~n", [Mod, Fun, Arity]),
-		{{error, 417}, RD1, Context2};
+		{{halt, 400}, wrq:remove_resp_header("Content-Encoding", RD1), Context1};
             false ->
 		format_log(info, "API_1_0_R: ~p:~p/~p not exported.~n", [Mod, Fun, Arity]),
 		throw(not_exported)
@@ -362,9 +369,9 @@ find_and_auth(RD, #context{cb_module=CbM, req_params=Params}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #wm_reqdata{}, #context{})).
-is_valid(RD, #context{cb_module=CbM, req_params=Params, session=S}=Context) ->
+is_valid(RD, #context{cb_module=CbM, request=Fun, req_params=Params, session=S}=Context) ->
     Event = list_to_binary([CbM, <<".validate">>]),
-    ValidatedResults = crossbar_bindings:run(Event, {RD, Params}),
+    ValidatedResults = crossbar_bindings:run(Event, {Fun, Params}),
     case crossbar_bindings:failed(ValidatedResults) of
 	[] ->
 	    Event1 = list_to_binary([CbM, <<".authenticate">>]),
@@ -373,14 +380,14 @@ is_valid(RD, #context{cb_module=CbM, req_params=Params, session=S}=Context) ->
 	    IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(Event2, {S, Params})),
 	    {IsAuthenticated andalso IsAuthorized, RD, Context};
 	[{false, FailedKeys} | _] -> %% some listener returned false, take the first one
-	    Context1=Context#context{
-  		        resp_data = [{<<"failed_keys">>, FailedKeys}]
-		       ,resp_status = error
-		       ,resp_error_msg = "Some keys failed to validate"
-		       ,resp_error_code = 400
-		      },
-	    Resp = mochijson2:encode({struct, create_resp_prop(Context1)}),
-            {false, wrq:append_to_response_body(Resp, RD), Context1}
+	    Context1 = Context#context{
+			  resp_status = error
+			 ,resp_error_msg = <<"Invalid Request">>
+                         ,resp_error_code = 400
+			 ,resp_data = [{<<"failed">>, FailedKeys}]
+			},
+	    RD1 = wrq:set_resp_body(create_body(Context1), RD),
+            {false, RD1, Context1}
     end.
 
 %%--------------------------------------------------------------------
@@ -396,7 +403,8 @@ is_valid(RD, #context{cb_module=CbM, req_params=Params, session=S}=Context) ->
 -spec(do_request/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> #context{}).
 do_request(RD, #context{cb_module=CbM, request=Fun, req_params=Params}=Context) ->
     Mod = list_to_existing_atom(CbM),
-    apply(Mod, Fun, Params ++ [RD]),
+    format_log(info, "API_1_0_R: Execute ~p:~p(~p)~n", [Mod, Fun, Params]),
+    apply(Mod, Fun, Params ++ [RD]),    
     receive 
 	Resp ->
 	  Context#context{
@@ -410,8 +418,8 @@ do_request(RD, #context{cb_module=CbM, request=Fun, req_params=Params}=Context) 
           Context#context{
               resp_data = []
              ,resp_status = fatal
-             ,resp_error_msg = <<"Request processing timed out">>
-             ,resp_error_code = 500
+             ,resp_error_msg = "Request processing timed out"
+             ,resp_error_code = 504
           }
     end.
 
@@ -488,7 +496,7 @@ create_resp_prop(#context{resp_data=D, resp_status=S, resp_error_msg=E, resp_err
 	{success, _} ->	     
 	    [{"status", S}, {"data", {struct, D}}];
 	{_, undefined} ->
-	    [{"status", S}, {"message", E}, {"data", {struct, D}}];
+	    [{"status", S}, {"message", whistle_util:to_binary(E)}, {"data", {struct, D}}];
 	_ ->
-	    [{"status", S}, {"message", E}, {"error", C}, {"data", {struct, D}}]
+	    [{"status", S}, {"message", whistle_util:to_binary(E)}, {"error", C}, {"data", {struct, D}}]
     end.

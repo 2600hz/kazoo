@@ -17,7 +17,7 @@
 -export([start_link/0]).
 
 -export([http_put/3, http_get/3, http_post/3, http_delete/3]).
--export([create/2, read/2, update/2, delete/2]).
+-export([create/2, read/2, read/3, update/3, delete/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -46,35 +46,32 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 http_put(DocId, Params, RD) ->
-    io:format("~p~n", [DocId]),
-    create(Params, RD).
+    create([{<<"id">>, list_to_binary(DocId)}], RD).
 
 http_get(DocId, Params, RD) ->
-    io:format("~p~n", [DocId]),
-    read(Params, RD).
+    read(DocId, Params, RD).
 
 http_post(DocId, Params, RD) ->
-    io:format("~p~n", [DocId]),
-    update(Params, RD).
+    update(DocId, Params, RD).
 
 http_delete(DocId, Params, RD) ->
-    io:format("~p~n", [DocId]),			      
     delete(Params, RD).
 
-read(Params, RD) ->
-    io:format("Read~n", []),
-    gen_server:cast(?SERVER, {read, Params, RD, self()}).
-
 create(Params, RD) ->
-    io:format("Create~n", []),
     gen_server:cast(?SERVER, {create, Params, RD, self()}).
-    
-update(Params, RD) ->
-    io:format("Update~n", []),
-    gen_server:cast(?SERVER, {update, Params, RD, self()}).
+
+read(Params, RD) ->    
+    {struct, Data} = proplists:get_value(<<"data">>, Params),
+    read(proplists:get_value(<<"_id">>, Data), Params, RD).
+
+read(DocId, _Params, _RD) ->
+    gen_server:cast(?SERVER, {read, self(), whistle_util:to_binary(DocId)}).
+
+update(DocID, Params, _RD) ->
+    {struct, Data} = proplists:get_value(<<"data">>, Params),
+    gen_server:cast(?SERVER, {update, self(), DocID, Data}).
 
 delete(Params, RD) ->
-    io:format("Delete~n", []),
     gen_server:cast(?SERVER, {delete, Params, RD, self()}).
 
 %%%===================================================================
@@ -129,17 +126,47 @@ handle_cast({create, Params, RD, Pid}, State) ->
     Pid ! [{status, success}, {data, [{method, create}]}],
     {noreply, State};
 
-handle_cast({read, Params, RD, Pid}, State) ->
-%%    Id = proplists:get_value("id", Params),
-%%    Doc = couch_mgr:open_doc("ts", list_to_binary(Id)),
-%%    Str = couchbeam_util:json_encode({Doc}),
-%%    {struct, Json} = mochijson2:decode(Str),
-%%    Pid ! [{status, success], {data, Json}],
-    Pid ! [{status, success}, {data, [{method, read}]}],
+handle_cast({read, Pid, DocId}, State) ->
+    case couch_mgr:open_doc("accounts", whistle_util:to_binary(DocId)) of
+	{error, not_found} ->
+	    Pid ! [
+		    {status, error}
+		   ,{data, []}
+		   ,{message, "Could not locate account"}
+		   ,{error, 404}
+		   ];
+	{error, db_not_reachable} ->
+	    Pid ! [
+		    {status, error}
+		   ,{data, []}
+		   ,{message, "Could not connect to datastore"}
+		   ,{error, 504}
+		   ];
+	Doc ->
+	    Str = couchbeam_util:json_encode({Doc}),
+	    {struct, Json} = mochijson2:decode(Str),
+	    Pid ! [
+		    {status, success}
+		   ,{data, Json}
+		   ]	    
+    end,
     {noreply, State};
 
-handle_cast({update, Params, RD, Pid}, State) ->
-    Pid ! [{status, success}, {data, [{method, update}]}],
+handle_cast({update, Pid, DocId, Data}, State) ->
+    case couch_mgr:save_doc("accounts", Data) of
+	{ok, Doc} -> 
+	    Pid ! [
+		    {status, success}
+		   ,{data, Doc}
+		   ];
+	{error, conflict} ->
+	    Pid ! [
+		    {status, error}
+		   ,{data, []}
+		   ,{message, "Document is stale"}
+		   ,{error, 409}
+		   ]
+    end,
     {noreply, State};
 
 handle_cast({delete, Params, RD, Pid}, State) ->
@@ -160,24 +187,24 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"account.content_types_provided">>, _Payload}, State) ->
-    Reply = [
-	      {to_text, ["text/plain"]}
-             ,{to_html, ["text/html"]}
-	     ,{to_xml, ["application/xml"]}
-             ,{to_json, ["application/json", "application/x-json"]}
-	    ],
-    Pid ! {binding_result, true, Reply},
+handle_info({binding_fired, Pid, <<"account.validate">>, Payload}, State) ->
+    spawn(fun() ->                  
+		  {Result, Payload1} = validate(Payload),
+                  Pid ! {binding_result, Result, Payload1}
+	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.allowed_methods">>, _Payload}, State) ->
-    Reply = ['POST', 'GET', 'PUT', 'DELETE'],
-    Pid ! {binding_result, true, Reply},
+handle_info({binding_fired, Pid, <<"account.authenticate">>, Payload}, State) ->
+    Pid ! {binding_result, true, Payload},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"account.authorize">>, Payload}, State) ->
+    Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    format_log(info, "ACCOUNT(~p): unhandled binding: ~p~n", [self(), Route]),
-    Pid ! {binding_result, true, Payload},
+    format_log(info, "ACCOUNT(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
+    Pid ! {binding_result, false, []},
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -214,4 +241,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"account.#">>).
+    crossbar_bindings:bind(<<"account.authenticate">>),
+    crossbar_bindings:bind(<<"account.authorize">>),
+    crossbar_bindings:bind(<<"account.validate">>).
+
+validate({http_get, [_DocID, _Params]}) ->
+    {true, []};
+
+validate({read, [_DocId, _Params]}) ->
+    {true, []};
+
+validate({read, [Params]}) when is_list(Params) ->
+    io:format("~p~n", [Params]),
+    {struct, Data} = proplists:get_value(<<"data">>, Params),
+    case proplists:get_value(<<"_id">>, Data) of
+	undefined ->			    
+	    {false, [<<"_id">>]};
+	_ ->                    
+	    {true, []}
+    end;
+
+validate(_Params) ->
+    io:format("~p~n", [_Params]),
+    {false, []}.
