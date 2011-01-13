@@ -41,16 +41,16 @@ start_link() ->
 
 -spec(start_app/1 :: (App :: atom()) -> ok | tuple(error, term())).
 start_app(App) ->
-    gen_server:cast(?MODULE, {start_app, App}).
+    gen_server:cast(?MODULE, {start_app, whistle_util:to_atom(App)}).
 
 stop_app(App) ->
-    gen_server:cast(?MODULE, {stop_app, App}).
+    gen_server:cast(?MODULE, {stop_app, whistle_util:to_atom(App)}).
 
 set_amqp_host(H) ->
-    gen_server:cast(?MODULE, {set_amqp_host, H}).
+    gen_server:cast(?MODULE, {set_amqp_host, whistle_util:to_list(H)}).
 
 set_couch_host(H) ->
-    couch_mgr:set_host(H).
+    couch_mgr:set_host(whistle_util:to_list(H)).
 
 running_apps() ->
     gen_server:call(?SERVER, running_apps).
@@ -179,7 +179,7 @@ add_app(App, As) ->
 	false -> As;
 	{ok, _} -> application:start(App), [App  | As];
 	{ok, _, _} -> application:start(App), [App | As];
-	_ -> As
+	_E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), As
     end.
 
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
