@@ -16,7 +16,8 @@
 %% API
 -export([start_link/0]).
 
--export([index/2, create/2, read/2, update/2, delete/2]).
+-export([http_put/3, http_get/3, http_post/3, http_delete/3]).
+-export([create/2, read/2, update/2, delete/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -44,31 +45,37 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-index(Params, RD) ->
-    case wrq:method(RD) of
-	      'PUT' -> 
-		    create(Params, RD);
-	      'GET' ->
-		    read(Params, RD);
-	      'POST' ->
-		    update(Params, RD);
-	      'DELETE' ->
-		    delete(Params, RD);
-	      _ ->
-		    self() ! [{status, error}, {error, 417}, {message, <<"CRUD!">>}]
-    end.
+http_put(DocId, Params, RD) ->
+    io:format("~p~n", [DocId]),
+    create(Params, RD).
+
+http_get(DocId, Params, RD) ->
+    io:format("~p~n", [DocId]),
+    read(Params, RD).
+
+http_post(DocId, Params, RD) ->
+    io:format("~p~n", [DocId]),
+    update(Params, RD).
+
+http_delete(DocId, Params, RD) ->
+    io:format("~p~n", [DocId]),			      
+    delete(Params, RD).
 
 read(Params, RD) ->
-    gen_server:cast({local, ?SERVER}, {read, Params, RD, self()}).
+    io:format("Read~n", []),
+    gen_server:cast(?SERVER, {read, Params, RD, self()}).
 
 create(Params, RD) ->
-    gen_server:cast({local, ?SERVER}, {create, Params, RD, self()}).
+    io:format("Create~n", []),
+    gen_server:cast(?SERVER, {create, Params, RD, self()}).
     
 update(Params, RD) ->
-    gen_server:cast({local, ?SERVER}, {update, Params, RD, self()}).
+    io:format("Update~n", []),
+    gen_server:cast(?SERVER, {update, Params, RD, self()}).
 
 delete(Params, RD) ->
-    gen_server:cast({local, ?SERVER}, {delete, Params, RD, self()}).
+    io:format("Delete~n", []),
+    gen_server:cast(?SERVER, {delete, Params, RD, self()}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -87,10 +94,7 @@ delete(Params, RD) ->
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
-    format_log(info, "ACCOUNT(~p): Its alive, alive!!!~n", [self()]),
     bind_to_crossbar(),
-    webmachine_router:add_route({["account"], account_resource, []}),
-    webmachine_router:add_route({["account", request, '*'], account_resource, []}),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -121,14 +125,29 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({create, Params, RD, Pid}, State) ->
+    Pid ! [{status, success}, {data, [{method, create}]}],
+    {noreply, State};
+
 handle_cast({read, Params, RD, Pid}, State) ->
-    Id = proplists:get_value("id", Params),
-    Doc = couch_mgr:open_doc("ts", list_to_binary(Id)),
-    Str = couchbeam_util:json_encode({Doc}),
-    {struct, Json} = mochijson2:decode(Str),
-    Pid ! [{status, success}, {data, Json}];
+%%    Id = proplists:get_value("id", Params),
+%%    Doc = couch_mgr:open_doc("ts", list_to_binary(Id)),
+%%    Str = couchbeam_util:json_encode({Doc}),
+%%    {struct, Json} = mochijson2:decode(Str),
+%%    Pid ! [{status, success], {data, Json}],
+    Pid ! [{status, success}, {data, [{method, read}]}],
+    {noreply, State};
+
+handle_cast({update, Params, RD, Pid}, State) ->
+    Pid ! [{status, success}, {data, [{method, update}]}],
+    {noreply, State};
+
+handle_cast({delete, Params, RD, Pid}, State) ->
+    Pid ! [{status, success}, {data, [{method, delete}]}],
+    {noreply, State};
 
 handle_cast(_Msg, State) ->
+    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -152,7 +171,7 @@ handle_info({binding_fired, Pid, <<"account.content_types_provided">>, _Payload}
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"account.allowed_methods">>, _Payload}, State) ->
-    Reply = ['POST', 'GET', 'PUT'],
+    Reply = ['POST', 'GET', 'PUT', 'DELETE'],
     Pid ! {binding_result, true, Reply},
     {noreply, State};
 

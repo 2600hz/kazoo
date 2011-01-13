@@ -13,10 +13,11 @@
 -export([init/1]).
 -export([to_html/2, to_json/2, to_xml/2, to_text/2]).
 -export([from_json/2, from_xml/2, from_text/2, from_form/2]).
-%%-export([generate_etag/2, encodings_provided/2, finish_request/2, is_authorized/2]).
--export([encodings_provided/2, finish_request/2, is_authorized/2]).
--export([content_types_provided/2, content_types_accepted/2, resource_exists/2, allowed_methods/2]).
--export([process_post/2, delete_resource/2, expires/2]). %, post_is_create/2, create_path/2]).
+-export([encodings_provided/2, finish_request/2, is_authorized/2, allowed_methods/2]).
+-export([known_content_type/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
+%% -export([expires/2, generate_etag/2]).
+-export([expires/2]).
+-export([process_post/2, delete_resource/2]).
 
 -import(logger, [format_log/3]).
 
@@ -69,10 +70,44 @@
 %%% WebMachine API
 %%%===================================================================
 init(Opts) ->
-    %%Event = list_to_binary([?SERVER, <<".init">>]),
-    %%crossbar_bindings:run(Event, Opts),
+    crossbar_bindings:run(<<"api_1_0_resource.init">>, Opts),
     {ok, #context{}}.
     %% {{wmtrace, "/tmp"}, #context}.
+
+allowed_methods(RD, #context{allowed_methods=Methods}=Context) ->
+    CbM = wrq:path_info(cb_module, RD),
+    Event = list_to_binary([CbM, <<".allowed_methods">>]),
+    Responses = crossbar_bindings:run(Event, Methods),
+    Methods1 = allow_methods(Responses, Methods),
+    {Methods1, RD, Context#context{cb_module=CbM}}.
+
+is_authorized(RD, #context{cb_module=CbM}=Context) ->
+    Event = list_to_binary([CbM, <<".is_authorized">>]),
+    Auth = crossbar_bindings:any(crossbar_bindings:run(Event, {RD, Context})),
+    S0 = crossbar_session:start_session(RD),
+    S = S0#session{account_id = <<"test">>},
+    {Auth, RD, Context#context{session=S}}.
+
+known_content_type(RD, #context{cb_module=CbM, session=S}=Context) ->
+    Event = list_to_binary([CbM, <<".known_content_type">>]),
+    crossbar_bindings:run(Event, {RD, Context}),
+    try
+	QS = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- wrq:req_qs(RD)],	
+        Prop = case wrq:req_body(RD) of
+		   <<>> ->
+		       [];
+		   Content ->
+		       {struct, Json} = mochijson2:decode(Content),
+		       Json
+	       end,
+	Prop1 = [{<<"account_id">>, S#session.account_id} | Prop],
+        Req_Params = wrq:path_tokens(RD) ++ [lists:ukeymerge(1, lists:ukeysort(1, Prop1), lists:ukeysort(1, QS))],
+	{true, RD, Context#context{req_params=Req_Params}}
+    catch
+        Exception:Reason ->
+            format_log(info, "API_1_0_R: Unknown content type (~p:~p)~n", [Exception, Reason]),
+            {{error, "Invalid Content"}, RD, Context}
+    end.
 
 resource_exists(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".resource_exists">>]),
@@ -90,18 +125,6 @@ content_types_accepted(RD, #context{content_types_accepted=CTA, cb_module=CbM}=C
     Responses = crossbar_bindings:run(Event, CTA),
     CTA1 = allow_content_types(Responses, CTA),
     {CTA1, RD, Context}.
-
-allowed_methods(RD, #context{allowed_methods=Methods}=Context) ->
-    CbM = wrq:path_info(cb_module, RD),
-    Event = list_to_binary([CbM, <<".allowed_methods">>]),
-    Responses = crossbar_bindings:run(Event, Methods),
-    Methods1 = allow_methods(Responses, Methods),
-    {Methods1, RD, Context#context{cb_module=CbM}}.
-
-is_authorized(RD, #context{cb_module=CbM}=Context) ->
-    Event = list_to_binary([CbM, <<".is_authorized">>]),
-    Auth = crossbar_bindings:any(crossbar_bindings:run(Event, {RD, Context})),
-    {Auth, RD, Context}.
 
 %generate_etag(RD, Context) ->
 %    Event = list_to_binary([?SERVER, <<".generate_etag">>]),
@@ -121,17 +144,15 @@ expires(ReqData, Context) ->
 process_post(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".process_post">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    Req_Params = crossbar_util:get_request_params(RD),
-    Context1 = do_request(RD, Context#context{req_params=Req_Params}),
-    RD1 = wrq:append_to_response_body(mochijson2:encode({struct, create_resp_prop(Context1)}), RD),
+    Context1 = do_request(RD, Context),
+    RD1 = wrq:set_resp_body(create_body(Context1), RD),
     {true, RD1, Context1}.
 
 delete_resource(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".delete_resource">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    Req_Params = crossbar_util:get_request_params(RD),
-    Context1 = do_request(RD, Context#context{req_params=Req_Params}),
-    RD1 = wrq:append_to_response_body(mochijson2:encode({struct, create_resp_prop(Context1)}), RD),
+    Context1 = do_request(RD, Context),
+    RD1 = wrq:set_resp_body(create_body(Context1), RD),
     case Context1#context.resp_status of
 	success ->
 	    {true, RD1, Context1};
@@ -142,7 +163,8 @@ delete_resource(RD, #context{cb_module=CbM}=Context) ->
 finish_request(RD, #context{session=S, cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".finish_request">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    {true, crossbar_session:finish_session(S, RD), Context}.
+    RD1 = crossbar_session:finish_session(S, RD),
+    {true, RD1, Context}.
 
 %%%===================================================================
 %%% Content Acceptors
@@ -155,12 +177,7 @@ from_text(RD, #context{cb_module=CbM}=Context) ->
 from_json(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".from_json">>]),
     crossbar_bindings:run(Event, {RD, Context}),
-    {struct, Prop} = mochijson2:decode(wrq:req_body(RD)),
-    QS = wrq:req_qs(RD),
-    Req_Params = lists:ukeymerge(1, lists:ukeysort(1, Prop), lists:ukeysort(1, QS)),
-    Context1 = do_request(RD, Context#context{req_params=Req_Params}),
-    RD1 = wrq:append_to_response_body(mochijson2:encode({struct, create_resp_prop(Context1)}), RD),
-    {true, RD1, Context1}.
+    {true, RD, Context}.
 
 from_xml(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".from_xml">>]),
@@ -168,10 +185,9 @@ from_xml(RD, #context{cb_module=CbM}=Context) ->
     {true, RD, Context}.
 
 from_form(RD, #context{cb_module=CbM}=Context) ->
-    Event = list_to_binary([CbM, <<".process_post">>]),    
+    Event = list_to_binary([CbM, <<".from_form">>]),    
     crossbar_bindings:run(Event, {RD, Context}),
-    Req_Params = crossbar_util:get_request_params(RD),
-    {true, RD, Context#context{req_params=Req_Params}}.
+    {true, RD, Context}.
 
 %%%===================================================================
 %%% Content Providers
@@ -180,35 +196,54 @@ to_html(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_html">>]),
     crossbar_bindings:run(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
-    Body = format_json(?HTML_FORMAT, create_resp_prop(Context1)), 
-    Page = io_lib:format("<html><body>~s</body></html>", [Body]),
-    {Page, RD, Context1}.
+    {create_body(Context1, html), RD, Context1}.
 
 to_json(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_json">>]),
     crossbar_bindings:run(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
-    Resp = mochijson2:encode({struct, create_resp_prop(Context1)}),
-    {Resp, RD, Context1}.
+    {create_body(Context1), RD, Context1}.
 
 to_xml(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_xml">>]),
     crossbar_bindings:run(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
-    Body = format_json(?XML_FORMAT, create_resp_prop(Context1)),
-    Page = io_lib:format("<xml>~s</xml>", [Body]),
-    {Page, RD, Context1}.
+    {create_body(Context1, xml), RD, Context1}.
 
 to_text(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_text">>]),
     crossbar_bindings:run(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
-    Resp = format_json(?TEXT_FORMAT, create_resp_prop(Context1)),
-    {Resp, RD, Context1}.
+    {create_body(Context1, plain), RD, Context1}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will create the content body from the resp_* fields in the 
+%% context record.  Currently the type parameter is used to choose the
+%% the format but in the future this may be drawn from the req headers
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_body/2 :: (Context :: #context{}, Type :: atom) -> string()).
+create_body(Context) ->
+    create_body(Context, json).
+create_body(Context, Type) ->
+    case Type of
+	json ->
+	    mochijson2:encode({struct, create_resp_prop(Context)});
+	xml ->
+	    Xml = format_json(?XML_FORMAT, create_resp_prop(Context)),
+	    io_lib:format("<xml>~s</xml>", [Xml]);
+	html ->
+	    Html = format_json(?HTML_FORMAT, create_resp_prop(Context)),	    
+	    io_lib:format("<html><body>~s</body></html>", [Html]);
+	plain ->
+	    format_json(?TEXT_FORMAT, create_resp_prop(Context))
+    end.
+	    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -262,38 +297,6 @@ allow_methods(Responses, Available) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This method will extract the function and parameters from the 
-%% context record.  It will then call that function and wait for a 
-%% response.  If no response is recieved with in the allotted time
-%% a generic error is produced.  Otherwise the reply from the function
-%% is loaded into the appropriate record fields for use in the response. 
-%% @end
-%%--------------------------------------------------------------------
--spec(do_request/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> #context{}).
-do_request(RD, #context{cb_module=CbM, request=Fun, req_params=Params}=Context) ->
-    Mod = list_to_existing_atom(CbM),
-    apply(Mod, Fun, [Params, RD]),
-    receive 
-	Resp ->
-	  Context#context{
-	      resp_data = proplists:get_value(data, Resp, [])
-	     ,resp_status = proplists:get_value(status, Resp, error)
-             ,resp_error_msg = proplists:get_value(message, Resp, <<"unspecified">>)
-             ,resp_error_code = proplists:get_value(error, Resp, 500)
-          }
-    after
-        10000 ->
-          Context#context{
-              resp_data = []
-             ,resp_status = fatal
-             ,resp_error_msg = <<"Request processing timed out">>
-             ,resp_error_code = 500
-          }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% This function maps the request to a function exported by the 
 %% appropriate module.  If the request has not specified path other than
 %% the module, then we will look for an index function.  If the
@@ -303,7 +306,7 @@ do_request(RD, #context{cb_module=CbM, request=Fun, req_params=Params}=Context) 
 %% @end
 %%--------------------------------------------------------------------
 -spec(find_and_auth/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #wm_reqdata{}, #context{})).
-find_and_auth(RD, #context{cb_module=CbM}=Context) ->
+find_and_auth(RD, #context{cb_module=CbM, req_params=Params}=Context) ->
     try
 	Mod = list_to_existing_atom(CbM),
 	case erlang:whereis(Mod) of 
@@ -323,19 +326,23 @@ find_and_auth(RD, #context{cb_module=CbM}=Context) ->
 			      list_to_atom("http_" ++ string:to_lower(atom_to_list(wrq:method(RD))))
 		      end
 	      end,  
-	case erlang:function_exported(Mod, Fun, 2) andalso is_valid(RD, Context) of
+	Find = atom_to_list(Fun),
+	Params1 = lists:filter(fun(Elem) ->  Find /= Elem end, Params),	
+	Arity = length(Params1) + 1,
+	case erlang:function_exported(Mod, Fun, Arity) andalso is_valid(RD, Context) of
 	    {true, RD0, Context1} ->		
-		format_log(info, "ACCOUNT_R: ~p:~p/1 found and authed.~n", [CbM, Fun]),
-		{true, RD0, Context1#context{request=Fun}};
+		format_log(info, "API_1_0_R: ~p:~p/~p found and authed.~n", [Mod, Fun, Arity]),
+		{true, RD0, Context1#context{request=Fun, req_params=Params1}};
 	    {false, RD1, Context2} ->
-		format_log(info, "API_1_0_R: ~p:~p/1 found but not authed.~n", [CbM, Fun]),
+		format_log(info, "API_1_0_R: ~p:~p/~p found but not authed.~n", [Mod, Fun, Arity]),
 		{{error, 417}, RD1, Context2};
             false ->
+		format_log(info, "API_1_0_R: ~p:~p/~p not exported.~n", [Mod, Fun, Arity]),
 		throw(not_exported)
        end
     catch
 	Exception:Reason ->
-	    format_log(info, "ACCOUNT_R: Could not satify req (~p:~p)~n", [Exception, Reason]),
+	    format_log(info, "API_1_0_R: Could not satify req (~p:~p)~n", [Exception, Reason]),
 	    {false, RD, Context}
     end.
 
@@ -348,31 +355,57 @@ find_and_auth(RD, #context{cb_module=CbM}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #wm_reqdata{}, #context{})).
-is_valid(RD, #context{cb_module=CbM}=Context) ->
-    S0 = crossbar_session:start_session(RD),
-    S = S0#session{account_id = <<"test">>},
-    io:format("~p~n", [wrq:req_body(RD)]),
-    Params = [{<<"account_id">>, S#session.account_id} | crossbar_util:get_request_params(RD)],
-    
+is_valid(RD, #context{cb_module=CbM, req_params=Params, session=S}=Context) ->
     Event = list_to_binary([CbM, <<".validate">>]),
-    ValidatedResults = crossbar_bindings:run(Event, {wrq:path_info(request, RD), Params}),
-        case crossbar_bindings:failed(ValidatedResults) of
-	    [] ->
-		Event1 = list_to_binary([CbM, <<".authenticate">>]),
-		IsAuthenticated = crossbar_bindings:any(crossbar_bindings:run(Event1, {S, Params})),
-		Event2 = list_to_binary([CbM, <<".authorize">>]),
-		IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(Event2, {S, Params})),
-		{IsAuthenticated andalso IsAuthorized, RD, Context#context{session=S, req_params=Params}};
-	    [{false, FailedKeys} | _] -> %% some listener returned false, take the first one
-		Context1=Context#context{
-		   session = S
-		  ,resp_data = [{<<"failed_keys">>, FailedKeys}]
-		  ,resp_status = error
-		  ,resp_error_msg = "Some keys failed to validate"
-		  ,resp_error_code = 400
-		},
+    ValidatedResults = crossbar_bindings:run(Event, {RD, Params}),
+    case crossbar_bindings:failed(ValidatedResults) of
+	[] ->
+	    Event1 = list_to_binary([CbM, <<".authenticate">>]),
+	    IsAuthenticated = crossbar_bindings:any(crossbar_bindings:run(Event1, {S, Params})),
+	    Event2 = list_to_binary([CbM, <<".authorize">>]),
+	    IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(Event2, {S, Params})),
+	    {IsAuthenticated andalso IsAuthorized, RD, Context};
+	[{false, FailedKeys} | _] -> %% some listener returned false, take the first one
+	    Context1=Context#context{
+  		        resp_data = [{<<"failed_keys">>, FailedKeys}]
+		       ,resp_status = error
+		       ,resp_error_msg = "Some keys failed to validate"
+		       ,resp_error_code = 400
+		      },
 	    Resp = mochijson2:encode({struct, create_resp_prop(Context1)}),
             {false, wrq:append_to_response_body(Resp, RD), Context1}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will extract the function and parameters from the 
+%% context record.  It will then call that function and wait for a 
+%% response.  If no response is recieved with in the allotted time
+%% a generic error is produced.  Otherwise the reply from the function
+%% is loaded into the appropriate record fields for use in the response. 
+%% @end
+%%--------------------------------------------------------------------
+-spec(do_request/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> #context{}).
+do_request(RD, #context{cb_module=CbM, request=Fun, req_params=Params}=Context) ->
+    Mod = list_to_existing_atom(CbM),
+    apply(Mod, Fun, Params ++ [RD]),
+    receive 
+	Resp ->
+	  Context#context{
+	      resp_data = proplists:get_value(data, Resp, [])
+	     ,resp_status = proplists:get_value(status, Resp, error)
+             ,resp_error_msg = proplists:get_value(message, Resp, <<"unspecified">>)
+             ,resp_error_code = proplists:get_value(error, Resp, 500)
+          }
+    after
+        10000 ->
+          Context#context{
+              resp_data = []
+             ,resp_status = fatal
+             ,resp_error_msg = <<"Request processing timed out">>
+             ,resp_error_code = 500
+          }
     end.
 
 %%--------------------------------------------------------------------
