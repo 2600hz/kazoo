@@ -91,6 +91,17 @@
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
 
+%% Registration Success
+-define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"RPid">>
+				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+				 , <<"Username">>, <<"Realm">>
+			    ]).
+-define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>]).
+-define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
+			    ,{<<"Event-Name">>, <<"reg_success">>}
+			   ]).
+-define(REG_SUCCESS_TYPES, []).
+
 %% Route Requests - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
