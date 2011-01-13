@@ -59,7 +59,8 @@ start_handler(Node, Options, AmqpHost) ->
 monitor_node(Node, #handler_state{}=S) ->
     %% do init
     erlang:monitor_node(Node, true),
-    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE']),
+    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+			    ,'CUSTOM', 'sofia::register', 'sofia::register_attempt']),
     monitor_loop(Node, S).
 
 monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
