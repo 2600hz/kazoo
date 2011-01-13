@@ -16,7 +16,6 @@
 -export([encodings_provided/2, finish_request/2, is_authorized/2, allowed_methods/2]).
 -export([known_content_type/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([expires/2, generate_etag/2]).
-%%-export([expires/2]).
 -export([process_post/2, delete_resource/2]).
 
 -import(logger, [format_log/3]).
@@ -128,12 +127,13 @@ content_types_accepted(RD, #context{content_types_accepted=CTA, cb_module=CbM}=C
 
 generate_etag(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".generate_etag">>]),
-    Responses = crossbar_bindings:run(Event, {RD, Context}),
-    case crossbar_bindings:success(Responses) of
+    ETag = mochihex:to_hex(crypto:md5(wrq:resp_body(RD))),
+    Responses = crossbar_bindings:run(Event, {ETag, RD, Context}),
+    case crossbar_bindings:succeeded(Responses) of
 	[] ->
-	    { mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context };
-	[{true, ETag} | _] ->
-	    { ETag, RD, Context}
+	    { ETag, RD, Context };
+	[{true, Response} | _] ->
+	    Response
     end.
 
 encodings_provided(RD, #context{cb_module=CbM}=Context) ->
