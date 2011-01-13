@@ -13,7 +13,7 @@
 -export([callmgr_exchange/1, callmgr_publish/4]).
 
 -export([bind_q_to_targeted/2, bind_q_to_targeted/3, unbind_q_from_targeted/3]).
--export([bind_q_to_callctl/2, bind_q_to_callctl/3, unbind_q_from_callctl/3]).
+-export([bind_q_to_callctl/2, bind_q_to_callctl/3, unbind_q_from_callctl/2]).
 -export([bind_q_to_callevt/3, bind_q_to_callevt/4, unbind_q_from_callevt/3]).
 -export([bind_q_to_broadcast/2, bind_q_to_broadcast/3, unbind_q_from_broadcast/3]).
 -export([bind_q_to_resource/2, bind_q_to_resource/3, unbind_q_from_resource/3]).
@@ -315,8 +315,8 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
 
 unbind_q_from_callevt(Host, Queue, Routing) ->
     unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLEVT).
-unbind_q_from_callctl(Host, Queue, Routing) ->
-    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLCTL).
+unbind_q_from_callctl(Host, Queue) ->
+    unbind_q_from_exchange(Host, Queue, Queue, ?EXCHANGE_CALLCTL).
 unbind_q_from_resource(Host, Queue, Routing) ->
     unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_RESOURCE).
 unbind_q_from_broadcast(Host, Queue, Routing) ->
