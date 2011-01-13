@@ -23,7 +23,7 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% Authentication and Routing
--export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
+-export([auth_req/1, auth_resp/1, reg_success/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
 
 %% Resources
 -export([resource_req/1, resource_resp/1, resource_error/1]).
@@ -37,7 +37,7 @@
 	]).
 
 %% Validation functions
--export([auth_req_v/1, auth_resp_v/1, route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1
+-export([auth_req_v/1, auth_resp_v/1, reg_success_v/1, route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1
 	 ,call_event_v/1, error_resp_v/1, play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
@@ -119,6 +119,22 @@ auth_resp(Prop) ->
 -spec(auth_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 auth_resp_v(Prop) ->
     validate(Prop, ?AUTH_RESP_HEADERS, ?AUTH_RESP_VALUES, ?AUTH_RESP_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Registration Success - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(reg_success/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_success(Prop) ->
+    case reg_success_v(Prop) of
+	true -> build_message(Prop, ?REG_SUCCESS_HEADERS, ?OPTIONAL_REG_SUCCESS_HEADERS);
+	false -> {error, "Proplist failed validation for reg_success"}
+    end.
+
+-spec(reg_success_v/1 :: (Prop :: proplist()) -> boolean()).
+reg_success_v(Prop) ->
+    validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Request - see wiki
