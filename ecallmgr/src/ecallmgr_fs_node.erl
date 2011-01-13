@@ -59,7 +59,9 @@ start_handler(Node, Options, AmqpHost) ->
 monitor_node(Node, #handler_state{}=S) ->
     %% do init
     erlang:monitor_node(Node, true),
-    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE']),
+    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+			    ,'CUSTOM', 'sofia::register'
+			   ]),
     monitor_loop(Node, S).
 
 monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
@@ -71,8 +73,13 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
 	    case EvtName of
-		<<"HEARTBEAT">> -> monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
-		_ -> monitor_loop(Node, S)
+		<<"HEARTBEAT">> ->
+		    monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
+		<<"CUSTOM">> ->
+		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
+		    monitor_loop(Node, S);
+		_ ->
+		    monitor_loop(Node, S)
 	    end;
 	{event, [UUID | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
@@ -89,7 +96,11 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		    end;
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    monitor_loop(Node, S);
-		_ -> monitor_loop(Node, S)
+		<<"CUSTOM">> ->
+		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
+		    monitor_loop(Node, S);
+		_ ->
+		    monitor_loop(Node, S)
 	    end;
 	{resource_request, Pid, <<"audio">>, ChanOptions} ->
 	    ActiveChan = Cr - De,
@@ -181,3 +192,31 @@ process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
      ,{sessions_max, whistle_util:to_integer(lists:flatten(SessMaxNum))}
      ,{cpu, lists:flatten(CPUNum)}
     ].
+
+process_custom_data(Data, Host, AppVsn) ->
+    case get_value(<<"Event-Subclass">>, Data) of
+	undefined -> ok;
+	<<"sofia::register">> -> publish_register_event(Data, Host, AppVsn);
+	_ -> ok
+    end.
+
+publish_register_event(Data, Host, AppVsn) ->
+    Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
+    DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, ?MODULE, AppVsn),
+    ApiProp = lists:foldl(fun(K, Api) ->
+				  Lk = binary_to_lower(K),
+				  case props:get_value(Lk, Data) of
+				      undefined -> Api;
+				      V -> [{K, V} | Api]
+				  end
+			  end, [{<<"Event-Timestamp">>, calendar:datetime_to_gregorian_seconds(calendar:local_time())} | DefProp], Keys),
+    case whistle_api:reg_success(ApiProp) of
+	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~p~n", [E]);
+	{ok, JSON} ->
+	    format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
+	    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>)
+    end.
+
+-spec(binary_to_lower/1 :: (B :: binary()) -> binary()).
+binary_to_lower(B) when is_binary(B) ->
+    whistle_util:to_binary(string:to_lower(whistle_util:to_list(B))).
