@@ -60,7 +60,8 @@ monitor_node(Node, #handler_state{}=S) ->
     %% do init
     erlang:monitor_node(Node, true),
     freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-			    ,'CUSTOM', 'sofia::register', 'sofia::register_attempt']),
+			    ,'CUSTOM', 'sofia::register'
+			   ]),
     monitor_loop(Node, S).
 
 monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
@@ -95,7 +96,11 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		    end;
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    monitor_loop(Node, S);
-		_ -> monitor_loop(Node, S)
+		<<"CUSTOM">> ->
+		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
+		    monitor_loop(Node, S);
+		_ ->
+		    monitor_loop(Node, S)
 	    end;
 	{resource_request, Pid, <<"audio">>, ChanOptions} ->
 	    ActiveChan = Cr - De,
@@ -202,10 +207,11 @@ publish_register_event(Data, Host, AppVsn) ->
 				      undefined -> Api;
 				      V -> [{K, V} | Api]
 				  end
-			  end, DefProp, Keys),
-    case whistle_api:reg_sucess(ApiProp) of
-	{error, E} -> format_log(error, "FS_NODE.custom_data: Failed API message creation: ~p~n", [E]);
+			  end, [{<<"Event-Timestamp">>, calendar:datetime_to_gregorian_seconds(calendar:local_time())} | DefProp], Keys),
+    case whistle_api:reg_success(ApiProp) of
+	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~p~n", [E]);
 	{ok, JSON} ->
+	    format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
 	    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>)
     end.
 
