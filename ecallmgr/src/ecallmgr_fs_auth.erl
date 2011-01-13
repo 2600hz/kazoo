@@ -59,12 +59,12 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()} | LUs]
 								 ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
-		    format_log(info, "FETCH_USER(~p): Ignoring event ~p~n", [self(), _Other]),
+		    format_log(info, "FETCH_USER(~p): Ignoring event ~p~n~p~n", [self(), _Other, Data]),
 		    ?MODULE:fetch_user(Node, State)
 	    end;
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "FETCH_USER(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n"
-		       ,[self(), _Section, _Something, _Key, _Value, ID]),
+	    format_log(info, "FETCH_USER(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n~p~n"
+		       ,[self(), _Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:fetch_user(Node, State);
 	{nodedown, Node} ->
@@ -132,10 +132,12 @@ lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
 			format_log(info, "L/U.user(~p): Sending JSON to Host(~p)~n~s~n", [self(), AmqpHost, JSON]),
 			send_request(AmqpHost, JSON),
 			Result = handle_response(ID, Data, FetchPid),
+			amqp_util:unbind_q_from_targeted(AmqpHost, Q),
 			amqp_util:queue_delete(AmqpHost, Q),
 			Result;
 		    {error, _Msg} ->
 			format_log(error, "L/U.user(~p): Auth_Req API error ~s~n", [self(), _Msg]),
+			amqp_util:unbind_q_from_targeted(AmqpHost, Q),
 			amqp_util:queue_delete(AmqpHost, Q),
 			failed
 		end,

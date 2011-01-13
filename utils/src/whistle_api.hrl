@@ -91,6 +91,17 @@
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
 
+%% Registration Success
+-define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"RPid">>
+				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+				 , <<"Username">>, <<"Realm">>
+			    ]).
+-define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>]).
+-define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
+			    ,{<<"Event-Name">>, <<"reg_success">>}
+			   ]).
+-define(REG_SUCCESS_TYPES, []).
+
 %% Route Requests - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
@@ -378,6 +389,23 @@
 			  ,{<<"Application-Name">>, <<"park">>}
 			 ]).
 -define(PARK_REQ_TYPES, []).
+
+%% Set - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FSet
+-define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>]).
+-define(OPTIONAL_SET_REQ_HEADERS, []).
+-define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+			  ,{<<"Event-Name">>, <<"command">>}
+			  ,{<<"Application-Name">>, <<"set">>}
+			 ]).
+-define(SET_REQ_TYPES, [
+			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
+							    lists:all(fun({K, V}) when is_binary(K) andalso
+										       (is_binary(V) orelse is_number(V)) -> true;
+									 (_) -> false
+								      end, L);
+						       (_) -> false
+						    end}
+		       ]).
 
 %% Call Pickup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Call_Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).

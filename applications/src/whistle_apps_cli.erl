@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(whistle_apps_cli).
 
--export([help/2, set_amqp_host/2, set_couch_host/2, start_app/2, stop_app/2]).
+-export([help/2, set_amqp_host/2, set_couch_host/2, start_app/2, stop_app/2, running_apps/2]).
 
 -include_lib("../../lib/erlctl/lib/erlctl-0.3/include/erlctl.hrl").
 
@@ -40,7 +40,7 @@ usage() ->
 set_amqp_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Setting AMQP host to ~p on ~p~n", [Host, Node]),
-    case rpc_call(Node, whistle_controller, set_amqp_host, Arg) of
+    case rpc_call(Node, whapps_controller, set_amqp_host, Arg) of
 	{ok, ok} ->
 	    {ok, "Set whistle controller's amqp host to ~p", [Host]};
 	{ok, Other} ->
@@ -50,7 +50,7 @@ set_amqp_host(always, [Host]=Arg) ->
 set_couch_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Setting CouchDB Host to ~p on ~p~n", [Host, Node]),
-    case rpc_call(Node, whistle_controller, set_couch_host, Arg) of
+    case rpc_call(Node, whapps_controller, set_couch_host, Arg) of
 	{ok, ok} ->
 	    {ok, "Set whistle controller's couch host to ~p", [Host]};
 	{ok, Other} ->
@@ -60,7 +60,7 @@ set_couch_host(always, [Host]=Arg) ->
 start_app(always, [Whapp]=Arg) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Starting whapp ~p on ~p~n", [Whapp, Node]),
-    case rpc_call(Node, whistle_controller, start_app, Arg) of
+    case rpc_call(Node, whapps_controller, start_app, Arg) of
 	{ok, ok} ->
 	    {ok, "~p started successfully", [Whapp]};
 	{ok, Other} ->
@@ -70,11 +70,21 @@ start_app(always, [Whapp]=Arg) ->
 stop_app(always, [Whapp]=Arg) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Stopping whapp ~p on ~p~n", [Whapp, Node]),
-    case rpc_call(Node, whistle_controller, start_app, Arg) of
+    case rpc_call(Node, whapps_controller, start_app, Arg) of
 	{ok, ok} ->
 	    {ok, "~p stopped successfully", [Whapp]};
 	{ok, Other} ->
 	    {ok, "Something unexpected happened while stopping ~p: ~p", [Whapp, Other]}
+    end.
+
+running_apps(always, []) ->
+    Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
+    format("Searching for running whapps on ~p~n", [Node]),
+    case rpc_call(Node, whapps_controller, running_apps, []) of
+	{ok, Apps} when is_list(Apps) ->
+	    {ok, "~p~n", [Apps]};
+	{ok, Other} ->
+	    {ok, "Something unexpected happened while looking for running whapps: ~p", [Other]}
     end.
 
 rpc_call(Node, M, F, A) ->

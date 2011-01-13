@@ -35,17 +35,10 @@
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
-%% DBs = [{DbName, #db{}}]
-%% Views = [{ {#db{}, DesignDoc, ViewName}, #view{}}]
-%% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
 %% ChangeHandlers :: [{DBName, DocID}, ReqID, [Pid]]
 -type change_handler_entry() :: tuple( tuple(string(), binary()), reference(), list(pid()) | []).
--type db_entry() :: tuple(string(), #db{}).
--type view_entry() :: tuple(tuple(#db{}, string(), string()), #view{}).
 -record(state, {
 	  connection = {} :: tuple(string(), #server{}) | {}
-	  ,dbs = [] :: list(db_entry()) | []
-	  ,views = [] :: list(view_entry()) | []
 	  ,change_handlers = [] :: list(change_handler_entry()) | []
 	 }).
 
@@ -155,56 +148,56 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({get_results, DbName, DesignDoc, ViewOptions}, _From, #state{connection={_Host, Conn}, dbs=DBs, views=Vs}=State) ->
-    case get_db(DbName, Conn, DBs) of
+handle_call({get_results, DbName, DesignDoc, ViewOptions}, _From, #state{connection={_Host, Conn}}=State) ->
+    case get_db(DbName, Conn) of
 	{error, db_not_reachable}=E ->
 	    {reply, E, State};
-	{Db, DBs1} ->
-	    case get_view(Db, DesignDoc, ViewOptions, Vs) of
+	Db ->
+	    case get_view(Db, DesignDoc, ViewOptions) of
 		{error, _Error}=E ->
-		    {reply, E, State#state{dbs=DBs1}};
-		{View, Vs1} ->
+		    {reply, E, State};
+		View ->
 		    case couchbeam_view:fetch(View) of
 			{ok, {Prop}} ->
-			    {reply, get_value(<<"rows">>, Prop, []), State#state{dbs=DBs1, views=Vs1}};
+			    {reply, get_value(<<"rows">>, Prop, []), State};
 			Error ->
-			    {reply, {Error, fetch_failed}, State#state{dbs=DBs1}}
+			    {reply, {Error, fetch_failed}, State}
 		    end
 	    end
     end;
-handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
-    case get_db(DbName, Conn, DBs) of
+handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host, Conn}}=State) ->
+    case get_db(DbName, Conn) of
 	{error, db_not_reachable} = E ->
 	    {reply, E, State};
-	{Db, DBs1} ->
+	Db ->
 	    case couchbeam:open_doc(Db, DocId, Options) of
 		{ok, {Doc}} ->
-		    {reply, Doc, State#state{dbs=DBs1}};
+		    {reply, Doc, State};
 		Other ->
 		    format_log(error, "WHISTLE_COUCH(~p): Failed to find ~p: ~p~n", [self(), DocId, Other]),
 		    {reply, {error, not_found}, State}
 	    end
     end;
 
-handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
-    case get_db(DbName, Conn, DBs) of
+handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}}=State) ->
+    case get_db(DbName, Conn) of
 	{error, db_not_reachable}=E ->
 	    {reply, E, State};
-	{Db, DBs1} ->
+	Db->
 	    case couchbeam:save_doc(Db, Doc) of
 		{ok, {Doc1}} ->
-		    {reply, {ok, Doc1}, State#state{dbs=DBs1}};
+		    {reply, {ok, Doc1}, State};
 		{error, _E}=Err -> % conflict!
-		    {reply, Err, State#state{dbs=DBs1}}
+		    {reply, Err, State}
 	    end
     end;
 
-handle_call({del_doc, DbName, Doc}, _From, #state{connection={_, Conn}, dbs=DBs}=State) ->
-    case get_db(DbName, Conn, DBs) of
+handle_call({del_doc, DbName, Doc}, _From, #state{connection={_, Conn}}=State) ->
+    case get_db(DbName, Conn) of
 	{error, db_not_reachable}=E ->
 	    {reply, E, State};
-	{Db, DBs1} ->
-	    {reply, couchbeam:delete_doc(Db, Doc), State#state{dbs=DBs1}}
+	Db ->
+	    {reply, couchbeam:delete_doc(Db, Doc), State}
     end;
 
 handle_call(get_host, _From, #state{connection={H,_}}=State) ->
@@ -215,7 +208,7 @@ handle_call({set_host, Host}, _From, #state{connection={OldHost, _}}=State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	HC ->
-	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
     end;
 handle_call({set_host, Host}, _From, State) ->
     format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
@@ -223,7 +216,7 @@ handle_call({set_host, Host}, _From, State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
     end;
 handle_call({add_change_handler, DBName, <<>>}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, <<>>, Pid, State) of
@@ -247,7 +240,7 @@ handle_call(Req, From, #state{connection={}}=State) ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
 	    close_handlers(State#state.change_handlers),
-	    handle_call(Req, From, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]})
+	    handle_call(Req, From, State#state{connection=HC, change_handlers=[]})
     end;
 handle_call(_Request, _From, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
@@ -402,13 +395,13 @@ start_change_handler(DBName, DocID, Pid, State) ->
     start_change_handler(DBName, DocID, Pid, State, [{filter, <<"filter/by_doc">>}, {name, DocID}]).
 
 -spec(start_change_handler/5 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}, Opts :: proplist()) -> tuple(ok, reference(), #state{}) | tuple(error, term(), #state{})).
-start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, dbs=DBs, change_handlers=CH}=State, Opts) ->
+start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_handlers=CH}=State, Opts) ->
     case lists:keyfind({DBName, DocID}, 1, CH) of
 	false ->
-	    case get_db(DBName, Conn, DBs) of
+	    case get_db(DBName, Conn) of
 		{error, db_not_reachable} ->
 		    {error, db_not_reachable, State};
-		{Db, _DBs1} ->
+		Db ->
 		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"} | Opts]),
 		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
 		    link(Pid),
@@ -440,41 +433,20 @@ get_new_connection(Host) ->
 
 %% get_db, if DbName is known, returns the {#db{}, DBs}, else returns {#db{}, [{DbName, #db{}} | DBs]}
 %% an error in opening the db will cause a {{error, Err}, DBs} to be returned
--spec(get_db/3 :: (DbName :: string(), Conn :: #server{}, DBs :: list(db_entry()) | []) -> tuple(error, db_not_reachable) | tuple(#db{}, list(db_entry())) ).
-get_db(DbName, Conn, DBs) ->
-    get_db(DbName, Conn, DBs, []).
-
--spec(get_db/4 :: (DbName :: string(), Conn :: #server{}, DBs :: list(db_entry()) | [], Options :: list()) -> tuple(error, db_not_reachable) | tuple(#db{}, list(db_entry())) ).
-get_db(DbName, Conn, DBs, Options) ->
-    case lists:keyfind(DbName, 1, DBs) of
-	false ->
-	    {ok, Db} = couchbeam:open_or_create_db(Conn, DbName, Options),
-	    case couchbeam:db_info(Db) of
-		{ok, _JSON} ->
-		    {Db, [{DbName, Db} | DBs]};
-		{error, _Error} ->
-		    {error, db_not_reachable}
-	    end;
-	{DbName, Db} ->
-	    {Db, DBs}
+-spec(get_db/2 :: (DbName :: string(), Conn :: #server{}) -> tuple(error, db_not_reachable) | #db{}).
+get_db(DbName, Conn) ->
+    {ok, Db} = couchbeam:open_or_create_db(Conn, DbName),
+    case couchbeam:db_info(Db) of
+	{ok, _JSON} -> Db;
+	{error, _Error} -> {error, db_not_reachable}
     end.
 
 %% get_view, if Db/DesignDoc is known, return {#view{}, Views}, else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
--spec(get_view/4 :: (Db :: #db{}, DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list(), Views :: list(view_entry())) -> tuple(#view{}, list(view_entry())) | tuple(error, view_not_found)).
-get_view(Db, DesignDoc, ViewOptions, Views) ->
-    case lists:keyfind({Db, DesignDoc, ViewOptions}, 1, Views) of
-	{{Db, DesignDoc, ViewOptions}, View} ->
-	    {View, Views};
-	false ->
-	    case couchbeam:view(Db, DesignDoc, ViewOptions) of
-		{error, _Error}=E -> E;
-		{ok, View} ->
-		    case couchbeam_view:first(View) of
-			{error, not_found} -> {error, view_not_found};
-			{error, _Error}=E -> format_log(error, "COUCH_MGR(~p): Failed view:first/1 ~p~n", [self(), _Error]), E;
-			_ -> {View, [{{Db, DesignDoc, ViewOptions}, View} | Views]}
-		    end
-	    end
+-spec(get_view/3 :: (Db :: #db{}, DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list()) -> #view{} | tuple(error, view_not_found)).
+get_view(Db, DesignDoc, ViewOptions) ->
+    case couchbeam:view(Db, DesignDoc, ViewOptions) of
+	{error, _Error}=E -> E;
+	{ok, View} -> View
     end.
 
 -spec(init_state/0 :: () -> #state{}).
