@@ -57,20 +57,20 @@ set_couch_host(always, [Host]=Arg) ->
 	    {ok, "Something unexpected happened while setting the couch host: ~p", [Other]}
     end.
 
-start_app(always, [Whapp]=Arg) ->
+start_app(always, [Whapp]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Starting whapp ~p on ~p~n", [Whapp, Node]),
-    case rpc_call(Node, whapps_controller, start_app, Arg) of
+    case rpc_call(Node, whapps_controller, start_app, [list_to_atom(Whapp)]) of
 	{ok, ok} ->
 	    {ok, "~p started successfully", [Whapp]};
 	{ok, Other} ->
 	    {ok, "Something unexpected happened while starting ~p: ~p", [Whapp, Other]}
     end.
 
-stop_app(always, [Whapp]=Arg) ->
+stop_app(always, [Whapp]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Stopping whapp ~p on ~p~n", [Whapp, Node]),
-    case rpc_call(Node, whapps_controller, start_app, Arg) of
+    case rpc_call(Node, whapps_controller, start_app, [list_to_atom(Whapp)]) of
 	{ok, ok} ->
 	    {ok, "~p stopped successfully", [Whapp]};
 	{ok, Other} ->
