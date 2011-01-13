@@ -5,4 +5,5 @@
               {applications,[kernel,stdlib]},
               {mod,{registration_app,[]}},
               {env,[]},
-              {modules,[registration,registration_app,registration_sup]}]}.
+              {modules,[reg_server,registration,registration_app,
+                        registration_sup]}]}.
