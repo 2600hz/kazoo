@@ -12,7 +12,7 @@
 -export([resource_exchange/1, resource_publish/2, resource_publish/3]).
 -export([callmgr_exchange/1, callmgr_publish/4]).
 
--export([bind_q_to_targeted/2, bind_q_to_targeted/3, unbind_q_from_targeted/3]).
+-export([bind_q_to_targeted/2, bind_q_to_targeted/3, unbind_q_from_targeted/2]).
 -export([bind_q_to_callctl/2, bind_q_to_callctl/3, unbind_q_from_callctl/2]).
 -export([bind_q_to_callevt/3, bind_q_to_callevt/4, unbind_q_from_callevt/3]).
 -export([bind_q_to_broadcast/2, bind_q_to_broadcast/3, unbind_q_from_broadcast/3]).
@@ -323,8 +323,8 @@ unbind_q_from_broadcast(Host, Queue, Routing) ->
     unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_BROADCAST).
 unbind_q_from_callmgr(Host, Queue, Routing) ->
     unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLMGR).
-unbind_q_from_targeted(Host, Queue, Routing) ->
-    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_TARGETED).
+unbind_q_from_targeted(Host, Queue) ->
+    unbind_q_from_exchange(Host, Queue, Queue, ?EXCHANGE_TARGETED).
 
 unbind_q_from_exchange(Host, Queue, Routing, Exchange) ->
     {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
