@@ -15,8 +15,8 @@
 -export([from_json/2, from_xml/2, from_text/2, from_form/2]).
 -export([encodings_provided/2, finish_request/2, is_authorized/2, allowed_methods/2]).
 -export([known_content_type/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
-%% -export([expires/2, generate_etag/2]).
--export([expires/2]).
+-export([expires/2, generate_etag/2]).
+%%-export([expires/2]).
 -export([process_post/2, delete_resource/2]).
 
 -import(logger, [format_log/3]).
@@ -126,10 +126,15 @@ content_types_accepted(RD, #context{content_types_accepted=CTA, cb_module=CbM}=C
     CTA1 = allow_content_types(Responses, CTA),
     {CTA1, RD, Context}.
 
-%generate_etag(RD, Context) ->
-%    Event = list_to_binary([?SERVER, <<".generate_etag">>]),
-%    crossbar_bindings:run(Event, {RD, Context}),
-%    { mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context }.
+generate_etag(RD, #context{cb_module=CbM}=Context) ->
+    Event = list_to_binary([CbM, <<".generate_etag">>]),
+    Responses = crossbar_bindings:run(Event, {RD, Context}),
+    case crossbar_bindings:success(Responses) of
+	[] ->
+	    { mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context };
+	[{true, ETag} | _] ->
+	    { ETag, RD, Context}
+    end.
 
 encodings_provided(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".encodings_provided">>]),
@@ -138,8 +143,10 @@ encodings_provided(RD, #context{cb_module=CbM}=Context) ->
        ,{"gzip", fun(X) -> zlib:gzip(X) end}]
       ,RD, Context}.
 
-expires(ReqData, Context) ->
-     {{{1999,1,1},{0,0,0}}, ReqData, Context}.
+expires(RD, #context{cb_module=CbM}=Context) ->
+    Event = list_to_binary([CbM, <<".expires">>]),
+    crossbar_bindings:run(Event, {RD, Context}),
+    {{{1999,1,1},{0,0,0}}, RD, Context}.
 
 process_post(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".process_post">>]),
