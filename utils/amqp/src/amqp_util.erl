@@ -26,10 +26,11 @@
 	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2
 	 ,channel_close/3, queue_delete/2, queue_delete/3]).
 
+-export([get_msg/2]).
+
 -export([access_request/0, access_request/1]).
 
 -export([get_msg_type/1, is_json/1]).
-
 
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange
@@ -427,6 +428,18 @@ access_request(Options) ->
       ,write = get_value(write, Options, true)
       ,read = get_value(read, Options, true)
      }.
+
+-spec(get_msg/2 :: (Host :: string(), Queue :: binary()) -> #amqp_msg{}).
+get_msg(Host, Queue) ->
+    {ok, C, _T} = amqp_manager:open_channel(self(), Host),
+    Get = #'basic.get'{queue=Queue, no_ack=false},
+    case amqp_channel:call(C, Get) of
+	{#'basic.get_ok'{}, Content} ->
+	    Content;
+	#'basic.get_empty'{} ->
+	    #amqp_msg{}
+    end.
+
 
 get_msg_type(Msg) ->
     { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) }.
