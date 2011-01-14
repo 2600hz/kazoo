@@ -2,7 +2,7 @@
 
 -export([reload_all_apps/0, reload_app/1]).
 -export([to_e164/1, to_npanxxxxxx/1, to_1npanxxxxxx/1]).
--export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1]).
+-export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
 reload_all_apps() ->
@@ -108,6 +108,11 @@ to_binary(X) when is_list(X) ->
     list_to_binary(X);
 to_binary(X) when is_binary(X) ->
     X.
+
+to_atom(X) when is_list(X) ->
+    list_to_existing_atom(X);
+to_atom(X) ->
+    to_atom(to_list(X)).
 
 -spec(a1hash/3 :: (User :: binary() | list(), Realm :: binary() | list(), Password :: binary() | list()) -> string()).
 a1hash(User, Realm, Password) ->

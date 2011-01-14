@@ -1,10 +1,15 @@
-
--module(whistle_apps_sup).
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011 James Aimonetti
+%%% @doc
+%%% 
+%%% @end
+%%% Created :  Thu, 13 Jan 2011 22:12:40 GMT: James Aimonetti <james@2600hz.org>
+-module(registration_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_app/1, stop_app/1]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -19,17 +24,12 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec(start_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
-start_app(App) ->
-    supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
-
-stop_app(App) ->
-    supervisor:terminate_child(?MODULE, App),
-    supervisor:delete_child(?MODULE, App).
-
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(whapps_controller, worker)]} }.
+    {ok, { {one_for_one, 5, 10}, [
+				  %% Put list of ?CHILD(registration_server, worker) or ?CHILD(registration_other_sup, supervisor)
+				 ]} }.
+
