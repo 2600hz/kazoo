@@ -17,8 +17,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-include("../include/amqp_client/include/amqp_client.hrl").
+
+-import(logger, [format_log/3]).
+
 -define(SERVER, ?MODULE).
 -define(REG_DB, "registrations").
+
+-type proplist() :: list(tuple(binary(), binary())) | [].
 
 -record(state, {
 	  amqp_host = "localhost" :: string()
@@ -100,6 +106,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
+    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -144,3 +153,22 @@ start_amqp(Host) ->
 stop_amqp(Host, Q) ->
     amqp_util:unbind_q_from_broadcast(Host, Q),
     amqp_util:delete_queue(Host, Q).
+
+-spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
+handle_req(<<"application/json">>, Payload, State) ->
+    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "TS_RESPONDER(~p): Recv JSON~nPayload: ~p~n", [self(), Prop]),
+    process_req(get_msg_type(Prop), Prop, State).
+
+-spec(get_msg_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary())).
+get_msg_type(Prop) ->
+    { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) }.
+
+-spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
+process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
+    ok;
+process_req({<<"directory">>, <<"reg_success">>}, Prop, State) ->
+    format_log(info, "REG_SRV: Reg success~n~p~n", [Prop]),
+    ok;
+process_req(_,_,_) ->
+    not_handled.
