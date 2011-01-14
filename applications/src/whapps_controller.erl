@@ -40,11 +40,11 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 -spec(start_app/1 :: (App :: atom()) -> ok | tuple(error, term())).
-start_app(App) ->
-    gen_server:cast(?MODULE, {start_app, whistle_util:to_atom(App)}).
+start_app(App) when is_atom(App) ->
+    gen_server:cast(?MODULE, {start_app, App}).
 
-stop_app(App) ->
-    gen_server:cast(?MODULE, {stop_app, whistle_util:to_atom(App)}).
+stop_app(App) when is_atom(App) ->
+    gen_server:cast(?MODULE, {stop_app, App}).
 
 set_amqp_host(H) ->
     gen_server:cast(?MODULE, {set_amqp_host, whistle_util:to_list(H)}).
