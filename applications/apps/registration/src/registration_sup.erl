@@ -30,6 +30,7 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
+				  ?CHILD(reg_server, worker)
 				  %% Put list of ?CHILD(registration_server, worker) or ?CHILD(registration_other_sup, supervisor)
 				 ]} }.
 
