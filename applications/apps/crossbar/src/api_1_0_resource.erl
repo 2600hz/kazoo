@@ -23,28 +23,6 @@
 -include("crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
 
--define(CONTENT_PROVIDED, [
-                            {to_json, ["application/json","application/x-json"]}
-                           ,{to_xml, ["application/xml"]}
-			   ,{to_html, ["text/html"]}
-			   ,{to_text, ["text/plain"]}
-			  ]).
-
--define(CONTENT_ACCEPTED, [
-			    {from_html, ["text/html"]}
-			   ,{from_text, ["text/plain"]}
-                           ,{from_xml, ["application/xml"]}
-                           ,{from_json, ["application/json","application/x-json"]}
-			   ,{from_form, ["application/x-www-form-urlencoded"]}
-			  ]).
-
--define(ALLOWED_METHODS, [
-			   'GET'
-			  ,'POST'
-			  ,'PUT'
-			  ,'DELETE'
-			 ]).
-
 -define(XML_FORMAT, "<field name=\"~s\">~s</field>").
 
 -define(HTML_FORMAT, "<ul><li><span class=\"field\">~s</span> <span class=\"value\">~s</span></li></ul>").
@@ -434,7 +412,7 @@ do_request(RD, #context{cb_module=CbM, request=Fun, req_params=Params}=Context) 
 -spec(format_json/2 :: (Format :: string(), Json :: json_object()) -> iolist()).
 format_json(Format, Json) ->
     {Result, _} = lists:foldl(fun({K, V}, {Acc, Count}) ->
-			Str = case V of
+			    Str = case V of
 			    {struct, []} ->
 				      io_lib:format(Format, [K, ""]);
 			    {struct, V1} ->
@@ -473,12 +451,12 @@ format_json(Format, Json) ->
 -spec(is_proplist/1 :: (Thing :: term()) -> boolean()).
 is_proplist(Thing) when is_list(Thing) ->
     lists:all(fun(Elem) ->
-		       case Elem of 
-			   {_,_} ->
-			       true;
-			   _ -> 
-			       false 
-		       end
+		      case Elem of 
+			  {_,_} ->
+			      true;
+			  _ -> 
+			      false 
+		      end
 	      end, Thing);
 is_proplist(_) ->
     false.

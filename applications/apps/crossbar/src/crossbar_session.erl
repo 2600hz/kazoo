@@ -250,7 +250,7 @@ save_session(S, RD) ->
 
 -spec(delete_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
 delete_session(S, RD) ->
-    crossbar_bindings:run(<<"session.delete">>, S),
+    crossbar_bindings:map(<<"session.delete">>, S),
     couch_mgr:del_doc(?SESSION_DB, to_couch(S)),
     set_cookie_header(RD, S, calendar:local_time(), -1).
 
