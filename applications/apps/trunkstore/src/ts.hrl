@@ -48,16 +48,5 @@
 	 }).
 
 
--define(TS_COUCH_DESIGN_DOCS, [{<<"_design/filter">>, [{<<"filters">>, <<"{\"by_doc\": \"function(doc, req) { if (req.query.name == doc._id) {   return true; } else {   return false; }}\"}">>}]}
-			       ,{<<"design/LookUpUserAuth">>, [{<<"language">>, <<"javascript">>}
-							       ,{<<"views">>, <<"{\"LookUpUserAuth\": {\"map\": \"function(doc) { if(doc.type != 'sys_info' ) return; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { emit(srv[1].auth.auth_user, srv[1].auth); } } }}\"} }">>}
-							      ]}
-			       ,{<<"design/LookUpMonitor">>, [{<<"language">>, <<"javascript">>}
-							      ,{<<"views">>, <<"{\"LookUpMonitor\": { \"map\": \"function(doc) { if(doc.type != \"sys_info\" ) return; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs) { if (srv[1].monitor.monitor_enabled == true) { emit(doc._id, srv[1].monitor); } } } }\"}}">>}
-							     ]}
-			       ,{<<"design/LookUpIPAuth">>, [{<<"language">>, <<"javascript">>}
-							     ,{<<"views">>, <<"{ \"LookUpIPAuth\": { \"map\": \"function(doc) { if(doc.type != \"sys_info\" ) return; if(doc.servers) { var srvs = Iterator(doc.servers); if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { var IPs = Iterator(srv[1].auth.AuthIP); for (var IP in IPs)  { emit(IP[1], JSON.stringify({auth: srv[1].auth})); } } } } for (var srv in srvs)  { if (srv[1].DIDs) { var DIDs = Iterator(srv[1].DIDs); for (var DID in DIDs)  { emit(DID[0], JSON.stringify({auth: srv.auth, DID_Opts: DID[1]})); } } } }\"} } }">>}
-							    ]}
-			       ,{<<"design/LookUpDID">>, [{<<"language">>, <<"javascript">>}
-							  ,{<<"views">>, <<"{ \"LookUpDID\": { \"map\": \"function(doc) { if(doc.type != \"sys_info\" ) return; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs) { if (srv[1].DIDs) { var DIDs = Iterator(srv[1].DIDs); for (var DID in DIDs) { emit(DID[0], { \"account_credit\": doc.account.credits.prepay || 0.0, \"server_credit\": srv[1].credits || 0.0, \"did_credit\": DID[1].credits || 0.0, \"trunks_available\": doc.trunks, \"callerid_server\": srv[1].callerid || \"\", \"callerid_account\": doc.callerid || \"\", \"e911_callerid_server\": srv[1].e911_callerid || \"\", \"e911_callerid_account\": doc.e911_callerid || \"\", \"auth\": srv[1].auth, \"DID_Opts\": DID[1], \"inbound_format\": srv[1].inbound_format || \"NPANXXXXXX\", \"account\": doc.account}); } } } } }\"} }">>}
-							 ]}]).
+-define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json"]).
+-define(TS_COUCH_BASE_DOCS, ["carriers.json", "rates.json"]).

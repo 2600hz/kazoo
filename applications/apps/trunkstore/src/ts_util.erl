@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ts_util).
 
--export([find_ip/1, filter_active_calls/2]).
+-export([find_ip/1, filter_active_calls/2, load_doc_from_file/2]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
@@ -46,3 +46,15 @@ filter_active_calls(CallID, ActiveCalls) ->
     lists:filter(fun({CallID1,_}) when CallID =:= CallID1 -> false;
 		    (CallID1) when CallID =:= CallID1 -> false;
 		    (_) -> true end, ActiveCalls).
+
+load_doc_from_file(DB, File) ->
+    Path = lists:flatten([code:priv_dir(trunkstore), "/couchdb/", whistle_util:to_list(File)]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    try
+	{ok, ViewStr} = file:read_file(Path),
+	{CDoc} = couchbeam_util:json_decode(ViewStr),
+	{ok, _} = couch_mgr:save_doc(DB, CDoc) %% if it crashes on the match, the catch will let us know
+    catch
+	_A:_B ->
+	    logger:format_log(error, "Error reading ~p into couch: ~p:~p~n", [Path, _A, _B])
+    end.

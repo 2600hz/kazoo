@@ -30,8 +30,8 @@
 
 -define(SERVER, ?MODULE).
 -define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
--define(UNITS_TO_DOLLARS(X), whistle_util:to_list(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
+-define(UNITS_TO_DOLLARS(X), whistle_util:to_list(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 -define(EOD, end_of_day).
 
@@ -256,6 +256,7 @@ code_change(_OldVsn, State, _Extra) ->
 load_accounts_from_ts(DB) ->
     case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
 	[] -> ok;
+	{{error,not_found},fetch_failed} -> ok;
 	Accts when is_list(Accts) ->
 	    AcctIds = lists:map(fun({A}) -> props:get_value(<<"id">>, A) end, Accts),
 	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds),
@@ -348,26 +349,6 @@ debit_doc(AcctId, Extra) ->
      | Extra
     ].
 
-load_views(DB) ->
-    Dir = lists:flatten([code:priv_dir(trunkstore), "/couchdb/"]),
-    format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Dir]),
-    {ok, Docs} = file:list_dir(Dir),
-    format_log(info, "LoadViews: ~p~n", [Docs]),
-    lists:foreach(fun(Doc) ->
-			  case lists:suffix(".json", Doc) of
-			      false -> ok;
-			      true ->
-				  try
-				      {ok, ViewStr} = file:read_file(Dir ++ Doc),
-				      {CDoc} = couchbeam_util:json_decode(ViewStr),
-				      couch_mgr:save_doc(DB, CDoc)
-				  catch
-				      _A:_B ->
-					  format_log(error, "Error reading ~p into couch: ~p:~p~n", [Doc, _A, _B])
-				  end
-			  end
-		  end, Docs).
-
 -spec(get_accts/1 :: (DB :: binary()) -> list(binary())).
 get_accts(DB) ->
     case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
@@ -417,7 +398,6 @@ update_from_couch(AcctId, WDB, RDB) ->
     UD2 = [ {<<"amount">>, C0 + (Balance - C0)} | lists:keydelete(<<"amount">>, 1, UD1)],
     couch_mgr:save_doc(WDB, UD2).
 
-
 update_account(AcctId, Bal) ->
     Doc = couch_mgr:open_doc(?TS_DB, AcctId),
     {Acct} = props:get_value(<<"account">>, Doc, {[]}),
@@ -428,13 +408,21 @@ update_account(AcctId, Bal) ->
     couch_mgr:save_doc(?TS_DB, Doc1).
 
 load_account(AcctId, DB) ->
-    Doc = couch_mgr:open_doc(?TS_DB, AcctId),
-    couch_mgr:add_change_handler(?TS_DB, AcctId),
+    case couch_mgr:open_doc(?TS_DB, AcctId) of
+	{error, not_found} -> ok;
+	Doc -> 
+	    couch_mgr:add_change_handler(?TS_DB, AcctId),
 
-    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
-    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
-    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
-    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
-    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)).
+	    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
+	    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+	    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
+	    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
+	    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks))
+    end.
+
+load_views(DB) ->
+    lists:foreach(fun(Name) ->
+			  ts_util:load_doc_from_file(DB, Name)
+		  end, ["accounts.json", "credit.json", "trunks.json"]).
 				     
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"

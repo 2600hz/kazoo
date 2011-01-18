@@ -209,7 +209,7 @@ publish_register_event(Data, Host, AppVsn) ->
 				      undefined -> Api;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, calendar:datetime_to_gregorian_seconds(calendar:local_time())} | DefProp], Keys),
+			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
     case whistle_api:reg_success(ApiProp) of
 	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~p~n", [E]);
 	{ok, JSON} ->
