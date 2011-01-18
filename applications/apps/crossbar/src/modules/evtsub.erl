@@ -237,6 +237,11 @@ handle_info({binding_fired, Pid, <<"evtsub.validate">>=Route, Payload}, State) -
 		  Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
+handle_info({binding_fired, Pid, <<"session.destroy">>=Route, #session{account_id=Acct}=S}, #state{client_subs=Subs, amqp_host=H}=State) ->
+    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
+    spawn(fun() -> clear_sub(lists:keyfind(Acct, 1, Subs), H) end), %crashes if Acct isn't found, no biggie
+    Pid ! { binding_result, true, S },
+    {noreply, State#state{client_subs=lists:keydelete(Acct, 1, Subs)}};
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
     format_log(info, "EVTSUB(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
@@ -338,7 +343,7 @@ validate(Params, Req) ->
 
 -spec(new_sub/5 :: (Client :: binary(), Exchange :: binary(), Binding :: binary(), MaxRespSize :: integer(), H :: string()) -> client_sub()).
 new_sub(Client, Exchange, Binding, MaxRespSize, H) ->
-    Q = amqp_util:new_queue(H, <<>>),
+    Q = amqp_util:new_queue(H, <<>>, [{durable, true}]),
     F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
     amqp_util:F(H, Q, Binding), % bind our queue
     {Client, Q, [{{Exchange, Binding}, MaxRespSize}]}.
@@ -378,7 +383,7 @@ client_events({_,Q,B}, H) ->
     spawn(fun() ->
 		  amqp_util:basic_consume(H, Q),
 		  receive_events(Self, MaxResp, 0, [])
-		      %% look to basic.qos{prefetch_count} to pull specified # of messages
+		  %% look to basic.qos{prefetch_count} to pull specified # of messages
 	  end),
     receive
 	{events, Events} -> {ok, Events}

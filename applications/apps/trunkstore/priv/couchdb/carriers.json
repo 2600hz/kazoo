@@ -1,0 +1,22 @@
+{ "_id":"carriers"
+  ,"carrier_name":{
+     "name":"Carrier Name"
+     ,"enabled":"1"
+     ,"flags":["CallerID","CNAM","Porting","US48","Alaska","Hawaii","TollFree"]
+     ,"weight_cost":100
+     ,"weight_location":1
+     ,"routes":["^\\+{0,1}1{0,1}(\\d{10})$"]
+     ,"gateways":[{
+                   "server":"carrier.ip.com"
+		   ,"realm":"carrier.ip.com"
+		   ,"username":"your_username"
+		   ,"password":"your_password"
+		   ,"prefix":""
+		   ,"suffix":""
+                   ,"progress-timer":"6"
+		   ,"codecs":["G729","G711"]
+		   ,"enabled":"1"
+		  }
+		 ]
+  }
+}

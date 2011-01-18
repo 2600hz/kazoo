@@ -71,7 +71,7 @@ find_failed({K, false}, Acc) -> [K | Acc];
 find_failed({K, L}, Acc) when is_list(L) ->
     case lists:foldl(fun find_failed/2, [], L) of
 	[] -> Acc; % no nested K/V pairs failed
-	L1 -> [K | Acc ++ L1] %% if one or more nested failed, Key failed
+	L1 -> [[K | L1] | Acc] %% if one or more nested failed, Key failed
     end.
 
 get_request_params(RD) ->
