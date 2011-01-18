@@ -192,6 +192,8 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(_Reason, #state{amqp_host=""}) ->
+    ok;
 terminate(_Reason, #state{amqp_host=AHost, callmgr_q=CQ}) ->
     amqp_util:queue_delete(AHost, CQ),
     format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]),
