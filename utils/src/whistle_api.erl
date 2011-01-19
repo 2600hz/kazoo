@@ -24,6 +24,7 @@
 
 %% Authentication and Routing
 -export([auth_req/1, auth_resp/1, reg_success/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
+-export([reg_query/1, reg_query_resp/1]).
 
 %% Resources
 -export([resource_req/1, resource_resp/1, resource_error/1]).
@@ -43,7 +44,7 @@
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
 	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
-	 ,call_status_resp_v/1, set_req_v/1
+	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1
 	]).
 
 %% FS-specific routines
@@ -135,6 +136,38 @@ reg_success(Prop) ->
 -spec(reg_success_v/1 :: (Prop :: proplist()) -> boolean()).
 reg_success_v(Prop) ->
     validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Registration Query - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(reg_query/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_query(Prop) ->
+    case reg_query_v(Prop) of
+	true -> build_message(Prop, ?REG_QUERY_HEADERS, ?OPTIONAL_REG_QUERY_HEADERS);
+	false -> {error, "Proplist failed validation for reg_query"}
+    end.
+
+-spec(reg_query_v/1 :: (Prop :: proplist()) -> boolean()).
+reg_query_v(Prop) ->
+    validate(Prop, ?REG_QUERY_HEADERS, ?REG_QUERY_VALUES, ?REG_QUERY_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Registration Query Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(reg_query_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_query_resp(Prop) ->
+    case reg_query_resp_v(Prop) of
+	true -> build_message(Prop, ?REG_QUERY_RESP_HEADERS, ?OPTIONAL_REG_QUERY_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for reg_query_resp"}
+    end.
+
+-spec(reg_query_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+reg_query_resp_v(Prop) ->
+    validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Request - see wiki
