@@ -17,8 +17,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-include("../include/amqp_client/include/amqp_client.hrl").
+
+-import(logger, [format_log/3]).
+
 -define(SERVER, ?MODULE).
 -define(REG_DB, "registrations").
+
+-type proplist() :: list(tuple(binary(), binary())) | [].
 
 -record(state, {
 	  amqp_host = "localhost" :: string()
@@ -100,6 +106,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
+    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -144,3 +153,62 @@ start_amqp(Host) ->
 stop_amqp(Host, Q) ->
     amqp_util:unbind_q_from_broadcast(Host, Q),
     amqp_util:delete_queue(Host, Q).
+
+-spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
+handle_req(<<"application/json">>, Payload, State) ->
+    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "REG_SRV(~p): Recv JSON~nPayload: ~p~n", [self(), Prop]),
+    process_req(get_msg_type(Prop), Prop, State).
+
+-spec(get_msg_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary())).
+get_msg_type(Prop) ->
+    { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) }.
+
+-spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
+process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
+    format_log(info, "REG_SRV: Lookup auth creds here for~n~p~n", [Prop]),
+    ok;
+process_req({<<"directory">>, <<"reg_success">>}, Prop, State) ->
+    format_log(info, "REG_SRV: Reg success~n~p~n", [Prop]),
+    Domain = props:get_value(<<"Realm">>, Prop),
+    DomainDoc = case couch_mgr:open_doc(?REG_DB, Domain) of
+		    {error, not_found} -> [{<<"_id">>, Domain}, {<<"registrations">>, {[]}}];
+		    Doc when is_list(Doc) -> Doc
+		end,
+    Regs = props:get_value(<<"registrations">>, DomainDoc, []),
+    format_log(info, "REG_SRV(~p): Domain: ~p~nRegs: ~p~n", [self(), Domain, Regs]),
+    DomainDoc1 = [ {<<"registrations">>, [{struct, Prop} | Regs]} | lists:keydelete(<<"registrations">>, 1, DomainDoc)],
+    {ok, _} = couch_mgr:save_doc(?REG_DB, DomainDoc1);
+process_req(_,_,_) ->
+    not_handled.
+
+
+%% {save_doc,"registrations",
+%%  {
+%%    [{<<"registrations">>, [
+%% 			    {[{<<"User-Agent">>,<<"Twinkle/1.4.2">>},
+%% 			      {<<"Status">>,<<"Registered(UDP)">>},
+%% 			      {<<"Realm">>,<<"192.168.0.104">>},
+%% 			      {<<"Username">>,<<"2600pbx">>},
+%% 			      {<<"Network-Port">>,<<"5065">>},
+%% 			      {<<"Network-IP">>,<<"192.168.0.104">>},
+%% 			      {<<"To-Host">>,<<"192.168.0.104">>},
+%% 			      {<<"To-User">>,<<"2600pbx">>},
+%% 			      {<<"Expires">>,<<"3600">>},
+%% 			      {<<"RPid">>,<<"unknown">>},
+%% 			      {<<"Contact">>,
+%% 			       <<"\"4158867971\" <sip:2600pbx@192.168.0.104:5065;transport=udp>">>},
+%% 			      {<<"From-Host">>,
+%% 			       <<"trunks.2600hz.com">>},
+%% 			      {<<"From-User">>,<<"2600pbx">>},
+%% 			      {<<"Event-Timestamp">>,63462243722.0},
+%% 			      {<<"App-Version">>,<<"0.5.6">>},
+%% 			      {<<"App-Name">>,
+%% 			       <<"ecallmgr_fs_node">>},
+%% 			      {<<"Event-Name">>,<<"reg_success">>},
+%% 			      {<<"Event-Category">>,<<"directory">>},
+%% 			      {<<"Server-ID">>,<<>>}]}
+%% 			   ]},
+%%     {<<"_id">>,<<"192.168.0.104">>}]
+%%  }
+%% }
