@@ -22,7 +22,10 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
+-define(APP_VSN, "0.3.0").
 -define(REG_DB, "registrations").
+
+-compile({no_auto_import,[now/0]}). %% we define our own now/0 function
 
 -type proplist() :: list(tuple(binary(), binary())) | [].
 
@@ -165,11 +168,13 @@ get_msg_type(Prop) ->
     { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) }.
 
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
+process_req({<<"directory">>, <<"auth_req">>}, Prop, _State) ->
     format_log(info, "REG_SRV: Lookup auth creds here for~n~p~n", [Prop]),
     ok;
-process_req({<<"directory">>, <<"reg_success">>}, Prop, State) ->
+process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
     format_log(info, "REG_SRV: Reg success~n~p~n", [Prop]),
+    true = whistle_api:reg_success_v(Prop),
+
     Domain = props:get_value(<<"Realm">>, Prop),
     DomainDoc = case couch_mgr:open_doc(?REG_DB, Domain) of
 		    {error, not_found} -> [{<<"_id">>, Domain}, {<<"registrations">>, {[]}}];
@@ -177,10 +182,53 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, State) ->
 		end,
     Regs = props:get_value(<<"registrations">>, DomainDoc, []),
     format_log(info, "REG_SRV(~p): Domain: ~p~nRegs: ~p~n", [self(), Domain, Regs]),
-    DomainDoc1 = [ {<<"registrations">>, [{struct, Prop} | Regs]} | lists:keydelete(<<"registrations">>, 1, DomainDoc)],
+    DomainDoc1 = [ {<<"registrations">>, [{struct, [ {<<"Reg-Server-Timestamp">>, now()}
+						     | Prop]}
+					  | Regs]}
+		   | lists:keydelete(<<"registrations">>, 1, DomainDoc)],
     {ok, _} = couch_mgr:save_doc(?REG_DB, DomainDoc1);
+process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
+    format_log(info, "REG_SRV: Reg query~n~p~n", [Prop]),
+    true = whistle_api:reg_query_v(Prop),
+
+    Domain = props:get_value(<<"Domain">>, Prop),
+    User = props:get_value(<<"User">>, Prop),
+
+    case couch_mgr:get_results("registrations"
+			       ,{"contacts", "most_recent"}
+			       ,[{<<"startkey">>, [Domain, User, now()]}
+				 ,{<<"endkey">>, [Domain, User]}
+				]
+			      ) of
+	[] -> ok;
+	[{ViewRes} | _] ->
+	    Fields = props:get_value(<<"Fields">>, Prop),
+	    RespServer = props:get_value(<<"Server">>, Prop),
+
+	    {RegDoc} = props:get_value(<<"value">>, ViewRes),
+
+	    RespFields = lists:foldl(fun(F, Acc) ->
+					     case props:get_value(F, RegDoc) of
+						 undefined -> Acc;
+						 V -> [ {F, V} | Acc]
+					     end
+				     end, [], Fields),
+	    {ok, JSON} = whistle_api:reg_query_resp([ {<<"Fields">>, {struct, RespFields}}
+						      | whistle_api:default_headers(State#state.my_q
+										    ,<<"directory">>
+											,<<"reg_query_resp">>
+											,whistle_util:to_binary(?MODULE)
+										    ,?APP_VSN)
+						    ]),
+	    amqp_util:targeted_publish(State#state.amqp_host, RespServer, JSON, <<"application/json">>)
+    end,
+    ok;
 process_req(_,_,_) ->
     not_handled.
+
+-spec(now/0 :: () -> integer()).
+now() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 
 %% {save_doc,"registrations",

@@ -185,8 +185,8 @@ add_app(App, As) ->
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
     format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
-    whistle_apps_sup:stop_app(App),
-    application:stop(App),
+    format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
+    format_log(info, "APPS(~p): Stopping app_sup: ~p~n", [self(), whistle_apps_sup:stop_app(App)]),
     case lists:member(App, As) of
 	true -> lists:delete(App, As);
 	false -> As

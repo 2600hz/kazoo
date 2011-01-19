@@ -2,8 +2,7 @@
   ,"language":"javascript"
   ,"views":{
     "get_contact":{
-      "map": "function(doc) { var reg = doc.registrations; for ( i in doc.registrations ) { emit([ reg[i]['Realm'], reg[i]['Username'], parseInt(reg[i]['Event-Timestamp']) + parseInt(reg[i]['Expires'])], reg[i]['Contact']); } }"
-      ,"reduce": "function(k, vs) { return vs; }"
+      "map": "function(doc) { var reg = doc.registrations; for ( i in reg ) { var t = reg[i]['Reg-Server-Timestamp'] || reg[i]['Event-Timestamp']; emit([ reg[i]['Realm'], reg[i]['Username'], parseInt(t) + parseInt(reg[i]['Expires'])], reg[i]); } }"
     }
   }
 }
