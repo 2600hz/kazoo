@@ -102,6 +102,29 @@
 			   ]).
 -define(REG_SUCCESS_TYPES, []).
 
+%% Query Registrations
+-define(REG_QUERY_HEADERS, [<<"User">>, <<"Host">>, <<"Fields">>]).
+-define(OPTIONAL_REG_QUERY_HEADERS, []).
+-define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
+			   ,{<<"Event-Name">>, <<"reg_query">>}
+			  ]).
+-define(REG_QUERY_TYPES, [{<<"Fields">>, fun(Fs) when is_list(Fs) ->
+						 Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
+						 lists:foldl(fun(F, true) -> lists:member(F, Allowed);
+								(_, false) -> false
+							     end, true, Fs);
+					    (_) -> false
+					 end}
+			 ]).
+
+%% Registration Query Response
+-define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
+-define(OPTIONAL_REG_QUERY_RESP_HEADERS, []).
+-define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
+				,{<<"Event-Name">>, <<"reg_query_resp">>}
+			       ]).
+-define(REG_QUERY_RESP_TYPES, []).
+
 %% Route Requests - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
