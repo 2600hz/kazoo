@@ -47,7 +47,7 @@
 
 init(Opts) ->
     Opts1 = lists:foldl(fun({_, OptsTmp}, Acc) -> lists:merge(OptsTmp, Acc) end, Opts
-			,crossbar_bindings:run(<<"evtsub.init">>, Opts)),
+			,crossbar_bindings:map(<<"evtsub.init">>, Opts)),
     Provided = lists:foldr(fun({Fun, L}, Acc) ->
 				   lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
 			   end, [], props:get_value(content_types_provided, Opts1, [])),
@@ -64,7 +64,7 @@ init(Opts) ->
       }}.
 
 resource_exists(RD, Context) ->
-    crossbar_bindings:run(<<"evtsub.resource_exists">>, []),
+    crossbar_bindings:map(<<"evtsub.resource_exists">>, []),
     case erlang:whereis(evtsub) of
 	undefined -> {false, RD, Context};
 	P when is_pid(P) ->
@@ -97,11 +97,11 @@ is_valid(RD, Context) ->
     S = S0#session{account_id = <<"test">>},
     Params = [{<<"account_id">>, S#session.account_id} | crossbar_util:get_request_params(RD)],
 
-    ValidatedResults = crossbar_bindings:run(<<"evtsub.validate">>, {wrq:path_info(request, RD), Params}),
+    ValidatedResults = crossbar_bindings:map(<<"evtsub.validate">>, {wrq:path_info(request, RD), Params}),
     case crossbar_bindings:failed(ValidatedResults) of
 	[] ->
-	    IsAuthenticated = crossbar_bindings:any(crossbar_bindings:run(<<"evtsub.authenticate">>, {S, Params})),
-	    IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(<<"evtsub.authorize">>, {S, Params})),
+	    IsAuthenticated = crossbar_bindings:any(crossbar_bindings:map(<<"evtsub.authenticate">>, {S, Params})),
+	    IsAuthorized = crossbar_bindings:any(crossbar_bindings:map(<<"evtsub.authorize">>, {S, Params})),
 	    {IsAuthenticated andalso IsAuthorized, RD, Context#context{session=S, req_params=Params}};
 	[{false, FailedKeys} | _] -> %% some listener returned false, take the first one
 	    Resp = crossbar_util:winkstart_envelope(error
@@ -111,38 +111,38 @@ is_valid(RD, Context) ->
     end.
 
 content_types_provided(RD, #context{content_types_provided=CTP}=Context) ->
-    crossbar_bindings:run(<<"evtsub.content_types_provided">>, CTP),
+    crossbar_bindings:map(<<"evtsub.content_types_provided">>, CTP),
     {CTP, RD, Context}.
 
 content_types_accepted(RD, #context{content_types_accepted=CTA}=Context) ->
-    crossbar_bindings:run(<<"evtsub.content_types_accepted">>, CTA),
+    crossbar_bindings:map(<<"evtsub.content_types_accepted">>, CTA),
     {CTA, RD, Context}.
 
 allowed_methods(RD, Context) ->
-    crossbar_bindings:run(<<"evtsub.allowed_methods">>, []),
+    crossbar_bindings:map(<<"evtsub.allowed_methods">>, []),
     {['POST', 'PUT', 'DELETE'], RD, Context}.
 
 is_authorized(RD, Context) ->
     {true, RD, Context}.
 
 generate_etag(RD, Context) ->
-    crossbar_bindings:run(<<"evtsub.generate_etag">>, []),
+    crossbar_bindings:map(<<"evtsub.generate_etag">>, []),
     { mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context }.
 
 encodings_provided(RD, Context) ->
-    crossbar_bindings:run(<<"evtsub.encodings_provided">>, []),
+    crossbar_bindings:map(<<"evtsub.encodings_provided">>, []),
     { [ {"identity", fun(X) -> X end}
        ,{"gzip", fun(X) -> zlib:gzip(X) end}]
       ,RD, Context}.
 
 process_post(RD, #context{request=Fun, req_params=Params}=Context) ->
-    crossbar_bindings:run(<<"evtsub.process_post">>, []),
+    crossbar_bindings:map(<<"evtsub.process_post">>, []),
     format_log(info, "EVTSUB_R: process_post params ~p~n", [Params]),
     Resp = crossbar_util:winkstart_envelope(evtsub:Fun(Params)),
     {true, wrq:append_to_response_body(Resp, RD), Context}.
 
 finish_request(RD, #context{session=S}=Context) ->
-    crossbar_bindings:run(<<"evtsub.finish_request">>, RD),
+    crossbar_bindings:map(<<"evtsub.finish_request">>, RD),
     {true, crossbar_session:finish_session(S, RD), Context}.
 
 %% Convert the input to Erlang
