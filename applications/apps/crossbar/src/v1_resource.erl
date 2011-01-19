@@ -49,7 +49,7 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
             Methods1 = allow_methods(Responses, Methods),
             {Methods1, RD, Context#cb_context{req_nouns=Nouns, req_verb=Verb}};
         [] ->
-            {Methods, RD, Context}
+            {Methods, RD, Context#cb_context{req_verb=Verb}}
     end.
 
 is_authorized(RD, Context) ->
@@ -58,21 +58,20 @@ is_authorized(RD, Context) ->
     S = crossbar_bindings:fold(Event, S0),
     {true, RD, Context#cb_context{session=S}}.
 
-known_content_type(RD, #cb_context{session=S}=Context) ->
+known_content_type(RD, Context) ->
    %% Event = list_to_binary([CbM, <<".known_content_type">>]),
    %% crossbar_bindings:map(Event, {RD, Context}),
-    try
-	QS = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- wrq:req_qs(RD)],	
-        Prop = case wrq:req_body(RD) of
+    try	
+        Json = case wrq:req_body(RD) of
 		   <<>> ->
-		       [{<<"data">>, {struct, []}}];
-		   Content ->
-		       {struct, Json} = mochijson2:decode(Content),
-		       lists:ukeymerge(1, lists:ukeysort(1, Json), [{<<"data">>, {struct,[]}}])
+		       [];
+		   ReqBody ->
+		       {struct, Json1} = mochijson2:decode(ReqBody),
+		       Json1
 	       end,
-	Prop1 = [{<<"account_id">>, S#session.account_id} | Prop],
-        Req_json = wrq:path_tokens(RD) ++ [lists:ukeymerge(1, lists:ukeysort(1, Prop1), lists:ukeysort(1, QS))],
-	{true, RD, Context#cb_context{req_json=Req_json}}
+        Data = proplists:get_value(<<"data">>, Json, []),
+        Auth = get_auth_token(RD, Json),
+	{true, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}
     catch
         Exception:Reason ->
             format_log(info, "API_1_0_R: Unknown content type (~p:~p)~n", [Exception, Reason]),
@@ -87,36 +86,17 @@ known_content_type(RD, #cb_context{session=S}=Context) ->
 
 resource_exists(RD, #cb_context{req_nouns=[{<<"404">>,[]}|[]]}=Context) ->
     {false, RD, Context};
-
-resource_exists(RD, #cb_context{session=S, req_verb=Verb, req_nouns=Nouns, req_json=JSON}=Context) ->
-    AuthToken = get_auth_token(RD, JSON),
-    ResourceExists = lists:foldl(fun({Mod, Params}, Acc) ->
-                                    Event = <<"v1_resource.resource_exists.", Mod/binary>>,
-                                    crossbar_bindings:all(crossbar_bindings:map(Event, Params)) and Acc
-                                 end, true, Nouns),
-    case ResourceExists of
-        true ->
-            %% Do we trust AuthToken (or do we not care for this noun)?
-            Event1 = <<"v1_resource.authenticate">>,
-            IsAuthenticated = crossbar_bindings:any(crossbar_bindings:map(Event1, {AuthToken, Nouns})),
-
-            %% Can AuthToken Method Nouns?
-            Event2 = <<"v1_resource.authorize">>,
-            IsAuthorized = crossbar_bindings:any(crossbar_bindings:map(Event2, {AuthToken, wrq:method(RD), Nouns})),
-
-            case IsAuthenticated andalso IsAuthorized of
-                true ->
-                    Event3 = <<"v1_resource.auth_session">>,
-                    S1 = crossbar_bindings:fold(Event3, S),
-
-                    {RD1, Context1} = do_request(RD, Context#cb_context{session = S1}, Nouns),
-
-                    {true, RD1, Context1};
-                false ->
-                    {{halt, 401}, RD, Context}
-            end;
-        false ->
-            {false, RD, Context}
+resource_exists(RD, Context) ->
+    case does_resource_exist(RD, Context) of
+            true ->
+                case is_authentic(RD, Context) andalso is_permitted(RD, Context) of
+                    true ->
+                        is_valid(RD, Context);
+                    false ->
+                        {{halt, 401}, RD, Context}
+                end;
+            false ->
+                {false, RD, Context}
     end.
 
 content_types_provided(RD, #cb_context{content_types_provided=CTP}=Context) ->
@@ -232,7 +212,7 @@ parse_url([Mod|T], Loaded, Events) ->
 %% @doc
 %% This method will find the intersection of the allowed methods
 %% among event respsonses.  The responses can only veto the list of
-%% methods, it can not add.
+%% methods, they can not add.
 %% @end
 %%--------------------------------------------------------------------
 -spec(allow_methods/2  :: (Reponses :: proplist(), Avaliable :: proplist()) -> #cb_context{}).
@@ -273,6 +253,96 @@ get_auth_token(RD, JSON) ->
         AuthToken ->
             whistle_util:to_binary(AuthToken)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will use event bindings to determine if the target noun
+%% (the final module in the chain) accepts this verb parameter pair.
+%% @end
+%%--------------------------------------------------------------------
+-spec(does_resource_exist/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
+does_resource_exist(_RD, #cb_context{req_nouns=Nouns}) ->
+    lists:foldl(fun({Mod, Params}, Acc) ->
+                                Event = <<"v1_resource.resource_exists.", Mod/binary>>,
+                                Responses = crossbar_bindings:map(Event, Params),
+                                crossbar_bindings:all(Responses) and Acc
+                end, true, Nouns).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will use event bindings to determine if the client has
+%% provided a valid authentication token
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
+is_authentic(_RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
+    Event = <<"v1_resource.authenticate">>,
+    Responses = crossbar_bindings:map(Event, {AuthToken, Nouns}),
+    crossbar_bindings:any(Responses).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will use event bindings to determine if the client is
+%% authorized for this request
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
+is_permitted(RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
+    Event = <<"v1_resource.authorize">>,
+    Responses = crossbar_bindings:map(Event, {AuthToken, wrq:method(RD), Nouns}),
+    crossbar_bindings:any(Responses).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This method will use validate to determine if the request is valid,
+%% returning 400 if invalid
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_valid/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple({true | tuple(halt, 400), #wm_reqdata{}, #cb_context{}})).
+is_valid(RD, Context) ->
+    {Valid, RD1, Context1} = validate(RD, Context),
+    case Valid of
+        true ->
+            {true, RD1, Context1};
+        false ->
+            RD2 = wrq:append_to_response_body(create_body(Context1), RD1),
+            {{halt, 400}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Child function of is_valid, gives each noun a chance to determine if
+%% it is valid and returns the status, and any errors
+%% @end
+%%--------------------------------------------------------------------
+-spec(validate/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple({true | false, #wm_reqdata{}, #cb_context{}})).
+validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
+    lists:foldl(fun({Mod, Params}, {_, RD1, Context1}) ->
+                                Event = <<"v1_resource.validate.", Mod/binary>>,
+                                {_, RD2, Context2} = crossbar_bindings:fold(Event, {Params, RD1, Context1}),
+                                Valid = Context2#cb_context.resp_status == success,
+                                {Valid, RD2, Context2}
+                end, {true, RD, Context}, Nouns).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 do_request(RD, Context, Nouns) ->
     {RD1, Context1} = pre_execute(RD, Context, Nouns),

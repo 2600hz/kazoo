@@ -58,6 +58,7 @@
           ,req_verb = undefined :: binary() | undefined
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
           ,req_json = [] :: proplist()
+          ,req_data = [] :: proplist()
           ,db_name = undefined :: string() | undefined
           ,doc = undefined :: json_object() | undefinded
 	  ,resp_status = success :: crossbar_status()
