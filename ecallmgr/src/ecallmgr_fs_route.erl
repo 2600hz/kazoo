@@ -207,11 +207,11 @@ send_control_queue(Host, CtlProp, AppQ) ->
     end.
 
 %% Prop = Route Response
-generate_xml(<<"bridge">>, Routes, _Prop, Domain) ->
+generate_xml(<<"bridge">>, Routes, _Prop, Domain, AmqpHost) ->
     format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
-					     Route = ecallmgr_util:route_to_dialstring(get_value(<<"Route">>, RouteProp), Domain),
+					     Route = ecallmgr_util:route_to_dialstring(AmqpHost, get_value(<<"Route">>, RouteProp), Domain),
 
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
@@ -232,9 +232,9 @@ generate_xml(<<"bridge">>, Routes, _Prop, Domain) ->
 				     end, {1, ""}, lists:reverse(Routes)),
     format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
-generate_xml(<<"park">>, _Routes, _Prop, _Domain) ->
+generate_xml(<<"park">>, _Routes, _Prop, _Domain, _H) ->
     ?ROUTE_PARK_RESPONSE;
-generate_xml(<<"error">>, _Routes, Prop, _Domain) ->
+generate_xml(<<"error">>, _Routes, Prop, _Domain, _H) ->
     ErrCode = get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
     format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
@@ -294,8 +294,9 @@ handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, Fet
 	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE},
 	    failed;
 	Prop ->
+	    true = whistle_api:route_resp_v(Prop),
 	    Domain = get_value(<<"domain">>, Data, ?DEFAULT_DOMAIN),
-	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Domain),
+	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Domain, Host),
 	    format_log(info, "L/U.route(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},
 
