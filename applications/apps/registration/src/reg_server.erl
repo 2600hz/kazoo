@@ -179,6 +179,9 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, State) ->
     format_log(info, "REG_SRV(~p): Domain: ~p~nRegs: ~p~n", [self(), Domain, Regs]),
     DomainDoc1 = [ {<<"registrations">>, [{struct, Prop} | Regs]} | lists:keydelete(<<"registrations">>, 1, DomainDoc)],
     {ok, _} = couch_mgr:save_doc(?REG_DB, DomainDoc1);
+process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
+    format_log(info, "REG_SRV: Reg query~n~p~n", [Prop]),
+    ok;
 process_req(_,_,_) ->
     not_handled.
 
