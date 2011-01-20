@@ -59,40 +59,41 @@ route_to_dialstring(AmqpHost, [Domain, <<"user:", User/binary>>, DID], _D) ->
     route_to_dialstring(AmqpHost, Domain, User, DID);
 route_to_dialstring(_AmqpHost, DS, _D) -> DS.
 
+%% how to know whether to replace user with DID or leave user in place?
 route_to_dialstring(AmqpHost, Domain, User, DID) ->
-    Q = amqp_util:new_targeted_queue(AmqpHost, <<>>),
-    amqp_util:basic_consume(AmqpHost, Q),
-    ReqProp = [{<<"User">>, User}, {<<"Host">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
-	       | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
-    {ok, JSON} = whistle_api:reg_query(ReqProp),
-    amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
-
-    receive_reg_query_resp(DID).
-
-receive_reg_query_resp(DID) ->
+    Self = self(),
+    spawn(fun() ->
+		  Q = amqp_util:new_targeted_queue(AmqpHost, <<>>),
+		  amqp_util:bind_q_to_targeted(AmqpHost, Q),
+		  amqp_util:basic_consume(AmqpHost, Q),
+		  ReqProp = [{<<"User">>, User}, {<<"Host">>, Domain}, {<<"Fields">>, [<<"Contact">>, <<"Realm">>]}
+			     | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+		  {ok, JSON} = whistle_api:reg_query(ReqProp),
+		  amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
+		  C = receive_reg_query_resp(User),
+		  Self ! {contact, C}
+	  end),
     receive
-	#'basic.consume_ok'{} -> receive_reg_query_resp(DID);
+	{contact, C} -> C
+    after 1500 -> User
+    end.
+
+receive_reg_query_resp(User) ->
+    receive
+	#'basic.consume_ok'{} ->
+	    receive_reg_query_resp(User);
 	{_, #amqp_msg{payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "ECALL_UTIL: RegQResp:~n~p~n", [Prop]),
 	    true = whistle_api:reg_query_resp_v(Prop),
 
-	    [{<<"Contact">>, Contact}] = props:get_value(<<"Fields">>, Prop),
-	    re:replace(Contact, "^[^\@]+", DID, [{return, binary}])
-    after 1000 ->
-	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~p~n", [DID]),
-	    DID
-    end.
+	    {struct, [{<<"Contact">>, Contact}, {<<"Realm">>, Realm}]} = props:get_value(<<"Fields">>, Prop),
 	    
-
-%%	    list_to_binary([DID, "${regex(${sofia_contact(sipinterface_1/",User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
-
-%% for some commands, like originate, macros are not run; need to progressively build the dialstring
-%% -spec(route_to_dialstring/3 :: (Route :: list(binary()), Domain :: string() | binary(), FSNode :: atom()) -> binary()).
-%% route_to_dialstring([<<"user:", User/binary>>, DID], Domain, FSNode) ->
-%%     {ok, SC} = freeswitch:api(FSNode, sofia_contact, binary_to_list(list_to_binary(["sipinterface_1/",User, "@", Domain]))),
-%%     {ok, Regex} = re:compile("^[^\@]+"),
-%%     re:replace(SC, Regex, DID, [{return, binary}]);
-%% route_to_dialstring(X, _, _) -> X.
+	    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<";fs_path=sip:", Realm/binary>>)
+    after 1000 ->
+	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~p~n", [User]),
+	    User
+    end.
 
 -spec(to_list/1 :: (X :: atom() | list() | binary() | integer() | float()) -> list()).
 to_list(X) when is_float(X) ->

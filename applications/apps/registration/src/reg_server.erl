@@ -191,19 +191,19 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
     format_log(info, "REG_SRV: Reg query~n~p~n", [Prop]),
     true = whistle_api:reg_query_v(Prop),
 
-    Domain = props:get_value(<<"Domain">>, Prop),
+    Domain = props:get_value(<<"Host">>, Prop),
     User = props:get_value(<<"User">>, Prop),
+    Now = now(),
 
     case couch_mgr:get_results("registrations"
-			       ,{"contacts", "most_recent"}
-			       ,[{<<"startkey">>, [Domain, User, now()]}
-				 ,{<<"endkey">>, [Domain, User]}
+			       ,{"registrations", "get_contact"}
+			       ,[{<<"startkey">>, [Domain, User, Now]}
 				]
 			      ) of
 	[] -> ok;
 	[{ViewRes} | _] ->
 	    Fields = props:get_value(<<"Fields">>, Prop),
-	    RespServer = props:get_value(<<"Server">>, Prop),
+	    RespServer = props:get_value(<<"Server-ID">>, Prop),
 
 	    {RegDoc} = props:get_value(<<"value">>, ViewRes),
 
