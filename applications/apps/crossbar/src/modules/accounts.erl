@@ -119,10 +119,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, {Params, RD, Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = validate(wrq:method(RD), Params, Context),
-                  Pid ! {binding_result, true, {Params, RD, Context1}}
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -191,9 +191,9 @@ validate('GET', [], Context) ->
     Context;
 validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
     case is_valid_doc(Data) of
-        false ->
-            cb_error("Please provide a name", 400, Context);
-        true ->
+        {false, Fields} ->
+            cb_error("Invalid account document", 400, Context#cb_context{resp_data=Fields});
+        {true, []} ->
             Context
     end;
 validate('GET', [DocId], Context) ->
@@ -207,9 +207,21 @@ validate('GET', [DocId], Context) ->
     end;
 validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
     io:format("~p~n", [is_valid_doc(Data)]),
-    case is_valid_doc(Data) andalso get_public_doc(DocId) of
-        false ->
-            cb_error("Please provide a name", 400, Context);
+    case is_valid_doc(Data) of
+        {false, Fields} ->
+            cb_error("Invalid account document", 400, Context#cb_context{resp_data=Fields});
+        {true, []} ->
+            case get_public_doc(DocId) of
+                {error, not_found} ->
+                    cb_error("Account not found", 404, Context);
+                {error, db_not_reachable} ->
+                    cb_error("Could not connect", 503, Context);
+                Doc ->
+                    Context#cb_context{doc=Doc, resp_data=Doc}
+            end
+    end;
+validate('DELETE', [DocId], Context) ->
+    case get_public_doc(DocId) of
         {error, not_found} ->
             cb_error("Account not found", 404, Context);
         {error, db_not_reachable} ->
@@ -217,7 +229,16 @@ validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
 	Doc ->
             Context#cb_context{doc=Doc, resp_data=Doc}
     end;
-validate('DELETE', [DocId], Context) ->
+validate('DELETE', [DocId, <<"parents">>], Context) ->
+    case get_public_doc(DocId) of
+        {error, not_found} ->
+            cb_error("Account not found", 404, Context);
+        {error, db_not_reachable} ->
+            cb_error("Could not connect", 503, Context);
+	Doc ->
+            Context#cb_context{doc=Doc, resp_data=Doc}
+    end;
+validate('GET', [DocId, _], Context) ->
     case get_public_doc(DocId) of
         {error, not_found} ->
             cb_error("Account not found", 404, Context);
@@ -230,7 +251,22 @@ validate(_, _, Context) ->
     cb_error("Account failed validation", 500, Context).
 
 is_valid_doc(Data) ->
-    proplists:get_value(<<"name">>, Data, false) =/= false.
+    Req = [
+              {[<<"base">>, <<"name">>], [
+                   {required, []}
+                  ,{not_empty, []}
+                  ,{standard_text, []}
+              ]}
+              ,{[<<"base">>, <<"status">>], [
+                   {required, []}
+                  ,{not_empty, []}
+                  ,{standard_text, []}
+              ]}
+	  ],
+    Scanned = lists:map(fun(R) -> crossbar_util:param_exists(Data, R) end, Req),
+    io:format("~p~n", [Scanned]),
+    Failed = lists:foldl(fun crossbar_util:find_failed/2, [], Scanned),
+    {Failed =:= [], Failed}.
 
 %%--------------------------------------------------------------------
 %% @private
