@@ -177,10 +177,10 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
 
     Domain = props:get_value(<<"Realm">>, Prop),
     DomainDoc = case couch_mgr:open_doc(?REG_DB, Domain) of
-		    {error, not_found} -> [{<<"_id">>, Domain}, {<<"registrations">>, {[]}}];
+		    {error, not_found} -> [{<<"_id">>, Domain}, {<<"registrations">>, []}];
 		    Doc when is_list(Doc) -> Doc
 		end,
-    {Regs} = props:get_value(<<"registrations">>, DomainDoc, {[]}),
+    Regs = props:get_value(<<"registrations">>, DomainDoc, []),
     format_log(info, "REG_SRV(~p): Domain: ~p~nRegs: ~p~n", [self(), Domain, Regs]),
     DomainDoc1 = [ {<<"registrations">>, [{struct, [ {<<"Reg-Server-Timestamp">>, now()}
 						     | Prop]}
