@@ -47,21 +47,21 @@
 %%% WebMachine API
 %%%===================================================================
 init(Opts) ->
-    crossbar_bindings:run(<<"api_1_0_resource.init">>, Opts),
+    crossbar_bindings:map(<<"api_1_0_resource.init">>, Opts),
     {ok, #context{}}.
     %% {{wmtrace, "/tmp"}, #context}.
 
 allowed_methods(RD, #context{allowed_methods=Methods}=Context) ->
     CbM = wrq:path_info(cb_module, RD),
     Event = list_to_binary([CbM, <<".allowed_methods">>]),
-    Responses = crossbar_bindings:run(Event, Methods),
+    Responses = crossbar_bindings:map(Event, Methods),
     Methods1 = allow_methods(Responses, Methods),
     {Methods1, RD, Context#context{cb_module=CbM}}.
 
 is_authorized(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".is_authorized">>]),
-    %%Auth = crossbar_bindings:any(crossbar_bindings:run(Event, {RD, Context})),
-    crossbar_bindings:run(Event, {RD, Context}),
+    %%Auth = crossbar_bindings:any(crossbar_bindings:map(Event, {RD, Context})),
+    crossbar_bindings:map(Event, {RD, Context}),
     S0 = crossbar_session:start_session(RD),
     S = S0#session{account_id = <<"test">>},
 %%    {Auth, RD, Context#context{session=S}}.
@@ -69,7 +69,7 @@ is_authorized(RD, #context{cb_module=CbM}=Context) ->
 
 known_content_type(RD, #context{cb_module=CbM, session=S}=Context) ->
     Event = list_to_binary([CbM, <<".known_content_type">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     try
 	QS = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- wrq:req_qs(RD)],	
         Prop = case wrq:req_body(RD) of
@@ -96,24 +96,24 @@ known_content_type(RD, #context{cb_module=CbM, session=S}=Context) ->
 
 resource_exists(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".resource_exists">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     find_and_auth(RD, Context).
 		     
 content_types_provided(RD, #context{content_types_provided=CTP, cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".content_types_provided">>]),
-    Responses = crossbar_bindings:run(Event, CTP),
+    Responses = crossbar_bindings:map(Event, CTP),
     CTP1 = allow_content_types(Responses, CTP),
     {CTP1, RD, Context}.
 
 content_types_accepted(RD, #context{content_types_accepted=CTA, cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".content_types_accepted">>]),
-    Responses = crossbar_bindings:run(Event, CTA),
+    Responses = crossbar_bindings:map(Event, CTA),
     CTA1 = allow_content_types(Responses, CTA),
     {CTA1, RD, Context}.
 
 generate_etag(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".generate_etag">>]),
-    Responses = crossbar_bindings:run(Event, {undefined, RD, Context}),
+    Responses = crossbar_bindings:map(Event, {undefined, RD, Context}),
     case crossbar_bindings:succeeded(Responses) of
 	[] ->
 	    { undefined, RD, Context };
@@ -123,26 +123,26 @@ generate_etag(RD, #context{cb_module=CbM}=Context) ->
 
 encodings_provided(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".encodings_provided">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     { [ {"identity", fun(X) -> X end}
        ,{"gzip", fun(X) -> zlib:gzip(X) end}]
       ,RD, Context}.
 
 expires(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".expires">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     {{{1999,1,1},{0,0,0}}, RD, Context}.
 
 process_post(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".process_post">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
     RD1 = wrq:set_resp_body(create_body(Context1), RD),
     {true, RD1, Context1}.
 
 delete_resource(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".delete_resource">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
     RD1 = wrq:set_resp_body(create_body(Context1), RD),
     case Context1#context.resp_status of
@@ -154,7 +154,7 @@ delete_resource(RD, #context{cb_module=CbM}=Context) ->
 
 finish_request(RD, #context{session=S, cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".finish_request">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     RD1 = crossbar_session:finish_session(S, RD),
     {true, RD1, Context}.
 
@@ -163,22 +163,22 @@ finish_request(RD, #context{session=S, cb_module=CbM}=Context) ->
 %%%===================================================================
 from_text(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".from_text">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     {true, RD, Context}.
  
 from_json(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".from_json">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     {true, RD, Context}.
 
 from_xml(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".from_xml">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     {true, RD, Context}.
 
 from_form(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".from_form">>]),    
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     {true, RD, Context}.
 
 %%%===================================================================
@@ -186,25 +186,25 @@ from_form(RD, #context{cb_module=CbM}=Context) ->
 %%%===================================================================
 to_html(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_html">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
     {create_body(Context1, html), RD, Context1}.
 
 to_json(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_json">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
     {create_body(Context1), RD, Context1}.
 
 to_xml(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_xml">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
     {create_body(Context1, xml), RD, Context1}.
 
 to_text(RD, #context{cb_module=CbM}=Context) ->
     Event = list_to_binary([CbM, <<".to_text">>]),
-    crossbar_bindings:run(Event, {RD, Context}),
+    crossbar_bindings:map(Event, {RD, Context}),
     Context1 = do_request(RD, Context),
     {create_body(Context1, plain), RD, Context1}.
 
@@ -349,13 +349,13 @@ find_and_auth(RD, #context{cb_module=CbM, req_params=Params}=Context) ->
 -spec(is_valid/2 :: (RD :: #wm_reqdata{}, Context :: #context{}) -> tuple(boolean(), #wm_reqdata{}, #context{})).
 is_valid(RD, #context{cb_module=CbM, request=Fun, req_params=Params, session=S}=Context) ->
     Event = list_to_binary([CbM, <<".validate">>]),
-    ValidatedResults = crossbar_bindings:run(Event, {Fun, Params}),
+    ValidatedResults = crossbar_bindings:map(Event, {Fun, Params}),
     case crossbar_bindings:failed(ValidatedResults) of
 	[] ->
 	    Event1 = list_to_binary([CbM, <<".authenticate">>]),
-	    IsAuthenticated = crossbar_bindings:any(crossbar_bindings:run(Event1, {S, Params})),
+	    IsAuthenticated = crossbar_bindings:any(crossbar_bindings:map(Event1, {S, Params})),
 	    Event2 = list_to_binary([CbM, <<".authorize">>]),
-	    IsAuthorized = crossbar_bindings:any(crossbar_bindings:run(Event2, {S, Params})),
+	    IsAuthorized = crossbar_bindings:any(crossbar_bindings:map(Event2, {S, Params})),
 	    {IsAuthenticated andalso IsAuthorized, RD, Context};
 	[{false, FailedKeys} | _] -> %% some listener returned false, take the first one
 	    Context1 = Context#context{

@@ -1,0 +1,8 @@
+{ "_id":"_design/LookUpIPAuth"
+  ,"language":"javascript"
+  ,"views":{
+    "LookUpIPAuth": {
+      "map": "function(doc) { if(doc.type != 'sys_info' ) return; if(doc.servers) { var srvs = Iterator(doc.servers); if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { var IPs = Iterator(srv[1].auth.AuthIP); for (var IP in IPs)  { emit(IP[1], JSON.stringify({auth: srv[1].auth})); } } } } for (var srv in srvs)  { if (srv[1].DIDs) { var DIDs = Iterator(srv[1].DIDs); for (var DID in DIDs)  { emit(DID[0], JSON.stringify({auth: srv.auth, DID_Opts: DID[1]})); } } } }"
+    }
+  }
+}
