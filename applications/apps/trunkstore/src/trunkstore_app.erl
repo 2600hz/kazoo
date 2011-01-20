@@ -31,6 +31,4 @@ setup_views() ->
 
 
 setup_base_docs() ->
-    lists:foreach(fun(File) ->
-			  ts_util:load_doc_from_file(?TS_DB, File)
-		  end, ?TS_COUCH_BASE_DOCS).
+    lists:foreach(fun(File) -> ts_util:load_doc_from_file(?TS_DB, File) end, ?TS_COUCH_BASE_DOCS).
