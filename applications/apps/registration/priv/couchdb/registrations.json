@@ -2,7 +2,7 @@
   ,"language":"javascript"
   ,"views":{
     "get_contact":{
-      "map": "function(doc) { var reg = doc.registrations; for ( i in reg ) { var t = reg[i]['Reg-Server-Timestamp'] || reg[i]['Event-Timestamp']; emit([ reg[i]['Realm'], reg[i]['Username'], parseInt(t) + parseInt(reg[i]['Expires'])], reg[i]); } }"
+      "map": "function(doc) { var reg = doc.registrations; for ( i in reg ) { var t = reg[i]['Reg-Server-Timestamp'] || reg[i]['Event-Timestamp']; emit([ reg[i]['From-Host'], reg[i]['Username'], parseInt(t) + parseInt(reg[i]['Expires'])], reg[i]); } }"
     }
   }
 }
