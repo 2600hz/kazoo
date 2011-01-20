@@ -119,16 +119,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
 	  end),
     {noreply, State};
 
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.accounts">>, [RD, Context, DocId]}, State) ->
-    case get_public_doc(DocId) of
-        {error, not_found} ->
-            Pid ! {binding_result, false, [RD, cb_error("Account not found", 404, Context), DocId]};
-        {error, db_not_reachable} ->
-            Pid ! {binding_result, false, [RD, cb_error("Could not connect", 503, Context), DocId]};
-	Doc ->
-            Pid ! {binding_result, true, [RD, Context#cb_context{doc=Doc, resp_data=Doc}, DocId]}
-    end,
+handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
+    spawn(fun() ->
+                  Context1 = validate(wrq:method(RD), Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
@@ -179,13 +174,107 @@ code_change(_OldVsn, State, _Extra) ->
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
     crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
+    crossbar_bindings:bind(<<"v1_resource.validate.accounts">>),
     crossbar_bindings:bind(<<"v1_resource.execute.#.accounts">>).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function determines if the verbs are appropriate for the
-%% given number of paths.  IE: '/accounts/' can only accept GET and PUT
+%% This function determines if the parameters and content are correct
+%% for this request
+%%
+%% Failure here returns 400
+%% @end
+%%--------------------------------------------------------------------
+-spec(validate/3 :: (Verb :: atom(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+validate('GET', [], Context) ->
+    Context;
+validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
+    case is_valid_doc(Data) of
+        {false, Fields} ->
+            cb_error("Invalid account document", 400, Context#cb_context{resp_data=Fields});
+        {true, []} ->
+            Context
+    end;
+validate('GET', [DocId], Context) ->
+    case get_public_doc(DocId) of
+        {error, not_found} ->
+            cb_error("Account not found", 404, Context);
+        {error, db_not_reachable} ->
+            cb_error("Could not connect", 503, Context);
+	Doc ->
+            Context#cb_context{doc=Doc, resp_data=Doc}
+    end;
+validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
+    io:format("~p~n", [is_valid_doc(Data)]),
+    case is_valid_doc(Data) of
+        {false, Fields} ->
+            cb_error("Invalid account document", 400, Context#cb_context{resp_data=Fields});
+        {true, []} ->
+            case get_public_doc(DocId) of
+                {error, not_found} ->
+                    cb_error("Account not found", 404, Context);
+                {error, db_not_reachable} ->
+                    cb_error("Could not connect", 503, Context);
+                Doc ->
+                    Context#cb_context{doc=Doc, resp_data=Doc}
+            end
+    end;
+validate('DELETE', [DocId], Context) ->
+    case get_public_doc(DocId) of
+        {error, not_found} ->
+            cb_error("Account not found", 404, Context);
+        {error, db_not_reachable} ->
+            cb_error("Could not connect", 503, Context);
+	Doc ->
+            Context#cb_context{doc=Doc, resp_data=Doc}
+    end;
+validate('DELETE', [DocId, <<"parents">>], Context) ->
+    case get_public_doc(DocId) of
+        {error, not_found} ->
+            cb_error("Account not found", 404, Context);
+        {error, db_not_reachable} ->
+            cb_error("Could not connect", 503, Context);
+	Doc ->
+            Context#cb_context{doc=Doc, resp_data=Doc}
+    end;
+validate('GET', [DocId, _], Context) ->
+    case get_public_doc(DocId) of
+        {error, not_found} ->
+            cb_error("Account not found", 404, Context);
+        {error, db_not_reachable} ->
+            cb_error("Could not connect", 503, Context);
+	Doc ->
+            Context#cb_context{doc=Doc, resp_data=Doc}
+    end;
+validate(_, _, Context) ->
+    cb_error("Account failed validation", 500, Context).
+
+is_valid_doc(Data) ->
+    Req = [
+              {[<<"base">>, <<"name">>], [
+                   {required, []}
+                  ,{not_empty, []}
+                  ,{standard_text, []}
+              ]}
+              ,{[<<"base">>, <<"status">>], [
+                   {required, []}
+                  ,{not_empty, []}
+                  ,{standard_text, []}
+              ]}
+	  ],
+    Scanned = lists:map(fun(R) -> crossbar_util:param_exists(Data, R) end, Req),
+    io:format("~p~n", [Scanned]),
+    Failed = lists:foldl(fun crossbar_util:find_failed/2, [], Scanned),
+    {Failed =:= [], Failed}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines the verbs that are appropriate for the
+%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%
+%% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), [])).
@@ -207,6 +296,8 @@ allowed_methods(_) ->
 %% @private
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
+%%
+%% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
 -spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
@@ -214,7 +305,7 @@ resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
     {true, []};
-resource_exists([_, Paths]) ->
+resource_exists([_, Path]) ->
     Valid = lists:member(Path, [<<"parents">>, <<"ancestors">>, <<"children">>, <<"descendants">>]),
     {Valid, []};
 resource_exists([_, <<"parents">>, _]) ->
@@ -248,7 +339,7 @@ cb_error(Msg, Code, Error, Context) ->
 %% by DocId
 %% @end
 %%--------------------------------------------------------------------
--spec(get_private_doc/1 :: (DocId :: term()) -> json_object() | touple(error, string())).
+-spec(get_private_doc/1 :: (DocId :: term()) -> json_object() | tuple(error, string())).
 get_private_doc(DocId) when is_binary(DocId) ->
     try
         case couch_mgr:open_doc("accounts", DocId) of
@@ -274,7 +365,7 @@ get_private_doc(DocId) ->
 %% by DocId
 %% @end
 %%--------------------------------------------------------------------
--spec(get_public_doc/1 :: (DocId :: term()) -> json_object() | touple(error, string())).
+-spec(get_public_doc/1 :: (DocId :: term()) -> json_object() | tuple(error, string())).
 get_public_doc(DocId) when is_binary(DocId) ->
     try
 	case couch_mgr:open_doc("accounts", DocId) of
