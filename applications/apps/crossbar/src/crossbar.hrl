@@ -23,8 +23,6 @@
 -define(CONTENT_PROVIDED, [
                             {to_json, ["application/json","application/x-json"]}
                            ,{to_xml, ["application/xml"]}
-			   ,{to_html, ["text/html"]}
-			   ,{to_text, ["text/plain"]}
 			  ]).
 
 -define(CONTENT_ACCEPTED, [
@@ -61,6 +59,8 @@
           ,req_data = [] :: proplist()
           ,db_name = undefined :: string() | undefined
           ,doc = undefined :: json_object() | undefinded
+          ,resp_expires = {{1999,1,1},{0,0,0}}
+          ,resp_etag = undefined :: string() | automatic | undefined
 	  ,resp_status = success :: crossbar_status()
 	  ,resp_error_msg = undefined :: string() | undefined
 	  ,resp_error_code = undefined :: integer() | undefined
