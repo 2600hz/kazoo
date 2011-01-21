@@ -11,7 +11,7 @@
 
 %% API
 -export([start_handler/3]).
--export([fetch_init/2, fetch_route/2, lookup_route/6]).
+-export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/4]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -211,7 +211,7 @@ generate_xml(<<"bridge">>, Routes, _Prop, Domain, AmqpHost) ->
     format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
-					     Route = ecallmgr_util:route_to_dialstring(AmqpHost, get_value(<<"Route">>, RouteProp), Domain),
+					     Route = build_route(AmqpHost, RouteProp, Domain, get_value(<<"Invite-Format">>, RouteProp)),
 
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
@@ -239,6 +239,63 @@ generate_xml(<<"error">>, _Routes, Prop, _Domain, _H) ->
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
     format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
+
+-spec(build_route/4 :: (AmqpHost :: string(), RouteProp :: proplist(), Domain :: binary(), DIDFormat :: binary()) -> binary()).
+build_route(_AmqpHost, RouteProp, _Domain, <<"route">>) ->
+    get_value(<<"Route">>, RouteProp);
+build_route(AmqpHost, RouteProp, Domain, <<"username">>) ->
+    User = get_value(<<"To-User">>, RouteProp),
+    lookup_reg(AmqpHost, Domain, User);
+build_route(AmqpHost, RouteProp, Domain, DIDFormat) ->
+    User = get_value(<<"To-User">>, RouteProp),
+    Contact = lookup_reg(AmqpHost, Domain, User),
+    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
+    binary:replace(Contact, User, DID).
+
+-spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
+format_did(DID, <<"e164">>) ->
+    whistle_util:to_e164(DID);
+format_did(DID, <<"npan">>) ->
+    whistle_util:to_npanxxxxxx(DID);
+format_did(DID, <<"1npan">>) ->
+    whistle_util:to_1npanxxxxxx(DID).
+
+
+-spec(lookup_reg/3 :: (AmqpHost :: string(), Domain :: binary(), User :: binary()) -> binary()).
+lookup_reg(AmqpHost, Domain, User) ->
+    Self = self(),
+    spawn(fun() ->
+		  Q = amqp_util:new_targeted_queue(AmqpHost, <<>>),
+		  amqp_util:bind_q_to_targeted(AmqpHost, Q),
+		  amqp_util:basic_consume(AmqpHost, Q),
+		  ReqProp = [{<<"User">>, User}, {<<"Host">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
+			     | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+		  {ok, JSON} = whistle_api:reg_query(ReqProp),
+		  amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
+		  C = receive_reg_query_resp(User),
+		  Self ! {contact, C}
+	  end),
+    receive {contact, C} -> C
+    after 1500 -> <<User/binary, Domain/binary>>
+    end.
+
+receive_reg_query_resp(User) ->
+    receive
+	#'basic.consume_ok'{} ->
+	    receive_reg_query_resp(User);
+	{_, #amqp_msg{payload = Payload}} ->
+	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "ECALL_UTIL: RegQResp:~n~p~n", [Prop]),
+	    true = whistle_api:reg_query_resp_v(Prop),
+
+	    {struct, [{<<"Contact">>, Contact}]} = props:get_value(<<"Fields">>, Prop),
+	    
+	    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>)
+    after 2000 ->
+	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~p~n", [User]),
+	    exit(reg_query_timeout)
+    end.
+    
 
 get_channel_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),

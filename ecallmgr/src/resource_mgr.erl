@@ -24,6 +24,7 @@
 -include("whistle_api.hrl").
 -include("whistle_amqp.hrl").
 -include("../include/amqp_client/include/amqp_client.hrl").
+-include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE). 
 
@@ -179,7 +180,7 @@ handle_resource_req(Payload, AmqpHost) ->
 
 	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
 	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
-	    Route = get_value(<<"Route">>, Prop),
+	    Route = ecallmgr_fs_handler:build_route(AmqpHost, Prop, ?DEFAULT_DOMAIN, get_value(<<"Invite-Format">>, Prop)),
 	    case start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min) of
 		{error, failed_starting, Failed} ->
 		    send_failed_req(Prop, AmqpHost, Failed),
