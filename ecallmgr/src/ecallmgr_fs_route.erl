@@ -211,7 +211,7 @@ generate_xml(<<"bridge">>, Routes, _Prop, Domain, AmqpHost) ->
     format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
-					     Route = build_route(AmqpHost, RouteProp, Domain, get_value(<<"Invite-Format">>, RouteProp)),
+					     Route = ?MODULE:build_route(AmqpHost, RouteProp, Domain, get_value(<<"Invite-Format">>, RouteProp)),
 
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
@@ -260,7 +260,6 @@ format_did(DID, <<"npan">>) ->
 format_did(DID, <<"1npan">>) ->
     whistle_util:to_1npanxxxxxx(DID).
 
-
 -spec(lookup_reg/3 :: (AmqpHost :: string(), Domain :: binary(), User :: binary()) -> binary()).
 lookup_reg(AmqpHost, Domain, User) ->
     Self = self(),
@@ -295,7 +294,6 @@ receive_reg_query_resp(User) ->
 	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~p~n", [User]),
 	    exit(reg_query_timeout)
     end.
-    
 
 get_channel_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
