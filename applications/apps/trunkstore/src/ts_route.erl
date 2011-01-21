@@ -85,7 +85,7 @@ lookup_user(Name) ->
 	    {error, "Unexpeced error in lookup_user/1"}
     end.
 
--spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok | error, proplist() | string())).
+-spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
 lookup_did(Did) ->
     Options = [{"keys", [Did]}],
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
@@ -132,29 +132,61 @@ find_route(Flags, ApiProp, ServerID) ->
 		    response(404, ApiProp, Flags, ServerID)
 	    end;
 	true ->
-	    case ts_carrier:route(Flags) of
-		{ok, Routes} ->
-		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
-		{error, Error} ->
-		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
-		    response(404, ApiProp, Flags, ServerID)
+	    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
+	    Did = whistle_util:to_e164(ToUser),
+	    case lookup_did(Did) of
+		{error, _} ->
+		    route_over_carriers(Flags, ApiProp, ServerID);
+		{ok, DidProp} ->
+		    FlagsIn = flags_from_did(DidProp, Flags#route_flags{to_user=Did}),
+		    case inbound_route(FlagsIn) of
+			{ok, Routes} ->
+			    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes}, ServerID);
+			{error, _} ->
+			    route_over_carriers(Flags, ApiProp, ServerID)
+		    end
 	    end
+    end.
+
+-spec(route_over_carriers/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
+route_over_carriers(Flags, ApiProp, ServerID) ->
+    case ts_carrier:route(Flags) of
+	{ok, Routes} ->
+	    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
+	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
+	{error, Error} ->
+	    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
+	    response(404, ApiProp, Flags, ServerID)
     end.
 
 -spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok, proplist()) | tuple(error, string())).
 inbound_route(Flags) ->
     format_log(info, "TS_ROUTE(~p): Inbound route flags: ~p~n", [self(), Flags]),
-    DID = case Flags#route_flags.inbound_format of
-	      <<"E.164">> -> whistle_util:to_e164(Flags#route_flags.to_user);
-	      <<"1NPANXXXXXX">> -> whistle_util:to_1npanxxxxxx(Flags#route_flags.to_user);
-	      _ -> whistle_util:to_npanxxxxxx(Flags#route_flags.to_user)
-	  end,
-    Dialstring = [list_to_binary(["user:", Flags#route_flags.auth_user]), DID],
-    Route = [{<<"Route">>, Dialstring}
-	     ,{<<"Weight-Cost">>, <<"1">>}
+    Invite = case Flags#route_flags.inbound_format of
+		 <<"E.164">> ->
+		     [{<<"Invite-Format">>, <<"e164">>}
+		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-DID">>, whistle_util:to_e164(Flags#route_flags.to_user)}
+		     ];
+		 <<"1NPANXXXXXX">> ->
+		     [{<<"Invite-Format">>, <<"1npan">>}
+		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-DID">>, whistle_util:to_1npanxxxxxx(Flags#route_flags.to_user)}
+		     ];
+		 <<"NPANXXXXXX">> ->
+		     [{<<"Invite-Format">>, <<"npan">>}
+		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-DID">>, whistle_util:to_npanxxxxxx(Flags#route_flags.to_user)}
+		     ];
+		 _ ->
+		     [{<<"Invite-Format">>, <<"username">>}
+		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		     ]
+	     end,
+    Route = [{<<"Weight-Cost">>, <<"1">>}
 	     ,{<<"Weight-Location">>, <<"1">>}
 	     ,{<<"Media">>, <<"bypass">>}
+	     | Invite
 	    ],
     case whistle_api:route_resp_route_v(Route) of
 	true -> {ok, add_failover_route(Flags#route_flags.failover, Flags, {struct, Route})};
@@ -259,8 +291,6 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 %% - Failover
 %% - Caller ID
 %% - Auth User
-%% - Trunks
-%% - Credit Available
 -spec(flags_from_did/2 :: (DidProp :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_did(DidProp, Flags) ->
     {DidOptions} = get_value(<<"DID_Opts">>, DidProp, {[]}),
@@ -286,7 +316,7 @@ flags_from_did(DidProp, Flags) ->
 flags_from_srv(AuthUser, Doc, Flags) ->
     Srv = lookup_server(AuthUser, Doc),
 
-    F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Srv, <<"NPANXXXXXX">>)
+    F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Srv, <<>>)
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			  },
