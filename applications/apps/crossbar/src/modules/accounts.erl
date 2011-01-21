@@ -192,7 +192,8 @@ validate('GET', [], Context) ->
 validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
     case is_valid_doc(Data) of
         {false, Fields} ->
-            cb_error("Invalid account document", 400, Context#cb_context{resp_data=Fields});
+            io:format("~p~n", [[{<<"failures">>, Fields}]]),
+            cb_error("Invalid account document", 400, Context#cb_context{resp_data=[{<<"failures">>, Fields}]});
         {true, []} ->
             Context
     end;
@@ -203,6 +204,7 @@ validate('GET', [DocId], Context) ->
         {error, db_not_reachable} ->
             cb_error("Could not connect", 503, Context);
 	Doc ->
+            io:format("~p~n", [Doc]),
             Context#cb_context{doc=Doc, resp_data=Doc}
     end;
 validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
@@ -251,21 +253,17 @@ validate(_, _, Context) ->
     cb_error("Account failed validation", 500, Context).
 
 is_valid_doc(Data) ->
-    Req = [
-              {[<<"base">>, <<"name">>], [
-                   {required, []}
-                  ,{not_empty, []}
-                  ,{standard_text, []}
-              ]}
-              ,{[<<"base">>, <<"status">>], [
-                   {required, []}
-                  ,{not_empty, []}
-                  ,{standard_text, []}
-              ]}
+    Schema = [
+	   { [<<"base">>, <<"name">>]
+	    ,[ {not_empty, []}
+              ,{is_format, [phrase]}
+	     ]}
+	   ,{ [<<"base">>, <<"status">>]
+	      ,[ {not_empty, []}
+		%,{in_list, [{<<"enabled">>, <<"disabled">>}]}
+	       ]}
 	  ],
-    Scanned = lists:map(fun(R) -> crossbar_util:param_exists(Data, R) end, Req),
-    io:format("~p~n", [Scanned]),
-    Failed = lists:foldl(fun crossbar_util:find_failed/2, [], Scanned),
+    Failed = crossbar_validator:validate(Schema, Data),
     {Failed =:= [], Failed}.
 
 %%--------------------------------------------------------------------

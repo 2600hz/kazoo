@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_util).
 
+-export([get_value/2, set_value/3]).
+
 -export([get_request_params/1, param_exists/2, find_failed/2]).
 -export([winkstart_envelope/1]).
 -export([winkstart_envelope/2, winkstart_envelope/3, winkstart_envelope/4]).
@@ -15,6 +17,38 @@
 -include("crossbar.hrl").
 
 -import(logger, [format_log/3]).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns true if the value is not undefined
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_value/2 :: (Paths :: term(), Data :: proplist()) -> undefined|term()).
+get_value(Paths, Data) when not is_list(Paths) ->
+    proplists:get_value(Paths, Data);
+get_value([P]=Paths, Data) when length(Paths) == 1 ->
+    proplists:get_value(P, Data);
+get_value([H|T], Data) ->
+    case proplists:get_value(H, Data) of
+        undefined ->
+            undefined;
+        {struct, Props} ->
+            get_value(T, Props);
+        SubProps ->
+            get_value(T, SubProps)
+    end.
+
+set_value(_Paths, _Value, _Data) ->
+    undefined.
+
+
+
+
+
+
+
 
 %% If using a fun to validate, it should return a boolean
 -spec(param_exists/2 :: (Params :: proplist()

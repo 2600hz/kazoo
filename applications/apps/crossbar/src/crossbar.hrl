@@ -19,6 +19,12 @@
 -type json_iolist() :: {json, iolist()}.
 -type json_term() :: json_string() | json_number() | json_array() | json_object() | json_iolist().
 
+-type validator() :: required | not_empty | is_type | is_format | numeric_min | numeric_max | numeric_between | width | width.
+-type validator_rule() :: tuple(validator(), list()).
+-type validator_rules() :: list(validator_rule()).
+
+-type couch_doc_path() :: list(binary()).
+-type couch_schema() :: list(tuple(couch_doc_path(), validator_rules())).
 
 -define(CONTENT_PROVIDED, [
                             {to_json, ["application/json","application/x-json"]}
