@@ -156,7 +156,8 @@ recv_response(ID) ->
 	    case get_value(<<"Msg-ID">>, Prop) of
 		ID ->
 		    case whistle_api:route_resp_v(Prop) of
-			true -> Prop;
+			true ->
+			    Prop;
 			false ->
 			    format_log(error, "L/U.route(~p): Invalid Route Resp~n~p~n", [self(), Prop]),
 			    invalid_route_resp
