@@ -70,7 +70,7 @@ start_app(always, [Whapp]) ->
 stop_app(always, [Whapp]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Stopping whapp ~p on ~p~n", [Whapp, Node]),
-    case rpc_call(Node, whapps_controller, start_app, [list_to_atom(Whapp)]) of
+    case rpc_call(Node, whapps_controller, stop_app, [list_to_atom(Whapp)]) of
 	{ok, ok} ->
 	    {ok, "~p stopped successfully", [Whapp]};
 	{ok, Other} ->
