@@ -26,10 +26,10 @@ reload_app(App) ->
     end,
     io:format("Reloading ~p Done...~n", [App]).
 
-to_hex(Bin) when is_binary(Bin) ->
-    to_hex(binary_to_list(Bin));
-to_hex(L) when is_list(L) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+
+-spec(to_hex/1 :: (S :: term()) -> string()).
+to_hex(S) ->
+    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 
 %% +18001234567 -> +18001234567
 to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) == 80 -> % 8bits/ch * 10ch

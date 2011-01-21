@@ -173,7 +173,7 @@ handle_info(_Info, Hosts) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
--spec(terminate/2 :: (Reason :: term(), Hosts :: amqp_mgr_state()) -> ok).
+-spec(terminate/2 :: (Reason :: term(), Hosts :: amqp_mgr_state()) -> no_return()).
 terminate(Reason, Hosts) ->
     close_server(Hosts),
     format_log(info, "AMQP_MGR(~p): Going down(~p)~n", [self(), Reason]),

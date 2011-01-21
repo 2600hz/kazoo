@@ -126,22 +126,21 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 
 -spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
 originate_channel(Node, Host, Pid, Route, AvailChan) ->
-    DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
-    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
-    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", DS, " &park"])),
+    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
+    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
     format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
     case freeswitch:api(Node, originate, OrigStr, 10000) of
 	{ok, X} ->
-	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
+	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
 	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
 	    CtlQ = start_call_handling(Node, Host, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, ErrMsg]),
+	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), Route, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
+	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), Route]),
 	    Pid ! {resource_error, timeout}
     end.
 
