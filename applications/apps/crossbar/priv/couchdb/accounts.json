@@ -1,0 +1,9 @@
+{ "_id":"_design/accounts"
+  ,"language":"javascript"
+  ,"views":{
+     "listing":{
+       "map":"function(doc) { emit(doc._id, doc.base.name); }"
+      }
+    }
+}
+

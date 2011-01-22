@@ -25,12 +25,6 @@
 
 -define(NAME, <<"v1_resource">>).
 
--define(XML_FORMAT, "<field name=\"~s\">~s</field>").
-
--define(HTML_FORMAT, "<ul><li><span class=\"field\">~s</span> <span class=\"value\">~s</span></li></ul>").
-
--define(TEXT_FORMAT, "~s ( ~s )~n").
-
 %%%===================================================================
 %%% WebMachine API
 %%%===================================================================
@@ -96,7 +90,8 @@ resource_exists(RD, Context) ->
                         false ->
                             Content = create_resp_content(RD, Context1),
                             RD2 = wrq:append_to_response_body(Content, RD1),
-                            {{halt, 400}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
+                            ReturnCode = Context1#cb_context.resp_error_code,
+                            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
                     end;
 		false ->
 		    {{halt, 401}, RD, Context}
@@ -117,16 +112,17 @@ content_types_accepted(RD, #cb_context{content_types_accepted=CTA}=Context) ->
 		       end, [], CTA),
     {CTA1, RD, Context}.
 
-generate_etag(RD, #cb_context{resp_etag=ETag}=Context) ->
+generate_etag(RD, Context) ->
     Event = <<"v1_resource.etag">>,
-    {ETag1, _, _} = crossbar_bindings:fold(Event, {ETag, RD, Context}),
-    case ETag1 of
+    {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    case Context1#cb_context.resp_etag of
         automatic ->
-            {mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context };
+            RespContent = create_resp_content(RD1, Context1),
+            {mochihex:to_hex(crypto:md5(RespContent)), RD1, Context1};
         undefined ->
-            {undefined, RD, Context};
+            {undefined, RD1, Context1};
         Tag when is_list(Tag) ->
-            {Tag, RD, Context}
+            {undefined, RD1, Context1}
     end.
 
 encodings_provided(RD, Context) ->
@@ -151,7 +147,12 @@ delete_resource(RD, Context) ->
 finish_request(RD, #cb_context{session=S}=Context) ->
     Event = <<"v1_resource.finish_request">>,
     crossbar_bindings:map(Event, {RD, Context}),
-    RD1 = crossbar_session:finish_session(S, RD),
+    RD1 = case S of
+        undefined ->
+            RD;
+        _Else ->
+            crossbar_session:finish_session(S, RD)
+    end,
     {true, RD1, Context}.
 
 %%%===================================================================
@@ -344,14 +345,8 @@ execute_request(RD, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context) ->
 create_resp_content(RD, Context) ->
     Prop = create_resp_envelope(Context),
     case get_resp_type(RD) of
-	html ->
-	    Html = format_json(?HTML_FORMAT, Prop),
-	    io_lib:format("<html><body>~s</body></html>", [Html]);
-	plain ->
-	    format_json(?TEXT_FORMAT, Prop);
 	xml ->
-	    Xml = format_json(?XML_FORMAT, Prop),
-	    io_lib:format("<xml>~s</xml>", [Xml]);
+            io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), "")]);
         json ->
             mochijson2:encode({struct, Prop})
     end.
@@ -398,7 +393,7 @@ succeeded(#cb_context{resp_status=Status}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function extracts the reponse fields and pits them in a proplist
+%% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
@@ -406,24 +401,39 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
     case {S, C} of
 	{success, _} ->
 	    [
-                 {"auth-token", A}
-                ,{"status", S}
-                ,{"data", {struct, D}}
+                 %%{"auth-token", A}
+                 {"status", S}
+                ,{"data", D}
             ];
 	{_, undefined} ->
+            Msg =
+                case whistle_util:to_binary(E) of
+                    <<"undefined">> ->
+                        <<"Unspecified server error">>;
+                    Else ->
+                        Else
+                end,
 	    [
-                 {"auth-token", A}
-                ,{"status", S}
-                ,{"message", whistle_util:to_binary(E)}
-                ,{"data", {struct, D}}
+                %% {"auth-token", A}
+                 {"status", S}
+                ,{"message", Msg}
+                ,{"error", 500}
+                ,{"data", D}
             ];
 	_ ->
+            Msg =
+                case whistle_util:to_binary(E) of
+                    <<"undefined">> ->
+                        <<"Unspecified server error">>;
+                    Else ->
+                        Else
+                end,
 	    [
-                 {"auth-token", A}
-                ,{"status", S}
-                ,{"message", whistle_util:to_binary(E)}
+                 %% {"auth-token", A}
+                 {"status", S}
+                ,{"message", Msg}
                 ,{"error", C}
-                ,{"data", {struct, D}}
+                ,{"data", D}
             ]
     end.
 
@@ -431,69 +441,90 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
 %% @private
 %% @doc
 %% This function will determine the appropriate content format to return
-%% based on the request.... TODO: RETURN XML SOMETIMES
+%% based on the request....
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json).
-get_resp_type(_RD) ->
-    json.
+get_resp_type(RD) ->
+    case wrq:get_resp_header("Content-Type",RD) of
+        "application/xml" -> xml;
+        "application/json" -> json;
+        "application/x-json" -> json;
+        _Else -> json
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function applies the format string to json objects.  This is
-%% used to parse JSON into xml, plain text, and html.  The expected
-%% JSON structure is that of mochiweb.  TODO: CLEAN ME UP
+%% This function is used to encode the response proplist in xml
 %% @end
 %%--------------------------------------------------------------------
--spec(format_json/2 :: (Format :: string(), Json :: json_object()) -> iolist()).
-format_json(Format, Json) ->
-    {Result, _} = lists:foldl(fun({K, V}, {Acc, Count}) ->
-				      Str = case V of
-						{struct, []} ->
-						    io_lib:format(Format, [K, ""]);
-						{struct, V1} ->
-						    io_lib:format(Format, [K, format_json(Format, V1)]);                           
-						V1 when is_list(V1) ->
-						    case is_proplist(V1) of
-							true ->
-							    case K of
-								struct ->
-								    io_lib:format(Format, [integer_to_list(Count), format_json(Format, V1)]);
-								_ ->
-								    io_lib:format(Format, [K, format_json(Format, V1)])
-							    end;
-							_->
-							    {SubStr, _} = lists:foldl(fun(V2, {Acc2, Count2}) -> 
-											      Str2 = io_lib:format(Format, [integer_to_list(Count2), whistle_util:to_list(V2)]),
-											      {string:concat(Acc2, Str2), Count2 + 1}
-										      end, {"", 0}, V1),
-							    io_lib:format(Format, [K, SubStr])
-						    end;
-						_ ->
-						    io_lib:format(Format, [K, whistle_util:to_list(V)])
-					    end,
-				      {string:concat(Acc, Str), Count + 1}
-			      end, {"", 0}, Json),
-    Result.
+-spec(encode_xml/2 :: (Prop :: proplist(), Xml :: iolist()) -> iolist()).
+encode_xml([], Xml) ->
+    Xml;
+encode_xml([{K, V}|T], Xml) ->
+    Xml1 =
+    if
+       is_atom(V) orelse is_binary(V) ->
+            case V of
+                <<"true">> -> xml_tag(K, "true", "boolean");
+                true -> xml_tag(K, "true", "boolean");
+                <<"false">> -> xml_tag(K, "false", "boolean");
+                false -> xml_tag(K, "true", "boolean");
+                _Else -> xml_tag(K, mochijson2:encode(V), "string")
+            end;
+       is_number(V) ->
+           xml_tag(K, mochijson2:encode(V), "number");
+       is_list(V) ->
+           xml_tag(K, list_to_xml(lists:reverse(V), ""), "array");
+       true ->
+            case V of
+                {struct, Terms} ->
+                    xml_tag(K, encode_xml(Terms, ""), "object");
+                {json, IoList} ->
+                    xml_tag(K, encode_xml(IoList, ""), "json")
+           end
+    end,
+    encode_xml(T, Xml1 ++ Xml).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will determine if a list is a proplist, this is used
-%% above to distinquish lists in the JSON payload from recursive 
-%% structs
+%% This function loops over a list and creates the XML tags for each
+%% element
 %% @end
 %%--------------------------------------------------------------------
--spec(is_proplist/1 :: (Thing :: term()) -> boolean()).
-is_proplist(Thing) when is_list(Thing) ->
-    lists:all(fun(Elem) ->
-		      case Elem of 
-			  {_,_} ->
-			      true;
-			  _ -> 
-			      false 
-		      end
-	      end, Thing);
-is_proplist(_) ->
-    false.
+-spec(list_to_xml/2 :: (List :: list(), Xml :: iolist) -> iolist()).
+list_to_xml([], Xml) ->
+    Xml;
+list_to_xml([{struct, Terms}|T], Xml) ->
+    Xml1 = xml_tag(encode_xml(Terms, ""), "object"),
+    list_to_xml(T, Xml1 ++ Xml);
+list_to_xml([E|T], Xml) ->
+    Xml1 =
+    if
+        is_atom(E) orelse is_binary(E) ->
+            case E of
+                <<"true">> -> xml_tag("true", "boolean");
+                true -> xml_tag("true", "boolean");
+                <<"false">> -> xml_tag("false", "boolean");
+                false -> xml_tag("true", "boolean");
+                _Else -> xml_tag(mochijson2:encode(E), "string")
+            end;
+        is_number(E) -> xml_tag(mochijson2:encode(E), "number");
+        is_list(E) -> xml_tag(list_to_xml(lists:reverse(E), ""), "array")
+    end,
+    list_to_xml(T, Xml1 ++ Xml).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function creates a XML tag, optionaly with the name
+%% attribute if called as xml_tag/3
+%% @end
+%%--------------------------------------------------------------------
+-spec(xml_tag/2 :: (Value :: iolist(), Type :: iolist) -> iolist()).
+xml_tag(Value, Type) ->
+    io_lib:format("<~s>~s</~s>", [Type, Value, Type]).
+xml_tag(Key, Value, Type) ->
+    io_lib:format("<~s name=\"~s\">~s</~s>", [Type, Key, string:strip(Value, both, $"), Type]).

@@ -27,6 +27,9 @@
 
 -define(SERVER, ?MODULE).
 
+-define(ACCOUNTS_DB, "accounts").
+-define(ACCOUNTS_LIST, {"accounts","listing"}).
+
 -record(state, {}).
 
 %%%===================================================================
@@ -120,8 +123,29 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
+    %%spawn(fun() ->
                   Context1 = validate(wrq:method(RD), Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+	%%  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #cb_context{doc=Doc, resp_status=success}=Context | Params]}, State) ->
+    spawn(fun() ->
+                  Context1 = save_doc(Doc, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #cb_context{doc=Doc, resp_status=success}=Context | Params]}, State) ->
+    spawn(fun() ->
+                  Context1 = save_doc(Doc, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc, resp_status=success}=Context | Params]}, State) ->
+    spawn(fun() ->
+                  Context1 = delete_doc(Doc, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -188,69 +212,45 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec(validate/3 :: (Verb :: atom(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate('GET', [], Context) ->
-    Context;
+    load_view(?ACCOUNTS_LIST, [], Context);
 validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
     case is_valid_doc(Data) of
-        {false, Fields} ->
-            io:format("~p~n", [[{<<"failures">>, Fields}]]),
-            cb_error("Invalid account document", 400, Context#cb_context{resp_data=[{<<"failures">>, Fields}]});
         {true, []} ->
-            Context
+            create_doc(Data, Context);
+        {false, Fields} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "Invalid data"
+                ,resp_error_code = 400
+                ,resp_data = Fields
+            }
     end;
 validate('GET', [DocId], Context) ->
-    case get_public_doc(DocId) of
-        {error, not_found} ->
-            cb_error("Account not found", 404, Context);
-        {error, db_not_reachable} ->
-            cb_error("Could not connect", 503, Context);
-	Doc ->
-            io:format("~p~n", [Doc]),
-            Context#cb_context{doc=Doc, resp_data=Doc}
-    end;
+    load_doc(DocId, Context);
 validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
-    io:format("~p~n", [is_valid_doc(Data)]),
     case is_valid_doc(Data) of
-        {false, Fields} ->
-            cb_error("Invalid account document", 400, Context#cb_context{resp_data=Fields});
         {true, []} ->
-            case get_public_doc(DocId) of
-                {error, not_found} ->
-                    cb_error("Account not found", 404, Context);
-                {error, db_not_reachable} ->
-                    cb_error("Could not connect", 503, Context);
-                Doc ->
-                    Context#cb_context{doc=Doc, resp_data=Doc}
-            end
+            load_merge_doc(DocId, Data, Context);
+        {false, Fields} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "Invalid data"
+                ,resp_error_code = 400
+                ,resp_data = Fields
+            }
     end;
 validate('DELETE', [DocId], Context) ->
-    case get_public_doc(DocId) of
-        {error, not_found} ->
-            cb_error("Account not found", 404, Context);
-        {error, db_not_reachable} ->
-            cb_error("Could not connect", 503, Context);
-	Doc ->
-            Context#cb_context{doc=Doc, resp_data=Doc}
-    end;
+    load_doc(DocId, Context);
 validate('DELETE', [DocId, <<"parents">>], Context) ->
-    case get_public_doc(DocId) of
-        {error, not_found} ->
-            cb_error("Account not found", 404, Context);
-        {error, db_not_reachable} ->
-            cb_error("Could not connect", 503, Context);
-	Doc ->
-            Context#cb_context{doc=Doc, resp_data=Doc}
-    end;
+    load_doc(DocId, Context);
 validate('GET', [DocId, _], Context) ->
-    case get_public_doc(DocId) of
-        {error, not_found} ->
-            cb_error("Account not found", 404, Context);
-        {error, db_not_reachable} ->
-            cb_error("Could not connect", 503, Context);
-	Doc ->
-            Context#cb_context{doc=Doc, resp_data=Doc}
-    end;
+    load_doc(DocId, Context);
 validate(_, _, Context) ->
-    cb_error("Account failed validation", 500, Context).
+    Context#cb_context {
+         resp_status = error
+	,resp_error_msg = "Faulty request"
+	,resp_error_code = 400
+    }.
 
 is_valid_doc(Data) ->
     Schema = [
@@ -314,70 +314,323 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Convience wrapper for setting the error resp fields in the context
-%% record
+%% This function attempts to load the context with account details,
+%% including the account db name and the account doc.
+%%
+%% Failure here returns 404, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(cb_error/2 :: (Msg :: string(), Context :: #cb_context{}) -> #cb_context{}).
-cb_error(Msg, Context) ->
-    cb_error(Msg, 500, error, Context).
-cb_error(Msg, Code, Context) ->
-    cb_error(Msg, Code, error, Context).
-cb_error(Msg, Code, Error, Context) ->
-    Context#cb_context {
-         resp_status = Error
-	,resp_error_msg = Msg
-	,resp_error_code = Code
+-spec(load_doc/2 :: (DocId :: term(), Context :: #cb_context{}) -> #cb_context{}).
+load_doc(DocId, Context) when not is_binary(DocId)->
+    load_doc(whistle_util:to_binary(DocId), Context);
+load_doc(DocId, Context) ->
+    case couch_mgr:open_doc(?ACCOUNTS_DB, DocId) of
+        {error, not_found} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "account not found"
+                ,resp_error_code = 404
+            };
+        {error, db_not_reachable} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "datastore timeout"
+                ,resp_error_code = 503
+            };
+	Doc when is_list(Doc) ->
+            {struct, Json} = couch_to_json({Doc}),
+            PubJson = json_public_fields(Json),
+            Context#cb_context{
+                 doc=Json
+                ,db_name=get_db_name(Doc)
+                ,resp_status=success
+                ,resp_data=[{struct, PubJson}]
+                ,resp_etag=rev_to_etag(Doc)
+            };
+	_Else ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "unexpeced datastore response"
+                ,resp_error_code = 500
+                ,resp_data = [_Else]
+            }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function attempts to merge the submitted data with the private
+%% fields of an existing account document, if successful it will
+%% load the context with the account details
+%%
+%% Failure here returns 404, 500, or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_merge_doc/3 :: (DocId :: term(), Data :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+load_merge_doc(DocId, Data, Context) when not is_binary(DocId)->
+    load_merge_doc(whistle_util:to_binary(DocId), Data, Context);
+load_merge_doc(DocId, Data, Context) ->
+    case couch_mgr:open_doc(?ACCOUNTS_DB, DocId) of
+        {error, not_found} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "account not found"
+                ,resp_error_code = 404
+            };
+        {error, db_not_reachable} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "datastore timeout"
+                ,resp_error_code = 503
+            };
+	Doc when is_list(Doc) ->
+            {struct, Json} = couch_to_json({Doc}),
+            NewJson = json_private_fields(Json) ++ Data,
+            PubJson = json_public_fields(NewJson),
+            Context#cb_context{
+                 doc=NewJson
+                ,db_name=get_db_name(Doc)
+                ,resp_status=success
+                ,resp_data=[{struct, PubJson}]
+                ,resp_etag=rev_to_etag(Doc)
+            };
+	_Else ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "unexpeced datastore response"
+                ,resp_error_code = 500
+                ,resp_data = [_Else]
+            }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function attempts to load the context with the results of a view
+%% run against the accounts database.
+%%
+%% Failure here returns 500 or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_view/3 :: (View :: tuple(string(), string()), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+load_view(View, Options, Context) ->
+    case couch_mgr:get_results(?ACCOUNTS_DB, View, Options) of
+	false ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "datastore unable to fulfill request"
+                ,resp_error_code = 503
+            };
+	{error,invalid_view_name} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "datastore missing view"
+                ,resp_error_code = 500
+            };
+        {{error,not_found},fetch_failed}  ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "datastore missing view"
+                ,resp_error_code = 500
+            };
+	Doc when is_list(Doc) ->
+            Json = couch_to_json(Doc),
+            Context#cb_context{
+                 doc=Json
+                ,resp_status=success
+                ,resp_data=Json
+                ,resp_etag=automatic
+            };
+	_Else ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "unexpeced datastore response"
+                ,resp_error_code = 500
+                ,resp_data = [_Else]
+            }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function creates a new account document with the given data
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_doc/2 :: (Data :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+create_doc(Data, Context) ->
+    Doc = create_private_fields() ++ Data,
+    {struct, NewJson} = couch_to_json({Doc}),
+    PubJson = json_public_fields(NewJson),
+    Context#cb_context{
+         doc=NewJson
+        ,db_name=get_db_name(NewJson)
+        ,resp_status=success
+        ,resp_data=[{struct, PubJson}]
     }.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempts to retrieve the private version of the account doc specified
-%% by DocId
+%% This function attempts to save the provided document to the accounts
+%% database. The result is loaded into the context record.
+%%
+%% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(get_private_doc/1 :: (DocId :: term()) -> json_object() | tuple(error, string())).
-get_private_doc(DocId) when is_binary(DocId) ->
-    try
-        case couch_mgr:open_doc("accounts", DocId) of
-            {error, Error} ->       
-                {error, Error};
-            Doc ->
-                Str = couchbeam_util:json_encode({Doc}),
-		{struct, Json} = mochijson2:decode(Str),
-		%% return any key that starts with _ or pvt_
-                lists:filter(fun({K, _}) -> binary:first(K) == 95 orelse binary:bin_to_list(K, 0, 4) == "pvt_" end, Json)
-        end
-    catch
-        Fault:Reason ->
-            {error, {Fault, Reason}}
-    end;
-get_private_doc(DocId) ->
-    get_private_doc(whistle_util:to_binary(DocId)).
+-spec(save_doc/2 :: (Doc :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+save_doc(Doc, Context) ->
+    case couch_mgr:save_doc(?ACCOUNTS_DB, Doc) of
+        {error, db_not_reachable} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "datastore timeout"
+                ,resp_error_code = 503
+            };
+	{ok, Doc1} ->
+            {struct, Json} = couch_to_json({Doc1}),
+            PubJson = json_public_fields(Json),
+            Context#cb_context{
+                 doc=Json
+                ,resp_status=success
+                ,resp_data=[{struct, PubJson}]
+                ,resp_etag=rev_to_etag(Doc1)
+            };
+	_Else ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "unexpeced datastore response!!"
+                ,resp_error_code = 500
+                ,resp_data = [_Else]
+            }
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempts to retrieve the public version of the account doc specified
-%% by DocId
+%% This function will attempt to remove an account document from the
+%% account database
+%%
+%% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(get_public_doc/1 :: (DocId :: term()) -> json_object() | tuple(error, string())).
-get_public_doc(DocId) when is_binary(DocId) ->
-    try
-	case couch_mgr:open_doc("accounts", DocId) of
-	    {error, Error} ->	    
-		{error, Error};
-	    Doc ->
-		Str = couchbeam_util:json_encode({Doc}),
-		{struct, Json} = mochijson2:decode(Str),
-		%% remove any key that starts with _ or pvt_
-		[{<<"id">>, DocId}] ++ lists:filter(fun({K, _}) -> binary:first(K) =/= 95 andalso binary:bin_to_list(K, 0, 4) =/= "pvt_" end, Json)
-	end
-    catch
-	Fault:Reason ->
-	    {error, {Fault, Reason}}
-    end;
-get_public_doc(DocId) ->
-    get_public_doc(whistle_util:to_binary(DocId)).
+-spec(delete_doc/2 :: (Doc :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+delete_doc(Doc, Context) ->
+    case couch_mgr:del_doc(?ACCOUNTS_DB, Doc) of
+        {error, db_not_reachable} ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "datastore timeout"
+                ,resp_error_code = 503
+            };
+	{ok, _} ->
+            Context#cb_context{
+                 doc=undefined
+                ,resp_status=success
+                ,resp_data=[]
+            };
+	_Else ->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "unexpeced datastore response!!"
+                ,resp_error_code = 500
+                ,resp_data = [_Else]
+            }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function returns the private fields to be added to a new account
+%% document
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_private_fields/0 :: () -> proplist()).
+create_private_fields() ->
+    [
+        {<<"pvt_identifier">>,{struct,[{<<"type">>,<<"account">>},{<<"tree">>,[]}]}}
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will filter any private fields out of the provided
+%% json proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec(json_public_fields/1 :: (Json :: proplist()) -> proplist()).
+json_public_fields(Json) ->
+    PubDoc =
+    lists:filter(fun({K, _}) ->
+                        not is_private_field(K)
+                 end, Json),
+    [{<<"id">>, proplists:get_value(<<"_id">>, Json)}] ++ PubDoc.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will filter any public fields out of the provided
+%% json proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec(json_private_fields/1 :: (Json :: proplist()) -> proplist()).
+json_private_fields(Json) ->
+    lists:filter(fun({K, _}) ->
+                        is_private_field(K)
+                 end, Json).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will return a boolean, true if the provided key is
+%% considered private; otherwise false
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_private_field/1 :: (Json :: proplist()) -> proplist()).
+is_private_field(Key) ->
+    binary:first(Key) == 95 orelse binary:bin_to_list(Key, 0, 4) == "pvt_".
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will convert the couchbeam JSON encoding to mochijson2
+%% @end
+%%--------------------------------------------------------------------
+-spec(couch_to_json/1 :: (Doc :: proplist()) -> proplist()).
+couch_to_json(Doc) ->
+    Str = couchbeam_util:json_encode(Doc),
+    mochijson2:decode(Str).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will attempt to convert a revision tag on the provided
+%% document into a usable ETag for the response
+%% @end
+%%--------------------------------------------------------------------
+-spec(rev_to_etag/1 :: (Doc :: proplist()) -> undefined | string()).
+rev_to_etag(Doc) ->
+    case proplists:get_value(<<"_rev">>, Doc) of
+        undefined ->
+            undefined;
+        Rev ->
+            ETag = whistle_util:to_list(Rev),
+            string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will attempt to convert the account document ID into
+%% the account database name
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_db_name/1 :: (Doc :: proplist()) -> undefined | binary()).
+get_db_name(Doc) ->
+    case proplists:get_value(<<"_id">>, Doc) of
+        undefined ->
+            undefined;
+       _Id ->
+            Id = whistle_util:to_list(_Id),
+            Db = [string:sub_string(Id, 1, 2), $/, string:sub_string(Id, 3, 4), $/, string:sub_string(Id, 5)],
+            whistle_util:to_binary(Db)
+    end.
