@@ -29,6 +29,9 @@
 
 -define(ACCOUNTS_DB, "accounts").
 -define(ACCOUNTS_LIST, {"accounts","listing"}).
+-define(ACCOUNTS_PARENT, {"accounts","parent"}).
+-define(ACCOUNTS_CHILDREN, {"accounts","children"}).
+-define(ACCOUNTS_DESCENDANTS, {"accounts","descendants"}).
 
 -record(state, {}).
 
@@ -123,27 +126,35 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
-    %%spawn(fun() ->
+    spawn(fun() ->
                   Context1 = validate(wrq:method(RD), Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-	%%  end),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #cb_context{doc=Doc, resp_status=success}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = save_doc(Doc, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #cb_context{doc=Doc, resp_status=success}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = save_doc(Doc, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc, resp_status=success}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
+    spawn(fun() ->
+                  Doc1 = crossbar_util:set_value([<<"pvt_identifier">>, <<"tree">>], [], Doc),
+                  Context1 = save_doc(Doc1, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = delete_doc(Doc, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -220,7 +231,7 @@ validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
         {false, Fields} ->
             Context#cb_context {
                  resp_status = error
-                ,resp_error_msg = "Invalid data"
+                ,resp_error_msg = "invalid data"
                 ,resp_error_code = 400
                 ,resp_data = Fields
             }
@@ -234,21 +245,85 @@ validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
         {false, Fields} ->
             Context#cb_context {
                  resp_status = error
-                ,resp_error_msg = "Invalid data"
+                ,resp_error_msg = "invalid data"
                 ,resp_error_code = 400
                 ,resp_data = Fields
             }
     end;
 validate('DELETE', [DocId], Context) ->
     load_doc(DocId, Context);
-validate('DELETE', [DocId, <<"parents">>], Context) ->
+validate('POST', [DocId, <<"parent">>], #cb_context{req_data={struct,Data}}=Context) ->
+    case proplists:get_value(<<"parent">>, Data) of
+        undefined->
+            Context#cb_context {
+                 resp_status = error
+                ,resp_error_msg = "invalid data"
+                ,resp_error_code = 400
+                ,resp_data = [{struct, [{<<"path">>, [<<"parent">>]}]}]
+            };
+        ParentId ->
+            case load_doc(ParentId, Context) of
+                #cb_context{resp_status=success, doc=Parent} ->
+                    Tree = crossbar_util:get_value([<<"pvt_identifier">>, <<"tree">>], Parent) ++ [ParentId],
+                    case load_doc(DocId, Context) of
+                        #cb_context{resp_status=success, doc=Doc}=Context1 ->
+                            Doc1=crossbar_util:set_value([<<"pvt_identifier">>, <<"tree">>], Tree, Doc),
+                            Context1#cb_context{doc=Doc1};
+                        Else ->
+                                Else
+                    end;
+                Else ->
+                    Else#cb_context{resp_error_msg="parent account could not be retrieved"}
+            end
+    end;
+validate('DELETE', [DocId, <<"parent">>], Context) ->
     load_doc(DocId, Context);
-validate('GET', [DocId, _], Context) ->
-    load_doc(DocId, Context);
+validate('GET', [DocId, <<"parent">>], Context) ->
+    Context1 =
+    load_view(?ACCOUNTS_PARENT, [
+         {<<"startkey">>, whistle_util:to_binary(DocId)}
+        ,{<<"endkey">>, whistle_util:to_binary(DocId)}
+    ], Context),
+    case Context1#cb_context.doc of
+        [{struct, Props}|_] ->
+            Parent = proplists:get_value(<<"value">>, Props),
+            load_view(?ACCOUNTS_LIST, [
+                 {<<"startkey">>, [Parent]}
+                ,{<<"endkey">>, [Parent, {struct, []}]}
+            ], Context);
+        _Else ->
+            Context
+    end;
+validate('GET', [DocId, <<"children">>], Context) ->
+    load_view(?ACCOUNTS_CHILDREN, [
+         {<<"startkey">>, [whistle_util:to_binary(DocId)]}
+        ,{<<"endkey">>, [whistle_util:to_binary(DocId), {struct, []}]}
+    ], Context);
+validate('GET', [DocId, <<"descendants">>], Context) ->
+    load_view(?ACCOUNTS_DESCENDANTS, [
+         {<<"startkey">>, [whistle_util:to_binary(DocId)]}
+        ,{<<"endkey">>, [whistle_util:to_binary(DocId), {struct, []}]}
+    ], Context);
+validate('GET', [DocId, <<"siblings">>], Context) ->
+    Context1 =
+    load_view(?ACCOUNTS_PARENT, [
+         {<<"startkey">>, whistle_util:to_binary(DocId)}
+        ,{<<"endkey">>, whistle_util:to_binary(DocId)}
+    ], Context),
+    case Context1#cb_context.doc of
+        [{struct, Props}|_] ->
+            Parent = proplists:get_value(<<"value">>, Props),
+            load_view(?ACCOUNTS_CHILDREN, [
+                 {<<"startkey">>, [Parent]}
+                ,{<<"endkey">>, [Parent, {struct, []}]}
+            ], Context);
+        _Else ->
+            Context
+    end;
 validate(_, _, Context) ->
     Context#cb_context {
          resp_status = error
-	,resp_error_msg = "Faulty request"
+	,resp_error_msg = "faulty request"
 	,resp_error_code = 400
     }.
 
@@ -280,13 +355,11 @@ allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
-allowed_methods([_, <<"parents">>]) ->
-    {true, ['GET', 'DELETE']};
+allowed_methods([_, <<"parent">>]) ->
+    {true, ['GET', 'POST', 'DELETE']};
 allowed_methods([_, Path]) ->
-    Valid = lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>]),
+    Valid = lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]),
     {Valid, ['GET']};
-allowed_methods([_, <<"parents">>, _]) ->
-    {true, ['PUT']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -304,10 +377,8 @@ resource_exists([]) ->
 resource_exists([_]) ->
     {true, []};
 resource_exists([_, Path]) ->
-    Valid = lists:member(Path, [<<"parents">>, <<"ancestors">>, <<"children">>, <<"descendants">>]),
+    Valid = lists:member(Path, [<<"parent">>, <<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]),
     {Valid, []};
-resource_exists([_, <<"parents">>, _]) ->
-    {true, []};
 resource_exists(_) ->
     {false, []}.
 
@@ -317,7 +388,7 @@ resource_exists(_) ->
 %% This function attempts to load the context with account details,
 %% including the account db name and the account doc.
 %%
-%% Failure here returns 404, 500, or 503
+%% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_doc/2 :: (DocId :: term(), Context :: #cb_context{}) -> #cb_context{}).
@@ -329,7 +400,7 @@ load_doc(DocId, Context) ->
             Context#cb_context {
                  resp_status = error
                 ,resp_error_msg = "account not found"
-                ,resp_error_code = 404
+                ,resp_error_code = 410
             };
         {error, db_not_reachable} ->
             Context#cb_context {
@@ -363,7 +434,7 @@ load_doc(DocId, Context) ->
 %% fields of an existing account document, if successful it will
 %% load the context with the account details
 %%
-%% Failure here returns 404, 500, or 503
+%% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_merge_doc/3 :: (DocId :: term(), Data :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
@@ -375,7 +446,7 @@ load_merge_doc(DocId, Data, Context) ->
             Context#cb_context {
                  resp_status = error
                 ,resp_error_msg = "account not found"
-                ,resp_error_code = 404
+                ,resp_error_code = 410
             };
         {error, db_not_reachable} ->
             Context#cb_context {
@@ -435,10 +506,11 @@ load_view(View, Options, Context) ->
             };
 	Doc when is_list(Doc) ->
             Json = couch_to_json(Doc),
+            PubJson = filter_view_results(Json),
             Context#cb_context{
                  doc=Json
                 ,resp_status=success
-                ,resp_data=Json
+                ,resp_data=PubJson
                 ,resp_etag=automatic
             };
 	_Else ->
@@ -449,6 +521,16 @@ load_view(View, Options, Context) ->
                 ,resp_data = [_Else]
             }
     end.
+
+filter_view_results(Json) ->
+    lists:foldr(fun({struct, Prop}, Acc) ->
+                       Id = proplists:get_value(<<"id">>, Prop),
+                       Name = proplists:get_value(<<"value">>, Prop),
+                       [{struct,[
+                            {<<"id">>, Id}
+                           ,{<<"name">>, Name}
+                       ]}|Acc]
+                end, [], Json).
 
 %%--------------------------------------------------------------------
 %% @private

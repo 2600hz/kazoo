@@ -13,7 +13,7 @@
 -export([init/1]).
 -export([to_json/2, to_xml/2]).
 -export([from_json/2, from_xml/2, from_form/2]).
--export([encodings_provided/2, finish_request/2, is_authorized/2, allowed_methods/2]).
+-export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([expires/2, generate_etag/2]).
 -export([process_post/2, delete_resource/2]).
@@ -31,7 +31,7 @@
 init(Opts) ->
     {Context, _} = crossbar_bindings:fold(<<"v1.0_resource.init">>, {#cb_context{}, Opts}),
     {ok, Context}.
-    %% {{wmtrace, "/tmp"}, #cb_context}.
+    %%{{trace, "/tmp"}, Context}.
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Verb = whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
@@ -45,12 +45,6 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
         [] ->
             {Methods, RD, Context#cb_context{req_verb=Verb}}
     end.
-
-is_authorized(RD, Context) ->
-    S0 = crossbar_session:start_session(RD),
-    Event = <<"v1_resource.start_session">>,
-    S = crossbar_bindings:fold(Event, S0),
-    {true, RD, Context#cb_context{session=S}}.
 
 malformed_request(RD, Context) ->
     try	
@@ -76,26 +70,38 @@ malformed_request(RD, Context) ->
             {true, RD1, Context1}
     end.
 
+is_authorized(RD, Context) ->
+    S0 = crossbar_session:start_session(RD),
+    Event = <<"v1_resource.start_session">>,
+    S = crossbar_bindings:fold(Event, S0),
+    {true, RD, Context#cb_context{session=S}}.
+    
+forbidden(RD, Context) ->
+    case is_authentic(RD, Context) of
+        true ->
+            case is_permitted(RD, Context) of
+                true -> {false, RD, Context};
+                false -> {true, RD, Context}
+            end;
+        false ->
+            {{halt, 401}, RD, Context}
+    end.
+
 resource_exists(RD, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
     {false, RD, Context};
 resource_exists(RD, Context) ->
     case does_resource_exist(RD, Context) of
 	true ->
-	    case is_authentic(RD, Context) andalso is_permitted(RD, Context) of
-		true ->
-                    {RD1, Context1} = validate(RD, Context),
-                    case succeeded(Context1) of
-                        true ->
-                            execute_request(RD1, Context1);
-                        false ->
-                            Content = create_resp_content(RD, Context1),
-                            RD2 = wrq:append_to_response_body(Content, RD1),
-                            ReturnCode = Context1#cb_context.resp_error_code,
-                            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
-                    end;
-		false ->
-		    {{halt, 401}, RD, Context}
-	    end;
+            {RD1, Context1} = validate(RD, Context),
+            case succeeded(Context1) of
+                true ->
+                    execute_request(RD1, Context1);
+                false ->
+                    Content = create_resp_content(RD, Context1),
+                    RD2 = wrq:append_to_response_body(Content, RD1),
+                    ReturnCode = Context1#cb_context.resp_error_code,
+                    {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
+            end;
 	false ->
 	    {false, RD, Context}
     end.
@@ -146,14 +152,13 @@ delete_resource(RD, Context) ->
 
 finish_request(RD, #cb_context{session=S}=Context) ->
     Event = <<"v1_resource.finish_request">>,
-    crossbar_bindings:map(Event, {RD, Context}),
-    RD1 = case S of
+    {RD, Context} = crossbar_bindings:fold(Event, {RD, Context}),
+    case S of
         undefined ->
-            RD;
+            {true, RD, Context};
         _Else ->
-            crossbar_session:finish_session(S, RD)
-    end,
-    {true, RD1, Context}.
+            {true, crossbar_session:finish_session(S, RD), Context#cb_context{session=undefined}}
+    end.
 
 %%%===================================================================
 %%% Content Acceptors
@@ -330,9 +335,17 @@ execute_request(RD, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context) ->
                 end, {RD, Context}, Nouns),
     case succeeded(Context1) of
         false ->
-            {{halt, 500}, RD1, Context1};
+            Content = create_resp_content(RD, Context1),
+            RD2 = wrq:append_to_response_body(Content, RD1),
+            ReturnCode = Context1#cb_context.resp_error_code,
+            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
-            {true, RD1, Context1}
+            case wrq:method(RD) of
+                'PUT' ->
+                    {false, RD1, Context1};
+                _Else ->
+                    {true, RD1, Context1}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -525,6 +538,6 @@ list_to_xml([E|T], Xml) ->
 %%--------------------------------------------------------------------
 -spec(xml_tag/2 :: (Value :: iolist(), Type :: iolist) -> iolist()).
 xml_tag(Value, Type) ->
-    io_lib:format("<~s>~s</~s>", [Type, Value, Type]).
+    io_lib:format("<~s>~s</~s>~n", [Type, Value, Type]).
 xml_tag(Key, Value, Type) ->
-    io_lib:format("<~s name=\"~s\">~s</~s>", [Type, Key, string:strip(Value, both, $"), Type]).
+    io_lib:format("<~s type=\"~s\">~s</~s>~n", [Key, Type, string:strip(Value, both, $"), Key]).
