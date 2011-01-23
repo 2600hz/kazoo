@@ -25,25 +25,47 @@
 %% Returns true if the value is not undefined
 %% @end
 %%--------------------------------------------------------------------
--spec(get_value/2 :: (Paths :: term(), Data :: proplist()) -> undefined|term()).
-get_value(Paths, Data) when not is_list(Paths) ->
-    proplists:get_value(Paths, Data);
-get_value([P]=Paths, Data) when length(Paths) == 1 ->
-    proplists:get_value(P, Data);
-get_value([H|T], Data) ->
-    case proplists:get_value(H, Data) of
+-spec(get_value/2 :: (Key :: term() | [term()], Props :: proplist()) -> undefined|term()|[term()]).
+get_value(Key, Props) when not is_list(Key) ->
+    proplists:get_value(Key, Props);
+get_value([Key], Props) ->
+    proplists:get_value(Key, Props);
+get_value([Key|T], Props) ->
+    case proplists:get_value(Key, Props) of
         undefined ->
             undefined;
-        {struct, Props} ->
-            get_value(T, Props);
-        SubProps ->
-            get_value(T, SubProps)
+        {struct, Prop} ->
+            get_value(T, Prop);
+        Prop when is_list(Prop) ->
+            lists:map(fun(Elem)-> get_value(T, Elem) end, Prop);
+        Else ->
+            get_value(T, Else)
     end.
 
-set_value(_Paths, _Value, _Data) ->
-    undefined.
-
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Sets the all instances of the key path to the given value in Props
+%% @end
+%%--------------------------------------------------------------------
+-spec(set_value/3 :: (Key :: term() | [term()], Value :: term(), Props :: proplist()) -> proplist()).
+set_value(Key, Value, Props) when not is_list(Key)->
+    set_value([Key], Value, Props);
+set_value([Key], Value, Props) ->
+    lists:map(fun(Prop) ->
+            case Prop of
+                {Key, _} -> {Key, Value};
+                Else -> Else
+            end
+        end, Props);
+set_value([Key|T], Value, Props) ->
+    lists:map(fun(Prop) ->
+            case Prop of
+                {Key, {struct, Params}} -> {Key, {struct, set_value(T, Value, Params)}};
+                {Key, V} -> {Key, set_value(T, Value, V)};
+                Else -> Else
+            end
+        end, Props).
 
 
 
