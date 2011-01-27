@@ -21,6 +21,7 @@
 	 terminate/2, code_change/3]).
 
 -import(logger, [format_log/3]).
+-import(crossbar_util).
 
 -include("../crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
@@ -127,37 +128,34 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = validate(wrq:method(RD), Params, Context),
+                  Context1 = validate(wrq:method(RD), Params, Context#cb_context{db_name=?ACCOUNTS_DB}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = save_doc(Doc, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, crossbar_doc:save(Context), Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = save_doc(Doc, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, crossbar_doc:save(Context), Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
     spawn(fun() ->
-                  Doc1 = crossbar_util:set_value([<<"pvt_identifier">>, <<"tree">>], [], Doc),
-                  Context1 = save_doc(Doc1, Context),
+                  Doc1 = crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], [], Doc),
+                  Context1 = crossbar_doc:save(Context#cb_context{doc=Doc1}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = delete_doc(Doc, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, crossbar_doc:delete(Context), Params]}
 	  end),
     {noreply, State};
 
@@ -215,135 +213,6 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function determines if the parameters and content are correct
-%% for this request
-%%
-%% Failure here returns 400
-%% @end
-%%--------------------------------------------------------------------
--spec(validate/3 :: (Verb :: atom(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate('GET', [], Context) ->
-    load_view(?ACCOUNTS_LIST, [], Context);
-validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
-    case is_valid_doc(Data) of
-        {true, []} ->
-            create_doc(Data, Context);
-        {false, Fields} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "invalid data"
-                ,resp_error_code = 400
-                ,resp_data = Fields
-            }
-    end;
-validate('GET', [DocId], Context) ->
-    load_doc(DocId, Context);
-validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
-    case is_valid_doc(Data) of
-        {true, []} ->
-            load_merge_doc(DocId, Data, Context);
-        {false, Fields} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "invalid data"
-                ,resp_error_code = 400
-                ,resp_data = Fields
-            }
-    end;
-validate('DELETE', [DocId], Context) ->
-    load_doc(DocId, Context);
-validate('POST', [DocId, <<"parent">>], #cb_context{req_data={struct,Data}}=Context) ->
-    case proplists:get_value(<<"parent">>, Data) of
-        undefined->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "invalid data"
-                ,resp_error_code = 400
-                ,resp_data = [{struct, [{<<"path">>, [<<"parent">>]}]}]
-            };
-        ParentId ->
-            case load_doc(ParentId, Context) of
-                #cb_context{resp_status=success, doc=Parent} ->
-                    Tree = crossbar_util:get_value([<<"pvt_identifier">>, <<"tree">>], Parent) ++ [ParentId],
-                    case load_doc(DocId, Context) of
-                        #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                            Doc1=crossbar_util:set_value([<<"pvt_identifier">>, <<"tree">>], Tree, Doc),
-                            Context1#cb_context{doc=Doc1};
-                        Else ->
-                                Else
-                    end;
-                Else ->
-                    Else#cb_context{resp_error_msg="parent account could not be retrieved"}
-            end
-    end;
-validate('DELETE', [DocId, <<"parent">>], Context) ->
-    load_doc(DocId, Context);
-validate('GET', [DocId, <<"parent">>], Context) ->
-    Context1 =
-    load_view(?ACCOUNTS_PARENT, [
-         {<<"startkey">>, whistle_util:to_binary(DocId)}
-        ,{<<"endkey">>, whistle_util:to_binary(DocId)}
-    ], Context),
-    case Context1#cb_context.doc of
-        [{struct, Props}|_] ->
-            Parent = proplists:get_value(<<"value">>, Props),
-            load_view(?ACCOUNTS_LIST, [
-                 {<<"startkey">>, [Parent]}
-                ,{<<"endkey">>, [Parent, {struct, []}]}
-            ], Context);
-        _Else ->
-            Context
-    end;
-validate('GET', [DocId, <<"children">>], Context) ->
-    load_view(?ACCOUNTS_CHILDREN, [
-         {<<"startkey">>, [whistle_util:to_binary(DocId)]}
-        ,{<<"endkey">>, [whistle_util:to_binary(DocId), {struct, []}]}
-    ], Context);
-validate('GET', [DocId, <<"descendants">>], Context) ->
-    load_view(?ACCOUNTS_DESCENDANTS, [
-         {<<"startkey">>, [whistle_util:to_binary(DocId)]}
-        ,{<<"endkey">>, [whistle_util:to_binary(DocId), {struct, []}]}
-    ], Context);
-validate('GET', [DocId, <<"siblings">>], Context) ->
-    Context1 =
-    load_view(?ACCOUNTS_PARENT, [
-         {<<"startkey">>, whistle_util:to_binary(DocId)}
-        ,{<<"endkey">>, whistle_util:to_binary(DocId)}
-    ], Context),
-    case Context1#cb_context.doc of
-        [{struct, Props}|_] ->
-            Parent = proplists:get_value(<<"value">>, Props),
-            load_view(?ACCOUNTS_CHILDREN, [
-                 {<<"startkey">>, [Parent]}
-                ,{<<"endkey">>, [Parent, {struct, []}]}
-            ], Context);
-        _Else ->
-            Context
-    end;
-validate(_, _, Context) ->
-    Context#cb_context {
-         resp_status = error
-	,resp_error_msg = "faulty request"
-	,resp_error_code = 400
-    }.
-
-is_valid_doc(Data) ->
-    Schema = [
-	   { [<<"base">>, <<"name">>]
-	    ,[ {not_empty, []}
-              ,{is_format, [phrase]}
-	     ]}
-	   ,{ [<<"base">>, <<"status">>]
-	      ,[ {not_empty, []}
-		%,{in_list, [{<<"enabled">>, <<"disabled">>}]}
-	       ]}
-	  ],
-    Failed = crossbar_validator:validate(Schema, Data),
-    {Failed =:= [], Failed}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
 %%
@@ -385,152 +254,98 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function attempts to load the context with account details,
-%% including the account db name and the account doc.
+%% This function determines if the parameters and content are correct
+%% for this request
 %%
-%% Failure here returns 410, 500, or 503
+%% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(load_doc/2 :: (DocId :: term(), Context :: #cb_context{}) -> #cb_context{}).
-load_doc(DocId, Context) when not is_binary(DocId)->
-    load_doc(whistle_util:to_binary(DocId), Context);
-load_doc(DocId, Context) ->
-    case couch_mgr:open_doc(?ACCOUNTS_DB, DocId) of
-        {error, not_found} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "account not found"
-                ,resp_error_code = 410
-            };
-        {error, db_not_reachable} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "datastore timeout"
-                ,resp_error_code = 503
-            };
-	Doc when is_list(Doc) ->
-            {struct, Json} = couch_to_json({Doc}),
-            PubJson = json_public_fields(Json),
-            Context#cb_context{
-                 doc=Json
-                ,db_name=get_db_name(Doc)
-                ,resp_status=success
-                ,resp_data=[{struct, PubJson}]
-                ,resp_etag=rev_to_etag(Doc)
-            };
-	_Else ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "unexpeced datastore response"
-                ,resp_error_code = 500
-                ,resp_data = [_Else]
-            }
-    end.
+-spec(validate/3 :: (Verb :: atom(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+validate('GET', [], Context) ->
+    crossbar_doc:load_view(?ACCOUNTS_LIST, [], Context);
+validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
+    case is_valid_doc(Data) of
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
+            create_doc(Data, Context)
+    end;
+validate('GET', [DocId], Context) ->
+    crossbar_doc:load(DocId, Context);
+validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
+    case is_valid_doc(Data) of
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
+            crossbar_doc:load_merge(DocId, Data, Context)
+    end;
+validate('DELETE', [DocId], Context) ->
+    crossbar_doc:load(DocId, Context);
+validate('GET', [DocId, <<"parent">>], Context) ->
+    Child =
+        crossbar_doc:load_view(?ACCOUNTS_PARENT, [
+             {<<"startkey">>, DocId}
+            ,{<<"endkey">>, DocId}
+        ], Context),
+    case Child#cb_context.doc of
+        [{struct, Props}|_] ->
+            Parent = proplists:get_value(<<"value">>, Props),
+            crossbar_doc:load_view(?ACCOUNTS_LIST, [
+                 {<<"startkey">>, [Parent]}
+                ,{<<"endkey">>, [Parent, {struct, []}]}
+            ], Context);
+        _Else ->
+            Context
+    end;
+validate('POST', [DocId, <<"parent">>], #cb_context{req_data={struct,Data}}=Context) ->
+    case is_valid_parent(Data) of
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
+            %% OMGBBQ! NO CHECKS FOR CYCLIC REFERENCES WATCH OUT!
+            ParentId = proplists:get_value(<<"parent">>, Data),
+            update_tree(DocId, ParentId, Context)
+    end;
+validate('DELETE', [DocId, <<"parent">>], Context) ->
+    crossbar_doc:load(DocId, Context);
+validate('GET', [DocId, <<"children">>], Context) ->
+    crossbar_doc:load_view(?ACCOUNTS_CHILDREN, [
+         {<<"startkey">>, [DocId]}
+        ,{<<"endkey">>, [DocId, {struct, []}]}
+    ], Context);
+validate('GET', [DocId, <<"descendants">>], Context) ->
+    crossbar_doc:load_view(?ACCOUNTS_DESCENDANTS, [
+         {<<"startkey">>, [DocId]}
+        ,{<<"endkey">>, [DocId, {struct, []}]}
+    ], Context);
+validate('GET', [DocId, <<"siblings">>], Context) ->
+    Context1 =
+        crossbar_doc:load_view(?ACCOUNTS_PARENT, [
+             {<<"startkey">>, DocId}
+            ,{<<"endkey">>, DocId}
+        ], Context),
+    case Context1#cb_context.doc of
+        [{struct, Props}|_] ->
+            Parent = proplists:get_value(<<"value">>, Props),
+            crossbar_doc:load_view(?ACCOUNTS_CHILDREN, [
+                 {<<"startkey">>, [Parent]}
+                ,{<<"endkey">>, [Parent, {struct, []}]}
+            ], Context);
+        _Else ->
+            Context
+    end;
+validate(_, _, Context) ->
+    crossbar_util:response_faulty_request(Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function attempts to merge the submitted data with the private
-%% fields of an existing account document, if successful it will
-%% load the context with the account details
-%%
-%% Failure here returns 410, 500, or 503
-%% @end
-%%--------------------------------------------------------------------
--spec(load_merge_doc/3 :: (DocId :: term(), Data :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
-load_merge_doc(DocId, Data, Context) when not is_binary(DocId)->
-    load_merge_doc(whistle_util:to_binary(DocId), Data, Context);
-load_merge_doc(DocId, Data, Context) ->
-    case couch_mgr:open_doc(?ACCOUNTS_DB, DocId) of
-        {error, not_found} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "account not found"
-                ,resp_error_code = 410
-            };
-        {error, db_not_reachable} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "datastore timeout"
-                ,resp_error_code = 503
-            };
-	Doc when is_list(Doc) ->
-            {struct, Json} = couch_to_json({Doc}),
-            NewJson = json_private_fields(Json) ++ Data,
-            PubJson = json_public_fields(NewJson),
-            Context#cb_context{
-                 doc=NewJson
-                ,db_name=get_db_name(Doc)
-                ,resp_status=success
-                ,resp_data=[{struct, PubJson}]
-                ,resp_etag=rev_to_etag(Doc)
-            };
-	_Else ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "unexpeced datastore response"
-                ,resp_error_code = 500
-                ,resp_data = [_Else]
-            }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function attempts to load the context with the results of a view
-%% run against the accounts database.
-%%
-%% Failure here returns 500 or 503
-%% @end
-%%--------------------------------------------------------------------
--spec(load_view/3 :: (View :: tuple(string(), string()), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
-load_view(View, Options, Context) ->
-    case couch_mgr:get_results(?ACCOUNTS_DB, View, Options) of
-	false ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "datastore unable to fulfill request"
-                ,resp_error_code = 503
-            };
-	{error,invalid_view_name} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "datastore missing view"
-                ,resp_error_code = 500
-            };
-        {{error,not_found},fetch_failed}  ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "datastore missing view"
-                ,resp_error_code = 500
-            };
-	Doc when is_list(Doc) ->
-            Json = couch_to_json(Doc),
-            PubJson = filter_view_results(Json),
-            Context#cb_context{
-                 doc=Json
-                ,resp_status=success
-                ,resp_data=PubJson
-                ,resp_etag=automatic
-            };
-	_Else ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "unexpeced datastore response"
-                ,resp_error_code = 500
-                ,resp_data = [_Else]
-            }
-    end.
-
-filter_view_results(Json) ->
-    lists:foldr(fun({struct, Prop}, Acc) ->
-                       Id = proplists:get_value(<<"id">>, Prop),
-                       Name = proplists:get_value(<<"value">>, Prop),
-                       [{struct,[
-                            {<<"id">>, Id}
-                           ,{<<"name">>, Name}
-                       ]}|Acc]
-                end, [], Json).
+%filter_view_results(Json) ->
+%    lists:foldr(fun({struct, Prop}, Acc) ->
+%                       Id = proplists:get_value(<<"id">>, Prop),
+%                       Name = proplists:get_value(<<"value">>, Prop),
+%                       [{struct,[
+%                            {<<"id">>, Id}
+%                           ,{<<"name">>, Name}
+%                       ]}|Acc]
+%                end, [], Json).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -541,8 +356,8 @@ filter_view_results(Json) ->
 -spec(create_doc/2 :: (Data :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
 create_doc(Data, Context) ->
     Doc = create_private_fields() ++ Data,
-    {struct, NewJson} = couch_to_json({Doc}),
-    PubJson = json_public_fields(NewJson),
+    {struct, NewJson} = crossbar_doc:couch_to_json({Doc}),
+    PubJson = crossbar_doc:json_public_fields(NewJson),
     Context#cb_context{
          doc=NewJson
         ,db_name=get_db_name(NewJson)
@@ -550,74 +365,98 @@ create_doc(Data, Context) ->
         ,resp_data=[{struct, PubJson}]
     }.
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function attempts to save the provided document to the accounts
-%% database. The result is loaded into the context record.
 %%
-%% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(save_doc/2 :: (Doc :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
-save_doc(Doc, Context) ->
-    case couch_mgr:save_doc(?ACCOUNTS_DB, Doc) of
-        {error, db_not_reachable} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "datastore timeout"
-                ,resp_error_code = 503
-            };
-	{ok, Doc1} ->
-            {struct, Json} = couch_to_json({Doc1}),
-            PubJson = json_public_fields(Json),
-            Context#cb_context{
-                 doc=Json
-                ,resp_status=success
-                ,resp_data=[{struct, PubJson}]
-                ,resp_etag=rev_to_etag(Doc1)
-            };
-	_Else ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "unexpeced datastore response!!"
-                ,resp_error_code = 500
-                ,resp_data = [_Else]
-            }
+-spec(is_valid_parent/1 :: (Data :: proplist()) -> tuple(boolean(), list())).
+is_valid_parent(_Data) ->
+    {true, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_valid_doc/1 :: (Data :: proplist()) -> tuple(boolean(), list())).
+is_valid_doc(Data) ->
+    Schema = [
+	   { [<<"base">>, <<"name">>]
+	    ,[ {not_empty, []}
+              ,{is_format, [phrase]}
+	     ]}
+	   ,{ [<<"base">>, <<"status">>]
+	      ,[ {not_empty, []}
+		%,{in_list, [{<<"enabled">>, <<"disabled">>}]}
+	       ]}
+	  ],
+    Failed = crossbar_validator:validate(Schema, Data),
+    {Failed =:= [], Failed}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_tree/3 :: (DocId :: binary(), ParentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_tree(DocId, ParentId, Context) ->
+    case crossbar_doc:load(ParentId, Context) of
+        #cb_context{resp_status=success, doc=Parent} ->
+            Descendants =
+                crossbar_doc:load_view(?ACCOUNTS_DESCENDANTS, [
+                     {<<"startkey">>, [DocId]}
+                    ,{<<"endkey">>, [DocId, {struct, []}]}
+                ], Context),
+            case Descendants of
+                #cb_context{resp_status=success, doc=[]} ->
+                    crossbar_util:response_bad_identifier(DocId, Context);
+                #cb_context{resp_status=success, doc=Doc}=Context1 ->
+                    Tree = crossbar_util:get_json_values([<<"pvt_identifier">>, <<"tree">>], Parent) ++ [ParentId, DocId],
+                    Updater = fun(Update, Acc) -> update_doc_tree(Tree, Update, Acc) end,
+                    Updates = lists:foldr(Updater, [], Doc),
+                    Context1#cb_context{doc=Updates}
+            end;
+        Else ->
+            Else
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will attempt to remove an account document from the
-%% account database
 %%
-%% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(delete_doc/2 :: (Doc :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
-delete_doc(Doc, Context) ->
-    case couch_mgr:del_doc(?ACCOUNTS_DB, Doc) of
-        {error, db_not_reachable} ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "datastore timeout"
-                ,resp_error_code = 503
-            };
-	{ok, _} ->
-            Context#cb_context{
-                 doc=undefined
-                ,resp_status=success
-                ,resp_data=[]
-            };
-	_Else ->
-            Context#cb_context {
-                 resp_status = error
-                ,resp_error_msg = "unexpeced datastore response!!"
-                ,resp_error_code = 500
-                ,resp_data = [_Else]
-            }
-    end.
+-spec(update_doc_tree/3 :: (ParentTree :: list(), Update :: json_object(), Acc :: list()) -> list()).
+update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
+    DocId = proplists:get_value(<<"id">>, Prop),
+    case crossbar_doc:load(DocId, #cb_context{db_name=?ACCOUNTS_DB}) of
+        #cb_context{resp_status=success, doc=Doc} ->
+            Tree = crossbar_util:get_json_values([<<"pvt_identifier">>, <<"tree">>], Doc),
+            SubTree =
+                case lists:dropwhile(fun(E)-> [E] =/= tl(ParentTree) end, Tree) of
+                    [] -> [];
+                    List -> lists:nthtail(1,List)
+                end,
+            NewTree =
+                case tl(ParentTree) of
+                    [DocId] when length(ParentTree) >= 2 ->
+                        lists:sublist(ParentTree, length(ParentTree) - 1);
+                    [DocId] ->
+                        [];
+                     _Else ->
+                        ParentTree ++ SubTree
+                end,
+            [crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], NewTree, Doc)|Acc];
+        _Else ->
+            Acc
+    end;
+update_doc_tree(_ParentTree, _Update, Acc) ->
+    Acc.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -631,73 +470,6 @@ create_private_fields() ->
     [
         {<<"pvt_identifier">>,{struct,[{<<"type">>,<<"account">>},{<<"tree">>,[]}]}}
     ].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will filter any private fields out of the provided
-%% json proplist
-%% @end
-%%--------------------------------------------------------------------
--spec(json_public_fields/1 :: (Json :: proplist()) -> proplist()).
-json_public_fields(Json) ->
-    PubDoc =
-    lists:filter(fun({K, _}) ->
-                        not is_private_field(K)
-                 end, Json),
-    [{<<"id">>, proplists:get_value(<<"_id">>, Json)}] ++ PubDoc.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will filter any public fields out of the provided
-%% json proplist
-%% @end
-%%--------------------------------------------------------------------
--spec(json_private_fields/1 :: (Json :: proplist()) -> proplist()).
-json_private_fields(Json) ->
-    lists:filter(fun({K, _}) ->
-                        is_private_field(K)
-                 end, Json).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will return a boolean, true if the provided key is
-%% considered private; otherwise false
-%% @end
-%%--------------------------------------------------------------------
--spec(is_private_field/1 :: (Json :: proplist()) -> proplist()).
-is_private_field(Key) ->
-    binary:first(Key) == 95 orelse binary:bin_to_list(Key, 0, 4) == "pvt_".
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will convert the couchbeam JSON encoding to mochijson2
-%% @end
-%%--------------------------------------------------------------------
--spec(couch_to_json/1 :: (Doc :: proplist()) -> proplist()).
-couch_to_json(Doc) ->
-    Str = couchbeam_util:json_encode(Doc),
-    mochijson2:decode(Str).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will attempt to convert a revision tag on the provided
-%% document into a usable ETag for the response
-%% @end
-%%--------------------------------------------------------------------
--spec(rev_to_etag/1 :: (Doc :: proplist()) -> undefined | string()).
-rev_to_etag(Doc) ->
-    case proplists:get_value(<<"_rev">>, Doc) of
-        undefined ->
-            undefined;
-        Rev ->
-            ETag = whistle_util:to_list(Rev),
-            string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
