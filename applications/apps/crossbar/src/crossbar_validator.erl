@@ -41,7 +41,7 @@ validate(Schema, Data) ->
 %%--------------------------------------------------------------------
 -spec(check/3 :: (Rules :: validator_rules(), Path :: [binary()] | binary(), Data :: proplist()) -> [] | list(json_object())).
 check(Rules, Path, Data) ->
-    Value = crossbar_util:get_value(Path, Data),
+    Value = crossbar_util:get_json_values(Path, Data),
     lists:foldl(fun({Validator, Params}, Results) ->
 			case apply(?MODULE, Validator, [Value] ++ Params) of
 			    true ->
