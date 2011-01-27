@@ -212,7 +212,8 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
             parse_path_tokens([], Loaded, []);
         true ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(Elem, Loaded) end, T),
-            parse_path_tokens(List2, Loaded, [{Mod, Params} | Events])
+            Params1 = lists:map(fun whistle_util:to_binary/1, Params),
+            parse_path_tokens(List2, Loaded, [{Mod, Params1} | Events])
     end.
 
 %%--------------------------------------------------------------------
