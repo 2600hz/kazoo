@@ -12,11 +12,14 @@
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
 -export([response_datastore_timeout/1]).
+-export([response_datastore_conn_refused/1]).
 -export([response_invalid_data/2]).
 -export([response_missing_view/1]).
 -export([response_db_missing/1]).
 -export([get_json_values/2, set_json_values/3]).
 %%-export([get_json_value/2, get_json_value/3, set_json_value/2, set_json_value/3]).
+-export([binding_heartbeat/1]).
+
 
 -export([get_request_params/1, param_exists/2, find_failed/2]).
 -export([winkstart_envelope/1]).
@@ -141,6 +144,16 @@ response_datastore_timeout(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Create a standard response if the datastore time'd out
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_datastore_conn_refused/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_datastore_conn_refused(Context) ->
+    response(error, "datastore connection refused", 503, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Create a standard response if the provided data did not validate
 %% @end
 %%--------------------------------------------------------------------
@@ -168,21 +181,14 @@ response_db_missing(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_json_values/2 :: (Key :: term() | [term()], Props :: proplist()) -> undefined|term()|[term()]).
-get_json_values(Key, Props) when not is_list(Key) ->
-    proplists:get_value(Key, Props);
-get_json_values([Key], Props) ->
-    proplists:get_value(Key, Props);
-get_json_values([Key|T], Props) ->
-    case proplists:get_value(Key, Props) of
-        undefined ->
-            undefined;
-        {struct, Prop} ->
-            get_json_values(T, Prop);
-        Prop when is_list(Prop) ->
-            lists:map(fun(Elem)-> get_json_values(T, Elem) end, Prop);
-        Else ->
-            get_json_values(T, Else)
-    end.
+get_json_values(Keys, {struct, Json}) ->
+    get_json_values(Keys, Json);
+get_json_values(_Keys, Json)  when not is_list(Json) ->
+    undefined;
+get_json_values([Key], Json) ->
+    proplists:get_value(Key, Json);
+get_json_values([Key|T], Json) ->
+    get_json_values(T, proplists:get_value(Key, Json)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -191,6 +197,8 @@ get_json_values([Key|T], Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(set_json_values/3 :: (Key :: term() | [term()], Value :: term(), Props :: proplist()) -> proplist()).
+set_json_values(Key, Value, {struct, Json}) ->
+    {struct, set_json_values(Key, Value, Json)};
 set_json_values(Key, Value, Json) when not is_list(Key)->
     set_json_values([Key], Value, Json);
 set_json_values([Key], Value, Json) ->
@@ -209,7 +217,14 @@ set_json_values([Key|T], Value, Json) ->
             end
         end, Json).
 
-
+binding_heartbeat(BPid) ->
+    PPid=self(),
+    spawn(fun() ->
+        erlang:monitor(process, PPid),
+        {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
+        receive _ -> ok after 10000 -> ok end,
+        timer:cancel(Tref)
+    end).
 
 
 
@@ -357,3 +372,9 @@ winkstart_envelope(fatal, Data, ErrorMsg, ErrorCode) ->
 				,{message, whistle_util:to_binary(ErrorMsg)}
 				,{data, {struct, Data}}
 			       ]}).
+
+%% EUNIT TESTING
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+-endif.
