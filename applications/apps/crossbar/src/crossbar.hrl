@@ -72,6 +72,7 @@
 	  ,resp_error_code = undefined :: integer() | undefined
 	  ,resp_data = [] :: list() | []
           ,storage = [] :: proplist()
+          ,start = undefined
 	 }).
 
 
