@@ -278,7 +278,6 @@ width(_Value, _Min, _Max) ->
 
 
 %% EUNIT TESTING
-
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
