@@ -1,8 +1,12 @@
 { "_id":"_design/registrations"
   ,"language":"javascript"
   ,"views":{
-    "get_contact":{
+    "active":{
       "map": "function(doc) { var reg = doc.registrations; for ( i in reg ) { var t = reg[i]['Reg-Server-Timestamp'] || reg[i]['Event-Timestamp']; emit([ reg[i]['From-Host'], reg[i]['Username'], parseInt(t) + parseInt(reg[i]['Expires'])], reg[i]); } }"
+    }
+    ,"expirations":{
+      "map": "function(doc) { var reg = doc.registrations; for ( i in reg ) { var t = reg[i]['Reg-Server-Timestamp'] || reg[i]['Event-Timestamp']; emit(doc._id, parseInt(t) + parseInt(reg[i]['Expires'])); } }"
+      ,"reduce": "function(k, vs) { return Math.min.apply(Math, vs); }"
     }
   }
 }
