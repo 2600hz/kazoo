@@ -103,7 +103,7 @@
 -define(REG_SUCCESS_TYPES, []).
 
 %% Query Registrations
--define(REG_QUERY_HEADERS, [<<"User">>, <<"Host">>, <<"Fields">>]).
+-define(REG_QUERY_HEADERS, [<<"Username">>, <<"Host">>, <<"Fields">>]).
 -define(OPTIONAL_REG_QUERY_HEADERS, []).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			   ,{<<"Event-Name">>, <<"reg_query">>}
