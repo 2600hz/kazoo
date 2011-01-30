@@ -48,37 +48,40 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
 %%--------------------------------------------------------------------
+%% @public
 %% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% return [ {Result, Payload1} ], a list of tuples, the first element 
+%% of which is the result of the bound handler, and the second element
+%% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
--spec(bind/1 :: (Binding :: binary()) -> ok | tuple(error, exists)).
-bind(Binding) ->
-    gen_server:call(?MODULE, {bind, Binding}, infinity).
-
-%% return [ {Result, Payload1} ], a list of tuples, the first element of which is the result of the bound handler,
-%% and the second element is the payload, possibly modified
 -spec(map/2 :: (Routing :: binary(), Payload :: term()) -> list(tuple(term(), term()))).
 map(Routing, Payload) ->
-    gen_server:call(?MODULE, {map, Routing, Payload}, infinity).
+    format_log(info, "Running map: ~p~n", [Routing]),
+    lists:foldl(fun({B, Ps}, Acc) ->
+                       case binding_matches(B, Routing) of
+                           true -> map_bind_results(Ps, Payload, Acc, Routing);
+                           false -> Acc
+                       end
+		end, [], get_bindings()).
 
-%% return the modified Payload after it has been threaded through all matching bindings
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% return the modified Payload after it has been threaded through
+%% all matching bindings
+%% @end
+%%--------------------------------------------------------------------
 -spec(fold/2 :: (Routing :: binary(), Payload :: term()) -> term()).
 fold(Routing, Payload) ->
-    gen_server:call(?MODULE, {fold, Routing, Payload}, infinity).
-
-flush() ->
-    gen_server:cast(?MODULE, flush).
-
-flush(Binding) ->
-    gen_server:cast(?MODULE, {flush, Binding}).
+    format_log(info, "Running fold: ~p~n", [Routing]),
+    lists:foldl(fun({B, Ps}, Acc) ->
+                       case binding_matches(B, Routing) of
+                           true -> fold_bind_results(Ps, Acc, Routing);
+			   false -> Acc
+                       end
+                end, Payload, get_bindings()).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -96,6 +99,30 @@ failed(Res) when is_list(Res) -> lists:filter(fun filter_out_succeeded/1, Res).
 
 -spec(succeeded/1 :: (Res :: list(tuple(boolean(), term()))) -> list()).
 succeeded(Res) when is_list(Res) -> lists:filter(fun filter_out_failed/1, Res).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+-spec(bind/1 :: (Binding :: binary()) -> ok | tuple(error, exists)).
+bind(Binding) ->
+    gen_server:call(?MODULE, {bind, Binding}, infinity).
+
+-spec(get_bindings/0 :: () -> list()).
+get_bindings() ->
+    gen_server:call(?MODULE, {get_bindings}, infinity).
+
+flush() ->
+    gen_server:cast(?MODULE, flush).
+
+flush(Binding) ->
+    gen_server:cast(?MODULE, {flush, Binding}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -130,24 +157,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({map, Routing, Payload}, _, #state{bindings=Bs}=State) ->
-    Res = lists:foldl(fun({B, Ps}, Acc) ->
-			      case binding_matches(B, Routing) of
-				  true -> map_bind_results(Ps, Payload, Acc, Routing);
-				  false -> Acc
-			      end
-		      end, [], Bs),
-    {reply, Res, State};
-
-handle_call({fold, Routing, Payload}, _, #state{bindings=Bs}=State) ->
-    Res = lists:foldl(fun({B, Ps}, Acc) ->
-			      case binding_matches(B, Routing) of
-				  true -> fold_bind_results(Ps, Acc, Routing);
-				  false -> Acc
-			      end
-		      end, Payload, Bs),
-    {reply, Res, State};
-			
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
     format_log(info, "CB_BINDING(~p): ~p binding ~p~n", [self(), From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
@@ -162,7 +171,8 @@ handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
 		    {reply, ok, State#state{bindings=[{Binding, queue:in(From, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}}
 	    end
     end;
-
+handle_call({get_bindings}, _, #state{bindings=Bs}=State) ->
+    {reply, Bs, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -238,7 +248,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(remove_subscriber/2 :: (Pid :: pid() | atom(), Subs :: queue()) -> queue()).
 remove_subscriber(Pid, Subs) ->
     case queue:member(Pid, Subs) of
@@ -249,16 +263,25 @@ remove_subscriber(Pid, Subs) ->
 			 end, Subs)
     end.
 
-
--spec(binding_matches/2 :: (B :: binary(), R :: binary()) -> boolean()).
-binding_matches(B, B) -> true;
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% foo.* matches foo.bar, foo.baz, but not bip.bar
 %% B is what was bound, R is the routing key being used
 %% so B can be more generic, R is absolute
+%% @end
+%%--------------------------------------------------------------------
+-spec(binding_matches/2 :: (B :: binary(), R :: binary()) -> boolean()).
+binding_matches(B, B) -> true;
 binding_matches(B, R) ->
     Opts = [global],
     matches(binary:split(B, <<".">>, Opts), binary:split(R, <<".">>, Opts)).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 %% if both are empty, we made it!
 -spec(matches/2 :: (Bs :: list(binary()), Rs :: list(binary())) -> boolean()).
 matches([], []) -> true;
@@ -293,22 +316,48 @@ matches([B | Bs], [B | Rs]) ->
 %% otherwise no match
 matches(_, _) -> false.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% returns the results for each pid and their modification (if any) to the payload
 %% Results is the accumulated results list so far
+%% @end
+%%--------------------------------------------------------------------
 -spec(map_bind_results/4 :: (Pids :: queue(), Payload :: term(), Results :: list(binding_result()), Route :: binary()) -> list(tuple(term() | timeout, term()))).
 map_bind_results(Pids, Payload, Results, Route) ->
     lists:foldr(fun(Pid, Acc) ->
 		      Pid ! {binding_fired, self(), Route, Payload},
-		      receive
-			  {binding_result, Resp, Pay1} -> [{Resp, Pay1} | Acc]
-		      after
-			  500 -> [{timeout, Payload} | Acc]
-		      end
+                      case wait_for_map_binding() of
+                          {ok,  Resp, Pay1} ->
+                              [{Resp, Pay1} | Acc];
+                          timeout ->
+                              [{timeout, Payload} | Acc]
+                      end
 		end, Results, queue:to_list(Pids)).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Run a receive loop if we recieve hearbeat, otherwise collect binding results
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_map_binding/0 :: () -> tuple(ok, term())|timeout).
+wait_for_map_binding() ->
+    receive
+        {binding_result,  Resp, Pay} -> {ok,  Resp, Pay};
+        heartbeat -> wait_for_map_binding()
+    after
+        1000 -> timeout
+    end.
 
-%% If a binding_result uses 'eoq' for its response, the payload is ignored and the subscriber is re-inserted into the queue, with the
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If a binding_result uses 'eoq' for its response, the payload is 
+%% ignored and the subscriber is re-inserted into the queue, with the
 %% previous payload being passed to the next invocation.
+%% @end
+%%--------------------------------------------------------------------
 -spec(fold_bind_results/3 :: (Pids :: queue(), Payload :: term(), Route :: binary()) -> term()).
 fold_bind_results(Pids, Payload, Route) ->
     fold_bind_results(Pids, Payload, Route, queue:len(Pids), queue:new()).
@@ -329,19 +378,38 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
 
 	{{value, P}, Pids1} ->
 	    P ! {binding_fired, self(), Route, Payload},
-	    receive
-		{binding_result, eoq, _} -> fold_bind_results(queue:in(P, Pids1), Payload, Route);
-		{binding_result, _, Pay1} -> fold_bind_results(Pids1, Pay1, Route)
-	    after
-		500 -> fold_bind_results(Pids1, Payload, Route)
-	    end
+            case wait_for_fold_binding() of
+                {ok, Pay1} -> fold_bind_results(Pids1, Pay1, Route);
+                eoq -> fold_bind_results(queue:in(P, Pids1), Payload, Route);
+                timeout -> fold_bind_results(Pids1, Payload, Route)
+            end
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Run a receive loop if we recieve hearbeat, otherwise collect binding results
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_fold_binding/0 :: () -> tuple(ok, term())|timeout|eoq).
+wait_for_fold_binding() ->
+    receive
+        {binding_result, eoq, _} -> eoq;
+        {binding_result, _, Pay} -> {ok, Pay};
+        heartbeat -> wait_for_fold_binding()
+    after
+        1000 -> timeout
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% let those bound know their binding is flushed
+%% @end
+%%--------------------------------------------------------------------
 -spec(flush_binding/1 :: (Binding :: binding()) -> no_return()).
 flush_binding({B, Subs}) ->
     lists:foreach(fun(S) -> S ! {binding_flushed, B} end, queue:to_list(Subs)).
-
 
 %%-------------------------------------------------------------------------
 %% @doc
@@ -353,18 +421,28 @@ check_bool({true, _}) -> true;
 check_bool({timeout, _}) -> true;
 check_bool(_) -> false.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(filter_out_failed/1 :: (tuple(boolean(), _)) -> boolean()).
 filter_out_failed({true, _}) -> true;
-filter_out_failed({false, _}) -> false.
+filter_out_failed({_, _}) -> false.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(filter_out_succeeded/1 :: (tuple(boolean(), _)) -> boolean()).
 filter_out_succeeded({true, _}) -> false;
-filter_out_succeeded({false, _}) -> true.
+filter_out_succeeded({_, _}) -> true.
 	    
 %% EUNIT TESTING
 
 -include_lib("eunit/include/eunit.hrl").
--ifdef(TEST).
+-ifdef(TESTS).
 
 bindings_match_test() ->
     Routings = [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>],

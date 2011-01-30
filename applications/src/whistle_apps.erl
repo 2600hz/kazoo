@@ -22,6 +22,7 @@ start() ->
     application:start(whistle_apps).
 
 start_deps() ->
+    reloader:start(),
     whistle_apps_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),

@@ -282,6 +282,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
 					 ,get_value(<<"server">>, Gateway)
 					]),
 	    R = [{<<"Route">>, Dialstring}
+		 ,{<<"Invite-Format">>, <<"route">>}
 		 ,{<<"Media">>, <<"bypass">>}
 		 ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
 		 ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}

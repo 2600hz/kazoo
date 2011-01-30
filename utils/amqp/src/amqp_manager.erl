@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(amqp_manager).
 
--include("../include/amqp_client/include/amqp_client.hrl").
+-include("amqp_util.hrl").
 
 -import(logger, [log/2, format_log/3]).
 -import(props, [get_value/2, get_value/3]).
@@ -27,6 +27,14 @@
 -define(PROCESS_PID, 1).
 -define(CHANNEL_PID, 3).
 -define(CONNECTION_PID, 2).
+
+-define(KNOWN_EXCHANGES, [{?EXCHANGE_TARGETED, ?TYPE_TARGETED}
+			  ,{?EXCHANGE_CALLCTL, ?TYPE_CALLCTL}
+			  ,{?EXCHANGE_CALLEVT, ?TYPE_CALLEVT}
+			  ,{?EXCHANGE_BROADCAST, ?TYPE_BROADCAST}
+			  ,{?EXCHANGE_CALLMGR, ?TYPE_CALLMGR}
+			  ,{?EXCHANGE_MONITOR, ?TYPE_MONITOR}
+			 ]).
 
 %% [ {connection, Connection, MRef} OR {ProcessPid, ProcessMRef, ChannelPid, ChanMRef, Ticket} ]
 %% state = [ {Host, host_info()} ]
@@ -165,6 +173,7 @@ handle_info(_Info, Hosts) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
+-spec(terminate/2 :: (Reason :: term(), Hosts :: amqp_mgr_state()) -> no_return()).
 terminate(Reason, Hosts) ->
     close_server(Hosts),
     format_log(info, "AMQP_MGR(~p): Going down(~p)~n", [self(), Reason]),
@@ -239,9 +248,9 @@ find_down_pid(DownPid, {Host, HostInfo}=Host0, Hosts0) ->
 close_server(Hosts) ->
     format_log(info, "AMQP_MGR(~p): Closing server down~n~p~n", [self(), Hosts]),
     lists:foreach(fun({Host, HostInfo}) ->
-			  format_log(info, "close_server ~p returned ~p~n", [Host, close_host(Host, HostInfo)])
+			  close_host(Host, HostInfo)
 		  end, Hosts),
-    format_log(info, "Closing server done.~n", []).
+    format_log(info, "Closing AMQP_MGR server down.~n", []).
 
 -spec(close_host/2 :: (Host :: string(), HostInfo :: amqp_host_info()) -> no_return()).
 close_host(Host, HostInfo) ->
@@ -320,6 +329,18 @@ open_amqp_channel(Connection, Pid) ->
     #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
     format_log(info, "AMQP_MGR(~p): Open channel(~p - ~p) for ~p on conn ~p~n", [self(), Channel, Ticket, Pid, Connection]),
 
+    load_exchanges(Channel, Ticket),
+
     MRef = erlang:monitor(process, Pid),
     ChanMRef = erlang:monitor(process, Channel),
     {Channel, ChanMRef, MRef, Ticket}.
+
+load_exchanges(Channel, Ticket) ->
+    lists:foreach(fun({Ex, Type}) ->
+			  ED = #'exchange.declare'{
+			    ticket = Ticket
+			    ,exchange = Ex
+			    ,type = Type
+			   },
+			  #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED)
+		  end, ?KNOWN_EXCHANGES).

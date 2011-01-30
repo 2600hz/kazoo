@@ -18,17 +18,21 @@
 	 terminate/2, code_change/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
+-include("reg.hrl").
 
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
--define(REG_DB, "registrations").
+-define(APP_VSN, "0.3.0").
+
+-compile({no_auto_import,[now/0]}). %% we define our own now/0 function
 
 -type proplist() :: list(tuple(binary(), binary())) | [].
 
 -record(state, {
 	  amqp_host = "localhost" :: string()
 	  ,my_q = undefined :: undefined | binary()
+	  ,cleanup_ref = undefined :: undefined | reference()
 	 }).
 
 %%%===================================================================
@@ -63,7 +67,7 @@ start_link() ->
 init([]) ->
     H = net_adm:localhost(),
     Q = start_amqp(H),
-    {ok, #state{amqp_host=H, my_q = Q}}.
+    {ok, #state{amqp_host=H, my_q = Q}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,6 +110,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, State) ->
+    Ref = erlang:start_timer(60000, ?SERVER, ok), % clean out every 60 seconds
+    {noreply, State#state{cleanup_ref=Ref}};
+handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref}=S) ->
+    spawn(fun() -> cleanup_registrations() end),
+    {noreply, S};
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
@@ -165,50 +175,93 @@ get_msg_type(Prop) ->
     { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) }.
 
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
+process_req({<<"directory">>, <<"auth_req">>}, Prop, _State) ->
     format_log(info, "REG_SRV: Lookup auth creds here for~n~p~n", [Prop]),
     ok;
-process_req({<<"directory">>, <<"reg_success">>}, Prop, State) ->
+process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
     format_log(info, "REG_SRV: Reg success~n~p~n", [Prop]),
+    true = whistle_api:reg_success_v(Prop),
+
     Domain = props:get_value(<<"Realm">>, Prop),
-    DomainDoc = case couch_mgr:open_doc(?REG_DB, Domain) of
-		    {error, not_found} -> [{<<"_id">>, Domain}, {<<"registrations">>, {[]}}];
-		    Doc when is_list(Doc) -> Doc
-		end,
-    Regs = props:get_value(<<"registrations">>, DomainDoc, []),
-    format_log(info, "REG_SRV(~p): Domain: ~p~nRegs: ~p~n", [self(), Domain, Regs]),
-    DomainDoc1 = [ {<<"registrations">>, [{struct, Prop} | Regs]} | lists:keydelete(<<"registrations">>, 1, DomainDoc)],
-    {ok, _} = couch_mgr:save_doc(?REG_DB, DomainDoc1);
+    User = props:get_value(<<"Username">>, Prop),
+
+    Id = <<User/binary, "@", Domain/binary>>,
+
+    Doc = case couch_mgr:open_doc(?REG_DB, Id) of
+	      {error, not_found} -> [{<<"_id">>, Id}, {<<"registrations">>, []}];
+	      D when is_list(D) -> D
+	  end,
+    Regs = props:get_value(<<"registrations">>, Doc, []),
+
+    Doc1 = [ {<<"registrations">>, [{struct, [ {<<"Reg-Server-Timestamp">>, current_tstamp()}
+					       | Prop]}
+				    | Regs]}
+	     | lists:keydelete(<<"registrations">>, 1, Doc)],
+    {ok, _} = couch_mgr:save_doc(?REG_DB, Doc1);
+process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
+    format_log(info, "REG_SRV: Reg query~n~p~n", [Prop]),
+    true = whistle_api:reg_query_v(Prop),
+
+    Domain = props:get_value(<<"Host">>, Prop),
+    User = props:get_value(<<"Username">>, Prop),
+    Now = current_tstamp(),
+
+    case couch_mgr:get_results("registrations"
+			       ,{"registrations", "get_contact"}
+			       ,[{<<"startkey">>, [Domain, User, Now]}]
+			      ) of
+	[] -> ok;
+	[{ViewRes} | _] ->
+	    Fields = props:get_value(<<"Fields">>, Prop),
+	    RespServer = props:get_value(<<"Server-ID">>, Prop),
+
+	    {RegDoc} = props:get_value(<<"value">>, ViewRes),
+
+	    RespFields = lists:foldl(fun(F, Acc) ->
+					     case props:get_value(F, RegDoc) of
+						 undefined -> Acc;
+						 V -> [ {F, V} | Acc]
+					     end
+				     end, [], Fields),
+	    {ok, JSON} = whistle_api:reg_query_resp([ {<<"Fields">>, {struct, RespFields}}
+						      | whistle_api:default_headers(State#state.my_q
+										    ,<<"directory">>
+											,<<"reg_query_resp">>
+											,whistle_util:to_binary(?MODULE)
+										    ,?APP_VSN)
+						    ]),
+	    amqp_util:targeted_publish(State#state.amqp_host, RespServer, JSON, <<"application/json">>)
+    end,
+    ok;
 process_req(_,_,_) ->
     not_handled.
 
+-spec(current_tstamp/0 :: () -> integer()).
+current_tstamp() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
-%% {save_doc,"registrations",
-%%  {
-%%    [{<<"registrations">>, [
-%% 			    {[{<<"User-Agent">>,<<"Twinkle/1.4.2">>},
-%% 			      {<<"Status">>,<<"Registered(UDP)">>},
-%% 			      {<<"Realm">>,<<"192.168.0.104">>},
-%% 			      {<<"Username">>,<<"2600pbx">>},
-%% 			      {<<"Network-Port">>,<<"5065">>},
-%% 			      {<<"Network-IP">>,<<"192.168.0.104">>},
-%% 			      {<<"To-Host">>,<<"192.168.0.104">>},
-%% 			      {<<"To-User">>,<<"2600pbx">>},
-%% 			      {<<"Expires">>,<<"3600">>},
-%% 			      {<<"RPid">>,<<"unknown">>},
-%% 			      {<<"Contact">>,
-%% 			       <<"\"4158867971\" <sip:2600pbx@192.168.0.104:5065;transport=udp>">>},
-%% 			      {<<"From-Host">>,
-%% 			       <<"trunks.2600hz.com">>},
-%% 			      {<<"From-User">>,<<"2600pbx">>},
-%% 			      {<<"Event-Timestamp">>,63462243722.0},
-%% 			      {<<"App-Version">>,<<"0.5.6">>},
-%% 			      {<<"App-Name">>,
-%% 			       <<"ecallmgr_fs_node">>},
-%% 			      {<<"Event-Name">>,<<"reg_success">>},
-%% 			      {<<"Event-Category">>,<<"directory">>},
-%% 			      {<<"Server-ID">>,<<>>}]}
-%% 			   ]},
-%%     {<<"_id">>,<<"192.168.0.104">>}]
-%%  }
-%% }
+cleanup_registrations() ->
+    Now = current_tstamp(),
+    %% get all documents with one or more tstamps < Now
+    case couch_mgr:get_results("registrations", {"registrations", "expirations"}, [{<<"group">>, <<"true">>}]) of
+	[] -> ok;
+	[_|_]=Docs ->
+	    lists:foreach(fun({[{<<"key">>, DocId}, {<<"value">>, Tstamp}]}) when Tstamp < Now ->
+				  spawn(fun() -> remove_old_registrations(DocId, Now) end);
+			     (_) -> ok
+			  end, Docs)
+    end.
+
+remove_old_registrations(DocId, Now) ->
+    [_] = Doc = couch_mgr:open_doc(DocId),
+    Registrations = props:get_value(<<"registrations">>, Doc, []),
+    CurrentRegs = lists:filter(fun({Reg}) ->
+				       Expires = whistle_util:to_integer(props:get_value(<<"Reg-Server-Timestamp">>, Reg))
+					   + whistle_util:to_integer(props:get_value(<<"Expires">>, Reg)),
+				       Expires > Now
+			       end, Registrations),
+    Doc1 = [ {<<"registrations">>, CurrentRegs} | lists:keydelete(<<"registrations">>, 1, Doc)],
+    case couch_mgr:save_doc(Doc1) of
+	{error, conflict} -> remove_old_registrations(DocId, Now); % try again
+	_ -> ok
+    end.

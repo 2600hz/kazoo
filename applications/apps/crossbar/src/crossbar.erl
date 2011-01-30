@@ -23,7 +23,6 @@ start() ->
     application:start(crossbar).
 
 start_deps() ->
-    reloader:start(),
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     ensure_started(sasl), % logging
     ensure_started(crypto), % random
