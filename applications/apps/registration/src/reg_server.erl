@@ -187,17 +187,17 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
 
     Id = <<User/binary, "@", Domain/binary>>,
 
-    DomainDoc = case couch_mgr:open_doc(?REG_DB, Id) of
-		    {error, not_found} -> [{<<"_id">>, Id}, {<<"registrations">>, []}];
-		    Doc when is_list(Doc) -> Doc
-		end,
-    Regs = props:get_value(<<"registrations">>, DomainDoc, []),
+    Doc = case couch_mgr:open_doc(?REG_DB, Id) of
+	      {error, not_found} -> [{<<"_id">>, Id}, {<<"registrations">>, []}];
+	      D when is_list(D) -> D
+	  end,
+    Regs = props:get_value(<<"registrations">>, Doc, []),
 
-    DomainDoc1 = [ {<<"registrations">>, [{struct, [ {<<"Reg-Server-Timestamp">>, current_tstamp()}
-						     | Prop]}
-					  | Regs]}
-		   | lists:keydelete(<<"registrations">>, 1, DomainDoc)],
-    {ok, _} = couch_mgr:save_doc(?REG_DB, DomainDoc1);
+    Doc1 = [ {<<"registrations">>, [{struct, [ {<<"Reg-Server-Timestamp">>, current_tstamp()}
+					       | Prop]}
+				    | Regs]}
+	     | lists:keydelete(<<"registrations">>, 1, Doc)],
+    {ok, _} = couch_mgr:save_doc(?REG_DB, Doc1);
 process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
     format_log(info, "REG_SRV: Reg query~n~p~n", [Prop]),
     true = whistle_api:reg_query_v(Prop),
