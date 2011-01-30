@@ -23,7 +23,7 @@
 
 -record(route_flags, {
 	  callid = <<>> :: binary()                      % unique call ID
-	  ,to_user = <<>> :: binary()
+	  ,to_user = <<>> :: binary()                    % usually a DID
 	  ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
@@ -34,7 +34,7 @@
 	  ,allow_payphone = false :: boolean()
 	  ,caller_id = {} :: tuple()                     % Name and Number for Caller ID - check DID, then server, then account, then what we got from ecallmgr
           ,caller_id_e911 = {} :: tuple()                % CallerID for E911 calls - Check DID, then server, then account
-          ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX"
+          ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX" | "USERNAME"
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
 	  ,rate = 0.0 :: float()                 % rate for the inbound leg, per minute
 	  ,rate_increment = 60 :: integer()      % time, in sec, to bill per

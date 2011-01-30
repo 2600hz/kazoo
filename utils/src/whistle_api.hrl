@@ -103,7 +103,7 @@
 -define(REG_SUCCESS_TYPES, []).
 
 %% Query Registrations
--define(REG_QUERY_HEADERS, [<<"User">>, <<"Host">>, <<"Fields">>]).
+-define(REG_QUERY_HEADERS, [<<"Username">>, <<"Host">>, <<"Fields">>]).
 -define(OPTIONAL_REG_QUERY_HEADERS, []).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			   ,{<<"Event-Name">>, <<"reg_query">>}
@@ -161,21 +161,20 @@
 			       ]).
 
 %% Route Responses - Sub-section Route - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.3CRoute.3E
--define(ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
--define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+-define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
+-define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-DID">>
+						,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
 						,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
 						,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
 						,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
 					   ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
 				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
+				  ,{<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}
 				 ]).
--define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}
-				 ,{<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
-						   ([<<"user:", _/binary>>, _]) -> true;
-						   (_) -> false
-						end}
-				 ]).
+-define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
+				  ,{<<"Route">>, fun is_binary/1}
+				]).
 
 %% Route Responses - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
@@ -187,9 +186,7 @@
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
 			   ,{<<"Route-Error-Message">>, fun is_binary/1}
 			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
-					      (_Bad) -> 
-						   io:format("Bad v ~p~n", [_Bad]),
-						   false
+					      (_) -> false
 					   end}
 			  ]).
 
@@ -202,19 +199,17 @@
 			 ]).
 
 %% Resource Request - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Request
--define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Route">>]).
--define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>]).
+-define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
+-define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
+					    ,<<"Route">>, <<"To-User">>, <<"To-DID">>
+				       ]).
 -define(RESOURCE_REQ_VALUES, [
 			      {<<"Event-Category">>, <<"originate">>}
 			      ,{<<"Event-Name">>, <<"resource_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
+			      ,{<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}
 			     ]).
--define(RESOURCE_REQ_TYPES, [
-			     {<<"Route">>, fun(<<"sip:", _/binary>>) -> true;
-					      ([<<"user:", _/binary>>, DID]) when is_binary(DID) -> true;
-					      (_) -> false
-					   end}
-			    ]).
+-define(RESOURCE_REQ_TYPES, []).
 
 %% Resource Response - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Response
 -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).

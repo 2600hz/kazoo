@@ -29,7 +29,7 @@
 %%% WebMachine API
 %%%===================================================================
 init(Opts) ->
-    {Context, _} = crossbar_bindings:fold(<<"v1.0_resource.init">>, {#cb_context{}, Opts}),
+    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{start=now()}, Opts}),
     {ok, Context}.
     %%{{trace, "/tmp"}, Context}.
 
@@ -71,7 +71,7 @@ malformed_request(RD, Context) ->
     end.
 
 is_authorized(RD, Context) ->
-    S0 = crossbar_session:start_session(RD),
+    S0 = #session{}, %%crossbar_session:start_session(RD),
     Event = <<"v1_resource.start_session">>,
     S = crossbar_bindings:fold(Event, S0),
     {true, RD, Context#cb_context{session=S}}.
@@ -150,13 +150,15 @@ delete_resource(RD, Context) ->
     crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
-finish_request(RD, #cb_context{session=S}=Context) ->
+finish_request(RD, #cb_context{session=S, start=T1}=Context) ->
     Event = <<"v1_resource.finish_request">>,
     {RD, Context} = crossbar_bindings:fold(Event, {RD, Context}),
-    case S of
+    case S#session.'_id' of
         undefined ->
+            io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
             {true, RD, Context};
         _Else ->
+            io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
             {true, crossbar_session:finish_session(S, RD), Context#cb_context{session=undefined}}
     end.
 
@@ -271,12 +273,12 @@ get_auth_token(RD, JSON) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(does_resource_exist/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
-does_resource_exist(_RD, #cb_context{req_nouns=Nouns}) ->
-    lists:foldl(fun({Mod, Params}, Acc) ->
-			Event = <<"v1_resource.resource_exists.", Mod/binary>>,
-			Responses = crossbar_bindings:map(Event, Params),
-			crossbar_bindings:all(Responses) and Acc
-                end, true, Nouns).
+does_resource_exist(_RD, #cb_context{req_nouns=[{Mod, Params}|_]}) ->
+    Event = <<"v1_resource.resource_exists.", Mod/binary>>,
+    Responses = crossbar_bindings:map(Event, Params),
+    crossbar_bindings:all(Responses) and true;
+does_resource_exist(_RD, _Context) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,7 +315,7 @@ is_permitted(RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(#wm_reqdata{}, #cb_context{})).
 validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
-    lists:foldl(fun({Mod, Params}, {RD1, Context1}) ->
+    lists:foldr(fun({Mod, Params}, {RD1, Context1}) ->
 			Event = <<"v1_resource.validate.", Mod/binary>>,
                         Payload = [RD1, Context1] ++ Params,
 			[RD2, Context2 | _] = crossbar_bindings:fold(Event, Payload),
@@ -327,13 +329,10 @@ validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(execute_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(true|tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
-execute_request(RD, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context) ->
-    {RD1, Context1} = lists:foldr(fun ({Mod, Params}, {RD1, Context1}) ->
-			Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
-			Payload = [RD1, Context1] ++ Params,
-			[RD2, Context2 | _] = crossbar_bindings:fold(Event, Payload),
-			{RD2, Context2}
-                end, {RD, Context}, Nouns),
+execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+    Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
+    Payload = [RD, Context] ++ Params,
+    [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
             Content = create_resp_content(RD, Context1),
@@ -347,7 +346,9 @@ execute_request(RD, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context) ->
                 _Else ->
                     {true, RD1, Context1}
             end
-    end.
+    end;
+execute_request(RD, Context) ->
+    {false, RD, Context}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -415,36 +416,36 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
     case {S, C} of
 	{success, _} ->
 	    [
-                 %%{"auth-token", A}
-                 {"status", S}
+                 {"auth-token", A}
+                ,{"status", S}
                 ,{"data", D}
             ];
 	{_, undefined} ->
             Msg =
-                case whistle_util:to_binary(E) of
-                    <<"undefined">> ->
+                case E of
+                    undefined ->
                         <<"Unspecified server error">>;
                     Else ->
-                        Else
+                        whistle_util:to_binary(Else)
                 end,
 	    [
-                %% {"auth-token", A}
-                 {"status", S}
+                 {"auth-token", A}
+                ,{"status", S}
                 ,{"message", Msg}
                 ,{"error", 500}
                 ,{"data", D}
             ];
 	_ ->
             Msg =
-                case whistle_util:to_binary(E) of
-                    <<"undefined">> ->
+                case E of
+                    undefined ->
                         <<"Unspecified server error">>;
                     Else ->
-                        Else
+                        whistle_util:to_binary(Else)
                 end,
 	    [
-                 %% {"auth-token", A}
-                 {"status", S}
+                 {"auth-token", A}
+                ,{"status", S}
                 ,{"message", Msg}
                 ,{"error", C}
                 ,{"data", D}

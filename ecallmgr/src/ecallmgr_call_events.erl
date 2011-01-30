@@ -51,9 +51,8 @@ loop(Node, UUID, Host, CtlPid) ->
 		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
 			undefined -> ok;
 			OtherUUID ->
-			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n"
-				       ,[self(), OtherUUID, ecallmgr_call_sup:start_event_process(Node, OtherUUID, Host, undefined)]
-				      )
+			    _Pid = ecallmgr_call_sup:start_event_process(Node, OtherUUID, Host, undefined),
+			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, _Pid])
 		    end;
 		_ -> ok
 	    end,
