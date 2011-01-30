@@ -31,7 +31,7 @@
 -define(SERVER, ?MODULE).
 -define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
--define(UNITS_TO_DOLLARS(X), whistle_util:to_list(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
+-define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 -define(EOD, end_of_day).
 
