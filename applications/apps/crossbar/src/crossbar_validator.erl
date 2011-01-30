@@ -41,7 +41,7 @@ validate(Schema, Data) ->
 %%--------------------------------------------------------------------
 -spec(check/3 :: (Rules :: validator_rules(), Path :: [binary()] | binary(), Data :: proplist()) -> [] | list(json_object())).
 check(Rules, Path, Data) ->
-    Value = crossbar_util:get_value(Path, Data),
+    Value = crossbar_util:get_json_values(Path, Data),
     lists:foldl(fun({Validator, Params}, Results) ->
 			case apply(?MODULE, Validator, [Value] ++ Params) of
 			    true ->
@@ -167,7 +167,7 @@ is_format(Value, Format) when is_list(Value) ->
                Chars = lists:seq($a, $z) ++ lists:seq($A, $Z)  ++ lists:seq($0, $9) ++ "_",
                lists:all(fun(Elem) -> lists:member(Elem, Chars) end, Value);
            
-        %% Alphabetic characters ([a-zA-Z])
+        %% Alphabetic characters ([a-zA-Z]) 
         alpha ->
                 Chars = lists:seq($a, $z) ++ lists:seq($A, $Z),
                 lists:all(fun(Elem) -> lists:member(Elem, Chars) end, Value);
@@ -278,7 +278,6 @@ width(_Value, _Min, _Max) ->
 
 
 %% EUNIT TESTING
-
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 

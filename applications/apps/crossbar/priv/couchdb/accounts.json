@@ -1,0 +1,18 @@
+{
+     "_id":"_design/accounts"
+    ,"language":"javascript"
+    ,"views":{
+        "listing":{
+            "map":"function(doc) { var t = doc.pvt_identifier.tree.slice(0); t.push(doc._id); emit([doc._id, t], doc.base.name); }"
+        },
+        "parent":{
+            "map":"function(doc) { var t = doc.pvt_identifier.tree.slice(0); t.push(doc._id); emit(doc._id, t.slice(-2,-1)[0]); }"
+        }
+        ,"children":{
+            "map":"function(doc) { var t = doc.pvt_identifier.tree.slice(0); t.push(doc._id); emit([t.slice(-2,-1)[0], t], doc.base.name) }"
+        }
+        ,"descendants":{
+            "map":"function(doc) { var t = doc.pvt_identifier.tree.slice(0); t.push(doc._id); for (var i in t) { emit([t[i], t], doc.base.name); } }"
+        }
+    }
+}

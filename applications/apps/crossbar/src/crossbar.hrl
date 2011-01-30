@@ -57,7 +57,7 @@
            content_types_provided = ?CONTENT_PROVIDED :: list(crossbar_content_handler()) | []
           ,content_types_accepted = ?CONTENT_ACCEPTED :: list(crossbar_content_handler()) | []
 	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
-	  ,session = #session{} :: #session{}
+	  ,session = undefined :: undefined | #session{}
           ,auth_token = <<"">> :: binary()
           ,req_verb = undefined :: binary() | undefined
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
@@ -67,11 +67,12 @@
           ,doc = undefined :: json_object() | undefinded
           ,resp_expires = {{1999,1,1},{0,0,0}}
           ,resp_etag = undefined :: string() | automatic | undefined
-	  ,resp_status = success :: crossbar_status()
+	  ,resp_status = error :: crossbar_status()
 	  ,resp_error_msg = undefined :: string() | undefined
 	  ,resp_error_code = undefined :: integer() | undefined
 	  ,resp_data = [] :: list() | []
           ,storage = [] :: proplist()
+          ,start = undefined
 	 }).
 
 

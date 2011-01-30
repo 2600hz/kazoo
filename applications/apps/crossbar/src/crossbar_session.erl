@@ -311,6 +311,7 @@ clean_expired() ->
 									  {"endkey", calendar:datetime_to_gregorian_seconds(calendar:local_time())}
 									 ]) of
 	{error, _} -> ok;
+        {{error,not_found},fetch_failed} -> ok;
 	Sessions ->
 	    Docs = lists:filter(fun(not_found) -> false; (_) -> true end
 				,lists:map(fun({Prop}) ->

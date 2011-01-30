@@ -13,7 +13,7 @@
 -export([init/1]).
 -export([to_json/2, to_xml/2]).
 -export([from_json/2, from_xml/2, from_form/2]).
--export([encodings_provided/2, finish_request/2, is_authorized/2, allowed_methods/2]).
+-export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([expires/2, generate_etag/2]).
 -export([process_post/2, delete_resource/2]).
@@ -25,19 +25,13 @@
 
 -define(NAME, <<"v1_resource">>).
 
--define(XML_FORMAT, "<field name=\"~s\">~s</field>").
-
--define(HTML_FORMAT, "<ul><li><span class=\"field\">~s</span> <span class=\"value\">~s</span></li></ul>").
-
--define(TEXT_FORMAT, "~s ( ~s )~n").
-
 %%%===================================================================
 %%% WebMachine API
 %%%===================================================================
 init(Opts) ->
-    {Context, _} = crossbar_bindings:fold(<<"v1.0_resource.init">>, {#cb_context{}, Opts}),
+    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{start=now()}, Opts}),
     {ok, Context}.
-    %% {{wmtrace, "/tmp"}, #cb_context}.
+    %%{{trace, "/tmp"}, Context}.
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Verb = whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
@@ -51,12 +45,6 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
         [] ->
             {Methods, RD, Context#cb_context{req_verb=Verb}}
     end.
-
-is_authorized(RD, Context) ->
-    S0 = crossbar_session:start_session(RD),
-    Event = <<"v1_resource.start_session">>,
-    S = crossbar_bindings:fold(Event, S0),
-    {true, RD, Context#cb_context{session=S}}.
 
 malformed_request(RD, Context) ->
     try	
@@ -82,25 +70,38 @@ malformed_request(RD, Context) ->
             {true, RD1, Context1}
     end.
 
+is_authorized(RD, Context) ->
+    S0 = #session{}, %%crossbar_session:start_session(RD),
+    Event = <<"v1_resource.start_session">>,
+    S = crossbar_bindings:fold(Event, S0),
+    {true, RD, Context#cb_context{session=S}}.
+    
+forbidden(RD, Context) ->
+    case is_authentic(RD, Context) of
+        true ->
+            case is_permitted(RD, Context) of
+                true -> {false, RD, Context};
+                false -> {true, RD, Context}
+            end;
+        false ->
+            {{halt, 401}, RD, Context}
+    end.
+
 resource_exists(RD, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
     {false, RD, Context};
 resource_exists(RD, Context) ->
     case does_resource_exist(RD, Context) of
 	true ->
-	    case is_authentic(RD, Context) andalso is_permitted(RD, Context) of
-		true ->
-                    {RD1, Context1} = validate(RD, Context),
-                    case succeeded(Context1) of
-                        true ->
-                            execute_request(RD1, Context1);
-                        false ->
-                            Content = create_resp_content(RD, Context1),
-                            RD2 = wrq:append_to_response_body(Content, RD1),
-                            {{halt, 400}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
-                    end;
-		false ->
-		    {{halt, 401}, RD, Context}
-	    end;
+            {RD1, Context1} = validate(RD, Context),
+            case succeeded(Context1) of
+                true ->
+                    execute_request(RD1, Context1);
+                false ->
+                    Content = create_resp_content(RD, Context1),
+                    RD2 = wrq:append_to_response_body(Content, RD1),
+                    ReturnCode = Context1#cb_context.resp_error_code,
+                    {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
+            end;
 	false ->
 	    {false, RD, Context}
     end.
@@ -117,16 +118,17 @@ content_types_accepted(RD, #cb_context{content_types_accepted=CTA}=Context) ->
 		       end, [], CTA),
     {CTA1, RD, Context}.
 
-generate_etag(RD, #cb_context{resp_etag=ETag}=Context) ->
+generate_etag(RD, Context) ->
     Event = <<"v1_resource.etag">>,
-    {ETag1, _, _} = crossbar_bindings:fold(Event, {ETag, RD, Context}),
-    case ETag1 of
+    {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    case Context1#cb_context.resp_etag of
         automatic ->
-            {mochihex:to_hex(crypto:md5(wrq:resp_body(RD))), RD, Context };
+            RespContent = create_resp_content(RD1, Context1),
+            {mochihex:to_hex(crypto:md5(RespContent)), RD1, Context1};
         undefined ->
-            {undefined, RD, Context};
+            {undefined, RD1, Context1};
         Tag when is_list(Tag) ->
-            {Tag, RD, Context}
+            {undefined, RD1, Context1}
     end.
 
 encodings_provided(RD, Context) ->
@@ -148,11 +150,17 @@ delete_resource(RD, Context) ->
     crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
-finish_request(RD, #cb_context{session=S}=Context) ->
+finish_request(RD, #cb_context{session=S, start=T1}=Context) ->
     Event = <<"v1_resource.finish_request">>,
-    crossbar_bindings:map(Event, {RD, Context}),
-    RD1 = crossbar_session:finish_session(S, RD),
-    {true, RD1, Context}.
+    {RD, Context} = crossbar_bindings:fold(Event, {RD, Context}),
+    case S#session.'_id' of
+        undefined ->
+            io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+            {true, RD, Context};
+        _Else ->
+            io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+            {true, crossbar_session:finish_session(S, RD), Context#cb_context{session=undefined}}
+    end.
 
 %%%===================================================================
 %%% Content Acceptors
@@ -206,7 +214,8 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
             parse_path_tokens([], Loaded, []);
         true ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(Elem, Loaded) end, T),
-            parse_path_tokens(List2, Loaded, [{Mod, Params} | Events])
+            Params1 = lists:map(fun whistle_util:to_binary/1, Params),
+            parse_path_tokens(List2, Loaded, [{Mod, Params1} | Events])
     end.
 
 %%--------------------------------------------------------------------
@@ -264,12 +273,12 @@ get_auth_token(RD, JSON) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(does_resource_exist/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
-does_resource_exist(_RD, #cb_context{req_nouns=Nouns}) ->
-    lists:foldl(fun({Mod, Params}, Acc) ->
-			Event = <<"v1_resource.resource_exists.", Mod/binary>>,
-			Responses = crossbar_bindings:map(Event, Params),
-			crossbar_bindings:all(Responses) and Acc
-                end, true, Nouns).
+does_resource_exist(_RD, #cb_context{req_nouns=[{Mod, Params}|_]}) ->
+    Event = <<"v1_resource.resource_exists.", Mod/binary>>,
+    Responses = crossbar_bindings:map(Event, Params),
+    crossbar_bindings:all(Responses) and true;
+does_resource_exist(_RD, _Context) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -306,7 +315,7 @@ is_permitted(RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(#wm_reqdata{}, #cb_context{})).
 validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
-    lists:foldl(fun({Mod, Params}, {RD1, Context1}) ->
+    lists:foldr(fun({Mod, Params}, {RD1, Context1}) ->
 			Event = <<"v1_resource.validate.", Mod/binary>>,
                         Payload = [RD1, Context1] ++ Params,
 			[RD2, Context2 | _] = crossbar_bindings:fold(Event, Payload),
@@ -320,19 +329,26 @@ validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(execute_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(true|tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
-execute_request(RD, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context) ->
-    {RD1, Context1} = lists:foldr(fun ({Mod, Params}, {RD1, Context1}) ->
-			Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
-			Payload = [RD1, Context1] ++ Params,
-			[RD2, Context2 | _] = crossbar_bindings:fold(Event, Payload),
-			{RD2, Context2}
-                end, {RD, Context}, Nouns),
+execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+    Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
+    Payload = [RD, Context] ++ Params,
+    [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
-            {{halt, 500}, RD1, Context1};
+            Content = create_resp_content(RD, Context1),
+            RD2 = wrq:append_to_response_body(Content, RD1),
+            ReturnCode = Context1#cb_context.resp_error_code,
+            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
-            {true, RD1, Context1}
-    end.
+            case wrq:method(RD) of
+                'PUT' ->
+                    {false, RD1, Context1};
+                _Else ->
+                    {true, RD1, Context1}
+            end
+    end;
+execute_request(RD, Context) ->
+    {false, RD, Context}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -344,14 +360,8 @@ execute_request(RD, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context) ->
 create_resp_content(RD, Context) ->
     Prop = create_resp_envelope(Context),
     case get_resp_type(RD) of
-	html ->
-	    Html = format_json(?HTML_FORMAT, Prop),
-	    io_lib:format("<html><body>~s</body></html>", [Html]);
-	plain ->
-	    format_json(?TEXT_FORMAT, Prop);
 	xml ->
-	    Xml = format_json(?XML_FORMAT, Prop),
-	    io_lib:format("<xml>~s</xml>", [Xml]);
+            io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), "")]);
         json ->
             mochijson2:encode({struct, Prop})
     end.
@@ -398,7 +408,7 @@ succeeded(#cb_context{resp_status=Status}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function extracts the reponse fields and pits them in a proplist
+%% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
@@ -408,22 +418,37 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
 	    [
                  {"auth-token", A}
                 ,{"status", S}
-                ,{"data", {struct, D}}
+                ,{"data", D}
             ];
 	{_, undefined} ->
+            Msg =
+                case E of
+                    undefined ->
+                        <<"Unspecified server error">>;
+                    Else ->
+                        whistle_util:to_binary(Else)
+                end,
 	    [
                  {"auth-token", A}
                 ,{"status", S}
-                ,{"message", whistle_util:to_binary(E)}
-                ,{"data", {struct, D}}
+                ,{"message", Msg}
+                ,{"error", 500}
+                ,{"data", D}
             ];
 	_ ->
+            Msg =
+                case E of
+                    undefined ->
+                        <<"Unspecified server error">>;
+                    Else ->
+                        whistle_util:to_binary(Else)
+                end,
 	    [
                  {"auth-token", A}
                 ,{"status", S}
-                ,{"message", whistle_util:to_binary(E)}
+                ,{"message", Msg}
                 ,{"error", C}
-                ,{"data", {struct, D}}
+                ,{"data", D}
             ]
     end.
 
@@ -431,69 +456,90 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
 %% @private
 %% @doc
 %% This function will determine the appropriate content format to return
-%% based on the request.... TODO: RETURN XML SOMETIMES
+%% based on the request....
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json).
-get_resp_type(_RD) ->
-    json.
+get_resp_type(RD) ->
+    case wrq:get_resp_header("Content-Type",RD) of
+        "application/xml" -> xml;
+        "application/json" -> json;
+        "application/x-json" -> json;
+        _Else -> json
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function applies the format string to json objects.  This is
-%% used to parse JSON into xml, plain text, and html.  The expected
-%% JSON structure is that of mochiweb.  TODO: CLEAN ME UP
+%% This function is used to encode the response proplist in xml
 %% @end
 %%--------------------------------------------------------------------
--spec(format_json/2 :: (Format :: string(), Json :: json_object()) -> iolist()).
-format_json(Format, Json) ->
-    {Result, _} = lists:foldl(fun({K, V}, {Acc, Count}) ->
-				      Str = case V of
-						{struct, []} ->
-						    io_lib:format(Format, [K, ""]);
-						{struct, V1} ->
-						    io_lib:format(Format, [K, format_json(Format, V1)]);                           
-						V1 when is_list(V1) ->
-						    case is_proplist(V1) of
-							true ->
-							    case K of
-								struct ->
-								    io_lib:format(Format, [integer_to_list(Count), format_json(Format, V1)]);
-								_ ->
-								    io_lib:format(Format, [K, format_json(Format, V1)])
-							    end;
-							_->
-							    {SubStr, _} = lists:foldl(fun(V2, {Acc2, Count2}) -> 
-											      Str2 = io_lib:format(Format, [integer_to_list(Count2), whistle_util:to_list(V2)]),
-											      {string:concat(Acc2, Str2), Count2 + 1}
-										      end, {"", 0}, V1),
-							    io_lib:format(Format, [K, SubStr])
-						    end;
-						_ ->
-						    io_lib:format(Format, [K, whistle_util:to_list(V)])
-					    end,
-				      {string:concat(Acc, Str), Count + 1}
-			      end, {"", 0}, Json),
-    Result.
+-spec(encode_xml/2 :: (Prop :: proplist(), Xml :: iolist()) -> iolist()).
+encode_xml([], Xml) ->
+    Xml;
+encode_xml([{K, V}|T], Xml) ->
+    Xml1 =
+    if
+       is_atom(V) orelse is_binary(V) ->
+            case V of
+                <<"true">> -> xml_tag(K, "true", "boolean");
+                true -> xml_tag(K, "true", "boolean");
+                <<"false">> -> xml_tag(K, "false", "boolean");
+                false -> xml_tag(K, "true", "boolean");
+                _Else -> xml_tag(K, mochijson2:encode(V), "string")
+            end;
+       is_number(V) ->
+           xml_tag(K, mochijson2:encode(V), "number");
+       is_list(V) ->
+           xml_tag(K, list_to_xml(lists:reverse(V), ""), "array");
+       true ->
+            case V of
+                {struct, Terms} ->
+                    xml_tag(K, encode_xml(Terms, ""), "object");
+                {json, IoList} ->
+                    xml_tag(K, encode_xml(IoList, ""), "json")
+           end
+    end,
+    encode_xml(T, Xml1 ++ Xml).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will determine if a list is a proplist, this is used
-%% above to distinquish lists in the JSON payload from recursive 
-%% structs
+%% This function loops over a list and creates the XML tags for each
+%% element
 %% @end
 %%--------------------------------------------------------------------
--spec(is_proplist/1 :: (Thing :: term()) -> boolean()).
-is_proplist(Thing) when is_list(Thing) ->
-    lists:all(fun(Elem) ->
-		      case Elem of 
-			  {_,_} ->
-			      true;
-			  _ -> 
-			      false 
-		      end
-	      end, Thing);
-is_proplist(_) ->
-    false.
+-spec(list_to_xml/2 :: (List :: list(), Xml :: iolist) -> iolist()).
+list_to_xml([], Xml) ->
+    Xml;
+list_to_xml([{struct, Terms}|T], Xml) ->
+    Xml1 = xml_tag(encode_xml(Terms, ""), "object"),
+    list_to_xml(T, Xml1 ++ Xml);
+list_to_xml([E|T], Xml) ->
+    Xml1 =
+    if
+        is_atom(E) orelse is_binary(E) ->
+            case E of
+                <<"true">> -> xml_tag("true", "boolean");
+                true -> xml_tag("true", "boolean");
+                <<"false">> -> xml_tag("false", "boolean");
+                false -> xml_tag("true", "boolean");
+                _Else -> xml_tag(mochijson2:encode(E), "string")
+            end;
+        is_number(E) -> xml_tag(mochijson2:encode(E), "number");
+        is_list(E) -> xml_tag(list_to_xml(lists:reverse(E), ""), "array")
+    end,
+    list_to_xml(T, Xml1 ++ Xml).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function creates a XML tag, optionaly with the name
+%% attribute if called as xml_tag/3
+%% @end
+%%--------------------------------------------------------------------
+-spec(xml_tag/2 :: (Value :: iolist(), Type :: iolist) -> iolist()).
+xml_tag(Value, Type) ->
+    io_lib:format("<~s>~s</~s>~n", [Type, Value, Type]).
+xml_tag(Key, Value, Type) ->
+    io_lib:format("<~s type=\"~s\">~s</~s>~n", [Key, Type, string:strip(Value, both, $"), Key]).

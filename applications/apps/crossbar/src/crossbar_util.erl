@@ -8,7 +8,18 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_util).
 
--export([get_value/2, set_value/3]).
+-export([response/2, response/3, response/4, response/5]).
+-export([response_faulty_request/1]).
+-export([response_bad_identifier/2]).
+-export([response_datastore_timeout/1]).
+-export([response_datastore_conn_refused/1]).
+-export([response_invalid_data/2]).
+-export([response_missing_view/1]).
+-export([response_db_missing/1]).
+-export([get_json_values/2, set_json_values/3]).
+%%-export([get_json_value/2, get_json_value/3, set_json_value/2, set_json_value/3]).
+-export([binding_heartbeat/1]).
+
 
 -export([get_request_params/1, param_exists/2, find_failed/2]).
 -export([winkstart_envelope/1]).
@@ -18,30 +29,217 @@
 
 -import(logger, [format_log/3]).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function set the response status to success, and load the provided
+%% data.
+%% @end
+%%--------------------------------------------------------------------
+-spec(response/2 :: (Data :: term(), Context :: #cb_context{}) -> #cb_context{}).
+response(Data, Context) ->
+    create_response(success, undefined, undefined, Data, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function load the error message into a 500 response, of type
+%% fatal or error.
+%% @end
+%%--------------------------------------------------------------------
+-spec(response/3 :: (Status :: error|fatal, Msg :: binary()|atom(), Context :: #cb_context{}) -> #cb_context{}).
+response(error, Msg, Context) ->
+    create_response(error, Msg, 500, [], Context);
+response(fatal, Msg, Context) ->
+    create_response(fatal, Msg, 500, [], Context).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function load the error message into a specifc code response,
+%% of type fatal or error.
+%% @end
+%%--------------------------------------------------------------------
+-spec(response/4 :: (Status :: error|fatal, Msg :: binary()|atom(), Code :: integer(), Context :: #cb_context{}) -> #cb_context{}).
+response(error, Msg, Code, Context) ->
+    create_response(error, Msg, Code, [], Context);
+response(fatal, Msg, Code, Context) ->
+    create_response(fatal, Msg, Code, [], Context).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function load the error message into a specifc code response,
+%% of type fatal or error with additional data
+%% @end
+%%--------------------------------------------------------------------
+-spec(response/5 :: (Status :: error|fatal, Msg :: binary()|atom(), Code :: integer(), Data :: term(), Context :: #cb_context{}) -> #cb_context{}).
+response(error, Msg, Code, Data, Context) ->
+    create_response(error, Msg, Code, Data, Context);
+response(fatal, Msg, Code, Data, Context) ->
+    create_response(fatal, Msg, Code, Data, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function loads the response vars in Context, soon it will
+%% make smarter chooices about formating resp_data and filtering
+%% other parameters.
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_response/5 :: (Status :: error|fatal|success, Msg :: binary()|atom(), Code :: integer(), Data :: term(), Context :: #cb_context{}) -> #cb_context{}).
+create_response(Status, Msg, Code, Data, Context) ->
+    Context#cb_context {
+         resp_status = Status
+        ,resp_error_msg = Msg
+        ,resp_error_code = Code
+        ,resp_data = Data
+    }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the request is faulty (doesnt have a
+%% match in validation, or someother issue with it keeps it from being
+%% processed, like nonsensical chains)
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_faulty_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_faulty_request(Context) ->
+    response(error, "faulty request", 400, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the requested ID did not match a
+%% data record
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_bad_identifier/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+response_bad_identifier(Id, Context) ->
+    response(error, "bad identifier", 410, [Id], Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the requested data query was missing
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_missing_view/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_missing_view(Context) ->
+    response(fatal, "datastore missing view", 500, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the datastore time'd out
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_datastore_timeout/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_datastore_timeout(Context) ->
+    response(error, "datastore timeout", 503, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the datastore time'd out
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_datastore_conn_refused/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_datastore_conn_refused(Context) ->
+    response(error, "datastore connection refused", 503, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the provided data did not validate
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_invalid_data/2 :: (Fields :: list(), Context :: #cb_context{}) -> #cb_context{}).
+response_invalid_data(Fields, Context) ->
+    response(error, "invalid data", 400, Fields, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the datastore does not have the requested
+%% record collection
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_db_missing/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_db_missing(Context) ->
+    response(fatal, "data collection missing", 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Returns true if the value is not undefined
+%%
+%% TODO: This needs to be rewritten....
 %% @end
 %%--------------------------------------------------------------------
--spec(get_value/2 :: (Paths :: term(), Data :: proplist()) -> undefined|term()).
-get_value(Paths, Data) when not is_list(Paths) ->
-    proplists:get_value(Paths, Data);
-get_value([P]=Paths, Data) when length(Paths) == 1 ->
-    proplists:get_value(P, Data);
-get_value([H|T], Data) ->
-    case proplists:get_value(H, Data) of
-        undefined ->
-            undefined;
-        {struct, Props} ->
-            get_value(T, Props);
-        SubProps ->
-            get_value(T, SubProps)
-    end.
+-spec(get_json_values/2 :: (Key :: term() | [term()], Props :: proplist()) -> undefined|term()|[term()]).
+get_json_values(Keys, {struct, Json}) ->
+    get_json_values(Keys, Json);
+get_json_values(_Keys, Json)  when not is_list(Json) ->
+    undefined;
+get_json_values([Key], Json) ->
+    proplists:get_value(Key, Json);
+get_json_values([Key|T], Json) ->
+    get_json_values(T, proplists:get_value(Key, Json)).
 
-set_value(_Paths, _Value, _Data) ->
-    undefined.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Sets the all instances of the key path to the given value in Props
+%% @end
+%%--------------------------------------------------------------------
+-spec(set_json_values/3 :: (Key :: term() | [term()], Value :: term(), Props :: proplist()) -> proplist()).
+set_json_values(Key, Value, {struct, Json}) ->
+    {struct, set_json_values(Key, Value, Json)};
+set_json_values(Key, Value, Json) when not is_list(Key)->
+    set_json_values([Key], Value, Json);
+set_json_values([Key], Value, Json) ->
+    lists:map(fun(Prop) ->
+            case Prop of
+                {Key, _} -> {Key, Value};
+                Else -> Else
+            end
+        end, Json);
+set_json_values([Key|T], Value, Json) ->
+    lists:map(fun(Prop) ->
+            case Prop of
+                {Key, {struct, Props}} -> {Key, {struct, set_json_values(T, Value, Props)}};
+                {Key, V} -> {Key, set_json_values(T, Value, V)};
+                Else -> Else
+            end
+        end, Json).
+
+binding_heartbeat(BPid) ->
+    PPid=self(),
+    spawn(fun() ->
+        erlang:monitor(process, PPid),
+        {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
+        receive _ -> ok after 10000 -> ok end,
+        timer:cancel(Tref)
+    end).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -174,3 +372,9 @@ winkstart_envelope(fatal, Data, ErrorMsg, ErrorCode) ->
 				,{message, whistle_util:to_binary(ErrorMsg)}
 				,{data, {struct, Data}}
 			       ]}).
+
+%% EUNIT TESTING
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+-endif.
