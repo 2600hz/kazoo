@@ -199,7 +199,8 @@ route_resp(Prop) ->
 
 -spec(route_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 route_resp_v(Prop) ->
-    validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES).
+    validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES)
+	andalso lists:all(fun({struct, R}) -> route_resp_route_v(R) end, get_value(<<"Routes">>, Prop)).
 
 %%--------------------------------------------------------------------
 %% @doc Route within a Dialplan Route Response - see wiki

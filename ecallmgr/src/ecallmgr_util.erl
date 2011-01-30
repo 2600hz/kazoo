@@ -9,7 +9,6 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_orig_ip/1, custom_channel_vars/1]).
--export([to_hex/1, route_to_dialstring/3, to_list/1, to_binary/1]).
 -export([eventstr_to_proplist/1]).
 
 -import(props, [get_value/2, get_value/3]).
@@ -46,77 +45,6 @@ custom_channel_vars(Prop) ->
 			     (_) -> false
 			  end, Prop),
     lists:map(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}) -> {Key, V} end, Custom).
-
--spec(to_hex/1 :: (S :: term()) -> string()).
-to_hex(S) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- whistle_util:to_list(S)])).
-
--spec(route_to_dialstring/3 :: (AmqpHost :: binary(), Route :: binary() | list(binary()), Domain :: binary() | string()) -> binary()).
-route_to_dialstring(_AmqpHost, <<"sip:", _Rest/binary>>=DS, _D) -> DS;
-route_to_dialstring(AmqpHost, [<<"user:", User/binary>>, DID], Domain) ->
-    route_to_dialstring(AmqpHost, Domain, User, DID);
-route_to_dialstring(AmqpHost, [Domain, <<"user:", User/binary>>, DID], _D) ->
-    route_to_dialstring(AmqpHost, Domain, User, DID);
-route_to_dialstring(_AmqpHost, DS, _D) -> DS.
-
-route_to_dialstring(AmqpHost, Domain, User, DID) ->
-    Q = amqp_util:new_targeted_queue(AmqpHost, <<>>),
-    amqp_util:basic_consume(AmqpHost, Q),
-    ReqProp = [{<<"User">>, User}, {<<"Host">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
-	       | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
-    {ok, JSON} = whistle_api:reg_query(ReqProp),
-    amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
-
-    receive_reg_query_resp(DID).
-
-receive_reg_query_resp(DID) ->
-    receive
-	#'basic.consume_ok'{} -> receive_reg_query_resp(DID);
-	{_, #amqp_msg{payload = Payload}} ->
-	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    true = whistle_api:reg_query_resp_v(Prop),
-
-	    [{<<"Contact">>, Contact}] = props:get_value(<<"Fields">>, Prop),
-	    re:replace(Contact, "^[^\@]+", DID, [{return, binary}])
-    after 1000 ->
-	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~p~n", [DID]),
-	    DID
-    end.
-	    
-
-%%	    list_to_binary([DID, "${regex(${sofia_contact(sipinterface_1/",User, "@", Domain, ")}|^[^\@]+(.*)|%1)}"]);
-
-%% for some commands, like originate, macros are not run; need to progressively build the dialstring
-%% -spec(route_to_dialstring/3 :: (Route :: list(binary()), Domain :: string() | binary(), FSNode :: atom()) -> binary()).
-%% route_to_dialstring([<<"user:", User/binary>>, DID], Domain, FSNode) ->
-%%     {ok, SC} = freeswitch:api(FSNode, sofia_contact, binary_to_list(list_to_binary(["sipinterface_1/",User, "@", Domain]))),
-%%     {ok, Regex} = re:compile("^[^\@]+"),
-%%     re:replace(SC, Regex, DID, [{return, binary}]);
-%% route_to_dialstring(X, _, _) -> X.
-
--spec(to_list/1 :: (X :: atom() | list() | binary() | integer() | float()) -> list()).
-to_list(X) when is_float(X) ->
-    mochinum:digits(X);
-to_list(X) when is_integer(X) ->
-    integer_to_list(X);
-to_list(X) when is_binary(X) ->
-    binary_to_list(X);
-to_list(X) when is_atom(X) ->
-    atom_to_list(X);
-to_list(X) when is_list(X) ->
-    X.
-
--spec(to_binary/1 :: (X :: atom() | list() | binary() | integer() | float()) -> binary()).
-to_binary(X) when is_float(X) ->
-    to_binary(mochinum:digits(X));
-to_binary(X) when is_integer(X) ->
-    to_binary(integer_to_list(X));
-to_binary(X) when is_atom(X) ->
-    list_to_binary(atom_to_list(X));
-to_binary(X) when is_list(X) ->
-    list_to_binary(X);
-to_binary(X) when is_binary(X) ->
-    X.
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
