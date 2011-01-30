@@ -268,7 +268,7 @@ lookup_reg(AmqpHost, Domain, User) ->
 		  Q = amqp_util:new_targeted_queue(AmqpHost, <<>>),
 		  amqp_util:bind_q_to_targeted(AmqpHost, Q),
 		  amqp_util:basic_consume(AmqpHost, Q),
-		  ReqProp = [{<<"User">>, User}, {<<"Host">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
+		  ReqProp = [{<<"Username">>, User}, {<<"Host">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
 			     | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
 		  {ok, JSON} = whistle_api:reg_query(ReqProp),
 		  amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
