@@ -104,7 +104,49 @@ handle_cast(_Msg, State) -> io:format("Unhandled ~p", [_Msg]), {noreply, State}.
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, _, Payload}, State) -> {noreply, State}.
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.callflow">>, Payload}, State) ->
+   spawn(fun ( ) ->
+      io:format("~p~n", [Payload]),
+      {Result, Payload1} = allowed_methods(Payload),
+      Pid ! {binding_result, Result, Payload1}
+   end),
+   {noreply, State};
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.callflow">>, Payload}, State) ->
+   spawn(fun ( ) ->
+      Pid ! {binding_result, true, Payload}
+   end),
+   {noreply, State};
+handle_info({binding_fired, Pid, <<"v1_resource.validate.callflow">>, [RD, Context | Params]}, State) ->
+   spawn(fun ( ) ->
+      Pid ! {binding_result, true, [RD, Context | Params]}
+   end),
+   {noreply, State};
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflow">>, [RD, Context | Params]}, State) ->
+   spawn(fun ( ) ->
+      Pid ! {binding_result, true, [RD, Context | Params]}
+   end),
+   {noreply, State};
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.callflow">>, [RD, Context | Params]}, State) ->
+   spawn(fun ( ) ->
+      Pid ! {binding_result, true, [RD, Context | Params]}
+   end),
+   {noreply, State};
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflow">>, [RD, Context | Params]}, State) ->
+   spawn(fun ( ) ->
+      Pid ! {binding_result, true, [RD, Context | Params]}
+   end),
+   {noreply, State};
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflow">>, [RD, Context | Params]}, State) ->
+   spawn(fun ( ) ->
+      Pid ! {binding_result, true, [RD, Context | Params]}
+   end),
+   {noreply, State};
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+   spawn(fun ( ) ->
+      Pid ! {binding_result, true, []}
+   end),
+   {noreply, State}
+.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,19 +178,19 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%-----------------------------------------------------------------------------
 %%
 
-%%--------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
 %% @private
 %% @doc
 %% This function binds this server to the crossbar bindings server,
 %% for the keys we need to consume.
 %% @end
-%%--------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
-    crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
-    crossbar_bindings:bind(<<"v1_resource.validate.accounts">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.accounts">>)
+    crossbar_bindings:bind(<<"v1_resource.allowed_methods.callflow">>),
+    crossbar_bindings:bind(<<"v1_resource.resource_exists.callflow">>),
+    crossbar_bindings:bind(<<"v1_resource.validate.callflow">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.callflow">>)
 .
 
 
@@ -179,10 +221,10 @@ allowed_methods( [] ) ->
    { true, ['GET', 'PUT'] };             % GET - call flow collection
                                          % PUT - create new callflow
 allowed_methods( [_] ) ->
-   { true, ['GET', 'POST', 'DELETE'] }   % GET    - retrieve callflow
+   { true, ['GET', 'POST', 'DELETE'] };  % GET    - retrieve callflow
                                          % POST   - update callflow
                                          % DELETE - delete callflow
-.
+allowed_methods( P ) -> io:format("~p~n", [P]), { false, [] }.
 
 
 
@@ -235,6 +277,7 @@ read ( Id, Context ) ->
          resp_error_code = 503
       };
       Doc                       -> Context#cb_context {
+         resp_status = success
       }
    end
 .
