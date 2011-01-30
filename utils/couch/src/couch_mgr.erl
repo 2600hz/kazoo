@@ -89,7 +89,7 @@ open_doc(DbName, DocId, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, proplist()) | tuple(error, conflict)).
-save_doc(DbName, [{struct, _}=Doc]) ->
+save_doc(DbName, [{struct, [_|_]=Doc}]) ->
     save_doc(DbName, Doc);
 save_doc(DbName, [{struct, _}|_]=Doc) ->
     io:format("Test 1 ~p~n", [Doc]),
