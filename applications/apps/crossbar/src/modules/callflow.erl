@@ -106,7 +106,6 @@ handle_cast(_Msg, State) -> io:format("Unhandled ~p", [_Msg]), {noreply, State}.
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.callflow">>, Payload}, State) ->
    spawn(fun ( ) ->
-      io:format("~p~n", [Payload]),
       {Result, Payload1} = allowed_methods(Payload),
       Pid ! {binding_result, Result, Payload1}
    end),
@@ -118,32 +117,49 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.callflow">>, Pay
    {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.validate.callflow">>, [RD, Context | Params]}, State) ->
    spawn(fun ( ) ->
-      Pid ! {binding_result, true, [RD, Context | Params]}
+      Context1 = validate(wrq:method(RD), Params, Context#cb_context{db_name="callflow"}),
+      Pid ! {binding_result, true, [RD, Context1, Params]}
+%      Pid ! {binding_result, true, [RD, Context#cb_context{resp_status=success} , Params]}
    end),
    {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflow">>, [RD, Context | Params]}, State) ->
    spawn(fun ( ) ->
-      Pid ! {binding_result, true, [RD, Context | Params]}
+      case crossbar_doc:save(Context#cb_context{db_name="callflow"}) of
+         #cb_context{resp_status=success}=Context1 ->
+            Pid ! {binding_result, true, [RD, Context1, Params]};
+         Else                                      ->
+            Pid ! {binding_result, true, [RD, Else, Params]}
+      end
    end),
    {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.callflow">>, [RD, Context | Params]}, State) ->
-   spawn(fun ( ) ->
-      Pid ! {binding_result, true, [RD, Context | Params]}
-   end),
+   case Params of
+      [ ] ->
+         spawn(fun ( ) ->
+            Pid ! {binding_result, true, [RD, Context#cb_context{resp_data=[<<"list of existing callflows">>]}, Params]}
+         end);
+      [Id] ->
+         spawn(fun ( ) ->
+            Context1 = crossbar_doc:load(Id, Context#cb_context{db_name="callflow"}),
+            Pid ! {binding_result, true, [RD, Context1, Params]}
+         end)
+   end,
    {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflow">>, [RD, Context | Params]}, State) ->
    spawn(fun ( ) ->
-      Pid ! {binding_result, true, [RD, Context | Params]}
+      Context1 = crossbar_doc:save(Context#cb_context{db_name="callflow"}),
+      Pid ! {binding_result, true, [RD, Context1, Params]}
    end),
    {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflow">>, [RD, Context | Params]}, State) ->
    spawn(fun ( ) ->
-      Pid ! {binding_result, true, [RD, Context | Params]}
+      Context1 = crossbar_doc:delete(Context#cb_context{db_name="callflow"}),
+      Pid ! {binding_result, true, [RD, Context1, Params]}
    end),
    {noreply, State};
 handle_info({binding_fired, Pid, _, Payload}, State) ->
    spawn(fun ( ) ->
-      Pid ! {binding_result, true, []}
+      Pid ! {binding_result, true, Payload}
    end),
    {noreply, State}
 .
@@ -196,19 +212,6 @@ bind_to_crossbar() ->
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -218,95 +221,61 @@ bind_to_crossbar() ->
 %%-----------------------------------------------------------------------------
 -spec ( allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), []) ).
 allowed_methods( [] ) ->
-   { true, ['GET', 'PUT'] };             % GET - call flow collection
-                                         % PUT - create new callflow
+   { true, ['PUT', 'GET'] };                    % PUT - create new callflow
+                                                % GET - call flow collection
 allowed_methods( [_] ) ->
-   { true, ['GET', 'POST', 'DELETE'] };  % GET    - retrieve callflow
-                                         % POST   - update callflow
-                                         % DELETE - delete callflow
-allowed_methods( P ) -> io:format("~p~n", [P]), { false, [] }.
+   { true, ['PUT', 'GET', 'POST', 'DELETE'] };  % GET    - retrieve callflow
+                                                % POST   - update callflow
+                                                % DELETE - delete callflow
+allowed_methods( _ ) -> { false, [] }.
 
 
 
 
-%%-----------------------------------------------------------------------------
-%% Managing Docs
-%%-----------------------------------------------------------------------------
-%%
-
-%%-----------------------------------------------------------------------------
-%% Note: Context#cb_context.db_name - db containing callflows
-%%-----------------------------------------------------------------------------
-
-%%-----------------------------------------------------------------------------
-%% Note: Context#cb_context.resp_data - [{struct, JSON}]
-%%-----------------------------------------------------------------------------
-
-
-%%-----------------------------------------------------------------------------
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function creates a new callflow document with given data
+%% This function determines if the parameters and content are correct
+%% for this request
 %%
+%% Failure here returns 400
 %% @end
-%%-----------------------------------------------------------------------------
--spec ( create/2 :: (Data :: proplist(), Context :: #cb_context{}) -> #cb_context{} ).
-create ( Data, Context ) ->
-   { }
-.
+%%--------------------------------------------------------------------
+-spec(validate/3 :: (Verb :: atom(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+validate('GET', [], Context) -> io:format("~p~n", ["getting list of callflows"]), Context;
+validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->io:format("~p~n", ["creating callflow"]),
+   Doc = Data,
+   Context#cb_context{doc={struct, Doc}, resp_status=success}
+;
+validate('GET', [DocId], Context) ->
+   crossbar_doc:load(DocId, Context);
+validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
+   crossbar_doc:load_merge(DocId, Data, Context);
+validate('DELETE', [DocId], Context) ->
+   crossbar_doc:load(DocId, Context);
+validate(_, _, Context) -> crossbar_util:response_faulty_request(Context).
 
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function retrieves an existing callflow document with given id
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec ( read/2 :: (Id :: term(), Context :: #cb_context{}) -> #cb_context{} ).
-read ( Id, Context ) ->
-   case couch_mgr:open_doc(Context#cb_context.db_name, Id) of
-      {error, not_found}        -> Context#cb_context {
-         resp_status = error,
-         resp_error_msg = "callflow not found",
-         resp_error_code = 410
-      };
-      {error, db_not_reachable} -> Context#cb_context {
-         resp_status = error,
-         resp_error_msg = "datastore timeout",
-         resp_error_code = 503
-      };
-      Doc                       -> Context#cb_context {
-         resp_status = success
-      }
-   end
-.
 
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function updates an existing callflow document with given data
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec ( update/3 :: (Id :: term(), Data :: proplist(), Context :: #cb_context{}) -> #cb_context{} ).
-update ( Id, Data, Context ) ->
-   { }
-.
 
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function deletes a callflow document with given id
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec ( delete/2 :: (Id :: term(), Context :: #cb_context{}) -> #cb_context{} ).
-delete ( Id, Context ) ->
-   { }
-.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -314,9 +283,6 @@ delete ( Id, Context ) ->
 %% Proplist helpers
 %%-----------------------------------------------------------------------------
 %%
-
-
-
 
 
 %%-----------------------------------------------------------------------------
@@ -332,41 +298,41 @@ delete ( Id, Context ) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec ( json/1 :: (Data :: { proplist() } | list() | term()) -> list() ).
-json ( {} )           -> "{}";
-json ( {Properties} ) -> "{"++ prop_to_json(Properties) ++"}";
-json ( [] )           -> "[]";
-json ( [Elements] )   -> "["++ array_to_json([Elements]) ++"]";
-json ( Term )         -> term_to_string(Term).
+%-spec ( json/1 :: (Data :: { proplist() } | list() | term()) -> list() ).
+%json ( {} )           -> "{}";
+%json ( {Properties} ) -> "{"++ prop_to_json(Properties) ++"}";
+%json ( [] )           -> "[]";
+%json ( [Elements] )   -> "["++ array_to_json([Elements]) ++"]";
+%json ( Term )         -> term_to_string(Term).
 
-prop_to_json ( {P , V} ) -> term_to_string(P) ++":"++ json(V);
-prop_to_json ( [] ) -> "";
-prop_to_json ( [E | R] ) ->
-   if
-      length(R) > 0 -> prop_to_json(E) ++","++ prop_to_json(R);
-      true          -> prop_to_json(E)
-   end
-.
+%prop_to_json ( {P , V} ) -> term_to_string(P) ++":"++ json(V);
+%prop_to_json ( [] ) -> "";
+%prop_to_json ( [E | R] ) ->
+%   if
+%      length(R) > 0 -> prop_to_json(E) ++","++ prop_to_json(R);
+%      true          -> prop_to_json(E)
+%   end
+%.
 
-array_to_json ( [] ) -> "";
-array_to_json ( [E | R] ) ->
-   if
-      length(R) > 0 -> json(E) ++","++ array_to_json(R);
-      true          -> json(E)
-   end
-.
+%array_to_json ( [] ) -> "";
+%array_to_json ( [E | R] ) ->
+%   if
+%      length(R) > 0 -> json(E) ++","++ array_to_json(R);
+%      true          -> json(E)
+%   end
+%.
 
-term_to_string ( T ) ->
-   if
-      is_binary(T)    -> String = binary_to_list(T);
-      is_atom(T)      -> String = atom_to_list(T);
-      is_bitstring(T) -> String = bitstring_to_list(T);
-      is_integer(T)   -> String = integer_to_list(T);
-      is_float(T)     -> String = float_to_list(T);
-      true            -> String = "[Object]"
-   end,
-   "\""++String++"\""
-.
+%term_to_string ( T ) ->
+%   if
+%      is_binary(T)    -> String = binary_to_list(T);
+%      is_atom(T)      -> String = atom_to_list(T);
+%      is_bitstring(T) -> String = bitstring_to_list(T);
+%      is_integer(T)   -> String = integer_to_list(T);
+%      is_float(T)     -> String = float_to_list(T);
+%      true            -> String = "[Object]"
+%   end,
+%   "\""++String++"\""
+%.
 
 %------------------------------------------------------------------------------
 %  This function helps converting the list returned by mochijson2:encode
