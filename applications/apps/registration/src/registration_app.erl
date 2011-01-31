@@ -31,17 +31,5 @@ stop(_State) ->
 
 setup_views() ->
     lists:foreach(fun(File) ->
-			  load_doc_from_file(?REG_DB, File)
+			  couch_mgr:load_doc_from_file(?REG_DB, registration, File)
 		  end, ["registrations.json"]).
-
-load_doc_from_file(DB, File) ->
-    Path = lists:flatten([code:priv_dir(registration), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
-    try
-	{ok, ViewStr} = file:read_file(Path),
-	{CDoc} = couchbeam_util:json_decode(ViewStr),
-	{ok, _} = couch_mgr:save_doc(DB, CDoc) %% if it crashes on the match, the catch will let us know
-    catch
-	_A:_B ->
-	    logger:format_log(error, "Error reading ~p into couch: ~p:~p~n", [Path, _A, _B])
-    end.

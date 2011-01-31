@@ -18,7 +18,7 @@
 
 %% Document manipulation
 -export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
--export([add_change_handler/2, rm_change_handler/2]).
+-export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -48,9 +48,16 @@
 %%%===================================================================
 %%% Couch Functions
 %%%===================================================================
-
-
-
+-spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, proplist()) | tuple(error, term())).
+load_doc_from_file(DB, App, File) ->
+    Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    try
+	{ok, ViewStr} = file:read_file(Path),
+	?MODULE:save_doc(DB, mochijson2:decode(ViewStr)) %% if it crashes on the match, the catch will let us know
+    catch
+	_Type:Reason -> {error, Reason}
+    end.
 
 %%%===================================================================
 %%% Document Functions
