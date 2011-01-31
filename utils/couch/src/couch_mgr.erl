@@ -88,27 +88,29 @@ open_doc(DbName, DocId, Options) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, proplist()) | tuple(error, conflict)).
-save_doc(DbName, [{struct, [_|_]=Doc}]) ->
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | tuple(struct, proplist())) -> tuple(ok, proplist()) | tuple(error, conflict)).
+save_doc(DbName, [{struct, [_|_]}=Doc]) ->
     save_doc(DbName, Doc);
 save_doc(DbName, [{struct, _}|_]=Doc) ->
     io:format("Test 1 ~p~n", [Doc]),
     case get_db(DbName) of
-	{error, db_not_reachable}=E ->
-	    E;
-	Db->
-	    %% convert from mochijson encoding to couch
+	{error, db_not_reachable}=E -> E;
+	Db ->
             Str = mochijson2:encode(Doc),
             couchbeam:save_docs(Db, couchbeam_util:json_decode(Str))
     end;
-save_doc(DbName, Doc) ->
+save_doc(DbName, Doc) when is_list(Doc) ->
+    save_doc(DbName, {struct, Doc});
+save_doc(DbName, {struct, _}=Doc) ->
     case get_db(DbName) of
-	{error, db_not_reachable}=E ->
-	    E;
-	Db->
-            couchbeam:save_doc(Db, {Doc})
+	{error, db_not_reachable}=E -> E;
+	Db ->
+            case couchbeam:save_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+		{error, conflict}=E -> E;
+		{Doc1} -> {ok, Doc1}
+	    end
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
