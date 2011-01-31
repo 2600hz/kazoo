@@ -89,7 +89,7 @@ open_doc(DbName, DocId, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, proplist()) | tuple(error, conflict)).
-save_doc(DbName, [{struct, _}=Doc]) ->
+save_doc(DbName, [{struct, [_|_]=Doc}]) ->
     save_doc(DbName, Doc);
 save_doc(DbName, [{struct, _}|_]=Doc) ->
     io:format("Test 1 ~p~n", [Doc]),
@@ -97,6 +97,7 @@ save_doc(DbName, [{struct, _}|_]=Doc) ->
 	{error, db_not_reachable}=E ->
 	    E;
 	Db->
+	    %% convert from mochijson encoding to couch
             Str = mochijson2:encode(Doc),
             couchbeam:save_docs(Db, couchbeam_util:json_decode(Str))
     end;
@@ -105,8 +106,7 @@ save_doc(DbName, Doc) ->
 	{error, db_not_reachable}=E ->
 	    E;
 	Db->
-            Str = mochijson2:encode(Doc),            
-            couchbeam:save_doc(Db, couchbeam_util:json_decode(Str))
+            couchbeam:save_doc(Db, {Doc})
     end.
     
 %%--------------------------------------------------------------------
