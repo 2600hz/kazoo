@@ -9,7 +9,7 @@
 -module(ts_route).
 
 %% API
--export([handle_req/2]).
+-export([handle_req/1]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -22,43 +22,43 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec(handle_req/2 :: (ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-handle_req(ApiProp, ServerID) ->
+-spec(handle_req/1 :: (ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+handle_req(ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
 	    {error, "No Custom Vars"};
 	{struct, []} -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
-	    inbound_handler([{<<"Direction">>, <<"inbound">>} | ApiProp], ServerID);
+	    inbound_handler([{<<"Direction">>, <<"inbound">>} | ApiProp]);
 	{struct, CCVs} ->
 	    case get_value(<<"Direction">>, CCVs) of
 		<<"outbound">>=D ->
-		    outbound_handler([{<<"Direction">>, D} | ApiProp], ServerID);
+		    outbound_handler([{<<"Direction">>, D} | ApiProp]);
 		<<"inbound">>=D ->
-		    inbound_handler([{<<"Direction">>, D} | ApiProp], ServerID)
+		    inbound_handler([{<<"Direction">>, D} | ApiProp])
 	    end
     end.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-inbound_handler(ApiProp, ServerID) ->
+-spec(inbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
+inbound_handler(ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     Did = whistle_util:to_e164(ToUser),
     Flags = create_flags(Did, ApiProp),
     case Flags#route_flags.account_doc_id of
-	<<>> -> response(404, ApiProp, Flags, ServerID);
-	_ -> process_routing(inbound_features(Flags), ApiProp, ServerID)
+	<<>> -> response(404, ApiProp, Flags);
+	_ -> process_routing(inbound_features(Flags), ApiProp)
     end.
 
--spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-outbound_handler(ApiProp, ServerID) ->
+-spec(outbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
+outbound_handler(ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
     Did = whistle_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
     Flags = create_flags(Did, ApiProp),
-    process_routing(outbound_features(Flags), ApiProp, ServerID).
+    process_routing(outbound_features(Flags), ApiProp).
 
 -spec(lookup_user/1 :: (Name :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name) ->
@@ -106,57 +106,57 @@ lookup_did(Did) ->
 	    {error, "Unexpected error in outbound_handler"}
     end.
 
--spec(process_routing/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-process_routing(Flags, ApiProp, ServerID) ->
+-spec(process_routing/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+process_routing(Flags, ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Flags for routing...~n~p~n", [self(), Flags]),
     case ts_credit:check(Flags) of
 	{ok, Flags1} ->
 	    %% call may proceed
-	    find_route(Flags1, ApiProp, ServerID);
+	    find_route(Flags1, ApiProp);
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Credit Error ~p~n", [self(), Error]),
-	    response(503, ApiProp, Flags, ServerID)
+	    response(503, ApiProp, Flags)
     end.
 
--spec(find_route/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-find_route(Flags, ApiProp, ServerID) ->
+-spec(find_route/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+find_route(Flags, ApiProp) ->
     case Flags#route_flags.direction =:= <<"outbound">> of
 	false ->
 	    %% handle inbound routing
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
 		    %%format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
+		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
-		    response(404, ApiProp, Flags, ServerID)
+		    response(404, ApiProp, Flags)
 	    end;
 	true ->
 	    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
 	    Did = whistle_util:to_e164(ToUser),
 	    case lookup_did(Did) of
 		{error, _} ->
-		    route_over_carriers(Flags, ApiProp, ServerID);
+		    route_over_carriers(Flags, ApiProp);
 		{ok, DidProp} ->
 		    FlagsIn = flags_from_did(DidProp, Flags#route_flags{to_user=Did}),
 		    case inbound_route(FlagsIn) of
 			{ok, Routes} ->
-			    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes}, ServerID);
+			    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes});
 			{error, _} ->
-			    route_over_carriers(Flags, ApiProp, ServerID)
+			    route_over_carriers(Flags, ApiProp)
 		    end
 	    end
     end.
 
--spec(route_over_carriers/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-route_over_carriers(Flags, ApiProp, ServerID) ->
+-spec(route_over_carriers/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+route_over_carriers(Flags, ApiProp) ->
     case ts_carrier:route(Flags) of
 	{ok, Routes} ->
 	    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
-	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
+	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
-	    response(404, ApiProp, Flags, ServerID)
+	    {error, "We don't handle this route"}
     end.
 
 -spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok, proplist()) | tuple(error, string())).
@@ -360,32 +360,42 @@ lookup_server(AuthUser, Doc) ->
 	_ -> []
     end.
 
--spec(response/4 :: (Routes :: proplist() | integer(), Prop :: proplist(), Flags :: tuple(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-response(Routes, Prop, Flags, ServerID) ->
+-spec(response/3 :: (Routes :: proplist() | integer(), Prop :: proplist(), Flags :: tuple()) -> tuple(ok, iolist()) | tuple(error, string())).
+response(Routes, Prop, Flags) ->
+    ServerID = case is_list(Routes) of
+		   true ->
+		       {ok, Pid} = ts_call_sup:start_proc([Flags#route_flags.callid, whapps_controller:get_amqp_host(), Flags]),
+		       ts_call_handler:get_queue(Pid);
+		   false -> <<>>
+	       end,
+
     Prop1 = [ {<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
-	      | whistle_api:default_headers(ServerID, <<"dialplan">>, <<"route_resp">>, <<"ts_route">>, <<"0.1">>) ],
-    Data = specific_response(Routes) ++ Prop1,
+	      | whistle_api:default_headers(ServerID, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ],
+    Data = specific_response(Routes, Prop1),
     case whistle_api:route_resp(Data) of
 	{ok, JSON} ->
-	    {ok, JSON, Flags};
+	    {ok, JSON};
 	{error, _E}=Error ->
 	    Error
     end.
 
--spec(specific_response/1 :: (CodeOrRoutes :: integer() | proplist()) -> proplist()).
-specific_response(404) ->
+-spec(specific_response/2 :: (CodeOrRoutes :: integer() | proplist(), Prop :: proplist()) -> proplist()).
+specific_response(404, Prop) ->
     [{<<"Routes">>, []}
      ,{<<"Method">>, <<"error">>}
      ,{<<"Route-Error-Code">>, <<"404">>}
      ,{<<"Route-Error-Message">>, <<"Not Found">>}
+     | Prop
     ];
-specific_response(503) ->
+specific_response(503, Prop) ->
     [{<<"Routes">>, []}
      ,{<<"Method">>, <<"error">>}
      ,{<<"Route-Error-Code">>, <<"503">>}
      ,{<<"Route-Error-Message">>, <<"Insufficient Credit">>}
+     | Prop
     ];
-specific_response(Routes) when is_list(Routes) ->
+specific_response(Routes, Prop) when is_list(Routes) ->
     [{<<"Routes">>, Routes}
      ,{<<"Method">>, <<"bridge">>}
+     | Prop
     ].
