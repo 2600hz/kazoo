@@ -66,7 +66,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    AHost = whapps_container:get_amqp_host(),
+    AHost = whapps_controller:get_amqp_host(),
     {ok, CQ} = start_amqp(AHost),
     {ok, #state{amqp_host=AHost, callmgr_q=CQ}}.
 
