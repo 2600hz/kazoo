@@ -153,18 +153,12 @@ recv_response(ID) ->
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
 	    format_log(info, "L/U.route(~p): Recv Content: ~p Payload: ~s~n", [self(), Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    case get_value(<<"Msg-ID">>, Prop) of
-		ID ->
-		    case whistle_api:route_resp_v(Prop) of
-			true ->
-			    Prop;
-			false ->
-			    format_log(error, "L/U.route(~p): Invalid Route Resp~n~p~n", [self(), Prop]),
-			    invalid_route_resp
-		    end;
-		_BadId ->
-		    format_log(info, "L/U.route(~p): Recv MsgID ~p when expecting ~p~n", [self(), _BadId, ID]),
-		    recv_response(ID)
+	    case whistle_api:route_resp_v(Prop) andalso get_value(<<"Msg-ID">>, Prop) =:= ID of
+		true ->
+		    Prop;
+		false ->
+		    format_log(error, "L/U.route(~p): Invalid Route Resp~n~p~n", [self(), Prop]),
+		    invalid_route_resp
 	    end;
 	shutdown -> shutdown;
 	_Msg ->
@@ -209,7 +203,7 @@ send_control_queue(Host, CtlProp, AppQ) ->
 
 %% Prop = Route Response
 generate_xml(<<"bridge">>, Routes, _Prop, Domain, AmqpHost) ->
-    format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
+    format_log(info, "L/U.route(~p): BRIDGEXML: Domain: ~p Routes:~n~p~n", [self(), Domain, Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
 					     Route = ?MODULE:build_route(AmqpHost, RouteProp, Domain, get_value(<<"Invite-Format">>, RouteProp)),

@@ -31,7 +31,7 @@
 -define(SERVER, ?MODULE).
 -define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
--define(UNITS_TO_DOLLARS(X), whistle_util:to_list(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
+-define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 -define(EOD, end_of_day).
 
@@ -422,7 +422,7 @@ load_account(AcctId, DB) ->
 
 load_views(DB) ->
     lists:foreach(fun(Name) ->
-			  ts_util:load_doc_from_file(DB, Name)
+			  couch_mgr:load_doc_from_file(DB, trunkstore, Name)
 		  end, ["accounts.json", "credit.json", "trunks.json"]).
 				     
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
