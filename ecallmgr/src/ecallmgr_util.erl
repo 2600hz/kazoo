@@ -41,10 +41,10 @@ get_orig_ip(Prop) ->
 %% Extract custom channel variables to include in the event
 -spec(custom_channel_vars/1 :: (Prop :: proplist()) -> proplist()).
 custom_channel_vars(Prop) ->
-    Custom = lists:filter(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, _Key/binary>>, _V}) -> true;
-			     (_) -> false
-			  end, Prop),
-    lists:map(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}) -> {Key, V} end, Custom).
+    lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
+		   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
+		   (_, Acc) -> Acc
+		end, [], Prop).
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]

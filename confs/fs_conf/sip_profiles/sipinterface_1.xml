@@ -114,8 +114,8 @@
             <!--<param name="NDLB-force-rport" value="true"/>-->
             <param name="inbound-reg-force-matching-username" value="true"/>
             <param name="auth-all-packets" value="false"/>
-            <param name="force-register-domain" value="trunks.2600hz.com"/>
-            <param name="force-register-db-domain" value="trunks.2600hz.com"/>
+            <!--<param name="force-register-domain" value="trunks.2600hz.com"/>-->
+            <!--<param name="force-register-db-domain" value="trunks.2600hz.com"/>-->
 
 
             <!-- ODBC -->
