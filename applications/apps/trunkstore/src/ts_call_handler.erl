@@ -138,6 +138,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(#'basic.consume_ok'{}, S) -> {noreply, S};
 handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags}=S) ->
     format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
 
