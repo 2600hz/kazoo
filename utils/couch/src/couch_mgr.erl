@@ -114,7 +114,7 @@ save_doc(DbName, {struct, _}=Doc) ->
 	Db ->
             case couchbeam:save_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
 		{error, conflict}=E -> E;
-		{Doc1} -> {ok, Doc1}
+		{ok, {Doc1}} -> {ok, Doc1}
 	    end
     end.
 
