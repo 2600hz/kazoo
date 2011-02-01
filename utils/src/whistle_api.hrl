@@ -203,7 +203,7 @@
 %% Resource Request - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
-					    ,<<"Route">>, <<"To-User">>, <<"To-DID">>
+					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
 				       ]).
 -define(RESOURCE_REQ_VALUES, [
 			      {<<"Event-Category">>, <<"originate">>}
@@ -211,7 +211,11 @@
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
 			      ,{<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}
 			     ]).
--define(RESOURCE_REQ_TYPES, []).
+-define(RESOURCE_REQ_TYPES, [{<<"Invite-Format">>, fun is_binary/1}
+			     ,{<<"Route">>, fun is_binary/1}
+			     ,{<<"To-User">>, fun is_binary/1}
+			     ,{<<"To-Realm">>, fun is_binary/1}
+			    ]).
 
 %% Resource Response - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Response
 -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
