@@ -204,6 +204,7 @@ add_failover_route({}, _Flags, InboundRoute) -> [InboundRoute];
 %% route to a SIP URI
 add_failover_route({<<"sip">>, URI}, _Flags, InboundRoute) ->
     [InboundRoute, {struct, [{<<"Route">>, URI}
+			     ,{<<"Invite-Format">>, <<"route">>}
 			     ,{<<"Weight-Cost">>, <<"1">>}
 			     ,{<<"Weight-Location">>, <<"1">>}
 			     ,{<<"Media">>, <<"bypass">>}
