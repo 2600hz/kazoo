@@ -166,21 +166,25 @@ inbound_route(Flags) ->
 		 <<"E.164">> ->
 		     [{<<"Invite-Format">>, <<"e164">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		      ,{<<"To-DID">>, whistle_util:to_e164(Flags#route_flags.to_user)}
 		     ];
 		 <<"1NPANXXXXXX">> ->
 		     [{<<"Invite-Format">>, <<"1npan">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		      ,{<<"To-DID">>, whistle_util:to_1npanxxxxxx(Flags#route_flags.to_user)}
 		     ];
 		 <<"NPANXXXXXX">> ->
 		     [{<<"Invite-Format">>, <<"npan">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		      ,{<<"To-DID">>, whistle_util:to_npanxxxxxx(Flags#route_flags.to_user)}
 		     ];
 		 _ ->
 		     [{<<"Invite-Format">>, <<"username">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		     ]
 	     end,
     Route = [{<<"Weight-Cost">>, <<"1">>}
@@ -291,6 +295,7 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 %% - Failover
 %% - Caller ID
 %% - Auth User
+%% - Auth Realm
 -spec(flags_from_did/2 :: (DidProp :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_did(DidProp, Flags) ->
     {DidOptions} = get_value(<<"DID_Opts">>, DidProp, {[]}),
@@ -302,6 +307,7 @@ flags_from_did(DidProp, Flags) ->
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {[]})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
+		   ,auth_realm = get_value(<<"auth_realm">>, AuthOpts, <<>>)
 		   ,account_doc_id = get_value(<<"id">>, DidProp)
 		  }.
 

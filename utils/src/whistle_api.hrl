@@ -162,7 +162,7 @@
 
 %% Route Responses - Sub-section Route - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.3CRoute.3E
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
--define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-DID">>
+-define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
 						,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
 						,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
 						,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
@@ -174,6 +174,8 @@
 				 ]).
 -define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
 				  ,{<<"Route">>, fun is_binary/1}
+				  ,{<<"To-User">>, fun is_binary/1}
+				  ,{<<"To-Realm">>, fun is_binary/1}
 				]).
 
 %% Route Responses - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
