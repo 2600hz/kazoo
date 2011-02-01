@@ -66,9 +66,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    AHost = whapps_controller:get_amqp_host(),
-    {ok, CQ} = start_amqp(AHost),
-    {ok, #state{amqp_host=AHost, callmgr_q=CQ}}.
+    {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,6 +108,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, S) ->
+    AHost = whapps_controller:get_amqp_host(),
+    {ok, CQ} = start_amqp(AHost),
+    {noreply, S#state{amqp_host=AHost, callmgr_q=CQ}};
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),

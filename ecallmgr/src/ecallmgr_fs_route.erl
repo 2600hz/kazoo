@@ -270,7 +270,7 @@ lookup_reg(AmqpHost, Domain, User) ->
 		  Self ! {contact, C}
 	  end),
     receive {contact, C} -> C
-    after 1500 -> <<User/binary, Domain/binary>>
+    after 1500 -> <<User/binary, "@", Domain/binary>>
     end.
 
 receive_reg_query_resp(User) ->
