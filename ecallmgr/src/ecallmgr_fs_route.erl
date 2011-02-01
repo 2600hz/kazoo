@@ -11,7 +11,7 @@
 
 %% API
 -export([start_handler/3]).
--export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/4]).
+-export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/3]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -133,8 +133,7 @@ lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID,
 		    {ok, JSON} ->
 			format_log(info, "L/U.route(~p): Sending RouteReq JSON to Host(~p)~n", [self(), Host]),
 			send_request(Host, JSON),
-			Result = handle_response(ID, UUID, CtlQ, HState, FetchPid, Data),
-			amqp_util:unbind_q_from_targeted(Host, Q),
+			Result = handle_response(ID, UUID, CtlQ, HState, FetchPid),
 			amqp_util:queue_delete(Host, Q),
 			Result;
 		    {error, _Msg} ->
@@ -202,11 +201,11 @@ send_control_queue(Host, CtlProp, AppQ) ->
     end.
 
 %% Prop = Route Response
-generate_xml(<<"bridge">>, Routes, _Prop, Domain, AmqpHost) ->
-    format_log(info, "L/U.route(~p): BRIDGEXML: Domain: ~p Routes:~n~p~n", [self(), Domain, Routes]),
+generate_xml(<<"bridge">>, Routes, _Prop, AmqpHost) ->
+    format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
-					     Route = ?MODULE:build_route(AmqpHost, RouteProp, Domain, get_value(<<"Invite-Format">>, RouteProp)),
+					     Route = ?MODULE:build_route(AmqpHost, RouteProp, get_value(<<"Invite-Format">>, RouteProp)),
 
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
@@ -227,23 +226,25 @@ generate_xml(<<"bridge">>, Routes, _Prop, Domain, AmqpHost) ->
 				     end, {1, ""}, lists:reverse(Routes)),
     format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
-generate_xml(<<"park">>, _Routes, _Prop, _Domain, _H) ->
+generate_xml(<<"park">>, _Routes, _Prop, _H) ->
     ?ROUTE_PARK_RESPONSE;
-generate_xml(<<"error">>, _Routes, Prop, _Domain, _H) ->
+generate_xml(<<"error">>, _Routes, Prop, _H) ->
     ErrCode = get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
     format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
 
--spec(build_route/4 :: (AmqpHost :: string(), RouteProp :: proplist(), Domain :: binary(), DIDFormat :: binary()) -> binary()).
-build_route(_AmqpHost, RouteProp, _Domain, <<"route">>) ->
+-spec(build_route/3 :: (AmqpHost :: string(), RouteProp :: proplist(), DIDFormat :: binary()) -> binary()).
+build_route(_AmqpHost, RouteProp, <<"route">>) ->
     get_value(<<"Route">>, RouteProp);
-build_route(AmqpHost, RouteProp, Domain, <<"username">>) ->
+build_route(AmqpHost, RouteProp, <<"username">>) ->
     User = get_value(<<"To-User">>, RouteProp),
-    lookup_reg(AmqpHost, Domain, User);
-build_route(AmqpHost, RouteProp, Domain, DIDFormat) ->
+    Realm = get_value(<<"To-Realm">>, RouteProp),
+    lookup_reg(AmqpHost, Realm, User);
+build_route(AmqpHost, RouteProp, DIDFormat) ->
     User = get_value(<<"To-User">>, RouteProp),
-    Contact = lookup_reg(AmqpHost, Domain, User),
+    Realm = get_value(<<"To-Realm">>, RouteProp),
+    Contact = lookup_reg(AmqpHost, Realm, User),
     DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
     binary:replace(Contact, User, DID).
 
@@ -331,7 +332,7 @@ get_channel_vars({_K, _V}, Vars) ->
     %format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
-handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid, Data) ->
+handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid) ->
     T1 = erlang:now(),
     case recv_response(ID) of
 	shutdown ->
@@ -345,8 +346,7 @@ handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, Fet
 	    failed;
 	Prop ->
 	    true = whistle_api:route_resp_v(Prop),
-	    Domain = get_value(<<"domain">>, Data, ?DEFAULT_DOMAIN),
-	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Domain, Host),
+	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Host),
 	    format_log(info, "L/U.route(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},
 
