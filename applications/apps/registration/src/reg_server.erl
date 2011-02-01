@@ -114,6 +114,7 @@ handle_info(timeout, State) ->
     Ref = erlang:start_timer(60000, ?SERVER, ok), % clean out every 60 seconds
     {noreply, State#state{cleanup_ref=Ref}};
 handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref}=S) ->
+    format_log(info, "REG_SRV(~p): Time to clean old registrations~n", [self()]),
     spawn(fun() -> cleanup_registrations() end),
     {noreply, S};
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
@@ -244,7 +245,7 @@ cleanup_registrations() ->
     Now = current_tstamp(),
     %% get all documents with one or more tstamps < Now
     case couch_mgr:get_results("registrations", {"registrations", "expirations"}, [{<<"group">>, <<"true">>}]) of
-	[] -> ok;
+	[] -> format_log(info, "No registrations to clear~n", []), ok;
 	[_|_]=Docs ->
 	    lists:foreach(fun({[{<<"key">>, DocId}, {<<"value">>, Tstamp}]}) when Tstamp < Now ->
 				  spawn(fun() -> remove_old_registrations(DocId, Now) end);
@@ -253,6 +254,7 @@ cleanup_registrations() ->
     end.
 
 remove_old_registrations(DocId, Now) ->
+    format_log(info, "REG_SRV: Removing from ~s regs < ~p~n", [DocId, Now]),
     [_] = Doc = couch_mgr:open_doc(DocId),
     Registrations = props:get_value(<<"registrations">>, Doc, []),
     CurrentRegs = lists:filter(fun({Reg}) ->
