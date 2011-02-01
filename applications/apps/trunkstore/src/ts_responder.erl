@@ -16,8 +16,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_couch_host/1, set_amqp_host/1, add_post_handler/2, rm_post_handler/1]).
--export([start_post_handler/3, flush_handlers/0]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -33,9 +32,7 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {amqp_host = "" :: string()
-		,couch_host = "" :: string()
 		,callmgr_q = <<>> :: binary()
-		,post_handlers = [] :: list(tuple(binary(), pid())) | [] %% [ {CallID, PostHandlerPid} ]
 	       }).
 
 %%%===================================================================
@@ -51,21 +48,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-set_couch_host(CHost) ->
-    gen_server:call(?SERVER, {set_couch_host, CHost}, infinity).
-
-set_amqp_host(AHost) ->
-    gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
-
-add_post_handler(CallID, Pid) ->
-    gen_server:cast(?SERVER, {add_post_handler, CallID, Pid}).
-
-rm_post_handler(CallID) ->
-    gen_server:cast(?SERVER, {rm_post_handler, CallID}).
-
-flush_handlers() ->
-    gen_server:cast(?SERVER, flush_handlers).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -84,7 +66,9 @@ flush_handlers() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, #state{}}.
+    AHost = whapps_controller:get_amqp_host(),
+    {ok, CQ} = start_amqp(AHost),
+    {ok, #state{amqp_host=AHost, callmgr_q=CQ}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,20 +84,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_couch_host, CHost}, _From, #state{couch_host=OldCHost}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Updating couch host from ~p to ~p~n", [self(), OldCHost, CHost]),
-    ts_carrier:force_carrier_refresh(),
-    ts_credit:force_rate_refresh(),
-    {reply, ok, State#state{couch_host=CHost}};
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=""}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Setting amqp host to ~p~n", [self(), AHost]),
-    {ok, CQ} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ}};
-handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=OldAHost, callmgr_q=OCQ}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Updating amqp host from ~p to ~p~n", [self(), OldAHost, AHost]),
-    amqp_util:queue_delete(OldAHost, OCQ),
-    {ok, CQ} = start_amqp(AHost),
-    {reply, ok, State#state{amqp_host=AHost, callmgr_q=CQ}};
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -127,29 +97,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(flush_handlers, #state{post_handlers=Posts}=State) ->
-    Posts1 = lists:foldr(fun({_, Pid}=Handler, Acc) ->
-				 case erlang:is_process_alive(Pid) of
-				     true -> [Handler | Acc];
-				     false ->
-					 unlink(Pid),
-					 Acc
-				 end
-			 end, [], Posts),
-    {noreply, State#state{post_handlers=Posts1}};
-handle_cast({add_post_handler, CallID, Pid}, #state{post_handlers=Posts}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Add handler(~p) for ~p~n", [self(), Pid, CallID]),
-    link(Pid),
-    {noreply, State#state{post_handlers=[{CallID, Pid} | Posts]}};
-handle_cast({rm_post_handler, CallID}, #state{post_handlers=Posts}=State) ->
-    format_log(info, "TS_RESPONDER(~p): Remove handler for ~p~n", [self(), CallID]),
-    case lists:keyfind(CallID, 1, Posts) of
-	false ->
-	    {noreply, State};
-	{CallID, Pid} ->
-	    unlink(Pid),
-	    {noreply, State#state{post_handlers=lists:keydelete(CallID, 1, Posts)}}
-    end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -163,15 +110,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'EXIT', Pid, Reason}, #state{post_handlers=Posts}=State) ->
-    case lists:keyfind(Pid, 2, Posts) of
-	false ->
-	    format_log(error, "TS_RESPONDER(~p): Received EXIT(~p) from unknown ~p...~n", [self(), Reason, Pid]),
-	    {noreply, State};
-	{CallID, _} ->
-	    format_log(error, "TS_RESPONDER(~p): Received EXIT(~p) from call handler(~p) for call ~p...~n", [self(), Reason, Pid, CallID]),
-	    {noreply, State#state{post_handlers=lists:keydelete(CallID, 1, Posts)}}
-    end;
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
@@ -241,43 +179,19 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 	    end
     end,
     State;
-process_req({<<"dialplan">>,<<"route_req">>}, Prop, #state{callmgr_q=CQ}=State) ->
-    case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop, CQ) of
+process_req({<<"dialplan">>,<<"route_req">>}, Prop, State) ->
+    case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop) of
 	false ->
 	    format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
-	{ok, JSON, Flags} ->
+	{ok, JSON} ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
-	    send_resp(JSON, RespQ, State),
-	    ?MODULE:start_post_handler(Prop, Flags, State);
+	    send_resp(JSON, RespQ, State);
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
     end,
     State;
-%% What to do with post route processing?
-process_req({<<"dialplan">>,<<"route_win">>}, Prop, #state{post_handlers=Posts}) ->
-    spawn(fun() ->
-		  %% extract ctl queue for call, and send to the post_handler process associated with the call-id
-		  case lists:keyfind(get_value(<<"Call-ID">>, Prop), 1, Posts) of
-		      false ->
-			  format_log(error, "TS_RESPONDER(~p): Unknown post handler for winning api msg~n~p~n", [self(), Prop]);
-		      {CallID, Pid} ->
-			  case erlang:is_process_alive(Pid) of
-			      true ->
-				  Pid ! {ctl_queue, CallID, get_value(<<"Control-Queue">>, Prop)};
-			      false ->
-				  ?MODULE:rm_post_handler(CallID)
-			  end
-		  end
-	  end);
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
-
-%% Prop - RouteReq API Proplist
--spec(start_post_handler/3 :: (Prop :: proplist(), Flags :: tuple(), State :: #state{}) -> no_return()).
-start_post_handler(Prop, Flags, #state{amqp_host=AmqpHost}) ->
-    CallID = get_value(<<"Call-ID">>, Prop),
-    Pid = ts_call_handler:start(CallID, Flags, AmqpHost),
-    ?MODULE:add_post_handler(CallID, Pid).
 
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
@@ -287,6 +201,7 @@ send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
 start_amqp(AHost) ->
     amqp_util:callmgr_exchange(AHost),
     amqp_util:targeted_exchange(AHost),
+    amqp_util:callevt_exchange(AHost),
 
     CallmgrQueue = amqp_util:new_callmgr_queue(AHost, <<>>),
 

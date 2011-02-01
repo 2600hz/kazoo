@@ -422,7 +422,7 @@ load_account(AcctId, DB) ->
 
 load_views(DB) ->
     lists:foreach(fun(Name) ->
-			  ts_util:load_doc_from_file(DB, Name)
+			  couch_mgr:load_doc_from_file(DB, trunkstore, Name)
 		  end, ["accounts.json", "credit.json", "trunks.json"]).
 				     
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
