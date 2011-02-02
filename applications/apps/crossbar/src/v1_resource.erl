@@ -70,8 +70,9 @@ malformed_request(RD, Context) ->
             {true, RD1, Context1}
     end.
 
-is_authorized(RD, Context) ->
-    S0 = #session{}, %%crossbar_session:start_session(RD),
+is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
+    S0 = crossbar_session:start_session(AuthToken),
+    io:format("~p~n", [S0]),
     Event = <<"v1_resource.start_session">>,
     S = crossbar_bindings:fold(Event, S0),
     {true, RD, Context#cb_context{session=S}}.
@@ -158,7 +159,7 @@ finish_request(RD, #cb_context{session=S, start=T1}=Context) ->
             io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
             {true, RD, Context};
         _Else ->
-            io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+            io:format("Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
             {true, crossbar_session:finish_session(S, RD), Context#cb_context{session=undefined}}
     end.
 
@@ -459,7 +460,7 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
 %% based on the request....
 %% @end
 %%--------------------------------------------------------------------
--spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json).
+-spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml).
 get_resp_type(RD) ->
     case wrq:get_resp_header("Content-Type",RD) of
         "application/xml" -> xml;
