@@ -165,41 +165,38 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 get_current_carriers() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_CARRIERS_DOC) of
-	not_found ->
+	{error, not_found} ->
 	    format_log(info, "TS_CARRIER(~p): No document(~p) found~n", [self(), ?TS_CARRIERS_DOC]),
 	    {error, "No matching carriers"};
-	{error, unhandled_call} ->
-	    format_log(info, "TS_CARRIER(~p): No database host found~n", [self()]),
-	    {error, "Unknown Database Host"};
-	[] ->
+	{error, db_not_reachable} ->
+	    format_log(info, "TS_CARRIER(~p): No DB(~p) found~n", [self(), ?TS_DB]),
+	    {error, "DB not accessible"};
+	{ok, []} ->
 	    format_log(info, "TS_CARRIER(~p): No Carriers defined~n", [self()]),
 	    {error, "No matching carriers"};
-	Carriers when is_list(Carriers) ->
+	{ok, {struct, Carriers}} when is_list(Carriers) ->
 	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Carriers)]),
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
-	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))};
-	Other ->
-	    format_log(error, "TS_CARRIER(~p): Unexpected error ~p~n", [self(), Other]),
-	    {error, "Unexpected error"}
+	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))}
     end.
 
 active_carriers({<<"_id">>, _}) ->
     true;
 active_carriers({<<"_rev">>, _}) ->
     true;
-active_carriers({_CarrierName, {CarrierOptions}}) ->
+active_carriers({_CarrierName, {struct, CarrierOptions}}) ->
     get_value(<<"enabled">>, CarrierOptions) =:= <<"1">>.
 
 process_carriers({<<"_id">>, _}=ID) -> ID;
 process_carriers({<<"_rev">>, _}=Rev) -> Rev;
-process_carriers({CarrierName, {CarrierOptions}}) ->
+process_carriers({CarrierName, {struct, CarrierOptions}}) ->
     RoutesRegexStrs = get_value(<<"routes">>, CarrierOptions, []),
     RouteRegexs = lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs),
     Gateways = get_value(<<"gateways">>, CarrierOptions, []),
 
     COs1 = proplists:delete(<<"gateways">>, CarrierOptions),
     {CarrierName, [{<<"routes">>, RouteRegexs}
-		   ,{<<"options">>, lists:map(fun({Gateway}) -> Gateway end, Gateways)}
+		   ,{<<"options">>, lists:map(fun({struct, Gateway}) -> Gateway end, Gateways)}
 		   | proplists:delete(<<"routes">>, COs1)]}.
 
 -spec(get_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
@@ -207,12 +204,11 @@ get_routes(Flags, Carriers) ->
     User = Flags#route_flags.to_user,
     format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
 
-    Carriers0 = proplists:delete(<<"_rev">>, proplists:delete(<<"_id">>, Carriers)),
     Carriers1 = lists:filter(fun({_CarrierName, CarrierData}) ->
 				     lists:any(fun(Regex) ->
 						       re:run(User, Regex) =/= nomatch
 					       end, get_value(<<"routes">>, CarrierData))
-			     end, Carriers0),
+			     end, proplists:delete(<<"_rev">>, proplists:delete(<<"_id">>, Carriers))),
     case Carriers1 of
 	[] ->
 	    {error, "No carriers match outbound number"};

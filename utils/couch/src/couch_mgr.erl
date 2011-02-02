@@ -14,7 +14,7 @@
 -export([start_link/0, set_host/1, get_host/0]).
 
 %% System manipulation
--export([get_db/1]).
+-export([get_db/1, db_info/1]).
 
 %% Document manipulation
 -export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
@@ -30,7 +30,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("../../src/whistle_api.hrl"). % get the proplists -type
+-include("../../src/whistle_types.hrl").
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
@@ -48,7 +48,7 @@
 %%%===================================================================
 %%% Couch Functions
 %%%===================================================================
--spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, proplist()) | tuple(error, term())).
+-spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
@@ -59,6 +59,17 @@ load_doc_from_file(DB, App, File) ->
 	_Type:Reason -> {error, Reason}
     end.
 
+-spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+db_info(DbName) ->
+    case get_db(DbName) of
+        {error, _Error} -> {error, db_not_reachable};
+	Db -> 
+            case couchbeam:db_info(Db) of
+                {error, _Error}=E -> E;
+                {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}                
+            end
+    end.
+    
 %%%===================================================================
 %%% Document Functions
 %%%===================================================================
@@ -68,25 +79,21 @@ load_doc_from_file(DB, App, File) ->
 %% open a document given a docid returns not_found or the Document
 %% @end
 %%--------------------------------------------------------------------
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> proplist() | tuple(error, not_found | db_not_reachable)).
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | tuple(error, not_found | db_not_reachable)).
-open_doc(DbName, DocId, Options) when not is_binary(DocId) ->   
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
+open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
 open_doc(DbName, DocId, Options) ->    
     case get_db(DbName) of
-        {error, db_not_reachable}=E ->
-                E;
+        {error, _Error} -> {error, db_not_reachable};
 	Db ->
-	    case couchbeam:open_doc(Db, DocId, Options) of
-		{ok, {Doc}} ->
-		    Doc;
-		Other ->
-		    format_log(error, "WHISTLE_COUCH(~p): Failed to find ~p: ~p~n", [self(), DocId, Other]),
-		    {error, not_found}
-	    end
+            case couchbeam:open_doc(Db, DocId, Options) of
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -95,27 +102,28 @@ open_doc(DbName, DocId, Options) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | tuple(struct, proplist())) -> tuple(ok, proplist()) | tuple(error, conflict)).
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(error, conflict)).
 save_doc(DbName, [{struct, [_|_]}=Doc]) ->
     save_doc(DbName, Doc);
 save_doc(DbName, [{struct, _}|_]=Doc) ->
-    io:format("Test 1 ~p~n", [Doc]),
     case get_db(DbName) of
-	{error, db_not_reachable}=E -> E;
+	{error, _Error} -> {error, db_not_reachable};
 	Db ->
-            Str = mochijson2:encode(Doc),
-            couchbeam:save_docs(Db, couchbeam_util:json_decode(Str))
+            case couchbeam:save_docs(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
     end;
 save_doc(DbName, Doc) when is_list(Doc) ->
     save_doc(DbName, {struct, Doc});
 save_doc(DbName, {struct, _}=Doc) ->
     case get_db(DbName) of
-	{error, db_not_reachable}=E -> E;
-	Db ->
+	{error, _Error} -> {error, db_not_reachable};
+	Db -> 
             case couchbeam:save_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
-		{error, conflict}=E -> E;
-		{ok, {Doc1}} -> {ok, Doc1}
-	    end
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -124,14 +132,15 @@ save_doc(DbName, {struct, _}=Doc) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok | error, term())).
+-spec(del_doc/2 :: (DbName :: list(), Doc :: json_term()) -> tuple(ok | error, term())).
 del_doc(DbName, Doc) ->
     case get_db(DbName) of
-	{error, db_not_reachable}=E ->
-	    E;
+        {error, _Error} -> {error, db_not_reachable};
 	Db ->
-            Str = mochijson2:encode(Doc),
-	    couchbeam:delete_doc(Db, couchbeam_util:json_decode(Str))
+	    case couchbeam:delete_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
     end.
 
 %%%===================================================================
@@ -178,23 +187,23 @@ rm_from_doc(Key, Doc) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
+-spec(get_all_results/2 :: (DbName :: string(), DesignDoc :: string() | tuple(string(), string())) -> tuple(ok, json_term()) | tuple(error, term())).
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
+-spec(get_results/3 :: (DbName :: string(), DesignDoc :: string() | tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_term()) | tuple(error, term())).
 get_results(DbName, DesignDoc, ViewOptions) ->
     case get_db(DbName) of
-	{error, db_not_reachable}=E ->
-	    E;
+	{error, _Error} -> {error, db_not_reachable};
 	Db ->
 	    case get_view(Db, DesignDoc, ViewOptions) of
-		{error, _Error}=E ->
-		    E;
+		{error, _Error}=E -> E;
 		View ->
 		    case couchbeam_view:fetch(View) of
 			{ok, {Prop}} ->
-			    get_value(<<"rows">>, Prop, []);
-			Error ->
-			    {Error, fetch_failed}
+			    Rows = get_value(<<"rows">>, Prop, []),
+                            {ok, mochijson2:decode(couchbeam_util:json_encode(Rows))};
+			{error, _Error}=E -> E
 		    end
 	    end
     end.
@@ -223,7 +232,7 @@ get_host() ->
     gen_server:call(?MODULE, get_host).
 
 get_db(DbName) ->
-    Conn = gen_server:call(?MODULE, {get_db}),
+    Conn = gen_server:call(?MODULE, {get_conn}),
     open_db(whistle_util:to_list(DbName), Conn).
 
 add_change_handler(DBName, DocID) ->
@@ -284,7 +293,7 @@ handle_call({set_host, Host}, _From, State) ->
 	{_Host, _Conn}=HC ->
 	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
     end;
-handle_call({get_db}, _, #state{connection={_Host, Conn}}=State) ->
+handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
 handle_call({add_change_handler, DBName, <<>>}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, <<>>, Pid, State) of
@@ -526,13 +535,16 @@ get_new_connection(Host) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(open_db/2 :: (DbName :: string(), Conn :: #server{}) -> tuple(error, db_not_reachable) | #db{}).
-open_db(DbName, Conn) ->
-    {ok, Db} = couchbeam:open_or_create_db(Conn, DbName),
-    case couchbeam:db_info(Db) of
-	{ok, _JSON} -> Db;
-	{error, _Error} -> {error, db_not_reachable}
+open_db(DbName, Conn) -> 
+    case couchbeam:open_or_create_db(Conn, DbName) of
+        {error, _Error}=E -> E;
+        {ok, Db} ->
+            case couchbeam:db_info(Db) of
+                {error, _Error}=E -> E;
+                {ok, _JSON} -> Db
+            end
     end.
-
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
