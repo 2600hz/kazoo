@@ -1,4 +1,4 @@
--type proplist() :: list(tuple(binary(), term())) | [].
+-type proplist() :: list(tuple(binary() | atom(), term())) | [].
 
 %% -type iolist() :: [char() | binary() | iolist()].
 %% -type iodata() :: iolist() | binary().

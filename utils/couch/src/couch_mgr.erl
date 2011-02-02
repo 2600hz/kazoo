@@ -30,7 +30,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("../../src/whistle_api.hrl"). % get the proplists -type
+-include("../../src/whistle_types.hrl").
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
@@ -48,7 +48,7 @@
 %%%===================================================================
 %%% Couch Functions
 %%%===================================================================
--spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, proplist()) | tuple(error, term())).
+-spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
@@ -59,7 +59,7 @@ load_doc_from_file(DB, App, File) ->
 	_Type:Reason -> {error, Reason}
     end.
 
--spec(db_info/1 :: (DB :: binary()) -> tuple(ok, proplist()) | tuple(error, term())).
+-spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 db_info(DbName) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
@@ -79,12 +79,12 @@ db_info(DbName) ->
 %% open a document given a docid returns not_found or the Document
 %% @end
 %%--------------------------------------------------------------------
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> proplist() | tuple(error, not_found | db_not_reachable)).
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | tuple(error, not_found | db_not_reachable)).
-open_doc(DbName, DocId, Options) when not is_binary(DocId) ->   
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
+open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
 open_doc(DbName, DocId, Options) ->    
     case get_db(DbName) of
@@ -102,7 +102,7 @@ open_doc(DbName, DocId, Options) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | tuple(struct, proplist())) -> tuple(ok, proplist()) | tuple(error, conflict)).
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(error, conflict)).
 save_doc(DbName, [{struct, [_|_]}=Doc]) ->
     save_doc(DbName, Doc);
 save_doc(DbName, [{struct, _}|_]=Doc) ->
@@ -132,7 +132,7 @@ save_doc(DbName, {struct, _}=Doc) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok | error, term())).
+-spec(del_doc/2 :: (DbName :: list(), Doc :: json_term()) -> tuple(ok | error, term())).
 del_doc(DbName, Doc) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
@@ -187,9 +187,11 @@ rm_from_doc(Key, Doc) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
+-spec(get_all_results/2 :: (DbName :: string(), DesignDoc :: string() | tuple(string(), string())) -> tuple(ok, json_term()) | tuple(error, term())).
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
+-spec(get_results/3 :: (DbName :: string(), DesignDoc :: string() | tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_term()) | tuple(error, term())).
 get_results(DbName, DesignDoc, ViewOptions) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
