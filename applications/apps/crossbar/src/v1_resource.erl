@@ -54,7 +54,7 @@ malformed_request(RD, Context) ->
 		   ReqBody ->
 		       mochijson2:decode(ReqBody)
 	       end,
-        Data = whapps_json:get_value(Json, ["data"]),
+        Data = whapps_json:get_value(["data"], Json),
         Auth = get_auth_token(RD, Json),
 	{false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}
     catch
@@ -252,13 +252,13 @@ get_auth_token(RD, JSON) ->
         undefined ->
             case wrq:method(RD) of
                 'GET' ->
-                    whistle_util:to_binary(proplists:get_value("auth-token", wrq:req_qs(RD), ""));
+                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), ""));
                 'POST' ->
-                    whistle_util:to_binary(proplists:get_value("auth-token", JSON, ""));
+                    whistle_util:to_binary(props:get_value("auth-token", JSON, ""));
                 'PUT' ->
-                    whistle_util:to_binary(proplists:get_value("auth-token", JSON, ""));
+                    whistle_util:to_binary(props:get_value("auth-token", JSON, ""));
                 'DELETE' ->
-                    whistle_util:to_binary(proplists:get_value("auth-token", wrq:req_qs(RD), ""))
+                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), ""))
             end;
         AuthToken ->
             whistle_util:to_binary(AuthToken)
