@@ -266,12 +266,15 @@ lookup_reg(AmqpHost, Domain, User) ->
 		  ReqProp = [{<<"Username">>, User}, {<<"Realm">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
 			     | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
 		  {ok, JSON} = whistle_api:reg_query(ReqProp),
+		  format_log(info, "REG_QUERY: ~s~n", [JSON]),
 		  amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
 		  C = receive_reg_query_resp(User),
 		  Self ! {contact, C}
 	  end),
     receive {contact, C} -> C
-    after 1500 -> <<User/binary, "@", Domain/binary>>
+    after 1500 ->
+	    format_log(error, "REG_LOOKUP timed out~n", []),
+	    <<User/binary, "@", Domain/binary>>
     end.
 
 receive_reg_query_resp(User) ->
