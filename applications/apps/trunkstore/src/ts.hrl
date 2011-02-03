@@ -8,6 +8,7 @@
 
 -define(TS_VIEW_IPAUTH, {"LookUpIPAuth", "LookUpIPAuth"}).
 -define(TS_VIEW_USERAUTH, {"LookUpUserAuth","LookUpUserAuth"}).
+-define(TS_VIEW_USERAUTHREALM, {"LookUpUserAuth","LookUpUserAuthRealm"}).
 -define(TS_VIEW_DIDLOOKUP, {"LookUpDID","LookUpDID"}).
 -define(TS_VIEW_CARRIERIP, {"LookUpCarrierIP","LookUpCarrierIP"}).
 
