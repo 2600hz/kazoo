@@ -64,42 +64,39 @@ outbound_handler(ApiProp) ->
 lookup_user(Name) ->
     Options = [{"keys", [Name]}],
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
-	false ->
+	{error, _} ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_USERAUTH, Name]),
 	    {error, "No view found."};
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_ROUTE(~p): No Name matching ~p~n", [self(), Name]),
 	    {error, "No user found"};
-	[{ViewProp} | _Rest] ->
+	{ok, [{struct, ViewProp} | _Rest]} ->
 	    format_log(info, "TS_ROUTE(~p): Using user ~p~n", [self(), Name]),
 	    DocID = get_value(<<"id">>, ViewProp),
 	    case couch_mgr:open_doc(?TS_DB, DocID) of
 		{error, E}=Error ->
 		    format_log(error, "TS_ROUTE(~p): Failed to retrieve doc ~p: ~p~n", [self(), DocID, E]),
 		    Error;
-		Doc ->
+		{ok, {struct, Doc}} ->
 		    {ok, Doc}
-	    end;
-	_Else ->
-	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
-	    {error, "Unexpeced error in lookup_user/1"}
+	    end
     end.
 
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
 lookup_did(Did) ->
     Options = [{"keys", [Did]}],
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
-	false ->
+	{error, _} ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
 	    {error, "No DIDLOOKUP view"};
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
 	    {error, "No matching DID"};
-	[{ViewProp} | _Rest] ->
+	{ok, [{struct, ViewProp} | _Rest]} ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID doc found for ~p~n", [self(), OurDid]),
-	    {Value} = get_value(<<"value">>, ViewProp),
+	    {struct, Value} = get_value(<<"value">>, ViewProp),
 	    {ok, [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value]};
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
@@ -261,7 +258,7 @@ create_flags(Did, ApiProp) ->
 	     {error, _E1} ->
 		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
 		     {error, _E2} -> F1;
-		     Doc1 ->
+		     {ok, {struct, Doc1}} ->
 			 F2 = flags_from_srv(AuthUser, Doc1, F1),
 			 flags_from_account(Doc1, F2)
 		 end;
@@ -299,13 +296,13 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 %% - Auth Realm
 -spec(flags_from_did/2 :: (DidProp :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_did(DidProp, Flags) ->
-    {DidOptions} = get_value(<<"DID_Opts">>, DidProp, {[]}),
-    {AuthOpts} = get_value(<<"auth">>, DidProp, {[]}),
+    {struct, DidOptions} = get_value(<<"DID_Opts">>, DidProp, {struct, []}),
+    {struct, AuthOpts} = get_value(<<"auth">>, DidProp, {struct, []}),
 
-    {Opts} = get_value(<<"options">>, DidProp, {[]}),
+    {struct, Opts} = get_value(<<"options">>, DidProp, {struct, []}),
 
-    F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {[]})),
-    F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {[]})),
+    F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {struct, []})),
+    F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {struct, []})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
 		   ,auth_realm = get_value(<<"auth_realm">>, AuthOpts, <<>>)
@@ -327,8 +324,8 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			  },
-    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {[]})),
-    add_failover(F1, get_value(<<"failover">>, Srv, {[]})).
+    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
+    add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})).
 
 %% Flags from the Account
 %% - Credit available
@@ -338,32 +335,32 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 %% - Failover <- only if it hasn't been set at the server or DID level
 -spec(flags_from_account(Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_account(Doc, Flags) ->
-    {Acct} = get_value(<<"account">>, Doc, {[]}),
+    {struct, Acct} = get_value(<<"account">>, Doc, {struct, []}),
 
     F1 = add_caller_id(Flags#route_flags{account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)}
-		       ,get_value(<<"caller_id">>, Acct, {[]})),
-    add_failover(F1, get_value(<<"failover">>, Acct, {[]})).
+		       ,get_value(<<"caller_id">>, Acct, {struct, []})),
+    add_failover(F1, get_value(<<"failover">>, Acct, {struct, []})).
 
 -spec(add_failover/2 :: (F0 :: tuple(), FOver :: tuple(proplist())) -> tuple()).
-add_failover(#route_flags{failover={}}=F0, {[]}) -> F0;
-add_failover(#route_flags{failover={}}=F0, {[{_K, _V}=FOver]}) ->
+add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
+add_failover(#route_flags{failover={}}=F0, {struct, [{_K, _V}=FOver]}) ->
     F0#route_flags{failover=FOver};
 add_failover(F, _) -> F.
 
 -spec(add_caller_id/2 :: (F0 :: tuple(), CID :: tuple(proplist())) -> tuple()).
-add_caller_id(#route_flags{caller_id={}}=F0, {[]}) -> F0;
-add_caller_id(#route_flags{caller_id={}}=F0, {CID}) ->
+add_caller_id(#route_flags{caller_id={}}=F0, {struct, []}) -> F0;
+add_caller_id(#route_flags{caller_id={}}=F0, {struct, CID}) ->
     F0#route_flags{caller_id = {get_value(<<"cid_name">>, CID, <<>>)
 				,get_value(<<"cid_number">>, CID, <<>>)}};
 add_caller_id(F, _) -> F.
 
 -spec(lookup_server/2 :: (AuthUser :: binary(), Doc :: proplist()) -> proplist()).
 lookup_server(AuthUser, Doc) ->
-    case lists:filter(fun({S}) ->
-			      {Auth} = get_value(<<"auth">>, S, {[]}),
+    case lists:filter(fun({struct, S}) ->
+			      {struct, Auth} = get_value(<<"auth">>, S, {struct, []}),
 			      get_value(<<"auth_user">>, Auth, <<>>) =:= AuthUser
 		      end, get_value(<<"servers">>, Doc, [])) of
-	[{Srv}] -> Srv;
+	[{struct, Srv}] -> Srv;
 	_ -> []
     end.
 

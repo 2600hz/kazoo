@@ -10,8 +10,7 @@
 
 -export([load/2, load_merge/3, load_view/3, load_view/4]).
 -export([save/1, delete/1]).
--export([couch_to_json/1]).
--export([public_fields/1, private_fields/1, is_private_field/1]).
+-export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1]).
 
 -include("crossbar.hrl").
@@ -27,22 +26,18 @@
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load/2 :: (DocId :: term(), Context :: #cb_context{}) -> #cb_context{}).
-load(DocId, Context) when not is_binary(DocId)->
-    load(whistle_util:to_binary(DocId), Context);
+-spec(load/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load(DocId, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:open_doc(DB, DocId) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
         {error, not_found} ->
             crossbar_util:response_bad_identifier(DocId, Context);
-	Doc when is_list(Doc) ->
-            Json = couch_to_json({Doc}),
-            %%io:format("load load load load load:~n~p~n", [Json]),
+	{ok, Doc} ->
             Context#cb_context{
-                 doc=Json
+                 doc=Doc
                 ,resp_status=success
-                ,resp_data=public_fields(Json)
+                ,resp_data=public_fields(Doc)
                 ,resp_etag=rev_to_etag(Doc)
             };
         _Else ->
@@ -60,20 +55,16 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_merge/3 :: (DocId :: term(), Data :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
-load_merge(DocId, Data, Context) when not is_binary(DocId)->
-    load_merge(whistle_util:to_binary(DocId), Data, Context);
-load_merge(DocId, Data, Context) ->
+-spec(load_merge/3 :: (DocId :: binary(), Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
+load_merge(DocId, {struct, Data}, Context) ->
     case load(DocId, Context) of
-        #cb_context{resp_status=success, doc=Doc} = Context1 ->
-            io:format("TEST TEST TEST~n~p~n", [{private_fields(Doc) ++ Data}]),
-            NewJson = couch_to_json({private_fields(Doc) ++ Data}),
-            io:format("load_merge load_merge load_merge load_merge load_merge:~n~p~n", [NewJson]),
+        #cb_context{resp_status=success, doc=Doc}=Context1 ->
+            Doc1 = {struct, private_fields(Doc) ++ Data},
             Context1#cb_context{
-                 doc=NewJson
+                 doc=Doc1
                 ,resp_status=success
-                ,resp_data=public_fields(NewJson)
-                ,resp_etag=rev_to_etag(Doc)
+                ,resp_data=public_fields(Doc1)
+                ,resp_etag=rev_to_etag(Doc1)
             };
         Else ->
             Else
@@ -91,17 +82,13 @@ load_merge(DocId, Data, Context) ->
 -spec(load_view/3 :: (View :: tuple(string(), string()), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
 load_view(View, Options, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:get_results(DB, View, Options) of
-	false ->
-            crossbar_util:response_db_missing(Context);
-	{error,invalid_view_name} ->
+	{error, invalid_view_name} ->
             crossbar_util:response_missing_view(Context);
-	Doc when is_list(Doc) ->
-            Json = couch_to_json(Doc),
-            %%io:format("load_view load_view load_view load_view load_view:~n~p~n", [Json]),
+	{ok, Doc} ->
             Context#cb_context{
-                 doc=Json
+                 doc=Doc
                 ,resp_status=success
-                ,resp_etag=automatic
+                ,resp_etag=rev_to_etag(Doc)
             };
         _Else ->
             format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
@@ -111,9 +98,7 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 load_view(View, Options, Context, Filter) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
-            Doc1 = lists:foldr(Filter, [], Doc),
-            Json = couch_to_json(Doc1),
-            Context1#cb_context{resp_data=Json};
+            Context1#cb_context{resp_data=lists:foldr(Filter, [], Doc)};
         Else ->
             Else
     end.
@@ -133,13 +118,11 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
 	{ok, Doc1} ->
-            Json = couch_to_json(Doc1),
-            io:format("~p~n", [public_fields(Json)]),
             Context#cb_context{
-                 doc=Json
+                 doc=Doc1
                 ,resp_status=success
-                ,resp_data=public_fields(Json)
-                %%,resp_etag=rev_to_etag(Doc1)
+                ,resp_data=public_fields(Doc1)
+                ,resp_etag=rev_to_etag(Doc1)
             };
         _Else ->
             format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
@@ -174,28 +157,17 @@ delete(#cb_context{db_name=DB, doc=Doc}=Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function will convert the couchbeam JSON encoding to mochijson2
-%% @end
-%%--------------------------------------------------------------------
--spec(couch_to_json/1 :: (Doc :: proplist()) -> proplist()).
-couch_to_json(Doc) ->
-    Str = couchbeam_util:json_encode(Doc),
-    mochijson2:decode(Str).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% This function will filter any private fields out of the provided
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(public_fields/1 :: (Json :: proplist()) -> proplist()).
+-spec(public_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
 public_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
 public_fields({struct, Json}) ->
     PubDoc =
         lists:filter(fun({K, _}) ->
-                            not is_private_field(K)
+                            not is_private_key(K)
                      end, Json),
     case proplists:get_value(<<"_id">>, Json) of
         undefined ->
@@ -214,12 +186,12 @@ public_fields(Json) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(private_fields/1 :: (Json :: proplist()) -> proplist()).
+-spec(private_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
 private_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
 private_fields({struct, Json}) ->
     lists:filter(fun({K, _}) ->
-                        is_private_field(K)
+                        is_private_key(K)
                  end, Json);
 private_fields(Json) ->
     format_log(error, "Unhandled Json format in private fields:~n~p~n", [Json]),
@@ -232,8 +204,8 @@ private_fields(Json) ->
 %% considered private; otherwise false
 %% @end
 %%--------------------------------------------------------------------
--spec(is_private_field/1 :: (Json :: proplist()) -> proplist()).
-is_private_field(Key) ->
+-spec(is_private_key/1 :: (Key :: binary()) -> boolean()).
+is_private_key(Key) ->
     binary:first(Key) == 95 orelse byte_size(Key) < 4 orelse binary:bin_to_list(Key, 0, 4) == "pvt_".
 
 %%--------------------------------------------------------------------
@@ -243,16 +215,17 @@ is_private_field(Key) ->
 %% document into a usable ETag for the response
 %% @end
 %%--------------------------------------------------------------------
--spec(rev_to_etag/1 :: (Json :: proplist()) -> undefined | string()).
+-spec(rev_to_etag/1 :: (Json :: json_object()|json_objects()) -> undefined | automatic | string()).
 rev_to_etag([{struct, _}|_])->
     automatic;
-rev_to_etag(Json) ->
-    case crossbar_util:get_json_values([<<"_rev">>], Json) of
-        undefined ->
-            undefined;
+rev_to_etag({struct, Props}) ->
+    case proplists:get_value([<<"_rev">>], Props) of
         Rev when is_list(Rev) ->
             ETag = whistle_util:to_list(Rev),
             string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
         _Else ->
             undefined
-    end.
+    end;
+rev_to_etag(_Json) ->
+    format_log(error, "Unhandled Json format in rev to etag:~n~p~n", [_Json]),
+    undefined.

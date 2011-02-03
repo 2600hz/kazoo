@@ -68,6 +68,7 @@ start_link() ->
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
     bind_to_crossbar(),
+    couch_mgr:load_doc_from_file(?ACCOUNTS_DB, crossbar, "accounts.json"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -164,7 +165,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
     spawn(fun() ->
                   case crossbar_doc:save(Context#cb_context{db_name=?ACCOUNTS_DB}) of
                       #cb_context{resp_status=success, doc=Doc}=Context1 ->
-
+                          couch_mgr:db_info(get_db_name(Doc)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                         Pid ! {binding_result, true, [RD, Else, Params]}
@@ -231,7 +232,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
     crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
@@ -247,7 +248,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -288,10 +289,10 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Verb :: atom(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec(validate/3 :: (Verb :: http_method(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate('GET', [], Context) ->
     crossbar_doc:load_view(?ACCOUNTS_LIST, [], Context, fun filter_view_results/2);
-validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
+validate('PUT', [], #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
@@ -300,7 +301,7 @@ validate('PUT', [], #cb_context{req_data={struct,Data}}=Context) ->
     end;
 validate('GET', [DocId], Context) ->
     crossbar_doc:load(DocId, Context);
-validate('POST', [DocId], #cb_context{req_data={struct,Data}}=Context) ->
+validate('POST', [DocId], #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
@@ -325,13 +326,13 @@ validate('GET', [DocId, <<"parent">>], Context) ->
         _Else ->
             Context
     end;
-validate('POST', [DocId, <<"parent">>], #cb_context{req_data={struct,Data}}=Context) ->
+validate('POST', [DocId, <<"parent">>], #cb_context{req_data=Data}=Context) ->
     case is_valid_parent(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             %% OMGBBQ! NO CHECKS FOR CYCLIC REFERENCES WATCH OUT!
-            ParentId = proplists:get_value(<<"parent">>, Data),
+            ParentId = proplists:get_value(<<"parent">>, element(2, Data)),
             update_tree(DocId, ParentId, Context)
     end;
 validate('DELETE', [DocId, <<"parent">>], Context) ->
@@ -382,8 +383,8 @@ filter_view_results({struct, Prop}, Acc) ->
 %% This function creates a new account document with the given data
 %% @end
 %%--------------------------------------------------------------------
--spec(create_doc/2 :: (Data :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
-create_doc(Data, Context) ->
+-spec(create_doc/2 :: (Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
+create_doc({struct, Data}, Context) ->
     Doc = create_private_fields() ++ Data,
     Context#cb_context{
          doc={struct, Doc}
@@ -397,9 +398,11 @@ create_doc(Data, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_parent/1 :: (Data :: proplist()) -> tuple(boolean(), list())).
-is_valid_parent(_Data) ->
-    {true, []}.
+-spec(is_valid_parent/1 :: (Doc :: json_object()) -> tuple(boolean(), list())).
+is_valid_parent({struct, [_]}) ->
+    {true, []};
+is_valid_parent(_Doc) ->
+    {false, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -407,8 +410,8 @@ is_valid_parent(_Data) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (Data :: proplist()) -> tuple(boolean(), list())).
-is_valid_doc(Data) ->
+-spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
+is_valid_doc({struct, Data}) ->
     Schema = [
 	   { [<<"base">>, <<"name">>]
 	    ,[ {not_empty, []}
@@ -457,7 +460,7 @@ update_tree(DocId, ParentId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(update_doc_tree/3 :: (ParentTree :: list(), Update :: json_object(), Acc :: list()) -> list()).
+-spec(update_doc_tree/3 :: (ParentTree :: list(), Update :: json_object(), Acc :: json_objects()) -> json_objects()).
 update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
     DocId = proplists:get_value(<<"id">>, Prop),
     ParentId = lists:last(ParentTree),
@@ -477,6 +480,7 @@ update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
     end;
 update_doc_tree(_ParentTree, _Object, Acc) ->
     Acc.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -497,14 +501,14 @@ create_private_fields() ->
 %% the account database name
 %% @end
 %%--------------------------------------------------------------------
--spec(get_db_name/1 :: (Doc :: proplist()) -> undefined | binary()).
-get_db_name(Doc) ->
+-spec(get_db_name/1 :: (Doc :: json_object()) -> undefined | binary()).
+get_db_name({struct, Doc}) ->
     case proplists:get_value(<<"_id">>, Doc) of
         undefined ->
             undefined;
        _Id ->
             Id = whistle_util:to_list(_Id),
-            Db = [string:sub_string(Id, 1, 2), $/, string:sub_string(Id, 3, 4), $/, string:sub_string(Id, 5)],
+            Db = [string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
             whistle_util:to_binary(Db)
     end.
 

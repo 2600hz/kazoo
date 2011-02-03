@@ -89,20 +89,19 @@ is_inbound(Domain) ->
     Options = [{"key", IP}],
     format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
-	false ->
-	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p(~p)~n"
-		       ,[self(), ?TS_VIEW_CARRIERIP, Domain, IP]),
-	    false;
 	{error, not_found} ->
 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
+	    false;
+	{error,  db_not_reachable} ->
+	    format_log(info, "TS_AUTH(~p): No DB accessible~n", [self()]),
 	    false;
 	{error, view_not_found} ->
 	    format_log(info, "TS_AUTH(~p): View ~p missing~n", [self(), ?TS_VIEW_CARRIERIP]),
 	    false;
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
 	    false;
-	[{ViewProp} | _Rest] ->
+	{ok, [{struct, ViewProp} | _Rest]} ->
 	    format_log(info, "TS_AUTH(~p): Carrier found for ~p(~p)~n~p~n", [self(), Domain, IP, ViewProp]),
 	    true;
 	_Else ->
@@ -112,6 +111,7 @@ is_inbound(Domain) ->
 
 -spec(lookup_user/2 :: (Name :: binary(), Domain :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name, _Domain) ->
+    format_log(info, "TS_AUTH(~p): Skipping checking ~s@~s, just ~s for now~n", [self(), Name, _Domain, Name]),
     lookup_user(Name).
 
     %% commented out until we actually care about the domain - currently hardcoded in ecallmgr/FS
@@ -142,13 +142,13 @@ lookup_user(Name, _Domain) ->
 lookup_user(Name) ->
     Options = [{"key", Name}],
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
-	false ->
+	{error, _} ->
 	    format_log(error, "TS_AUTH(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_USERAUTH, Name]),
 	    {error, "No view found."};
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_AUTH(~p): No Name matching ~p~n", [self(), Name]),
 	    [];
-	[{ViewProp} | _Rest] ->
+	{ok, [{struct, ViewProp} | _Rest]} ->
 	    format_log(info, "TS_AUTH(~p): Retrieved by username ~p~n", [self(), Name]),
 	    {ok, ViewProp};
 	_Else ->
@@ -163,7 +163,7 @@ response(ViewInfo, Prop) ->
 
 -spec(specific_response/1 :: (ViewInfo :: proplist() | integer()) -> proplist()).
 specific_response(ViewInfo) when is_list(ViewInfo) ->
-    {Info} = get_value(<<"value">>, ViewInfo),
+    {struct, Info} = get_value(<<"value">>, ViewInfo),
     Method = list_to_binary(string:to_lower(binary_to_list(get_value(<<"auth_method">>, Info)))),
     [{<<"Auth-Password">>, get_value(<<"auth_password">>, Info)}
      ,{<<"Auth-Method">>, Method}

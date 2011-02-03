@@ -140,16 +140,18 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, State) -> handle_info(start_apps, State);
 handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
-    As1 = case file:consult(Config) of
-	      {ok, Ts} ->
-		  couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
-		  start_mnesia(),
-		  lists:foldl(fun(App, Acc) ->
-				      add_app(App, Acc)
-			      end, As, props:get_value(start, Ts, []));
-	      _ -> As
-	  end,
-    {noreply, State#state{apps=As1}};
+    State1 = case file:consult(Config) of
+		 {ok, Ts} ->
+		     couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
+		  
+		     start_mnesia(),
+		     As1 = lists:foldl(fun(App, Acc) ->
+					       add_app(App, Acc)
+				       end, As, props:get_value(start, Ts, [])),
+		     State#state{apps=As1, amqp_host=props:get_value(default_amqp_host, Ts, net_adm:localhost())};
+		 _ -> State
+	     end,
+    {noreply, State1};
 handle_info(_Info, State) ->
     format_log(info, "WHAPPS(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -197,12 +199,9 @@ add_app(App, As) ->
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
     format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
-    format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
     format_log(info, "APPS(~p): Stopping app_sup: ~p~n", [self(), whistle_apps_sup:stop_app(App)]),
-    case lists:member(App, As) of
-	true -> lists:delete(App, As);
-	false -> As
-    end.
+    format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
+    lists:delete(App, As).
 
 start_mnesia() ->
-    whistle_apps_mnesia:init().
+    ok.

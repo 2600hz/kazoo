@@ -26,6 +26,7 @@
 -define(MAX_AGE, 1800). % 30 minutes
 -define(COOKIE_NAME, "crossbar-session").
 -define(SESSION_DB, "crossbar_sessions").
+-define(SESSION_EXPIRED, {"session", "expired_time"}).
 
 -include_lib("webmachine/include/webmachine.hrl").
 -include("crossbar.hrl").
@@ -48,9 +49,9 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% Begin or resume a session, returning the session record
--spec(start_session/1 :: (RD :: #wm_reqdata{}) -> #session{}).
-start_session(#wm_reqdata{}=RD) ->
-    gen_server:call(?MODULE, {start_session, RD}, infinity).
+-spec(start_session/1 :: (AuthToken :: undefined | binary()) -> #session{}).
+start_session(AuthToken) ->
+    gen_server:call(?MODULE, {start_session, AuthToken}, infinity).
 
 %% return the modified request datastructure with the updated session
 -spec(finish_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
@@ -116,6 +117,7 @@ delete(#session{}=S, K) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    couch_mgr:load_doc_from_file(?SESSION_DB, crossbar, "sessions.json"),
     timer:send_interval(60000, ?MODULE, clean_expired),
     {ok, #state{}}.
 
@@ -133,8 +135,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({start_session, #wm_reqdata{}=RD}, _, #state{}=State) ->
-    {reply, get_session(RD), State};
+handle_call({start_session, AuthToken}, _, #state{}=State) ->
+    {reply, get_session(AuthToken), State};
 
 %% return the modified request datastructure with the updated session
 handle_call({finish_session, #session{}=S, #wm_reqdata{}=RD}, _, #state{}=State) ->
@@ -210,28 +212,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-get_session_id(RD) ->
-    case wrq:get_cookie_value(?COOKIE_NAME, RD) of
-	undefined -> props:get_value("auth_token", crossbar_util:get_request_params(RD));
-	ID -> ID
-    end.
-
+    
 %% get_session_doc(request()) -> not_found | json_object()
-get_session_doc(RD) ->
-    case get_session_id(RD) of
-        undefined -> not_found;
+get_session_doc(AuthToken) ->
+    case AuthToken of
+        undefined -> {error, not_found};
         SessDocId -> couch_mgr:open_doc(?SESSION_DB, SessDocId)
     end.
 
 %% get_session_rec(request()) -> session_rec()
-get_session(RD) ->
-    case get_session_doc(RD) of
-        {error, _} -> new();
-	not_found -> new();
-        Doc when is_list(Doc) ->
-	    S = from_couch(Doc),
+get_session(<<"">>) ->
+    undefined;
+get_session(AuthToken) ->
+    case get_session_doc(AuthToken) of
+        {error, _} -> new(AuthToken);
+        {ok, Doc} ->
+            S = from_doc(Doc),
 	    case has_expired(S) of
-		true -> new();
+		true -> new(AuthToken);
 		false -> S
 	    end
     end.
@@ -244,42 +242,46 @@ save_session(S, RD) ->
         true ->
             delete_session(S, RD);
         false ->
-	    {ok, D1} = couch_mgr:save_doc(?SESSION_DB, to_couch(S, Now)),
-            set_cookie_header(RD, from_couch(D1), DateTime, ?MAX_AGE)
+            case couch_mgr:save_doc(?SESSION_DB, to_doc(S, Now)) of
+                {error, _Error} ->
+                    delete_session(S, RD);
+                {ok, Doc1} ->
+                    set_cookie_header(RD, from_doc(Doc1), DateTime, ?MAX_AGE)
+            end
     end.
 
 -spec(delete_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
 delete_session(S, RD) ->
     crossbar_bindings:map(<<"session.delete">>, S),
-    couch_mgr:del_doc(?SESSION_DB, to_couch(S)),
+    couch_mgr:del_doc(?SESSION_DB, to_doc(S)),
     set_cookie_header(RD, S, calendar:local_time(), -1).
 
--spec(to_couch/1 :: (S :: #session{}) -> proplist()).
-to_couch(S) -> to_couch(S, S#session.created).
+-spec(to_doc/1 :: (S :: #session{}) -> json_object()).
+to_doc(S) -> to_doc(S, S#session.created).
 
--spec(to_couch/2 :: (S :: #session{}, Now :: integer()) -> proplist()).
-to_couch(#session{'_rev'=undefined, storage=Storage}=S, Now) ->
-    [{<<"_id">>, S#session.'_id'}
-     ,{<<"session">>, tuple_to_list(S#session{created=whistle_util:to_binary(Now)
+-spec(to_doc/2 :: (S :: #session{}, Now :: integer()) -> json_object()).
+to_doc(#session{'_rev'=undefined, storage=Storage}=S, Now) ->
+    {struct, [{<<"_id">>, S#session.'_id'}
+             ,{<<"session">>, tuple_to_list(S#session{created=whistle_util:to_binary(Now)
 					      ,expires=?MAX_AGE
 					      ,storage=encode_storage(Storage)
 					     })}
-    ];
-to_couch(#session{storage=Storage}=S, Now) ->
-    [{<<"_id">>, S#session.'_id'}
-     ,{<<"_rev">>, S#session.'_rev'}
-     ,{<<"session">>, tuple_to_list(S#session{created= whistle_util:to_binary(Now)
+    ]};
+to_doc(#session{storage=Storage}=S, Now) ->
+    {struct, [{<<"_id">>, S#session.'_id'}
+             ,{<<"_rev">>, S#session.'_rev'}
+             ,{<<"session">>, tuple_to_list(S#session{created= whistle_util:to_binary(Now)
 					      ,expires=?MAX_AGE
 					      ,storage=encode_storage(Storage)
 					     })}
-    ].
+    ]}.
 
 -spec(encode_storage/1 :: (L :: list()) -> [] | tuple(list())).
 encode_storage([]) -> [];
 encode_storage(L) when is_list(L) -> {L}.
 
--spec(from_couch/1 :: (Doc :: proplist()) -> #session{}).
-from_couch(Doc) ->
+-spec(from_doc/1 :: (Doc :: json_object()) -> #session{}).
+from_doc({struct, Doc}) ->
     Id = props:get_value(<<"_id">>, Doc),
     Rev = props:get_value(<<"_rev">>, Doc),
     S = setelement(1, list_to_tuple(props:get_value(<<"session">>, Doc)), session),
@@ -290,10 +292,10 @@ from_couch(Doc) ->
 
 %% create a new session record
 %% new() -> #session()
--spec(new/0 :: () -> #session{}).
-new() ->
+-spec(new/1 :: (Id :: binary()) -> #session{}).
+new(Id) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
-    #session{created=Now, expires=?MAX_AGE}.
+    #session{created=Now, expires=?MAX_AGE, '_id'=Id}.
 
 %% set_cookie_header(request(), #session(), {date(), time()}, seconds()) -> request()
 -spec(set_cookie_header/4 :: (RD :: #wm_reqdata{}, Session :: #session{}, DateTime :: tuple(), MaxAge :: integer()) -> #wm_reqdata{}).
@@ -307,15 +309,17 @@ set_cookie_header(RD, Session, DateTime, MaxAge) ->
 %% Retrieve expired sessions and delete them from the DB
 -spec(clean_expired/0 :: () -> no_return()).
 clean_expired() ->
-    case couch_mgr:get_results(?SESSION_DB, {"session", "expired_time"}, [{"startkey", 0},
+    case couch_mgr:get_results(?SESSION_DB, ?SESSION_EXPIRED, [{"startkey", 0},
 									  {"endkey", calendar:datetime_to_gregorian_seconds(calendar:local_time())}
 									 ]) of
 	{error, _} -> ok;
-        {{error,not_found},fetch_failed} -> ok;
-	Sessions ->
-	    Docs = lists:filter(fun(not_found) -> false; (_) -> true end
-				,lists:map(fun({Prop}) ->
-						   couch_mgr:open_doc(?SESSION_DB, props:get_value(<<"id">>, Prop))
+	{ok, Sessions} ->
+	    Docs = lists:filter(fun({error, _}) -> false; (_) -> true end
+				,lists:map(fun({struct, Prop}) ->
+						   case couch_mgr:open_doc(?SESSION_DB, props:get_value(<<"id">>, Prop)) of
+                                                       {ok, Doc} -> Doc;
+                                                       Else -> Else
+                                                   end
 					   end, Sessions)),
 						%format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
 	    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs)
