@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(ACCOUNTS_DB, "accounts").
+-define(ACCOUNTS_DB, "cb%2Faccounts").
 -define(ACCOUNTS_LIST, {"accounts","listing"}).
 -define(ACCOUNTS_PARENT, {"accounts","parent"}).
 -define(ACCOUNTS_CHILDREN, {"accounts","children"}).
@@ -589,7 +589,7 @@ get_db_name({struct, _}=Doc) ->
     get_db_name([whapps_json:get_value(["_id"], Doc)]);
 get_db_name([DocId]) when is_binary(DocId) ->
     Id = whistle_util:to_list(DocId),
-    Db = [string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
+    Db = ["cb%2F", string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
     whistle_util:to_binary(Db);
 get_db_name(_) ->
     undefined.
