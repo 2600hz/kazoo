@@ -18,7 +18,7 @@
 
 %% Document manipulation
 -export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
--export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3]).
+-export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, load_doc_from_file/4]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -50,14 +50,25 @@
 %%%===================================================================
 -spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
+    load_doc_from_file(DB, App, File, init).
+
+-spec(load_doc_from_file/4 :: (DB :: binary(), App :: atom(), File :: list() | binary(), Type :: init | replace) -> tuple(ok, json_term()) | tuple(error, term())).
+load_doc_from_file(DB, App, File, Type) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
-	{ok, ViewStr} = file:read_file(Path),
-	?MODULE:save_doc(DB, mochijson2:decode(ViewStr)) %% if it crashes on the match, the catch will let us know
+	{ok, Str} = file:read_file(Path),
+	load_doc(DB, Str, Type)
     catch
 	_Type:Reason -> {error, Reason}
     end.
+
+load_doc(DB, Str, init) ->
+    ?MODULE:save_doc(DB, mochijson2:decode(Str)); %% if it crashes on the match, the catch will let us know
+load_doc(DB, Str, replace) ->
+    {struct, Doc} = mochijson2:decode(Str),
+    {ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Doc)),
+    ?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Doc]}).	
 
 -spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 db_info(DbName) ->
