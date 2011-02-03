@@ -121,6 +121,7 @@ handle_cast({stop_app, App}, #state{apps=As}=State) ->
     {noreply, State#state{apps=As1}};
 handle_cast({restart_app, App}, #state{apps=As}=State) ->
     As1 = rm_app(App, As),
+    whistle_util:reload_app(App),
     As2 = add_app(App, As1),
     {noreply, State#state{apps=As2}};
 handle_cast({set_amqp_host, H}, #state{apps=As}=State) ->
@@ -196,7 +197,6 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 add_app(App, As) ->
     format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
-    whistle_util:reload_app(App),
     case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
 	false -> As;
 	{ok, _} -> application:start(App), [App  | As];
