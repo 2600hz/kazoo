@@ -163,7 +163,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
     spawn(fun() ->
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                          couch_mgr:db_info(get_db_name(Doc)),
+                          couch_mgr:db_create(get_db_name(Doc)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
@@ -584,7 +584,9 @@ set_private_fields(Doc) ->
 %% the name of the account database
 %% @end
 %%--------------------------------------------------------------------
--spec(get_db_name/1 :: (DocId :: binary()) -> undefined | binary()).
+-spec(get_db_name/1 :: (DocId :: binary()|json_object()) -> undefined | binary()).
+get_db_name({struct, _}=Doc) ->
+    get_db_name([whapps_json:get_value(["_id"], Doc)]);
 get_db_name([DocId]) when is_binary(DocId) ->
     Id = whistle_util:to_list(DocId),
     Db = [string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],

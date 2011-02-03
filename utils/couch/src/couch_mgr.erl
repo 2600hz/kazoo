@@ -119,7 +119,7 @@ db_create(DbName) ->
     case get_conn() of
         {} -> false;
         Conn -> 
-            case couchbeam:create_db(Conn, DbName) of
+            case couchbeam:create_db(Conn, whistle_util:to_list(DbName)) of
                 {error, _} -> false;
                 {ok, _} -> true
             end
