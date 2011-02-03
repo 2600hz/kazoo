@@ -17,7 +17,7 @@
 -export([get_db/1, db_info/1]).
 
 %% Document manipulation
--export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
+-export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
 -export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, load_doc_from_file/4]).
 
 %% Views
@@ -30,7 +30,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("../../src/whistle_types.hrl").
+-include("../../src/whistle_types.hrl"). % get the whistle types
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
@@ -48,7 +48,7 @@
 %%%===================================================================
 %%% Couch Functions
 %%%===================================================================
--spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+-spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     load_doc_from_file(DB, App, File, init).
 
@@ -90,7 +90,7 @@ db_info(DbName) ->
 %% open a document given a docid returns not_found or the Document
 %% @end
 %%--------------------------------------------------------------------
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
@@ -113,7 +113,7 @@ open_doc(DbName, DocId, Options) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(error, conflict)).
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 save_doc(DbName, [{struct, [_|_]}=Doc]) ->
     save_doc(DbName, Doc);
 save_doc(DbName, [{struct, _}|_]=Doc) ->
@@ -143,7 +143,7 @@ save_doc(DbName, {struct, _}=Doc) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: list(), Doc :: json_term()) -> tuple(ok | error, term())).
+-spec(del_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, term()) | tuple(error, atom())).
 del_doc(DbName, Doc) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
@@ -155,40 +155,6 @@ del_doc(DbName, Doc) ->
     end.
 
 %%%===================================================================
-%%% Document Helpers
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% create a new Document - a tuple with a proplist
-%% @end
-%%--------------------------------------------------------------------    
--spec(new_doc/0 :: () -> []).
-new_doc() -> [].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% add a K/V pair to a Document
-%% @end
-%%--------------------------------------------------------------------    
--spec(add_to_doc/3 :: (Key :: binary(), Value :: term(), Doc :: proplist()) -> proplist()).
-add_to_doc(Key, Value, Doc) ->
-    {Doc1} = couchbeam_doc:extend(whistle_util:to_binary(Key), Value, {Doc}),
-    Doc1.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% remove a K from the Document
-%% @end
-%%--------------------------------------------------------------------    
--spec(rm_from_doc/2 :: (Key :: binary(), Doc :: proplist()) -> proplist()).
-rm_from_doc(Key, Doc) ->
-    {Doc1} = couchbeam_doc:delete_value(whistle_util:to_binary(Key), {Doc}),
-    Doc1.
-
-%%%===================================================================
 %%% View Functions
 %%%===================================================================
 %%--------------------------------------------------------------------
@@ -198,11 +164,11 @@ rm_from_doc(Key, Doc) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec(get_all_results/2 :: (DbName :: string(), DesignDoc :: string() | tuple(string(), string())) -> tuple(ok, json_term()) | tuple(error, term())).
+-spec(get_all_results/2 :: (DbName :: list(), DesignDoc :: tuple(string(), string())) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
--spec(get_results/3 :: (DbName :: string(), DesignDoc :: string() | tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_term()) | tuple(error, term())).
+-spec(get_results/3 :: (DbName :: list(), DesignDoc :: tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_results(DbName, DesignDoc, ViewOptions) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};

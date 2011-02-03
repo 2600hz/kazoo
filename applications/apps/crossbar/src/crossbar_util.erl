@@ -47,7 +47,7 @@ response(Data, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec(response/3 :: (Status :: error|fatal, Msg :: binary()|atom(), Context :: #cb_context{}) -> #cb_context{}).
+-spec(response/3 :: (Status :: error|fatal, Msg :: json_string(), Context :: #cb_context{}) -> #cb_context{}).
 response(error, Msg, Context) ->
     create_response(error, Msg, 500, [], Context);
 response(fatal, Msg, Context) ->
@@ -61,7 +61,7 @@ response(fatal, Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec(response/4 :: (Status :: error|fatal, Msg :: binary()|atom(), Code :: integer(), Context :: #cb_context{}) -> #cb_context{}).
+-spec(response/4 :: (Status :: error|fatal, Msg :: json_string(), Code :: integer()|undefined, Context :: #cb_context{}) -> #cb_context{}).
 response(error, Msg, Code, Context) ->
     create_response(error, Msg, Code, [], Context);
 response(fatal, Msg, Code, Context) ->
@@ -75,7 +75,7 @@ response(fatal, Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec(response/5 :: (Status :: error|fatal, Msg :: binary()|atom(), Code :: integer(), Data :: term(), Context :: #cb_context{}) -> #cb_context{}).
+-spec(response/5 :: (Status :: error|fatal, Msg :: json_string(), Code :: integer()|undefined, Data :: mochijson(), Context :: #cb_context{}) -> #cb_context{}).
 response(error, Msg, Code, Data, Context) ->
     create_response(error, Msg, Code, Data, Context);
 response(fatal, Msg, Code, Data, Context) ->
@@ -89,7 +89,7 @@ response(fatal, Msg, Code, Data, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec(create_response/5 :: (Status :: error|fatal|success, Msg :: binary()|atom(), Code :: integer(), Data :: term(), Context :: #cb_context{}) -> #cb_context{}).
+-spec(create_response/5 :: (Status :: error|fatal|success, Msg :: json_string(), Code :: integer()|undefined, Data :: mochijson(), Context :: #cb_context{}) -> #cb_context{}).
 create_response(Status, Msg, Code, Data, Context) ->
     Context#cb_context {
          resp_status = Status
@@ -108,7 +108,7 @@ create_response(Status, Msg, Code, Data, Context) ->
 %%--------------------------------------------------------------------
 -spec(response_faulty_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_faulty_request(Context) ->
-    response(error, "faulty request", 400, Context).
+    response(error, <<"faulty request">>, 400, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -119,7 +119,7 @@ response_faulty_request(Context) ->
 %%--------------------------------------------------------------------
 -spec(response_bad_identifier/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 response_bad_identifier(Id, Context) ->
-    response(error, "bad identifier", 410, [Id], Context).
+    response(error, <<"bad identifier">>, 410, [Id], Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -129,7 +129,7 @@ response_bad_identifier(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec(response_missing_view/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_missing_view(Context) ->
-    response(fatal, "datastore missing view", 500, Context).
+    response(fatal, <<"datastore missing view">>, 500, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,7 +139,7 @@ response_missing_view(Context) ->
 %%--------------------------------------------------------------------
 -spec(response_datastore_timeout/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_datastore_timeout(Context) ->
-    response(error, "datastore timeout", 503, Context).
+    response(error, <<"datastore timeout">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -149,7 +149,7 @@ response_datastore_timeout(Context) ->
 %%--------------------------------------------------------------------
 -spec(response_datastore_conn_refused/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_datastore_conn_refused(Context) ->
-    response(error, "datastore connection refused", 503, Context).
+    response(error, <<"datastore connection refused">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -159,7 +159,7 @@ response_datastore_conn_refused(Context) ->
 %%--------------------------------------------------------------------
 -spec(response_invalid_data/2 :: (Fields :: list(), Context :: #cb_context{}) -> #cb_context{}).
 response_invalid_data(Fields, Context) ->
-    response(error, "invalid data", 400, Fields, Context).
+    response(error, <<"invalid data">>, 400, Fields, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -170,7 +170,7 @@ response_invalid_data(Fields, Context) ->
 %%--------------------------------------------------------------------
 -spec(response_db_missing/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_db_missing(Context) ->
-    response(fatal, "data collection missing", 503, Context).
+    response(fatal, <<"data collection missing">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public

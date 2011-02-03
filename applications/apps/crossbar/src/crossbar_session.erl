@@ -221,6 +221,8 @@ get_session_doc(AuthToken) ->
     end.
 
 %% get_session_rec(request()) -> session_rec()
+get_session(<<"">>) ->
+    undefined;
 get_session(AuthToken) ->
     case get_session_doc(AuthToken) of
         {error, _} -> new(AuthToken);

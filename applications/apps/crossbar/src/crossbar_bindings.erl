@@ -40,10 +40,11 @@
 
 -define(SERVER, ?MODULE).
 
--type binding() :: tuple(binary(), list(pid() | atom())).
 -type binding_result() :: tuple(binding_result, term(), term()).
+-type binding() :: tuple(binary(), queue()). %% queue(pid() | atom())
+-type bindings() :: list(binding()) | [].
 
--record(state, {bindings = [] :: list(binding()) | []}).
+-record(state, {bindings = [] :: bindings()}).
 
 %%%===================================================================
 %%% API
@@ -157,6 +158,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
+    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
     format_log(info, "CB_BINDING(~p): ~p binding ~p~n", [self(), From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
@@ -341,7 +344,7 @@ map_bind_results(Pids, Payload, Results, Route) ->
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_map_binding/0 :: () -> tuple(ok, term())|timeout).
+-spec(wait_for_map_binding/0 :: () -> tuple(ok, atom(), term()) | timeout).
 wait_for_map_binding() ->
     receive
         {binding_result,  Resp, Pay} -> {ok,  Resp, Pay};

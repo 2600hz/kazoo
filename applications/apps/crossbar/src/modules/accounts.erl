@@ -232,7 +232,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
     crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
@@ -292,7 +292,7 @@ resource_exists(_) ->
 -spec(validate/3 :: (Verb :: http_method(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate('GET', [], Context) ->
     crossbar_doc:load_view(?ACCOUNTS_LIST, [], Context, fun filter_view_results/2);
-validate('PUT', [], #cb_context{req_data={struct, [_]}=Data}=Context) ->
+validate('PUT', [], #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
@@ -301,7 +301,7 @@ validate('PUT', [], #cb_context{req_data={struct, [_]}=Data}=Context) ->
     end;
 validate('GET', [DocId], Context) ->
     crossbar_doc:load(DocId, Context);
-validate('POST', [DocId], #cb_context{req_data={struct,[_]}=Data}=Context) ->
+validate('POST', [DocId], #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
@@ -326,13 +326,13 @@ validate('GET', [DocId, <<"parent">>], Context) ->
         _Else ->
             Context
     end;
-validate('POST', [DocId, <<"parent">>], #cb_context{req_data={struct,Data}}=Context) ->
+validate('POST', [DocId, <<"parent">>], #cb_context{req_data=Data}=Context) ->
     case is_valid_parent(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             %% OMGBBQ! NO CHECKS FOR CYCLIC REFERENCES WATCH OUT!
-            ParentId = proplists:get_value(<<"parent">>, Data),
+            ParentId = proplists:get_value(<<"parent">>, element(2, Data)),
             update_tree(DocId, ParentId, Context)
     end;
 validate('DELETE', [DocId, <<"parent">>], Context) ->
@@ -398,9 +398,11 @@ create_doc({struct, Data}, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_parent/1 :: (Data :: proplist()) -> tuple(boolean(), list())).
-is_valid_parent(_Data) ->
-    {true, []}.
+-spec(is_valid_parent/1 :: (Doc :: json_object()) -> tuple(boolean(), list())).
+is_valid_parent({struct, [_]}) ->
+    {true, []};
+is_valid_parent(_Doc) ->
+    {false, []}.
 
 %%--------------------------------------------------------------------
 %% @private

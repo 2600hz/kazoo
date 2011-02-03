@@ -36,16 +36,16 @@
           ,auth_token = <<"">> :: binary()
           ,req_verb = undefined :: binary() | undefined
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
-          ,req_json = [] :: proplist()
-          ,req_data = [] :: proplist()
+          ,req_json = [] :: mochijson()
+          ,req_data = [] :: mochijson()
           ,db_name = undefined :: string() | undefined
-          ,doc = undefined :: json_object() | undefinded
+          ,doc = undefined :: json_object() | json_objects() | undefined
           ,resp_expires = {{1999,1,1},{0,0,0}}
-          ,resp_etag = undefined :: string() | automatic | undefined
+          ,resp_etag = undefined :: undefined | automatic | string()
 	  ,resp_status = error :: crossbar_status()
-	  ,resp_error_msg = undefined :: string() | undefined
-	  ,resp_error_code = undefined :: integer() | undefined
-	  ,resp_data = [] :: list() | []
+	  ,resp_error_msg = undefined :: json_string()
+	  ,resp_error_code = undefined :: json_number() | undefined
+	  ,resp_data = [] :: mochijson()
           ,storage = [] :: proplist()
           ,start = undefined
 	 }).
