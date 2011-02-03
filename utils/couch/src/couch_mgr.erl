@@ -57,18 +57,18 @@ load_doc_from_file(DB, App, File, Type) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
-	{ok, Str} = file:read_file(Path),
-	load_doc(DB, Str, Type)
+	{ok, Bin} = file:read_file(Path),
+	Prop = mochijson2:decode(Bin),
+	load_doc(DB, Prop, Type)
     catch
 	_Type:Reason -> {error, Reason}
     end.
 
-load_doc(DB, Str, init) ->
-    ?MODULE:save_doc(DB, mochijson2:decode(Str)); %% if it crashes on the match, the catch will let us know
-load_doc(DB, Str, replace) ->
-    {struct, Doc} = mochijson2:decode(Str),
-    {ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Doc)),
-    ?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Doc]}).	
+load_doc(DB, Prop, init) ->
+    ?MODULE:save_doc(DB, Prop); %% if it crashes on the match, the catch will let us know
+load_doc(DB, Prop, replace) ->
+    {ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
+    ?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]}).
 
 -spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 db_info(DbName) ->
