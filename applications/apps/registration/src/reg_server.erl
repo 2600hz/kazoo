@@ -198,7 +198,7 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 			       ,[{<<"key">>, [Domain, User]}
 				 ,{<<"group">>, <<"true">>}
 				]) of
-	{ok, []} -> ok;
+	{ok, []} -> format_log(info, "REG_SRV: no req_query_resp for ~s@~s~n", [User, Domain]);
 	{ok, [{struct, ViewRes} | _]} ->
 	    {struct, Value} = props:get_value(<<"value">>, ViewRes),
 	    DocId = props:get_value(<<"id">>, Value),
