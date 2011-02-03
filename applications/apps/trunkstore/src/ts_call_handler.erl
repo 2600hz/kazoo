@@ -148,7 +148,8 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	<<"cdr">> ->
 	    spawn(fun() ->
 			  true = whistle_api:call_cdr_v(Prop),
-			  update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags)
+			  update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
+			  ts_cdr:store_cdr(Prop, Flags)
 		  end),
 	    {stop, cdr_received, S};
 	<<"route_win">> ->
