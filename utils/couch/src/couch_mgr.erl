@@ -18,7 +18,7 @@
 
 %% Document manipulation
 -export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
--export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, load_doc_from_file/4]).
+-export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -50,25 +50,27 @@
 %%%===================================================================
 -spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
-    load_doc_from_file(DB, App, File, init).
-
--spec(load_doc_from_file/4 :: (DB :: binary(), App :: atom(), File :: list() | binary(), Type :: init | replace) -> tuple(ok, json_term()) | tuple(error, term())).
-load_doc_from_file(DB, App, File, Type) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
-	Prop = mochijson2:decode(Bin),
-	load_doc(DB, Prop, Type)
+	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
 	_Type:Reason -> {error, Reason}
     end.
 
-load_doc(DB, Prop, init) ->
-    ?MODULE:save_doc(DB, Prop); %% if it crashes on the match, the catch will let us know
-load_doc(DB, Prop, replace) ->
-    {ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
-    ?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]}).
+-spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+update_doc_from_file(DB, App, File) ->
+    Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    try
+	{ok, Bin} = file:read_file(Path),
+	{struct, Prop} = mochijson2:decode(Bin),
+	{ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
+	?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]})
+    catch
+	_Type:Reason -> {error, Reason}
+    end.
 
 -spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 db_info(DbName) ->
