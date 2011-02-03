@@ -10,7 +10,7 @@
 
 -export([load/2, load_merge/3, load_view/3, load_view/4]).
 -export([save/1, delete/1]).
--export([public_fields/1, private_fields/1, is_private_field/1]).
+-export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1]).
 
 -include("crossbar.hrl").
@@ -26,9 +26,7 @@
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load/2 :: (DocId :: term(), Context :: #cb_context{}) -> #cb_context{}).
-load(DocId, Context) when not is_binary(DocId)->
-    load(whistle_util:to_binary(DocId), Context);
+-spec(load/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load(DocId, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:open_doc(DB, DocId) of
         {error, db_not_reachable} ->
@@ -57,9 +55,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_merge/3 :: (DocId :: term(), Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
-load_merge(DocId, Data, Context) when not is_binary(DocId)->
-    load_merge(whistle_util:to_binary(DocId), Data, Context);
+-spec(load_merge/3 :: (DocId :: binary(), Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
 load_merge(DocId, {struct, Data}, Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
@@ -171,7 +167,7 @@ public_fields([{struct, _}|_]=Json)->
 public_fields({struct, Json}) ->
     PubDoc =
         lists:filter(fun({K, _}) ->
-                            not is_private_field(K)
+                            not is_private_key(K)
                      end, Json),
     case proplists:get_value(<<"_id">>, Json) of
         undefined ->
@@ -195,7 +191,7 @@ private_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
 private_fields({struct, Json}) ->
     lists:filter(fun({K, _}) ->
-                        is_private_field(K)
+                        is_private_key(K)
                  end, Json);
 private_fields(Json) ->
     format_log(error, "Unhandled Json format in private fields:~n~p~n", [Json]),
@@ -208,8 +204,8 @@ private_fields(Json) ->
 %% considered private; otherwise false
 %% @end
 %%--------------------------------------------------------------------
--spec(is_private_field/1 :: (Key :: binary()) -> boolean()).
-is_private_field(Key) ->
+-spec(is_private_key/1 :: (Key :: binary()) -> boolean()).
+is_private_key(Key) ->
     binary:first(Key) == 95 orelse byte_size(Key) < 4 orelse binary:bin_to_list(Key, 0, 4) == "pvt_".
 
 %%--------------------------------------------------------------------
@@ -222,13 +218,14 @@ is_private_field(Key) ->
 -spec(rev_to_etag/1 :: (Json :: json_object()|json_objects()) -> undefined | automatic | string()).
 rev_to_etag([{struct, _}|_])->
     automatic;
-rev_to_etag(Json) ->
-    case crossbar_util:get_json_values([<<"_rev">>], Json) of
-        undefined ->
-            undefined;
+rev_to_etag({struct, Props}) ->
+    case proplists:get_value([<<"_rev">>], Props) of
         Rev when is_list(Rev) ->
             ETag = whistle_util:to_list(Rev),
             string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
         _Else ->
             undefined
-    end.
+    end;
+rev_to_etag(_Json) ->
+    format_log(error, "Unhandled Json format in rev to etag:~n~p~n", [_Json]),
+    undefined.

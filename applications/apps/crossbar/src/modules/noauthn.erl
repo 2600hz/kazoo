@@ -151,6 +151,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.authenticate">>).

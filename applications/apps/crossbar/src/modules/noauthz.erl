@@ -104,7 +104,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.start_session">>, Session}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.start_session">>, #session{}=Session}, State) ->
     Pid ! {binding_result, true, Session#session{account_id = <<"HAPPY FUN TIME, INC">>}},
     {noreply, State};
 
@@ -149,7 +149,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.start_session">>),
     crossbar_bindings:bind(<<"v1_resource.authorize">>).
