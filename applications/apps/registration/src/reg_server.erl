@@ -188,7 +188,6 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
 
     {ok, _} = couch_mgr:save_doc(?REG_DB, {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()} | Prop]});
 process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
-    format_log(info, "REG_SRV: Reg query~n~p~n", [Prop]),
     true = whistle_api:reg_query_v(Prop),
 
     Domain = props:get_value(<<"Realm">>, Prop),
@@ -199,7 +198,7 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 			       ,[{<<"key">>, [Domain, User]}
 				 ,{<<"group">>, <<"true">>}
 				]) of
-	{ok, []} -> ok;
+	{ok, []} -> format_log(info, "REG_SRV: no req_query_resp for ~s@~s~n", [User, Domain]);
 	{ok, [{struct, ViewRes} | _]} ->
 	    {struct, Value} = props:get_value(<<"value">>, ViewRes),
 	    DocId = props:get_value(<<"id">>, Value),
@@ -218,6 +217,7 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 											,whistle_util:to_binary(?MODULE)
 										    ,?APP_VSN)
 						    ]),
+	    format_log(info, "REG_SRV: req_query_resp: ~s~n", [JSON]),
 	    amqp_util:targeted_publish(State#state.amqp_host, RespServer, JSON, <<"application/json">>)
     end,
     ok;
