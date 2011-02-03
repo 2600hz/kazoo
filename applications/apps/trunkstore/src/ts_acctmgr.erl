@@ -255,10 +255,17 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(load_accounts_from_ts/1 :: (DB :: binary()) -> no_return()).
 load_accounts_from_ts(DB) ->
     case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
+<<<<<<< Updated upstream
 	[] -> ok;
 	{{error,not_found},fetch_failed} -> ok;
 	Accts when is_list(Accts) ->
 	    AcctIds = lists:map(fun({A}) -> props:get_value(<<"id">>, A) end, Accts),
+=======
+	{error, _} -> ok;
+	{ok, []} -> ok;
+	{ok, Accts} when is_list(Accts) ->
+	    AcctIds = lists:map(fun({struct, A}) -> props:get_value(<<"id">>, A) end, Accts),
+>>>>>>> Stashed changes
 	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds),
 	    start_change_handlers(AcctIds)
     end.
