@@ -8,6 +8,7 @@
 
 -define(TS_VIEW_IPAUTH, {"LookUpIPAuth", "LookUpIPAuth"}).
 -define(TS_VIEW_USERAUTH, {"LookUpUserAuth","LookUpUserAuth"}).
+-define(TS_VIEW_USERAUTHREALM, {"LookUpUserAuth","LookUpUserAuthRealm"}).
 -define(TS_VIEW_DIDLOOKUP, {"LookUpDID","LookUpDID"}).
 -define(TS_VIEW_CARRIERIP, {"LookUpCarrierIP","LookUpCarrierIP"}).
 
@@ -28,6 +29,7 @@
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
 	  ,auth_user = <<>> :: binary()                  % what username did we authenticate with
+          ,auth_realm = <<>> :: binary()                 % what realm did we auth with
 	  ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
 	  ,server_id = <<>> :: binary()                  % Server of the DID
 	  ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")

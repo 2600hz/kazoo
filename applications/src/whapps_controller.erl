@@ -12,6 +12,7 @@
 
 %% API
 -export([start_link/0, start_app/1, set_amqp_host/1, set_couch_host/1, stop_app/1, running_apps/0]).
+-export([get_amqp_host/0, restart_app/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -22,7 +23,8 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {
-	  apps=[] :: list()
+	  amqp_host = "" :: string()
+	 ,apps = [] :: list()
 	 }).
 
 %%%===================================================================
@@ -46,8 +48,14 @@ start_app(App) when is_atom(App) ->
 stop_app(App) when is_atom(App) ->
     gen_server:cast(?MODULE, {stop_app, App}).
 
+restart_app(App) when is_atom(App) ->
+    gen_server:cast(?MODULE, {restart_app, App}).
+
 set_amqp_host(H) ->
     gen_server:cast(?MODULE, {set_amqp_host, whistle_util:to_list(H)}).
+
+get_amqp_host() ->
+    gen_server:call(?MODULE, get_amqp_host).
 
 set_couch_host(H) ->
     couch_mgr:set_host(whistle_util:to_list(H)).
@@ -87,6 +95,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(get_amqp_host, _, #state{amqp_host=AmqpHost}=S) ->
+    {reply, AmqpHost, S};
 handle_call(running_apps, _, #state{apps=As}=S) ->
     {reply, As, S};
 handle_call(_Request, _From, State) ->
@@ -109,9 +119,19 @@ handle_cast({start_app, App}, #state{apps=As}=State) ->
 handle_cast({stop_app, App}, #state{apps=As}=State) ->
     As1 = rm_app(App, As),
     {noreply, State#state{apps=As1}};
+handle_cast({restart_app, App}, #state{apps=As}=State) ->
+    As1 = rm_app(App, As),
+    whistle_util:reload_app(App),
+    As2 = add_app(App, As1),
+    {noreply, State#state{apps=As2}};
 handle_cast({set_amqp_host, H}, #state{apps=As}=State) ->
-    lists:foreach(fun(A) -> A:set_amqp_host(H) end, As),
-    {noreply, State};
+    lists:foreach(fun(A) ->
+			  case erlang:function_exported(A, set_amqp_host, 1) of
+			      true -> A:set_amqp_host(H);
+			      false -> ok
+			  end
+		  end, As),
+    {noreply, State#state{amqp_host=H}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -128,16 +148,18 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, State) -> handle_info(start_apps, State);
 handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
-    As1 = case file:consult(Config) of
-	      {ok, Ts} ->
-		  couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
-		  start_mnesia(),
-		  lists:foldl(fun(App, Acc) ->
-				      add_app(App, Acc)
-			      end, As, props:get_value(start, Ts, []));
-	      _ -> As
-	  end,
-    {noreply, State#state{apps=As1}};
+    State1 = case file:consult(Config) of
+		 {ok, Ts} ->
+		     couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
+		  
+		     start_mnesia(),
+		     As1 = lists:foldl(fun(App, Acc) ->
+					       add_app(App, Acc)
+				       end, As, props:get_value(start, Ts, [])),
+		     State#state{apps=As1, amqp_host=props:get_value(default_amqp_host, Ts, net_adm:localhost())};
+		 _ -> State
+	     end,
+    {noreply, State1};
 handle_info(_Info, State) ->
     format_log(info, "WHAPPS(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -185,12 +207,9 @@ add_app(App, As) ->
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
     format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
-    format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
     format_log(info, "APPS(~p): Stopping app_sup: ~p~n", [self(), whistle_apps_sup:stop_app(App)]),
-    case lists:member(App, As) of
-	true -> lists:delete(App, As);
-	false -> As
-    end.
+    format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
+    lists:delete(App, As).
 
 start_mnesia() ->
-    whistle_apps_mnesia:init().
+    ok.

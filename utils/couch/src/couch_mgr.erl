@@ -18,7 +18,7 @@
 
 %% Document manipulation
 -export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
--export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3]).
+-export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -48,18 +48,31 @@
 %%%===================================================================
 %%% Couch Functions
 %%%===================================================================
--spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+-spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
-	{ok, ViewStr} = file:read_file(Path),
-	?MODULE:save_doc(DB, mochijson2:decode(ViewStr)) %% if it crashes on the match, the catch will let us know
+	{ok, Bin} = file:read_file(Path),
+	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
 	_Type:Reason -> {error, Reason}
     end.
 
--spec(db_info/1 :: (DB :: binary()) -> tuple(ok, proplist()) | tuple(error, term())).
+-spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+update_doc_from_file(DB, App, File) ->
+    Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    try
+	{ok, Bin} = file:read_file(Path),
+	{struct, Prop} = mochijson2:decode(Bin),
+	{ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
+	?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]})
+    catch
+	_Type:Reason -> {error, Reason}
+    end.
+
+-spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 db_info(DbName) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
@@ -83,8 +96,8 @@ db_info(DbName) ->
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | tuple(error, not_found | db_not_reachable)).
-open_doc(DbName, DocId, Options) when not is_binary(DocId) ->   
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
+open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
 open_doc(DbName, DocId, Options) ->    
     case get_db(DbName) of

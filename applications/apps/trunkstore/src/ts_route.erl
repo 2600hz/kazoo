@@ -9,7 +9,7 @@
 -module(ts_route).
 
 %% API
--export([handle_req/2]).
+-export([handle_req/1]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -22,141 +22,138 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec(handle_req/2 :: (ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-handle_req(ApiProp, ServerID) ->
+-spec(handle_req/1 :: (ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+handle_req(ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
 	    {error, "No Custom Vars"};
 	{struct, []} -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
-	    inbound_handler([{<<"Direction">>, <<"inbound">>} | ApiProp], ServerID);
+	    inbound_handler([{<<"Direction">>, <<"inbound">>} | ApiProp]);
 	{struct, CCVs} ->
 	    case get_value(<<"Direction">>, CCVs) of
 		<<"outbound">>=D ->
-		    outbound_handler([{<<"Direction">>, D} | ApiProp], ServerID);
+		    outbound_handler([{<<"Direction">>, D} | ApiProp]);
 		<<"inbound">>=D ->
-		    inbound_handler([{<<"Direction">>, D} | ApiProp], ServerID)
+		    inbound_handler([{<<"Direction">>, D} | ApiProp])
 	    end
     end.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(inbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-inbound_handler(ApiProp, ServerID) ->
+-spec(inbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
+inbound_handler(ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     Did = whistle_util:to_e164(ToUser),
     Flags = create_flags(Did, ApiProp),
     case Flags#route_flags.account_doc_id of
-	<<>> -> response(404, ApiProp, Flags, ServerID);
-	_ -> process_routing(inbound_features(Flags), ApiProp, ServerID)
+	<<>> -> response(404, ApiProp, Flags);
+	_ -> process_routing(inbound_features(Flags), ApiProp)
     end.
 
--spec(outbound_handler/2 :: (ApiProp :: list(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-outbound_handler(ApiProp, ServerID) ->
+-spec(outbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
+outbound_handler(ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
     Did = whistle_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
     Flags = create_flags(Did, ApiProp),
-    process_routing(outbound_features(Flags), ApiProp, ServerID).
+    process_routing(outbound_features(Flags), ApiProp).
 
 -spec(lookup_user/1 :: (Name :: binary()) -> tuple(ok | error, proplist() | string())).
 lookup_user(Name) ->
     Options = [{"keys", [Name]}],
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTH, Options) of
-	false ->
+	{error, _} ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_USERAUTH, Name]),
 	    {error, "No view found."};
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_ROUTE(~p): No Name matching ~p~n", [self(), Name]),
 	    {error, "No user found"};
-	[{ViewProp} | _Rest] ->
+	{ok, [{struct, ViewProp} | _Rest]} ->
 	    format_log(info, "TS_ROUTE(~p): Using user ~p~n", [self(), Name]),
 	    DocID = get_value(<<"id">>, ViewProp),
 	    case couch_mgr:open_doc(?TS_DB, DocID) of
 		{error, E}=Error ->
 		    format_log(error, "TS_ROUTE(~p): Failed to retrieve doc ~p: ~p~n", [self(), DocID, E]),
 		    Error;
-		Doc ->
+		{ok, {struct, Doc}} ->
 		    {ok, Doc}
-	    end;
-	_Else ->
-	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
-	    {error, "Unexpeced error in lookup_user/1"}
+	    end
     end.
 
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
 lookup_did(Did) ->
     Options = [{"keys", [Did]}],
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
-	false ->
+	{error, _} ->
 	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
 	    {error, "No DIDLOOKUP view"};
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
 	    {error, "No matching DID"};
-	[{ViewProp} | _Rest] ->
+	{ok, [{struct, ViewProp} | _Rest]} ->
 	    OurDid = get_value(<<"key">>, ViewProp),
 	    format_log(info, "TS_ROUTE(~p): DID doc found for ~p~n", [self(), OurDid]),
-	    {Value} = get_value(<<"value">>, ViewProp),
+	    {struct, Value} = get_value(<<"value">>, ViewProp),
 	    {ok, [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value]};
 	_Else ->
 	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
     end.
 
--spec(process_routing/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-process_routing(Flags, ApiProp, ServerID) ->
+-spec(process_routing/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+process_routing(Flags, ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Flags for routing...~n~p~n", [self(), Flags]),
     case ts_credit:check(Flags) of
 	{ok, Flags1} ->
 	    %% call may proceed
-	    find_route(Flags1, ApiProp, ServerID);
+	    find_route(Flags1, ApiProp);
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Credit Error ~p~n", [self(), Error]),
-	    response(503, ApiProp, Flags, ServerID)
+	    response(503, ApiProp, Flags)
     end.
 
--spec(find_route/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-find_route(Flags, ApiProp, ServerID) ->
+-spec(find_route/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+find_route(Flags, ApiProp) ->
     case Flags#route_flags.direction =:= <<"outbound">> of
 	false ->
 	    %% handle inbound routing
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
 		    %%format_log(info, "TS_ROUTE(~p): Generated Inbound Routes~n~p~n", [self(), Routes]),
-		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
+		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
-		    response(404, ApiProp, Flags, ServerID)
+		    response(404, ApiProp, Flags)
 	    end;
 	true ->
 	    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
 	    Did = whistle_util:to_e164(ToUser),
 	    case lookup_did(Did) of
 		{error, _} ->
-		    route_over_carriers(Flags, ApiProp, ServerID);
+		    route_over_carriers(Flags, ApiProp);
 		{ok, DidProp} ->
 		    FlagsIn = flags_from_did(DidProp, Flags#route_flags{to_user=Did}),
 		    case inbound_route(FlagsIn) of
 			{ok, Routes} ->
-			    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes}, ServerID);
+			    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes});
 			{error, _} ->
-			    route_over_carriers(Flags, ApiProp, ServerID)
+			    route_over_carriers(Flags, ApiProp)
 		    end
 	    end
     end.
 
--spec(route_over_carriers/3 :: (Flags :: tuple(), ApiProp :: proplist(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-route_over_carriers(Flags, ApiProp, ServerID) ->
+-spec(route_over_carriers/2 :: (Flags :: tuple(), ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+route_over_carriers(Flags, ApiProp) ->
     case ts_carrier:route(Flags) of
 	{ok, Routes} ->
 	    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes~n~p~n", [self(), Routes]),
-	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes}, ServerID);
+	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
-	    response(404, ApiProp, Flags, ServerID)
+	    {error, "We don't handle this route"}
     end.
 
 -spec(inbound_route/1 :: (Flags :: tuple()) -> tuple(ok, proplist()) | tuple(error, string())).
@@ -166,21 +163,25 @@ inbound_route(Flags) ->
 		 <<"E.164">> ->
 		     [{<<"Invite-Format">>, <<"e164">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		      ,{<<"To-DID">>, whistle_util:to_e164(Flags#route_flags.to_user)}
 		     ];
 		 <<"1NPANXXXXXX">> ->
 		     [{<<"Invite-Format">>, <<"1npan">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		      ,{<<"To-DID">>, whistle_util:to_1npanxxxxxx(Flags#route_flags.to_user)}
 		     ];
 		 <<"NPANXXXXXX">> ->
 		     [{<<"Invite-Format">>, <<"npan">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		      ,{<<"To-DID">>, whistle_util:to_npanxxxxxx(Flags#route_flags.to_user)}
 		     ];
 		 _ ->
 		     [{<<"Invite-Format">>, <<"username">>}
 		      ,{<<"To-User">>, Flags#route_flags.auth_user}
+		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
 		     ]
 	     end,
     Route = [{<<"Weight-Cost">>, <<"1">>}
@@ -200,6 +201,7 @@ add_failover_route({}, _Flags, InboundRoute) -> [InboundRoute];
 %% route to a SIP URI
 add_failover_route({<<"sip">>, URI}, _Flags, InboundRoute) ->
     [InboundRoute, {struct, [{<<"Route">>, URI}
+			     ,{<<"Invite-Format">>, <<"route">>}
 			     ,{<<"Weight-Cost">>, <<"1">>}
 			     ,{<<"Weight-Location">>, <<"1">>}
 			     ,{<<"Media">>, <<"bypass">>}
@@ -256,7 +258,7 @@ create_flags(Did, ApiProp) ->
 	     {error, _E1} ->
 		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
 		     {error, _E2} -> F1;
-		     Doc1 ->
+		     {ok, {struct, Doc1}} ->
 			 F2 = flags_from_srv(AuthUser, Doc1, F1),
 			 flags_from_account(Doc1, F2)
 		 end;
@@ -291,17 +293,19 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 %% - Failover
 %% - Caller ID
 %% - Auth User
+%% - Auth Realm
 -spec(flags_from_did/2 :: (DidProp :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_did(DidProp, Flags) ->
-    {DidOptions} = get_value(<<"DID_Opts">>, DidProp, {[]}),
-    {AuthOpts} = get_value(<<"auth">>, DidProp, {[]}),
+    {struct, DidOptions} = get_value(<<"DID_Opts">>, DidProp, {struct, []}),
+    {struct, AuthOpts} = get_value(<<"auth">>, DidProp, {struct, []}),
 
-    {Opts} = get_value(<<"options">>, DidProp, {[]}),
+    {struct, Opts} = get_value(<<"options">>, DidProp, {struct, []}),
 
-    F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {[]})),
-    F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {[]})),
+    F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {struct, []})),
+    F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {struct, []})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
+		   ,auth_realm = get_value(<<"auth_realm">>, AuthOpts, <<>>)
 		   ,account_doc_id = get_value(<<"id">>, DidProp)
 		  }.
 
@@ -320,8 +324,8 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			  },
-    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {[]})),
-    add_failover(F1, get_value(<<"failover">>, Srv, {[]})).
+    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
+    add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})).
 
 %% Flags from the Account
 %% - Credit available
@@ -331,61 +335,72 @@ flags_from_srv(AuthUser, Doc, Flags) ->
 %% - Failover <- only if it hasn't been set at the server or DID level
 -spec(flags_from_account(Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_account(Doc, Flags) ->
-    {Acct} = get_value(<<"account">>, Doc, {[]}),
+    {struct, Acct} = get_value(<<"account">>, Doc, {struct, []}),
 
     F1 = add_caller_id(Flags#route_flags{account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)}
-		       ,get_value(<<"caller_id">>, Acct, {[]})),
-    add_failover(F1, get_value(<<"failover">>, Acct, {[]})).
+		       ,get_value(<<"caller_id">>, Acct, {struct, []})),
+    add_failover(F1, get_value(<<"failover">>, Acct, {struct, []})).
 
 -spec(add_failover/2 :: (F0 :: tuple(), FOver :: tuple(proplist())) -> tuple()).
-add_failover(#route_flags{failover={}}=F0, {[]}) -> F0;
-add_failover(#route_flags{failover={}}=F0, {[{_K, _V}=FOver]}) ->
+add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
+add_failover(#route_flags{failover={}}=F0, {struct, [{_K, _V}=FOver]}) ->
     F0#route_flags{failover=FOver};
 add_failover(F, _) -> F.
 
 -spec(add_caller_id/2 :: (F0 :: tuple(), CID :: tuple(proplist())) -> tuple()).
-add_caller_id(#route_flags{caller_id={}}=F0, {[]}) -> F0;
-add_caller_id(#route_flags{caller_id={}}=F0, {CID}) ->
+add_caller_id(#route_flags{caller_id={}}=F0, {struct, []}) -> F0;
+add_caller_id(#route_flags{caller_id={}}=F0, {struct, CID}) ->
     F0#route_flags{caller_id = {get_value(<<"cid_name">>, CID, <<>>)
 				,get_value(<<"cid_number">>, CID, <<>>)}};
 add_caller_id(F, _) -> F.
 
 -spec(lookup_server/2 :: (AuthUser :: binary(), Doc :: proplist()) -> proplist()).
 lookup_server(AuthUser, Doc) ->
-    case lists:filter(fun({S}) ->
-			      {Auth} = get_value(<<"auth">>, S, {[]}),
+    case lists:filter(fun({struct, S}) ->
+			      {struct, Auth} = get_value(<<"auth">>, S, {struct, []}),
 			      get_value(<<"auth_user">>, Auth, <<>>) =:= AuthUser
 		      end, get_value(<<"servers">>, Doc, [])) of
-	[{Srv}] -> Srv;
+	[{struct, Srv}] -> Srv;
 	_ -> []
     end.
 
--spec(response/4 :: (Routes :: proplist() | integer(), Prop :: proplist(), Flags :: tuple(), ServerID :: binary()) -> tuple(ok, iolist(), tuple()) | tuple(error, string())).
-response(Routes, Prop, Flags, ServerID) ->
+-spec(response/3 :: (Routes :: proplist() | integer(), Prop :: proplist(), Flags :: tuple()) -> tuple(ok, iolist()) | tuple(error, string())).
+response(Routes, Prop, Flags) ->
+    ServerID = case is_list(Routes) of
+		   true ->
+		       {ok, Pid} = ts_call_sup:start_proc([Flags#route_flags.callid, whapps_controller:get_amqp_host(), Flags]),
+		       {ok, Q} = ts_call_handler:get_queue(Pid),
+		       Q;
+		   false -> <<>>
+	       end,
+
     Prop1 = [ {<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
-	      | whistle_api:default_headers(ServerID, <<"dialplan">>, <<"route_resp">>, <<"ts_route">>, <<"0.1">>) ],
-    Data = specific_response(Routes) ++ Prop1,
+	      | whistle_api:default_headers(ServerID, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ],
+    Data = specific_response(Routes, Prop1),
     case whistle_api:route_resp(Data) of
 	{ok, JSON} ->
-	    {ok, JSON, Flags};
+	    {ok, JSON};
 	{error, _E}=Error ->
 	    Error
     end.
 
--spec(specific_response/1 :: (CodeOrRoutes :: integer() | proplist()) -> proplist()).
-specific_response(404) ->
+-spec(specific_response/2 :: (CodeOrRoutes :: integer() | proplist(), Prop :: proplist()) -> proplist()).
+specific_response(404, Prop) ->
     [{<<"Routes">>, []}
      ,{<<"Method">>, <<"error">>}
      ,{<<"Route-Error-Code">>, <<"404">>}
      ,{<<"Route-Error-Message">>, <<"Not Found">>}
+     | Prop
     ];
-specific_response(503) ->
+specific_response(503, Prop) ->
     [{<<"Routes">>, []}
      ,{<<"Method">>, <<"error">>}
      ,{<<"Route-Error-Code">>, <<"503">>}
      ,{<<"Route-Error-Message">>, <<"Insufficient Credit">>}
+     | Prop
     ];
-specific_response(Routes) when is_list(Routes) ->
+specific_response(Routes, Prop) when is_list(Routes) ->
     [{<<"Routes">>, Routes}
      ,{<<"Method">>, <<"bridge">>}
+     | Prop
     ].

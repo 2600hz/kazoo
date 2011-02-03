@@ -165,29 +165,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 get_current_rates() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_RATES_DOC) of
-	not_found ->
+	{error, not_found} ->
 	    format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
 	    {error, "No matching rates"};
-	{error, unhandled_call} ->
+	{error, db_not_reachable} ->
 	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
 	    {error, "No database host"};
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
-	Rates when is_list(Rates) ->
+	{ok, {struct, Rates}} when is_list(Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_RATES_DOC),
-	    {ok, lists:map(fun process_rates/1, Rates)};
-	Error ->
-	    format_log(error, "TS_CREDIT(~p): Fail ~p~n", [self(), Error]),
-	    {error, "Unknown error occurred"}
+	    {ok, lists:map(fun process_rates/1, Rates)}
     end.
 
 process_rates({<<"_id">>, _}=ID) -> ID;
 process_rates({<<"_rev">>, _}=Rev) -> Rev;
-process_rates({RouteName, {RouteOptions}}) ->
+process_rates({RouteName, {struct, RouteOptions}}) ->
     RoutesRegexStrs = get_value(<<"routes">>, RouteOptions, []),
-    {Options} = get_value(<<"options">>, RouteOptions, {[]}),
+    {struct, Options} = get_value(<<"options">>, RouteOptions, {struct, []}),
     ROs0 = proplists:delete(<<"routes">>, RouteOptions),
     {RouteName, [{<<"routes">>, lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs)}
 		 ,{<<"options">>, Options}

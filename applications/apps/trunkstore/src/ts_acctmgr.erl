@@ -31,7 +31,7 @@
 -define(SERVER, ?MODULE).
 -define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
--define(UNITS_TO_DOLLARS(X), whistle_util:to_list(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
+-define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 -define(EOD, end_of_day).
 
@@ -140,17 +140,17 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_
     load_account(AcctId, WDB),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
-			   [] ->
+			   {ok, []} ->
 			       case has_credit(RDB, AcctId, Amt) of
 				   true -> {reserve_doc(AcctId, CallID, per_min), per_min};
 				   false -> {[], no_funds}
 			       end;
-			   [{[{<<"key">>, _}, {<<"value">>, 0}]}] ->
+			   {ok, [{struct, [{<<"key">>, _}, {<<"value">>, 0}] }] } ->
 			       case has_credit(RDB, AcctId, Amt) of
 				   true -> {reserve_doc(AcctId, CallID, per_min), per_min};
 				   false -> no_funds
 			       end;
-			   [{[{<<"key">>, _}, {<<"value">>, _}]}] ->
+			   {ok, [{struct, [{<<"key">>, _}, {<<"value">>, _}] }] } ->
 			       {reserve_doc(AcctId, CallID, flat_rate), flat_rate}
 		       end,
     case Type of
@@ -255,10 +255,10 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(load_accounts_from_ts/1 :: (DB :: binary()) -> no_return()).
 load_accounts_from_ts(DB) ->
     case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
-	[] -> ok;
-	{{error,not_found},fetch_failed} -> ok;
-	Accts when is_list(Accts) ->
-	    AcctIds = lists:map(fun({A}) -> props:get_value(<<"id">>, A) end, Accts),
+	{error, _} -> ok;
+	{ok, []} -> ok;
+	{ok, Accts} when is_list(Accts) ->
+	    AcctIds = lists:map(fun({struct, A}) -> props:get_value(<<"id">>, A) end, Accts),
 	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds),
 	    start_change_handlers(AcctIds)
     end.
@@ -280,31 +280,31 @@ has_credit(DB, AcctId, Amt) ->
 -spec(credit_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
 credit_available(DB, AcctId) ->
     case couch_mgr:get_results(DB, {"credit","credit_available"}, [{<<"group">>, <<"true">>}, {<<"key">>, AcctId}]) of
-	[] -> 0;
-	[{[{<<"key">>, _}, {<<"value">>, Avail}]}] -> Avail
+	{ok, []} -> 0;
+	{ok, [{struct, [{<<"key">>, _}, {<<"value">>, Avail}] }] } -> Avail
     end.
 
 -spec(trunk_type/3 :: (RDB :: binary(), AcctId :: binary(), CallID :: binary()) -> flat_rate | per_min | non_existant).
 trunk_type(DB, AcctId, CallID) ->
     case couch_mgr:get_results(DB, {"trunks", "trunk_type"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, <<"true">>}]) of
-	[] -> non_existant;
-	[{[{<<"key">>,_}, {<<"value">>, <<"flat_rate">>}]}] -> flat_rate;
-	[{[{<<"key">>,_}, {<<"value">>, <<"per_min">>}]}] -> per_min
+	{ok, []} -> non_existant;
+	{ok, [{struct, [{<<"key">>,_}, {<<"value">>, <<"flat_rate">>}] }] } -> flat_rate;
+	{ok, [{struct, [{<<"key">>,_}, {<<"value">>, <<"per_min">>}] }] } -> per_min
     end.
 
 -spec(trunk_status/3 :: (DB :: binary(), AcctId :: binary(), CallID :: binary()) -> active | inactive).
 trunk_status(DB, AcctId, CallID) ->
     case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group_level">>, <<"2">>}]) of
-	[] -> in_active;
-	[{[{<<"key">>,_},{<<"value">>,<<"active">>}]}] -> active;
-	[{[{<<"key">>,_},{<<"value">>,<<"inactive">>}]}] -> inactive
+	{ok, []} -> in_active;
+	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"active">>}] }] } -> active;
+	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"inactive">>}] }] } -> inactive
     end.
 
 -spec(trunks_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
 trunks_available(DB, AcctId) ->
     case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
-	[] -> 0;
-	[{[{<<"key">>,_},{<<"value">>, Ts}]}] -> whistle_util:to_integer(Ts)
+	{ok, []} -> 0;
+	{ok, [{struct, [{<<"key">>,_},{<<"value">>, Ts}] }] } -> whistle_util:to_integer(Ts)
     end.
 
 %% should be the diffs from the last account update to now
@@ -352,77 +352,77 @@ debit_doc(AcctId, Extra) ->
 -spec(get_accts/1 :: (DB :: binary()) -> list(binary())).
 get_accts(DB) ->
     case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
-	[] -> [];
-	AcctsDoc -> lists:map(fun({AcctDoc}) -> props:get_value(<<"key">>, AcctDoc) end, AcctsDoc)
+	{ok, []} -> [];
+	{ok, AcctsDoc} -> lists:map(fun({struct, AcctDoc}) -> props:get_value(<<"key">>, AcctDoc) end, AcctsDoc)
     end.
 
 transfer_acct(AcctId, RDB, WDB) ->
     %% read account balance, from RDB
     Bal = credit_available(RDB, AcctId),
-    Acct = couch_mgr:open_doc(RDB, AcctId),
+    {ok, {struct, Acct}} = couch_mgr:open_doc(RDB, AcctId),
     Acct1 = [ {<<"amount">>, Bal} | lists:keydelete(<<"amount">>, 1, Acct)],
 
     format_log(info, "TS_ACCTMGR.transfer: ~p has ~p balance~n", [AcctId, ?UNITS_TO_DOLLARS(Bal)]),
 
     %% create credit entry in WDB for balance/trunks
-    couch_mgr:save_doc(WDB, lists:keydelete(<<"_rev">>, 1, Acct1)),
+    {ok, _} = couch_mgr:save_doc(WDB, {struct, lists:keydelete(<<"_rev">>, 1, Acct1)}),
 
     %% update info_* doc with account balance
     update_account(AcctId, Bal).
 
 transfer_active_calls(AcctId, RDB, WDB) ->
     case couch_mgr:get_results(RDB, {"trunks", "trunk_status"}, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, {[]}]}, {<<"group">>, <<"true">>}]) of
-	[] -> ok;
-	Calls when is_list(Calls) ->
-	    lists:foreach(fun({[{<<"key">>, [_Acct, _CallId, DocId]}, {<<"value">>, <<"active">>}]}) ->
-				  D = couch_mgr:open_doc(RDB, DocId),
-				  couch_mgr:save_doc(WDB, lists:keydelete(<<"_rev">>, 1, D));
+	{ok, []} -> ok;
+	{ok, Calls} when is_list(Calls) ->
+	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, _CallId, DocId]}, {<<"value">>, <<"active">>}] }) ->
+				  {ok, {struct, D}} = couch_mgr:open_doc(RDB, DocId),
+				  couch_mgr:save_doc(WDB, {struct, lists:keydelete(<<"_rev">>, 1, D)});
 			     (_) -> ok
 			  end, Calls)
     end.
 
 update_from_couch(AcctId, WDB, RDB) ->
-    Doc = couch_mgr:open_doc(?TS_DB, AcctId),
+    {ok, {struct, Doc}} = couch_mgr:open_doc(?TS_DB, AcctId),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
 
-    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
-    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
+    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
     Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
     Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
 
-    UsageDoc = couch_mgr:open_doc(RDB, AcctId),
+    {ok, {struct, UsageDoc}} = couch_mgr:open_doc(RDB, AcctId),
     T0 = props:get_value(<<"trunks">>, UsageDoc),
     C0 = props:get_value(<<"amount">>, UsageDoc),
-    
+
     UD1 = [ {<<"trunks">>, T0 + (Trunks - T0)} | lists:keydelete(<<"trunks">>, 1, UsageDoc)],
     UD2 = [ {<<"amount">>, C0 + (Balance - C0)} | lists:keydelete(<<"amount">>, 1, UD1)],
-    couch_mgr:save_doc(WDB, UD2).
+    couch_mgr:save_doc(WDB, {struct, UD2}).
 
 update_account(AcctId, Bal) ->
-    Doc = couch_mgr:open_doc(?TS_DB, AcctId),
-    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
-    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+    {ok, {struct, Doc}} = couch_mgr:open_doc(?TS_DB, AcctId),
+    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
+    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
     Credits1 = [ {<<"prepay">>, ?UNITS_TO_DOLLARS(Bal)} | lists:keydelete(<<"prepay">>, 1, Credits)],
-    Acct1 = [ {<<"credits">>, {Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
-    Doc1 = [ {<<"account">>, {Acct1}} | lists:keydelete(<<"account">>, 1, Doc)],
-    couch_mgr:save_doc(?TS_DB, Doc1).
+    Acct1 = [ {<<"credits">>, {struct, Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
+    Doc1 = [ {<<"account">>, {struct, Acct1}} | lists:keydelete(<<"account">>, 1, Doc)],
+    couch_mgr:save_doc(?TS_DB, {struct, Doc1}).
 
 load_account(AcctId, DB) ->
     case couch_mgr:open_doc(?TS_DB, AcctId) of
 	{error, not_found} -> ok;
-	Doc -> 
+	{ok, {struct, Doc}} -> 
 	    couch_mgr:add_change_handler(?TS_DB, AcctId),
 
-	    {Acct} = props:get_value(<<"account">>, Doc, {[]}),
-	    {Credits} = props:get_value(<<"credits">>, Acct, {[]}),
+	    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
+	    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
 	    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
 	    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
-	    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks))
+	    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)})
     end.
 
 load_views(DB) ->
     lists:foreach(fun(Name) ->
-			  ts_util:load_doc_from_file(DB, Name)
+			  couch_mgr:load_doc_from_file(DB, trunkstore, Name)
 		  end, ["accounts.json", "credit.json", "trunks.json"]).
-				     
+
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
