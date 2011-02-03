@@ -54,8 +54,7 @@ malformed_request(RD, Context) ->
 		   ReqBody ->
 		       mochijson2:decode(ReqBody)
 	       end,
-        Data = crossbar_doc:get(Json, [<<"data">>]),
-        io:format("~p~n", [crossbar_doc:get(Json, ["data", "base", "stuff", 3, "thing"], <<"DIE">>)]),
+        Data = whapps_json:get_value(Json, ["data"]),
         Auth = get_auth_token(RD, Json),
 	{false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}
     catch
