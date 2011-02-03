@@ -16,8 +16,6 @@
 -export([response_invalid_data/2]).
 -export([response_missing_view/1]).
 -export([response_db_missing/1]).
--export([get_json_values/2, set_json_values/3]).
-%%-export([get_json_value/2, get_json_value/3, set_json_value/2, set_json_value/3]).
 -export([binding_heartbeat/1]).
 
 
@@ -175,48 +173,11 @@ response_db_missing(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Returns true if the value is not undefined
-%%
-%% TODO: This needs to be rewritten....
+%% This spawns a function that will monitor the parent and hearbeat
+%% the crossbar_binding PID provided as long as the parent lives
 %% @end
 %%--------------------------------------------------------------------
--spec(get_json_values/2 :: (Key :: term() | [term()], Props :: proplist()) -> undefined|term()|[term()]).
-get_json_values(Keys, {struct, Json}) ->
-    get_json_values(Keys, Json);
-get_json_values(_Keys, Json)  when not is_list(Json) ->
-    undefined;
-get_json_values([Key], Json) ->
-    proplists:get_value(Key, Json);
-get_json_values([Key|T], Json) ->
-    get_json_values(T, proplists:get_value(Key, Json)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Sets the all instances of the key path to the given value in Props
-%% @end
-%%--------------------------------------------------------------------
--spec(set_json_values/3 :: (Key :: term() | [term()], Value :: term(), Props :: proplist()) -> proplist()).
-set_json_values(Key, Value, {struct, Json}) ->
-    {struct, set_json_values(Key, Value, Json)};
-set_json_values(Key, Value, Json) when not is_list(Key)->
-    set_json_values([Key], Value, Json);
-set_json_values([Key], Value, Json) ->
-    lists:map(fun(Prop) ->
-            case Prop of
-                {Key, _} -> {Key, Value};
-                Else -> Else
-            end
-        end, Json);
-set_json_values([Key|T], Value, Json) ->
-    lists:map(fun(Prop) ->
-            case Prop of
-                {Key, {struct, Props}} -> {Key, {struct, set_json_values(T, Value, Props)}};
-                {Key, V} -> {Key, set_json_values(T, Value, V)};
-                Else -> Else
-            end
-        end, Json).
-
+-spec(binding_heartbeat/1 :: (BPid :: pid()) -> pid()).
 binding_heartbeat(BPid) ->
     PPid=self(),
     spawn(fun() ->
