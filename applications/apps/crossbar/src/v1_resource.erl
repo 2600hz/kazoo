@@ -50,12 +50,11 @@ malformed_request(RD, Context) ->
     try	
         Json = case wrq:req_body(RD) of
 		   <<>> ->
-		       [];
+		       {struct, []};
 		   ReqBody ->
-		       {struct, Json1} = mochijson2:decode(ReqBody),
-		       Json1
+		       mochijson2:decode(ReqBody)
 	       end,
-        Data = proplists:get_value(<<"data">>, Json, []),
+        Data = whapps_json:get_value(Json, ["data"]),
         Auth = get_auth_token(RD, Json),
 	{false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}
     catch
@@ -70,8 +69,8 @@ malformed_request(RD, Context) ->
             {true, RD1, Context1}
     end.
 
-is_authorized(RD, Context) ->
-    S0 = #session{}, %%crossbar_session:start_session(RD),
+is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
+    S0 = crossbar_session:start_session(AuthToken),
     Event = <<"v1_resource.start_session">>,
     S = crossbar_bindings:fold(Event, S0),
     {true, RD, Context#cb_context{session=S}}.
@@ -150,16 +149,16 @@ delete_resource(RD, Context) ->
     crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
-finish_request(RD, #cb_context{session=S, start=T1}=Context) ->
+finish_request(RD, #cb_context{start=T1}=Context) ->
     Event = <<"v1_resource.finish_request">>,
-    {RD, Context} = crossbar_bindings:fold(Event, {RD, Context}),
-    case S#session.'_id' of
+    {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    case Context1#cb_context.session of
         undefined ->
             io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
-            {true, RD, Context};
-        _Else ->
-            io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
-            {true, crossbar_session:finish_session(S, RD), Context#cb_context{session=undefined}}
+            {true, RD1, Context1};
+        #session{}=S ->
+            io:format("Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
+            {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}
     end.
 
 %%%===================================================================
@@ -226,7 +225,7 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
 %% methods, they can not add.
 %% @end
 %%--------------------------------------------------------------------
--spec(allow_methods/2  :: (Reponses :: proplist(), Avaliable :: proplist()) -> #cb_context{}).
+-spec(allow_methods/2  :: (Reponses :: list(tuple(term(), term())), Avaliable :: http_methods()) -> http_methods()).
 allow_methods(Responses, Available) ->
     case crossbar_bindings:succeeded(Responses) of
         [] ->
@@ -361,7 +360,7 @@ create_resp_content(RD, Context) ->
     Prop = create_resp_envelope(Context),
     case get_resp_type(RD) of
 	xml ->
-            io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), "")]);
+            io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), [])]);
         json ->
             mochijson2:encode({struct, Prop})
     end.
@@ -416,9 +415,9 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
     case {S, C} of
 	{success, _} ->
 	    [
-                 {"auth-token", A}
-                ,{"status", S}
-                ,{"data", D}
+                 {<<"auth-token">>, A}
+                ,{<<"status">>, S}
+                ,{<<"data">>, D}
             ];
 	{_, undefined} ->
             Msg =
@@ -429,11 +428,11 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
                         whistle_util:to_binary(Else)
                 end,
 	    [
-                 {"auth-token", A}
-                ,{"status", S}
-                ,{"message", Msg}
-                ,{"error", 500}
-                ,{"data", D}
+                 {<<"auth-token">>, A}
+                ,{<<"status">>, S}
+                ,{<<"message">>, Msg}
+                ,{<<"error">>, 500}
+                ,{<<"data">>, D}
             ];
 	_ ->
             Msg =
@@ -444,11 +443,11 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
                         whistle_util:to_binary(Else)
                 end,
 	    [
-                 {"auth-token", A}
-                ,{"status", S}
-                ,{"message", Msg}
-                ,{"error", C}
-                ,{"data", D}
+                 {<<"auth-token">>, A}
+                ,{<<"status">>, S}
+                ,{<<"message">>, Msg}
+                ,{<<"error">>, C}
+                ,{<<"data">>, D}
             ]
     end.
 
@@ -459,7 +458,7 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
 %% based on the request....
 %% @end
 %%--------------------------------------------------------------------
--spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json).
+-spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml).
 get_resp_type(RD) ->
     case wrq:get_resp_header("Content-Type",RD) of
         "application/xml" -> xml;
@@ -491,7 +490,7 @@ encode_xml([{K, V}|T], Xml) ->
        is_number(V) ->
            xml_tag(K, mochijson2:encode(V), "number");
        is_list(V) ->
-           xml_tag(K, list_to_xml(lists:reverse(V), ""), "array");
+           xml_tag(K, list_to_xml(lists:reverse(V), []), "array");
        true ->
             case V of
                 {struct, Terms} ->
@@ -509,7 +508,7 @@ encode_xml([{K, V}|T], Xml) ->
 %% element
 %% @end
 %%--------------------------------------------------------------------
--spec(list_to_xml/2 :: (List :: list(), Xml :: iolist) -> iolist()).
+-spec(list_to_xml/2 :: (List :: list(), Xml :: iolist()) -> iolist()).
 list_to_xml([], Xml) ->
     Xml;
 list_to_xml([{struct, Terms}|T], Xml) ->
@@ -538,7 +537,7 @@ list_to_xml([E|T], Xml) ->
 %% attribute if called as xml_tag/3
 %% @end
 %%--------------------------------------------------------------------
--spec(xml_tag/2 :: (Value :: iolist(), Type :: iolist) -> iolist()).
+-spec(xml_tag/2 :: (Value :: iolist(), Type :: iolist()) -> iolist()).
 xml_tag(Value, Type) ->
     io_lib:format("<~s>~s</~s>~n", [Type, Value, Type]).
 xml_tag(Key, Value, Type) ->

@@ -194,7 +194,6 @@ process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
 
 process_custom_data(Data, Host, AppVsn) ->
     case get_value(<<"Event-Subclass">>, Data) of
-	undefined -> ok;
 	<<"sofia::register">> -> publish_register_event(Data, Host, AppVsn);
 	_ -> ok
     end.

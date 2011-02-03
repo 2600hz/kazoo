@@ -1,30 +1,5 @@
--type proplist() :: list(tuple(binary(), term())) | [].
-
--type crossbar_status() :: success | error | fatal.
--type crossbar_module_result() :: tuple(crossbar_status(), proplist())
-				  | tuple(crossbar_status(), proplist(), string())
-				  | tuple(crossbar_status(), proplist(), string(), integer()).
-
--type crossbar_content_handler() :: tuple(atom(), list(string())).
-
--type http_method() :: 'POST' | 'GET' | 'PUT' | 'DELETE'.
--type http_methods() :: [http_method()].
-
-%% -type iolist() :: [char() | binary() | iolist()].
-%% -type iodata() :: iolist() | binary().
--type json_string() :: atom | binary().
--type json_number() :: integer() | float().
--type json_array() :: [json_term()].
--type json_object() :: {struct, [{json_string(), json_term()}]}.
--type json_iolist() :: {json, iolist()}.
--type json_term() :: json_string() | json_number() | json_array() | json_object() | json_iolist().
-
--type validator() :: required | not_empty | is_type | is_format | numeric_min | numeric_max | numeric_between | width | width.
--type validator_rule() :: tuple(validator(), list()).
--type validator_rules() :: list(validator_rule()).
-
--type couch_doc_path() :: list(binary()).
--type couch_schema() :: list(tuple(couch_doc_path(), validator_rules())).
+-include("../../../utils/src/whistle_types.hrl").
+-include("../src/crossbar_types.hrl").
 
 -define(CONTENT_PROVIDED, [
                             {to_json, ["application/json","application/x-json"]}
@@ -61,18 +36,16 @@
           ,auth_token = <<"">> :: binary()
           ,req_verb = undefined :: binary() | undefined
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
-          ,req_json = [] :: proplist()
-          ,req_data = [] :: proplist()
+          ,req_json = [] :: mochijson()
+          ,req_data = [] :: mochijson()
           ,db_name = undefined :: string() | undefined
-          ,doc = undefined :: json_object() | undefinded
+          ,doc = undefined :: json_object() | json_objects() | undefined
           ,resp_expires = {{1999,1,1},{0,0,0}}
-          ,resp_etag = undefined :: string() | automatic | undefined
+          ,resp_etag = undefined :: undefined | automatic | string()
 	  ,resp_status = error :: crossbar_status()
-	  ,resp_error_msg = undefined :: string() | undefined
-	  ,resp_error_code = undefined :: integer() | undefined
-	  ,resp_data = [] :: list() | []
+	  ,resp_error_msg = undefined :: json_string()
+	  ,resp_error_code = undefined :: json_number() | undefined
+	  ,resp_data = [] :: mochijson()
           ,storage = [] :: proplist()
           ,start = undefined
 	 }).
-
-
