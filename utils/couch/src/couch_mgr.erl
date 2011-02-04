@@ -352,11 +352,6 @@ handle_call({set_host, Host}, _From, State) ->
     end;
 handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
-handle_call({add_change_handler, DBName, <<>>}, {Pid, _Ref}, State) ->
-    case start_change_handler(DBName, <<>>, Pid, State) of
-	{ok, _R, State1} -> {reply, ok, State1};
-	{error, E, State2} -> {reply, {error, E}, State2}
-    end;
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, DocID, Pid, State) of
 	{ok, _R, State1} -> {reply, ok, State1};
@@ -417,7 +412,7 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
     end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-    format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
+    %%format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
     case lists:keyfind(ReqID, 2, CH) of
 	false ->
 	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
@@ -560,7 +555,7 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_ha
 		false ->
 		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid | Pids]} | lists:keydelete({DBName, DocID}, 1, CH)]}};
 		true ->
-		    format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+		    %%format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
 		    {error, handler_exists, State}
 	    end
     end.
