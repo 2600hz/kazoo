@@ -1,0 +1,16 @@
+{ "_id":"_design/registrations"
+  ,"language":"javascript"
+  ,"views":{
+    "oldest":{
+      "map": "function(doc) { var t = doc['Reg-Server-Timestamp'] || doc['Event-Timestamp']; var expires = parseInt(t) + parseInt(doc['Expires']); emit([doc['Realm'], doc['Username']], {'expiration': expires, 'id': doc._id}); }"
+      ,"reduce": "function(k, vs) { var min = {'expiration':0}; for (i in vs ) { if ( min.expiration == 0 ) min = vs[i]; else if ( min.expiration > vs[i].expiration ) min = vs[i]; } return min; }"
+    }
+    ,"newest":{
+      "map": "function(doc) { var t = doc['Reg-Server-Timestamp'] || doc['Event-Timestamp']; var expires = parseInt(t) + parseInt(doc['Expires']); emit([doc['Realm'], doc['Username']], {'expiration': expires, 'id': doc._id}); }"
+      ,"reduce": "function(k, vs) { var max = {'expiration':0}; for (i in vs ) { if ( max.expiration == 0 ) max = vs[i]; else if ( max.expiration < vs[i].expiration ) max = vs[i]; } return max; }"
+    }
+    ,"expirations":{
+      "map": "function(doc) { var t = doc['Reg-Server-Timestamp'] || doc['Event-Timestamp']; var expires = parseInt(t) + parseInt(doc['Expires']); emit(expires, null); }"
+    }
+  }
+}

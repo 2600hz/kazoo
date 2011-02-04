@@ -1,8 +1,9 @@
 *~
-*/log
+*/log/error_log
 */mnesia
 */error_log
 .eunit
-rabbit/rabbit-config/log/*.log
+rabbit/rabbit-config/log/*.log*
 rabbit/rabbit-config/mnesia/*
 applications/apps/*/log/*
+applications/priv/mnesia/*.*

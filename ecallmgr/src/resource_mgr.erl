@@ -24,6 +24,7 @@
 -include("whistle_api.hrl").
 -include("whistle_amqp.hrl").
 -include("../include/amqp_client/include/amqp_client.hrl").
+-include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE). 
 
@@ -179,7 +180,7 @@ handle_resource_req(Payload, AmqpHost) ->
 
 	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
 	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
-	    Route = get_value(<<"Route">>, Prop),
+	    Route = ecallmgr_fs_route:build_route(AmqpHost, [{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], get_value(<<"Invite-Format">>, Prop)),
 	    case start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min) of
 		{error, failed_starting, Failed} ->
 		    send_failed_req(Prop, AmqpHost, Failed),
@@ -210,24 +211,24 @@ get_request_options(Prop) ->
      ,{max_channels_requested, whistle_util:to_integer(get_value(<<"Resource-Maximum">>, Prop, Min))}
     ].
 
--spec(start_channels/5 :: (Nodes :: list(), Amqp :: tuple(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> no_return()).
+-spec(start_channels/5 :: (Nodes :: list(), Amqp :: tuple(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> tuple(error, failed_starting, integer()) | ok).
 start_channels(_Ns, _Amqp, _Route, 0, 0) -> ok; %% started all channels requested
 start_channels([], _Amqp, _Route, 0, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
 start_channels([], _Amqp, _Route, M, _) -> {error, failed_starting, M}; %% failed to start the minimum channels before server resources ran out
 start_channels([N | Ns]=Nodes, Amqp, Route, 0, Max) -> %% these are bonus channels not required but desired
     case start_channel(N, Route, Amqp) of
 	{ok, 0} -> start_channels(Ns, Amqp, Route, 0, Max-1);
-	{ok, _Left} -> start_channels(Nodes, Amqp, Route, 0, Max-1);
+	{ok, _} -> start_channels(Nodes, Amqp, Route, 0, Max-1);
 	{error, _} -> start_channels(Ns, Amqp, Route, 0, Max)
     end;
 start_channels([N | Ns]=Nodes, Amqp, Route, Min, Max) -> %% start the minimum channels
     case start_channel(N, Route, Amqp) of
 	{ok, 0} -> start_channels(Ns, Amqp, Route, Min-1, Max);
-	{ok, _Left} -> start_channels(Nodes, Amqp, Route, Min-1, Max);
+	{ok, _} -> start_channels(Nodes, Amqp, Route, Min-1, Max);
 	{error, _} -> start_channels(Ns, Amqp, Route, Min, Max)
     end.
 
--spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), Amqp :: tuple()) -> tuple(ok, integer()) | tuple(error, term())).
+-spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), Amqp :: tuple()) -> tuple(ok, integer()) | tuple(error, timeout | string())).
 start_channel(N, Route, Amqp) ->
     Pid = get_value(node, N),
     Pid ! {resource_consume, self(), Route},

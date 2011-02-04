@@ -1,11 +1,23 @@
--type proplist() :: list(tuple(binary(), term())) | [].
+-include("../../../utils/src/whistle_types.hrl").
+-include("../src/crossbar_types.hrl").
 
--type crossbar_status() :: success | error | fatal.
--type crossbar_module_result() :: tuple(crossbar_status(), proplist())
-				  | tuple(crossbar_status(), proplist(), string())
-				  | tuple(crossbar_status(), proplist(), string(), integer()).
+-define(CONTENT_PROVIDED, [
+                            {to_json, ["application/json","application/x-json"]}
+                           ,{to_xml, ["application/xml"]}
+			  ]).
 
--type crossbar_content_handler() :: tuple(atom(), list(string())).
+-define(CONTENT_ACCEPTED, [
+                            {from_xml, ["application/xml"]}
+                           ,{from_json, ["application/json","application/x-json"]}
+			   ,{from_form, ["application/x-www-form-urlencoded"]}
+			  ]).
+
+-define(ALLOWED_METHODS, [
+			   'GET'
+			  ,'POST'
+			  ,'PUT'
+			  ,'DELETE'
+			 ]).
 
 -record(session, {
           '_id' = undefined :: binary() | undefined
@@ -15,3 +27,25 @@
           ,created = 0 :: integer() % timestamp
           ,storage = [] :: proplist() % proplist
          }).
+
+-record(cb_context, {
+           content_types_provided = ?CONTENT_PROVIDED :: list(crossbar_content_handler()) | []
+          ,content_types_accepted = ?CONTENT_ACCEPTED :: list(crossbar_content_handler()) | []
+	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
+	  ,session = undefined :: undefined | #session{}
+          ,auth_token = <<"">> :: binary()
+          ,req_verb = undefined :: binary() | undefined
+          ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
+          ,req_json = [] :: mochijson()
+          ,req_data = [] :: mochijson()
+          ,db_name = undefined :: string() | undefined
+          ,doc = undefined :: json_object() | json_objects() | undefined
+          ,resp_expires = {{1999,1,1},{0,0,0}}
+          ,resp_etag = undefined :: undefined | automatic | string()
+	  ,resp_status = error :: crossbar_status()
+	  ,resp_error_msg = undefined :: json_string()
+	  ,resp_error_code = undefined :: json_number() | undefined
+	  ,resp_data = [] :: mochijson()
+          ,storage = [] :: proplist()
+          ,start = undefined
+	 }).

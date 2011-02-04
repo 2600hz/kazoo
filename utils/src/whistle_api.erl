@@ -23,26 +23,28 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% Authentication and Routing
--export([auth_req/1, auth_resp/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
+-export([auth_req/1, auth_resp/1, reg_success/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
+-export([reg_query/1, reg_query_resp/1]).
 
 %% Resources
 -export([resource_req/1, resource_resp/1, resource_error/1]).
 
 %% In-Call
--export([call_event/1, error_resp/1, call_cdr/1]).
+-export([call_event/1, error_resp/1, call_cdr/1, call_status_req/1, call_status_resp/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
-	 ,sleep_req/1, tone_detect_req/1
+	 ,sleep_req/1, tone_detect_req/1, set_req/1
 	]).
 
 %% Validation functions
--export([auth_req_v/1, auth_resp_v/1, route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1
+-export([auth_req_v/1, auth_resp_v/1, reg_success_v/1, route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1
 	 ,call_event_v/1, error_resp_v/1, play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1
 	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
-	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1
+	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
+	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1
 	]).
 
 %% FS-specific routines
@@ -120,6 +122,54 @@ auth_resp_v(Prop) ->
     validate(Prop, ?AUTH_RESP_HEADERS, ?AUTH_RESP_VALUES, ?AUTH_RESP_TYPES).
 
 %%--------------------------------------------------------------------
+%% @doc Registration Success - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(reg_success/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_success(Prop) ->
+    case reg_success_v(Prop) of
+	true -> build_message(Prop, ?REG_SUCCESS_HEADERS, ?OPTIONAL_REG_SUCCESS_HEADERS);
+	false -> {error, "Proplist failed validation for reg_success"}
+    end.
+
+-spec(reg_success_v/1 :: (Prop :: proplist()) -> boolean()).
+reg_success_v(Prop) ->
+    validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Registration Query - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(reg_query/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_query(Prop) ->
+    case reg_query_v(Prop) of
+	true -> build_message(Prop, ?REG_QUERY_HEADERS, ?OPTIONAL_REG_QUERY_HEADERS);
+	false -> {error, "Proplist failed validation for reg_query"}
+    end.
+
+-spec(reg_query_v/1 :: (Prop :: proplist()) -> boolean()).
+reg_query_v(Prop) ->
+    validate(Prop, ?REG_QUERY_HEADERS, ?REG_QUERY_VALUES, ?REG_QUERY_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Registration Query Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(reg_query_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_query_resp(Prop) ->
+    case reg_query_resp_v(Prop) of
+	true -> build_message(Prop, ?REG_QUERY_RESP_HEADERS, ?OPTIONAL_REG_QUERY_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for reg_query_resp"}
+    end.
+
+-spec(reg_query_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+reg_query_resp_v(Prop) ->
+    validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES).
+
+%%--------------------------------------------------------------------
 %% @doc Dialplan Route Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -149,7 +199,8 @@ route_resp(Prop) ->
 
 -spec(route_resp_v/1 :: (Prop :: proplist()) -> boolean()).
 route_resp_v(Prop) ->
-    validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES).
+    validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES)
+	andalso lists:all(fun({struct, R}) -> route_resp_route_v(R) end, get_value(<<"Routes">>, Prop)).
 
 %%--------------------------------------------------------------------
 %% @doc Route within a Dialplan Route Response - see wiki
@@ -246,6 +297,38 @@ call_event(Prop) ->
 -spec(call_event_v/1 :: (Prop :: proplist()) -> boolean()).
 call_event_v(Prop) ->
     validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(call_status_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_status_req(Prop) ->
+    case call_status_req_v(Prop) of
+	true -> build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for call_status req"}
+    end.
+
+-spec(call_status_req_v/1 :: (Prop :: proplist()) -> boolean()).
+call_status_req_v(Prop) ->
+    validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Respond with status of a call, either active or non-existant
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(call_status_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_status_resp(Prop) ->
+    case call_status_resp_v(Prop) of
+	true -> build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for call_status_resp"}
+    end.
+
+-spec(call_status_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+call_status_resp_v(Prop) ->
+    validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a CDR for a call
@@ -502,6 +585,22 @@ park_req(Prop) ->
 -spec(park_req_v/1 :: (Prop :: proplist()) -> boolean()).
 park_req_v(Prop) ->
     validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Set Custom Channel variables - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(set_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+set_req(Prop) ->
+    case set_req_v(Prop) of
+	true -> build_message(Prop, ?SET_REQ_HEADERS, ?OPTIONAL_SET_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for set_req"}
+    end.
+
+-spec(set_req_v/1 :: (Prop :: proplist()) -> boolean()).
+set_req_v(Prop) ->
+    validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Play media and record digits - see wiki

@@ -22,9 +22,11 @@ start() ->
     application:start(whistle_apps).
 
 start_deps() ->
+    reloader:start(),
     whistle_apps_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
+    ensure_started(mnesia),
     ensure_started(dynamic_compile),
     ensure_started(log_roller),
     ensure_started(couchbeam),

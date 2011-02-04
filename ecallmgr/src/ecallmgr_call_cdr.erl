@@ -19,8 +19,8 @@
 -include("whistle_api.hrl").
 
 -define(APPNAME, <<"ecallmgr.call.cdr">>).
--define(APPVER, <<"0.3.0">>).
--define(EVENT_CAT, <<"call-detail">>).
+-define(APPVER, <<"0.3.1">>).
+-define(EVENT_CAT, <<"call_detail">>).
 -define(EVENT_NAME, <<"cdr">>).
 
 -define(FS_TO_WHISTLE_MAP, [{<<"FreeSWITCH-Hostname">>, <<"Handling-Server-Name">>}

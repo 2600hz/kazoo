@@ -1,7 +1,6 @@
 -module(amqp_util).
 
--include("../include/amqp_client/include/amqp_client.hrl").
--include("../../src/whistle_amqp.hrl").
+-include("amqp_util.hrl").
 
 -import(props, [get_value/2, get_value/3]).
 
@@ -12,12 +11,12 @@
 -export([resource_exchange/1, resource_publish/2, resource_publish/3]).
 -export([callmgr_exchange/1, callmgr_publish/4]).
 
--export([bind_q_to_targeted/2, bind_q_to_targeted/3]).
--export([bind_q_to_callctl/2, bind_q_to_callctl/3]).
--export([bind_q_to_callevt/3, bind_q_to_callevt/4]).
--export([bind_q_to_broadcast/2, bind_q_to_broadcast/3]).
--export([bind_q_to_resource/2, bind_q_to_resource/3]).
--export([bind_q_to_callmgr/3]).
+-export([bind_q_to_targeted/2, bind_q_to_targeted/3, unbind_q_from_targeted/2]).
+-export([bind_q_to_callctl/2, bind_q_to_callctl/3, unbind_q_from_callctl/2]).
+-export([bind_q_to_callevt/3, bind_q_to_callevt/4, unbind_q_from_callevt/3]).
+-export([bind_q_to_broadcast/2, bind_q_to_broadcast/3, unbind_q_from_broadcast/3]).
+-export([bind_q_to_resource/2, bind_q_to_resource/3, unbind_q_from_resource/3]).
+-export([bind_q_to_callmgr/3, unbind_q_from_callmgr/3]).
 
 -export([new_targeted_queue/2, new_callevt_queue/2, new_callctl_queue/2, new_broadcast_queue/2, new_callmgr_queue/2]).
 -export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
@@ -26,61 +25,15 @@
 	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2
 	 ,channel_close/3, queue_delete/2, queue_delete/3]).
 
+-export([get_msg/2]).
+
 -export([access_request/0, access_request/1]).
 
 -export([get_msg_type/1, is_json/1]).
 
-
-%% Targeted Exchange
-%% - Any process that needs a dedicated queue to be reached at creates one on this exchange
-%% - One consumer of the queue, many publishers of the queue.
--define(EXCHANGE_TARGETED, <<"targeted">>).
--define(TYPE_TARGETED, <<"direct">>).
-
-%% Call Control Exchange
-%% - Specific type of exchange for call control. When a call is spun up, a process is created
-%%   to have a queue on this exchange and listen for commands to come to it.
-%% - One consumer of the queue, probably one publisher, though may be many, to the queue.
--define(EXCHANGE_CALLCTL, <<"callctl">>).
--define(TYPE_CALLCTL, <<"direct">>).
-
-%% Call Event Exchange
-%% - When a call spins up, a process publishes to the callevt exchange at call.event.CALLID
-%% - Any app that wants call events can bind to call.event.* for all events, or call.event.CALLID
-%%   for a specific call's events
--define(EXCHANGE_CALLEVT, <<"callevt">>).
--define(TYPE_CALLEVT, <<"topic">>).
-
-%% Broadcast Exchange
-%% - Any consumer can create a queue to get any message published to the exchange
-%% - Many publishers to the exchange, one consumer per queue
--define(EXCHANGE_BROADCAST, <<"broadcast">>).
--define(TYPE_BROADCAST, <<"fanout">>).
-
--define(EXCHANGE_RESOURCE, <<"resource">>).
--define(TYPE_RESOURCE, <<"fanout">>).
-
-%% Call Manager Exchange
-%% - ecallmgr will publish requests to this exchange using routing keys
-%%   apps that want to handle certain messages will create a queue with the appropriate routing key
-%%   in the binding to receive the messages.
-%% - ecallmgr publishes to the exchange with a routing key; consumers bind their queue with the
-%%   routing keys they want messages for.
--define(EXCHANGE_CALLMGR, <<"callmgr">>).
--define(TYPE_CALLMGR, <<"topic">>).
-
-%% Monitor Manager Exchange
-%% - monitor manager will publish requests to this exchange using routing keys
-%%   agents that want to handle certain messages will create a queue with the appropriate routing key
-%%   in the binding to receive the messages.
-%% - monitor manager publishes to the exchange with a routing key; consumers bind their queue with the
-%%   routing keys they want messages for.
 -export([monitor_exchange/1, monitor_publish/4]).
 -export([new_monitor_queue/1, new_monitor_queue/2, delete_monitor_queue/2]).
 -export([bind_q_to_monitor/3]).
-
--define(EXCHANGE_MONITOR, <<"monitor">>).
--define(TYPE_MONITOR, <<"topic">>).
 
 monitor_publish(Host, Payload, ContentType, RoutingKey) ->
     basic_publish(Host, ?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
@@ -100,8 +53,6 @@ delete_monitor_queue(Host, Queue) ->
 bind_q_to_monitor(Host, Queue, Routing) ->
     bind_q_to_exchange(Host, Queue, Routing, ?EXCHANGE_MONITOR).
 
-
-
 %% Publish Messages to a given Exchange.Queue
 targeted_publish(Host, Queue, Payload) ->
     targeted_publish(Host, Queue, Payload, undefined).
@@ -120,6 +71,8 @@ callevt_publish(Host, CallId, Payload) ->
 
 callevt_publish(Host, CallId, Payload, event) ->
     basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallId/binary>>, Payload, <<"application/json">>);
+callevt_publish(Host, CallID, Payload, status_req) ->
+    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, <<"application/json">>);
 callevt_publish(Host, CallId, Payload, cdr) ->
     basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>).
 
@@ -274,6 +227,8 @@ bind_q_to_callevt(Host, Queue, CallId) ->
 
 bind_q_to_callevt(Host, Queue, CallId, events) ->
     bind_q_to_exchange(Host, Queue, <<?KEY_CALL_EVENT/binary, CallId/binary>>, ?EXCHANGE_CALLEVT);
+bind_q_to_callevt(Host, Queue, CallID, status_req) ->
+    bind_q_to_exchange(Host, Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Host, Queue, CallId, cdr) ->
     bind_q_to_exchange(Host, Queue, <<?KEY_CALL_CDR/binary, CallId/binary>>, ?EXCHANGE_CALLEVT).
 
@@ -309,6 +264,30 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
      },
     amqp_channel:call(Channel, QB).
 
+unbind_q_from_callevt(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLEVT).
+unbind_q_from_callctl(Host, Queue) ->
+    unbind_q_from_exchange(Host, Queue, Queue, ?EXCHANGE_CALLCTL).
+unbind_q_from_resource(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_RESOURCE).
+unbind_q_from_broadcast(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_BROADCAST).
+unbind_q_from_callmgr(Host, Queue, Routing) ->
+    unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLMGR).
+unbind_q_from_targeted(Host, Queue) ->
+    unbind_q_from_exchange(Host, Queue, Queue, ?EXCHANGE_TARGETED).
+
+unbind_q_from_exchange(Host, Queue, Routing, Exchange) ->
+    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
+    QU = #'queue.unbind'{
+      ticket = Ticket
+      ,queue = Queue
+      ,exchange = Exchange
+      ,routing_key = Routing
+      ,arguments = []
+     },
+    amqp_channel:call(Channel, QU).
+
 %% create a consumer for a Queue
 basic_consume(Host, Queue) ->
     basic_consume(Host, Queue, []).
@@ -326,6 +305,10 @@ basic_consume(Host, Queue, Options) ->
       ,exclusive = get_value(exclusive, Options, true)
       ,nowait = get_value(nowait, Options, false)
      },
+
+    QoS = #'basic.qos'{prefetch_count = get_value(prefetch_count, Options, 0)},
+    amqp_channel:call(Channel, QoS),
+
     amqp_channel:subscribe(Channel, BC, self()).
 
 %% generic publisher for an Exchange.Queue
@@ -399,6 +382,18 @@ access_request(Options) ->
       ,write = get_value(write, Options, true)
       ,read = get_value(read, Options, true)
      }.
+
+-spec(get_msg/2 :: (Host :: string(), Queue :: binary()) -> #amqp_msg{}).
+get_msg(Host, Queue) ->
+    {ok, C, _T} = amqp_manager:open_channel(self(), Host),
+    Get = #'basic.get'{queue=Queue, no_ack=false},
+    case amqp_channel:call(C, Get) of
+	{#'basic.get_ok'{}, Content} ->
+	    Content;
+	#'basic.get_empty'{} ->
+	    #amqp_msg{}
+    end.
+
 
 get_msg_type(Msg) ->
     { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) }.

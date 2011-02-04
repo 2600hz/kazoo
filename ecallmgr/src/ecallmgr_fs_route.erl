@@ -11,7 +11,7 @@
 
 %% API
 -export([start_handler/3]).
--export([fetch_init/2, fetch_route/2, lookup_route/6]).
+-export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/3]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -133,7 +133,7 @@ lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID,
 		    {ok, JSON} ->
 			format_log(info, "L/U.route(~p): Sending RouteReq JSON to Host(~p)~n", [self(), Host]),
 			send_request(Host, JSON),
-			Result = handle_response(ID, UUID, CtlQ, HState, FetchPid, Data),
+			Result = handle_response(ID, UUID, CtlQ, HState, FetchPid),
 			amqp_util:queue_delete(Host, Q),
 			Result;
 		    {error, _Msg} ->
@@ -152,17 +152,12 @@ recv_response(ID) ->
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
 	    format_log(info, "L/U.route(~p): Recv Content: ~p Payload: ~s~n", [self(), Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    case get_value(<<"Msg-ID">>, Prop) of
-		ID ->
-		    case whistle_api:route_resp_v(Prop) of
-			true -> Prop;
-			false ->
-			    format_log(error, "L/U.route(~p): Invalid Route Resp~n~p~n", [self(), Prop]),
-			    invalid_route_resp
-		    end;
-		_BadId ->
-		    format_log(info, "L/U.route(~p): Recv MsgID ~p when expecting ~p~n", [self(), _BadId, ID]),
-		    recv_response(ID)
+	    case whistle_api:route_resp_v(Prop) andalso get_value(<<"Msg-ID">>, Prop) =:= ID of
+		true ->
+		    Prop;
+		false ->
+		    format_log(error, "L/U.route(~p): Invalid Route Resp~n~p~n", [self(), Prop]),
+		    invalid_route_resp
 	    end;
 	shutdown -> shutdown;
 	_Msg ->
@@ -186,8 +181,8 @@ bind_channel_qs(Host, UUID, Node) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
 
-    {ok, CtlPid} = ecallmgr_call_sup:add_call_process(Node, UUID, {Host, CtlQueue}),
-    {ok, _} = ecallmgr_call_sup:add_call_process(Node, UUID, Host, CtlPid),
+    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
+    {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
     CtlQueue.
 
 send_control_queue(_Host, _Q, undefined) ->
@@ -206,11 +201,11 @@ send_control_queue(Host, CtlProp, AppQ) ->
     end.
 
 %% Prop = Route Response
-generate_xml(<<"bridge">>, Routes, _Prop, Domain) ->
+generate_xml(<<"bridge">>, Routes, _Prop, AmqpHost) ->
     format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
-					     Route = ecallmgr_util:route_to_dialstring(get_value(<<"Route">>, RouteProp), Domain),
+					     Route = ?MODULE:build_route(AmqpHost, RouteProp, get_value(<<"Invite-Format">>, RouteProp)),
 
 					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
 							       <<"bypass">> -> "true";
@@ -231,13 +226,73 @@ generate_xml(<<"bridge">>, Routes, _Prop, Domain) ->
 				     end, {1, ""}, lists:reverse(Routes)),
     format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
     lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
-generate_xml(<<"park">>, _Routes, _Prop, _Domain) ->
+generate_xml(<<"park">>, _Routes, _Prop, _H) ->
     ?ROUTE_PARK_RESPONSE;
-generate_xml(<<"error">>, _Routes, Prop, _Domain) ->
+generate_xml(<<"error">>, _Routes, Prop, _H) ->
     ErrCode = get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
     format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
+
+-spec(build_route/3 :: (AmqpHost :: string(), RouteProp :: proplist(), DIDFormat :: binary()) -> binary()).
+build_route(_AmqpHost, RouteProp, <<"route">>) ->
+    get_value(<<"Route">>, RouteProp);
+build_route(AmqpHost, RouteProp, <<"username">>) ->
+    User = get_value(<<"To-User">>, RouteProp),
+    Realm = get_value(<<"To-Realm">>, RouteProp),
+    lookup_reg(AmqpHost, Realm, User);
+build_route(AmqpHost, RouteProp, DIDFormat) ->
+    User = get_value(<<"To-User">>, RouteProp),
+    Realm = get_value(<<"To-Realm">>, RouteProp),
+    Contact = lookup_reg(AmqpHost, Realm, User),
+    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
+    binary:replace(Contact, User, DID).
+
+-spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
+format_did(DID, <<"e164">>) ->
+    whistle_util:to_e164(DID);
+format_did(DID, <<"npan">>) ->
+    whistle_util:to_npanxxxxxx(DID);
+format_did(DID, <<"1npan">>) ->
+    whistle_util:to_1npanxxxxxx(DID).
+
+-spec(lookup_reg/3 :: (AmqpHost :: string(), Domain :: binary(), User :: binary()) -> binary()).
+lookup_reg(AmqpHost, Domain, User) ->
+    Self = self(),
+    spawn(fun() ->
+		  Q = amqp_util:new_targeted_queue(AmqpHost, <<>>),
+		  amqp_util:bind_q_to_targeted(AmqpHost, Q),
+		  amqp_util:basic_consume(AmqpHost, Q),
+		  ReqProp = [{<<"Username">>, User}, {<<"Realm">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
+			     | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+		  {ok, JSON} = whistle_api:reg_query(ReqProp),
+		  format_log(info, "REG_QUERY: ~s~n", [JSON]),
+		  amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
+		  C = receive_reg_query_resp(User),
+		  Self ! {contact, C}
+	  end),
+    receive {contact, C} -> C
+    after 1500 ->
+	    format_log(error, "REG_LOOKUP timed out~n", []),
+	    <<User/binary, "@", Domain/binary>>
+    end.
+
+receive_reg_query_resp(User) ->
+    receive
+	#'basic.consume_ok'{} ->
+	    receive_reg_query_resp(User);
+	{_, #amqp_msg{payload = Payload}} ->
+	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "ECALL_UTIL: RegQResp:~n~p~n", [Prop]),
+	    true = whistle_api:reg_query_resp_v(Prop),
+
+	    {struct, [{<<"Contact">>, Contact}]} = props:get_value(<<"Fields">>, Prop),
+	    
+	    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>)
+    after 2000 ->
+	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~p~n", [User]),
+	    exit(reg_query_timeout)
+    end.
 
 get_channel_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
@@ -277,10 +332,10 @@ get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
 			[ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
 		end, Vars, Custom);
 get_channel_vars({_K, _V}, Vars) ->
-    format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
+    %format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
-handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid, Data) ->
+handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid) ->
     T1 = erlang:now(),
     case recv_response(ID) of
 	shutdown ->
@@ -293,8 +348,8 @@ handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, Fet
 	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE},
 	    failed;
 	Prop ->
-	    Domain = get_value(<<"domain">>, Data, ?DEFAULT_DOMAIN),
-	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Domain),
+	    true = whistle_api:route_resp_v(Prop),
+	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Host),
 	    format_log(info, "L/U.route(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},
 

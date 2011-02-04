@@ -43,7 +43,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control).
 
--export([start/3, init/3]).
+-export([start_link/3, init/3]).
 
 -include("../include/amqp_client/include/amqp_client.hrl").
 
@@ -51,7 +51,7 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 %% Node, UUID, {AmqpHost, CtlQueue}
-start(Node, UUID, Amqp) ->
+start_link(Node, UUID, Amqp) ->
     {ok, spawn_link(ecallmgr_call_control, init, [Node, UUID, Amqp])}.
 
 init(Node, UUID, {AmqpHost, CtlQueue}) ->
@@ -110,7 +110,8 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	    format_log(info, "CONTROL(~p): CurrApp: ~p Received execute: ~p~n", [self(), CurrApp, EvtName]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
 	{hangup, UUID} ->
-	    amqp_util:delete_queue(AmqpHost, CtlQ),
+	    amqp_util:unbind_q_from_callctl(AmqpHost, CtlQ),
+	    amqp_util:delete_queue(AmqpHost, CtlQ), %% stop receiving messages
 	    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
 		       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]);
 	#'basic.consume_ok'{}=BC ->

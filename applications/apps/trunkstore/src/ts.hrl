@@ -8,6 +8,7 @@
 
 -define(TS_VIEW_IPAUTH, {"LookUpIPAuth", "LookUpIPAuth"}).
 -define(TS_VIEW_USERAUTH, {"LookUpUserAuth","LookUpUserAuth"}).
+-define(TS_VIEW_USERAUTHREALM, {"LookUpUserAuth","LookUpUserAuthRealm"}).
 -define(TS_VIEW_DIDLOOKUP, {"LookUpDID","LookUpDID"}).
 -define(TS_VIEW_CARRIERIP, {"LookUpCarrierIP","LookUpCarrierIP"}).
 
@@ -23,35 +24,31 @@
 
 -record(route_flags, {
 	  callid = <<>> :: binary()                      % unique call ID
-	  ,to_user = <<>> :: binary()
+	  ,to_user = <<>> :: binary()                    % usually a DID
 	  ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
 	  ,auth_user = <<>> :: binary()                  % what username did we authenticate with
+          ,auth_realm = <<>> :: binary()                 % what realm did we auth with
 	  ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
 	  ,server_id = <<>> :: binary()                  % Server of the DID
-          ,credit_available = 0.0 :: float()             % How much credit is left on the account/server/DID
 	  ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")
 	  ,allow_payphone = false :: boolean()
 	  ,caller_id = {} :: tuple()                     % Name and Number for Caller ID - check DID, then server, then account, then what we got from ecallmgr
           ,caller_id_e911 = {} :: tuple()                % CallerID for E911 calls - Check DID, then server, then account
-	  ,trunks = 0 :: integer()                       % Trunks available
-	  ,active_calls = [] :: list(binary())           % Calls currently up
-	  ,flat_rate_enabled = false :: boolean()        % is this a flat-rate eligible call - only if trunks are available
-          ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX"
+          ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX" | "USERNAME"
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
-	  ,inbound_rate = 0.0 :: float()                 % rate for the inbound leg, per minute
-	  ,inbound_rate_increment = 60 :: integer()      % time, in sec, to bill per
-          ,inbound_rate_minimum = 60 :: integer()        % time, in sec, to bill as a minimum
-	  ,inbound_surcharge = 0.0 :: float()            % rate to charge up front
-          ,inbound_rate_name = <<>> :: binary()          % name of the rate
-	  ,outbound_rate = 0.0 :: float()                % rate for the outbound leg, per minute
-	  ,outbound_rate_increment = 60 :: integer()     % time, in sec, to bill per
-          ,outbound_rate_minimum = 60 :: integer()       % time, in sec, to bill as a minimum
-	  ,outbound_surcharge = 0.0 :: float()           % rate to charge up front
-          ,outbound_rate_name = <<>> :: binary()         % name of the rate
+	  ,rate = 0.0 :: float()                 % rate for the inbound leg, per minute
+	  ,rate_increment = 60 :: integer()      % time, in sec, to bill per
+          ,rate_minimum = 60 :: integer()        % time, in sec, to bill as a minimum
+	  ,surcharge = 0.0 :: float()            % rate to charge up front
+          ,rate_name = <<>> :: binary()          % name of the rate
 	  ,route_options = [] :: list()                  % options required to be handled by carriers
+          ,flat_rate_enabled = false :: boolean()
 	  ,account_doc_id = <<>> :: binary()             % doc id of the account
-	  ,account_doc = [] :: proplist()                % the full Couch document
           ,routes_generated = [] :: proplist()           % the routes generated during the routing phase
 	 }).
+
+
+-define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json"]).
+-define(TS_COUCH_BASE_DOCS, ["carriers.json", "rates.json"]).

@@ -1,2 +1,2 @@
 [ {build_dir, "/tmp"},
-{install_dir, "/home/whistle/epm"} ].
+{install_dir, "/home/whistle/whistle/lib"} ].

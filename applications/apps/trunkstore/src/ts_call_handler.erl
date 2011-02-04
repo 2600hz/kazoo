@@ -32,9 +32,17 @@
 %%% @end
 %%% Created :  1 Oct 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
+
 -module(ts_call_handler).
 
--export([start/3, init/3, loop/4]).
+-behaviour(gen_server).
+
+%% API
+-export([start_link/3, get_queue/1]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+	 terminate/2, code_change/3]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
@@ -42,157 +50,166 @@
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("ts.hrl").
 
--define(WAIT_TO_UPDATE_TIMEOUT, 5000). %% 5 seconds
--define(CALL_HEARTBEAT, 10000). %% 10 seconds, how often to query callmgr about call status
+-record(state, {callid = <<>> :: binary()
+		,amqp_q = <<>> :: binary()
+		,amqp_h = "" :: string()
+		,ctl_q = <<>> :: binary() %% the control queue for the call, if we won the route_resp race
+                ,route_flags = #route_flags{} :: #route_flags{}
+	       }).
 
--compile(export_all).
+%%%===================================================================
+%%% API
+%%%===================================================================
 
--spec(start/3 :: (CallID :: binary(), Flags :: tuple(), AmqpHost :: string()) -> pid()).
-start(CallID, Flags, AmqpHost) ->
-    spawn_link(ts_call_handler, init, [CallID, Flags, AmqpHost]).
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link(CallID, AmqpHost, RouteFlags) ->
+    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags], []).
 
--spec(init/3 :: (CallID :: binary(), Flags :: tuple(), AmqpHost :: string()) -> no_return()).
-init(CallID, Flags, AmqpHost) ->
-    format_log(info, "TS_CALL(~p): Starting post handler for ~p...~n", [self(), CallID]),
-    EvtQ = consume_events(AmqpHost, CallID),
-    monitor_account_doc(Flags),
-    loop(CallID, Flags, {AmqpHost, <<>>, EvtQ}, infinity).
+%% get_queue() -> Queue Name
+-spec(get_queue/1 :: (Pid :: pid()) -> tuple(ok, binary())).
+get_queue(Pid) ->
+    gen_server:call(Pid, get_queue).
 
--spec(loop/4 :: (CallID :: binary(), Flags :: tuple(), Amqp :: tuple(Host :: string(), CtlQ :: binary(), EvtQ :: binary()), Timeout :: infinity | integer()) -> no_return()).
-loop(CallID, Flags, {Host, CtlQ, EvtQ}=Amqp, Timeout) ->
-    receive
-	{ctl_queue, CallID, CtlQ1} ->
-	    ?MODULE:loop(CallID, Flags, {Host, CtlQ1, EvtQ}, Timeout);
-	{shutdown, CallID} ->
-	    amqp_util:delete_callmgr_queue(Host, CallID),
-	    couch_mgr:rm_change_handler(Flags#route_flags.account_doc_id),
-	    ts_responder:rm_post_handler(CallID),
-	    format_log(info, "TS_CALL(~p): Recv shutdown...~n", [self()]);
-	{document_changes, DocID, Changes} ->
-	    Doc0 = Flags#route_flags.account_doc,
-	    CurrRev = get_value(<<"_rev">>, Doc0),
-	    Doc1 = case get_value(<<"rev">>, hd(Changes)) of
-		       undefined -> Doc0;
-		       CurrRev -> Doc0;
-		       _ -> couch_mgr:open_doc(?TS_DB, DocID)
-		   end,
-	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
-	    ?MODULE:loop(CallID, Flags#route_flags{account_doc=Doc1}, Amqp, Timeout);
-	{_, #amqp_msg{props = _Props, payload = Payload}} ->
-	    format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
 
-	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([CallID, AmqpHost, RouteFlags]) ->
+    {ok, #state{callid = CallID
+		,amqp_q = get_amqp_queue(AmqpHost, CallID)
+		,amqp_h = AmqpHost
+		,route_flags = RouteFlags
+	       }}.
 
-	    case get_value(<<"Event-Name">>, Prop) of
-		<<"CHANNEL_DESTROY">> ->
-		    format_log(info, "TS_CALL(~p): ChanDestroy recv, shutting down...~n", [self()]),
-		    ?MODULE:loop(CallID, Flags, Amqp, ?CALL_HEARTBEAT);
-		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    format_log(info, "TS_CALL(~p): ChanHangupCompl recv, shutting down...~n", [self()]),
-		    ?MODULE:loop(CallID, Flags, Amqp, ?CALL_HEARTBEAT);
-		<<"cdr">> ->
-		    case CtlQ of
-			<<>> ->
-			    spawn(fun() -> wait_to_update(Prop, Flags, Host, CallID, EvtQ) end);
-			_ ->
-			    close_down(Prop, Flags, Host, CallID, EvtQ)
-			end;
-		_EvtName ->
-		    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
-		    ?MODULE:loop(CallID, Flags, Amqp, Timeout)
-	    end;
-	_Other ->
-	    format_log(info, "TS_CALL(~p): Received Other: ~p~n", [self(), _Other]),
-	    ?MODULE:loop(CallID, Flags, Amqp, Timeout)
-    after
-	Timeout ->
-	    ts_responder:rm_post_handler(CallID),
-	    format_log(info, "TS_CALL(~p): Timeout ~p hit~n", [self(), Timeout])
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(get_queue, _, #state{amqp_q=Q}=S) ->
+    {reply, {ok, Q}, S}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info(#'basic.consume_ok'{}, S) -> {noreply, S};
+handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags}=S) ->
+    format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
+
+    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+
+    case get_value(<<"Event-Name">>, Prop) of
+	<<"cdr">> ->
+	    spawn(fun() ->
+			  true = whistle_api:call_cdr_v(Prop),
+			  update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
+			  ts_cdr:store_cdr(Prop, Flags)
+		  end),
+	    {stop, cdr_received, S};
+	<<"route_win">> ->
+	    true = whistle_api:route_win_v(Prop),	    
+	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), Prop]),
+	    {noreply, S#state{ctl_q=props:get_value(<<"Control-Queue">>, Prop)}};
+	_EvtName ->
+	    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
+	    {noreply, S}
     end.
 
--spec(consume_events/2 :: (Host :: string(), CallID :: binary()) -> binary()).
-consume_events(Host, CallID) ->
-    amqp_util:callevt_exchange(Host),
-    EvtQ = amqp_util:new_callevt_queue(Host, <<>>),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, #state{amqp_h=AmqpHost, amqp_q=Q}) ->
+    amqp_util:delete_callmgr_queue(AmqpHost, Q),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+-spec(get_amqp_queue/2 :: (AmqpHost :: string(), CallID :: binary()) -> binary()).
+get_amqp_queue(AmqpHost, CallID) ->
+    EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
     format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p", [self(), EvtQ, CallID]),
-    amqp_util:bind_q_to_callevt(Host, EvtQ, CallID, events),
-    amqp_util:bind_q_to_callevt(Host, EvtQ, CallID, cdr),
-    amqp_util:basic_consume(Host, EvtQ),
+
+    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
+    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
+    amqp_util:bind_q_to_targeted(AmqpHost, EvtQ),
+
+    amqp_util:basic_consume(AmqpHost, EvtQ),
     EvtQ.
 
-monitor_account_doc(#route_flags{account_doc_id = <<>>}) ->
-    ok;
-monitor_account_doc(#route_flags{account_doc_id=DocID}) ->
-    couch_mgr:add_change_handler(?TS_DB, DocID).
-
 %% Duration - billable seconds
--spec(update_account/2 :: (Duration :: integer(), Flags :: tuple()) -> tuple()).
-update_account(_, #route_flags{account_doc_id = <<>>}=F) -> F;
-update_account(Duration, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc=Doc, account_doc_id=DocID, active_calls=ACs}=Flags) ->
-    {Acct0} = get_value(<<"account">>, Doc),
-    {ACs1} = get_value(<<"active_calls">>, Acct0, {ACs}),
-
-    case lists:member({CallID, flat_rate}, ACs1) of
-	true ->
-	    format_log(info, "TS_CALL(~p): Removing ~p from active ~p~n", [self(), CallID, ACs1]),
-	    ACs2 = ts_util:filter_active_calls(CallID, ACs1),
-	    Acct1 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct0)],
-	    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct1}, Doc),
-	    case couch_mgr:save_doc(?TS_DB, Doc1) of
-		{ok, Doc2} ->
-		    format_log(info, "TS_CALL.up_acct(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
-		    Flags#route_flags{account_doc=Doc2};
-		{error, conflict} ->
-		    format_log(info, "TS_CALL.up_acct(~p): Conflict saving ~p, trying again~n", [self(), DocID]),
-		    update_account(Duration, Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, DocID)})
-	    end;
-	false ->
-	    format_log(info, "TS_CALL(~p): Updating trunks not necessary for ~p~n", [self(), CallID]),
-	    Flags
-    end;
-update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"inbound">>
-					  ,inbound_rate=R, inbound_rate_increment=RI, inbound_rate_minimum=RM, inbound_surcharge=S}=Flags) ->
+-spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> no_return()).
+update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}) ->
+    ts_acctmgr:release_trunk(DocID, CallID);
+update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
+				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S}) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
-update_account(Duration, #route_flags{flat_rate_enabled=false, direction = <<"outbound">>
-					  ,outbound_rate=R, outbound_rate_increment=RI, outbound_rate_minimum=RM, outbound_surcharge=S}=Flags) ->
-    format_log(info, "TS_CALL(~p): Calc cost: R: ~p RI: ~p RM: ~p S: ~p, Dur: ~p~n", [self(), R, RI, RM, S, Duration]),
-    Amount = calculate_cost(R, RI, RM, S, Duration),
-    Flags#route_flags{account_doc=update_account_balance(Amount, Flags)};
-update_account(_Duration, #route_flags{}=Flags) ->
-    Flags.
-
-%% only update if the call id is in the list of active calls
--spec(update_account_balance/2 :: (AmountToDeduct :: float(), Flags :: tuple()) -> proplist()).
-update_account_balance(AmountToDeduct, #route_flags{account_doc=Doc, callid=CallID, active_calls=ACs}=Flags) ->
-    {Acct0} = get_value(<<"account">>, Doc),
-    {ACs1} = get_value(<<"active_calls">>, Acct0, {ACs}),
-
-    case lists:member({CallID, per_min}, ACs1) of
-	true ->
-	    {Credits0} = get_value(<<"credits">>, Acct0),
-	    CA = whistle_util:to_float(get_value(<<"prepay">>, Credits0, 0.0)),
-	    format_log(info, "TS_CALL(~p): Deducting ~p from ~p~n", [self(), AmountToDeduct, CA]),
-
-	    Credits1 = [{<<"prepay">>, whistle_util:to_binary(CA - AmountToDeduct)} | proplists:delete(<<"prepay">>, Credits0)],
-	    Acct1 = [{<<"credits">>, {Credits1}} | proplists:delete(<<"credits">>, Acct0)],
-
-	    ACs2 = ts_util:filter_active_calls(CallID, ACs1),
-	    Acct2 = [{<<"active_calls">>, {ACs2}} | proplists:delete(<<"active_calls">>, Acct1)],
-
-	    Doc1 = couch_mgr:add_to_doc(<<"account">>, {Acct2}, Doc),
-	    case couch_mgr:save_doc(?TS_DB, Doc1) of
-		{ok, Doc2} ->
-		    format_log(info, "TS_CALL.up_acct_bal(~p): Old Rev: ~p New Rev: ~p~n", [self(), get_value(<<"_rev">>, Doc), get_value(<<"_rev">>, Doc2)]),
-		    Doc2;
-		{error, conflict} ->
-		    format_log(info, "TS_CALL.up_acct_bal(~p): Conflict on ~p, retrying~n", [self(), Flags#route_flags.account_doc_id]),
-		    update_account_balance(AmountToDeduct, Flags#route_flags{account_doc=couch_mgr:open_doc(?TS_DB, Flags#route_flags.account_doc_id)})
-	    end;
-	false ->
-	    format_log(info, "TS_CALL.up_acct_bal(~p): No CallID in ActiveCalls; nothing to do~n", [self()]),
-	    Doc
-    end.
+    ts_acctmgr:release_trunk(DocID, CallID, Amount).
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
@@ -206,36 +223,3 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 	true -> Sur + ((RM / 60) * R);
 	false -> Sur + ((RM / 60) * R) + ( whistle_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
-
-wait_to_update(Prop, Flags, Host, CallID, EvtQ) ->
-    wait_to_update(Prop, Flags, Host, CallID, EvtQ, erlang:now()).
-
-wait_to_update(Prop, Flags, Host, CallID, EvtQ, Started) ->
-    Timeout = ?WAIT_TO_UPDATE_TIMEOUT - (timer:now_diff(erlang:now(), Started) div 1000),
-    receive
-	{document_changes, DocID, Changes} ->
-	    Doc0 = Flags#route_flags.account_doc,
-	    CurrRev = get_value(<<"_rev">>, Doc0),
-	    Doc1 = case get_value(<<"rev">>, hd(Changes)) of
-		       undefined -> Doc0;
-		       CurrRev -> Doc0;
-		       _ -> couch_mgr:open_doc(?TS_DB, DocID)
-		   end,
-	    format_log(info, "TS_CALL(~p): Doc ~p changed from ~p to ~p~n", [self(), DocID, get_value(<<"_rev">>, Doc0), get_value(<<"_rev">>, Doc1)]),
-	    wait_to_update(Prop, Flags#route_flags{account_doc=Doc1}, Host, CallID, EvtQ, Started)
-    after
-	Timeout ->
-	    close_down(Prop, Flags, Host, CallID, EvtQ)
-    end.
-
-close_down(Prop, #route_flags{account_doc_id=DocID}=Flags, Host, CallID, EvtQ) ->
-    format_log(info, "TS_CALL.close_down(~p): CDR: ~p~n", [self(), Prop]),
-    update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
-
-    spawn(fun() -> ts_cdr:store_cdr(Prop, Flags) end),
-
-    format_log(info, "TS_CALL.close_down(~p): Close down ~p on ~p~n", [CallID, EvtQ, Host]),
-
-    amqp_util:delete_callmgr_queue(Host, EvtQ),
-    couch_mgr:rm_change_handler(?TS_DB, DocID),
-    ts_responder:rm_post_handler(CallID).

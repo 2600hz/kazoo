@@ -146,7 +146,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    couch_mgr:rm_change_handler(?TS_RATES_DOC),
+    couch_mgr:rm_change_handler(?TS_DB, ?TS_RATES_DOC),
     ok.
 
 %%--------------------------------------------------------------------
@@ -165,29 +165,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 get_current_rates() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_RATES_DOC) of
-	not_found ->
+	{error, not_found} ->
 	    format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
 	    {error, "No matching rates"};
-	{error, unhandled_call} ->
+	{error, db_not_reachable} ->
 	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
 	    {error, "No database host"};
-	[] ->
+	{ok, []} ->
 	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
-	Rates when is_list(Rates) ->
+	{ok, {struct, Rates}} when is_list(Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_RATES_DOC),
-	    {ok, lists:map(fun process_rates/1, Rates)};
-	Error ->
-	    format_log(error, "TS_CREDIT(~p): Fail ~p~n", [self(), Error]),
-	    {error, "Unknown error occurred"}
+	    {ok, lists:map(fun process_rates/1, Rates)}
     end.
 
 process_rates({<<"_id">>, _}=ID) -> ID;
 process_rates({<<"_rev">>, _}=Rev) -> Rev;
-process_rates({RouteName, {RouteOptions}}) ->
+process_rates({RouteName, {struct, RouteOptions}}) ->
     RoutesRegexStrs = get_value(<<"routes">>, RouteOptions, []),
-    {Options} = get_value(<<"options">>, RouteOptions, {[]}),
+    {struct, Options} = get_value(<<"options">>, RouteOptions, {struct, []}),
     ROs0 = proplists:delete(<<"routes">>, RouteOptions),
     {RouteName, [{<<"routes">>, lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs)}
 		 ,{<<"options">>, Options}
@@ -216,24 +213,15 @@ set_rate_flags(Flags, Rates) ->
 	[{RateName, RateData} | _] ->
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
-	    %% Count active calls with the flat_rate tag, filtering out per_min callids
-	    UseFlatRate = Flags#route_flags.trunks > length(ts_util:filter_active_calls(per_min, Flags#route_flags.active_calls)) andalso get_value(<<"flatrate">>, RateData, false),
-
-	    case UseFlatRate of
-		true ->
-		    format_log(info, "TS_CREDIT(~p): Use flat rate for ~p~n", [self(), Dir]),
+	    case ts_acctmgr:reserve_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid
+					  ,(Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)) of
+		{ok, flat_rate} ->
 		    {ok, set_flat_flags(Flags, Dir)};
-		false ->
-		    format_log(info, "TS_CREDIT(~p): Use rate data for ~p: ~p~n", [self(), Dir, RateData]),
-		    Flags0 = set_rate_flags(Flags, Dir, RateData, RateName),
-		    case has_credit(Flags0, Dir) of
-			true ->
-			    {ok, Flags0};
-			false ->
-			    %% Raise Holy Hell, or play music saying no credit
-			    %% returns us to ts_responder to catch the error
-			    {error, lacking_credit}
-		    end
+		{ok, per_min} ->
+		    {ok, set_rate_flags(Flags, Dir, RateData, RateName)};
+		{error, _Fail} ->
+		    format_log(error, "TS_CREDIT(~p): Failed to reserve trunk: ~p~n", [self(), _Fail]),
+		    {error, lacking_credit}
 	    end
     end.
 
@@ -241,51 +229,45 @@ set_rate_flags(Flags, Rates) ->
 sort_rates({_RNameA, RateDataA}, {_RNameB, RateDataB}) ->
     whistle_util:to_integer(get_value(<<"weight">>, RateDataA, 1)) >= whistle_util:to_integer(get_value(<<"weight">>, RateDataB, 1)).
 
-%% can they be on the phone for at least a minute?
-has_credit(Flags, <<"inbound">>) ->
-    Flags#route_flags.credit_available > (Flags#route_flags.inbound_rate * Flags#route_flags.inbound_rate_minimum);
-has_credit(Flags, <<"outbound">>) ->
-    Flags#route_flags.credit_available > (Flags#route_flags.outbound_rate * Flags#route_flags.outbound_rate_minimum).
-
 set_rate_flags(Flags, <<"inbound">>=In, RateData, RateName) ->
     format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateName]),
     Flags#route_flags{
-      inbound_rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
-      ,inbound_rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
-      ,inbound_rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
-      ,inbound_surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
-      ,inbound_rate_name = RateName
+      rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
+      ,rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
+      ,rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
+      ,surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
+      ,rate_name = RateName
       ,flat_rate_enabled = false
      };
 set_rate_flags(Flags, <<"outbound">>=Out, RateData, RateName) ->
     format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateName]),
     Flags#route_flags{
-      outbound_rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
-      ,outbound_rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
-      ,outbound_rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
-      ,outbound_surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
-      ,outbound_rate_name = RateName
+      rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
+      ,rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
+      ,rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
+      ,surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
+      ,rate_name = RateName
       ,flat_rate_enabled = false
      }.
 
 set_flat_flags(Flags, <<"inbound">>=In) ->
     format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [In]),
     Flags#route_flags{
-      inbound_rate = 0.0
-      ,inbound_rate_increment = 0
-      ,inbound_rate_minimum = 0
-      ,inbound_surcharge = 0.0
-      ,inbound_rate_name = <<>>
+      rate = 0.0
+      ,rate_increment = 0
+      ,rate_minimum = 0
+      ,surcharge = 0.0
+      ,rate_name = <<>>
       ,flat_rate_enabled = true
      };
 set_flat_flags(Flags, <<"outbound">>=Out) ->
     format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [Out]),
     Flags#route_flags{
-      outbound_rate = 0.0
-      ,outbound_rate_increment = 0
-      ,outbound_rate_minimum = 0
-      ,outbound_surcharge = 0.0
-      ,outbound_rate_name = <<>>
+      rate = 0.0
+      ,rate_increment = 0
+      ,rate_minimum = 0
+      ,surcharge = 0.0
+      ,rate_name = <<>>
       ,flat_rate_enabled = true
      }.
 
