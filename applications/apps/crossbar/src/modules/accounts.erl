@@ -163,11 +163,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
     spawn(fun() ->
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                          case false of %%couch_mgr:db_create(get_db_name(Doc)) of
+                          case couch_mgr:db_create(get_db_name(Doc)) of
                             false ->
                                 format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), get_db_name(Doc)]),
                                 crossbar_doc:delete(Context1),
-                                crossbar_util:response_db_fatal(Contact);
+                                Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
                             true ->
                                 Pid ! {binding_result, true, [RD, Context1, Params]}
                           end;
