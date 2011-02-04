@@ -16,6 +16,7 @@
 -export([response_invalid_data/2]).
 -export([response_missing_view/1]).
 -export([response_db_missing/1]).
+-export([response_db_fatal/1]).
 -export([binding_heartbeat/1]).
 
 
@@ -169,6 +170,17 @@ response_invalid_data(Fields, Context) ->
 -spec(response_db_missing/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_db_missing(Context) ->
     response(fatal, <<"data collection missing">>, 503, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the datastore does not have the requested
+%% record collection
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_db_fatal/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_db_fatal(Context) ->
+    response(fatal, <<"datastore fatal error">>, 500, Context).
 
 %%--------------------------------------------------------------------
 %% @public

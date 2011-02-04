@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 -define(MAX_AGE, 1800). % 30 minutes
 -define(COOKIE_NAME, "crossbar-session").
--define(SESSION_DB, "crossbar_sessions").
+-define(SESSION_DB, "crossbar%2Fsessions").
 -define(SESSION_EXPIRED, {"session", "expired_time"}).
 
 -include_lib("webmachine/include/webmachine.hrl").
