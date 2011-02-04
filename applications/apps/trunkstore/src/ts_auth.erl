@@ -91,29 +91,28 @@ is_inbound(Domain) ->
 lookup_user(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
-	{ok, {struct, []}} -> {error, "No user/realm found"};
+	{ok, []} -> {error, "No user/realm found"};
 	{ok, [{struct, User}|_]} ->
 	    {struct, Auth} = props:get_value(<<"value">>, User),
 	    {ok, Auth}
     end.
 
--spec(response/2 :: (RespData :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(response/2 :: (AuthInfo :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 response([], Prop) ->
     Data = lists:umerge(specific_response(403), Prop),
     whistle_api:auth_resp(Data);
-response(ViewInfo, Prop) ->
-    Data = lists:umerge(specific_response(ViewInfo), Prop),
+response(AuthInfo, Prop) ->
+    Data = lists:umerge(specific_response(AuthInfo), Prop),
     whistle_api:auth_resp(Data).
 
--spec(specific_response/1 :: (ViewInfo :: proplist() | integer()) -> proplist()).
-specific_response(ViewInfo) when is_list(ViewInfo) ->
-    {struct, Info} = get_value(<<"value">>, ViewInfo),
-    Method = list_to_binary(string:to_lower(binary_to_list(get_value(<<"auth_method">>, Info)))),
-    [{<<"Auth-Password">>, get_value(<<"auth_password">>, Info)}
+-spec(specific_response/1 :: (AuthInfo :: proplist() | integer()) -> proplist()).
+specific_response(AuthInfo) when is_list(AuthInfo) ->
+    Method = list_to_binary(string:to_lower(binary_to_list(get_value(<<"auth_method">>, AuthInfo)))),
+    [{<<"Auth-Password">>, get_value(<<"auth_password">>, AuthInfo)}
      ,{<<"Auth-Method">>, Method}
      ,{<<"Event-Name">>, <<"auth_resp">>}
-     ,{<<"Access-Group">>, get_value(<<"Access-Group">>, Info, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, get_value(<<"Tenant-ID">>, Info, <<"ignore">>)}
+     ,{<<"Access-Group">>, get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Tenant-ID">>, get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
     ];
 specific_response(500) ->
     [{<<"Auth-Method">>, <<"error">>}

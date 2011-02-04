@@ -110,6 +110,7 @@ init([]) ->
     format_log(info, "TS_ACCTMGR: Starting DB ~p~n", [DB]),
 
     MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
+    format_log(info, "TS_ACCTMGR: ms till Midnight: ~p (~p:~p:~p)~n", [MillisecsToMidnight, H, Min, S]),
     timer:send_after(MillisecsToMidnight, ?EOD),
 
     {ok, #state{
@@ -210,17 +211,22 @@ handle_info(?EOD, S) ->
     self() ! reconcile_accounts,
 
     load_views(DB),
-    load_accounts_from_ts(DB),
 
     {noreply, S#state{
 		current_write_db = DB % all new writes should go in new DB, but old DB is needed still
 	       }};
 handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
-    spawn( fun() -> lists:foreach(fun(Acct) -> transfer_acct(Acct, RDB, WDB), transfer_active_calls(Acct, RDB, WDB) end, get_accts(RDB)) end),
+    spawn( fun() -> lists:foreach(fun(Acct) ->
+					  transfer_acct(Acct, RDB, WDB),
+					  transfer_active_calls(Acct, RDB, WDB)
+				  end, get_accts(RDB)) end),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
     update_from_couch(DocID, WDB, RDB),
+    {noreply, S};
+handle_info({document_deleted, AcctId}, S) ->
+    format_log(info, "TS_ACCTMGR(~p): Account Doc ~p deleted~n", [self(), AcctId]),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -362,7 +368,7 @@ transfer_acct(AcctId, RDB, WDB) ->
     {ok, {struct, Acct}} = couch_mgr:open_doc(RDB, AcctId),
     Acct1 = [ {<<"amount">>, Bal} | lists:keydelete(<<"amount">>, 1, Acct)],
 
-    format_log(info, "TS_ACCTMGR.transfer: ~p has ~p balance~n", [AcctId, ?UNITS_TO_DOLLARS(Bal)]),
+    format_log(info, "TS_ACCTMGR.transfer: Read from ~p and write to ~p: ~p has ~p balance~n", [RDB, WDB, AcctId, ?UNITS_TO_DOLLARS(Bal)]),
 
     %% create credit entry in WDB for balance/trunks
     {ok, _} = couch_mgr:save_doc(WDB, {struct, lists:keydelete(<<"_rev">>, 1, Acct1)}),
@@ -371,12 +377,13 @@ transfer_acct(AcctId, RDB, WDB) ->
     update_account(AcctId, Bal).
 
 transfer_active_calls(AcctId, RDB, WDB) ->
-    case couch_mgr:get_results(RDB, {"trunks", "trunk_status"}, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, {[]}]}, {<<"group">>, <<"true">>}]) of
-	{ok, []} -> ok;
+    case couch_mgr:get_results(RDB, {"trunks", "trunk_status"}, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
+	{ok, []} -> format_log(info, "TS_ACCTMGR.trans_active: No active for ~p~n", [AcctId]);
 	{ok, Calls} when is_list(Calls) ->
-	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, _CallId, DocId]}, {<<"value">>, <<"active">>}] }) ->
-				  {ok, {struct, D}} = couch_mgr:open_doc(RDB, DocId),
-				  couch_mgr:save_doc(WDB, {struct, lists:keydelete(<<"_rev">>, 1, D)});
+	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, <<"active">>}] }) ->
+				  NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
+				  format_log(info, "TS_ACCTMGR.trans_active: Moving ~p over~n", [CallId]),
+				  couch_mgr:save_doc(WDB, {struct, NewDoc});
 			     (_) -> ok
 			  end, Calls)
     end.
