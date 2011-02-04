@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, get_host/0]).
+-export([start_link/0, set_host/1, set_host/3, get_host/0]).
 
 %% System manipulation
 -export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1]).
@@ -281,7 +281,10 @@ start_link() ->
 %% set the host to connect to
 -spec(set_host/1 :: (HostName :: string()) -> ok | tuple(error, term())).
 set_host(HostName) ->
-    gen_server:call(?MODULE, {set_host, HostName}, infinity).
+    set_host(HostName, "", "").
+
+set_host(HostName, UserName, Password) ->
+    gen_server:call(?MODULE, {set_host, HostName, UserName, Password}, infinity).
 
 get_host() ->
     gen_server:call(?MODULE, get_host).
@@ -335,17 +338,17 @@ init(_) ->
 %%--------------------------------------------------------------------
 handle_call(get_host, _From, #state{connection={H,_}}=State) ->
     {reply, H, State};
-handle_call({set_host, Host}, _From, #state{connection={OldHost, _}}=State) ->
+handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
-    case get_new_connection(Host) of
+    case get_new_connection(Host, User, Pass) of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	HC ->
 	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
     end;
-handle_call({set_host, Host}, _From, State) ->
+handle_call({set_host, Host, User, Pass}, _From, State) ->
     format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
-    case get_new_connection(Host) of
+    case get_new_connection(Host, User, Pass) of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
@@ -364,8 +367,8 @@ handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, #state{change_hand
 	{{error, _}=E, CH2} -> {reply, E, State#state{change_handlers=CH2}}
     end;
 handle_call(Req, From, #state{connection={}}=State) ->
-    format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p)~n", [self(), net_adm:localhost()]),
-    case get_new_connection(net_adm:localhost()) of
+    format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p) with no auth~n", [self(), net_adm:localhost()]),
+    case get_new_connection(net_adm:localhost(), "", "") of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
@@ -566,14 +569,23 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_ha
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_new_connection/1 :: (Host :: string()) -> tuple(string(), tuple()) | tuple(error, term())).
-get_new_connection(Host) ->
-    Conn = couchbeam:server_connection(Host, 5984, "", []),
-    format_log(info, "WHISTLE_COUCH(~p): Host ~p has conn ~p~n", [self(), Host, Conn]),
+-spec(get_new_connection/3 :: (Host :: string(), User :: string(), Pass :: string()) -> tuple(string(), #server{}) | tuple(error, term())).
+get_new_connection(Host, "", "") -> get_new_conn(Host, []);
+get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, Pass}}]).
+
+-spec(get_new_conn/2 :: (Host :: string(), Opts :: proplist()) -> tuple(string(), #server{}) | tuple(error, term())).
+get_new_conn(Host, Opts) ->
+    Conn = couchbeam:server_connection(Host, 5984, "", Opts),
+    format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
     case couchbeam:server_info(Conn) of
 	{ok, _Version} ->
 	    format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
-	    spawn(fun() -> save_config(Host) end),
+	    spawn(fun() ->
+			  case props:get_value(basic_auth, Opts) of
+			      undefined -> save_config(Host);
+			      {U, P} -> save_config(Host, U, P)
+			  end
+		  end),
 	    {Host, Conn};
 	{error, Err}=E ->
 	    format_log(error, "WHISTLE_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, Err]),
@@ -621,12 +633,15 @@ get_view(Db, DesignDoc, ViewOptions) ->
 init_state() ->
     case get_startup_config() of
 	{ok, Ts} ->
-	    Host = case props:get_value(couch_host, Ts, props:get_value(default_couch_host, Ts)) of
-		       undefined -> net_adm:localhost();
-		       "localhost" -> net_adm:localhost();
-		       H -> H
-		   end,
-	    case get_new_connection(Host) of
+	    {_, Host, User, Pass} = case lists:keyfind(couch_host, 1, Ts) of
+					false ->
+					    case lists:keyfind(default_couch_host, 1, Ts) of
+						false -> {ok, net_adm:localhost(), "", ""};
+						H -> H
+					    end;
+					H -> H
+				    end,
+	    case get_new_connection(Host, User, Pass) of
 		{error, _} -> #state{};
 		{Host, _}=C -> #state{connection=C}
 	    end;
@@ -667,9 +682,11 @@ get_startup_config() ->
 %%--------------------------------------------------------------------
 -spec(save_config/1 :: (H :: string()) -> no_return()).
 save_config(H) ->
+    save_config(H, "", "").
+
+save_config(H, U, P) ->
     {ok, Config} = get_startup_config(),
     file:write_file(?STARTUP_FILE
-		    ,lists:foldl(fun({K,V}, Acc) ->
-					 [io_lib:format("{~p, ~p}.~n", [K, V]) | Acc]
-				 end, "", [{couch_host, H} | lists:keydelete(couch_host, 1, Config)])
+		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
+				 , "", [{couch_host, H, U, P} | lists:keydelete(couch_host, 1, Config)])
 		   ).

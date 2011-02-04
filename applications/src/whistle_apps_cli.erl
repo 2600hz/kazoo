@@ -47,10 +47,12 @@ set_amqp_host(always, [Host]=Arg) ->
 	    {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
     end.
 
-set_couch_host(always, [Host]=Arg) ->
+set_couch_host(always, [Host]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Setting CouchDB Host to ~p on ~p~n", [Host, Node]),
-    case rpc_call(Node, whapps_controller, set_couch_host, Arg) of
+    User = io:get_line("CouchDB Username: "),
+    Pass = io:get_line("CouchDB Password: "),
+    case rpc_call(Node, whapps_controller, set_couch_host, [Host, string:strip(User, right, $\n), string:strip(Pass, right, $\n)]) of
 	{ok, ok} ->
 	    {ok, "Set whistle controller's couch host to ~p", [Host]};
 	{ok, Other} ->
