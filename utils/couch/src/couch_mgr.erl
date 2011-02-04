@@ -14,7 +14,7 @@
 -export([start_link/0, set_host/1, get_host/0]).
 
 %% System manipulation
--export([get_db/1, db_info/1]).
+-export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1]).
 
 %% Document manipulation
 -export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
@@ -48,7 +48,13 @@
 %%%===================================================================
 %%% Couch Functions
 %%%===================================================================
--spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a file into couch as a document (not an attachement)
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
@@ -72,17 +78,87 @@ update_doc_from_file(DB, App, File) ->
 	_Type:Reason -> {error, Reason}
     end.
 
--spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Detemine if a database exists
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_exists/1 :: (DbName :: binary()) -> boolean()).
+db_exists(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn -> couchbeam:db_exists(Conn, whistle_util:to_list(DbName))
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieve information regarding a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_info/1 :: (DbName :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 db_info(DbName) ->
-    case get_db(DbName) of
-        {error, _Error} -> {error, db_not_reachable};
-	Db -> 
-            case couchbeam:db_info(Db) of
+    case get_conn() of
+        {} -> {error, db_not_reachable};
+        Conn ->
+            case couchbeam:db_info(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
                 {error, _Error}=E -> E;
-                {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}                
+                {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}
             end
     end.
-    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Detemine if a database exists
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_create/1 :: (DbName :: binary()) -> boolean()).
+db_create(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn -> 
+            case couchbeam:create_db(Conn, whistle_util:to_list(DbName)) of
+                {error, _} -> false;
+                {ok, _} -> true
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Compact a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_compact/1 :: (DbName :: binary()) -> boolean()).
+db_compact(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:compact(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
+                {error, _} -> false;
+                ok -> true
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Delete a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_delete/1 :: (DbName :: binary()) -> boolean()).
+db_delete(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:delete_db(Conn, whistle_util:to_list(DbName)) of
+                {error, _} -> false;
+                {ok, _} -> true
+            end
+    end.
+
 %%%===================================================================
 %%% Document Functions
 %%%===================================================================
@@ -209,6 +285,9 @@ set_host(HostName) ->
 
 get_host() ->
     gen_server:call(?MODULE, get_host).
+
+get_conn() ->
+    gen_server:call(?MODULE, {get_conn}).
 
 get_db(DbName) ->
     Conn = gen_server:call(?MODULE, {get_conn}),

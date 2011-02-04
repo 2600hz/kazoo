@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_doc).
 
--export([load/2, load_merge/3, load_view/3, load_view/4]).
+-export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4]).
 -export([save/1, delete/1]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1]).
@@ -27,6 +27,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(load/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load(_DocId, #cb_context{db_name=undefined}=Context) ->
+    crossbar_util:response_db_missing(Context);
 load(DocId, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:open_doc(DB, DocId) of
         {error, db_not_reachable} ->
@@ -45,6 +47,9 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             Context
     end.
 
+load_from_file(Db, File) ->
+    couch_mgr:load_doc_from_file(Db, crossbar, File).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -56,6 +61,8 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_merge/3 :: (DocId :: binary(), Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
+load_merge(_DocId, _Data, #cb_context{db_name=undefined}=Context) ->
+    crossbar_util:response_db_missing(Context);
 load_merge(DocId, {struct, Data}, Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
@@ -80,6 +87,8 @@ load_merge(DocId, {struct, Data}, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_view/3 :: (View :: tuple(string(), string()), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+load_view(_View, _Options, #cb_context{db_name=undefined}=Context) ->
+    crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:get_results(DB, View, Options) of
 	{error, invalid_view_name} ->
@@ -113,6 +122,8 @@ load_view(View, Options, Context, Filter) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(save/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+save(#cb_context{db_name=undefined}=Context) ->
+    crossbar_util:response_db_missing(Context);
 save(#cb_context{db_name=DB, doc=Doc}=Context) ->
     case couch_mgr:save_doc(DB, Doc) of
         {error, db_not_reachable} ->
@@ -139,6 +150,8 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(delete/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+delete(#cb_context{db_name=undefined}=Context) ->
+    crossbar_util:response_db_missing(Context);
 delete(#cb_context{db_name=DB, doc=Doc}=Context) ->
     case couch_mgr:del_doc(DB, Doc) of
         {error, db_not_reachable} ->
@@ -169,7 +182,7 @@ public_fields({struct, Json}) ->
         lists:filter(fun({K, _}) ->
                             not is_private_key(K)
                      end, Json),
-    case proplists:get_value(<<"_id">>, Json) of
+    case props:get_value(<<"_id">>, Json) of
         undefined ->
             {struct, PubDoc};
         Id ->
@@ -219,7 +232,7 @@ is_private_key(Key) ->
 rev_to_etag([{struct, _}|_])->
     automatic;
 rev_to_etag({struct, Props}) ->
-    case proplists:get_value([<<"_rev">>], Props) of
+    case props:get_value([<<"_rev">>], Props) of
         Rev when is_list(Rev) ->
             ETag = whistle_util:to_list(Rev),
             string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);

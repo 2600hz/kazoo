@@ -11,25 +11,27 @@
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
 
-get_value(Doc, Key) ->
-    get_value(Doc, Key, undefined).
+get_value(Key, Doc) ->
+    get_value(Key, Doc, undefined).
 
-get_value(Doc, [Key|T], Default) ->
+get_value(Key, Doc, Default) when not is_list(Key)->
+    get_value([Key], Doc, Default);
+get_value([Key|T], Doc, Default) ->    
     case Doc of
         {struct, Props} ->
-            get_value(proplists:get_value(whistle_util:to_binary(Key), Props), T, Default);
+            get_value(T, props:get_value(whistle_util:to_binary(Key), Props), Default);
         Doc when is_list(Doc) ->
             case try lists:nth(whistle_util:to_integer(Key), Doc) catch _:_ -> undefined end of
                 undefined -> Default;
-                Doc1 -> get_value(Doc1, T, Default)
+                Doc1 -> get_value(T, Doc1, Default)
             end;
         _Else -> Default
     end;
-get_value(Doc, [], _Default) -> Doc.
+get_value([], Doc, _Default) -> Doc.
 
 
 %% Figure out how to set the current key among a list of objects
-set_value([{struct, _}|_]=Doc, [Key|T], Value) ->
+set_value([Key|T], Value, [{struct, _}|_]=Doc) ->
     Key1 = whistle_util:to_integer(Key),
     case Key1 > length(Doc) of
         %% The object index does not exist so try to add a new one to the list
@@ -37,7 +39,7 @@ set_value([{struct, _}|_]=Doc, [Key|T], Value) ->
             try
                 %% Create a new object with the next key as a property
                 NxtKey = whistle_util:to_binary(hd(T)),
-                Doc ++ [set_value({struct, [{NxtKey, []}]}, T, Value)]
+                Doc ++ [set_value(T, Value, {struct, [{NxtKey, []}]})]
             catch
                 %% There are no more keys in the list, add it unless not an object
                 error:badarg ->
@@ -47,21 +49,21 @@ set_value([{struct, _}|_]=Doc, [Key|T], Value) ->
         %% The object index exists so iterate into the object and updat it
         false ->
             element(1, lists:mapfoldl(fun(E, {Pos, Pos}) ->
-                                             {set_value(E, T, Value), {Pos + 1, Pos}};
+                                             {set_value(T, Value, E), {Pos + 1, Pos}};
                                          (E, {Pos, Idx}) ->
                                              {E, {Pos + 1, Idx}}
                                       end, {1, Key1}, Doc))
     end;
 %% Figure out how to set the current key in an existing object
-set_value({struct, Props}, [Key|T], Value) ->
+set_value([Key|T], Value, {struct, Props}) ->
     Key1 = whistle_util:to_binary(Key),
     case lists:keyfind(Key1, 1, Props) of
         {Key1, {struct, _}=V1} ->
             %% Replace or add a property in an object in the object at this key
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(V1, T, Value)})};
+            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(T, Value, V1)})};
         {Key1, V1} when is_list(V1) ->
             %% Replace or add a member in an array in the object at this key
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(V1, T, Value)})};
+            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(T, Value, V1)})};
         {Key1, _} when T == [] ->
             %% This is the final key and the objects property should just be
             %% replaced
@@ -69,7 +71,7 @@ set_value({struct, Props}, [Key|T], Value) ->
         {Key1, _} ->
             %% This is not the final key and the objects property should just be
             %% replaced so continue looping the keys creating the necessary json as we go
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value({struct, []}, T, Value)})};
+            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(T, Value, {struct, []})})};
         false when T == [] ->
             %% This is the final key and doesnt already exist, just add it to this
             %% objects existing properties
@@ -77,10 +79,10 @@ set_value({struct, Props}, [Key|T], Value) ->
         false ->
             %% This is not the final key and this object does not have this key
             %% so continue looping the keys creating the necessary json as we go
-            {struct, Props ++ [{Key1, set_value({struct, []}, T, Value)}]}
+            {struct, Props ++ [{Key1, set_value(T, Value, {struct, []})}]}
     end;
 %% There are no more keys to iterate through! Override the value here...
-set_value(_Doc, [], Value) -> Value.
+set_value([], Value, _Doc) -> Value.
 
 
 %% EUNIT TESTING
@@ -94,32 +96,32 @@ set_value(_Doc, [], Value) -> Value.
 
 get_value_test() ->
     %% Basic first level key
-    ?assertEqual(undefined, get_value([],  ["d1k1"])),
-    ?assertEqual("d1v1",    get_value(?D1, ["d1k1"])),
-    ?assertEqual(undefined, get_value(?D2, ["d1k1"])),
-    ?assertEqual(undefined, get_value(?D3, ["d1k1"])),
-    ?assertEqual(undefined, get_value(?D4, ["d1k1"])),
+    ?assertEqual(undefined, get_value(["d1k1"], [])),
+    ?assertEqual("d1v1",    get_value(["d1k1"], ?D1)),
+    ?assertEqual(undefined, get_value(["d1k1"], ?D2)),
+    ?assertEqual(undefined, get_value(["d1k1"], ?D3)),
+    ?assertEqual(undefined, get_value(["d1k1"], ?D4)),
     %% Basic nested key
-    ?assertEqual(undefined, get_value([],  ["sub_d1", "d1k2"])),
-    ?assertEqual(undefined, get_value(?D1, ["sub_d1", "d1k2"])),
-    ?assertEqual(d1v2,      get_value(?D2, ["sub_d1", "d1k2"])),
-    ?assertEqual(undefined, get_value(?D3, ["sub_d1", "d1k2"])),
-    ?assertEqual(undefined, get_value(?D4, ["sub_d1", "d1k2"])),
+    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], [])),
+    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D1)),
+    ?assertEqual(d1v2,      get_value(["sub_d1", "d1k2"], ?D2)),
+    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D3)),
+    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D4)),
     %% Get the value in an object in an array in another object that is part of
     %% an array of objects
-    ?assertEqual(undefined, get_value([],  [3, "sub_docs", 2, "d2k2"])),
-    ?assertEqual(undefined, get_value(?D1, [3, "sub_docs", 2, "d2k2"])),
-    ?assertEqual(undefined, get_value(?D2, [3, "sub_docs", 2, "d2k2"])),
-    ?assertEqual(undefined, get_value(?D3, [3, "sub_docs", 2, "d2k2"])),
-    ?assertEqual(3.14,      get_value(?D4, [3, "sub_docs", 2, "d2k2"])),
+    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], [])),
+    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D1)),
+    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D2)),
+    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D3)),
+    ?assertEqual(3.14,      get_value([3, "sub_docs", 2, "d2k2"], ?D4)),
     %% Get the value in an object in an array in another object that is part of
     %% an array of objects, but change the default return if it is not present.
     %% Also tests the ability to have indexs represented as strings
-    ?assertEqual(<<"not">>, get_value([],  [3, "sub_docs", "2", "d2k2"], <<"not">>)),
-    ?assertEqual(<<"not">>, get_value(?D1, [3, "sub_docs", "2", "d2k2"], <<"not">>)),
-    ?assertEqual(<<"not">>, get_value(?D2, [3, "sub_docs", "2", "d2k2"], <<"not">>)),
-    ?assertEqual(<<"not">>, get_value(?D3, [3, "sub_docs", "2", "d2k2"], <<"not">>)),
-    ?assertEqual(3.14,      get_value(?D4, [3, "sub_docs", "2", "d2k2"], <<"not">>)).
+    ?assertEqual(<<"not">>, get_value([3, "sub_docs", "2", "d2k2"], [], <<"not">>)),
+    ?assertEqual(<<"not">>, get_value([3, "sub_docs", "2", "d2k2"], ?D1, <<"not">>)),
+    ?assertEqual(<<"not">>, get_value([3, "sub_docs", "2", "d2k2"], ?D2, <<"not">>)),
+    ?assertEqual(<<"not">>, get_value([3, "sub_docs", "2", "d2k2"], ?D3, <<"not">>)),
+    ?assertEqual(3.14,      get_value([3, "sub_docs", "2", "d2k2"], ?D4, <<"not">>)).
 
 -define(T2R1, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
 -define(T2R2, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}, {<<"d1k4">>, new_value}]}).
@@ -128,13 +130,13 @@ get_value_test() ->
 
 set_value_object_test() ->
     %% Test setting an existing key
-    ?assertEqual(?T2R1, set_value(?D1, ["d1k2"], <<"update">>)),
+    ?assertEqual(?T2R1, set_value(["d1k2"], <<"update">>, ?D1)),
     %% Test setting a non-existing key
-    ?assertEqual(?T2R2, set_value(?D1, ["d1k4"], new_value)),
+    ?assertEqual(?T2R2, set_value(["d1k4"], new_value, ?D1)),
     %% Test setting an existing key followed by a non-existant key
-    ?assertEqual(?T2R3, set_value(?D1, ["d1k2", "new_key"], added_value)),
+    ?assertEqual(?T2R3, set_value(["d1k2", "new_key"], added_value, ?D1)),
     %% Test setting a non-existing key followed by another non-existant key
-    ?assertEqual(?T2R4, set_value(?D1, ["d1k4", "new_key"], added_value)).
+    ?assertEqual(?T2R4, set_value(["d1k4", "new_key"], added_value, ?D1)).
 
 -define(D5,   [{struct,[{<<"k1">>, v1}]}, {struct, [{<<"k2">>, v2}]}]).
 -define(T3R1, [{struct,[{<<"k1">>,test}]},{struct,[{<<"k2">>,v2}]}]).
@@ -145,14 +147,14 @@ set_value_object_test() ->
 
 set_value_multiple_object_test() ->
     %% Set an existing key in the first json_object()
-    ?assertEqual(?T3R1, set_value(?D5, [1, "k1"], test)),
+    ?assertEqual(?T3R1, set_value([1, "k1"], test, ?D5)),
     %% Set a non-existing key in the first json_object()
-    ?assertEqual(?T3R2, set_value(?D5, [1, "pi"], 3.14)),
+    ?assertEqual(?T3R2, set_value([1, "pi"], 3.14, ?D5)),
     %% Set a non-existing key followed by another non-existant key in the first json_object()
-    ?assertEqual(?T3R3, set_value(?D5, [1, "callerid", "name"], "2600hz")),
+    ?assertEqual(?T3R3, set_value([1, "callerid", "name"], "2600hz", ?D5)),
     %% Set an existing key in the second json_object()
-    ?assertEqual(?T3R4, set_value(?D5, [2, "k2"], "updated")),
+    ?assertEqual(?T3R4, set_value([2, "k2"], "updated", ?D5)),
     %% Set a non-existing key in a non-existing json_object()
-    ?assertEqual(?T3R5, set_value(?D5, [3, "new_key"], "added")).
+    ?assertEqual(?T3R5, set_value([3, "new_key"], "added", ?D5)).
 
 -endif.
