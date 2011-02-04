@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_app/1, set_amqp_host/1, set_couch_host/1, stop_app/1, running_apps/0]).
+-export([start_link/0, start_app/1, set_amqp_host/1, set_couch_host/1, set_couch_host/3, stop_app/1, running_apps/0]).
 -export([get_amqp_host/0, restart_app/1]).
 
 %% gen_server callbacks
@@ -58,7 +58,9 @@ get_amqp_host() ->
     gen_server:call(?MODULE, get_amqp_host).
 
 set_couch_host(H) ->
-    couch_mgr:set_host(whistle_util:to_list(H)).
+    set_couch_host(H, "", "").
+set_couch_host(H, U, P) ->
+    couch_mgr:set_host(whistle_util:to_list(H), whistle_util:to_list(U), whistle_util:to_list(P)).
 
 running_apps() ->
     gen_server:call(?SERVER, running_apps).
