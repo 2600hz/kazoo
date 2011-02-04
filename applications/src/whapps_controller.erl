@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0, start_app/1, set_amqp_host/1, set_couch_host/1, stop_app/1, running_apps/0]).
--export([get_amqp_host/0]).
+-export([get_amqp_host/0, restart_app/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,6 +47,9 @@ start_app(App) when is_atom(App) ->
 
 stop_app(App) when is_atom(App) ->
     gen_server:cast(?MODULE, {stop_app, App}).
+
+restart_app(App) when is_atom(App) ->
+    gen_server:cast(?MODULE, {restart_app, App}).
 
 set_amqp_host(H) ->
     gen_server:cast(?MODULE, {set_amqp_host, whistle_util:to_list(H)}).
@@ -116,6 +119,11 @@ handle_cast({start_app, App}, #state{apps=As}=State) ->
 handle_cast({stop_app, App}, #state{apps=As}=State) ->
     As1 = rm_app(App, As),
     {noreply, State#state{apps=As1}};
+handle_cast({restart_app, App}, #state{apps=As}=State) ->
+    As1 = rm_app(App, As),
+    whistle_util:reload_app(App),
+    As2 = add_app(App, As1),
+    {noreply, State#state{apps=As2}};
 handle_cast({set_amqp_host, H}, #state{apps=As}=State) ->
     lists:foreach(fun(A) ->
 			  case erlang:function_exported(A, set_amqp_host, 1) of

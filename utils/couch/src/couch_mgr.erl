@@ -14,11 +14,11 @@
 -export([start_link/0, set_host/1, get_host/0]).
 
 %% System manipulation
--export([get_db/1, db_info/1]).
+-export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1]).
 
 %% Document manipulation
 -export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
--export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, load_doc_from_file/4]).
+-export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -48,39 +48,117 @@
 %%%===================================================================
 %%% Couch Functions
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a file into couch as a document (not an attachement)
+%% @end
+%%--------------------------------------------------------------------
 -spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
-    load_doc_from_file(DB, App, File, init).
-
--spec(load_doc_from_file/4 :: (DB :: binary(), App :: atom(), File :: list() | binary(), Type :: init | replace) -> tuple(ok, json_term()) | tuple(error, term())).
-load_doc_from_file(DB, App, File, Type) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
-	Prop = mochijson2:decode(Bin),
-	load_doc(DB, Prop, Type)
+	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
 	_Type:Reason -> {error, Reason}
     end.
 
-load_doc(DB, Prop, init) ->
-    ?MODULE:save_doc(DB, Prop); %% if it crashes on the match, the catch will let us know
-load_doc(DB, Prop, replace) ->
-    {ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
-    ?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]}).
+-spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+update_doc_from_file(DB, App, File) ->
+    Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    try
+	{ok, Bin} = file:read_file(Path),
+	{struct, Prop} = mochijson2:decode(Bin),
+	{ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
+	?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]})
+    catch
+	_Type:Reason -> {error, Reason}
+    end.
 
--spec(db_info/1 :: (DB :: binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Detemine if a database exists
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_exists/1 :: (DbName :: binary()) -> boolean()).
+db_exists(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn -> couchbeam:db_exists(Conn, whistle_util:to_list(DbName))
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieve information regarding a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_info/1 :: (DbName :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 db_info(DbName) ->
-    case get_db(DbName) of
-        {error, _Error} -> {error, db_not_reachable};
-	Db -> 
-            case couchbeam:db_info(Db) of
+    case get_conn() of
+        {} -> {error, db_not_reachable};
+        Conn ->
+            case couchbeam:db_info(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
                 {error, _Error}=E -> E;
-                {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}                
+                {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}
             end
     end.
-    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Detemine if a database exists
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_create/1 :: (DbName :: binary()) -> boolean()).
+db_create(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn -> 
+            case couchbeam:create_db(Conn, whistle_util:to_list(DbName)) of
+                {error, _} -> false;
+                {ok, _} -> true
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Compact a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_compact/1 :: (DbName :: binary()) -> boolean()).
+db_compact(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:compact(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
+                {error, _} -> false;
+                ok -> true
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Delete a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_delete/1 :: (DbName :: binary()) -> boolean()).
+db_delete(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:delete_db(Conn, whistle_util:to_list(DbName)) of
+                {error, _} -> false;
+                {ok, _} -> true
+            end
+    end.
+
 %%%===================================================================
 %%% Document Functions
 %%%===================================================================
@@ -207,6 +285,9 @@ set_host(HostName) ->
 get_host() ->
     gen_server:call(?MODULE, get_host).
 
+get_conn() ->
+    gen_server:call(?MODULE, {get_conn}).
+
 get_db(DbName) ->
     Conn = gen_server:call(?MODULE, {get_conn}),
     open_db(whistle_util:to_list(DbName), Conn).
@@ -271,11 +352,6 @@ handle_call({set_host, Host}, _From, State) ->
     end;
 handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
-handle_call({add_change_handler, DBName, <<>>}, {Pid, _Ref}, State) ->
-    case start_change_handler(DBName, <<>>, Pid, State) of
-	{ok, _R, State1} -> {reply, ok, State1};
-	{error, E, State2} -> {reply, {error, E}, State2}
-    end;
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, DocID, Pid, State) of
 	{ok, _R, State1} -> {reply, ok, State1};
@@ -336,7 +412,7 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
     end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-    format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
+    %%format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
     case lists:keyfind(ReqID, 2, CH) of
 	false ->
 	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
@@ -479,7 +555,7 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_ha
 		false ->
 		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid | Pids]} | lists:keydelete({DBName, DocID}, 1, CH)]}};
 		true ->
-		    format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+		    %%format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
 		    {error, handler_exists, State}
 	    end
     end.
