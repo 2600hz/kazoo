@@ -315,6 +315,7 @@ flags_from_did(DidProp, Flags) ->
 %% - Caller Id <- only if it hasn't been set on the DID level
 %% - Failover <- only if it hasn't been set on the DID level
 %% - Trunks <- Max trunks allowed on the server
+%% - Auth Realm <- just in case it wasn't set from the DID
 %% - 
 -spec(flags_from_srv/3 :: ( AuthUser :: binary(), Doc :: proplist(), Flags :: tuple()) -> tuple()).
 flags_from_srv(AuthUser, Doc, Flags) ->
@@ -339,7 +340,8 @@ flags_from_account(Doc, Flags) ->
 
     F1 = add_caller_id(Flags#route_flags{account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)}
 		       ,get_value(<<"caller_id">>, Acct, {struct, []})),
-    add_failover(F1, get_value(<<"failover">>, Acct, {struct, []})).
+    F2 = add_failover(F1, get_value(<<"failover">>, Acct, {struct, []})),
+    F2#route_flags{auth_realm = get_value(<<"auth_realm">>, Acct, Flags#route_flags.auth_realm)}.
 
 -spec(add_failover/2 :: (F0 :: tuple(), FOver :: tuple(proplist())) -> tuple()).
 add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
