@@ -197,6 +197,7 @@ process_req(_MsgType, _Prop, _State) ->
 
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
+    format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
 
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).

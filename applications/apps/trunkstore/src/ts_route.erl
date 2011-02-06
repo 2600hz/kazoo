@@ -245,8 +245,6 @@ fold_features(Features, Flags) ->
 -spec(create_flags/2 :: (Did :: binary(), ApiProp :: proplist()) -> tuple()).
 create_flags(Did, ApiProp) ->
     {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
-    AuthUser = get_value(<<"Auth-User">>, ChannelVars, <<>>),
-    Doc = lookup_user(AuthUser),
 
     F1 = case lookup_did(Did) of
 	     {ok, DidProp} ->
@@ -254,6 +252,10 @@ create_flags(Did, ApiProp) ->
 	     {error, _E} ->
 		 #route_flags{}
 	 end,
+
+    AuthUser = F1#route_flags.auth_user,
+    Doc = lookup_user(F1#route_flags.auth_user),
+
     F3 = case Doc of
 	     {error, _E1} ->
 		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
@@ -321,7 +323,9 @@ flags_from_did(DidProp, Flags) ->
 flags_from_srv(AuthUser, Doc, Flags) ->
     Srv = lookup_server(AuthUser, Doc),
 
-    F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Srv, <<>>)
+    {struct, Options} = get_value(<<"options">>, Srv, {struct, []}),
+
+    F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Options, <<>>)
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			  },
