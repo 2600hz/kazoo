@@ -59,7 +59,7 @@ malformed_request(RD, #cb_context{req_json=malformed}=Context) ->
     {true, RD1, Context1};
 malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     Data = whapps_json:get_value(["data"], Json),
-    Auth = get_auth_token(RD, whapps_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
+    Auth = get_auth_token(RD, whapps_json:get_value(<<"auth-token">>, Json, <<>>), Verb),
     {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
 
 is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
