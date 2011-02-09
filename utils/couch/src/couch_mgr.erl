@@ -493,10 +493,8 @@ init_state() ->
 notify_pids(Change, DocID, Pids) ->
     SendToPid = case get_value(<<"deleted">>, Change) of
         true ->
-            format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
             {document_deleted, DocID}; % document deleted, no more looping
         undefined ->
-            format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
             {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
         end,
     lists:foreach(fun(P) -> P ! SendToPid end, Pids).
