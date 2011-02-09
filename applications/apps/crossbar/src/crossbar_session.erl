@@ -262,7 +262,7 @@ to_doc(S) -> to_doc(S, S#session.created).
 -spec(to_doc/2 :: (S :: #session{}, Now :: integer()) -> json_object()).
 to_doc(#session{'_rev'=undefined, storage=Storage}=S, Now) ->
     {struct, [{<<"_id">>, S#session.'_id'}
-             ,{<<"session">>, tuple_to_list(S#session{created=whistle_util:to_binary(Now)
+             ,{<<"session">>, tuple_to_list(S#session{created=whistle_util:to_integer(Now)
 					      ,expires=?MAX_AGE
 					      ,storage=encode_storage(Storage)
 					     })}
@@ -270,7 +270,7 @@ to_doc(#session{'_rev'=undefined, storage=Storage}=S, Now) ->
 to_doc(#session{storage=Storage}=S, Now) ->
     {struct, [{<<"_id">>, S#session.'_id'}
              ,{<<"_rev">>, S#session.'_rev'}
-             ,{<<"session">>, tuple_to_list(S#session{created= whistle_util:to_binary(Now)
+             ,{<<"session">>, tuple_to_list(S#session{created= whistle_util:to_integer(Now)
 					      ,expires=?MAX_AGE
 					      ,storage=encode_storage(Storage)
 					     })}
@@ -294,7 +294,7 @@ from_doc({struct, Doc}) ->
 %% new() -> #session()
 -spec(new/1 :: (Id :: binary()) -> #session{}).
 new(Id) ->
-    Now = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
+    Now = current_seconds(),
     #session{created=Now, expires=?MAX_AGE, '_id'=Id}.
 
 %% set_cookie_header(request(), #session(), {date(), time()}, seconds()) -> request()
@@ -310,7 +310,7 @@ set_cookie_header(RD, Session, DateTime, MaxAge) ->
 -spec(clean_expired/0 :: () -> no_return()).
 clean_expired() ->
     case couch_mgr:get_results(?SESSION_DB, ?SESSION_EXPIRED, [{"startkey", 0},
-									  {"endkey", calendar:datetime_to_gregorian_seconds(calendar:local_time())}
+									  {"endkey", current_seconds()}
 									 ]) of
 	{error, _} -> ok;
 	{ok, Sessions} ->
@@ -330,4 +330,7 @@ clean_expired() ->
 has_expired(#session{created=C, expires=E}) ->
     has_expired(C+E);
 has_expired(S) when is_integer(S) ->
-    S < calendar:datetime_to_gregorian_seconds(calendar:local_time()).
+    S < current_seconds().
+
+current_seconds() ->
+    calendar:datetime_to_gregorian_seconds(calendar:local_time()).

@@ -34,7 +34,7 @@
 	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
 	  ,session = undefined :: undefined | #session{}
           ,auth_token = <<"">> :: binary()
-          ,req_verb = undefined :: binary() | undefined
+          ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
           ,req_json = [] :: mochijson()
           ,req_data = [] :: mochijson()
