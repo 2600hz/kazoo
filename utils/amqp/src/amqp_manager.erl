@@ -63,6 +63,8 @@ open_channel(Pid) ->
 
 -spec(open_channel/2 :: ( Pid :: pid(), Host :: string() ) -> tuple(ok, pid(), integer()) | tuple(error, no_amqp_host)).
 open_channel(_Pid, "") -> {error, no_amqp_host};
+open_channel(Pid, "localhost") ->
+    gen_server:call(?SERVER, {open_channel, Pid, net_adm:localhost()}, infinity);
 open_channel(Pid, Host) ->
     gen_server:call(?SERVER, {open_channel, Pid, Host}, infinity).
 
@@ -306,10 +308,15 @@ create_amqp_params(Host) ->
     create_amqp_params(Host, 5672).
 -spec(create_amqp_params/2 :: (Host :: string(), Port :: integer()) -> tuple()).
 create_amqp_params(Host, Port) ->
-    #'amqp_params'{
-      port = Port
-      ,host = Host
-     }.
+    Node = list_to_atom([$r,$a,$b,$b,$i,$t,$@ | Host]),
+    case net_adm:ping(Node) of
+	pong ->
+	    format_log(info, "AMQP_MGR(~p): Pinged the node ~s~n", [self(), Node]),
+	    #'amqp_params'{ port = Port, host = Host };
+	pang ->
+	    format_log(error, "AMQP_MGR(~p): Unable to ping the node ~s~n", [self(), Node]),
+	    #'amqp_params'{ port = Port, host = Host }
+    end.
 
 -spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
 get_new_connection(#'amqp_params'{}=P) ->
