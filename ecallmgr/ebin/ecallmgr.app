@@ -16,7 +16,7 @@
                         ecallmgr_call_control_sup,ecallmgr_call_event_sup,
                         ecallmgr_call_events,ecallmgr_call_sup,ecallmgr_cli,
                         ecallmgr_deps,ecallmgr_diagnostics,ecallmgr_fs_auth,
-                        ecallmgr_fs_handler,ecallmgr_fs_route,
-                        ecallmgr_media_registry,ecallmgr_sup,ecallmgr_util,
-                        freeswitch,logger,props,resource_mgr,whistle_api,
-                        whistle_util]}]}.
+                        ecallmgr_fs_handler,ecallmgr_fs_node,
+                        ecallmgr_fs_route,ecallmgr_media_registry,
+                        ecallmgr_sup,ecallmgr_util,freeswitch,logger,props,
+                        resource_mgr,whistle_api,whistle_util]}]}.

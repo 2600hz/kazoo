@@ -59,7 +59,9 @@ start_handler(Node, Options, AmqpHost) ->
 monitor_node(Node, #handler_state{}=S) ->
     %% do init
     erlang:monitor_node(Node, true),
-    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE']),
+    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+			    ,'CUSTOM', 'sofia::register'
+			   ]),
     monitor_loop(Node, S).
 
 monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
@@ -71,8 +73,13 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
 	    case EvtName of
-		<<"HEARTBEAT">> -> monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
-		_ -> monitor_loop(Node, S)
+		<<"HEARTBEAT">> ->
+		    monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
+		<<"CUSTOM">> ->
+		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
+		    monitor_loop(Node, S);
+		_ ->
+		    monitor_loop(Node, S)
 	    end;
 	{event, [UUID | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
@@ -89,7 +96,11 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		    end;
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    monitor_loop(Node, S);
-		_ -> monitor_loop(Node, S)
+		<<"CUSTOM">> ->
+		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
+		    monitor_loop(Node, S);
+		_ ->
+		    monitor_loop(Node, S)
 	    end;
 	{resource_request, Pid, <<"audio">>, ChanOptions} ->
 	    ActiveChan = Cr - De,
@@ -115,22 +126,21 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 
 -spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
 originate_channel(Node, Host, Pid, Route, AvailChan) ->
-    DS = ecallmgr_util:route_to_dialstring(Route, ?DEFAULT_DOMAIN, Node), %% need to update this to be configurable
-    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), DS]),
-    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", DS, " &park"])),
+    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
+    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
     format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
     case freeswitch:api(Node, originate, OrigStr, 10000) of
 	{ok, X} ->
-	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), DS, X]),
+	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
 	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
 	    CtlQ = start_call_handling(Node, Host, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), DS, ErrMsg]),
+	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), Route, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), DS]),
+	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), Route]),
 	    Pid ! {resource_error, timeout}
     end.
 
@@ -138,8 +148,8 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 start_call_handling(Node, Host, UUID) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
-    CtlPid = ecallmgr_call_control:start(Node, UUID, {Host, CtlQueue}),
-    ecallmgr_call_sup:add_call_process(Node, UUID, Host, CtlPid),
+    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
+    ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
     CtlQueue.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).
@@ -179,3 +189,31 @@ process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
      ,{sessions_max, whistle_util:to_integer(lists:flatten(SessMaxNum))}
      ,{cpu, lists:flatten(CPUNum)}
     ].
+
+process_custom_data(Data, Host, AppVsn) ->
+    case get_value(<<"Event-Subclass">>, Data) of
+	undefined -> ok;
+	<<"sofia::register">> -> publish_register_event(Data, Host, AppVsn);
+	_ -> ok
+    end.
+
+publish_register_event(Data, Host, AppVsn) ->
+    Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
+    DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, ?MODULE, AppVsn),
+    ApiProp = lists:foldl(fun(K, Api) ->
+				  Lk = binary_to_lower(K),
+				  case props:get_value(Lk, Data) of
+				      undefined -> Api;
+				      V -> [{K, V} | Api]
+				  end
+			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
+    case whistle_api:reg_success(ApiProp) of
+	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~p~n", [E]);
+	{ok, JSON} ->
+	    format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
+	    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>)
+    end.
+
+-spec(binary_to_lower/1 :: (B :: binary()) -> binary()).
+binary_to_lower(B) when is_binary(B) ->
+    whistle_util:to_binary(string:to_lower(whistle_util:to_list(B))).
