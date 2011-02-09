@@ -30,7 +30,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("../../src/whistle_types.hrl"). % get the proplists -type
+-include("../../src/whistle_types.hrl"). % get the whistle types
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
@@ -38,22 +38,16 @@
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
-%% DBs = [{DbName, #db{}}]
-%% Views = [{ {#db{}, DesignDoc, ViewName}, #view{}}]
-%% ViewOptions :: Proplist() -> See http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
 %% ChangeHandlers :: [{DBName, DocID}, ReqID, [Pid]]
 -type change_handler_entry() :: tuple( tuple(string(), binary()), reference(), list(pid()) | []).
 -record(state, {
 	  connection = {} :: tuple(string(), #server{}) | {}
-	  ,dbs = [] :: list(tuple(string(), #db{})) | []
-	  ,views = [] :: list(tuple(tuple(#db{}, string(), string()), #view{})) | []
 	  ,change_handlers = [] :: list(change_handler_entry()) | []
 	 }).
 
 %%%===================================================================
-%%% API
+%%% Couch Functions
 %%%===================================================================
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -63,6 +57,7 @@
 -spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
@@ -73,6 +68,7 @@ load_doc_from_file(DB, App, File) ->
 -spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 update_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
@@ -163,6 +159,114 @@ db_delete(DbName) ->
             end
     end.
 
+%%%===================================================================
+%%% Document Functions
+%%%===================================================================
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% open a document given a docid returns not_found or the Document
+%% @end
+%%--------------------------------------------------------------------
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+open_doc(DbName, DocId) ->
+    open_doc(DbName, DocId, []).
+
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
+open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
+    open_doc(DbName, whistle_util:to_binary(DocId), Options);
+open_doc(DbName, DocId, Options) ->    
+    case get_db(DbName) of
+        {error, _Error} -> {error, db_not_reachable};
+	Db ->
+            case couchbeam:open_doc(Db, DocId, Options) of
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% save document to the db
+%% @end
+%%--------------------------------------------------------------------
+-spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+save_doc(DbName, [{struct, [_|_]}=Doc]) ->
+    save_doc(DbName, Doc);
+save_doc(DbName, [{struct, _}|_]=Doc) ->
+    case get_db(DbName) of
+	{error, _Error} -> {error, db_not_reachable};
+	Db ->
+            case couchbeam:save_docs(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
+    end;
+save_doc(DbName, Doc) when is_list(Doc) ->
+    save_doc(DbName, {struct, Doc});
+save_doc(DbName, {struct, _}=Doc) ->
+    case get_db(DbName) of
+	{error, _Error} -> {error, db_not_reachable};
+	Db -> 
+            case couchbeam:save_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% remove document from the db
+%% @end
+%%--------------------------------------------------------------------
+-spec(del_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, term()) | tuple(error, atom())).
+del_doc(DbName, Doc) ->
+    case get_db(DbName) of
+        {error, _Error} -> {error, db_not_reachable};
+	Db ->
+	    case couchbeam:delete_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+                {error, _Error}=E -> E;
+                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+            end
+    end.
+
+%%%===================================================================
+%%% View Functions
+%%%===================================================================
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% get the results of the view
+%% {Total, Offset, Meta, Rows}
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_all_results/2 :: (DbName :: list(), DesignDoc :: tuple(string(), string())) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+get_all_results(DbName, DesignDoc) ->
+    get_results(DbName, DesignDoc, []).
+
+-spec(get_results/3 :: (DbName :: list(), DesignDoc :: tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+get_results(DbName, DesignDoc, ViewOptions) ->
+    case get_db(DbName) of
+	{error, _Error} -> {error, db_not_reachable};
+	Db ->
+	    case get_view(Db, DesignDoc, ViewOptions) of
+		{error, _Error}=E -> E;
+		View ->
+		    case couchbeam_view:fetch(View) of
+			{ok, {Prop}} ->
+			    Rows = get_value(<<"rows">>, Prop, []),
+                            {ok, mochijson2:decode(couchbeam_util:json_encode(Rows))};
+			{error, _Error}=E -> E
+		    end
+	    end
+    end.
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
@@ -187,33 +291,9 @@ get_host() ->
 get_conn() ->
     gen_server:call(?MODULE, {get_conn}).
 
-%% open a document given a docid
-%% returns not_found or the Document
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> proplist() | not_found).
-open_doc(DbName, DocId) ->
-    open_doc(DbName, DocId, []).
-
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | not_found).
-open_doc(DbName, DocId, Options) ->
-    gen_server:call(?MODULE, {open_doc, whistle_util:to_list(DbName), whistle_util:to_binary(DocId), Options}, infinity).
-
-%% save a Document to the DB
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, proplist()) | tuple(error, conflict)).
-save_doc(DbName, Doc) ->
-    gen_server:call(?MODULE, {save_doc, whistle_util:to_list(DbName), {Doc}}, infinity).
-
--spec(del_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok | error, term())).
-del_doc(DbName, Doc) ->
-    gen_server:call(?MODULE, {del_doc, whistle_util:to_list(DbName), {Doc}}, infinity).
-
-%% get the results of the view
-%% {Total, Offset, Meta, Rows}
-get_all_results(DbName, DesignDoc) ->
-    get_results(DbName, DesignDoc, []).
-
-%% {Total, Offset, Meta, Rows}
-get_results(DbName, DesignDoc, ViewOptions) ->
-    gen_server:call(?MODULE, {get_results, whistle_util:to_list(DbName), DesignDoc, ViewOptions}, infinity).
+get_db(DbName) ->
+    Conn = gen_server:call(?MODULE, {get_conn}),
+    open_db(whistle_util:to_list(DbName), Conn).
 
 add_change_handler(DBName, DocID) ->
     gen_server:call(?MODULE, {add_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).
@@ -255,58 +335,6 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({get_results, DbName, DesignDoc, ViewOptions}, _From, #state{connection={_Host, Conn}, dbs=DBs, views=Vs}=State) ->
-    case get_db(DbName, Conn, DBs) of
-	{{error, _Err}=E, _DBs} ->
-	    {reply, E, State};
-	{Db, DBs1} ->
-	    case get_view(Db, DesignDoc, ViewOptions, Vs) of
-		{{error, _Err}=E, _DBs} ->
-		    {reply, E, State#state{dbs=DBs1}};
-		{View, Vs1} ->
-		    case couchbeam_view:fetch(View) of
-			{ok, {Prop}} ->
-			    {reply, get_value(<<"rows">>, Prop, []), State#state{dbs=DBs1, views=Vs1}};
-			Error ->
-			    {reply, Error, State#state{dbs=DBs1}}
-		    end
-	    end
-    end;
-handle_call({open_doc, DbName, DocId, Options}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
-    case get_db(DbName, Conn, DBs) of
-	{{error, _Err}=E, _DBs} ->
-	    {reply, E, State};
-	{Db, DBs1} ->
-	    case couchbeam:open_doc(Db, DocId, Options) of
-		{ok, {Doc}} ->
-		    {reply, Doc, State#state{dbs=DBs1}};
-		Other ->
-		    format_log(error, "WHISTLE_COUCH(~p): Failed to find ~p: ~p~n", [self(), DocId, Other]),
-		    {reply, {error, not_found}, State}
-	    end
-    end;
-
-handle_call({save_doc, DbName, Doc}, _From, #state{connection={_Host, Conn}, dbs=DBs}=State) ->
-    case get_db(DbName, Conn, DBs) of
-	{{error, _Err}=E, _DBs} ->
-	    {reply, E, State};
-	{Db, DBs1} ->
-	    case couchbeam:save_doc(Db, Doc) of
-		{ok, {Doc1}} ->
-		    {reply, {ok, Doc1}, State#state{dbs=DBs1}};
-		{error, _E}=Err -> % conflict!
-		    {reply, Err, State#state{dbs=DBs1}}
-	    end
-    end;
-
-handle_call({del_doc, DbName, Doc}, _From, #state{connection={_, Conn}, dbs=DBs}=State) ->
-    case get_db(DbName, Conn, DBs) of
-	{{error, _Err}=E, _DBs} ->
-	    {reply, E, State};
-	{Db, DBs1} ->
-	    {reply, couchbeam:delete_doc(Db, Doc), State#state{dbs=DBs1}}
-    end;
-
 handle_call(get_host, _From, #state{connection={H,_}}=State) ->
     {reply, H, State};
 handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}=State) ->
@@ -315,7 +343,7 @@ handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}
 	{error, _Error}=E ->
 	    {reply, E, State};
 	HC ->
-	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
     end;
 handle_call({set_host, Host, User, Pass}, _From, State) ->
     format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
@@ -323,15 +351,10 @@ handle_call({set_host, Host, User, Pass}, _From, State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
     end;
 handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
-handle_call({add_change_handler, DBName, <<>>}, {Pid, _Ref}, State) ->
-    case start_change_handler(DBName, <<>>, Pid, State) of
-	{ok, _R, State1} -> {reply, ok, State1};
-	{error, E, State2} -> {reply, {error, E}, State2}
-    end;
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, DocID, Pid, State) of
 	{ok, _R, State1} -> {reply, ok, State1};
@@ -343,14 +366,17 @@ handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, #state{change_hand
 	{{error, _}=E, CH2} -> {reply, E, State#state{change_handlers=CH2}}
     end;
 handle_call(Req, From, #state{connection={}}=State) ->
-    format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p)~n", [self(), net_adm:localhost()]),
+    format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p) with no auth~n", [self(), net_adm:localhost()]),
     case get_new_connection(net_adm:localhost(), "", "") of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
 	    close_handlers(State#state.change_handlers),
 	    handle_call(Req, From, State#state{connection=HC, change_handlers=[]})
-    end.
+    end;
+handle_call(_Request, _From, State) ->
+    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
+    {reply, {error, unhandled_call}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -376,6 +402,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
+    format_log(info, "WHISTLE_COUCH.wait(~p): DONE change handler ref ~p~n", [self(), ReqID]),
     case lists:keyfind(ReqID, 2, CH) of
 	false -> {noreply, State};
 	{{_, DocID}=Key,_,Pids}=Item ->
@@ -388,9 +415,10 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
     end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-
+    %%format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
     case lists:keyfind(ReqID, 2, CH) of
 	false ->
+	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
 	{{_, DocID}, _, Pids} ->
 	    notify_pids(Change, DocID, Pids),
@@ -400,6 +428,7 @@ handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    {noreply, State}    
     end;
 handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
+    format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
     CH1 = lists:foldl(fun({{_, DocID}=Key, RID, Pids}=Item, Acc) when RID =:= ReqID ->
 			      TmpCH = [Item],
 			      lists:foreach(fun(P) ->
@@ -463,13 +492,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec(close_handlers/1 :: (CHs :: list(tuple(tuple(string(), binary()), term(), list(pid())))) -> no_return()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(close_handlers/1 :: (CHs :: list(change_handler_entry())) -> no_return()).
 close_handlers(CHs) ->
     lists:foreach(fun({{_, DocID}, _, Pids}) ->
 			  lists:foreach(fun(P) -> unlink(P), P ! {change_handler_down, DocID} end, Pids)
 		  end, CHs).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(stop_change_handler/3 :: (Key :: tuple(string(), binary()), Pid :: pid(), CH :: list(change_handler_entry())) -> tuple(ok, list(change_handler_entry())) | tuple(tuple(error, term()), list(change_handler_entry()))).
 stop_change_handler({_,_}=Key, Pid, CH) ->
     unlink(Pid),
@@ -491,6 +529,11 @@ stop_change_handler({_,_}=Key, Pid, CH) ->
 	    end
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(start_change_handler/4 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}) -> tuple(ok, term(), #state{}) | tuple(error, term(), #state{})).
 start_change_handler(DBName, <<>>, Pid, State) ->
     start_change_handler(DBName, <<>>, Pid, State, []);
@@ -498,13 +541,13 @@ start_change_handler(DBName, DocID, Pid, State) ->
     start_change_handler(DBName, DocID, Pid, State, [{filter, <<"filter/by_doc">>}, {name, DocID}]).
 
 -spec(start_change_handler/5 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}, Opts :: proplist()) -> tuple(ok, reference(), #state{}) | tuple(error, term(), #state{})).
-start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, dbs=DBs, change_handlers=CH}=State, Opts) ->
+start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_handlers=CH}=State, Opts) ->
     case lists:keyfind({DBName, DocID}, 1, CH) of
 	false ->
-	    case get_db(DBName, Conn, DBs) of
-		{{error, Err}, _DBs} ->
-		    {error, Err, State};
-		{#db{}=Db, _DBs1} ->
+	    case open_db(DBName, Conn) of
+		{error, db_not_reachable} ->
+		    {error, db_not_reachable, State};
+		Db ->
 		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"} | Opts]),
 		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
 		    link(Pid),
@@ -515,24 +558,29 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, dbs=DBs, 
 		false ->
 		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid | Pids]} | lists:keydelete({DBName, DocID}, 1, CH)]}};
 		true ->
-		    format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+		    %%format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
 		    {error, handler_exists, State}
 	    end
     end.
 
--spec(get_new_connection/3 :: (Host :: string(), User :: string(), Pass :: string()) -> tuple(string(), tuple()) | tuple(error, term())).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_new_connection/3 :: (Host :: string(), User :: string(), Pass :: string()) -> tuple(string(), #server{}) | tuple(error, term())).
 get_new_connection(Host, "", "") -> get_new_conn(Host, []);
 get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, Pass}}]).
 
--spec(get_new_conn/2 :: (Host :: string(), Options :: proplist()) -> tuple(string(), #server{}) | tuple(error, term())).
-get_new_conn(Host, Options) ->
-    Conn = couchbeam:server_connection(Host, 5984, "", Options),
-    format_log(info, "WHISTLE_COUCH(~p): Host ~p has conn ~p~n", [self(), Host, Conn]),
+-spec(get_new_conn/2 :: (Host :: string(), Opts :: proplist()) -> tuple(string(), #server{}) | tuple(error, term())).
+get_new_conn(Host, Opts) ->
+    Conn = couchbeam:server_connection(Host, 5984, "", Opts),
+    format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
     case couchbeam:server_info(Conn) of
 	{ok, _Version} ->
 	    format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
 	    spawn(fun() ->
-			  case props:get_value(basic_auth, Options) of
+			  case props:get_value(basic_auth, Opts) of
 			      undefined -> save_config(Host);
 			      {U, P} -> save_config(Host, U, P)
 			  end
@@ -543,42 +591,43 @@ get_new_conn(Host, Options) ->
 	    E
     end.
 
-%% get_db, if DbName is known, returns the {#db{}, DBs}, else returns {#db{}, [{DbName, #db{}} | DBs]}
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% open_db, if DbName is known, returns the {#db{}, DBs}, else returns {#db{}, [{DbName, #db{}} | DBs]}
 %% an error in opening the db will cause a {{error, Err}, DBs} to be returned
--spec(get_db/3 :: (DbName :: string(), Conn :: #server{}, DBs :: list(#db{}) | []) -> tuple(tuple(error, term()) | #db{}, list(tuple(string(), #db{})) | [] )).
-get_db(DbName, Conn, DBs) ->
-    get_db(DbName, Conn, DBs, []).
-
--spec(get_db/4 :: (DbName :: string(), Conn :: #server{}, DBs :: list(#db{}) | [], Options :: list()) -> tuple(tuple(error, term()) | #db{}, list(tuple(string(), #db{})) | [] )).
-get_db(DbName, Conn, DBs, Options) ->
-    case lists:keyfind(DbName, 1, DBs) of
-	false ->
-	    {ok, Db} = couchbeam:open_or_create_db(Conn, DbName, Options),
-	    case couchbeam:db_info(Db) of
-		{ok, _JSON} ->
-		    {Db, [{DbName, Db} | DBs]};
-		{error, _Error}=E ->
-		    {E, DBs}
-	    end;
-	{DbName, Db} ->
-	    {Db, DBs}
+%% @end
+%%--------------------------------------------------------------------
+-spec(open_db/2 :: (DbName :: string(), Conn :: #server{}) -> tuple(error, db_not_reachable) | #db{}).
+open_db(DbName, Conn) -> 
+    case couchbeam:open_or_create_db(Conn, DbName) of
+        {error, _Error}=E -> E;
+        {ok, Db} ->
+            case couchbeam:db_info(Db) of
+                {error, _Error}=E -> E;
+                {ok, _JSON} -> Db
+            end
+    end.
+    
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% get_view, if Db/DesignDoc is known, return {#view{}, Views},
+%% else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
+%% @end
+%%--------------------------------------------------------------------    
+-spec(get_view/3 :: (Db :: #db{}, DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list()) -> #view{} | tuple(error, view_not_found)).
+get_view(Db, DesignDoc, ViewOptions) ->
+    case couchbeam:view(Db, DesignDoc, ViewOptions) of
+	{error, _Error}=E -> E;
+	{ok, View} -> View
     end.
 
-%% get_view, if Db/DesignDoc is known, return {#view{}, Views}, else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
--spec(get_view/4 :: (Db :: #db{}, DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list(), Views :: list()) -> tuple(#view{}, list()) | tuple(tuple(error, term()), list())).
-get_view(Db, DesignDoc, ViewOptions, Views) ->
-    case lists:keyfind({Db, DesignDoc, ViewOptions}, 1, Views) of
-	{{Db, DesignDoc, ViewOptions}, View} ->
-	    {View, Views};
-	false ->
-	    case couchbeam:view(Db, DesignDoc, ViewOptions) of
-		{error, _Error}=E ->
-		    {E, Views};
-		{ok, View} ->
-		    {View, [{{Db, DesignDoc, ViewOptions}, View} | Views]}
-	    end
-    end.
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(init_state/0 :: () -> #state{}).
 init_state() ->
     case get_startup_config() of
@@ -598,21 +647,38 @@ init_state() ->
 	_ -> #state{}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% notify_pids, sends change notifications to a list of PIDs, return void
--spec(notify_pids/3 :: (Change :: proplist(), DocID :: binary(), Pids :: list()) -> ok).
+%% @end
+%%--------------------------------------------------------------------
+-spec(notify_pids/3 :: (Change :: proplist(), DocID :: binary(), Pids :: list(pid())) -> ok).
 notify_pids(Change, DocID, Pids) ->
     SendToPid = case get_value(<<"deleted">>, Change) of
         true ->
+            format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
             {document_deleted, DocID}; % document deleted, no more looping
         undefined ->
+            format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
             {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
         end,
     lists:foreach(fun(P) -> P ! SendToPid end, Pids).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(get_startup_config/0 :: () -> tuple(ok, proplist()) | tuple(error, term())).
 get_startup_config() ->
     file:consult(?STARTUP_FILE).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(save_config/1 :: (H :: string()) -> no_return()).
 save_config(H) ->
     save_config(H, "", "").
