@@ -1,27 +1,19 @@
-%%   The contents of this file are subject to the Mozilla Public License
-%%   Version 1.1 (the "License"); you may not use this file except in
-%%   compliance with the License. You may obtain a copy of the License at
-%%   http://www.mozilla.org/MPL/
+%% The contents of this file are subject to the Mozilla Public License
+%% Version 1.1 (the "License"); you may not use this file except in
+%% compliance with the License. You may obtain a copy of the License at
+%% http://www.mozilla.org/MPL/
 %%
-%%   Software distributed under the License is distributed on an "AS IS"
-%%   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-%%   License for the specific language governing rights and limitations
-%%   under the License.
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+%% License for the specific language governing rights and limitations
+%% under the License.
 %%
-%%   The Original Code is the RabbitMQ Erlang Client.
+%% The Original Code is RabbitMQ.
 %%
-%%   The Initial Developers of the Original Code are LShift Ltd.,
-%%   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+%% The Initial Developer of the Original Code is VMware, Inc.
+%% Copyright (c) 2007-2011 VMware, Inc.  All rights reserved.
 %%
-%%   Portions created by LShift Ltd., Cohesive Financial
-%%   Technologies LLC., and Rabbit Technologies Ltd. are Copyright (C)
-%%   2007 LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-%%   Technologies Ltd.;
-%%
-%%   All Rights Reserved.
-%%
-%%   Contributor(s): Ben Hood <0x6e6562@gmail.com>.
-%%
+
 -module(negative_test_util).
 
 -include("amqp_client.hrl").
@@ -75,13 +67,12 @@ hard_error_test(Connection) ->
     try amqp_channel:call(Channel, Qos) of
         _ -> exit(expected_to_exit)
     catch
-        exit:{{connection_closing, _}, _} = Reason ->
+        exit:{connection_closing, _} ->
             %% Network case
-            ?assertMatch({{connection_closing,
-                           {server_initiated_close, ?NOT_IMPLEMENTED, _}}, _},
-                         Reason);
+            ok;
         exit:Reason ->
             %% Direct case
+            %% TODO: fix error code in the direct case
             ?assertMatch({{server_initiated_hard_close, ?NOT_IMPLEMENTED, _}, _},
                          Reason)
     end,
@@ -91,10 +82,7 @@ hard_error_test(Connection) ->
             %% TODO fix error code in the direct case
             killed -> ok;
             %% Network case
-            _      -> ?assertMatch(
-                         {connection_closing,
-                          {server_initiated_close, ?NOT_IMPLEMENTED, _}},
-                         OtherExit)
+            _      -> ?assertMatch(connection_closing, OtherExit)
         end
     end,
     test_util:wait_for_death(Channel),
@@ -147,7 +135,7 @@ shortstr_overflow_field_test(Connection) ->
     test_util:setup_exchange(Channel, Q, X, Key),
     ?assertExit(_, amqp_channel:subscribe(
                        Channel, #'basic.consume'{queue = Q, no_ack = true,
-                                                  consumer_tag = SentString},
+                                                 consumer_tag = SentString},
                        self())),
     test_util:wait_for_death(Channel),
     test_util:wait_for_death(Connection),
@@ -180,32 +168,27 @@ command_invalid_over_channel0_test(Connection) ->
 assert_down_with_error(MonitorRef, CodeAtom) ->
     receive
         {'DOWN', MonitorRef, process, _, Reason} ->
-            {error, Code, _} = Reason,
+            {server_misbehaved, Code, _} = Reason,
             ?assertMatch(CodeAtom, ?PROTOCOL:amqp_exception(Code))
     after 2000 ->
         exit(did_not_die)
     end.
 
-non_existent_user_test() ->
+non_existent_user_test(StartConnectionFun) ->
     Params = #amqp_params{username = test_util:uuid(),
                           password = test_util:uuid()},
-    assert_fail_start_with_params(Params).
+    ?assertMatch({error, auth_failure}, StartConnectionFun(Params)).
 
-invalid_password_test() ->
+invalid_password_test(StartConnectionFun) ->
     Params = #amqp_params{username = <<"guest">>,
                           password = test_util:uuid()},
-    assert_fail_start_with_params(Params).
+    ?assertMatch({error, auth_failure}, StartConnectionFun(Params)).
 
-non_existent_vhost_test() ->
+non_existent_vhost_test(StartConnectionFun) ->
     Params = #amqp_params{virtual_host = test_util:uuid()},
-    assert_fail_start_with_params(Params).
+    ?assertMatch({error, access_refused}, StartConnectionFun(Params)).
 
-no_permission_test() ->
+no_permission_test(StartConnectionFun) ->
     Params = #amqp_params{username = <<"test_user_no_perm">>,
                           password = <<"test_user_no_perm">>},
-    assert_fail_start_with_params(Params).
-
-assert_fail_start_with_params(Params) ->
-    {error, {auth_failure_likely, _}} =
-        amqp_connection:start(network, Params),
-    ok.
+    ?assertMatch({error, access_refused}, StartConnectionFun(Params)).
