@@ -17,7 +17,7 @@
 -export ( [get_q/1] ).
 
 %% API
--export ( [start_link/2] ).
+-export ( [start_link/3] ).
 
 %% gen_server callbacks
 -export ( [init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3] ).
@@ -32,6 +32,7 @@
 -define ( SERVER, ?MODULE ).
 
 -record ( state, {
+   flow      = [] :: proplist(),
    amqp_h    = "" :: string(),
    amqp_q    = <<>> :: binary(),
    ctrl_q    = <<>> :: binary(),
@@ -63,8 +64,10 @@ get_q ( Pid ) -> {ok, Q} = gen_server:call(Pid, get_q), Q.
 %
 % @end
 %------------------------------------------------------------------------------
--spec ( start_link/2 :: ( AHost :: string(), ReqProp :: proplist() ) -> tuple(ok, Pid :: pid()) | ignore | tuple(error, Error :: term()) ).
-start_link ( AHost, ReqProp ) -> gen_server:start_link( ?MODULE, [AHost, ReqProp], [] ).
+-spec ( start_link/3 :: ( AHost :: string(), ReqProp :: proplist(), Flow :: proplist ) ->
+   tuple(ok, Pid :: pid()) | ignore | tuple(error, Error :: term()) )
+.
+start_link ( AHost, ReqProp, Flow ) -> gen_server:start_link( ?MODULE, [AHost, ReqProp, Flow], [] ).
 
 
 
@@ -86,11 +89,12 @@ start_link ( AHost, ReqProp ) -> gen_server:start_link( ?MODULE, [AHost, ReqProp
    | ignore
    | tuple(stop, Reason :: term())
 ).
-init ( [AHost, ReqProp] ) ->
+init ( [AHost, ReqProp, Flow] ) ->
    CallId = proplists:get_value(<<"Call-ID">>, ReqProp),
    { 
       ok,
       #state{
+         flow = Flow,
          amqp_h = AHost,
          amqp_q = get_amqp_queue(AHost, CallId),
          call_id = CallId,
@@ -167,7 +171,7 @@ handle_cast ( Msg, State ) ->
 handle_info ( #'basic.consume_ok'{}, State ) -> 
    format_log(info, "CF CALL HANDLER (~p): basic consume ok...~n", [self()]),
    { noreply, State };
-handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{}=State ) ->
+handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flow=Flow}=State ) ->
    format_log(
       info,
       "CF CALL HANDLER (~p): handling request request...~nProplist: ~p~nPayload:~p~n",
@@ -175,7 +179,7 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{}=State ) 
    ),
    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
    case proplists:get_value(<<"Event-Name">>, Prop) of
-      <<"route_win">> -> spawn(fun() -> callflow(Prop) end);
+      <<"route_win">> -> spawn(fun() -> callflow(Prop, Flow) end);
       _               -> format_log(info, "CF CALL HANDLER (~p): Ignoring message...~n~p~n", [self(), Prop])
    end,
    { noreply, State };
@@ -268,15 +272,15 @@ get_amqp_queue ( AHost, CallId ) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
-callflow ( Proplist ) ->
+callflow ( Proplist, Flow ) ->
    format_log(
       info,
       "CF CALL HANDLER (~p): Call is parked and callflow process is spawned~n",
       [self()]
-   )%,
+   ),
    
    % sending the tree to execute
-   %execute(Tree)
+   execute(Flow)
 .
 
 %%-----------------------------------------------------------------------------
@@ -286,11 +290,17 @@ callflow ( Proplist ) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
+execute ( [] ) ->
+   format_log(
+      error,
+      "CF CALL HANDLER (~p): Empty flow...~n",
+      [self()]
+   );
 execute ( Tree ) ->
    Module = proplists:get_value(<<"module">>, Tree),
    Data = proplists:get_value(<<"data">>, Tree),
    format_log(
-      progress,
+      info,
       "CF CALL HANDLER (~p): Executing module '~p' with data:~n~p~n",
       [self(), Module, Data]
    )
