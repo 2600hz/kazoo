@@ -74,6 +74,10 @@ reserve_trunk(Acct, CallID) ->
     reserve_trunk(Acct, CallID, 0).
 
 -spec(reserve_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> tuple(ok, flat_rate | per_min) | tuple(error, term())).
+reserve_trunk(<<>>, _, _) ->
+    {error, no_account};
+reserve_trunk(_, <<>>, _) ->
+    {error, no_callid};
 reserve_trunk(Acct, CallID, Amt) ->
     gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt]}, infinity).
 
@@ -137,7 +141,7 @@ handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_write_db=WDB, cur
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     {reply, has_credit(RDB, AcctId, Amt), S};
 handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    format_log(info, "TS_ACCTMGR(~p): Reserve trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+    format_log(info, "TS_ACCTMGR(~p): Reserve trunk for acct ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
     load_account(AcctId, WDB),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of

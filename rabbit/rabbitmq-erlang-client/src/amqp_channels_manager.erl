@@ -1,26 +1,18 @@
-%%   The contents of this file are subject to the Mozilla Public License
-%%   Version 1.1 (the "License"); you may not use this file except in
-%%   compliance with the License. You may obtain a copy of the License at
-%%   http://www.mozilla.org/MPL/
+%% The contents of this file are subject to the Mozilla Public License
+%% Version 1.1 (the "License"); you may not use this file except in
+%% compliance with the License. You may obtain a copy of the License at
+%% http://www.mozilla.org/MPL/
 %%
-%%   Software distributed under the License is distributed on an "AS IS"
-%%   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-%%   License for the specific language governing rights and limitations
-%%   under the License.
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+%% License for the specific language governing rights and limitations
+%% under the License.
 %%
-%%   The Original Code is the RabbitMQ Erlang Client.
+%% The Original Code is RabbitMQ.
 %%
-%%   The Initial Developers of the Original Code are LShift Ltd.,
-%%   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+%% The Initial Developer of the Original Code is VMware, Inc.
+%% Copyright (c) 2007-2011 VMware, Inc.  All rights reserved.
 %%
-%%   Portions created by LShift Ltd., Cohesive Financial
-%%   Technologies LLC., and Rabbit Technologies Ltd. are Copyright (C)
-%%   2007 LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-%%   Technologies Ltd.;
-%%
-%%   All Rights Reserved.
-%%
-%%   Contributor(s): Ben Hood <0x6e6562@gmail.com>.
 
 %% @private
 -module(amqp_channels_manager).
@@ -30,13 +22,13 @@
 -behaviour(gen_server).
 
 -export([start_link/2, open_channel/3, set_channel_max/2, is_empty/1,
-         num_channels/1, pass_frame/3, signal_connection_closing/3]).
+         num_channels/1, pass_frame/3, signal_connection_closing/2]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2,
          handle_info/2]).
 
 -record(state, {connection,
                 channel_sup_sup,
-                map_num_pf      = gb_trees:empty(), %% Number -> {Pid, Framing}
+                map_num_pa      = gb_trees:empty(), %% Number -> {Pid, AState}
                 map_pid_num     = dict:new(),       %% Pid -> Number
                 channel_max     = ?MAX_CHANNEL_NUMBER,
                 closing         = false}).
@@ -63,8 +55,8 @@ num_channels(ChMgr) ->
 pass_frame(ChMgr, ChNumber, Frame) ->
     gen_server:cast(ChMgr, {pass_frame, ChNumber, Frame}).
 
-signal_connection_closing(ChMgr, ChannelCloseType, Reason) ->
-    gen_server:cast(ChMgr, {connection_closing, ChannelCloseType, Reason}).
+signal_connection_closing(ChMgr, ChannelCloseType) ->
+    gen_server:cast(ChMgr, {connection_closing, ChannelCloseType}).
 
 %%---------------------------------------------------------------------------
 %% gen_server callbacks
@@ -90,10 +82,9 @@ handle_call(num_channels, _, State) ->
 handle_cast({set_channel_max, ChannelMax}, State) ->
     {noreply, State#state{channel_max = ChannelMax}};
 handle_cast({pass_frame, ChNumber, Frame}, State) ->
-    internal_pass_frame(ChNumber, Frame, State),
-    {noreply, State};
-handle_cast({connection_closing, ChannelCloseType, Reason}, State) ->
-    handle_connection_closing(ChannelCloseType, Reason, State).
+    {noreply, internal_pass_frame(ChNumber, Frame, State)};
+handle_cast({connection_closing, ChannelCloseType}, State) ->
+    handle_connection_closing(ChannelCloseType, State).
 
 handle_info({'DOWN', _, process, Pid, Reason}, State) ->
     handle_down(Pid, Reason, State).
@@ -106,39 +97,39 @@ handle_open_channel(ProposedNumber, InfraArgs,
                     State = #state{channel_sup_sup = ChSupSup}) ->
     case new_number(ProposedNumber, State) of
         {ok, Number} ->
-            {ok, _ChSup, {Ch, Framing}} =
+            {ok, _ChSup, {Ch, AState}} =
                 amqp_channel_sup_sup:start_channel_sup(ChSupSup, InfraArgs,
                                                        Number),
-            NewState = internal_register(Number, Ch, Framing, State),
+            NewState = internal_register(Number, Ch, AState, State),
             erlang:monitor(process, Ch),
             {reply, {ok, Ch}, NewState};
         {error, _} = Error ->
             {reply, Error, State}
     end.
 
-new_number(none, #state{channel_max = ChannelMax, map_num_pf = MapNPF}) ->
-    case gb_trees:is_empty(MapNPF) of
+new_number(none, #state{channel_max = ChannelMax, map_num_pa = MapNPA}) ->
+    case gb_trees:is_empty(MapNPA) of
         true  -> {ok, 1};
-        false -> {Smallest, _} = gb_trees:smallest(MapNPF),
+        false -> {Smallest, _} = gb_trees:smallest(MapNPA),
                  if Smallest > 1 ->
                         {ok, Smallest - 1};
                     true ->
-                        {Largest, _} = gb_trees:largest(MapNPF),
+                        {Largest, _} = gb_trees:largest(MapNPA),
                         if Largest < ChannelMax -> {ok, Largest + 1};
-                           true                 -> find_free(MapNPF)
+                           true                 -> find_free(MapNPA)
                         end
                  end
     end;
 new_number(Proposed, State = #state{channel_max = ChannelMax,
-                                    map_num_pf  = MapNPF}) ->
+                                    map_num_pa  = MapNPA}) ->
     IsValid = Proposed > 0 andalso Proposed =< ChannelMax andalso
-        not gb_trees:is_defined(Proposed, MapNPF),
+        not gb_trees:is_defined(Proposed, MapNPA),
     case IsValid of true  -> {ok, Proposed};
                     false -> new_number(none, State)
     end.
 
-find_free(MapNPF) ->
-    find_free(gb_trees:iterator(MapNPF), 1).
+find_free(MapNPA) ->
+    find_free(gb_trees:iterator(MapNPA), 1).
 
 find_free(It, Candidate) ->
     case gb_trees:next(It) of
@@ -168,62 +159,69 @@ maybe_report_down(_Pid, {app_initiated_close, _, _}, _State) ->
     ok;
 maybe_report_down(_Pid, {server_initiated_close, _, _}, _State) ->
     ok;
-maybe_report_down(_Pid, {connection_closing, _}, _State) ->
+maybe_report_down(_Pid, connection_closing, _State) ->
     ok;
-maybe_report_down(Pid, {server_initiated_hard_close, _, _} = Reason, State) ->
-    signal_connection({hard_error_in_channel, Pid, Reason}, State);
-maybe_report_down(_Pid, {send_hard_error, AmqpError}, State) ->
-    signal_connection({send_hard_error, AmqpError}, State);
-maybe_report_down(Pid, Other, State) ->
-    signal_connection({channel_internal_error, Pid, Other}, State).
+maybe_report_down(Pid, {server_initiated_hard_close, _, _} = Reason,
+                  #state{connection = Connection}) ->
+    amqp_gen_connection:hard_error_in_channel(Connection, Pid, Reason);
+maybe_report_down(_Pid, {server_misbehaved, AmqpError},
+                  #state{connection = Connection}) ->
+    amqp_gen_connection:server_misbehaved(Connection, AmqpError);
+maybe_report_down(Pid, Other, #state{connection = Connection}) ->
+    amqp_gen_connection:channel_internal_error(Connection, Pid, Other).
 
 check_all_channels_terminated(#state{closing = false}) ->
     ok;
-check_all_channels_terminated(State = #state{closing = true}) ->
+check_all_channels_terminated(State = #state{closing = true,
+                                             connection = Connection}) ->
     case internal_is_empty(State) of
-        true  -> signal_connection(all_channels_terminated, State);
+        true  -> amqp_gen_connection:channels_terminated(Connection);
         false -> ok
     end.
 
-handle_connection_closing(ChannelCloseType, Reason, State) ->
+handle_connection_closing(ChannelCloseType,
+                          State = #state{connection = Connection}) ->
     case internal_is_empty(State) of
-        true  -> signal_connection(all_channels_terminated, State);
-        false -> signal_channels({connection_closing, ChannelCloseType, Reason},
-                                 State)
+        true  -> amqp_gen_connection:channels_terminated(Connection);
+        false -> signal_channels_connection_closing(ChannelCloseType, State)
     end,
     {noreply, State#state{closing = true}}.
 
 %%---------------------------------------------------------------------------
 
 internal_pass_frame(Number, Frame, State) ->
-    case internal_lookup_npf(Number, State) of
-        undefined    -> ?LOG_INFO("Dropping frame ~p for invalid or closed "
-                                  "channel number ~p~n", [Frame, Number]);
-        {_, Framing} -> rabbit_framing_channel:process(Framing, Frame)
+    case internal_lookup_npa(Number, State) of
+        undefined ->
+            ?LOG_INFO("Dropping frame ~p for invalid or closed "
+                      "channel number ~p~n", [Frame, Number]);
+        {ChPid, AState} ->
+            NewAState = rabbit_reader:process_channel_frame(
+                          Frame, ChPid, Number, ChPid, AState),
+            internal_update_npa(Number, ChPid, NewAState, State)
     end.
 
-internal_register(Number, Pid, Framing,
-                  State = #state{map_num_pf = MapNPF, map_pid_num = MapPN}) ->
-    MapNPF1 = gb_trees:enter(Number, {Pid, Framing}, MapNPF),
+internal_register(Number, Pid, AState,
+                  State = #state{map_num_pa = MapNPA, map_pid_num = MapPN}) ->
+    MapNPA1 = gb_trees:enter(Number, {Pid, AState}, MapNPA),
     MapPN1 = dict:store(Pid, Number, MapPN),
-    State#state{map_num_pf  = MapNPF1,
+    State#state{map_num_pa  = MapNPA1,
                 map_pid_num = MapPN1}.
 
 internal_unregister(Number, Pid,
-                    State = #state{map_num_pf = MapNPF, map_pid_num = MapPN}) ->
-    MapNPF1 = gb_trees:delete(Number, MapNPF),
+                    State = #state{map_num_pa = MapNPA, map_pid_num = MapPN}) ->
+    MapNPA1 = gb_trees:delete(Number, MapNPA),
     MapPN1 = dict:erase(Pid, MapPN),
-    State#state{map_num_pf  = MapNPF1,
+    State#state{map_num_pa  = MapNPA1,
                 map_pid_num = MapPN1}.
 
-internal_is_empty(#state{map_num_pf = MapNPF}) ->
-    gb_trees:is_empty(MapNPF).
+internal_is_empty(#state{map_num_pa = MapNPA}) ->
+    gb_trees:is_empty(MapNPA).
 
-internal_num_channels(#state{map_num_pf = MapNPF}) ->
-    gb_trees:size(MapNPF).
+internal_num_channels(#state{map_num_pa = MapNPA}) ->
+    gb_trees:size(MapNPA).
 
-internal_lookup_npf(Number, #state{map_num_pf = MapNPF}) ->
-    case gb_trees:lookup(Number, MapNPF) of {value, PF} -> PF;
+internal_lookup_npa(Number, #state{map_num_pa = MapNPA}) ->
+    case gb_trees:lookup(Number, MapNPA) of {value, PA} -> PA;
                                             none        -> undefined
     end.
 
@@ -232,8 +230,10 @@ internal_lookup_pn(Pid, #state{map_pid_num = MapPN}) ->
                                   error        -> undefined
     end.
 
-signal_channels(Msg, #state{map_pid_num = MapPN}) ->
-    dict:fold(fun(Pid, _, _) -> Pid ! Msg end, none, MapPN).
+internal_update_npa(Number, Pid, AState, State = #state{map_num_pa = MapNPA}) ->
+    State#state{map_num_pa = gb_trees:update(Number, {Pid, AState}, MapNPA)}.
 
-signal_connection(Msg, #state{connection = Connection}) ->
-    Connection ! Msg.
+signal_channels_connection_closing(ChannelCloseType,
+                                   #state{map_pid_num = MapPN}) ->
+    [amqp_channel:connection_closing(Pid, ChannelCloseType)
+        || Pid <- dict:fetch_keys(MapPN)].

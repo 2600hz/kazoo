@@ -1,6 +1,7 @@
 {application,crossbar,
              [{description,"Crossbar - REST Interface to the stars"},
               {vsn,"0.0.2"},
+<<<<<<< HEAD
               {modules,[account,accounts,api_1_0_resource,callflow,crossbar,
                         crossbar_app,crossbar_bindings,crossbar_doc,
                         crossbar_module_sup,crossbar_resource,
@@ -8,6 +9,14 @@
                         crossbar_validator,evtpub_resource,evtsub,
                         evtsub_resource,noauthn,noauthz,nosipauth,plists,
                         static_resource,users,v1_resource]},
+=======
+              {modules,[accounts,callflow,callflow_sup,cf_call_handler,
+                        cf_crud,cf_route_handler,crossbar,crossbar_app,
+                        crossbar_bindings,crossbar_doc,crossbar_module_sup,
+                        crossbar_session,crossbar_sup,crossbar_util,
+                        crossbar_validator,evtsub,noauthn,noauthz,nosipauth,
+                        plists,static_resource,users,v1_resource]},
+>>>>>>> master
               {registered,[]},
               {applications,[kernel,stdlib,crypto,mochiweb,webmachine]},
               {mod,{crossbar_app,[]}},

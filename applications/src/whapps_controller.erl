@@ -152,9 +152,12 @@ handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
     State1 = case file:consult(Config) of
 		 {ok, Ts} ->
-		     couch_mgr:set_host(props:get_value(default_couch_host, Ts, "")),
-		  
-		     start_mnesia(),
+		     case lists:keyfind(default_couch_host, 1, Ts) of
+			 false -> ok;
+			 {default_couch_host, H} -> couch_mgr:set_host(H);
+			 {default_couch_host, H, U, P} -> couch_mgr:set_host(H, U, P)
+		     end,
+
 		     As1 = lists:foldl(fun(App, Acc) ->
 					       add_app(App, Acc)
 				       end, As, props:get_value(start, Ts, [])),
@@ -212,6 +215,3 @@ rm_app(App, As) ->
     format_log(info, "APPS(~p): Stopping app_sup: ~p~n", [self(), whistle_apps_sup:stop_app(App)]),
     format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
     lists:delete(App, As).
-
-start_mnesia() ->
-    ok.

@@ -1,24 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%% Event Subscription module
+%%% Account module
 %%%
-%%% Handle client requests for binding to AMQP messages (like call events).
+%%% Handle client requests for account documents
 %%%
 %%% @end
-%%% Created : 13 Dec 2010 by James Aimonetti <james@2600hz.org>
+%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(evtsub).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
-
--export([dispatch_config/0, set_amqp_host/1]).
-
--export([add/1, rm/1, clear/1, status/1, poll/1]).
+-export([start_link/0, get_subscriber_pid/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,14 +25,13 @@
 -include("../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_RESPONSE_SIZE, 100).
 
-%% { account_id, queue_name, [{{<<"exchange">>, <<"binding_data">>}, Options}]}
--type client_sub() :: tuple(term(), binary(), list(tuple(tuple(binary(), binary()), term()))).
+%% {SessionId, PidToQueueHandlingProc}
+-type evtsub_subscriber() :: tuple( binary(), pid()).
+-type evtsub_subscriber_list() :: list(evtsub_subscriber()) | [].
 
 -record(state, {
-	  amqp_host = "" :: string()
-	 ,client_subs = [] :: list(client_sub())
+	  subscriber_list = [] :: evtsub_subscriber_list()
 	 }).
 
 %%%===================================================================
@@ -53,33 +48,9 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-%% Define this function if you want to dynamically add a dispatch rule to webmachine
-%% for calls to webmachine_router:add_route/1
-dispatch_config() ->
-    {["evtsub", request, '*'], evtsub_resource, []}.
-
-set_amqp_host(H) ->
-    gen_server:cast(?SERVER, {set_amqp_host, H}).
-
-%% Exposed API calls can return one of three results:
-%% {success | error | fatal, data proplist}
-%% {success | error | fatal, data proplist, message}
-%% {success | error | fatal, data proplist, message, error code}
-%% AKA the crossbar_module_result() type
--spec(add/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
-add(ReqParams) -> gen_server:call(?SERVER, {add, ReqParams}).
-
--spec(rm/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
-rm(ReqParams) -> gen_server:call(?SERVER, {rm, ReqParams}).
-
--spec(clear/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
-clear(ReqParams) -> gen_server:call(?SERVER, {clear, ReqParams}).
-
--spec(status/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
-status(ReqParams) -> gen_server:call(?SERVER, {status, ReqParams}).
-
--spec(poll/1 :: (ReqParams :: proplist()) -> crossbar_module_result()).
-poll(ReqParams) -> gen_server:call(?SERVER, {poll, ReqParams}).
+-spec(get_subscriber_pid/1 :: (SessionID :: binary()) -> tuple(ok, pid()) | tuple(error, undefined)).
+get_subscriber_pid(SessionID) ->
+    gen_server:call(?SERVER, {get_subscriber_pid, SessionID}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -98,8 +69,7 @@ poll(ReqParams) -> gen_server:call(?SERVER, {poll, ReqParams}).
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
-    amqp_util:module_info(), %% loads all exported function names into the atoms table - for list_to_existing_atom/1
-    start_bindings(),
+    bind_to_crossbar(),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -116,64 +86,12 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({add, ReqParams}, _, #state{amqp_host=H, client_subs=Subs}=State) ->
-    Client = props:get_value(<<"account_id">>, ReqParams),
-    {struct, Data} = props:get_value(<<"data">>, ReqParams),
-    Exchange = props:get_value(<<"exchange">>, Data),
-    Binding = props:get_value(<<"binding">>, Data),
-    MaxRespSize = case whistle_util:to_integer(props:get_value(<<"max_response_size">>, Data, ?DEFAULT_RESPONSE_SIZE)) of
-		      V when V > ?DEFAULT_RESPONSE_SIZE -> ?DEFAULT_RESPONSE_SIZE;
-		      V1 -> V1
-		  end,
-    ClientSub = case lists:keyfind(Client, 1, Subs) of
-		    false -> new_sub(Client, Exchange, Binding, MaxRespSize, H);
-		    CSub -> edit_sub(CSub, Exchange, Binding, MaxRespSize, H)
-		end,
-    Bindings = client_bindings(ClientSub),
-    {reply, {success, [{<<"subscribed">>, Bindings}]}, State#state{client_subs=[ClientSub | lists:keydelete(Client, 1, Subs)]}};
-handle_call({rm, ReqParams}, _, #state{amqp_host=H, client_subs=Subs}=State) ->
-    Client = props:get_value(<<"account_id">>, ReqParams),
-    {struct, Data} = props:get_value(<<"data">>, ReqParams),
-    Exchange = props:get_value(<<"exchange">>, Data),
-    Binding = props:get_value(<<"binding">>, Data),
-    case lists:keyfind(Client, 1, Subs) of
-	false ->
-	    {reply, {error, [], "No client found"}, State};
-	ClientSub ->
-	    case rm_sub(ClientSub, Exchange, Binding, H) of
-		{_, _, []} -> {reply, {success, [], "All bindings cleared"}, State#state{client_subs=lists:keydelete(Client, 1, Subs)}};
-		ClientSub1 ->
-		    Bindings = client_bindings(ClientSub1),
-		    {reply, {success, [{<<"subscribed">>, Bindings}]}, State#state{client_subs=[ClientSub1 | lists:keydelete(Client, 1, Subs) ]}}
-	    end
-    end;
-handle_call({clear, ReqParams}, _, #state{amqp_host=H, client_subs=Subs}=State) ->
-    Client = props:get_value(<<"account_id">>, ReqParams),
-    case lists:keyfind(Client, 1, Subs) of
-	false ->
-	    {reply, {error, [], "No client found"}, State};
-	ClientSub ->
-	    clear_sub(ClientSub, H),
-	    {reply, {success, [{<<"subscribed">>, []}], "All bindings cleared"}, State#state{client_subs=lists:keydelete(Client, 1, Subs)}}
-    end;
-handle_call({status, ReqParams}, _, #state{client_subs=Subs}=State) ->
-    Client = props:get_value(<<"account_id">>, ReqParams),
-    case lists:keyfind(Client, 1, Subs) of
-	false ->
-	    {reply, {error, [], "No client found"}, State};
-	ClientSub ->
-	    Bindings = client_bindings(ClientSub),
-	    {reply, {success, [{<<"subscribed">>, Bindings}]}, State}
-    end;
-handle_call({poll, ReqParams}, _, #state{client_subs=Subs, amqp_host=H}=State) ->
-    Client = props:get_value(<<"account_id">>, ReqParams),
-    case lists:keyfind(Client, 1, Subs) of
-	false ->
-	    {reply, {error, [], "No client found"}, State};
-	ClientSub ->
-	    Events = client_events(ClientSub, H),
-	    {reply, {success, [{<<"events">>, Events}]}, State}
-    end;
+handle_call({get_subscriber_pid, SessionId}, _, #state{subscriber_list=Ss}=State) ->
+    Resp = case props:get_value(SessionId, Ss) of
+	       undefined -> {error, undefined};
+	       Pid when is_pid(Pid) -> {ok, Pid}
+	   end,
+    {reply, Resp, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -188,9 +106,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({set_amqp_host, H}, #state{amqp_host=_OH}=State) ->
-    {noreply, State#state{amqp_host=H}};
 handle_cast(_Msg, State) ->
+    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -199,59 +116,82 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %%
 %% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
+%%                                   {noreply, State, Timeout} | 
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"evtsub.init">>=Route, Payload}, State) ->
-    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
-    InitOpts = [{amqp_host, whapp_default_amqp}
-		,{content_types_provided, [{to_json, ["application/json", "application/x-json"]}
-					   ,{to_html, ["text/html"]}
-					   ,{to_text, ["text/plain"]}
-					   ,{to_xml, ["application/xml"]}
-					  ]
-		 }
-		,{content_types_accepted, [{from_json, ["application/json", "application/x-json"]}
-					   ,{from_html, ["text/html"]}
-					   ,{from_text, ["text/plain"]}
-					   ,{from_xml, ["application/xml"]}
-					  ]
-		 }
-	       ],
-    Opts = lists:umerge(Payload, InitOpts),
-    Pid ! {binding_result, true, Opts},
-    {noreply, State};
-handle_info({binding_fired, Pid, <<"evtsub.authenticate">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
-    format_log(info, "EVTSUB(~p): binding: ~p acct: ~p~n", [self(), Route, Acct]),
-    Pid ! {binding_result, (not (Acct =:= <<>>)), Payload},
-    {noreply, State};
-handle_info({binding_fired, Pid, <<"evtsub.authorize">>=Route, {#session{account_id=Acct}=_S, _Params}=Payload}, State) ->
-    format_log(info, "EVTSUB(~p): binding: ~p acct: ~p~n", [self(), Route, Acct]),
-    Pid ! {binding_result, true, Payload},
-    {noreply, State};
-handle_info({binding_fired, Pid, <<"evtsub.validate">>=Route, Payload}, State) ->
-    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.evtsub">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = validate(Payload),
-		  Pid ! {binding_result, Result, Payload1}
+		  {Result, Payload1} = allowed_methods(Payload),
+                  Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-handle_info({binding_fired, Pid, <<"session.destroy">>=Route, #session{account_id=Acct}=S}, #state{client_subs=Subs, amqp_host=H}=State) ->
-    format_log(info, "EVTSUB(~p): binding: ~p~n", [self(), Route]),
-    spawn(fun() -> clear_sub(lists:keyfind(Acct, 1, Subs), H) end), %crashes if Acct isn't found, no biggie
-    Pid ! { binding_result, true, S },
-    {noreply, State#state{client_subs=lists:keydelete(Acct, 1, Subs)}};
-handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    format_log(info, "EVTSUB(~p): unhandled binding: ~p~n", [self(), Route]),
+
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.evtsub">>, Payload}, State) ->
+    spawn(fun() ->
+		  {Result, Payload1} = resource_exists(Payload),
+                  Pid ! {binding_result, Result, Payload1}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.validate.evtsub">>, [RD, Context | Params]}, State) ->
+    format_log(info, "Context for Validate: ~p~n~p~n", [Context, Params]),
+    spawn(fun() ->
+		  crossbar_util:binding_heartbeat(Pid),
+		  Context1 = validate(Params, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
+	 end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.evtsub">>, [RD, Context | Params]}, State) ->
+    format_log(info, "POST evtsub: Context ~p Params: ~p~n", [Context, Params]),
+    %% spawn(fun() ->
+
+    %% 	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.evtsub">>, [RD, Context | Params]}, State) ->
+    format_log(info, "PUT evtsub: Context ~p Params: ~p~n", [Context, Params]),
+    %% spawn(fun() ->
+    %%               case crossbar_doc:save(Context) of
+    %%                   #cb_context{resp_status=success, doc=Doc}=Context1 ->
+    %%                       case couch_mgr:db_create(get_db_name(Doc)) of
+    %%                         false ->
+    %%                             format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), get_db_name(Doc)]),
+    %%                             crossbar_doc:delete(Context1),
+    %%                             Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
+    %%                         true ->
+    %%                             Pid ! {binding_result, true, [RD, Context1, Params]}
+    %%                       end;
+    %%                   Else ->
+    %%                       Pid ! {binding_result, true, [RD, Else, Params]}
+    %%               end
+    %% 	  end),
+    {noreply, State};
+
+%handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
+%    %%spawn(fun() ->
+%                  Doc1 = crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], [], Doc),
+%                  Context1 = crossbar_doc:save(Context#cb_context{db_name=?ACCOUNTS_DB, doc=Doc1}),
+%                  Pid ! {binding_result, true, [RD, Context1, Params]},
+%	%%  end),
+%    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.evtsub">>, [RD, Context | Params]}, State) ->
+    format_log(info, "DELETE evtsub: Context ~p Params: ~p~n", [Context, Params]),
+    %% spawn(fun() ->
+    %%               Context1 = crossbar_doc:delete(Context),
+    %%               Pid ! {binding_result, true, [RD, Context1, Params]}
+    %% 	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, _Route, Payload}, State) ->
+    %%format_log(info, "ACCOUNTS(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
-handle_info({binding_flushed, _B}, State) ->
-    format_log(info, "EVTSUB(~p): binding ~p flushed~n", [self(), _B]),
-    start_bindings(),
-    {noreply, State};
+
 handle_info(_Info, State) ->
-    format_log(info, "EVTSUB(~p): unhandled info ~p~n", [self(), _Info]),
+    format_log(info, "ACCOUNTS(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -282,120 +222,110 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_bindings/0 :: () -> no_return()).
-start_bindings() ->
-    crossbar_bindings:bind(<<"evtsub.#">>),        %% all evtsub events
-    crossbar_bindings:bind(<<"session.destroy">>). %% session destroy events
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function binds this server to the crossbar bindings server,
+%% for the keys we need to consume.
+%% @end
+%%--------------------------------------------------------------------
+-spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
+bind_to_crossbar() ->
+    crossbar_bindings:bind(<<"v1_resource.allowed_methods.evtsub">>),
+    crossbar_bindings:bind(<<"v1_resource.resource_exists.evtsub">>),
+    crossbar_bindings:bind(<<"v1_resource.validate.evtsub">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.evtsub">>).
 
--spec(validate/1 :: (tuple(string(), proplist())) -> tuple(boolean(), list())).
-validate({"add", Params}) ->
-    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
-	   ,{<<"data">>, [{<<"binding">>, fun erlang:is_binary/1}
-			  ,{<<"exchange">>, fun(E) ->
-						    try 
-							format_log(info, "util fun: ~p~n", [binary_to_list(<<E/binary, "_exchange">>)]),
-							F = list_to_existing_atom(binary_to_list(<<E/binary, "_exchange">>)),
-							erlang:function_exported(amqp_util, F, 1)
-						    catch
-							_:_ -> false
-						    end
-					    end}
-			  ,{<<"max_response_size">>, fun(X) -> try whistle_util:to_integer(X), true catch _:_ -> false end end, optional}
-			 ]}
-	  ],
-    validate(Params, Req);
-validate({"rm", Params}) ->
-    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
-	   ,{<<"data">>, [{<<"binding">>, fun erlang:is_binary/1}
-			  ,{<<"exchange">>, fun(E) ->
-						    F = list_to_existing_atom(binary_to_list(<<E/binary, "_exchange">>)),
-						    erlang:function_exported(amqp_util, F, 1)
-					    end}
-			  ,{<<"flush">>, fun(<<"true">>) -> true; (<<"false">>) -> true; (_) -> false end, optional}
-			 ]}
-	  ],
-    validate(Params, Req);
-validate({"clear", Params}) ->
-    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
-	   ,{<<"data">>, [
-			  {<<"flush">>, fun(<<"true">>) -> true; (<<"false">>) -> true; (_) -> false end, optional}
-			 ]}
-	  ],
-    validate(Params, Req);
-validate({"status", Params}) ->
-    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
-	   ,{<<"data">>, fun(_) -> true end}
-	  ],
-    validate(Params, Req);
-validate({"poll", Params}) ->
-    Req = [{<<"auth_token">>, fun erlang:is_binary/1}
-	   ,{<<"data">>, fun(_) -> true end}
-	  ],
-    validate(Params, Req);
-validate(_) ->
-    {false, [<<"unknown_request">>]}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Paths contains the tokenized portions of the URI after the module
+%% /account/{AID}/evtsub => Paths == []
+%% /account/{AID}/evtsub/{CallID} => Paths = [<<CallID>>]
+%%
+%% Failure here returns 405
+%% @end
+%%--------------------------------------------------------------------
+-spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+allowed_methods([]) ->
+    {true, ['GET', 'PUT', 'POST', 'DELETE']};
+allowed_methods([_CallID]) ->
+    {true, ['GET', 'POST', 'DELETE']};
+allowed_methods(_Paths) ->
+    {false, []}.
 
--spec(validate/2 :: (Params :: proplist(), Req :: proplist()) -> tuple(boolean(), proplist())).
-validate(Params, Req) ->
-    Scanned = lists:map(fun(R) -> crossbar_util:param_exists(Params, R) end, Req),
-    Failed = lists:foldl(fun crossbar_util:find_failed/2, [], Scanned),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Paths contains the tokenized portions of the URI after the module
+%% /account/{AID}/evtsub => Paths == []
+%% /account/{AID}/evtsub/{CallID} => Paths = [<<CallID>>]
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+resource_exists([]) ->
+    {true, []};
+resource_exists([_CallID]) ->
+    {true, []};
+resource_exists(_) ->
+    {false, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines if the parameters and content are correct
+%% for this request
+%%
+%% Failure here returns 400
+%% @end
+%%--------------------------------------------------------------------
+-spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+validate([], #cb_context{req_verb = <<"get">>, session=Session}=Context) ->
+    SubPid = ?MODULE:get_subscriber_pid(Session#session.'_id'),
+    Context;
+%% validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+%%     create_account(Context);
+%% validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
+%%     load_account(DocId, Context);
+%% validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
+%%     update_account(DocId, Context);
+%% validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
+%%     load_account(DocId, Context);
+%% validate([DocId, <<"parent">>], #cb_context{req_verb = <<"get">>}=Context) ->
+%%     load_parent(DocId, Context);
+%% validate([DocId, <<"parent">>], #cb_context{req_verb = <<"post">>}=Context) ->
+%%     update_parent(DocId, Context);
+%% validate([DocId, <<"parent">>], #cb_context{req_verb = <<"delete">>}=Context) ->
+%%     load_account(DocId, Context);
+%% validate([DocId, <<"children">>], #cb_context{req_verb = <<"get">>}=Context) ->
+%%     load_children(DocId, Context);
+%% validate([DocId, <<"descendants">>], #cb_context{req_verb = <<"get">>}=Context) ->
+%%     load_descendants(DocId, Context);
+%% validate([DocId, <<"siblings">>], #cb_context{req_verb = <<"get">>}=Context) ->
+%%     load_siblings(DocId, Context);
+validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns}=Context) ->
+    format_log(info, "EvtSub.validate: P: ~p~nV: ~s Ns: ~p~n", [Params, Verb, Nouns]),
+    crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
+is_valid_doc({struct, Data}) ->
+    Schema = [
+	   { [<<"base">>, <<"name">>]
+	    ,[ {not_empty, []}
+              ,{is_format, [phrase]}
+	     ]}
+	   ,{ [<<"base">>, <<"status">>]
+	      ,[ {not_empty, []}
+		%,{in_list, [{<<"enabled">>, <<"disabled">>}]}
+	       ]}
+	  ],
+    Failed = crossbar_validator:validate(Schema, Data),
     {Failed =:= [], Failed}.
-
--spec(new_sub/5 :: (Client :: binary(), Exchange :: binary(), Binding :: binary(), MaxRespSize :: integer(), H :: string()) -> client_sub()).
-new_sub(Client, Exchange, Binding, MaxRespSize, H) ->
-    Q = amqp_util:new_queue(H, <<>>, [{durable, true}]),
-    F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
-    amqp_util:F(H, Q, Binding), % bind our queue
-    {Client, Q, [{{Exchange, Binding}, MaxRespSize}]}.
-
--spec(edit_sub/5 :: (ClientSub :: client_sub(), Exchange :: binary(), Binding :: binary(), MaxRespSize :: integer(), H :: string()) -> client_sub()).
-edit_sub({Client, Q, Bindings}=ClientSub, Exchange, Binding, MaxRespSize, H) ->
-    case lists:keyfind({Exchange, Binding}, 1, Bindings) of
-	false ->
-	    F = list_to_existing_atom(binary_to_list(<<"bind_q_to_", Exchange/binary>>)),
-	    amqp_util:F(H, Q, Binding), % bind our queue
-	    {Client, Q, [{{Exchange, Binding}, MaxRespSize} | Bindings]};
-	{_, _} -> ClientSub
-    end.
-
--spec(rm_sub/4 :: (ClientSub :: client_sub(), Exchange :: binary(), Binding :: binary(), H :: string()) -> client_sub()).
-rm_sub({Client, Q, Bindings}=ClientSub, Exchange, Binding, H) ->
-    case lists:keyfind({Exchange, Binding}, 1, Bindings) of
-	false -> ClientSub;
-	{_,_} ->
-	    F = list_to_existing_atom(binary_to_list(<<"unbind_q_from_", Exchange/binary>>)),
-	    amqp_util:F(H, Q, Binding),
-	    {Client, Q, lists:keydelete({Exchange, Binding}, 1, Bindings)}
-    end.
-
--spec(clear_sub/2 :: (ClientSub :: client_sub(), H :: string()) -> no_return()).
-clear_sub({_Client, Q, Bindings}=ClientSub, H) ->
-    lists:foreach(fun({E,B}) -> rm_sub(ClientSub, E, B, H) end, Bindings),
-    amqp_util:delete_queue(H, Q).
-
--spec(client_bindings/1 :: (client_sub()) -> list(list())).				
-client_bindings({_, _, Bindings}) -> lists:map(fun({{E,B},_}) -> [E, B] end, Bindings).
-
-client_events({_,_,[]}, _) -> [];
-client_events({_,Q,B}, H) ->
-    Self = self(),
-    MaxResp = lists:foldl(fun({_,X}, Y) when X > Y -> X; (_, Y) -> Y end, 0, B),
-    spawn(fun() ->
-		  amqp_util:basic_consume(H, Q),
-		  receive_events(Self, MaxResp, 0, [])
-		  %% look to basic.qos{prefetch_count} to pull specified # of messages
-	  end),
-    receive
-	{events, Events} -> {ok, Events}
-    after
-	2000 -> {error, timeout}
-    end.
-
-receive_events(Pid, Max, Max, Evts) ->
-    Pid ! {events, Evts};
-receive_events(Pid, Max, Cur, Evts) ->
-    receive
-	AmqpMsg -> receive_events(Pid, Max, Cur+1, [AmqpMsg | Evts])
-    after
-	2000 -> receive_events(Pid, Max, Max, Evts)
-    end.

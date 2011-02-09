@@ -148,10 +148,15 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 start_call_handling(Node, Host, UUID) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
+<<<<<<< HEAD
 
     {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
     ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
 
+=======
+    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
+    ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
+>>>>>>> master
     CtlQueue.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).
@@ -194,6 +199,7 @@ process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
 
 process_custom_data(Data, Host, AppVsn) ->
     case get_value(<<"Event-Subclass">>, Data) of
+	undefined -> ok;
 	<<"sofia::register">> -> publish_register_event(Data, Host, AppVsn);
 	_ -> ok
     end.
