@@ -20,6 +20,8 @@
 [ "x" = "x$RABBITMQ_NODENAME" ] && RABBITMQ_NODENAME=${NODENAME}
 [ "x" = "x$RABBITMQ_CTL_ERL_ARGS" ] && RABBITMQ_CTL_ERL_ARGS=${CTL_ERL_ARGS}
 
+echo "C: $COOKIE N: $RABBITMQ_NODENAME"
+
 exec erl \
     -pa "${RABBITMQ_HOME}/ebin" \
     -noinput \
@@ -27,5 +29,6 @@ exec erl \
     ${RABBITMQ_CTL_ERL_ARGS} \
     -name rabbitmqctl$$ \
     -s rabbit_control \
+    -setcookie $COOKIE \
     -nodename $RABBITMQ_NODENAME \
     -extra "$@"
