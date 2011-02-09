@@ -57,7 +57,6 @@
 -spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
@@ -68,7 +67,6 @@ load_doc_from_file(DB, App, File) ->
 -spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 update_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
@@ -373,10 +371,7 @@ handle_call(Req, From, #state{connection={}}=State) ->
 	{_Host, _Conn}=HC ->
 	    close_handlers(State#state.change_handlers),
 	    handle_call(Req, From, State#state{connection=HC, change_handlers=[]})
-    end;
-handle_call(_Request, _From, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
-    {reply, {error, unhandled_call}, State}.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -402,7 +397,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): DONE change handler ref ~p~n", [self(), ReqID]),
     case lists:keyfind(ReqID, 2, CH) of
 	false -> {noreply, State};
 	{{_, DocID}=Key,_,Pids}=Item ->
@@ -415,10 +409,8 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
     end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-    %%format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
     case lists:keyfind(ReqID, 2, CH) of
 	false ->
-	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
 	{{_, DocID}, _, Pids} ->
 	    notify_pids(Change, DocID, Pids),
@@ -428,7 +420,6 @@ handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    {noreply, State}    
     end;
 handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
     CH1 = lists:foldl(fun({{_, DocID}=Key, RID, Pids}=Item, Acc) when RID =:= ReqID ->
 			      TmpCH = [Item],
 			      lists:foreach(fun(P) ->
