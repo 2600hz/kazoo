@@ -11,4 +11,3 @@ rabbit/rabbit-config/log/*.log*
 rabbit/rabbit-config/mnesia/*
 applications/apps/*/log/*
 applications/priv/mnesia/*.*
-*.beam
