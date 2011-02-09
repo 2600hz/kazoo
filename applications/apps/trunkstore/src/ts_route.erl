@@ -236,12 +236,13 @@ create_flags(Did, ApiProp) ->
 	 end,
 
     {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
-    AuthUser = F1#route_flags.auth_user,
+    AuthUser = get_value(<<"Username">>, ChannelVars, F1#route_flags.auth_user),
     Realm = get_value(<<"Realm">>, ChannelVars, F1#route_flags.auth_realm),
     Doc = lookup_user(AuthUser, Realm),
 
     F3 = case Doc of
 	     {error, _E1} ->
+		 format_log(error, "TS_ROUTE(~p).create_flags: Failed to lookup doc for ~p@~p: ~p", [self(), AuthUser, Realm, _E1]),
 		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
 		     {error, _E2} -> F1;
 		     {ok, {struct, Doc1}} ->
