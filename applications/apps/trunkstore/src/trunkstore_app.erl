@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2, stop/1, update_views/0, setup_views/0]).
 
 -include("ts.hrl").
 
@@ -27,6 +27,14 @@ stop(_State) ->
 setup_views() ->
     lists:foreach(fun(File) ->
 			  couch_mgr:load_doc_from_file(?TS_DB, trunkstore, File)
+		  end, ?TS_COUCH_DESIGN_DOCS).
+
+update_views() ->
+    lists:foreach(fun(File) ->
+			  case couch_mgr:update_doc_from_file(?TS_DB, trunkstore, File) of
+			      {ok, _} -> logger:format_log(info, "Updating ~s: success~n", [File]);
+			      {error, Reason} -> logger:format_log(info, "Updating ~s: error ~p~n", [File, Reason])
+			  end
 		  end, ?TS_COUCH_DESIGN_DOCS).
 
 
