@@ -128,7 +128,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(wrq:method(RD), Params, Context#cb_context{db_name=?ACCOUNTS_DB}),
+                Context1 = validate(Params, Context#cb_context{db_name=?ACCOUNTS_DB}),
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
@@ -293,30 +293,30 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Verb :: http_method(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate('GET', [], Context) ->
+-spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
-validate('PUT', [], Context) ->
+validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_account(Context);
-validate('GET', [DocId], Context) ->
+validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account(DocId, Context);
-validate('POST', [DocId], Context) ->
+validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_account(DocId, Context);
-validate('DELETE', [DocId], Context) ->
+validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
     load_account(DocId, Context);
-validate('GET', [DocId, <<"parent">>], Context) ->
+validate([DocId, <<"parent">>], #cb_context{req_verb = <<"get">>}=Context) ->
     load_parent(DocId, Context);
-validate('POST', [DocId, <<"parent">>], Context) ->
+validate([DocId, <<"parent">>], #cb_context{req_verb = <<"post">>}=Context) ->
     update_parent(DocId, Context);
-validate('DELETE', [DocId, <<"parent">>], Context) ->
+validate([DocId, <<"parent">>], #cb_context{req_verb = <<"delete">>}=Context) ->
     load_account(DocId, Context);
-validate('GET', [DocId, <<"children">>], Context) ->
+validate([DocId, <<"children">>], #cb_context{req_verb = <<"get">>}=Context) ->
     load_children(DocId, Context);
-validate('GET', [DocId, <<"descendants">>], Context) ->
+validate([DocId, <<"descendants">>], #cb_context{req_verb = <<"get">>}=Context) ->
     load_descendants(DocId, Context);
-validate('GET', [DocId, <<"siblings">>], Context) ->
+validate([DocId, <<"siblings">>], #cb_context{req_verb = <<"get">>}=Context) ->
     load_siblings(DocId, Context);
-validate(_, _, Context) ->
+validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------

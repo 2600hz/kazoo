@@ -34,40 +34,33 @@ init(Opts) ->
     %%{{trace, "/tmp"}, Context}.
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
-    Verb = whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
+    Json = get_json_body(RD),
+    Verb = get_http_verb(RD, Json),
     Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
     Loaded = lists:map(fun whistle_util:to_binary/1, erlang:loaded()),
+
     case parse_path_tokens(Tokens, Loaded, []) of
         [{Mod, Params}|_] = Nouns ->
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-            Methods1 = allow_methods(Responses, Methods),
-            {Methods1, RD, Context#cb_context{req_nouns=Nouns, req_verb=Verb}};
+            Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),
+            {Methods1, RD, Context#cb_context{req_nouns=Nouns, req_verb=Verb, req_json=Json}};
         [] ->
-            {Methods, RD, Context#cb_context{req_verb=Verb}}
+            {Methods, RD, Context#cb_context{req_verb=Verb, req_json=Json}}
     end.
 
-malformed_request(RD, Context) ->
-    try	
-        Json = case wrq:req_body(RD) of
-		   <<>> ->
-		       {struct, []};
-		   ReqBody ->
-		       mochijson2:decode(ReqBody)
-	       end,
-        Data = whapps_json:get_value(["data"], Json),
-        Auth = get_auth_token(RD, Json),
-	{false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}
-    catch
-        _Exception:_Reason ->
-	    Context1 = Context#cb_context{
-			  resp_status = error
-			 ,resp_error_msg = <<"Invalid or malformed content">>
-			 ,resp_error_code = 400
-			},
-            Content = create_resp_content(RD, Context1),
-	    RD1 = wrq:set_resp_body(Content, RD),
-            {true, RD1, Context1}
-    end.
+malformed_request(RD, #cb_context{req_json=malformed}=Context) ->
+    Context1 = Context#cb_context{
+		 resp_status = error
+		 ,resp_error_msg = <<"Invalid or malformed content">>
+		 ,resp_error_code = 400
+		},
+    Content = create_resp_content(RD, Context1),
+    RD1 = wrq:set_resp_body(Content, RD),
+    {true, RD1, Context1};
+malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
+    Data = whapps_json:get_value(["data"], Json),
+    Auth = get_auth_token(RD, whapps_json:get_value(<<"auth-token">>, Json, <<>>), Verb),
+    {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
 
 is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
     S0 = crossbar_session:start_session(AuthToken),
@@ -78,7 +71,7 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
 forbidden(RD, Context) ->
     case is_authentic(RD, Context) of
         true ->
-            case is_permitted(RD, Context) of
+            case is_permitted(Context) of
                 true -> {false, RD, Context};
                 false -> {true, RD, Context}
             end;
@@ -132,7 +125,7 @@ generate_etag(RD, Context) ->
 
 encodings_provided(RD, Context) ->
     { [ {"identity", fun(X) -> X end} ]
-      %%,{"gzip", fun(X) -> zlib:gzip(X) end}]
+      %%,{"gzip", fun(X) -> zlib:gzip(X) end}] % 
       ,RD, Context}.
 
 expires(RD, #cb_context{resp_expires=Expires}=Context) ->
@@ -154,10 +147,10 @@ finish_request(RD, #cb_context{start=T1}=Context) ->
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
     case Context1#cb_context.session of
         undefined ->
-            io:format("Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+            format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
             {true, RD1, Context1};
         #session{}=S ->
-            io:format("Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
+            format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
             {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}
     end.
 
@@ -220,23 +213,84 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Check whether we need to change the HTTP verb to send to the crossbar
+%% modules. Only valid for POST requests, and only to change it from
+%% POST to PUT or DELETE.
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_http_verb/2 :: (RD :: #wm_reqdata{}, JSON :: proplist() | malformed) -> binary()).
+get_http_verb(RD, malformed) ->
+    whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
+get_http_verb(RD, JSON) ->
+    HttpV = whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
+    case override_verb(RD, JSON, HttpV) of
+	{true, OverrideV} -> OverrideV;
+	false -> HttpV
+    end.
+
+-spec(override_verb/3 :: (RD :: #wm_reqdata{}, JSON :: proplist(), Verb :: binary()) -> tuple(true, binary()) | false).
+override_verb(RD, JSON, <<"post">>) ->
+    case whapps_json:get_value(<<"verb">>, JSON) of
+	undefined ->
+	    case wrq:get_qs_value("verb", RD) of
+		undefined -> false;
+		V -> {true, whistle_util:to_binary(string:to_lower(V))}
+	    end;
+	V -> {true, whistle_util:to_binary(string:to_lower(binary_to_list(V)))}
+    end;
+override_verb(_, _, _) -> false.
+
+-spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> tuple(struct, proplist()) | malformed).
+get_json_body(RD) ->
+    try
+	case wrq:req_body(RD) of
+	    <<>> -> {struct, []};
+	    ReqBody -> mochijson2:decode(ReqBody)
+	end
+    catch
+	_:_ -> malformed
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function will find the intersection of the allowed methods
 %% among event respsonses.  The responses can only veto the list of
 %% methods, they can not add.
+%%
+%% If a client passes a ?verb=(PUT|DELETE) on a POST request, ReqVerb will
+%% be <<"put">> or <<"delete">>, while HttpVerb is 'POST'. If the allowed
+%% methods do not include 'POST', we need to add it if allowed methods include
+%% the verb in ReqVerb.
+%% So, POSTing a <<"put">>, and the allowed methods include 'PUT', insert POST
+%% as well.
+%% POSTing a <<"delete">>, and 'DELETE' is NOT in the allowed methods, remove
+%% 'POST' from the allowed methods.
 %% @end
 %%--------------------------------------------------------------------
--spec(allow_methods/2  :: (Reponses :: list(tuple(term(), term())), Avaliable :: http_methods()) -> http_methods()).
-allow_methods(Responses, Available) ->
+-spec(allow_methods/4  :: (Reponses :: list(tuple(term(), term())), Avaliable :: http_methods(), ReqVerb :: binary(), HttpVerb :: atom()) -> http_methods()).
+allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
         [] ->
 	    Available;
 	Succeeded ->
-            lists:foldr(fun({true, Response}, Acc) ->
-				Set1 = sets:from_list(Acc),
-				Set2 = sets:from_list(Response),
-				sets:to_list(sets:intersection(Set1, Set2))
-			end, Available, Succeeded)
+	    Allowed = lists:foldr(fun({true, Response}, Acc) ->
+					  Set1 = sets:from_list(Acc),
+					  Set2 = sets:from_list(Response),
+					  sets:to_list(sets:intersection(Set1, Set2))
+				  end, Available, Succeeded),
+            add_post_method(ReqVerb, HttpVerb, Allowed)
     end.
+
+%% insert 'POST' if Verb is in Allowed; otherwise remove 'POST'.
+add_post_method(Verb, 'POST', Allowed) ->
+    VerbAtom = list_to_atom(string:to_upper(binary_to_list(Verb))),
+    case lists:member(VerbAtom, Allowed) of
+	true -> ['POST' | Allowed];
+	false -> lists:delete('POST', Allowed)
+    end;
+add_post_method(_, _, Allowed) ->
+    Allowed.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,19 +300,15 @@ allow_methods(Responses, Available) ->
 %% query paramerts (for GET and DELETE) or HTTP content (for POST and PUT)
 %% @end
 %%--------------------------------------------------------------------
--spec(get_auth_token/2 :: (RD :: #wm_reqdata{}, JSON :: proplist()) -> binary()).
-get_auth_token(RD, JSON) ->
+-spec(get_auth_token/3 :: (RD :: #wm_reqdata{}, JsonToken :: binary(), Verb :: binary()) -> binary()).
+get_auth_token(RD, JsonToken, Verb) ->
     case wrq:get_req_header("X-Auth-Token", RD) of
         undefined ->
-            case wrq:method(RD) of
-                'GET' ->
+            case Verb of
+                <<"get">> ->
                     whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), ""));
-                'POST' ->
-                    whistle_util:to_binary(props:get_value("auth-token", JSON, ""));
-                'PUT' ->
-                    whistle_util:to_binary(props:get_value("auth-token", JSON, ""));
-                'DELETE' ->
-                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), ""))
+		_ ->
+		    JsonToken
             end;
         AuthToken ->
             whistle_util:to_binary(AuthToken)
@@ -299,10 +349,10 @@ is_authentic(_RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
-is_permitted(RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
+-spec(is_permitted/1 :: (Context :: #cb_context{}) -> boolean()).
+is_permitted(#cb_context{req_nouns=Nouns, req_verb=Verb, auth_token=AuthToken})->
     Event = <<"v1_resource.authorize">>,
-    Responses = crossbar_bindings:map(Event, {AuthToken, wrq:method(RD), Nouns}),
+    Responses = crossbar_bindings:map(Event, {AuthToken, Verb, Nouns}),
     crossbar_bindings:any(Responses).
 
 %%--------------------------------------------------------------------
@@ -339,10 +389,10 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
-            case wrq:method(RD) of
-                'PUT' ->
+            case Verb of
+                <<"put">> ->
                     {false, RD1, Context1};
-                _Else ->
+                _ ->
                     {true, RD1, Context1}
             end
     end;
@@ -401,8 +451,10 @@ create_pull_response(RD, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(succeeded/1 :: (Context :: #cb_context{}) -> boolean()).
-succeeded(#cb_context{resp_status=Status}) ->
-    Status =:= success.
+succeeded(#cb_context{resp_status=success}) ->
+    true;
+succeeded(_) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @private
