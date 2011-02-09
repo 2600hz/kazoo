@@ -5,7 +5,7 @@
       "map": "function(doc) { if(doc.type != 'sys_info') return; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { emit(srv[1].auth.auth_user, srv[1].auth); } } }}"
     }
     ,"LookUpUserAuthRealm":{
-      "map": "function(doc) { if(doc.type != 'sys_info') return; var realm = doc.account.auth_realm; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { emit([realm, srv[1].auth.auth_user], srv[1].auth); } } }}"
+      "map": "function(doc) { if(doc.type != 'sys_info') return; var realm = doc.account.auth_realm; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { srv[1].auth['auth_realm'] = realm; emit([realm, srv[1].auth.auth_user], srv[1].auth); } } }}"
     }
   }
 }
