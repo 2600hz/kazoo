@@ -306,13 +306,13 @@ process_req ( Msg_type, Proplist, _State ) ->
 %------------------------------------------------------------------------------
 -spec ( respond/3 :: (RespQ :: binary(), State :: tuple(), ReqProp :: proplist()) -> none() ).
 respond ( RespQ, #state{amqp_host=AHost}, ReqProp ) ->
+   {ok, Pid} = cf_call_sup:start_proc([whapps_controller:get_amqp_host(), ReqProp]),
    Prop = [
       {<<"Test">>, <<"Testing was done successfully">>},
       {<<"Msg-ID">>, proplists:get_value(<<"Msg-ID">>, ReqProp)},
       {<<"Routes">>, []},
       {<<"Method">>, <<"park">>}
-      | whistle_api:default_headers(cf_call_handler:get_q(), <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
-%| whistle_api:default_headers(<<"some  id">>, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+      | whistle_api:default_headers(cf_call_handler:get_q(Pid), <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
    ],
    {ok, JSON} = whistle_api:route_resp(Prop),
    amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>)

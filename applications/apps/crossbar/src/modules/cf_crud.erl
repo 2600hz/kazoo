@@ -142,14 +142,14 @@ handle_info ( {binding_fired, Pid, <<"v1_resource.validate.callflow">>, [RD, Con
    format_log(info, "CF CRUD (~p): validating...", [self()]),
    spawn(fun ( ) ->
       % callflow db name is supposed to be replaced with corresponding account db name
-      Context1 = validate(wrq:method(RD), Params, Context#cb_context{db_name="callflow"}),
+      Context1 = validate(wrq:method(RD), Params, Context#cb_context{}),%{db_name="callflow"}),
       Pid ! { binding_result, true, [RD, Context1, Params] }
    end),
    { noreply, State };
 handle_info ( {binding_fired, Pid, <<"v1_resource.execute.put.callflow">>, [RD, Context | Params]}, State ) ->
    format_log(info, "CF CRUD (~p): putting...", [self()]),
    spawn(fun ( ) ->
-      case crossbar_doc:save(Context#cb_context{db_name="callflow"}) of
+      case crossbar_doc:save(Context#cb_context{}) of%{db_name="callflow"}) of
          #cb_context{resp_status=success}=Context1 ->
             Pid ! { binding_result, true, [RD, Context1, Params] };
          Else                                      ->
@@ -166,7 +166,7 @@ handle_info ( {binding_fired, Pid, <<"v1_resource.execute.get.callflow">>, [RD, 
          end);
       [Id] ->
          spawn(fun ( ) ->
-            Context1 = crossbar_doc:load(Id, Context#cb_context{db_name="callflow"}),
+            Context1 = crossbar_doc:load(Id, Context#cb_context{}),%{db_name="callflow"}),
             Pid ! { binding_result, true, [RD, Context1, Params] }
          end)
    end,
@@ -174,14 +174,14 @@ handle_info ( {binding_fired, Pid, <<"v1_resource.execute.get.callflow">>, [RD, 
 handle_info ( {binding_fired, Pid, <<"v1_resource.execute.post.callflow">>, [RD, Context | Params]}, State ) ->
    format_log(info, "CF CRUD (~p): posting...", [self()]),
    spawn(fun ( ) ->
-      Context1 = crossbar_doc:save(Context#cb_context{db_name="callflow"}),
+      Context1 = crossbar_doc:save(Context#cb_context{}),%{db_name="callflow"}),
       Pid ! { binding_result, true, [RD, Context1, Params] }
    end),
    { noreply, State };
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflow">>, [RD, Context | Params]}, State) ->
    format_log(info, "CF CRUD (~p): deleting...", [self()]),
    spawn(fun ( ) ->
-      Context1 = crossbar_doc:delete(Context#cb_context{db_name="callflow"}),
+      Context1 = crossbar_doc:delete(Context#cb_context{}),%{db_name="callflow"}),
       Pid ! { binding_result, true, [RD, Context1, Params] }
    end),
    { noreply, State };
