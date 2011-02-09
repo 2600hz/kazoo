@@ -11,11 +11,14 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, get_host/0]).
+-export([start_link/0, set_host/1, set_host/3, get_host/0]).
+
+%% System manipulation
+-export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1]).
 
 %% Document manipulation
--export([new_doc/0, add_to_doc/3, rm_from_doc/2, save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
--export([add_change_handler/2, rm_change_handler/2]).
+-export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
+-export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -27,7 +30,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("../../src/whistle_api.hrl"). % get the proplists -type
+-include("../../src/whistle_types.hrl"). % get the proplists -type
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
@@ -50,8 +53,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-<<<<<<< HEAD
-=======
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -92,7 +94,74 @@ db_exists(DbName) ->
         {} -> false;
         Conn -> couchbeam:db_exists(Conn, whistle_util:to_list(DbName))
     end.
->>>>>>> whistle-couch
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieve information regarding a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_info/1 :: (DbName :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+db_info(DbName) ->
+    case get_conn() of
+        {} -> {error, db_not_reachable};
+        Conn ->
+            case couchbeam:db_info(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
+                {error, _Error}=E -> E;
+                {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Detemine if a database exists
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_create/1 :: (DbName :: binary()) -> boolean()).
+db_create(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn -> 
+            case couchbeam:create_db(Conn, whistle_util:to_list(DbName)) of
+                {error, _} -> false;
+                {ok, _} -> true
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Compact a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_compact/1 :: (DbName :: binary()) -> boolean()).
+db_compact(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:compact(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
+                {error, _} -> false;
+                ok -> true
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Delete a database
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_delete/1 :: (DbName :: binary()) -> boolean()).
+db_delete(DbName) ->
+    case get_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:delete_db(Conn, whistle_util:to_list(DbName)) of
+                {error, _} -> false;
+                {ok, _} -> true
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -107,14 +176,16 @@ start_link() ->
 
 %% set the host to connect to
 set_host(HostName) ->
-    gen_server:call(?MODULE, {set_host, HostName}, infinity).
+    set_host(HostName, "", "").
+
+set_host(HostName, UserName, Password) ->
+    gen_server:call(?MODULE, {set_host, HostName, UserName, Password}, infinity).
 
 get_host() ->
     gen_server:call(?MODULE, get_host).
 
-%% create a new Document - a tuple with a proplist
--spec(new_doc/0 :: () -> []).
-new_doc() -> [].
+get_conn() ->
+    gen_server:call(?MODULE, {get_conn}).
 
 %% open a document given a docid
 %% returns not_found or the Document
@@ -125,18 +196,6 @@ open_doc(DbName, DocId) ->
 -spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> proplist() | not_found).
 open_doc(DbName, DocId, Options) ->
     gen_server:call(?MODULE, {open_doc, whistle_util:to_list(DbName), whistle_util:to_binary(DocId), Options}, infinity).
-
-%% add a K/V pair to a Document
--spec(add_to_doc/3 :: (Key :: binary(), Value :: term(), Doc :: proplist()) -> proplist()).
-add_to_doc(Key, Value, Doc) ->
-    {Doc1} = couchbeam_doc:extend(whistle_util:to_binary(Key), Value, {Doc}),
-    Doc1.
-
-%% remove a K from the Document
--spec(rm_from_doc/2 :: (Key :: binary(), Doc :: proplist()) -> proplist()).
-rm_from_doc(Key, Doc) ->
-    {Doc1} = couchbeam_doc:delete_value(whistle_util:to_binary(Key), {Doc}),
-    Doc1.
 
 %% save a Document to the DB
 -spec(save_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, proplist()) | tuple(error, conflict)).
@@ -250,22 +309,24 @@ handle_call({del_doc, DbName, Doc}, _From, #state{connection={_, Conn}, dbs=DBs}
 
 handle_call(get_host, _From, #state{connection={H,_}}=State) ->
     {reply, H, State};
-handle_call({set_host, Host}, _From, #state{connection={OldHost, _}}=State) ->
+handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
-    case get_new_connection(Host) of
+    case get_new_connection(Host, User, Pass) of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	HC ->
 	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
     end;
-handle_call({set_host, Host}, _From, State) ->
+handle_call({set_host, Host, User, Pass}, _From, State) ->
     format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
-    case get_new_connection(Host) of
+    case get_new_connection(Host, User, Pass) of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
 	    {reply, ok, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]}}
     end;
+handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
+    {reply, Conn, State};
 handle_call({add_change_handler, DBName, <<>>}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, <<>>, Pid, State) of
 	{ok, _R, State1} -> {reply, ok, State1};
@@ -283,21 +344,13 @@ handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, #state{change_hand
     end;
 handle_call(Req, From, #state{connection={}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p)~n", [self(), net_adm:localhost()]),
-    case get_new_connection(net_adm:localhost()) of
+    case get_new_connection(net_adm:localhost(), "", "") of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
 	    close_handlers(State#state.change_handlers),
-<<<<<<< HEAD
-	    handle_call(Req, From, State#state{connection=HC,  dbs=[], views=[], change_handlers=[]})
-    end;
-handle_call(_Request, _From, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
-    {reply, {error, unhandled_call}, State}.
-=======
 	    handle_call(Req, From, State#state{connection=HC, change_handlers=[]})
     end.
->>>>>>> whistle-couch
 
 %%--------------------------------------------------------------------
 %% @private
@@ -335,10 +388,7 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
     end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-<<<<<<< HEAD
-    format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
-=======
->>>>>>> whistle-couch
+
     case lists:keyfind(ReqID, 2, CH) of
 	false ->
 	    {noreply, State};
@@ -470,14 +520,23 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, dbs=DBs, 
 	    end
     end.
 
--spec(get_new_connection/1 :: (Host :: string()) -> tuple(string(), tuple()) | tuple(error, term())).
-get_new_connection(Host) ->
-    Conn = couchbeam:server_connection(Host, 5984, "", []),
+-spec(get_new_connection/3 :: (Host :: string(), User :: string(), Pass :: string()) -> tuple(string(), tuple()) | tuple(error, term())).
+get_new_connection(Host, "", "") -> get_new_conn(Host, []);
+get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, Pass}}]).
+
+-spec(get_new_conn/2 :: (Host :: string(), Options :: proplist()) -> tuple(string(), #server{}) | tuple(error, term())).
+get_new_conn(Host, Options) ->
+    Conn = couchbeam:server_connection(Host, 5984, "", Options),
     format_log(info, "WHISTLE_COUCH(~p): Host ~p has conn ~p~n", [self(), Host, Conn]),
     case couchbeam:server_info(Conn) of
 	{ok, _Version} ->
 	    format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
-	    spawn(fun() -> save_config(Host) end),
+	    spawn(fun() ->
+			  case props:get_value(basic_auth, Options) of
+			      undefined -> save_config(Host);
+			      {U, P} -> save_config(Host, U, P)
+			  end
+		  end),
 	    {Host, Conn};
 	{error, Err}=E ->
 	    format_log(error, "WHISTLE_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, Err]),
@@ -524,12 +583,15 @@ get_view(Db, DesignDoc, ViewOptions, Views) ->
 init_state() ->
     case get_startup_config() of
 	{ok, Ts} ->
-	    Host = case props:get_value(couch_host, Ts, props:get_value(default_couch_host, Ts)) of
-		       undefined -> net_adm:localhost();
-		       "localhost" -> net_adm:localhost();
-		       H -> H
-		   end,
-	    case get_new_connection(Host) of
+	    {_, Host, User, Pass} = case lists:keyfind(couch_host, 1, Ts) of
+					false ->
+					    case lists:keyfind(default_couch_host, 1, Ts) of
+						false -> {ok, net_adm:localhost(), "", ""};
+						H -> H
+					    end;
+					H -> H
+				    end,
+	    case get_new_connection(Host, User, Pass) of
 		{error, _} -> #state{};
 		{Host, _}=C -> #state{connection=C}
 	    end;
@@ -553,9 +615,11 @@ get_startup_config() ->
 
 -spec(save_config/1 :: (H :: string()) -> no_return()).
 save_config(H) ->
+    save_config(H, "", "").
+
+save_config(H, U, P) ->
     {ok, Config} = get_startup_config(),
     file:write_file(?STARTUP_FILE
-		    ,lists:foldl(fun({K,V}, Acc) ->
-					 [io_lib:format("{~p, ~p}.~n", [K, V]) | Acc]
-				 end, "", [{couch_host, H} | lists:keydelete(couch_host, 1, Config)])
+		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
+				 , "", [{couch_host, H, U, P} | lists:keydelete(couch_host, 1, Config)])
 		   ).
