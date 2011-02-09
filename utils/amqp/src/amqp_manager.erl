@@ -164,6 +164,17 @@ handle_info({'EXIT', Pid, Reason}, Hosts) ->
     format_log(error, "AMQP_MGR(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, Reason]),
     Hosts1 = lists:foldl(fun(HostTuple, Hosts0) -> find_down_pid(Pid, HostTuple, Hosts0) end, [], Hosts),
     {noreply, Hosts1};
+handle_info({nodedown, Node}, Hosts) ->
+    H = whistle_util:to_list(binary:replace(whistle_util:to_binary(Node), <<"rabbit@">>, <<>>)),
+    case lists:keyfind(H, 1, Hosts) of
+	false ->
+	    format_log(error, "AMQP_MGR(~p): Nodedown for unknown (or forgotten)node ~s~n", [self(), Node]),
+	    {noreply, Hosts};
+	{_, HostInfo} ->
+	    format_log(error, "AMQP_MGR(~p): Nodedown for node ~s~n", [self(), Node]),
+	    close_host(H, HostInfo),
+	    {noreply, lists:keydelete(H, 1, Hosts)}
+    end;
 handle_info(_Info, Hosts) ->
     format_log(error, "AMQP_MGR(~p): Unhandled info req: ~p~nHosts: ~p~n", [self(), _Info, Hosts]),
     {noreply, Hosts}.
@@ -311,12 +322,11 @@ create_amqp_params(Host, Port) ->
     Node = list_to_atom([$r,$a,$b,$b,$i,$t,$@ | Host]),
     case net_adm:ping(Node) of
 	pong ->
-	    format_log(info, "AMQP_MGR(~p): Pinged the node ~s~n", [self(), Node]),
-	    #'amqp_params'{ port = Port, host = Host };
+	    erlang:monitor_node(Node, true);
 	pang ->
-	    format_log(error, "AMQP_MGR(~p): Unable to ping the node ~s~n", [self(), Node]),
-	    #'amqp_params'{ port = Port, host = Host }
-    end.
+	    ok
+    end,
+    #'amqp_params'{ port = Port, host = Host }.
 
 -spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
 get_new_connection(#'amqp_params'{}=P) ->
