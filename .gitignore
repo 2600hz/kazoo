@@ -2,8 +2,13 @@
 */log/error_log
 */mnesia
 */error_log
+*/ebin/*.beam
+utils/*/ebin/*.beam
+applications/apps/*/ebin/*.beam
+rabbit/{rabbitmq-}*/ebin/*.beam
 .eunit
 rabbit/rabbit-config/log/*.log*
 rabbit/rabbit-config/mnesia/*
 applications/apps/*/log/*
 applications/priv/mnesia/*.*
+*.beam
