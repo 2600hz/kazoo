@@ -17,7 +17,7 @@
 -include("ts.hrl").
 
 -define(APP_NAME, <<"ts_responder.route">>).
--define(APP_VERSION, <<"0.4.2">>).
+-define(APP_VERSION, <<"0.4.5">>).
 
 %%%===================================================================
 %%% API
@@ -98,8 +98,14 @@ process_routing(Flags, ApiProp) ->
 	{ok, Flags1} ->
 	    %% call may proceed
 	    find_route(Flags1, ApiProp);
-	{error, Error} ->
-	    format_log(error, "TS_ROUTE(~p): Credit Error ~p~n", [self(), Error]),
+	{error, entry_exists} ->
+	    format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
+	    {error, "Call-ID exists"};
+	{error, no_route_found} ->
+	    format_log(error, "TS_ROUTE(~p): No rating information found to handle routing to ~s~n", [self(), Flags#route_flags.to_user]),
+	    {error, "No rating information found"};
+	{error, no_funds} ->
+	    format_log(error, "TS_ROUTE(~p): No funds/flat rate trunks to route call~p~n", [self()]),
 	    response(503, ApiProp, Flags)
     end.
 
@@ -293,7 +299,6 @@ flags_from_did(DidProp, Flags) ->
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {struct, []})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
-		   ,auth_realm = get_value(<<"auth_realm">>, AuthOpts, <<>>)
 		   ,account_doc_id = get_value(<<"id">>, DidProp)
 		  }.
 

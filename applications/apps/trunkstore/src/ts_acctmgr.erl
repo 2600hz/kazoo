@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, update_views/0]).
 
 %% Data Access API
 -export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
@@ -29,6 +29,7 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
+-define(TS_ACCTMGR_VIEWS, ["accounts.json", "credit.json", "trunks.json"]).
 -define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
 -define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
@@ -53,6 +54,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+update_views() ->
+    gen_server:cast(?SERVER, update_views).
 
 %%%===================================================================
 %%% Data Access API
@@ -177,6 +181,9 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(update_views, #state{current_read_db=RDB}=S) ->
+    spawn(fun() -> update_views(RDB) end),
+    {noreply, S};
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
     load_account(AcctId, WDB),
@@ -319,31 +326,40 @@ trunks_available(DB, AcctId) ->
 
 %% should be the diffs from the last account update to now
 account_doc(AcctId, Credit, Trunks) ->
-    credit_doc(AcctId, Credit, Trunks, [{<<"_id">>, AcctId}]).
+    credit_doc(AcctId, Credit, Trunks, [{<<"_id">>, AcctId}
+					,{<<"doc_type">>, <<"account">>}
+				       ]).
 
 reserve_doc(AcctId, CallID, flat_rate) ->
-    Extra = [{<<"call_id">>, CallID}
-	     ,{<<"trunk_type">>, flat_rate}
-	     ,{<<"trunks">>, 1}
-	     ,{<<"amount">>, 0}
-	    ],
-    debit_doc(AcctId, Extra);
+    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary>>}
+		       ,{<<"call_id">>, CallID}
+		       ,{<<"trunk_type">>, flat_rate}
+		       ,{<<"trunks">>, 1}
+		       ,{<<"amount">>, 0}
+		       ,{<<"doc_type">>, <<"reserve">>}
+		      ]);
 reserve_doc(AcctId, CallID, per_min) ->
-    Extra = [{<<"call_id">>, CallID}
-	     ,{<<"trunk_type">>, per_min}
-	     ,{<<"amount">>, 0}
-	    ],
-    debit_doc(AcctId, Extra).
+    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary>>}
+		       ,{<<"call_id">>, CallID}
+		       ,{<<"trunk_type">>, per_min}
+		       ,{<<"amount">>, 0}
+		       ,{<<"doc_type">>, <<"reserve">>}
+		      ]).
 
 release_doc(AcctId, CallID, flat_rate) ->
-    credit_doc(AcctId, 0, 1, [{<<"call_id">>, CallID}, {<<"trunk_type">>, flat_rate}]).
+    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary>>}
+			      ,{<<"call_id">>, CallID}
+			      ,{<<"trunk_type">>, flat_rate}
+			      ,{<<"doc_type">>, <<"release">>}
+			     ]).
 
 release_doc(AcctId, CallID, per_min, Amt) ->
-    Extra = [{<<"call_id">>, CallID}
-	     ,{<<"trunk_type">>, per_min}
-	     ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
-	    ],
-    debit_doc(AcctId, Extra).
+    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary>>}
+		       ,{<<"call_id">>, CallID}
+		       ,{<<"trunk_type">>, per_min}
+		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
+		       ,{<<"doc_type">>, <<"release">>}
+		      ]).
 
 credit_doc(AcctId, Credit, Trunks, Extra) ->
     [{<<"acct_id">>, AcctId}
@@ -434,6 +450,14 @@ load_account(AcctId, DB) ->
 load_views(DB) ->
     lists:foreach(fun(Name) ->
 			  couch_mgr:load_doc_from_file(DB, trunkstore, Name)
-		  end, ["accounts.json", "credit.json", "trunks.json"]).
+		  end, ?TS_ACCTMGR_VIEWS).
+
+update_views(DB) ->
+    lists:foreach(fun(File) ->
+			  case couch_mgr:update_doc_from_file(DB, trunkstore, File) of
+			      {ok, _} -> logger:format_log(info, "Updating ~s: success~n", [File]);
+			      {error, Reason} -> logger:format_log(info, "Updating ~s: error ~p~n", [File, Reason])
+			  end
+		  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
