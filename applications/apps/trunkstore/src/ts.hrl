@@ -1,4 +1,5 @@
 -include_lib("couchbeam/include/couchbeam.hrl").
+-include("../../../src/whistle_types.hrl").
 
 %% couch params for the trunk store and its views
 -define(TS_DB, "ts").
@@ -19,7 +20,7 @@
 -define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>]).
 
 % just want to deal with binary K/V pairs
--type proplist() :: list(tuple(binary(), binary())) | [].
+%%-type proplist() :: list(tuple(binary(), binary())) | [].
 -type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
 
 -record(route_flags, {
@@ -37,6 +38,7 @@
 	  ,caller_id = {} :: tuple()                     % Name and Number for Caller ID - check DID, then server, then account, then what we got from ecallmgr
           ,caller_id_e911 = {} :: tuple()                % CallerID for E911 calls - Check DID, then server, then account
           ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX" | "USERNAME"
+          ,media_handling = <<>> :: binary()             % are we in the media path or not "process" | "bypass"
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
 	  ,rate = 0.0 :: float()                 % rate for the inbound leg, per minute
 	  ,rate_increment = 60 :: integer()      % time, in sec, to bill per

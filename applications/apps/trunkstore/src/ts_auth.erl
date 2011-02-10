@@ -12,12 +12,12 @@
 -export([handle_req/1]).
 
 -define(APP_NAME, <<"ts_responder.auth">>).
--define(APP_VERSION, <<"0.3.0">>).
+-define(APP_VERSION, <<"0.3.1">>).
 
 -include("ts.hrl").
 
 -import(props, [get_value/2, get_value/3]).
--import(logger, [log/2, format_log/3]).
+-import(logger, [format_log/3]).
 
 %%%===================================================================
 %%% API
@@ -29,13 +29,15 @@
 %%--------------------------------------------------------------------
 -spec(handle_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(Prop) ->
-    [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
-    {AuthU, AuthR} = {get_value(<<"Auth-User">>, Prop), get_value(<<"Auth-Domain">>, Prop)},
+    AuthU = get_value(<<"Auth-User">>, Prop),
+    AuthR = get_value(<<"Auth-Domain">>, Prop),
 
-    Direction = case is_inbound(FromDomain) of
-		    true -> <<"inbound">>;
-		    false -> <<"outbound">>
-		end,
+    %% [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
+    %% Direction = case is_inbound(FromDomain) of
+    %% 		    true -> <<"inbound">>;
+    %% 		    false -> <<"outbound">>
+    %% 		end,
+    Direction = <<"outbound">>, %% if we're authing, it's an outbound call; no auth means carrier authed by ACL, hence inbound
 
     {ok, AuthProp} = lookup_user(AuthU, AuthR),
 
@@ -47,9 +49,9 @@ handle_req(Prop) ->
 						      ]
 					     }}
 		| whistle_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
-						  ,get_value(<<"Event-Category">>, Prop)
+					      ,get_value(<<"Event-Category">>, Prop)
 					      ,<<"auth_resp">>
-						  ,?APP_NAME
+					      ,?APP_NAME
 					      ,?APP_VERSION)],
 
     response(AuthProp, Defaults).
@@ -61,31 +63,31 @@ handle_req(Prop) ->
 %% Inbound detection will likely be done in ACLs for carriers, so this function is more a place-holder
 %% than something more meaningful. Auth will likely be bypassed for known carriers, and this function
 %% will most likely return false everytime
--spec(is_inbound/1 :: (Domain :: binary()) -> boolean()).
-is_inbound(Domain) ->
-    IP = ts_util:find_ip(Domain),
-    Options = [{"key", IP}],
-    format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
-    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
-	{error, not_found} ->
-	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
-	    false;
-	{error,  db_not_reachable} ->
-	    format_log(info, "TS_AUTH(~p): No DB accessible~n", [self()]),
-	    false;
-	{error, view_not_found} ->
-	    format_log(info, "TS_AUTH(~p): View ~p missing~n", [self(), ?TS_VIEW_CARRIERIP]),
-	    false;
-	{ok, []} ->
-	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
-	    false;
-	{ok, [{struct, ViewProp} | _Rest]} ->
-	    format_log(info, "TS_AUTH(~p): Carrier found for ~p(~p)~n~p~n", [self(), Domain, IP, ViewProp]),
-	    true;
-	_Else ->
-	    format_log(error, "TS_AUTH(~p): Got something unexpected during inbound check~n~p~n", [self(), _Else]),
-	    false
-    end.
+%% -spec(is_inbound/1 :: (Domain :: binary()) -> false).
+  %% is_inbound(Domain) ->
+    %% IP = ts_util:find_ip(Domain),
+    %% Options = [{"key", IP}],
+    %% format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
+    %% case couch_mgr:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
+    %% 	{error, not_found} ->
+    %% 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
+    %% 	    false;
+    %% 	{error,  db_not_reachable} ->
+    %% 	    format_log(info, "TS_AUTH(~p): No DB accessible~n", [self()]),
+    %% 	    false;
+    %% 	{error, view_not_found} ->
+    %% 	    format_log(info, "TS_AUTH(~p): View ~p missing~n", [self(), ?TS_VIEW_CARRIERIP]),
+    %% 	    false;
+    %% 	{ok, []} ->
+    %% 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
+    %% 	    false;
+    %% 	{ok, [{struct, ViewProp} | _Rest]} ->
+    %% 	    format_log(info, "TS_AUTH(~p): Carrier found for ~p(~p)~n~p~n", [self(), Domain, IP, ViewProp]),
+    %% 	    true;
+    %% 	_Else ->
+    %% 	    format_log(error, "TS_AUTH(~p): Got something unexpected during inbound check~n~p~n", [self(), _Else]),
+    %% 	    false
+    %% end.
 
 -spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
 lookup_user(Name, Realm) ->
@@ -114,11 +116,6 @@ specific_response(AuthInfo) when is_list(AuthInfo) ->
      ,{<<"Access-Group">>, get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
      ,{<<"Tenant-ID">>, get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
     ];
-specific_response(500) ->
-    [{<<"Auth-Method">>, <<"error">>}
-     ,{<<"Auth-Password">>, <<"500 Internal Error">>}
-     ,{<<"Access-Group">>, <<"ignore">>}
-     ,{<<"Tenant-ID">>, <<"ignore">>}];
 specific_response(403) ->
     [{<<"Auth-Method">>, <<"error">>}
      ,{<<"Auth-Password">>, <<"403 Forbidden">>}

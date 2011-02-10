@@ -231,21 +231,21 @@ create_routes(Flags, Carriers) ->
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
-    RateInfo = [{<<"Custom-Channel-Vars">>, {struct, [{<<"Rate">>, Flags#route_flags.rate}
-						      ,{<<"Rate-Increment">>, Flags#route_flags.rate_increment}
-						      ,{<<"Rate-Minimum">>, Flags#route_flags.rate_minimum}
-						      ,{<<"Surcharge">>, Flags#route_flags.surcharge}]}}
-		| CallerID],
-    case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, RateInfo}, Carriers) of
-	{[], _, _} ->
+    ChannelVars = [{<<"Rate">>, Flags#route_flags.rate}
+		   ,{<<"Rate-Increment">>, Flags#route_flags.rate_increment}
+		   ,{<<"Rate-Minimum">>, Flags#route_flags.rate_minimum}
+		   ,{<<"Surcharge">>, Flags#route_flags.surcharge}
+		  ],
+    case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID, ChannelVars}, Carriers) of
+	{[], _, _, _} ->
 	    {error, "Failed to find routes for the call"};
-	{Routes, _, _} ->
+	{Routes, _, _, _} ->
 	    {ok, Routes}
     end.
 
--type c2r_acc() :: tuple(routes(), binary(), proplist()).
+-type c2r_acc() :: tuple(routes(), binary(), proplist(), proplist()).
 -spec(carrier_to_routes/2 :: (tuple(binary(), proplist()), c2r_acc()) -> c2r_acc()).
-carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
+carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID, ChannelVars}) ->
     CallerIDData = case get_value(<<"callerid_type">>, CarrierData) of
 			undefined -> CallerID;
 			Type -> [{<<"Caller-ID-Type">>, Type} | CallerID]
@@ -260,14 +260,14 @@ carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID}) ->
 				      _ -> Acc
 				  end
 			  end, [], get_value(<<"routes">>, CarrierData)),
-    {GatewayRoutes, _, _} = lists:foldl(fun gateway_to_route/2
-				     ,{Routes, Regexed, BaseRouteData}
+    {GatewayRoutes, _, _, _} = lists:foldl(fun gateway_to_route/2
+				     ,{Routes, Regexed, BaseRouteData, ChannelVars}
 				     ,get_value(<<"options">>, CarrierData)),
-    {GatewayRoutes, User, CallerID}.
+    {GatewayRoutes, User, CallerID, ChannelVars}.
 
--type g2r_acc() :: tuple(routes(), binary(), proplist()).
+-type g2r_acc() :: tuple(routes(), binary(), proplist(), proplist()).
 -spec(gateway_to_route/2 :: (Gateway :: proplist(), Acc :: g2r_acc()) -> g2r_acc()).
-gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
+gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
     case get_value(<<"enabled">>, Gateway, <<"0">>) of
 	<<"1">> ->
 	    Dialstring = list_to_binary([<<"sip:">>
@@ -279,11 +279,12 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
 					]),
 	    R = [{<<"Route">>, Dialstring}
 		 ,{<<"Invite-Format">>, <<"route">>}
-		 ,{<<"Media">>, <<"bypass">>}
+		 ,{<<"Media">>, ts_util:get_media_handling(get_value(<<"media_handling">>, Gateway))}
 		 ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
 		 ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}
 		 ,{<<"Codecs">>, get_value(<<"codecs">>, Gateway, [])}
 		 ,{<<"Progress-Timeout">>, get_value(<<"progress_timer">>, Gateway, ?DEFAULT_PROGRESS_TIMEOUT)}
+		 ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Carrier-Route">>, Dialstring} | ChannelVars]}}
 		 | BaseRouteData ],
 	    case whistle_api:route_resp_route_v(R) of
 		true -> {[{struct, R} | CRs], Regexed, BaseRouteData};
@@ -293,3 +294,4 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData}=Acc) ->
 	    end;
 	_ -> Acc
     end.
+    
