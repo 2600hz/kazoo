@@ -1,4 +1,5 @@
 -include_lib("couchbeam/include/couchbeam.hrl").
+-include("../../../src/whistle_types.hrl").
 
 %% couch params for the trunk store and its views
 -define(TS_DB, "ts").
@@ -19,7 +20,7 @@
 -define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>]).
 
 % just want to deal with binary K/V pairs
--type proplist() :: list(tuple(binary(), binary())) | [].
+%%-type proplist() :: list(tuple(binary(), binary())) | [].
 -type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
 
 -record(route_flags, {

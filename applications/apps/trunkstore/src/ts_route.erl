@@ -60,7 +60,7 @@ outbound_handler(ApiProp) ->
     Flags = create_flags(Did, ApiProp),
     process_routing(outbound_features(Flags), ApiProp).
 
--spec(lookup_users_account/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
+-spec(lookup_users_account/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, tuple(struct, proplist())) | tuple(error, string())).
 lookup_users_account(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
