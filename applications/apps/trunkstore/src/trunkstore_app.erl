@@ -35,7 +35,8 @@ update_views() ->
 			      {ok, _} -> logger:format_log(info, "Updating ~s: success~n", [File]);
 			      {error, Reason} -> logger:format_log(info, "Updating ~s: error ~p~n", [File, Reason])
 			  end
-		  end, ?TS_COUCH_DESIGN_DOCS).
+		  end, ?TS_COUCH_DESIGN_DOCS),
+    ts_acctmgr:update_views().
 
 
 setup_base_docs() ->
