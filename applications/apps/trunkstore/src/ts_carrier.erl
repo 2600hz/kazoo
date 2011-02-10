@@ -146,7 +146,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    couch_mgr:rm_change_handler(?TS_CARRIERS_DOC),
+    format_log(error, "TS_CARRIER(~p): Going down: ~p~n", [self(), _Reason]),
+    couch_mgr:rm_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
     ok.
 
 %%--------------------------------------------------------------------
