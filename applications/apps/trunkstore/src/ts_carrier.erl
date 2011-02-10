@@ -288,7 +288,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 		 ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Carrier-Route">>, Dialstring} | ChannelVars]}}
 		 | BaseRouteData ],
 	    case whistle_api:route_resp_route_v(R) of
-		true -> {[{struct, R} | CRs], Regexed, BaseRouteData};
+		true -> {[{struct, R} | CRs], Regexed, BaseRouteData, ChannelVars};
 		false ->
 		    format_log(error, "TS_CARRIER.gateway_to_route Error validating route~n~p~n", [R]),
 		    Acc
