@@ -29,8 +29,8 @@
 	  ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
-	  ,auth_user = <<>> :: binary()                  % what username did we authenticate with
-          ,auth_realm = <<>> :: binary()                 % what realm did we auth with
+	  ,auth_user = <<>> :: binary() | undefined      % what username did we authenticate with
+          ,auth_realm = <<>> :: binary() | undefined     % what realm did we auth with
 	  ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
 	  ,server_id = <<>> :: binary()                  % Server of the DID
 	  ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")
