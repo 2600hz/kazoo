@@ -179,8 +179,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 		{error, _Msg} ->
 		    format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
 	    end
-    end,
-    State;
+    end;
 process_req({<<"dialplan">>,<<"route_req">>}, Prop, State) ->
     case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop) of
 	false ->
@@ -190,8 +189,7 @@ process_req({<<"dialplan">>,<<"route_req">>}, Prop, State) ->
 	    send_resp(JSON, RespQ, State);
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
-    end,
-    State;
+    end;
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 

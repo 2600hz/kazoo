@@ -24,7 +24,7 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
--define(APP_VSN, "0.4.2").
+-define(APP_VSN, <<"0.4.2">>).
 -define(CLEANUP_RATE, 60000).
 
 -record(state, {

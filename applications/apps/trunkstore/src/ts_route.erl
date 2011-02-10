@@ -17,7 +17,7 @@
 -include("ts.hrl").
 
 -define(APP_NAME, <<"ts_responder.route">>).
--define(APP_VERSION, <<"0.4.2">>).
+-define(APP_VERSION, <<"0.4.5">>).
 
 %%%===================================================================
 %%% API
@@ -60,14 +60,15 @@ outbound_handler(ApiProp) ->
     Flags = create_flags(Did, ApiProp),
     process_routing(outbound_features(Flags), ApiProp).
 
--spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
-lookup_user(Name, Realm) ->
+-spec(lookup_users_account/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
+lookup_users_account(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
 	{ok, []} -> {error, "No user/realm found"};
 	{ok, [{struct, User}|_]} ->
-	    {struct, Auth} = props:get_value(<<"value">>, User),
-	    {ok, Auth}
+	    %{struct, Auth} = props:get_value(<<"value">>, User),
+	    %{ok, Auth}
+	    couch_mgr:open_doc(?TS_DB, props:get_value(<<"id">>, User))
     end.
 
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
@@ -97,8 +98,14 @@ process_routing(Flags, ApiProp) ->
 	{ok, Flags1} ->
 	    %% call may proceed
 	    find_route(Flags1, ApiProp);
-	{error, Error} ->
-	    format_log(error, "TS_ROUTE(~p): Credit Error ~p~n", [self(), Error]),
+	{error, entry_exists} ->
+	    format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
+	    {error, "Call-ID exists"};
+	{error, no_route_found} ->
+	    format_log(error, "TS_ROUTE(~p): No rating information found to handle routing to ~s~n", [self(), Flags#route_flags.to_user]),
+	    {error, "No rating information found"};
+	{error, no_funds} ->
+	    format_log(error, "TS_ROUTE(~p): No funds/flat rate trunks to route call~p~n", [self()]),
 	    response(503, ApiProp, Flags)
     end.
 
@@ -228,27 +235,28 @@ fold_features(Features, Flags) ->
 
 -spec(create_flags/2 :: (Did :: binary(), ApiProp :: proplist()) -> #route_flags{}).
 create_flags(Did, ApiProp) ->
+    {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
+
     F1 = case lookup_did(Did) of
 	     {ok, DidProp} ->
 		 flags_from_did(DidProp, #route_flags{});
 	     {error, _E} ->
-		 #route_flags{}
+		 #route_flags{auth_user=get_value(<<"Username">>, ChannelVars, <<>>), auth_realm=get_value(<<"Realm">>, ChannelVars, <<>>)}
 	 end,
 
-    {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
     AuthUser = F1#route_flags.auth_user,
-    Realm = get_value(<<"Realm">>, ChannelVars, F1#route_flags.auth_realm),
-    Doc = lookup_user(AuthUser, Realm),
+    Realm = F1#route_flags.auth_realm,
 
-    F3 = case Doc of
+    F3 = case lookup_users_account(AuthUser, Realm) of
 	     {error, _E1} ->
+		 format_log(error, "TS_ROUTE(~p).create_flags: Failed to lookup doc for ~p@~p: ~p", [self(), AuthUser, Realm, _E1]),
 		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
 		     {error, _E2} -> F1;
 		     {ok, {struct, Doc1}} ->
 			 F2 = flags_from_srv(AuthUser, Doc1, F1),
 			 flags_from_account(Doc1, F2)
 		 end;
-	     {ok, D} ->
+	     {ok, {struct, D}} ->
 		 F2 = flags_from_srv(AuthUser, D, F1),
 		 flags_from_account(D, F2)
 	 end,
@@ -291,7 +299,6 @@ flags_from_did(DidProp, Flags) ->
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {struct, []})),
     F1#route_flags{route_options = Opts
 		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
-		   ,auth_realm = get_value(<<"auth_realm">>, AuthOpts, <<>>)
 		   ,account_doc_id = get_value(<<"id">>, DidProp)
 		  }.
 
