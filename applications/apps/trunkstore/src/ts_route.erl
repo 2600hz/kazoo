@@ -60,14 +60,15 @@ outbound_handler(ApiProp) ->
     Flags = create_flags(Did, ApiProp),
     process_routing(outbound_features(Flags), ApiProp).
 
--spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
-lookup_user(Name, Realm) ->
+-spec(lookup_users_account/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
+lookup_users_account(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
 	{ok, []} -> {error, "No user/realm found"};
 	{ok, [{struct, User}|_]} ->
-	    {struct, Auth} = props:get_value(<<"value">>, User),
-	    {ok, Auth}
+	    %{struct, Auth} = props:get_value(<<"value">>, User),
+	    %{ok, Auth}
+	    couch_mgr:open_doc(?TS_DB, props:get_value(<<"id">>, User))
     end.
 
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
@@ -228,17 +229,18 @@ fold_features(Features, Flags) ->
 
 -spec(create_flags/2 :: (Did :: binary(), ApiProp :: proplist()) -> #route_flags{}).
 create_flags(Did, ApiProp) ->
+    {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
+
     F1 = case lookup_did(Did) of
 	     {ok, DidProp} ->
 		 flags_from_did(DidProp, #route_flags{});
 	     {error, _E} ->
-		 #route_flags{}
+		 #route_flags{auth_user=get_value(<<"Username">>, ChannelVars, <<>>), auth_realm=get_value(<<"Realm">>, ChannelVars, <<>>)}
 	 end,
 
-    {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
-    AuthUser = get_value(<<"Username">>, ChannelVars, F1#route_flags.auth_user),
-    Realm = get_value(<<"Realm">>, ChannelVars, F1#route_flags.auth_realm),
-    Doc = lookup_user(AuthUser, Realm),
+    AuthUser = F1#route_flags.auth_user,
+    Realm = F1#route_flags.auth_realm,
+    Doc = lookup_users_account(AuthUser, Realm),
 
     F3 = case Doc of
 	     {error, _E1} ->
