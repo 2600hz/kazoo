@@ -239,7 +239,7 @@ create_flags(Did, ApiProp) ->
 
     F1 = case lookup_did(Did) of
 	     {ok, DidProp} ->
-		 flags_from_did(DidProp, #route_flags{});
+		 add_auth_realm(flags_from_did(DidProp, #route_flags{}), get_value(<<"Realm">>, ChannelVars));
 	     {error, _E} ->
 		 add_auth_user(add_auth_realm(#route_flags{}, get_value(<<"Realm">>, ChannelVars)), get_value(<<"Username">>, ChannelVars))
 	 end,
