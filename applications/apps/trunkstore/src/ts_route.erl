@@ -240,9 +240,8 @@ create_flags(Did, ApiProp) ->
 
     AuthUser = F1#route_flags.auth_user,
     Realm = F1#route_flags.auth_realm,
-    Doc = lookup_users_account(AuthUser, Realm),
 
-    F3 = case Doc of
+    F3 = case lookup_users_account(AuthUser, Realm) of
 	     {error, _E1} ->
 		 format_log(error, "TS_ROUTE(~p).create_flags: Failed to lookup doc for ~p@~p: ~p", [self(), AuthUser, Realm, _E1]),
 		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
@@ -251,7 +250,7 @@ create_flags(Did, ApiProp) ->
 			 F2 = flags_from_srv(AuthUser, Doc1, F1),
 			 flags_from_account(Doc1, F2)
 		 end;
-	     {ok, D} ->
+	     {ok, {struct, D}} ->
 		 F2 = flags_from_srv(AuthUser, D, F1),
 		 flags_from_account(D, F2)
 	 end,
