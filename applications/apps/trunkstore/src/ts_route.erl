@@ -117,9 +117,9 @@ find_route(Flags, ApiProp) ->
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
 		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
-		{error, Error} ->
+		{error, Error}=E ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
-		    response(404, ApiProp, Flags)
+		    E
 	    end;
 	true ->
 	    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
@@ -349,19 +349,27 @@ add_failover(F, _) -> F.
 add_auth_user(F, <<>>) -> F;
 add_auth_user(F, undefined) -> F;
 add_auth_user(#route_flags{auth_user = <<>>}=F, User) ->
+    format_log(info, "TS_ROUTE: Empty auth_user in Flags; setting to ~s~n", [User]),
     F#route_flags{auth_user=User};
 add_auth_user(#route_flags{auth_user=undefined}=F, User) ->
+    format_log(info, "TS_ROUTE: Undefined auth_user in Flags; setting to ~s~n", [User]),
     F#route_flags{auth_user=User};
-add_auth_user(F, _) -> F.
+add_auth_user(F, _User) ->
+    format_log(info, "TS_ROUTE: auth_user in Flags: ~s; not setting to ~s~n", [F#route_flags.auth_user, _User]),
+    F.
 
 -spec(add_auth_realm/2 :: (F :: #route_flags{}, Realm :: binary() | undefined) -> #route_flags{}).
 add_auth_realm(F, <<>>) -> F;
 add_auth_realm(F, undefined) -> F;
 add_auth_realm(#route_flags{auth_realm = <<>>}=F, Realm) ->
+    format_log(info, "TS_ROUTE: Empty auth_realm in Flags; setting to ~s~n", [Realm]),
     F#route_flags{auth_realm=Realm};
 add_auth_realm(#route_flags{auth_realm=undefined}=F, Realm) ->
+    format_log(info, "TS_ROUTE: undefined auth_realm in Flags; setting to ~s~n", [Realm]),
     F#route_flags{auth_realm=Realm};
-add_auth_realm(F, _) -> F.
+add_auth_realm(F, _Realm) ->
+    format_log(info, "TS_ROUTE: auth_realm in Flags: ~s; not setting to ~s~n", [F#route_flags.auth_realm, _Realm]),
+    F.
 
 -spec(add_caller_id/2 :: (F0 :: #route_flags{}, CID :: tuple(proplist())) -> #route_flags{}).
 add_caller_id(#route_flags{caller_id={}}=F0, {struct, []}) -> F0;
