@@ -19,7 +19,7 @@
 -include("ts.hrl").
 
 -spec(store_cdr/2 :: (CDRProp :: proplist(), Flags :: #route_flags{}) -> no_return()).
-store_cdr(CDRProp, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}=Flags) ->
+store_cdr(CDRProp, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}) ->
     TScdr = [{<<"_id">>, get_value(<<"Call-ID">>, CDRProp)}
 	     ,{<<"Routes-Available">>, RGs}
 	     ,{<<"Route-Used">>, find_route_used(Dir, get_value(<<"To-Uri">>, CDRProp), RGs)}
@@ -27,7 +27,7 @@ store_cdr(CDRProp, #route_flags{routes_generated=RGs, direction=Dir, account_doc
 	     ,{<<"Customer-Account-ID">>, DocID}
 	     | CDRProp],
     format_log(info, "TS_CDR: Saving ~p~n", [TScdr]),
-    {ok, _} = couch_mgr:save_doc(?TS_CDR_DB, TScdr).
+    _ = couch_mgr:save_doc(?TS_CDR_DB, TScdr).
 
 -spec(find_route_used/3 :: (Direction :: binary(), ToUri :: binary(), Routes :: list(tuple(struct, proplist()))) -> proplist()).
 find_route_used(<<"outbound">>, ToUri, Routes) ->
