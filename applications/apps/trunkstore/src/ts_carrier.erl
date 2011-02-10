@@ -279,7 +279,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 					]),
 	    R = [{<<"Route">>, Dialstring}
 		 ,{<<"Invite-Format">>, <<"route">>}
-		 ,{<<"Media">>, get_value(<<"media_handling">>, Gateway, <<"bypass">>)}
+		 ,{<<"Media">>, ts_util:get_media_handling(get_value(<<"media_handling">>, Gateway))}
 		 ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
 		 ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}
 		 ,{<<"Codecs">>, get_value(<<"codecs">>, Gateway, [])}
@@ -294,3 +294,4 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 	    end;
 	_ -> Acc
     end.
+    

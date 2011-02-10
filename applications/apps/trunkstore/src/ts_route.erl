@@ -177,7 +177,7 @@ inbound_route(Flags) ->
 	     end,
     Route = [{<<"Weight-Cost">>, <<"1">>}
 	     ,{<<"Weight-Location">>, <<"1">>}
-	     ,{<<"Media">>, <<"bypass">>}
+	     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
 	     | Invite
 	    ],
     case whistle_api:route_resp_route_v(Route) of
@@ -190,12 +190,12 @@ inbound_route(Flags) ->
 -spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), Flags :: #route_flags{}, tuple(struct, proplist())) -> proplist()).
 add_failover_route({}, _Flags, InboundRoute) -> [InboundRoute];
 %% route to a SIP URI
-add_failover_route({<<"sip">>, URI}, _Flags, InboundRoute) ->
+add_failover_route({<<"sip">>, URI}, Flags, InboundRoute) ->
     [InboundRoute, {struct, [{<<"Route">>, URI}
 			     ,{<<"Invite-Format">>, <<"route">>}
 			     ,{<<"Weight-Cost">>, <<"1">>}
 			     ,{<<"Weight-Location">>, <<"1">>}
-			     ,{<<"Media">>, <<"bypass">>}
+			     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
 			    ]}];
 %% route to a E.164 number - need to setup outbound for this sucker
 add_failover_route({<<"e164">>, DID}, Flags, InboundRoute) ->
@@ -319,6 +319,7 @@ flags_from_srv(AuthUser, Doc, Flags) ->
     F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Options, <<>>)
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
+			   ,media_handling = get_value(<<"media_handling">>, Options)
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
     add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})).
