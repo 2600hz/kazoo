@@ -1,9 +1,12 @@
 -module(whistle_util).
 
--export([reload_all_apps/0, reload_app/1]).
+-export([reload_changed/0, reload_all_apps/0, reload_app/1]).
 -export([to_e164/1, to_npanxxxxxx/1, to_1npanxxxxxx/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
+
+reload_changed() ->
+    reloader:reload_modules(reloader:all_changed()).
 
 reload_all_apps() ->
     Apps = application:which_applications(),
@@ -18,11 +21,7 @@ reload_app(App) ->
 	[] ->
 	    io:format("No Mods to reload~n", []);
 	Mods ->
-	    lists:foreach(fun(M) ->
-				  io:format("Reloading Mod ~p~n", [M]),
-				  code:soft_purge(M),
-				  code:load_file(M)
-			  end, Mods)
+	    reloader:reload_modules(Mods)
     end,
     io:format("Reloading ~p Done...~n", [App]).
 
