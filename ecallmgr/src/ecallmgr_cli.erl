@@ -30,19 +30,21 @@ usage() ->
      ,{" ~s <command> ...",[Script]}
      ,""
      ,"Commands:"
-     ,{" status  Print data concerning the ~s_fs_handler server",[App]}
+     ," status [node | acc]  View status of connected FS nodes, or specify a node (e.g. 'freeswitch@server.com') or acc to get just the accumulated results"
      ,{" set_amqp_host <host>  Set the amqp host (e.g. ~p)", [net_adm:localhost()]}
      ," add_fs_node <node>  Add a FreeSWITCH node to ecallmgr (e.g. 'freeswitch@server.com')"
      ," rm_fs_node <node>  Remove a FreeSWITCH node from ecallmgr (e.g. 'freeswitch@server.com')"
     ].
 
-status(always, _) ->
+status(always, []) ->
+    status(always, [all]);
+status(always, [DisplayOpt]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     format("Retrieving data for ~s~n", [Node]),
     case rpc_call(Node, ecallmgr_fs_handler, diagnostics, []) of 
 	{ok, _, _}=Res -> Res;
 	{ok, Data} ->
-	    diagnostics_server:display_fs_data(Data),
+	    diagnostics_server:display_fs_data(Data, whistle_util:to_atom(DisplayOpt, true)),
 	    ok
     end.
 
