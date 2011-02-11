@@ -207,13 +207,108 @@ display_node(Node) ->
 %%   Auth  |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2   |  32m
 %%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2   |  32m
 %%   Node  | CHAN_CREA |  CHAN_DEST |           |        | ACTIVE |  1m2s
+
+%% [{gen_server,ecallmgr_fs_handler},
+%%  {host,"whistle-erl001-dfw.2600hz.com"},
+%%  {version,"0.5.6"},
+%%  {known_fs_nodes,
+%%      ['freeswitch@whistle-fs002-dfw.2600hz.com',
+%%       'freeswitch@whistle-fs001-dfw.2600hz.com']},
+%%  {handler_diagnostics,
+%%      [{'freeswitch@whistle-fs002-dfw.2600hz.com',
+%%           {auth_handler,
+%%               {ok,[{active_lookups,[]},
+%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
+%%                    {lookups_success,28},
+%%                    {lookups_failed,0},
+%%                    {lookups_timeout,0},
+%%                    {lookups_requested,28},
+%%                    {uptime,167333357249}]}},
+%%           {route_handler,
+%%               {ok,[{active_lookups,[]},
+%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
+%%                    {lookups_success,8},
+%%                    {lookups_failed,0},
+%%                    {lookups_timeout,3},
+%%                    {lookups_requested,11},
+%%                    {uptime,167333319576}]}},
+%%           {node_handler,
+%%               {ok,[{uptime,167333238063},
+%%                    {last_heartbeat,9191599},
+%%                    {active_channels,0},
+%%                    {created_channels,18},
+%%                    {destroyed_channels,18}]}}},
+%%       {'freeswitch@whistle-fs001-dfw.2600hz.com',
+%%           {auth_handler,
+%%               {ok,[{active_lookups,[]},
+%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
+%%                    {lookups_success,0},
+%%                    {lookups_failed,0},
+%%                    {lookups_timeout,0},
+%%                    {lookups_requested,0},
+%%                    {uptime,168494048572}]}},
+%%           {route_handler,
+%%               {ok,[{active_lookups,[]},
+%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
+%%                    {lookups_success,0},
+%%                    {lookups_failed,0},
+%%                    {lookups_timeout,0},
+%%                    {lookups_requested,0},
+%%                    {uptime,168494009505}]}},
+%%           {node_handler,
+%%               {ok,[{uptime,168493927977},
+%%                    {last_heartbeat,3287618},
+%%                    {active_channels,0},
+%%                    {created_channels,0},
+%%                    {destroyed_channels,0}]}}}]},
+%%  {recorded,{1297,457260,677177}},
+%%  {amqp_host,"whistle-erl001-dfw.2600hz.com"}]
+
+
 display_fs_data(Data) ->
     GenSrv = get_value(gen_server, Data),
     Vsn = get_value(version, Data),
     Host = get_value(host, Data),
     {{Y, M, D}, {H, Min, S}} = calendar:now_to_datetime(get_value(recorded, Data)),
+
+    BaseAcc = [{node_handler, {ok, [{active_channels, 0}, {created_channels, 0}, {destroyed_channels, 0}]}}
+	       ,{auth_handler, {ok, [{lookups_success,0}, {lookups_failed,0}, {lookups_timeout,0}, {lookups_requested,0}]}}
+	       ,{route_handler, {ok, [{lookups_success,0}, {lookups_failed,0}, {lookups_timeout,0}, {lookups_requested,0}]}}
+	      ],
+
     io:format("Diagnostics for ~p (~s) on ~p at ~2.2.0w:~2.2.0w:~2.2.0w on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
-    lists:foreach(fun show_node/1, get_value(handler_diagnostics, Data)).
+    AccNodes = lists:foldr(fun(T, Acc) -> show_node(T), merge_data(T, Acc) end, BaseAcc, get_value(handler_diagnostics, Data)),
+
+    AccData = list_to_tuple([accumulated
+			     ,{auth_handler, get_value(auth_handler, AccNodes)}
+			     ,{route_handler, get_value(route_handler, AccNodes)}
+			     ,{node_handler, get_value(node_handler, AccNodes)}]),
+
+    io:format("~n~n", []),
+    show_node(AccData).
+
+merge_data(T, Acc0) ->
+    [_Node | L] = tuple_to_list(T),
+    lists:foldl(fun({_Type, {error, _, _}}, Acc) -> Acc;
+		   ({_Type, {'EXIT', _, _}}, Acc) -> Acc;
+		   ({node_handler, {ok, Data}}, Acc) ->
+			{ok, NodeAcc} = get_value(node_handler, Acc),
+			AC = get_value(active_channels, Data, 0) + get_value(active_channels, NodeAcc, 0),
+			CC = get_value(created_channels, Data, 0) + get_value(created_channels, NodeAcc, 0),
+			DC = get_value(destroyed_channels, Data, 0) + get_value(destroyed_channels, NodeAcc, 0),
+
+			[{node_handler, {ok, [{active_channels, AC}, {created_channels, CC}, {destroyed_channels, DC}]}}
+			 | lists:keydelete(node_handler, 1, Acc)];
+		   ({H, {ok, Data}}, Acc) ->
+			{ok, HAcc} = get_value(H, Acc),
+			LS = get_value(lookups_success, Data, 0) + get_value(lookups_success, HAcc, 0),
+			LF = get_value(lookups_failed, Data, 0) + get_value(lookups_failed, HAcc, 0),
+			LT = get_value(lookups_timeout, Data, 0) + get_value(lookups_timeout, HAcc, 0),
+			LR = get_value(lookups_requested, Data, 0) + get_value(lookups_requested, HAcc, 0),
+
+			[{H, {ok, [{lookups_success,LS}, {lookups_failed,LF}, {lookups_timeout,LT}, {lookups_requested,LR}]}}
+			 | lists:keydelete(H, 1, Acc)]
+		end, Acc0, L).
 
 show_node(T) ->
     [Node | L] = tuple_to_list(T),
