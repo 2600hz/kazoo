@@ -246,7 +246,9 @@ build_route(AmqpHost, RouteProp, DIDFormat) ->
     Realm = get_value(<<"To-Realm">>, RouteProp),
     Contact = lookup_reg(AmqpHost, Realm, User),
     DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
-    binary:replace(Contact, User, DID).
+    Encoded = binary:replace(Contact, User, DID),
+    Unquoted = whistle_util:to_binary(mochiweb_util:unquote(Encoded)),
+    binary:replace(Unquoted, [<<"<">>, <<">">>], <<>>, [global]).
 
 -spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
 format_did(DID, <<"e164">>) ->
