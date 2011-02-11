@@ -70,6 +70,10 @@ loop(Node, UUID, Host, CtlPid) ->
 	    after 500 -> ok end,
 
 	    format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]);
+	{amqp_host_down, H} ->
+	    format_log(info, "EVT(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
+	    self() ! call_hangup,
+	    loop(Node, UUID, Host, CtlPid);
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
