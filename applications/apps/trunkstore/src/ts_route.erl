@@ -17,7 +17,7 @@
 -include("ts.hrl").
 
 -define(APP_NAME, <<"ts_responder.route">>).
--define(APP_VERSION, <<"0.4.5">>).
+-define(APP_VERSION, <<"0.5.3">>).
 
 %%%===================================================================
 %%% API
@@ -127,13 +127,30 @@ find_route(Flags, ApiProp) ->
 	    case lookup_did(Did) of
 		{error, _} ->
 		    route_over_carriers(Flags, ApiProp);
-		{ok, DidProp} ->
-		    FlagsIn = flags_from_did(DidProp, Flags#route_flags{to_user=Did}),
-		    case inbound_route(FlagsIn) of
-			{ok, Routes} ->
-			    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes});
-			{error, _} ->
-			    route_over_carriers(Flags, ApiProp)
+		{ok, _} ->
+		    OrigAcctId = Flags#route_flags.account_doc_id,
+		    FlagsIn0 = create_flags(Did, ApiProp),
+		    FlagsIn = FlagsIn0#route_flags{direction = <<"inbound">>},
+		    case ts_credit:check(FlagsIn) of
+			{ok, _} ->
+			    format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n", [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
+			    case inbound_route(FlagsIn) of
+				{ok, Routes} ->
+				    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes
+										  ,account_doc_id=OrigAcctId
+										  ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
+										 });
+				{error, _} ->
+				    route_over_carriers(Flags, ApiProp)
+			    end;
+			{error, no_funds} ->
+			    response(503, ApiProp, Flags);
+			{error, no_route_found} ->
+			    format_log(error, "TS_ROUTE(~p): No rating information found to handle re-routing to ~s~n", [self(), Did]),
+			    {error, "No rating information found"};
+			{error, entry_exists} ->
+			    format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
+			    {error, "Call-ID exists"}
 		    end
 	    end
     end.
@@ -300,7 +317,8 @@ flags_from_did(DidProp, Flags) ->
     F2 = F1#route_flags{route_options = Opts
 			,account_doc_id = get_value(<<"id">>, DidProp)
 		       },
-    add_auth_user(F2, get_value(<<"auth_user">>, AuthOpts)).
+    F3 = add_auth_user(F2, get_value(<<"auth_user">>, AuthOpts)),
+    add_auth_realm(F3, get_value(<<"auth_realm">>, AuthOpts)).
 
 %% Flags from the Server
 %% - Inbound Format <- what format does the server expect the inbound caller-id in?
