@@ -158,7 +158,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    {noreply, S#state{ctl_q=props:get_value(<<"Control-Queue">>, Prop)}};
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(Prop),
-	    OtherCallID = get_value(<<"Other-Leg-Call-ID">>, Prop),
+	    OtherCallID = get_value(<<"Other-Leg-Unique-ID">>, Prop),
 	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S};
