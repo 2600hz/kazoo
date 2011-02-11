@@ -57,7 +57,7 @@ loop(Node, UUID, Host, CtlPid) ->
 		_ -> ok
 	    end,
 
-	    publish_msg(Host, UUID, Data),
+	    spawn(fun() -> publish_msg(Host, UUID, Data) end),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
 	    loop(Node, UUID, Host, CtlPid);
 	call_hangup ->
