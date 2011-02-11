@@ -224,7 +224,13 @@ set_rate_flags(Flags, Rates) ->
 		    E;
 		{error, no_funds}=E1 ->
 		    format_log(error, "TS_CREDIT(~p): No funds/flat-rate trunks to route call over.~n", [self()]),
-		    E1
+		    E1;
+		{error, no_account}=E2 ->
+		    format_log(error, "TS_CREDIT(~p): No account id passed.~n", [self()]),
+		    E2;
+		{error, no_callid}=E3 ->
+		    format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
+		    E3
 	    end
     end.
 
