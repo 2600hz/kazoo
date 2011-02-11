@@ -109,11 +109,12 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	{execute, UUID, EvtName} ->
 	    format_log(info, "CONTROL(~p): CurrApp: ~p Received execute: ~p~n", [self(), CurrApp, EvtName]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
-	{hangup, UUID} ->
+	{hangup, EvtPid, UUID} ->
 	    amqp_util:unbind_q_from_callctl(AmqpHost, CtlQ),
 	    amqp_util:delete_queue(AmqpHost, CtlQ), %% stop receiving messages
 	    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
-		       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]);
+		       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
+	    EvtPid ! {ctl_down, self()};
 	#'basic.consume_ok'{}=BC ->
 	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
