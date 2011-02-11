@@ -46,8 +46,6 @@ resource_consume(FsNodePid, Route) ->
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
-	    
-
 
 -spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
 start_handler(Node, Options, AmqpHost) ->
@@ -80,8 +78,8 @@ monitor_node(Node, #handler_state{}=S) ->
 
 %% If we start up while there are active channels, we'll have negative active_channels in our stats.
 %% The first clause fixes that situation
-monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=S) when De > Cr ->
-    ?MODULE:monitor_loop(Node, S#handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=Cr}});
+monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=S) when De > Cr ->
+    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{created_channels=De, destroyed_channels=De}});
 monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
     receive
 	{diagnostics, Pid} ->
