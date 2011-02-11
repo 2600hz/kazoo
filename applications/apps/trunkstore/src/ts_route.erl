@@ -60,7 +60,7 @@ outbound_handler(ApiProp) ->
     Flags = create_flags(Did, ApiProp),
     process_routing(outbound_features(Flags), ApiProp).
 
--spec(lookup_users_account/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
+-spec(lookup_users_account/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, tuple(struct, proplist())) | tuple(error, string())).
 lookup_users_account(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
@@ -117,9 +117,9 @@ find_route(Flags, ApiProp) ->
 	    case inbound_route(Flags) of
 		{ok, Routes} ->
 		    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
-		{error, Error} ->
+		{error, Error}=E ->
 		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
-		    response(404, ApiProp, Flags)
+		    E
 	    end;
 	true ->
 	    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
@@ -177,7 +177,7 @@ inbound_route(Flags) ->
 	     end,
     Route = [{<<"Weight-Cost">>, <<"1">>}
 	     ,{<<"Weight-Location">>, <<"1">>}
-	     ,{<<"Media">>, <<"bypass">>}
+	     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
 	     | Invite
 	    ],
     case whistle_api:route_resp_route_v(Route) of
@@ -190,12 +190,12 @@ inbound_route(Flags) ->
 -spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), Flags :: #route_flags{}, tuple(struct, proplist())) -> proplist()).
 add_failover_route({}, _Flags, InboundRoute) -> [InboundRoute];
 %% route to a SIP URI
-add_failover_route({<<"sip">>, URI}, _Flags, InboundRoute) ->
+add_failover_route({<<"sip">>, URI}, Flags, InboundRoute) ->
     [InboundRoute, {struct, [{<<"Route">>, URI}
 			     ,{<<"Invite-Format">>, <<"route">>}
 			     ,{<<"Weight-Cost">>, <<"1">>}
 			     ,{<<"Weight-Location">>, <<"1">>}
-			     ,{<<"Media">>, <<"bypass">>}
+			     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
 			    ]}];
 %% route to a E.164 number - need to setup outbound for this sucker
 add_failover_route({<<"e164">>, DID}, Flags, InboundRoute) ->
@@ -239,9 +239,9 @@ create_flags(Did, ApiProp) ->
 
     F1 = case lookup_did(Did) of
 	     {ok, DidProp} ->
-		 flags_from_did(DidProp, #route_flags{});
+		 add_auth_realm(flags_from_did(DidProp, #route_flags{}), get_value(<<"Realm">>, ChannelVars));
 	     {error, _E} ->
-		 #route_flags{auth_user=get_value(<<"Username">>, ChannelVars, <<>>), auth_realm=get_value(<<"Realm">>, ChannelVars, <<>>)}
+		 add_auth_user(add_auth_realm(#route_flags{}, get_value(<<"Realm">>, ChannelVars)), get_value(<<"Username">>, ChannelVars))
 	 end,
 
     AuthUser = F1#route_flags.auth_user,
@@ -273,15 +273,15 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 						 }};
 	     _CID -> Flags
 	 end,
-    F0#route_flags{
-      callid = get_value(<<"Call-ID">>, ApiProp)
-      ,to_user = whistle_util:to_e164(ToUser)
-      ,to_domain = ToDomain
-      ,from_user = whistle_util:to_e164(FromUser)
-      ,from_domain = FromDomain
-      ,auth_user = get_value(<<"Auth-User">>, ChannelVars, Flags#route_flags.auth_user)
-      ,direction = get_value(<<"Direction">>, ChannelVars, <<"inbound">>)
-     }.
+    F1 = F0#route_flags{
+	   callid = get_value(<<"Call-ID">>, ApiProp)
+	   ,to_user = whistle_util:to_e164(ToUser)
+	   ,to_domain = ToDomain
+	   ,from_user = whistle_util:to_e164(FromUser)
+	   ,from_domain = FromDomain
+	   ,direction = get_value(<<"Direction">>, ChannelVars, <<"inbound">>)
+	  },
+    add_auth_user(F1, get_value(<<"Auth-User">>, ChannelVars)).
 
 %% Flags from the DID
 %% - Failover
@@ -297,10 +297,10 @@ flags_from_did(DidProp, Flags) ->
 
     F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {struct, []})),
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {struct, []})),
-    F1#route_flags{route_options = Opts
-		   ,auth_user = get_value(<<"auth_user">>, AuthOpts, <<>>)
-		   ,account_doc_id = get_value(<<"id">>, DidProp)
-		  }.
+    F2 = F1#route_flags{route_options = Opts
+			,account_doc_id = get_value(<<"id">>, DidProp)
+		       },
+    add_auth_user(F2, get_value(<<"auth_user">>, AuthOpts)).
 
 %% Flags from the Server
 %% - Inbound Format <- what format does the server expect the inbound caller-id in?
@@ -319,6 +319,7 @@ flags_from_srv(AuthUser, Doc, Flags) ->
     F0 = Flags#route_flags{inbound_format=get_value(<<"inbound_format">>, Options, <<>>)
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
+			   ,media_handling = get_value(<<"media_handling">>, Options)
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
     add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})).
@@ -336,13 +337,33 @@ flags_from_account(Doc, Flags) ->
     F1 = add_caller_id(Flags#route_flags{account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)}
 		       ,get_value(<<"caller_id">>, Acct, {struct, []})),
     F2 = add_failover(F1, get_value(<<"failover">>, Acct, {struct, []})),
-    F2#route_flags{auth_realm = get_value(<<"auth_realm">>, Acct, Flags#route_flags.auth_realm)}.
+    add_auth_realm(F2, get_value(<<"auth_realm">>, Acct)).
 
 -spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: tuple(proplist())) -> #route_flags{}).
 add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
 add_failover(#route_flags{failover={}}=F0, {struct, [{_K, _V}=FOver]}) ->
     F0#route_flags{failover=FOver};
 add_failover(F, _) -> F.
+
+-spec(add_auth_user/2 :: (F :: #route_flags{}, User :: binary() | undefined) -> #route_flags{}).
+add_auth_user(F, <<>>) -> F;
+add_auth_user(F, undefined) -> F;
+add_auth_user(#route_flags{auth_user = <<>>}=F, User) ->
+    F#route_flags{auth_user=User};
+add_auth_user(#route_flags{auth_user=undefined}=F, User) ->
+    F#route_flags{auth_user=User};
+add_auth_user(F, _User) ->
+    F.
+
+-spec(add_auth_realm/2 :: (F :: #route_flags{}, Realm :: binary() | undefined) -> #route_flags{}).
+add_auth_realm(F, <<>>) -> F;
+add_auth_realm(F, undefined) -> F;
+add_auth_realm(#route_flags{auth_realm = <<>>}=F, Realm) ->
+    F#route_flags{auth_realm=Realm};
+add_auth_realm(#route_flags{auth_realm=undefined}=F, Realm) ->
+    F#route_flags{auth_realm=Realm};
+add_auth_realm(F, _Realm) ->
+    F.
 
 -spec(add_caller_id/2 :: (F0 :: #route_flags{}, CID :: tuple(proplist())) -> #route_flags{}).
 add_caller_id(#route_flags{caller_id={}}=F0, {struct, []}) -> F0;
