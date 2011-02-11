@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_node/1, rm_node/1, view/0, view/1, display_fs_data/1]).
+-export([start_link/0, add_node/1, rm_node/1, view/0, view/1, display_fs_data/1, display_fs_data/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -208,64 +208,9 @@ display_node(Node) ->
 %%   Route |    30     |  10 (33%)  |  15 (50%) | 3 (10%)|    2   |  32m
 %%   Node  | CHAN_CREA |  CHAN_DEST |           |        | ACTIVE |  1m2s
 
-%% [{gen_server,ecallmgr_fs_handler},
-%%  {host,"whistle-erl001-dfw.2600hz.com"},
-%%  {version,"0.5.6"},
-%%  {known_fs_nodes,
-%%      ['freeswitch@whistle-fs002-dfw.2600hz.com',
-%%       'freeswitch@whistle-fs001-dfw.2600hz.com']},
-%%  {handler_diagnostics,
-%%      [{'freeswitch@whistle-fs002-dfw.2600hz.com',
-%%           {auth_handler,
-%%               {ok,[{active_lookups,[]},
-%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
-%%                    {lookups_success,28},
-%%                    {lookups_failed,0},
-%%                    {lookups_timeout,0},
-%%                    {lookups_requested,28},
-%%                    {uptime,167333357249}]}},
-%%           {route_handler,
-%%               {ok,[{active_lookups,[]},
-%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
-%%                    {lookups_success,8},
-%%                    {lookups_failed,0},
-%%                    {lookups_timeout,3},
-%%                    {lookups_requested,11},
-%%                    {uptime,167333319576}]}},
-%%           {node_handler,
-%%               {ok,[{uptime,167333238063},
-%%                    {last_heartbeat,9191599},
-%%                    {active_channels,0},
-%%                    {created_channels,18},
-%%                    {destroyed_channels,18}]}}},
-%%       {'freeswitch@whistle-fs001-dfw.2600hz.com',
-%%           {auth_handler,
-%%               {ok,[{active_lookups,[]},
-%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
-%%                    {lookups_success,0},
-%%                    {lookups_failed,0},
-%%                    {lookups_timeout,0},
-%%                    {lookups_requested,0},
-%%                    {uptime,168494048572}]}},
-%%           {route_handler,
-%%               {ok,[{active_lookups,[]},
-%%                    {amqp_host,"whistle-erl001-dfw.2600hz.com"},
-%%                    {lookups_success,0},
-%%                    {lookups_failed,0},
-%%                    {lookups_timeout,0},
-%%                    {lookups_requested,0},
-%%                    {uptime,168494009505}]}},
-%%           {node_handler,
-%%               {ok,[{uptime,168493927977},
-%%                    {last_heartbeat,3287618},
-%%                    {active_channels,0},
-%%                    {created_channels,0},
-%%                    {destroyed_channels,0}]}}}]},
-%%  {recorded,{1297,457260,677177}},
-%%  {amqp_host,"whistle-erl001-dfw.2600hz.com"}]
+display_fs_data(Data) -> display_fs_data(Data, all).
 
-
-display_fs_data(Data) ->
+display_fs_data(Data, Opt) ->
     GenSrv = get_value(gen_server, Data),
     Vsn = get_value(version, Data),
     Host = get_value(host, Data),
@@ -277,15 +222,26 @@ display_fs_data(Data) ->
 	      ],
 
     io:format("Diagnostics for ~p (~s) on ~p at ~2.2.0w:~2.2.0w:~2.2.0w on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
-    AccNodes = lists:foldr(fun(T, Acc) -> show_node(T), merge_data(T, Acc) end, BaseAcc, get_value(handler_diagnostics, Data)),
+    AccNodes = lists:foldr(fun(T, Acc)  ->
+				   case Opt of
+				       all -> show_node(T), merge_data(T, Acc);
+				       acc -> merge_data(T, Acc);
+				       Node when element(1, T) =:= Node -> show_node(T);
+				       _ -> Acc
+				   end
+			   end, BaseAcc, get_value(handler_diagnostics, Data)),
 
-    AccData = list_to_tuple([accumulated
-			     ,{auth_handler, get_value(auth_handler, AccNodes)}
-			     ,{route_handler, get_value(route_handler, AccNodes)}
-			     ,{node_handler, get_value(node_handler, AccNodes)}]),
-
-    io:format("~n~n", []),
-    show_node(AccData).
+    case Opt of
+	Node when Node =/= all andalso Node =/= acc -> ok;
+	_ ->
+	    AccData = list_to_tuple([accumulated
+				     ,{auth_handler, get_value(auth_handler, AccNodes)}
+				     ,{route_handler, get_value(route_handler, AccNodes)}
+				     ,{node_handler, get_value(node_handler, AccNodes)}]),
+	    
+	    io:format("~n", []),
+	    show_node(AccData)
+    end.
 
 merge_data(T, Acc0) ->
     [_Node | L] = tuple_to_list(T),
