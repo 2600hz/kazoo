@@ -14,10 +14,10 @@
 -behaviour ( gen_server ).
 
 %% API
--export ( [get_q/0] ).
+-export ( [get_q/1] ).
 
 %% API
--export ( [start_link/0] ).
+-export ( [start_link/3] ).
 
 %% gen_server callbacks
 -export ( [init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3] ).
@@ -27,11 +27,18 @@
 -include ( "../crossbar.hrl" ).
 -include_lib ( "webmachine/include/webmachine.hrl" ).
 -include ( "../../../../utils/src/whistle_amqp.hrl" ).
--include( "../../include/amqp_client/include/amqp_client.hrl" ).
+-include ( "../../include/amqp_client/include/amqp_client.hrl" ).
 
 -define ( SERVER, ?MODULE ).
 
--record ( state, {amqp_host = "" :: string(), amqp_q = <<>> :: binary()} ).
+-record ( state, {
+   flow      = [] :: proplist(),
+   amqp_h    = "" :: string(),
+   amqp_q    = <<>> :: binary(),
+   ctrl_q    = <<>> :: binary(),
+   call_id   = <<>> :: binary(),
+   req_prop  = [] :: proplist()
+} ).
 
 
 %%-----------------------------------------------------------------------------
@@ -46,8 +53,8 @@
 %
 % @end
 %------------------------------------------------------------------------------
--spec ( get_q/0 :: ( ) -> binary() ).
-get_q ( ) -> {ok, Q} = gen_server:call(?MODULE, get_q), Q.
+-spec ( get_q/1 :: ( Pid :: binary() ) -> binary() ).
+get_q ( Pid ) -> {ok, Q} = gen_server:call(Pid, get_q), Q.
 
 
 %------------------------------------------------------------------------------
@@ -57,8 +64,10 @@ get_q ( ) -> {ok, Q} = gen_server:call(?MODULE, get_q), Q.
 %
 % @end
 %------------------------------------------------------------------------------
--spec ( start_link/0 :: ( ) -> tuple(ok, Pid :: pid()) | ignore | tuple(error, Error :: term()) ).
-start_link ( ) -> gen_server:start_link( {local, ?SERVER}, ?MODULE, [], [] ).
+-spec ( start_link/3 :: ( AHost :: string(), ReqProp :: proplist(), Flow :: proplist ) ->
+   tuple(ok, Pid :: pid()) | ignore | tuple(error, Error :: term()) )
+.
+start_link ( AHost, ReqProp, Flow ) -> gen_server:start_link( ?MODULE, [AHost, ReqProp, Flow], [] ).
 
 
 
@@ -74,13 +83,26 @@ start_link ( ) -> gen_server:start_link( {local, ?SERVER}, ?MODULE, [], [] ).
 %
 % @end
 %------------------------------------------------------------------------------
--spec ( init/1 :: (_) ->
+-spec ( init/1 :: (Args :: list()) ->
      tuple(ok, #state{})
    | tuple(ok, #state{}, Timeout :: integer())
    | ignore
    | tuple(stop, Reason :: term())
 ).
-init ( [] ) -> { ok, #state{}, 0 }.
+init ( [AHost, ReqProp, Flow] ) ->
+   CallId = proplists:get_value(<<"Call-ID">>, ReqProp),
+   { 
+      ok,
+      #state{
+         flow = Flow,
+         amqp_h = AHost,
+         amqp_q = get_amqp_queue(AHost, CallId),
+         call_id = CallId,
+         req_prop = ReqProp
+      }, 
+      0 
+   }
+.
 
 %------------------------------------------------------------------------------
 % @private
@@ -146,15 +168,10 @@ handle_cast ( Msg, State ) ->
    | tuple(noreply, State :: term(), Timeout :: integer())
    | tuple(stop, Reason :: term(), State :: term())
 ).
-handle_info ( timeout, State ) ->
-   format_log(info, "CF CALL HANDLER (~p): timeout...~n", [self()]),
-   AHost = whapps_controller:get_amqp_host(),
-   {ok, Q} = start_amqp(AHost),
-   { noreply, State#state{amqp_host=AHost, amqp_q=Q} };
 handle_info ( #'basic.consume_ok'{}, State ) -> 
    format_log(info, "CF CALL HANDLER (~p): basic consume ok...~n", [self()]),
    { noreply, State };
-handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{}=State ) ->
+handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flow=Flow}=State ) ->
    format_log(
       info,
       "CF CALL HANDLER (~p): handling request request...~nProplist: ~p~nPayload:~p~n",
@@ -162,7 +179,7 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{}=State ) 
    ),
    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
    case proplists:get_value(<<"Event-Name">>, Prop) of
-      <<"route_win">> -> spawn(fun() -> callflow(Prop) end);
+      <<"route_win">> -> spawn(fun() -> callflow(Prop, Flow) end);
       _               -> format_log(info, "CF CALL HANDLER (~p): Ignoring message...~n~p~n", [self(), Prop])
    end,
    { noreply, State };
@@ -218,17 +235,17 @@ code_change ( _OldVsn, State, _Extra ) -> { ok, State }.
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec ( start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary()) ).
-start_amqp ( AHost ) ->
+-spec ( get_amqp_queue/2 :: (AHost :: string(), CallId :: binary()) -> tuple(ok, binary()) ).
+get_amqp_queue ( AHost, CallId ) ->
    format_log(
       info,
-      "CF CALL HANDLER (~p): Starting AMPQ: ~p~n",
-      [self(), AHost]
+      "CF CALL HANDLER (~p): Getting AMQP queue...: ~p: ~p~n",
+      [self(), AHost, CallId]
    ),
 
    AmqpQ = amqp_util:new_callevt_queue(AHost, <<>>),
 
-   amqp_util:bind_q_to_callevt(AHost, AmqpQ, <<"">>, events),
+   amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId, events),
    amqp_util:bind_q_to_targeted(AHost, AmqpQ),
 
    amqp_util:basic_consume(AHost, AmqpQ),
@@ -238,7 +255,7 @@ start_amqp ( AHost ) ->
       "CF CALL HANDLER (~p): Consuming on call event queue: ~p~n",
       [self(), AmqpQ]
    ),
-   { ok, AmqpQ }
+   AmqpQ
 .
 
 
@@ -255,17 +272,39 @@ start_amqp ( AHost ) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
-callflow ( Proplist ) ->
+callflow ( Proplist, Flow ) ->
    format_log(
       info,
       "CF CALL HANDLER (~p): Call is parked and callflow process is spawned~n",
       [self()]
    ),
+   
+   % sending the tree to execute
+   execute(Flow)
+.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Executes the head node of the tree and proceeds to the next child
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+execute ( [] ) ->
+   format_log(
+      error,
+      "CF CALL HANDLER (~p): Empty flow...~n",
+      [self()]
+   );
+execute ( Tree ) ->
+   Module = proplists:get_value(<<"module">>, Tree),
+   Data = proplists:get_value(<<"data">>, Tree),
    format_log(
       info,
-      "CF CALL HANDLER (~p): Proplist with control queue:~n~p~n",
-      [self(), Proplist]
+      "CF CALL HANDLER (~p): Executing module '~p' with data:~n~p~n",
+      [self(), Module, Data]
    )
+   % Get response and call itself with the next child
 .
 
 %%%
