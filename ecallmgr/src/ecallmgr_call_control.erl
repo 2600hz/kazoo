@@ -115,6 +115,8 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
 		       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
 	    EvtPid ! {ctl_down, self()};
+	{amqp_host_down, H} ->
+	    format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]);
 	#'basic.consume_ok'{}=BC ->
 	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
 	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
