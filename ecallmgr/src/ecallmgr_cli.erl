@@ -39,14 +39,11 @@ usage() ->
 status(always, _) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     format("Retrieving data for ~s~n", [Node]),
-    Res = rpc_call(Node, ecallmgr_fs_handler, diagnostics, []),
-    case Res of 
-	{ok, _, _} -> Res;
+    case rpc_call(Node, ecallmgr_fs_handler, diagnostics, []) of 
+	{ok, _, _}=Res -> Res;
 	{ok, Data} ->
 	    diagnostics_server:display_fs_data(Data),
-	    ok;
-	_ ->
-	    format("Diagnostics error: ~p~n", [Res])
+	    ok
     end.
 
 set_amqp_host(always, [Host]=Arg) ->
