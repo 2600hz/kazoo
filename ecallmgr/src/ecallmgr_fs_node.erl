@@ -71,14 +71,15 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    monitor_loop(Node, S);
 	{event, [undefined | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
-	    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
 	    case EvtName of
 		<<"HEARTBEAT">> ->
 		    monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
 		<<"CUSTOM">> ->
+		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
 		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
 		    monitor_loop(Node, S);
 		_ ->
+		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
 		    monitor_loop(Node, S)
 	    end;
 	{event, [UUID | Data]} ->
@@ -199,7 +200,7 @@ process_custom_data(Data, Host, AppVsn) ->
 
 publish_register_event(Data, Host, AppVsn) ->
     Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
-    DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, ?MODULE, AppVsn),
+    DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, whistle_util:to_binary(?MODULE), AppVsn),
     ApiProp = lists:foldl(fun(K, Api) ->
 				  Lk = binary_to_lower(K),
 				  case props:get_value(Lk, Data) of

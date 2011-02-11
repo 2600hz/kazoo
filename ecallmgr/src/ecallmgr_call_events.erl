@@ -63,8 +63,12 @@ loop(Node, UUID, Host, CtlPid) ->
 	call_hangup ->
 	    case CtlPid of
 		undefined -> ok;
-		_ -> CtlPid ! {hangup, UUID}
+		_ -> CtlPid ! {hangup, self(), UUID}
 	    end,
+
+	    receive {ctl_down, CtlPid} -> ok
+	    after 500 -> ok end,
+
 	    format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]);
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
