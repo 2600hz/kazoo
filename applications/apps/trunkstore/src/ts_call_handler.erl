@@ -156,6 +156,12 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    true = whistle_api:route_win_v(Prop),	    
 	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), Prop]),
 	    {noreply, S#state{ctl_q=props:get_value(<<"Control-Queue">>, Prop)}};
+	<<"CHANNEL_BRIDGE">> ->
+	    true = whistle_api:call_event_v(Prop),
+	    OtherCallID = get_value(<<"Other-Leg-Call-ID">>, Prop),
+	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags]),
+	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
+	    {noreply, S};
 	_EvtName ->
 	    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
 	    {noreply, S}
@@ -204,12 +210,18 @@ get_amqp_queue(AmqpHost, CallID) ->
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> no_return()).
-update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}) ->
-    ts_acctmgr:release_trunk(DocID, CallID);
+update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true
+			       ,diverted_account_doc_id=DAcctId, account_doc_id=DocID
+			      }) ->
+    ts_acctmgr:release_trunk(DocID, CallID),
+    ts_acctmgr:release_trunk(DAcctId, CallID);
 update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
-				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S}) ->
+				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S, diverted_account_doc_id=DAcctId
+				     }) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    ts_acctmgr:release_trunk(DocID, CallID, Amount).
+    ts_acctmgr:release_trunk(DocID, CallID, Amount),
+    ts_acctmgr:release_trunk(DAcctId, CallID, Amount).
+	    
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs

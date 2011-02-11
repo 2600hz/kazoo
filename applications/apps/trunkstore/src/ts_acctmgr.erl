@@ -73,11 +73,13 @@ has_credit(Acct, Amt) ->
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
--spec(reserve_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> tuple(ok, flat_rate | per_min) | tuple(error, no_funds)).
+-spec(reserve_trunk/2 :: (Acct :: binary(), CallID :: binary()) ->
+			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds)).
 reserve_trunk(Acct, CallID) ->
     reserve_trunk(Acct, CallID, 0).
 
--spec(reserve_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> tuple(ok, flat_rate | per_min) | tuple(error, term())).
+-spec(reserve_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) ->
+			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds)).
 reserve_trunk(<<>>, _, _) ->
     {error, no_account};
 reserve_trunk(_, <<>>, _) ->
@@ -87,13 +89,18 @@ reserve_trunk(Acct, CallID, Amt) ->
 
 %% release a reserved trunk
 %% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
--spec(release_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> no_return()).
+-spec(release_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> ok | tuple(error, no_account | no_callid)).
 release_trunk(Acct, CallID) ->
     release_trunk(Acct, CallID, 0).
 
--spec(release_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> no_return()).
+-spec(release_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> ok | tuple(error, no_account | no_callid)).
+release_trunk(<<>>, _, _) ->
+    {error, no_account};
+release_trunk(_, <<>>, _) ->
+    {error, no_callid};
 release_trunk(Acct, CallID, Amt) ->
-    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}).
+    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}),
+    ok.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -332,7 +339,7 @@ account_doc(AcctId, Credit, Trunks) ->
 				       ]).
 
 reserve_doc(AcctId, CallID, flat_rate) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary, "-", AcctId/binary>>}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, flat_rate}
 		       ,{<<"trunks">>, 1}
@@ -340,7 +347,7 @@ reserve_doc(AcctId, CallID, flat_rate) ->
 		       ,{<<"doc_type">>, <<"reserve">>}
 		      ]);
 reserve_doc(AcctId, CallID, per_min) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary, "-", AcctId/binary>>}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, 0}
@@ -348,14 +355,14 @@ reserve_doc(AcctId, CallID, per_min) ->
 		      ]).
 
 release_doc(AcctId, CallID, flat_rate) ->
-    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary>>}
+    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
 			      ,{<<"call_id">>, CallID}
 			      ,{<<"trunk_type">>, flat_rate}
 			      ,{<<"doc_type">>, <<"release">>}
 			     ]).
 
 release_doc(AcctId, CallID, per_min, Amt) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}

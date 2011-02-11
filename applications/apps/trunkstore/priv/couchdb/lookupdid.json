@@ -2,7 +2,7 @@
   ,"language":"javascript"
   ,"views":{
     "LookUpDID": {
-      "map": "function(doc) { if(doc.type != 'sys_info' ) return; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs) { if (srv[1].DIDs) { var DIDs = Iterator(srv[1].DIDs); for (var DID in DIDs) { emit(DID[0], { 'account_credit': doc.account.credits.prepay || 0.0, 'server_credit': srv[1].credits || 0.0, 'did_credit': DID[1].credits || 0.0, 'trunks_available': doc.trunks, 'callerid_server': srv[1].callerid || '', 'callerid_account': doc.callerid || '', 'e911_callerid_server': srv[1].e911_callerid || '', 'e911_callerid_account': doc.e911_callerid || '', 'auth': srv[1].auth, 'DID_Opts': DID[1], 'inbound_format': srv[1].inbound_format || 'NPANXXXXXX', 'account': doc.account}); } } } } }"
+      "map": "function(doc) { if(doc.type != 'sys_info' ) return; var realm = doc.account.auth_realm; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs) { srv[1].auth['auth_realm'] = realm; if (srv[1].DIDs) { var DIDs = Iterator(srv[1].DIDs); for (var DID in DIDs) { emit(DID[0], { 'callerid_server': srv[1].callerid || '', 'callerid_account': doc.callerid || '', 'e911_callerid_server': srv[1].e911_callerid || '', 'e911_callerid_account': doc.e911_callerid || '', 'auth': srv[1].auth, 'DID_Opts': DID[1], 'inbound_format': srv[1].inbound_format || 'NPANXXXXXX'}); } } } } }"
     }
   }
 }
