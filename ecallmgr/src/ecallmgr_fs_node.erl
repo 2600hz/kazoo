@@ -9,7 +9,10 @@
 
 %% API
 -export([start_handler/3]).
--export([monitor_node/2]).
+-export([monitor_node/2, resource_consume/2]).
+
+%% Internal Exports - not meant for outside the module
+-export([monitor_loop/2]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -34,6 +37,17 @@
 -define(MIN_TO_MICRO(Min), whistle_util:to_integer(Min)*60*1000000).
 -define(SEC_TO_MICRO(Sec), whistle_util:to_integer(Sec)*1000000).
 -define(MILLI_TO_MICRO(Mil), whistle_util:to_integer(Mil)*1000).
+
+-spec(resource_consume/2 :: (FsNodePid :: pid(), Route :: binary()) ->
+				 tuple(resource_consumed, binary(), binary(), integer())
+				     | tuple(resource_error, binary() | error)).
+resource_consume(FsNodePid, Route) ->
+    FsNodePid ! {resource_consume, self(), Route},
+    receive Resp -> Resp
+    after   10000 -> {resource_error, timeout}
+    end.
+	    
+
 
 -spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
 start_handler(Node, Options, AmqpHost) ->
@@ -62,46 +76,51 @@ monitor_node(Node, #handler_state{}=S) ->
     freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
 			    ,'CUSTOM', 'sofia::register'
 			   ]),
-    monitor_loop(Node, S).
+    ?MODULE:monitor_loop(Node, S).
 
+%% If we start up while there are active channels, we'll have negative active_channels in our stats.
+%% The first clause fixes that situation
+monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=S) when De > Cr ->
+    ?MODULE:monitor_loop(Node, S#handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=Cr}});
 monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats, options=Opts}=S) ->
     receive
 	{diagnostics, Pid} ->
 	    spawn(fun() -> diagnostics(Pid, Stats) end),
-	    monitor_loop(Node, S);
+	    ?MODULE:monitor_loop(Node, S);
 	{event, [undefined | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    case EvtName of
 		<<"HEARTBEAT">> ->
-		    monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
+		    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
 		<<"CUSTOM">> ->
 		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
 		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
-		    monitor_loop(Node, S);
+		    ?MODULE:monitor_loop(Node, S);
 		_ ->
 		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
-		    monitor_loop(Node, S)
+		    ?MODULE:monitor_loop(Node, S)
 	    end;
 	{event, [UUID | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    format_log(info, "FS_NODE(~p): Evt: ~p UUID: ~p~n", [self(), EvtName, UUID]),
 	    case EvtName of
-		<<"CHANNEL_CREATE">> -> monitor_loop(Node, S#handler_state{stats=Stats#node_stats{created_channels=Cr+1}});
+		<<"CHANNEL_CREATE">> ->
+		    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{created_channels=Cr+1}});
 		<<"CHANNEL_DESTROY">> ->
 		    ChanState = get_value(<<"Channel-State">>, Data),
 		    case ChanState of
 			<<"CS_NEW">> -> % ignore
-			    monitor_loop(Node, S);
+			    ?MODULE:monitor_loop(Node, S);
 			<<"CS_DESTROY">> ->
-			    monitor_loop(Node, S#handler_state{stats=Stats#node_stats{destroyed_channels=De+1}})
+			    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{destroyed_channels=De+1}})
 		    end;
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    monitor_loop(Node, S);
+		    ?MODULE:monitor_loop(Node, S);
 		<<"CUSTOM">> ->
 		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
-		    monitor_loop(Node, S);
+		    ?MODULE:monitor_loop(Node, S);
 		_ ->
-		    monitor_loop(Node, S)
+		    ?MODULE:monitor_loop(Node, S)
 	    end;
 	{resource_request, Pid, <<"audio">>, ChanOptions} ->
 	    ActiveChan = Cr - De,
@@ -111,18 +130,18 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 
 	    MinReq = get_value(min_channels_requested, ChanOptions),
 	    FSHandlerPid = self(),
-	    spawn(fun() ->channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) end),
-	    monitor_loop(Node, S);
+	    spawn(fun() -> channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) end),
+	    ?MODULE:monitor_loop(Node, S);
 	{resource_consume, Pid, Route} ->
 	    ActiveChan = Cr - De,
 	    MaxChan = get_value(max_channels, Opts, 1),
 	    AvailChan =  MaxChan - ActiveChan,
 
 	    spawn(fun() -> originate_channel(Node, S#handler_state.amqp_host, Pid, Route, AvailChan) end),
-	    monitor_loop(Node, S);
+	    ?MODULE:monitor_loop(Node, S);
 	Msg ->
 	    format_log(info, "FS_NODE(~p): Recv ~p~n", [self(), Msg]),
-	    monitor_loop(Node, S)
+	    ?MODULE:monitor_loop(Node, S)
     end.
 
 -spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
@@ -130,7 +149,7 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
     format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
     OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
     format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
-    case freeswitch:api(Node, originate, OrigStr, 10000) of
+    case freeswitch:api(Node, originate, OrigStr, 9000) of
 	{ok, X} ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
 	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
