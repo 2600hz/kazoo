@@ -95,19 +95,19 @@ publish_msg(Host, UUID, Prop) ->
 
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
-	    EvtProp = [{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
+	    EvtProp0 = [{<<"Msg-ID">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
 		       ,{<<"Timestamp">>, get_value(<<"Event-Date-Timestamp">>, Prop)}
 		       ,{<<"Call-ID">>, UUID}
 		       ,{<<"Call-Direction">>, get_value(<<"Call-Direction">>, Prop)}
 		       ,{<<"Channel-Call-State">>, get_value(<<"Channel-Call-State">>, Prop)}
-		       | event_specific(EvtName, Prop) ] ++
-		whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APPNAME, ?APPVER),
-	    EvtProp1 = case ecallmgr_util:custom_channel_vars(Prop) of
-			   [] -> EvtProp;
-			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp]
+		       | event_specific(EvtName, Prop) ],
+	    EvtProp1 = EvtProp0 ++ whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APPNAME, ?APPVER),
+	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
+			   [] -> EvtProp1;
+			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
 		       end,
 
-	    case whistle_api:call_event(EvtProp1) of
+	    case whistle_api:call_event(EvtProp2) of
 		{ok, JSON} ->
 		    amqp_util:callevt_publish(Host, UUID, JSON, event);
 		{error, Msg} ->
