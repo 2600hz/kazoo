@@ -32,7 +32,7 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {amqp_host = "" :: string()
-		,callmgr_q = <<>> :: binary()
+		,callmgr_q = <<>> :: binary() | tuple(error, term())
 	       }).
 
 %%%===================================================================

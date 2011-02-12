@@ -164,7 +164,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_
 			   {ok, [{struct, [{<<"key">>, _}, {<<"value">>, 0}] }] } ->
 			       case has_credit(RDB, AcctId, Amt) of
 				   true -> {reserve_doc(AcctId, CallID, per_min), per_min};
-				   false -> no_funds
+				   false -> {[], no_funds}
 			       end;
 			   {ok, [{struct, [{<<"key">>, _}, {<<"value">>, _}] }] } ->
 			       {reserve_doc(AcctId, CallID, flat_rate), flat_rate}
