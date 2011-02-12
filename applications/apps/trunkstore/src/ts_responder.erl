@@ -110,6 +110,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, S) ->
     AHost = whapps_controller:get_amqp_host(),
+    format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host~n", [self(), AHost]),
     {ok, CQ} = start_amqp(AHost),
     {noreply, S#state{amqp_host=AHost, callmgr_q=CQ}};
 %% receive resource requests from Apps
@@ -117,6 +118,11 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
 %% catch all so we don't lose state
+handle_info({amqp_host_down, H}, S) ->
+    format_log(info, "TS_RESPONDER(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
+    AHost = whapps_controller:get_amqp_host(),
+    {ok, CQ} = start_amqp(AHost),
+    {noreply, S#state{amqp_host=AHost, callmgr_q=CQ}, 1000};
 handle_info(_Unhandled, State) ->
     format_log(info, "TS_RESPONDER(~p): unknown info request: ~p~n", [self(), _Unhandled]),
     {noreply, State}.
