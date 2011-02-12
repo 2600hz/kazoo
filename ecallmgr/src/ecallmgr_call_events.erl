@@ -29,60 +29,67 @@ start_link(Node, UUID, Host, CtlPid) ->
 init(Node, UUID, Host, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
     add_amqp_listener(Host, UUID),
-    loop(Node, UUID, Host, CtlPid).
+    loop(Node, UUID, Host, CtlPid, infinity).
 
--spec(loop/4 :: (Node :: atom(), UUID :: binary(), Host :: string(), CtlPid :: pid() | undefined) -> no_return()).
-loop(Node, UUID, Host, CtlPid) ->
+-spec(loop/5 :: (Node :: atom(), UUID :: binary(), Host :: string(), CtlPid :: pid() | undefined, Timeout :: infinity | integer()) -> no_return()).
+loop(Node, UUID, Host, CtlPid, Timeout) ->
     receive
 	{call, {event, [UUID | Data]}} ->
 	    format_log(info, "EVT(~p): {Call, {Event}} for ~p: ~p~n", [self(), UUID, get_value(<<"Event-Name">>, Data)]),
 	    publish_msg(Host, UUID, Data),
-	    loop(Node, UUID, Host, CtlPid);
+	    loop(Node, UUID, Host, CtlPid, Timeout);
 	{call_event, {event, [ UUID | Data ] } } ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
 	    AppName = get_value(<<"Application">>, Data),
 	    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p~n"
 		       ,[self(), UUID, AppName, EvtName]),
 
-	    case EvtName of
-		<<"CHANNEL_HANGUP_COMPLETE">> ->
-		    spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Host, Data) end);
-		<<"CHANNEL_BRIDGE">> ->
-		    case get_value(<<"Other-Leg-Unique-ID">>, Data) of
-			undefined -> ok;
-			OtherUUID ->
-			    _Pid = ecallmgr_call_sup:start_event_process(Node, OtherUUID, Host, undefined),
-			    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, _Pid])
-		    end;
-		_ -> ok
-	    end,
+	    Timeout1 = case EvtName of
+			   <<"CHANNEL_HANGUP_COMPLETE">> ->
+			       spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Host, Data) end),
+			       5000;
+			   <<"CHANNEL_BRIDGE">> ->
+			       case get_value(<<"Other-Leg-Unique-ID">>, Data) of
+				   undefined -> ok;
+				   OtherUUID ->
+				       _Pid = ecallmgr_call_sup:start_event_process(Node, OtherUUID, Host, undefined),
+				       format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, _Pid])
+			       end,
+			       Timeout;
+			   _ -> Timeout
+		       end,
 
 	    spawn(fun() -> publish_msg(Host, UUID, Data) end),
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
-	    loop(Node, UUID, Host, CtlPid);
+	    loop(Node, UUID, Host, CtlPid, Timeout1);
 	call_hangup ->
-	    case CtlPid of
-		undefined -> ok;
-		_ -> CtlPid ! {hangup, self(), UUID}
-	    end,
-
-	    receive {ctl_down, CtlPid} -> ok
-	    after 500 -> ok end,
-
-	    format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]);
+	    shutdown(CtlPid, UUID);
 	{amqp_host_down, H} ->
 	    format_log(info, "EVT(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
 	    self() ! call_hangup,
-	    loop(Node, UUID, Host, CtlPid);
+	    loop(Node, UUID, Host, CtlPid, Timeout);
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    format_log(info, "EVT(~p): AMQP Msg ~p~n", [self(), Prop]),
-	    loop(Node, UUID, Host, CtlPid);
+	    loop(Node, UUID, Host, CtlPid, Timeout);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
-	    loop(Node, UUID, Host, CtlPid)
+	    loop(Node, UUID, Host, CtlPid, Timeout)
+    after
+	Timeout -> shutdown(CtlPid, UUID)
     end.
+
+shutdown(CtlPid, UUID) ->
+    case CtlPid of
+	undefined -> ok;
+	_ -> CtlPid ! {hangup, self(), UUID}
+    end,
+
+    receive {ctl_down, CtlPid} -> ok
+    after 500 -> ok end,
+
+    format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]).
 
 %% let the ctl process know a command finished executing
 -spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
