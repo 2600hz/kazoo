@@ -108,9 +108,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(_, #state{callmgr_q={error, _}}=S) ->
+    AHost = whapps_controller:get_amqp_host(),
+    format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host, will retry in a bit if doesn't work~n", [self(), AHost]),
+    {ok, CQ} = start_amqp(AHost),
+    {noreply, S#state{amqp_host=AHost, callmgr_q=CQ}, 5000};
 handle_info(timeout, S) ->
     AHost = whapps_controller:get_amqp_host(),
-    format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host~n", [self(), AHost]),
+    format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host, will retry in a bit if doesn't work~n", [self(), AHost]),
     {ok, CQ} = start_amqp(AHost),
     {noreply, S#state{amqp_host=AHost, callmgr_q=CQ}};
 %% receive resource requests from Apps
