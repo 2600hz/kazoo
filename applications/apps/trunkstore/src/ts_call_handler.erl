@@ -138,6 +138,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) ->
+    H = whapps_controller:get_amqp_host(),
+    NewQ = get_amqp_queue(H, CallID, Q),
+    {noreply, S#state{amqp_h=H, amqp_q=NewQ}};
+handle_info({amqp_host_down, H}, S) ->
+    format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
+    {noreply, S, 0};
 handle_info(#'basic.consume_ok'{}, S) -> {noreply, S};
 handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags}=S) ->
     format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
@@ -197,8 +204,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec(get_amqp_queue/2 :: (AmqpHost :: string(), CallID :: binary()) -> binary()).
-get_amqp_queue(AmqpHost, CallID) ->
-    EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
+get_amqp_queue(AmqpHost, CallID) -> get_amqp_queue(AmqpHost, CallID, <<>>).
+
+get_amqp_queue(AmqpHost, CallID, Q) ->
+    EvtQ = amqp_util:new_callevt_queue(AmqpHost, Q),
     format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p", [self(), EvtQ, CallID]),
 
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),

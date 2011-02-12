@@ -121,13 +121,16 @@ callmgr_exchange(Host) ->
 new_exchange(Host, Exchange, Type) ->
     new_exchange(Host, Exchange, Type, []).
 new_exchange(Host, Exchange, Type, _Options) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    ED = #'exchange.declare'{
-      ticket = Ticket
-      ,exchange = Exchange
-      ,type = Type
-     },
-    #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED).
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    ED = #'exchange.declare'{
+	      ticket = Ticket
+	      ,exchange = Exchange
+	      ,type = Type
+	     },
+	    #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED);
+	{error, _}=E -> E
+    end.
 
 new_targeted_queue(Host, <<>>) ->
     new_queue(Host, <<>>, [{nowait, false}]);
@@ -164,19 +167,22 @@ new_queue(Host, Queue) ->
 new_queue(Host, Queue, Options) when is_list(Queue) ->
     new_queue(Host, list_to_binary(Queue), Options);
 new_queue(Host, Queue, Options) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    QD = #'queue.declare'{
-      ticket = Ticket
-      ,queue = Queue
-      ,passive = get_value(passive, Options, false)
-      ,durable = get_value(durable, Options, false)
-      ,exclusive = get_value(exclusive, Options, true)
-      ,auto_delete = get_value(auto_delete, Options, true)
-      ,nowait = get_value(nowait, Options, false)
-      ,arguments = get_value(arguments, Options, [])
-     },
-    #'queue.declare_ok'{queue=Q} = amqp_channel:call(Channel, QD),
-    Q.
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    QD = #'queue.declare'{
+	      ticket = Ticket
+	      ,queue = Queue
+	      ,passive = get_value(passive, Options, false)
+	      ,durable = get_value(durable, Options, false)
+	      ,exclusive = get_value(exclusive, Options, true)
+	      ,auto_delete = get_value(auto_delete, Options, true)
+	      ,nowait = get_value(nowait, Options, false)
+	      ,arguments = get_value(arguments, Options, [])
+	     },
+	    #'queue.declare_ok'{queue=Q} = amqp_channel:call(Channel, QD),
+	    Q;
+	{error, _}=E -> E
+    end.
 
 delete_callevt_queue(Host, CallId) ->
     delete_callevt_queue(Host, CallId, []).
@@ -197,15 +203,18 @@ delete_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
 
 delete_queue(Host, Queue, Prop) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    QD = #'queue.delete'{
-      ticket = Ticket
-      ,queue=Queue
-      ,if_unused = get_value(if_unused, Prop, false)
-      ,if_empty = get_value(if_empty, Prop, false)
-      ,nowait = get_value(nowait, Prop, false)
-     },
-    amqp_channel:call(Channel, QD).
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    QD = #'queue.delete'{
+	      ticket = Ticket
+	      ,queue=Queue
+	      ,if_unused = get_value(if_unused, Prop, false)
+	      ,if_empty = get_value(if_empty, Prop, false)
+	      ,nowait = get_value(nowait, Prop, false)
+	     },
+	    amqp_channel:call(Channel, QD);
+	{error, _}=E -> E
+    end.
 
 %% Bind a Queue to an Exchange (with optional Routing Key)
 bind_q_to_targeted(Host, Queue) ->
@@ -253,16 +262,19 @@ bind_q_to_exchange(Host, Queue, Routing, Exchange) when is_list(Queue) ->
 bind_q_to_exchange(Host, Queue, Routing, Exchange) when is_list(Routing) ->
     bind_q_to_exchange(Host, Queue, list_to_binary(Routing), Exchange);
 bind_q_to_exchange(Host, Queue, Routing, Exchange) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    QB = #'queue.bind'{
-      ticket = Ticket
-      ,queue = Queue %% what queue does the binding attach to?
-      ,exchange = Exchange %% what exchange does the binding attach to?
-      ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
-      ,nowait = true
-      ,arguments = []
-     },
-    amqp_channel:call(Channel, QB).
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    QB = #'queue.bind'{
+	      ticket = Ticket
+	      ,queue = Queue %% what queue does the binding attach to?
+	      ,exchange = Exchange %% what exchange does the binding attach to?
+	      ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
+	      ,nowait = true
+	      ,arguments = []
+	     },
+	    amqp_channel:call(Channel, QB);
+	{error, _}=E -> E
+    end.
 
 unbind_q_from_callevt(Host, Queue, Routing) ->
     unbind_q_from_exchange(Host, Queue, Routing, ?EXCHANGE_CALLEVT).
@@ -278,15 +290,18 @@ unbind_q_from_targeted(Host, Queue) ->
     unbind_q_from_exchange(Host, Queue, Queue, ?EXCHANGE_TARGETED).
 
 unbind_q_from_exchange(Host, Queue, Routing, Exchange) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    QU = #'queue.unbind'{
-      ticket = Ticket
-      ,queue = Queue
-      ,exchange = Exchange
-      ,routing_key = Routing
-      ,arguments = []
-     },
-    amqp_channel:call(Channel, QU).
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    QU = #'queue.unbind'{
+	      ticket = Ticket
+	      ,queue = Queue
+	      ,exchange = Exchange
+	      ,routing_key = Routing
+	      ,arguments = []
+	     },
+	    amqp_channel:call(Channel, QU);
+	{error, _}=E -> E
+    end.
 
 %% create a consumer for a Queue
 basic_consume(Host, Queue) ->
@@ -295,21 +310,24 @@ basic_consume(Host, Queue) ->
 basic_consume(Host, Queue, Options) when is_list(Queue) ->
     basic_consume(Host, list_to_binary(Queue), Options);
 basic_consume(Host, Queue, Options) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    BC = #'basic.consume'{
-      ticket = Ticket
-      ,queue = Queue
-      ,consumer_tag = Queue
-      ,no_local = get_value(no_local, Options, false)
-      ,no_ack = get_value(no_ack, Options, true)
-      ,exclusive = get_value(exclusive, Options, true)
-      ,nowait = get_value(nowait, Options, false)
-     },
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    BC = #'basic.consume'{
+	      ticket = Ticket
+	      ,queue = Queue
+	      ,consumer_tag = Queue
+	      ,no_local = get_value(no_local, Options, false)
+	      ,no_ack = get_value(no_ack, Options, true)
+	      ,exclusive = get_value(exclusive, Options, true)
+	      ,nowait = get_value(nowait, Options, false)
+	     },
 
-    QoS = #'basic.qos'{prefetch_count = get_value(prefetch_count, Options, 0)},
-    amqp_channel:call(Channel, QoS),
+	    QoS = #'basic.qos'{prefetch_count = get_value(prefetch_count, Options, 0)},
+	    amqp_channel:call(Channel, QoS),
 
-    amqp_channel:subscribe(Channel, BC, self()).
+	    amqp_channel:subscribe(Channel, BC, self());
+	{error, _}=E -> E
+    end.
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
@@ -321,21 +339,24 @@ basic_publish(Host, Exchange, Queue, Payload, ContentType) ->
 basic_publish(Host, Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Host, Exchange, Queue, list_to_binary(Payload), ContentType, Prop);
 basic_publish(Host, Exchange, Queue, Payload, ContentType, Prop) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    BP = #'basic.publish'{
-      ticket = Ticket
-      ,exchange = Exchange
-      ,routing_key = Queue
-      ,mandatory = get_value(mandatory, Prop, false)
-      ,immediate = get_value(immediate, Prop, false)
-     },
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    BP = #'basic.publish'{
+	      ticket = Ticket
+	      ,exchange = Exchange
+	      ,routing_key = Queue
+	      ,mandatory = get_value(mandatory, Prop, false)
+	      ,immediate = get_value(immediate, Prop, false)
+	     },
 
-    %% Add the message to the publish, converting to binary
-    AM = #'amqp_msg'{
-      payload = Payload
-      ,props=#'P_basic'{content_type=ContentType}
-     },
-    amqp_channel:cast(Channel, BP, AM).
+	    %% Add the message to the publish, converting to binary
+	    AM = #'amqp_msg'{
+	      payload = Payload
+	      ,props=#'P_basic'{content_type=ContentType}
+	     },
+	    amqp_channel:cast(Channel, BP, AM);
+	{error, _}=E -> E
+    end.
 
 channel_close(Host) ->
     channel_close(Host, <<"Goodbye">>).
@@ -346,8 +367,11 @@ channel_close(Host, Msg) ->
     channel_close(Host, Msg, 200).
 
 channel_close(Host, Msg, Code) when is_list(Host) ->
-    {ok, Channel, _Ticket} = amqp_manager:open_channel(self(), Host),
-    channel_close(Channel, Msg, Code);
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, _Ticket} ->
+	    channel_close(Channel, Msg, Code);
+	{error, _}=E -> E
+    end;
 channel_close(Channel, Msg, Code) when is_pid(Channel) ->
     CC = #'channel.close'{
       reply_code = Code,
@@ -361,15 +385,18 @@ queue_delete(Host, Queue) ->
     queue_delete(Host, Queue, []).
 
 queue_delete(Host, Queue, Prop) ->
-    {ok, Channel, Ticket} = amqp_manager:open_channel(self(), Host),
-    QD = #'queue.delete'{
-      ticket=Ticket
-      ,queue=Queue
-      ,if_unused=get_value(if_unused, Prop, false)
-      ,if_empty = get_value(if_empty, Prop, false)
-      ,nowait = get_value(nowait, Prop, true)
-     },
-    amqp_channel:call(Channel, QD).
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, Ticket} ->
+	    QD = #'queue.delete'{
+	      ticket=Ticket
+	      ,queue=Queue
+	      ,if_unused=get_value(if_unused, Prop, false)
+	      ,if_empty = get_value(if_empty, Prop, false)
+	      ,nowait = get_value(nowait, Prop, true)
+	     },
+	    amqp_channel:call(Channel, QD);
+	{error, _}=E -> E
+    end.
 
 access_request() ->
     access_request([]).
@@ -385,15 +412,17 @@ access_request(Options) ->
 
 -spec(get_msg/2 :: (Host :: string(), Queue :: binary()) -> #amqp_msg{}).
 get_msg(Host, Queue) ->
-    {ok, C, _T} = amqp_manager:open_channel(self(), Host),
-    Get = #'basic.get'{queue=Queue, no_ack=false},
-    case amqp_channel:call(C, Get) of
-	{#'basic.get_ok'{}, Content} ->
-	    Content;
-	#'basic.get_empty'{} ->
-	    #amqp_msg{}
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, C, _T} ->
+	    Get = #'basic.get'{queue=Queue, no_ack=false},
+	    case amqp_channel:call(C, Get) of
+		{#'basic.get_ok'{}, Content} ->
+		    Content;
+		#'basic.get_empty'{} ->
+		    #amqp_msg{}
+	    end;
+	{error, _}=E -> E
     end.
-
 
 get_msg_type(Msg) ->
     { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) }.
