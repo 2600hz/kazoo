@@ -54,6 +54,7 @@
 		,amqp_q = <<>> :: binary()
 		,amqp_h = "" :: string()
 		,ctl_q = <<>> :: binary() %% the control queue for the call, if we won the route_resp race
+		,start_time = 0 :: integer() %% the timestamp of when this process started
                 ,route_flags = #route_flags{} :: #route_flags{}
 	       }).
 
@@ -92,10 +93,12 @@ get_queue(Pid) ->
 %% @end
 %%--------------------------------------------------------------------
 init([CallID, AmqpHost, RouteFlags]) ->
+    process_flag(trap_exit, true),
     {ok, #state{callid = CallID
 		,amqp_q = get_amqp_queue(AmqpHost, CallID)
 		,amqp_h = AmqpHost
 		,route_flags = RouteFlags
+		,start_time = ts_util:current_tstamp()
 	       }}.
 
 %%--------------------------------------------------------------------
@@ -158,7 +161,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 			  update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
 			  ts_cdr:store_cdr(Prop, Flags)
 		  end),
-	    {stop, cdr_received, S};
+	    {stop, normal, S};
 	<<"route_win">> ->
 	    true = whistle_api:route_win_v(Prop),	    
 	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), Prop]),
@@ -172,7 +175,10 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	_EvtName ->
 	    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
 	    {noreply, S}
-    end.
+    end;
+handle_info(_Info, S) ->
+    format_log(error, "TS_CALL(~p): Unhandled info: ~p~n", [self(), _Info]),
+    {noreply, S}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -185,8 +191,16 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_h=AmqpHost, amqp_q=Q}) ->
-    amqp_util:delete_callmgr_queue(AmqpHost, Q),
+terminate(shutdown, #state{route_flags=Flags, start_time=StartTime}) ->
+    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
+    format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk with ~p seconds elapsed, billing for ~p seconds"
+	       ,[self(), DeltaTime, Flags#route_flags.rate_minimum]),
+    update_account(Flags#route_flags.rate_minimum, Flags), % charge for minimmum seconds since we apparently messed up
+    ok;
+terminate(normal, #state{amqp_h=AmqpHost, callid=CallID, start_time=StartTime}) ->
+    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
+    format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
+    amqp_util:delete_callevt_queue(AmqpHost, CallID),
     ok.
 
 %%--------------------------------------------------------------------
@@ -204,10 +218,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec(get_amqp_queue/2 :: (AmqpHost :: string(), CallID :: binary()) -> binary()).
-get_amqp_queue(AmqpHost, CallID) -> get_amqp_queue(AmqpHost, CallID, <<>>).
+get_amqp_queue(AmqpHost, CallID) ->
+    get_amqp_queue(AmqpHost, CallID, <<>>).
 
 get_amqp_queue(AmqpHost, CallID, Q) ->
-    EvtQ = amqp_util:new_callevt_queue(AmqpHost, Q),
+    EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
     format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p", [self(), EvtQ, CallID]),
 
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
@@ -215,6 +230,7 @@ get_amqp_queue(AmqpHost, CallID, Q) ->
     amqp_util:bind_q_to_targeted(AmqpHost, EvtQ),
 
     amqp_util:basic_consume(AmqpHost, EvtQ),
+    amqp_util:delete_queue(Q),
     EvtQ.
 
 %% Duration - billable seconds
