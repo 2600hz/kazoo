@@ -230,7 +230,7 @@ get_amqp_queue(AmqpHost, CallID, Q) ->
     amqp_util:bind_q_to_targeted(AmqpHost, EvtQ),
 
     amqp_util:basic_consume(AmqpHost, EvtQ),
-    amqp_util:delete_queue(Q),
+    amqp_util:delete_queue(AmqpHost, Q),
     EvtQ.
 
 %% Duration - billable seconds

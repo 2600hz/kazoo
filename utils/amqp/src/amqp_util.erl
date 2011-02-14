@@ -202,6 +202,7 @@ delete_callmgr_queue(Host, Queue) ->
 delete_queue(Host, Queue) ->
     delete_queue(Host, Queue, []).
 
+delete_queue(_, <<>>, _) -> no_queue;
 delete_queue(Host, Queue, Prop) ->
     case amqp_manager:open_channel(self(), Host) of
 	{ok, Channel, Ticket} ->
