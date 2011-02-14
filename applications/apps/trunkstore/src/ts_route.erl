@@ -105,7 +105,7 @@ process_routing(Flags, ApiProp) ->
 	    format_log(error, "TS_ROUTE(~p): No rating information found to handle routing to ~s~n", [self(), Flags#route_flags.to_user]),
 	    {error, "No rating information found"};
 	{error, no_funds} ->
-	    format_log(error, "TS_ROUTE(~p): No funds/flat rate trunks to route call~p~n", [self()]),
+	    format_log(error, "TS_ROUTE(~p): No funds/flat rate trunks to route call~n", [self()]),
 	    response(503, ApiProp, Flags)
     end.
 
