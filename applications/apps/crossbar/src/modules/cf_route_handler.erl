@@ -29,9 +29,10 @@
 
 -define ( SERVER, ?MODULE ).
 -define ( APP_NAME, <<"callflow">> ).
--define ( APP_VERSION, <<"0.00001">> ).
+-define ( APP_VERSION, <<"0.2">> ).
 
 -record ( state, {amqp_host = "" :: string(), callmgr_q = <<>> :: binary()} ).
+%-record ( cb_context, {} ).
 
 
 %%-----------------------------------------------------------------------------
@@ -280,13 +281,13 @@ process_req ( {<<"dialplan">>, <<"route_req">>, To}, Proplist, State ) ->
       [self(), To]
    ),
    case validate(To) of
-      success       ->
+      { success, Flow } ->
          format_log(info, "CF ROUTE HANDLER (~p): Required callflow exists! Responding...~n", [self()]),
          RespQ = proplists:get_value(<<"Server-ID">>, Proplist),
-         respond(RespQ, State, Proplist);
-      { fail, Msg } ->
+         respond(RespQ, State, Proplist, Flow);
+      { fail, Msg }     ->
          format_log(error, "CF ROUTE HANDLER (~p): ~p~n", [self(), Msg]);
-      Unknown       ->
+      Unknown           ->
          format_log(error, "CF ROUTE HANDLER (~p): Unknown validation response: ~p~n", [self(), Unknown])
    end;
 process_req ( Msg_type, Proplist, _State ) ->
@@ -304,15 +305,15 @@ process_req ( Msg_type, Proplist, _State ) ->
 %
 % @end
 %------------------------------------------------------------------------------
--spec ( respond/3 :: (RespQ :: binary(), State :: tuple(), ReqProp :: proplist()) -> none() ).
-respond ( RespQ, #state{amqp_host=AHost}, ReqProp ) ->
+-spec ( respond/4 :: (RespQ :: binary(), State :: tuple(), ReqProp :: proplist(), Flow :: proplist()) -> none() ).
+respond ( RespQ, #state{amqp_host=AHost}, ReqProp, Flow ) ->
+   {ok, Pid} = cf_call_sup:start_proc([whapps_controller:get_amqp_host(), ReqProp, Flow]),
    Prop = [
       {<<"Test">>, <<"Testing was done successfully">>},
       {<<"Msg-ID">>, proplists:get_value(<<"Msg-ID">>, ReqProp)},
       {<<"Routes">>, []},
       {<<"Method">>, <<"park">>}
-      | whistle_api:default_headers(cf_call_handler:get_q(), <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
-%| whistle_api:default_headers(<<"some  id">>, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+      | whistle_api:default_headers(cf_call_handler:get_q(Pid), <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
    ],
    {ok, JSON} = whistle_api:route_resp(Prop),
    amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>)
@@ -334,11 +335,18 @@ respond ( RespQ, #state{amqp_host=AHost}, ReqProp ) ->
 % @end
 %------------------------------------------------------------------------------
 -spec ( validate/1 :: (To :: string()) -> success | tuple(fail, Reason :: string()) ).
-validate ( _To ) ->
-% for now every call is valid
-   success
-% no callflows have been found so we can successfully fail...
-%   { fail, "Cannot find an appropriate callflow" }
+validate ( To ) ->
+   case binary:split(To, <<"@">>) of
+      [Number|_] -> 
+         Context = crossbar_doc:load_view({"callflow", "flow"}, [{<<"key">>, Number}], #cb_context{db_name="callflow"}),
+         case Context#cb_context.doc of
+            [{struct, Doc}] ->
+               {struct, Flow} = proplists:get_value(<<"value">>, Doc),
+               { success, Flow };
+            _               -> { fail, "Cannot find an appropriate callflow" }
+         end;
+      _          -> { fail, "Unexpected adress..." }
+   end
 .
 
 %%%

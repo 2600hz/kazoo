@@ -143,46 +143,32 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.evtsub">>, [RD, Context
 	 end),
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.evtsub">>, [RD, Context | Params]}, State) ->
+    format_log(info, "GET evtsub: Context ~p Params: ~p~n", [Context, Params]),
+    spawn(fun() ->
+		  Pid ! {binding_result, true, [RD, Context, Params]}
+    	  end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.evtsub">>, [RD, Context | Params]}, State) ->
     format_log(info, "POST evtsub: Context ~p Params: ~p~n", [Context, Params]),
-    %% spawn(fun() ->
-
-    %% 	  end),
+    spawn(fun() ->
+		  Pid ! {binding_result, [RD, Context, Params]}
+     	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.evtsub">>, [RD, Context | Params]}, State) ->
     format_log(info, "PUT evtsub: Context ~p Params: ~p~n", [Context, Params]),
-    %% spawn(fun() ->
-    %%               case crossbar_doc:save(Context) of
-    %%                   #cb_context{resp_status=success, doc=Doc}=Context1 ->
-    %%                       case couch_mgr:db_create(get_db_name(Doc)) of
-    %%                         false ->
-    %%                             format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), get_db_name(Doc)]),
-    %%                             crossbar_doc:delete(Context1),
-    %%                             Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
-    %%                         true ->
-    %%                             Pid ! {binding_result, true, [RD, Context1, Params]}
-    %%                       end;
-    %%                   Else ->
-    %%                       Pid ! {binding_result, true, [RD, Else, Params]}
-    %%               end
-    %% 	  end),
+    spawn(fun() ->
+		  Pid ! {binding_result, true, [RD, Context, Params]}
+    	  end),
     {noreply, State};
-
-%handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
-%    %%spawn(fun() ->
-%                  Doc1 = crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], [], Doc),
-%                  Context1 = crossbar_doc:save(Context#cb_context{db_name=?ACCOUNTS_DB, doc=Doc1}),
-%                  Pid ! {binding_result, true, [RD, Context1, Params]},
-%	%%  end),
-%    {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.evtsub">>, [RD, Context | Params]}, State) ->
     format_log(info, "DELETE evtsub: Context ~p Params: ~p~n", [Context, Params]),
-    %% spawn(fun() ->
-    %%               Context1 = crossbar_doc:delete(Context),
-    %%               Pid ! {binding_result, true, [RD, Context1, Params]}
-    %% 	  end),
+    spawn(fun() ->
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+    	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
@@ -283,49 +269,24 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>, session=Session}=Context) ->
-    SubPid = ?MODULE:get_subscriber_pid(Session#session.'_id'),
+    %% get list of subscriptions and events, if any
+    {ok, _SubPid} = ?MODULE:get_subscriber_pid(Session#session.'_id'),
     Context;
-%% validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-%%     create_account(Context);
-%% validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-%%     load_account(DocId, Context);
-%% validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-%%     update_account(DocId, Context);
-%% validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-%%     load_account(DocId, Context);
-%% validate([DocId, <<"parent">>], #cb_context{req_verb = <<"get">>}=Context) ->
-%%     load_parent(DocId, Context);
-%% validate([DocId, <<"parent">>], #cb_context{req_verb = <<"post">>}=Context) ->
-%%     update_parent(DocId, Context);
-%% validate([DocId, <<"parent">>], #cb_context{req_verb = <<"delete">>}=Context) ->
-%%     load_account(DocId, Context);
-%% validate([DocId, <<"children">>], #cb_context{req_verb = <<"get">>}=Context) ->
-%%     load_children(DocId, Context);
-%% validate([DocId, <<"descendants">>], #cb_context{req_verb = <<"get">>}=Context) ->
-%%     load_descendants(DocId, Context);
-%% validate([DocId, <<"siblings">>], #cb_context{req_verb = <<"get">>}=Context) ->
-%%     load_siblings(DocId, Context);
+validate([], #cb_context{req_verb = <<"put">>, session=Session}=Context) ->
+    %% create a queue bound to a call-id's event stream
+    Context;
+validate([], #cb_context{req_verb = <<"delete">>, session=Session}=Context) ->
+    %% remove all subscriptions
+    Context;
+validate([CallID], #cb_context{req_verb = <<"get">>}=Context) ->
+    %% get events associated with CallID, if any
+    Context;
+validate([CallID], #cb_context{req_verb = <<"post">>}=Context) ->
+    %% get events associated with CallID, if any
+    Context;
+validate([CallID], #cb_context{req_verb = <<"delete">>}=Context) ->
+    %% get events associated with CallID, if any
+    Context;
 validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns}=Context) ->
     format_log(info, "EvtSub.validate: P: ~p~nV: ~s Ns: ~p~n", [Params, Verb, Nouns]),
     crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc({struct, Data}) ->
-    Schema = [
-	   { [<<"base">>, <<"name">>]
-	    ,[ {not_empty, []}
-              ,{is_format, [phrase]}
-	     ]}
-	   ,{ [<<"base">>, <<"status">>]
-	      ,[ {not_empty, []}
-		%,{in_list, [{<<"enabled">>, <<"disabled">>}]}
-	       ]}
-	  ],
-    Failed = crossbar_validator:validate(Schema, Data),
-    {Failed =:= [], Failed}.

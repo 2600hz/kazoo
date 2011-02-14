@@ -123,7 +123,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payloa
 handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(wrq:method(RD), Params, Context),
+                Context1 = validate(Params, Context),
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
@@ -242,18 +242,18 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Verb :: http_method(), Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate('GET', [], Context) ->
+-spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_user_summary([], Context);
-validate('PUT', [], Context) ->
+validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_user(Context);
-validate('GET', [DocId], Context) ->
+validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_user(DocId, Context);
-validate('POST', [DocId], Context) ->
+validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_user(DocId, Context);
-validate('DELETE', [DocId], Context) ->
+validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
     load_user(DocId, Context);
-validate(_, _, Context) ->
+validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
