@@ -169,7 +169,8 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(Prop),
 	    OtherCallID = get_value(<<"Other-Leg-Unique-ID">>, Prop),
-	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags]),
+	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
+	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=Flags#route_flags.diverted_account_doc_id}]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S};
 	_EvtName ->
@@ -191,16 +192,17 @@ handle_info(_Info, S) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(shutdown, #state{route_flags=Flags, start_time=StartTime}) ->
+terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=StartTime}) ->
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk with ~p seconds elapsed, billing for ~p seconds"
 	       ,[self(), DeltaTime, Flags#route_flags.rate_minimum]),
     update_account(Flags#route_flags.rate_minimum, Flags), % charge for minimmum seconds since we apparently messed up
+    amqp_util:delete_queue(H, Q),
     ok;
-terminate(normal, #state{amqp_h=AmqpHost, callid=CallID, start_time=StartTime}) ->
+terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime}) ->
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
-    amqp_util:delete_callevt_queue(AmqpHost, CallID),
+    amqp_util:delete_queue(H, Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -223,7 +225,7 @@ get_amqp_queue(AmqpHost, CallID) ->
 
 get_amqp_queue(AmqpHost, CallID, Q) ->
     EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
-    format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p", [self(), EvtQ, CallID]),
+    format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
 
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
@@ -235,18 +237,13 @@ get_amqp_queue(AmqpHost, CallID, Q) ->
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> no_return()).
-update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true
-			       ,diverted_account_doc_id=DAcctId, account_doc_id=DocID
-			      }) ->
-    ts_acctmgr:release_trunk(DocID, CallID),
-    ts_acctmgr:release_trunk(DAcctId, CallID);
+update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}) ->
+    ts_acctmgr:release_trunk(DocID, CallID);
 update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
-				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S, diverted_account_doc_id=DAcctId
+				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S
 				     }) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    ts_acctmgr:release_trunk(DocID, CallID, Amount),
-    ts_acctmgr:release_trunk(DAcctId, CallID, Amount).
-	    
+    ts_acctmgr:release_trunk(DocID, CallID, Amount).
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
