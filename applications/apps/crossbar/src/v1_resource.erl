@@ -451,8 +451,10 @@ create_pull_response(RD, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(succeeded/1 :: (Context :: #cb_context{}) -> boolean()).
-succeeded(#cb_context{resp_status=Status}) ->
-    Status =:= success.
+succeeded(#cb_context{resp_status=success}) ->
+    true;
+succeeded(_) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @private
