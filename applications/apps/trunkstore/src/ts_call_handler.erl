@@ -174,7 +174,10 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 
 	    %% try to reserve a trunk for this leg
 	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
-	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=OtherAcctID, direction = <<"inbound">>}]),
+	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=OtherAcctID
+												      ,direction = <<"inbound">>
+												      ,callid = OtherCallID
+												     }]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S};
 	_EvtName ->
