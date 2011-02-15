@@ -16,7 +16,7 @@
 
 %% Data Access API
 -export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
-	 ,has_flatrate/1 %% has_flatrate(AcctId) - check if account has a free flatrate trunk
+	 ,has_flatrates/1 %% has_flatrates(AcctId) - check if account has a free flatrate trunk
 	 ,reserve_trunk/2, reserve_trunk/3 %% reserve_trunk(AcctId, CallID[, Amount]) - only reserve if avail_credit > Amt (0 if unspecified)
 	 ,release_trunk/2, release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
 	]).
@@ -73,11 +73,11 @@ has_credit(<<>>, _) ->
 has_credit(Acct, Amt) ->
     gen_server:call(?SERVER, {has_credit, whistle_util:to_binary(Acct), [Amt]}, infinity).
 
--spec(has_flatrate/1 :: (Acct :: binary()) -> boolean() | tuple(error, no_account)).
-has_flatrate(<<>>) ->
+-spec(has_flatrates/1 :: (Acct :: binary()) -> boolean() | tuple(error, no_account)).
+has_flatrates(<<>>) ->
     {error, no_account};
-has_flatrate(Acct) ->
-    gen_server:call(?SERVER, {has_flatrate, whistle_util:to_binary(Acct)}).
+has_flatrates(Acct) ->
+    gen_server:call(?SERVER, {has_flatrates, whistle_util:to_binary(Acct)}).
 
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
