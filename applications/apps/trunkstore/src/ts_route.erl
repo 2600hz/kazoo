@@ -131,7 +131,7 @@ find_route(Flags, ApiProp) ->
 		    OrigAcctId = Flags#route_flags.account_doc_id,
 		    FlagsIn0 = create_flags(Did, ApiProp),
 		    FlagsIn = FlagsIn0#route_flags{direction = <<"inbound">>},
-		    case ts_acctmgr:has_flatrate(FlagsIn#route_flags.account_doc_id) orelse
+		    case ts_acctmgr:has_flatrates(FlagsIn#route_flags.account_doc_id) orelse
 			ts_acctmgr:has_credit(FlagsIn#route_flags.account_doc_id) of
 			true ->
 			    %% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
