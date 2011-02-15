@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ts_util).
 
--export([find_ip/1, filter_active_calls/2, get_media_handling/1]).
+-export([find_ip/1, filter_active_calls/2, get_media_handling/1, current_tstamp/0]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
@@ -50,3 +50,7 @@ filter_active_calls(CallID, ActiveCalls) ->
 -spec(get_media_handling/1 :: (Type :: binary() | undefined) -> binary()).
 get_media_handling(<<"process">>) -> <<"process">>;
 get_media_handling(_) -> <<"bypass">>.
+
+-spec(current_tstamp/0 :: () -> integer()).
+current_tstamp() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).

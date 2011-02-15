@@ -29,7 +29,7 @@
 
 -define ( SERVER, ?MODULE ).
 -define ( APP_NAME, <<"callflow">> ).
--define ( APP_VERSION, <<"0.00001">> ).
+-define ( APP_VERSION, <<"0.2">> ).
 
 -record ( state, {amqp_host = "" :: string(), callmgr_q = <<>> :: binary()} ).
 %-record ( cb_context, {} ).

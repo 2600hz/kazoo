@@ -50,10 +50,15 @@
 -include("../include/amqp_client/include/amqp_client.hrl").
 -include("ts.hrl").
 
+-define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
+
 -record(state, {callid = <<>> :: binary()
 		,amqp_q = <<>> :: binary()
 		,amqp_h = "" :: string()
 		,ctl_q = <<>> :: binary() %% the control queue for the call, if we won the route_resp race
+		,start_time = 0 :: integer() %% the timestamp of when this process started
+		,call_activity_ref = undefined :: undefined | reference()
+		,call_status = up :: up | down
                 ,route_flags = #route_flags{} :: #route_flags{}
 	       }).
 
@@ -92,10 +97,13 @@ get_queue(Pid) ->
 %% @end
 %%--------------------------------------------------------------------
 init([CallID, AmqpHost, RouteFlags]) ->
+    process_flag(trap_exit, true),
+
     {ok, #state{callid = CallID
 		,amqp_q = get_amqp_queue(AmqpHost, CallID)
 		,amqp_h = AmqpHost
 		,route_flags = RouteFlags
+		,start_time = ts_util:current_tstamp()
 	       }}.
 
 %%--------------------------------------------------------------------
@@ -138,9 +146,36 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(#'basic.consume_ok'{}, S) -> {noreply, S};
-handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags}=S) ->
+handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) ->
+    H = whapps_controller:get_amqp_host(),
+    NewQ = get_amqp_queue(H, CallID, Q),
+
+    {noreply, S#state{amqp_h=H, amqp_q=NewQ}};
+handle_info({amqp_host_down, H}, S) ->
+    format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
+    {noreply, S, 0};
+handle_info(call_activity_timeout, #state{call_status=down, call_activity_ref=Ref}=S) ->
+    stop_call_activity_ref(Ref),
+    format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
+    {stop, S, shutdown};
+handle_info(call_activity_timeout, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
+    format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
+    stop_call_activity_ref(Ref),
+
+    Prop = [{<<"Call-ID">>, CallID} | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_call_handler">>, <<"0.5.3">>)],
+    case whistle_api:call_status_req(Prop) of
+	{ok, JSON} ->
+	    amqp_util:callevt_publish(H, CallID, JSON, status_req);
+	{error, E} ->
+	    format_log(error, "TS_CALL(~p): sending status_req failed: ~p~n", [self(), E])
+    end,
+    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=down}};
+handle_info(#'basic.consume_ok'{}, #state{call_activity_ref=Ref}=S) ->
+    stop_call_activity_ref(Ref),
+    {noreply, S#state{call_activity_ref=call_activity_ref()}};
+handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags, call_activity_ref=Ref}=S) ->
     format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
+    stop_call_activity_ref(Ref),
 
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 
@@ -151,21 +186,36 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 			  update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
 			  ts_cdr:store_cdr(Prop, Flags)
 		  end),
-	    {stop, cdr_received, S};
+	    {stop, normal, S};
 	<<"route_win">> ->
 	    true = whistle_api:route_win_v(Prop),	    
 	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), Prop]),
-	    {noreply, S#state{ctl_q=props:get_value(<<"Control-Queue">>, Prop)}};
+	    {noreply, S#state{ctl_q=props:get_value(<<"Control-Queue">>, Prop), call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(Prop),
-	    OtherCallID = get_value(<<"Other-Leg-Call-ID">>, Prop),
-	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags]),
+	    OtherCallID = get_value(<<"Other-Leg-Unique-ID">>, Prop),
+	    OtherAcctID = Flags#route_flags.diverted_account_doc_id,
+	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
+
+	    %% try to reserve a trunk for this leg
+	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
+	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=OtherAcctID
+												      ,direction = <<"inbound">>
+												      ,callid = OtherCallID
+												     }]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
-	    {noreply, S};
+	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
+	<<"status_resp">> ->
+	    true = whistle_api:call_status_resp_v(Prop),
+	    format_log(info, "TS_CALL(~p): Call is active, despite appearances~n", [self()]),
+	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	_EvtName ->
 	    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
-	    {noreply, S}
-    end.
+	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}}
+    end;
+handle_info(_Info, S) ->
+    format_log(error, "TS_CALL(~p): Unhandled info: ~p~n", [self(), _Info]),
+    {noreply, S}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -178,8 +228,19 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_h=AmqpHost, amqp_q=Q}) ->
-    amqp_util:delete_callmgr_queue(AmqpHost, Q),
+terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
+    stop_call_activity_ref(Ref),
+    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
+    format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk with ~p seconds elapsed, billing for ~p seconds"
+	       ,[self(), DeltaTime, Flags#route_flags.rate_minimum]),
+    update_account(Flags#route_flags.rate_minimum, Flags), % charge for minimmum seconds since we apparently messed up
+    amqp_util:delete_queue(H, Q),
+    ok;
+terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
+    stop_call_activity_ref(Ref),
+    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
+    format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
+    amqp_util:delete_queue(H, Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -198,30 +259,29 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(get_amqp_queue/2 :: (AmqpHost :: string(), CallID :: binary()) -> binary()).
 get_amqp_queue(AmqpHost, CallID) ->
+    get_amqp_queue(AmqpHost, CallID, <<>>).
+
+get_amqp_queue(AmqpHost, CallID, Q) ->
     EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
-    format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p", [self(), EvtQ, CallID]),
+    format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
 
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
     amqp_util:bind_q_to_targeted(AmqpHost, EvtQ),
 
     amqp_util:basic_consume(AmqpHost, EvtQ),
+    amqp_util:delete_queue(AmqpHost, Q),
     EvtQ.
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> no_return()).
-update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true
-			       ,diverted_account_doc_id=DAcctId, account_doc_id=DocID
-			      }) ->
-    ts_acctmgr:release_trunk(DocID, CallID),
-    ts_acctmgr:release_trunk(DAcctId, CallID);
+update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}) ->
+    ts_acctmgr:release_trunk(DocID, CallID);
 update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
-				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S, diverted_account_doc_id=DAcctId
+				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S
 				     }) ->
     Amount = calculate_cost(R, RI, RM, S, Duration),
-    ts_acctmgr:release_trunk(DocID, CallID, Amount),
-    ts_acctmgr:release_trunk(DAcctId, CallID, Amount).
-	    
+    ts_acctmgr:release_trunk(DocID, CallID, Amount).
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
@@ -235,3 +295,11 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 	true -> Sur + ((RM / 60) * R);
 	false -> Sur + ((RM / 60) * R) + ( whistle_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
+
+call_activity_ref() ->
+    erlang:start_timer(?CALL_ACTIVITY_TIMEOUT, self(), call_activity_timeout).
+
+stop_call_activity_ref(undefined) ->
+    ok;
+stop_call_activity_ref(Ref) ->
+    erlang:cancel_timer(Ref).
