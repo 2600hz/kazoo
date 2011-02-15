@@ -155,11 +155,12 @@ handle_info({amqp_host_down, H}, S) ->
     format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
     {noreply, S, 0};
 handle_info(call_activity_timeout, #state{call_status=down, call_activity_ref=Ref}=S) ->
-    erlang:cancel_timer(Ref),
+    stop_call_activity_ref(Ref),
     format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
     {stop, S, shutdown};
 handle_info(call_activity_timeout, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
-    erlang:cancel_timer(Ref),
+    format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
+    stop_call_activity_ref(Ref),
 
     Prop = [{<<"Call-ID">>, CallID} | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_call_handler">>, <<"0.5.3">>)],
     case whistle_api:call_status_req(Prop) of
@@ -168,13 +169,13 @@ handle_info(call_activity_timeout, #state{call_activity_ref=Ref, amqp_q=Q, amqp_
 	{error, E} ->
 	    format_log(error, "TS_CALL(~p): sending status_req failed: ~p~n", [self(), E])
     end,
-    {noreply, S#state{call_activity_ref=call_activity_ref()}};
+    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=down}};
 handle_info(#'basic.consume_ok'{}, #state{call_activity_ref=Ref}=S) ->
-    erlang:cancel_timer(Ref),
+    stop_call_activity_ref(Ref),
     {noreply, S#state{call_activity_ref=call_activity_ref()}};
 handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags, call_activity_ref=Ref}=S) ->
     format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
-    erlang:cancel_timer(Ref),
+    stop_call_activity_ref(Ref),
 
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 
@@ -228,7 +229,7 @@ handle_info(_Info, S) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
-    erlang:cancel_timer(Ref),
+    stop_call_activity_ref(Ref),
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk with ~p seconds elapsed, billing for ~p seconds"
 	       ,[self(), DeltaTime, Flags#route_flags.rate_minimum]),
@@ -236,7 +237,7 @@ terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=Sta
     amqp_util:delete_queue(H, Q),
     ok;
 terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
-    erlang:cancel_timer(Ref),
+    stop_call_activity_ref(Ref),
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
     amqp_util:delete_queue(H, Q),
@@ -297,3 +298,8 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 
 call_activity_ref() ->
     erlang:start_timer(?CALL_ACTIVITY_TIMEOUT, self(), call_activity_timeout).
+
+stop_call_activity_ref(undefined) ->
+    ok;
+stop_call_activity_ref(Ref) ->
+    erlang:cancel_timer(Ref).
