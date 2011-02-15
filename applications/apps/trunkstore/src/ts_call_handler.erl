@@ -169,8 +169,12 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(Prop),
 	    OtherCallID = get_value(<<"Other-Leg-Unique-ID">>, Prop),
+	    OtherAcctID = Flags#route_flags.diverted_account_doc_id,
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
-	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=Flags#route_flags.diverted_account_doc_id}]),
+
+	    %% try to reserve a trunk for this leg
+	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
+	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=OtherAcctID, direction = <<"inbound">>}]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S};
 	_EvtName ->
