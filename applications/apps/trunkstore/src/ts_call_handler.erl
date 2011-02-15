@@ -172,7 +172,8 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    OtherAcctID = Flags#route_flags.diverted_account_doc_id,
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
-	    %% try to reserve a trunk for this leg
+	    %% try to reserve a trunk for this leg, and release the trunk if failover was configured
+	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid),
 	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
 	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=OtherAcctID, direction = <<"inbound">>}]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
