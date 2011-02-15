@@ -16,6 +16,7 @@
 
 %% Data Access API
 -export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
+	 ,has_flatrate/1 %% has_flatrate(AcctId) - check if account has a free flatrate trunk
 	 ,reserve_trunk/2, reserve_trunk/3 %% reserve_trunk(AcctId, CallID[, Amount]) - only reserve if avail_credit > Amt (0 if unspecified)
 	 ,release_trunk/2, release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
 	]).
@@ -66,9 +67,17 @@ has_credit(Acct) ->
     has_credit(Acct, 0).
 
 %% Does the account have enough credit to cover Amt
--spec(has_credit/2 :: (Acct :: binary(), Amt :: integer()) -> boolean()).
+-spec(has_credit/2 :: (Acct :: binary(), Amt :: integer()) -> boolean() | tuple(error, no_account)).
+has_credit(<<>>, _) ->
+    {error, no_account};
 has_credit(Acct, Amt) ->
     gen_server:call(?SERVER, {has_credit, whistle_util:to_binary(Acct), [Amt]}, infinity).
+
+-spec(has_flatrate/1 :: (Acct :: binary()) -> boolean() | tuple(error, no_account)).
+has_flatrate(<<>>) ->
+    {error, no_account};
+has_flatrate(Acct) ->
+    gen_server:call(?SERVER, {has_flatrate, whistle_util:to_binary(Acct)}).
 
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
@@ -151,8 +160,9 @@ handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_write_db=WDB, cur
     load_account(AcctId, WDB),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     {reply, has_credit(RDB, AcctId, Amt), S};
+handle_call({has_flatrates, AcctId}, _, #state{current_read_db=RDB}=S) ->
+    {reply, has_flatrates(RDB, AcctId), S};
 handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    format_log(info, "TS_ACCTMGR(~p): Reserve trunk for acct ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
     load_account(AcctId, WDB),
     couch_mgr:add_change_handler(?TS_DB, AcctId),
     {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
@@ -169,6 +179,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_
 			   {ok, [{struct, [{<<"key">>, _}, {<<"value">>, _}] }] } ->
 			       {reserve_doc(AcctId, CallID, flat_rate), flat_rate}
 		       end,
+    format_log(info, "TS_ACCTMGR(~p): Reserve trunk for acct ~p:~p ($~p): ~p~n", [self(), AcctId, CallID, Amt, Type]),
     case Type of
 	no_funds -> {reply, {error, no_funds}, S};
 	_ ->
@@ -305,6 +316,17 @@ has_credit(DB, AcctId, Amt) ->
 -spec(credit_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
 credit_available(DB, AcctId) ->
     case couch_mgr:get_results(DB, {"credit","credit_available"}, [{<<"group">>, <<"true">>}, {<<"key">>, AcctId}]) of
+	{ok, []} -> 0;
+	{ok, [{struct, [{<<"key">>, _}, {<<"value">>, Avail}] }] } -> Avail
+    end.
+
+-spec(has_flatrates/2 :: (DB :: binary(), AcctId :: binary()) -> boolean()).
+has_flatrates(DB, AcctId) ->
+    flatrates_available(DB, AcctId) > 0.
+
+-spec(flatrates_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
+flatrates_available(DB, AcctId) ->
+    case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"group">>, <<"true">>}, {<<"key">>, AcctId}]) of
 	{ok, []} -> 0;
 	{ok, [{struct, [{<<"key">>, _}, {<<"value">>, Avail}] }] } -> Avail
     end.
