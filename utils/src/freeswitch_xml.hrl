@@ -73,6 +73,16 @@
   </section>
 </document>").
 
+%% When a registration lookup fails, send a 503 or some other soft-error
+%% IndexNum :: integer()
+%% ErrorCode :: integer()
+-define(ROUTE_BRIDGE_ERROR,
+"<extension name=\"match_~p\" continue=\"true\">
+  <condition>
+    <action application=\"respond\" data=\"~p\" />
+  </condition>
+</extension>").
+
 -define(ROUTE_ERROR_RESPONSE,
 "<document type=\"freeswitch/xml\">
   <section name=\"dialplan\" description=\"Route Bridge Response\">
