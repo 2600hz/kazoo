@@ -24,7 +24,7 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
--define(APP_VSN, "0.4.2").
+-define(APP_VSN, <<"0.4.2">>).
 -define(CLEANUP_RATE, 60000).
 
 -record(state, {
@@ -106,14 +106,24 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(_, #state{my_q={error, _}}=State) ->
+    H = whapps_controller:get_amqp_host(),
+    Q = start_amqp(H),
+    format_log(info, "REG_SRV(~p): restarting amqp with H: ~s; will retry in a bit if failed~n", [self(), H]),
+    {noreply, State#state{amqp_host=H, my_q=Q}, 5000};
 handle_info(timeout, State) ->
-    H = net_adm:localhost(),
+    H = whapps_controller:get_amqp_host(),
     Q = start_amqp(H),
     format_log(info, "REG_SRV(~p): Q: ~s on H: ~s~n", [self(), Q, H]),
 
     Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     format_log(info, "REG_SRV(~p): Starting timer for ~p msec: ~p~n", [self(), ?CLEANUP_RATE, Ref]),
     {noreply, State#state{cleanup_ref=Ref, amqp_host=H, my_q=Q}};
+handle_info({amqp_host_down, H}, S) ->
+    format_log(info, "REG_SRV(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
+    AHost = whapps_controller:get_amqp_host(),
+    Q = start_amqp(AHost),
+    {noreply, S#state{amqp_host=AHost, my_q=Q}, 1000};
 handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref}=S) ->
     format_log(info, "REG_SRV(~p): Time to clean old registrations~n", [self()]),
     spawn(fun() -> cleanup_registrations() end),
@@ -235,33 +245,3 @@ cleanup_registrations() ->
 			  {ok, D} = couch_mgr:open_doc(?REG_DB, props:get_value(<<"id">>, Doc)),
 			  couch_mgr:del_doc(?REG_DB, D)
 		  end, Expired).
-
-
-%% [
-%%    {
-%%        "_id": "fjr3028fj2048fjw0",
-%%        "_rev": "123-122rofgowqerhj23oir",
-%%        "Reg-Server-Timestamp": 63463746467,
-%%        "User-Agent": "Twinkle/1.4.2",
-%%        "Status": "Registered(UDP)",
-%%        "Realm": "james.sip.2600hz.com",
-%%        "Username": "2600pbx",
-%%        "Network-Port": "5065",
-%%        "Network-IP": "70.36.146.91",
-%%        "To-Host": "james.sip.2600hz.com",
-%%        "To-User": "2600pbx",
-%%        "Expires": "3600",
-%%        "RPid": "unknown",
-%%        "Contact": "\"4158867971\" <sip:2600pbx@70.36.146.91:5065;transport=udp>",
-%%        "From-Host": "james.sip.2600hz.com",
-%%        "From-User": "2600pbx",
-%%        "Event-Timestamp": 63463746467,
-%%        "App-Version": "0.5.6",
-%%        "App-Name": "ecallmgr_fs_node",
-%%        "Event-Name": "reg_success",
-%%        "Event-Category": "directory",
-%%        "Server-ID": ""
-%%    }
-%% ]
-
-%% [Realm, User, (RegServerTimestamp + Expires) ], doc._id

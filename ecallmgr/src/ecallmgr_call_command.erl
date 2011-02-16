@@ -215,7 +215,7 @@ get_fs_app(_Node, _UUID, _Prop, _AmqpHost, _App) ->
 %% send the SendMsg proplist to the freeswitch node
 -spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) ->
-    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, AppName, Args]),
+    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, whistle_util:to_list(AppName), whistle_util:to_list(Args)]),
     freeswitch:sendmsg(Node, UUID, [
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", whistle_util:to_list(AppName)}

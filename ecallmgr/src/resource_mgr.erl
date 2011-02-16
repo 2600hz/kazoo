@@ -228,20 +228,17 @@ start_channels([N | Ns]=Nodes, Amqp, Route, Min, Max) -> %% start the minimum ch
 	{error, _} -> start_channels(Ns, Amqp, Route, Min, Max)
     end.
 
--spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), Amqp :: tuple()) -> tuple(ok, integer()) | tuple(error, timeout | string())).
+-spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), Amqp :: tuple()) -> tuple(ok, integer()) | tuple(error, timeout | binary())).
 start_channel(N, Route, Amqp) ->
     Pid = get_value(node, N),
-    Pid ! {resource_consume, self(), Route},
-    receive
+    case ecallmgr_fs_node:resource_consume(Pid, Route) of
 	{resource_consumed, UUID, CtlQ, AvailableChan} ->
-	    send_uuid_to_app(Amqp, UUID, CtlQ),
+	    spawn(fun() -> send_uuid_to_app(Amqp, UUID, CtlQ) end),
 	    {ok, AvailableChan};
 	{resource_error, E} ->
 	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
-	    send_failed_consume(Route, Amqp, E),
+	    spawn(fun() -> send_failed_consume(Route, Amqp, E) end),
 	    {error, E}
-    after
-	10000 -> {error, timeout}
     end.
 
 -spec(send_uuid_to_app/3 :: (Amqp :: tuple(string(), proplist()), UUID :: binary(), CtlQ :: binary()) -> no_return()).
@@ -253,9 +250,9 @@ send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 	       ,{<<"Call-ID">>, UUID}
 	       ,{<<"Control-Queue">>, CtlQ}
-		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, Vsn)],
+		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, whistle_util:to_binary(Vsn))],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
-    format_log(info, "RSC_MGR: Sending resp to ~p~n~s~n", [AppQ, JSON]),
+    format_log(info, "RSC_MGR: Sending resp to ~p: ~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 -spec(send_failed_req/3 :: (Prop :: proplist(), Host :: string(), Failed :: integer()) -> no_return()).
@@ -271,7 +268,7 @@ send_failed_req(Prop, Host, Failed) ->
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
--spec(send_failed_consume/3 :: (Route :: binary(), Amqp :: tuple(Host :: string(), Prop :: proplist()), E :: binary()) -> no_return()).				    
+-spec(send_failed_consume/3 :: (Route :: binary() | list(), Amqp :: tuple(Host :: string(), Prop :: proplist()), E :: binary()) -> no_return()).
 send_failed_consume(Route, {Host, Prop}, E) ->
     Msg = get_value(<<"Msg-ID">>, Prop),
     AppQ = get_value(<<"Server-ID">>, Prop),
@@ -279,7 +276,7 @@ send_failed_consume(Route, {Host, Prop}, E) ->
 
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Route">>, Route}
-		,{<<"Failure-Message">>, E}
+		,{<<"Failure-Message">>, whistle_util:to_binary(E)}
 		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),

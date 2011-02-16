@@ -219,9 +219,18 @@ set_rate_flags(Flags, Rates) ->
 		    {ok, set_flat_flags(Flags, Dir)};
 		{ok, per_min} ->
 		    {ok, set_rate_flags(Flags, Dir, RateData, RateName)};
-		{error, _Fail} ->
-		    format_log(error, "TS_CREDIT(~p): Failed to reserve trunk: ~p~n", [self(), _Fail]),
-		    {error, lacking_credit}
+		{error, entry_exists}=E ->
+		    format_log(error, "TS_CREDIT(~p): Failed to reserve trunk for already existing call-id~n", [self()]),
+		    E;
+		{error, no_funds}=E1 ->
+		    format_log(error, "TS_CREDIT(~p): No funds/flat-rate trunks to route call over.~n", [self()]),
+		    E1;
+		{error, no_account}=E2 ->
+		    format_log(error, "TS_CREDIT(~p): No account id passed.~n", [self()]),
+		    E2;
+		{error, no_callid}=E3 ->
+		    format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
+		    E3
 	    end
     end.
 

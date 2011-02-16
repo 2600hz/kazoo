@@ -204,28 +204,37 @@ send_control_queue(Host, CtlProp, AppQ) ->
 generate_xml(<<"bridge">>, Routes, _Prop, AmqpHost) ->
     format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
-    {_Idx, Extensions} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc}) ->
-					     Route = ?MODULE:build_route(AmqpHost, RouteProp, get_value(<<"Invite-Format">>, RouteProp)),
+    {_Idx, Extensions, Errors} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc, ErrAcc}) ->
+						     case ?MODULE:build_route(AmqpHost, RouteProp, get_value(<<"Invite-Format">>, RouteProp)) of
+							 {error, ErrorCode} ->
+							     {Idx+1, Acc, [io_lib:format(?ROUTE_BRIDGE_ERROR, [Idx, ErrorCode]) | ErrAcc]};
+							 Route ->
+							     BypassMedia = case get_value(<<"Media">>, RouteProp) of
+									       <<"bypass">> -> "true";
+									       <<"process">> -> "false";
+									       _ -> "false" %% default to not bypassing media
+									   end,
 
-					     BypassMedia = case get_value(<<"Media">>, RouteProp) of
-							       <<"bypass">> -> "true";
-							       <<"process">> -> "false";
-							       _ -> "false" %% default to not bypassing media
-							   end,
+							     RP1 = case get_value(<<"Progress-Timeout">>, RouteProp) of
+								       undefined -> [ {<<"Progress-Timeout">>, <<"6">>} | RouteProp];
+								       I when is_integer(I) -> [ {<<"Progress-Timeout">>, integer_to_list(I)}
+												 | lists:keydelete(<<"Progress-Timeout">>, 1, RouteProp) ];
+								       _ -> RouteProp
+								   end,
 
-					     RP1 = case get_value(<<"Progress-Timeout">>, RouteProp) of
-						       undefined -> [ {<<"Progress-Timeout">>, <<"6">>} | RouteProp];
-						       I when is_integer(I) -> [ {<<"Progress-Timeout">>, integer_to_list(I)}
-										 | lists:keydelete(<<"Progress-Timeout">>, 1, RouteProp) ];
-						       _ -> RouteProp
-						   end,
+							     ChannelVars = get_channel_vars(RP1),
+							     {Idx+1, [io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]) | Acc], ErrAcc}
+						     end
+					     end, {1, "", ""}, lists:reverse(Routes)),
 
-					     ChannelVars = get_channel_vars(RP1),
-					     Ext = io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]),
-					     {Idx+1, [Ext | Acc]}
-				     end, {1, ""}, lists:reverse(Routes)),
-    format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
-    lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]));
+    case Extensions of
+	[] ->
+	    format_log(info, "L/U.route(~p): ErrorXML: ~s~n", [self(), Errors]),
+	    lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Errors]));
+	_ ->
+	    format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
+	    lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]))
+    end;
 generate_xml(<<"park">>, _Routes, _Prop, _H) ->
     ?ROUTE_PARK_RESPONSE;
 generate_xml(<<"error">>, _Routes, Prop, _H) ->
@@ -234,7 +243,7 @@ generate_xml(<<"error">>, _Routes, Prop, _H) ->
     format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
 
--spec(build_route/3 :: (AmqpHost :: string(), RouteProp :: proplist(), DIDFormat :: binary()) -> binary()).
+-spec(build_route/3 :: (AmqpHost :: string(), RouteProp :: proplist(), DIDFormat :: binary()) -> binary() | tuple(error, integer())).
 build_route(_AmqpHost, RouteProp, <<"route">>) ->
     get_value(<<"Route">>, RouteProp);
 build_route(AmqpHost, RouteProp, <<"username">>) ->
@@ -244,9 +253,14 @@ build_route(AmqpHost, RouteProp, <<"username">>) ->
 build_route(AmqpHost, RouteProp, DIDFormat) ->
     User = get_value(<<"To-User">>, RouteProp),
     Realm = get_value(<<"To-Realm">>, RouteProp),
-    Contact = lookup_reg(AmqpHost, Realm, User),
-    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
-    binary:replace(Contact, User, DID).
+    case lookup_reg(AmqpHost, Realm, User) of
+	{error, timeout} -> {error, 503};
+	Contact ->
+	    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
+	    Encoded = binary:replace(Contact, User, DID),
+	    Unquoted = whistle_util:to_binary(mochiweb_util:unquote(Encoded)),
+	    binary:replace(Unquoted, [<<"<">>, <<">">>], <<>>, [global])
+    end.
 
 -spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
 format_did(DID, <<"e164">>) ->
@@ -256,7 +270,7 @@ format_did(DID, <<"npan">>) ->
 format_did(DID, <<"1npan">>) ->
     whistle_util:to_1npanxxxxxx(DID).
 
--spec(lookup_reg/3 :: (AmqpHost :: string(), Domain :: binary(), User :: binary()) -> binary()).
+-spec(lookup_reg/3 :: (AmqpHost :: string(), Domain :: binary(), User :: binary()) -> binary() | tuple(error, timeout)).
 lookup_reg(AmqpHost, Domain, User) ->
     Self = self(),
     spawn(fun() ->
@@ -274,7 +288,7 @@ lookup_reg(AmqpHost, Domain, User) ->
     receive {contact, C} -> C
     after 1500 ->
 	    format_log(error, "REG_LOOKUP timed out~n", []),
-	    <<User/binary, "@", Domain/binary>>
+	    {error, timeout}
     end.
 
 receive_reg_query_resp(User) ->

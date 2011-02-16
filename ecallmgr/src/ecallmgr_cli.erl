@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_cli).
 
--export([help/2, diagnostics/2, set_amqp_host/2, add_fs_node/2, rm_fs_node/2]).
+-export([help/2, status/2, set_amqp_host/2, add_fs_node/2, rm_fs_node/2]).
 
 -include_lib("../../lib/erlctl/lib/erlctl-0.3/include/erlctl.hrl").
 
@@ -30,23 +30,22 @@ usage() ->
      ,{" ~s <command> ...",[Script]}
      ,""
      ,"Commands:"
-     ,{" diagnostics  Print data concerning the ~s_fs_handler server",[App]}
+     ," status [node | acc]  View status of connected FS nodes, or specify a node (e.g. 'freeswitch@server.com') or acc to get just the accumulated results"
      ,{" set_amqp_host <host>  Set the amqp host (e.g. ~p)", [net_adm:localhost()]}
      ," add_fs_node <node>  Add a FreeSWITCH node to ecallmgr (e.g. 'freeswitch@server.com')"
      ," rm_fs_node <node>  Remove a FreeSWITCH node from ecallmgr (e.g. 'freeswitch@server.com')"
     ].
 
-diagnostics(always, _) ->
+status(always, []) ->
+    status(always, [all]);
+status(always, [DisplayOpt]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     format("Retrieving data for ~s~n", [Node]),
-    Res = rpc_call(Node, ecallmgr_fs_handler, diagnostics, []),
-    case Res of 
-	{ok, _, _} -> Res;
+    case rpc_call(Node, ecallmgr_fs_handler, diagnostics, []) of 
+	{ok, _, _}=Res -> Res;
 	{ok, Data} ->
-	    diagnostics_server:display_fs_data(Data),
-	    ok;
-	_ ->
-	    format("Diagnostics error: ~p~n", [Res])
+	    diagnostics_server:display_fs_data(Data, whistle_util:to_atom(DisplayOpt, true)),
+	    ok
     end.
 
 set_amqp_host(always, [Host]=Arg) ->
