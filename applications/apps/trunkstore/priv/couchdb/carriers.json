@@ -13,6 +13,7 @@
 		   ,"password":"your_password"
 		   ,"prefix":""
 		   ,"suffix":""
+                   ,"media_handling": "bypass"
                    ,"progress-timer":"6"
 		   ,"codecs":["G729","G711"]
 		   ,"enabled":"1"

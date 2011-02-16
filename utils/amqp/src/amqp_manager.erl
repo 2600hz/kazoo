@@ -110,7 +110,8 @@ init([]) ->
 handle_call({open_channel, Pid, Host}, _From, Hosts) ->
     case lists:keyfind(Host, 1, Hosts) of
 	%% Unknown Host, need to create a Connection before a channel
-	false -> start_connection_and_channel(Pid, Host, Hosts);
+	false ->
+	    start_connection_and_channel(Pid, Host, Hosts);
 	%% Host is known, now look for whether Pid is known
 	{Host, HostInfo} ->
 	    case lists:keyfind(Pid, ?PROCESS_PID, HostInfo) of
@@ -214,8 +215,11 @@ start_channel(Pid, Host, HostInfo, Hosts) ->
 -spec(start_connection_and_channel/3 :: (Pid :: pid(), Host :: string(), Hosts :: amqp_mgr_state()) ->
 					     tuple(reply, tuple(ok, pid(), integer()) | tuple(error, term()), amqp_mgr_state())).
 start_connection_and_channel(Pid, Host, Hosts) ->
-    {Conn, ConnMRef} = get_new_connection(create_amqp_params(Host)),
-    start_channel(Pid, Host, [{connection, Conn, ConnMRef}], Hosts).
+    case get_new_connection(create_amqp_params(Host)) of
+	{error, _}=E -> {reply, E, Hosts};
+	{Conn, ConnMRef} ->
+	    start_channel(Pid, Host, [{connection, Conn, ConnMRef}], Hosts)
+    end.
 
 -spec(find_down_pid/3 :: (DownPid :: pid(), Host0 :: tuple(string(), amqp_host_info()), Hosts0 :: amqp_mgr_state()) -> amqp_mgr_state()).
 find_down_pid(DownPid, {Host, HostInfo}=Host0, Hosts0) ->
@@ -271,19 +275,13 @@ close_host(Host, HostInfo) ->
     ConnUp = erlang:is_process_alive(Conn),
     Channels = lists:keydelete(connection, 1, HostInfo),
     format_log(info, "AMQP_MGR(~p): Closing host ~p down~n~p~nCh: ~p~n", [self(), Host, HostInfo, Channels]),
-    lists:foreach(fun({Pid, PidMRef, Channel, ChanMRef, _Ticket}=Tup) ->
-			  case ConnUp of
-			      true ->
-				  format_log(info, "AMQP_MGR.close_host: H: ~p Ch: ~p P: ~p~n", [Host, Channel, Pid]),
-				  close_channel_down(Channel, ChanMRef),
-				  erlang:demonitor(PidMRef),
-				  case erlang:is_process_alive(Pid) of
-				      true -> Pid ! {amqp_host_down, Host};
-				      false -> ok
-				  end;
-			      false ->
-				  format_log(info, "AMQP_MGR.close_host: Tup ~p~n", [Tup]),
-				  ok
+    lists:foreach(fun({Pid, PidMRef, Channel, ChanMRef, _Ticket}) ->
+			  format_log(info, "AMQP_MGR.close_host: H: ~p Ch: ~p P: ~p~n", [Host, Channel, Pid]),
+			  close_channel_down(Channel, ChanMRef),
+			  erlang:demonitor(PidMRef),
+			  case erlang:is_process_alive(Pid) of
+			      true -> Pid ! {amqp_host_down, Host};
+			      false -> ok
 			  end
 		  end, Channels),
     case ConnUp of
@@ -328,12 +326,17 @@ create_amqp_params(Host, Port) ->
     end,
     #'amqp_params'{ port = Port, host = Host }.
 
--spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference())).
+-spec(get_new_connection/1 :: (P :: tuple()) -> tuple(pid(), reference()) | tuple(error, econnrefused)).
 get_new_connection(#'amqp_params'{}=P) ->
-    {ok, Connection} = amqp_connection:start(network, P),
-    format_log(info, "AMQP_MGR(~p): Conn ~p started.~n", [self(), Connection]),
-    MRefConn = erlang:monitor(process, Connection),
-    {Connection, MRefConn}.
+    case amqp_connection:start(network, P) of
+	{ok, Connection} ->
+	    format_log(info, "AMQP_MGR(~p): Conn ~p started.~n", [self(), Connection]),
+	    MRefConn = erlang:monitor(process, Connection),
+	    {Connection, MRefConn};
+	{error, econnrefused}=E ->
+	    format_log(error, "AMQP_MGR(~p): Refusing to connect to ~p~n", [self(), P#'amqp_params'.host]),
+	    E
+    end.
 
 -spec(open_amqp_channel/2 :: (Connection :: pid(), Pid :: pid()) -> tuple(pid(), reference(), reference(), integer())).
 open_amqp_channel(Connection, Pid) ->
