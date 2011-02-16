@@ -116,17 +116,28 @@ db_info(DbName) ->
 %% Proplist:
 %% [{<<"source">>, <<"http://some.couch.server:5984/source_db">>}
 %%  ,{<<"target">>, <<"target_db">>}
-%%  ,{<<"create_target">>, <<"true">>} % optional, creates the DB on target if non-existent
-%%  ,{<<"continuous">>, <<"true">>} % optional, continuously update target from source
-%%  ,{<<"cancel">>, <<"true">>} % optional, will cancel a replication (one-time or continuous)
+%%
+%%   IMPORTANT: Use the atom true, not binary <<"true">> (though it may be changing in couch to allow <<"true">>)
+%%  ,{<<"create_target">>, true} % optional, creates the DB on target if non-existent
+%%  ,{<<"continuous">>, true} % optional, continuously update target from source
+%%  ,{<<"cancel">>, true} % optional, will cancel a replication (one-time or continuous)
+%%
 %%  ,{<<"filter">>, <<"source_design_doc/source_filter_name">>} % optional, filter what documents are sent from source to target
 %%  ,{<<"query_params">>, {struct, [{<<"key1">>, <<"value1">>}, {<<"key2">>, <<"value2">>}]} } % optional, send params to filter function
+%%  filter_fun: function(doc, req) -> boolean(); passed K/V pairs in query_params are in req in filter function
+%%
 %%  ,{<<"doc_ids">>, [<<"source_doc_id_1">>, <<"source_doc_id_2">>]} % optional, if you only want specific docs, no need for a filter
+%%
 %%  ,{<<"proxy">>, <<"http://some.proxy.server:12345">>} % optional, if you need to pass the replication via proxy to target
+%%   https support for proxying is suspect
 %% ].
 %%
 %% If authentication is needed at the source's end:
 %% {<<"source">>, <<"http://user:password@some.couch.server:5984/source_db">>}
+%%
+%% If source or target DB is on the current connection, you can just put the DB name, e.g:
+%% [{<<"source">>, <<"source_db">>}, {<<"target">>, <<"target_db">>}, ...]
+%% Then you don't have to specify the auth creds (if any) for the connection
 %%
 %% @end
 %%--------------------------------------------------------------------

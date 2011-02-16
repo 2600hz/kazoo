@@ -666,15 +666,22 @@ sleep_req(Prop) ->
 sleep_req_v(Prop) ->
     validate(Prop, ?SLEEP_REQ_HEADERS, ?SLEEP_REQ_VALUES, ?SLEEP_REQ_TYPES).
 
-%% given a proplist of a FS event, return the Whistle-equivalent app name
--spec(convert_fs_evt_name/1 :: (EvtName :: binary()) -> binary()).
+%% given a proplist of a FS event, return the Whistle-equivalent app name(s)
+%% a FS event could have multiple Whistle equivalents
+-spec(convert_fs_evt_name/1 :: (EvtName :: binary()) -> binary() | list(binary())).
 convert_fs_evt_name(EvtName) ->
-    case lists:keyfind(EvtName, 1, ?SUPPORTED_APPLICATIONS) of
-	false -> <<>>;
-	{EvtName, AppName} -> AppName
-    end.
+    find_all_apps(EvtName, ?SUPPORTED_APPLICATIONS, []).
+
+find_all_apps(_, [], []) -> <<>>;
+find_all_apps(_, [], [App]) -> App;
+find_all_apps(_, [], Apps) -> Apps;
+find_all_apps(EvtName, [{EvtName, App} | SAs], Apps) ->
+    find_all_apps(EvtName, SAs, [App | Apps]);
+find_all_apps(EvtName, [_ | SAs], Apps) ->
+    find_all_apps(EvtName, SAs, Apps).
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
+%% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
 -spec(convert_whistle_app_name/1 :: (AppName :: binary()) -> binary()).
 convert_whistle_app_name(AppName) ->
     case lists:keyfind(AppName, 2, ?SUPPORTED_APPLICATIONS) of
