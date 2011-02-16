@@ -9,6 +9,7 @@
 -module(ts_util).
 
 -export([find_ip/1, filter_active_calls/2, get_media_handling/1, current_tstamp/0]).
+-export([constrain_weight/1]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
@@ -54,3 +55,10 @@ get_media_handling(_) -> <<"bypass">>.
 -spec(current_tstamp/0 :: () -> integer()).
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+
+-spec(constrain_weight/1 :: (W :: binary() | integer()) -> integer()).
+constrain_weight(W) when not is_integer(W) ->
+    constrain_weight(whistle_util:to_integer(W));
+constrain_weight(W) when W > 100 -> 100;
+constrain_weight(W) when W < 1 -> 1;
+constrain_weight(W) -> W.

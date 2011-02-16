@@ -46,8 +46,7 @@ handle_req(ApiProp) ->
 inbound_handler(ApiProp) ->
     format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
-    Did = whistle_util:to_e164(ToUser),
-    Flags = create_flags(Did, ApiProp),
+    Flags = create_flags(whistle_util:to_e164(ToUser), ApiProp),
     case Flags#route_flags.account_doc_id of
 	<<>> -> response(404, ApiProp, Flags);
 	_ -> process_routing(inbound_features(Flags), ApiProp)
