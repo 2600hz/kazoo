@@ -166,7 +166,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/1 :: (Host :: string()) -> binary()).
+-spec(start_amqp/1 :: (Host :: string()) -> binary() | tuple(error, term())).
 start_amqp(Host) ->
     Q = amqp_util:new_queue(Host, <<>>),
     amqp_util:bind_q_to_broadcast(Host, Q),
@@ -196,7 +196,15 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
     format_log(info, "REG_SRV: Reg success~n~p~n", [Prop]),
     true = whistle_api:reg_success_v(Prop),
 
-    {ok, _} = couch_mgr:save_doc(?REG_DB, {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()} | Prop]});
+    Contact = props:get_value(<<"Contact">>, Prop),
+    Unquoted = whistle_util:to_binary(mochiweb_util:unquote(Contact)),
+    Contact1 = binary:replace(Unquoted, [<<"<">>, <<">">>], <<>>, [global]),
+    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()}
+			 ,{<<"Contact">>, Contact1}
+			 | lists:keydelete(<<"Contact">>, 1, Prop)]
+	       },
+
+    {ok, _} = couch_mgr:save_doc(?REG_DB, MochiDoc);
 process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
     true = whistle_api:reg_query_v(Prop),
 
