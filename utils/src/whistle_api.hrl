@@ -518,6 +518,7 @@
 				 ,{<<"answer">>, <<"answer">>}
 				 ,{<<"tone_detect">>, <<"tone_detect">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
+				 ,{<<"respond">>, <<"respond">>}
 				]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>

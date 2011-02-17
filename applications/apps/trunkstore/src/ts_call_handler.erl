@@ -47,7 +47,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("ts.hrl").
 
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
@@ -154,11 +153,11 @@ handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) ->
 handle_info({amqp_host_down, H}, S) ->
     format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
     {noreply, S, 0};
-handle_info(call_activity_timeout, #state{call_status=down, call_activity_ref=Ref}=S) ->
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
     stop_call_activity_ref(Ref),
     format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
     {stop, S, shutdown};
-handle_info(call_activity_timeout, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
     format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
     stop_call_activity_ref(Ref),
 

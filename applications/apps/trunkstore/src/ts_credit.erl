@@ -236,7 +236,7 @@ set_rate_flags(Flags, Rates) ->
 
 %% Return true of RateA has higher weight than RateB
 sort_rates({_RNameA, RateDataA}, {_RNameB, RateDataB}) ->
-    whistle_util:to_integer(get_value(<<"weight">>, RateDataA, 1)) >= whistle_util:to_integer(get_value(<<"weight">>, RateDataB, 1)).
+    ts_util:constrain_weight(get_value(<<"weight">>, RateDataA, 1)) >= ts_util:constrain_weight(get_value(<<"weight">>, RateDataB, 1)).
 
 set_rate_flags(Flags, <<"inbound">>=In, RateData, RateName) ->
     format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateName]),
