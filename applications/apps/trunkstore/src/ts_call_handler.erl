@@ -47,7 +47,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("ts.hrl").
 
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
