@@ -12,6 +12,10 @@ start_link ( ) ->
 stop ( ) -> application:stop(callflow).
 
 start_deps ( ) ->
+   whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+   ensure_started(sasl),
+   ensure_started(crypto),
+   ensure_started(inets),
    ensure_started(whistle_amqp),
    ensure_started(whistle_couch),
    ensure_started(dynamic_compile),

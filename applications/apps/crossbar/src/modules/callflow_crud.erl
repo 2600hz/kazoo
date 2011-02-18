@@ -9,7 +9,7 @@
 %%%============================================================================
 %%%
 
--module ( callflow ).
+-module ( callflow_crud ).
 
 -behaviour ( gen_server ).
 
