@@ -15,11 +15,12 @@ export ERL_LIBS=$PWD/../lib/
 EBIN=ebin
 DIAG_EBIN=$PWD/../utils/diagnostics/ebin
 COOKIE_FILE=$PWD/../confs/fs_conf/autoload_configs/.erlang.cookie
+NODENAME=ecallmgrctl@`hostname -f`
 
 exec erl \
     -pa $EBIN \
     -pa $DIAG_EBIN \
-    -name ecallmgrctl@`hostname -f` \
+    -name $NODENAME \
     -setcookie `cat $COOKIE_FILE` \
     +Bd \
     -noshell \
