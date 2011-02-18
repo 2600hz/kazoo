@@ -39,8 +39,8 @@ usage() ->
 status(always, []) ->
     status(always, [all]);
 status(always, [DisplayOpt]) ->
-    Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
-    format("Retrieving data for ~s~n", [Node]),
+    Node = whistle_util:to_atom([$e,$c,$a,$l,$l,$m,$g,$r,$@ | net_adm:localhost()], true),
+    format("Retrieving status for ~s~n", [Node]),
     case rpc_call(Node, ecallmgr_fs_handler, diagnostics, []) of 
 	{ok, _, _}=Res -> Res;
 	{ok, Data} ->
