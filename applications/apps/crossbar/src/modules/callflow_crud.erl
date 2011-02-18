@@ -2,14 +2,14 @@
 %%% @author Vladimir Darmin <vova@2600hz.org>
 %%% @copyright (C) 2011, Vladimir Darmin
 %%% @doc
-%%% Callflow CRUD gen server
+%%% Callflow gen server for CRUD
 %%%
 %%% @end
 %%% Created :  3 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
 %%%============================================================================
 %%%
 
--module ( cf_crud ).
+-module ( callflow_crud ).
 
 -behaviour ( gen_server ).
 

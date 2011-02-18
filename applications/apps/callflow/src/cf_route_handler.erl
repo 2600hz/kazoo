@@ -22,17 +22,15 @@
 
 -import ( logger, [format_log/3] ).
 
--include ( "../crossbar.hrl" ).
--include_lib ( "webmachine/include/webmachine.hrl" ).
--include ( "../../../../utils/src/whistle_amqp.hrl" ).
--include( "../../include/amqp_client/include/amqp_client.hrl" ).
+-include ( "callflow.hrl" ).
+-include ( "../../../utils/src/whistle_amqp.hrl" ).
+-include ( "../include/amqp_client/include/amqp_client.hrl" ).
 
 -define ( SERVER, ?MODULE ).
 -define ( APP_NAME, <<"callflow">> ).
 -define ( APP_VERSION, <<"0.2">> ).
 
 -record ( state, {amqp_host = "" :: string(), callmgr_q = <<>> :: binary()} ).
-%-record ( cb_context, {} ).
 
 
 %%-----------------------------------------------------------------------------
@@ -285,7 +283,7 @@ process_req ( {<<"dialplan">>, <<"route_req">>, To}, Proplist, State ) ->
          format_log(info, "CF ROUTE HANDLER (~p): Required callflow exists! Responding...~n", [self()]),
          RespQ = proplists:get_value(<<"Server-ID">>, Proplist),
          respond(RespQ, State, Proplist, Flow);
-      { fail, Msg }     ->
+      { error, Msg }    ->
          format_log(error, "CF ROUTE HANDLER (~p): ~p~n", [self(), Msg]);
       Unknown           ->
          format_log(error, "CF ROUTE HANDLER (~p): Unknown validation response: ~p~n", [self(), Unknown])
@@ -337,15 +335,18 @@ respond ( RespQ, #state{amqp_host=AHost}, ReqProp, Flow ) ->
 -spec ( validate/1 :: (To :: string()) -> success | tuple(fail, Reason :: string()) ).
 validate ( To ) ->
    case binary:split(To, <<"@">>) of
-      [Number|_] -> 
-         Context = crossbar_doc:load_view({"callflow", "flow"}, [{<<"key">>, Number}], #cb_context{db_name="callflow"}),
-         case Context#cb_context.doc of
-            [{struct, Doc}] ->
-               {struct, Flow} = proplists:get_value(<<"value">>, Doc),
-               { success, Flow };
-            _               -> { fail, "Cannot find an appropriate callflow" }
-         end;
-      _          -> { fail, "Unexpected adress..." }
+      [Number|_] -> getFlow(Number);
+      _          -> { error, "Unexpected adress..." }
+   end
+.
+
+getFlow ( Number ) ->
+   case couch_mgr:get_results(?CALLFLOW_DB, {?CALLFLOW_DB, "flow"}, [{<<"key">>, Number}]) of
+      {ok, [{struct, Doc}]} ->
+         {struct, Flow} = proplists:get_value(<<"value">>, Doc),
+         { success, Flow };
+      {ok, _}               -> { error, "Cannot find an appropriate callflow" };
+      _                     -> { error, "Unexpected return from datastore" }
    end
 .
 
