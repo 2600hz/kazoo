@@ -128,7 +128,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
     spawn(fun() ->
 		  crossbar_util:binding_heartbeat(Pid),
-		  format_log(info, "validate: ~p~n~p~n", [Context, Params]),
 		  Context1 = validate(Params, Context#cb_context{db_name=?ACCOUNTS_DB}),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -298,7 +297,6 @@ resource_exists(_) ->
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    format_log(info, "validate: ~p~n", [Context]),
     create_account(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account(DocId, Context);
@@ -345,7 +343,6 @@ load_account_summary(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_account(#cb_context{req_data=Data}=Context) ->
-    format_log(info, "create_acct: ~p~n", [Data]),
     case is_valid_doc(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);

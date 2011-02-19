@@ -247,7 +247,10 @@ get_json_body(RD) ->
 	    <<>> -> {struct, []};
 	    ReqBody ->
 		JSON = mochijson2:decode(ReqBody),
-		(crossbar_util:is_valid_request_envelope(JSON) andalso JSON) orelse malformed
+		case crossbar_util:is_valid_request_envelope(JSON) of
+		    true -> JSON;
+		    false -> malformed
+		end
 	end
     catch
 	_:_ -> malformed

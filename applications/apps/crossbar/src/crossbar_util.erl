@@ -279,7 +279,7 @@ pull_from_body_and_qs(RD) ->
 
 -spec(is_valid_request_envelope/1 :: (JSON :: json_object()) -> boolean()).
 is_valid_request_envelope(JSON) ->
-     undefined =/= whapps_json:get_value(["data"], JSON).
+    whapps_json:get_value([<<"data">>], JSON, not_found) =/= not_found.
 
 -spec(is_valid_response_envelope/1 :: (JSON :: json_object()) -> boolean()).
 is_valid_response_envelope(JSON) ->
