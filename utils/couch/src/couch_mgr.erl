@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/3, get_host/0]).
+-export([start_link/0, set_host/1, set_host/3, get_host/0, get_creds/0]).
 
 %% System manipulation
 -export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
@@ -42,6 +42,7 @@
 -type change_handler_entry() :: tuple( tuple(string(), binary()), reference(), list(pid()) | []).
 -record(state, {
 	  connection = {} :: tuple(string(), #server{}) | {}
+	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
 	  ,change_handlers = [] :: list(change_handler_entry()) | []
 	 }).
 
@@ -332,6 +333,9 @@ set_host(HostName, UserName, Password) ->
 get_host() ->
     gen_server:call(?MODULE, get_host).
 
+get_creds() ->
+    gen_server:call(?MODULE, {get_creds}).
+
 get_conn() ->
     gen_server:call(?MODULE, {get_conn}).
 
@@ -387,7 +391,7 @@ handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}
 	{error, _Error}=E ->
 	    {reply, E, State};
 	HC ->
-	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[], creds={User,Pass}}}
     end;
 handle_call({set_host, Host, User, Pass}, _From, State) ->
     format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
@@ -395,10 +399,12 @@ handle_call({set_host, Host, User, Pass}, _From, State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[], creds={User,Pass}}}
     end;
 handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
+handle_call({get_creds}, _, #state{creds=Cred}=State) ->
+    {reply, Cred, State};
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, DocID, Pid, State) of
 	{ok, _R, State1} -> {reply, ok, State1};

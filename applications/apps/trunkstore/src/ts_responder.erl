@@ -25,8 +25,6 @@
 -import(proplists, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
--include("../../../utils/src/whistle_amqp.hrl").
 -include("ts.hrl").
 
 -define(SERVER, ?MODULE). 

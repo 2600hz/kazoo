@@ -166,7 +166,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/1 :: (Host :: string()) -> binary()).
+-spec(start_amqp/1 :: (Host :: string()) -> binary() | tuple(error, term())).
 start_amqp(Host) ->
     Q = amqp_util:new_queue(Host, <<>>),
     amqp_util:bind_q_to_broadcast(Host, Q),
@@ -189,14 +189,42 @@ get_msg_type(Prop) ->
     { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) }.
 
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, Prop, _State) ->
-    format_log(info, "REG_SRV: Lookup auth creds here for~n~p~n", [Prop]),
-    ok;
+process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
+    AuthU = props:get_value(<<"Auth-User">>, Prop),
+    AuthR = props:get_value(<<"Auth-Domain">>, Prop),
+
+    Direction = <<"outbound">>, %% if we're authing, it's an outbound call or a registration; inbound from carriers is ACLed auth
+
+    {ok, AuthProp} = lookup_auth_user(AuthU, AuthR),
+
+    Defaults = [{<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Prop)}
+		,{<<"Custom-Channel-Vars">>, {struct, [
+						       {<<"Direction">>, Direction}
+						       ,{<<"Username">>, AuthU}
+						       ,{<<"Realm">>, AuthR}
+						      ]
+					     }}
+		| whistle_api:default_headers(State#state.my_q % serverID is not important, though we may want to define it eventually
+					      ,props:get_value(<<"Event-Category">>, Prop)
+					      ,<<"auth_resp">>
+					      ,?MODULE
+					      ,?APP_VSN)],
+    {ok, JSON} = auth_response(AuthProp, Defaults),
+    RespQ = props:get_value(<<"Server-ID">>, Prop),
+    send_resp(JSON, RespQ, State#state.amqp_host);
 process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
     format_log(info, "REG_SRV: Reg success~n~p~n", [Prop]),
     true = whistle_api:reg_success_v(Prop),
 
-    {ok, _} = couch_mgr:save_doc(?REG_DB, {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()} | Prop]});
+    Contact = props:get_value(<<"Contact">>, Prop),
+    Unquoted = whistle_util:to_binary(mochiweb_util:unquote(Contact)),
+    Contact1 = binary:replace(Unquoted, [<<"<">>, <<">">>], <<>>, [global]),
+    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()}
+			 ,{<<"Contact">>, Contact1}
+			 | lists:keydelete(<<"Contact">>, 1, Prop)]
+	       },
+
+    {ok, _} = couch_mgr:save_doc(?REG_DB, MochiDoc);
 process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
     true = whistle_api:reg_query_v(Prop),
 
@@ -245,3 +273,40 @@ cleanup_registrations() ->
 			  {ok, D} = couch_mgr:open_doc(?REG_DB, props:get_value(<<"id">>, Doc)),
 			  couch_mgr:del_doc(?REG_DB, D)
 		  end, Expired).
+
+-spec(lookup_auth_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
+lookup_auth_user(Name, Realm) ->
+    case couch_mgr:get_results(?AUTH_DB, ?AUTH_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
+	{error, _}=E -> E;
+	{ok, []} -> {error, "No user/realm found"};
+	{ok, [{struct, User}|_]} ->
+	    {struct, Auth} = props:get_value(<<"value">>, User),
+	    {ok, Auth}
+    end.
+
+-spec(auth_response/2 :: (AuthInfo :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+auth_response([], Prop) ->
+    Data = lists:umerge(auth_specific_response(403), Prop),
+    whistle_api:auth_resp(Data);
+auth_response(AuthInfo, Prop) ->
+    Data = lists:umerge(auth_specific_response(AuthInfo), Prop),
+    whistle_api:auth_resp(Data).
+
+-spec(auth_specific_response/1 :: (AuthInfo :: proplist() | integer()) -> proplist()).
+auth_specific_response(AuthInfo) when is_list(AuthInfo) ->
+    Method = list_to_binary(string:to_lower(binary_to_list(props:get_value(<<"auth_method">>, AuthInfo)))),
+    [{<<"Auth-Password">>, props:get_value(<<"auth_password">>, AuthInfo)}
+     ,{<<"Auth-Method">>, Method}
+     ,{<<"Event-Name">>, <<"auth_resp">>}
+     ,{<<"Access-Group">>, props:get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Tenant-ID">>, props:get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
+    ];
+auth_specific_response(403) ->
+    [{<<"Auth-Method">>, <<"error">>}
+     ,{<<"Auth-Password">>, <<"403 Forbidden">>}
+     ,{<<"Access-Group">>, <<"ignore">>}
+     ,{<<"Tenant-ID">>, <<"ignore">>}].
+
+send_resp(JSON, RespQ, Host) ->
+    format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
+    amqp_util:targeted_publish(Host, RespQ, JSON, <<"application/json">>).
