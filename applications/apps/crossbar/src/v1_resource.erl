@@ -218,7 +218,7 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
 %% POST to PUT or DELETE.
 %% @end
 %%--------------------------------------------------------------------
--spec(get_http_verb/2 :: (RD :: #wm_reqdata{}, JSON :: proplist() | malformed) -> binary()).
+-spec(get_http_verb/2 :: (RD :: #wm_reqdata{}, JSON :: json_object() | malformed) -> binary()).
 get_http_verb(RD, malformed) ->
     whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
 get_http_verb(RD, JSON) ->
@@ -228,7 +228,7 @@ get_http_verb(RD, JSON) ->
 	false -> HttpV
     end.
 
--spec(override_verb/3 :: (RD :: #wm_reqdata{}, JSON :: proplist(), Verb :: binary()) -> tuple(true, binary()) | false).
+-spec(override_verb/3 :: (RD :: #wm_reqdata{}, JSON :: json_object(), Verb :: binary()) -> tuple(true, binary()) | false).
 override_verb(RD, JSON, <<"post">>) ->
     case whapps_json:get_value(<<"verb">>, JSON) of
 	undefined ->
@@ -240,12 +240,14 @@ override_verb(RD, JSON, <<"post">>) ->
     end;
 override_verb(_, _, _) -> false.
 
--spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> tuple(struct, proplist()) | malformed).
+-spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | malformed).
 get_json_body(RD) ->
     try
 	case wrq:req_body(RD) of
 	    <<>> -> {struct, []};
-	    ReqBody -> mochijson2:decode(ReqBody)
+	    ReqBody ->
+		JSON = mochijson2:decode(ReqBody),
+		(crossbar_util:is_valid_request_envelope(JSON) andalso JSON) orelse malformed
 	end
     catch
 	_:_ -> malformed

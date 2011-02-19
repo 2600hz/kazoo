@@ -127,10 +127,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context#cb_context{db_name=?ACCOUNTS_DB}),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+		  crossbar_util:binding_heartbeat(Pid),
+		  format_log(info, "validate: ~p~n~p~n", [Context, Params]),
+		  Context1 = validate(Params, Context#cb_context{db_name=?ACCOUNTS_DB}),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
@@ -297,6 +298,7 @@ resource_exists(_) ->
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+    format_log(info, "validate: ~p~n", [Context]),
     create_account(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account(DocId, Context);
@@ -343,14 +345,15 @@ load_account_summary(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_account(#cb_context{req_data=Data}=Context) ->
+    format_log(info, "create_acct: ~p~n", [Data]),
     case is_valid_doc(Data) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
-                 doc=set_private_fields(Data)
-                ,resp_status=success
-            }
+	      doc=set_private_fields(Data)
+	      ,resp_status=success
+	     }
     end.
 
 %%--------------------------------------------------------------------
@@ -488,7 +491,7 @@ normalize_view_results({struct, Prop}, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_parent/1 :: (Doc :: json_object()) -> tuple(boolean(), list())).
+-spec(is_valid_parent/1 :: (Doc :: json_object()) -> tuple(true, [])). %tuple(boolean(), list())).
 is_valid_parent({struct, [_]}) ->
     {true, []};
 is_valid_parent(_Doc) ->
@@ -514,6 +517,7 @@ is_valid_doc({struct, Data}) ->
 	  ],
     Failed = crossbar_validator:validate(Schema, Data),
     {Failed =:= [], Failed}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -590,7 +594,7 @@ set_private_fields(Doc) ->
 %% the name of the account database
 %% @end
 %%--------------------------------------------------------------------
--spec(get_db_name/1 :: (DocId :: binary()|json_object()) -> undefined | binary()).
+-spec(get_db_name/1 :: (DocId :: list(binary()) | json_object()) -> undefined | binary()).
 get_db_name({struct, _}=Doc) ->
     get_db_name([whapps_json:get_value(["_id"], Doc)]);
 get_db_name([DocId]) when is_binary(DocId) ->
@@ -607,7 +611,7 @@ get_db_name(_) ->
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
--spec(load_account_db/2 :: (DocId :: binary(), #cb_context{}) -> #cb_context{}).
+-spec(load_account_db/2 :: (DocId :: list(binary()) | json_object(), #cb_context{}) -> #cb_context{}).
 load_account_db(DocId, Context)->
     DbName = get_db_name(DocId),
     case couch_mgr:db_exists(DbName) of

@@ -24,6 +24,8 @@
 -export([winkstart_envelope/1]).
 -export([winkstart_envelope/2, winkstart_envelope/3, winkstart_envelope/4]).
 
+-export([is_valid_request_envelope/1, is_valid_response_envelope/1]).
+
 -include("crossbar.hrl").
 
 -import(logger, [format_log/3]).
@@ -199,28 +201,6 @@ binding_heartbeat(BPid) ->
         timer:cancel(Tref)
     end).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 %% If using a fun to validate, it should return a boolean
 -spec(param_exists/2 :: (Params :: proplist()
 			 , tuple(Key :: binary(), function() | proplist())
@@ -296,6 +276,15 @@ pull_from_body_and_qs(RD) ->
 	       end,
     QS = wrq:req_qs(RD),
     lists:ukeymerge(1, lists:ukeysort(1, PostBody), lists:ukeysort(1, QS)).
+
+-spec(is_valid_request_envelope/1 :: (JSON :: json_object()) -> boolean()).
+is_valid_request_envelope(JSON) ->
+     undefined =/= whapps_json:get_value(["data"], JSON).
+
+-spec(is_valid_response_envelope/1 :: (JSON :: json_object()) -> boolean()).
+is_valid_response_envelope(JSON) ->
+     undefined =/= whapps_json:get_value(["data"], JSON) andalso
+	undefined =/= whapps_json:get_value(["status"], JSON).
 
 -spec(winkstart_envelope/1 :: (ApiResult :: crossbar_module_result()) -> iolist()).
 winkstart_envelope({Status, Data}) -> winkstart_envelope(Status, Data);    
