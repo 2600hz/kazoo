@@ -30,7 +30,6 @@
 
 -import(logger, [format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
