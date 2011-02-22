@@ -3,9 +3,8 @@
 -define ( CALLFLOW_DB, "callflow" ).
 
 -record ( cf_call, {
-   module = "" : string(),
-   data = [] : proplist(),
-   call_id = <<>> : binary(),
-   ctrl_q = <<>> : binary(),
-   amqp_q = <<>> : binary()
+   call_id = <<>> :: binary(),
+   ctrl_q = <<>> :: binary(),
+   amqp_q = <<>> :: binary(),
+   cf_pid = undefined :: pid() | undefined
 } ).
