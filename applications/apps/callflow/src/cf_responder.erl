@@ -160,7 +160,7 @@ handle_info ( timeout, State ) ->
 handle_info ( #'basic.consume_ok'{}, State ) -> 
    format_log(info, "CF RESPONDER (~p): basic consume ok...~n", [self()]),
    { noreply, State };
-handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{}=State ) ->
+handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flows}=State ) ->
    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
    Event = proplists:get_value(<<"Event-Name">>, Prop),
    case Event of
@@ -169,8 +169,11 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{}=State ) 
             info,
             "CF RESPONDER (~p): spawning callflow execution process...~n",
             [self()]
-         )
-         spawn(fun() -> {cf_exe:start()} end);
+         ),
+         CallId = proplists:get_value(<<"Call-ID">>, Prop),
+         Flow = proplists:get_value(CallId, Flows),
+         Call = #cf_call{call_id=CallId},
+         spawn(fun() -> {cf_exe:start(Flow, Call)} end);
       <<"route_req">> ->
          format_log(
             info,
