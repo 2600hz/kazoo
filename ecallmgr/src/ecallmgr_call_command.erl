@@ -170,7 +170,7 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"bridge">>=App) ->
 				_ -> "|"
 			    end,
 
-	    DialStrings = [ get_bridge_endpoint(EP, AmqpHost) || EP <- get_value(<<"Endpoints">>, Prop, [])],
+	    DialStrings = ["sofia/sipinterface_1/" | [ get_bridge_endpoint(EP, AmqpHost) || EP <- get_value(<<"Endpoints">>, Prop, [])]],
 
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
 	    {App, BridgeCmd}
