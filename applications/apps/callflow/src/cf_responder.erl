@@ -24,8 +24,6 @@
 -import ( logger, [format_log/3] ).
 
 -include ( "callflow.hrl" ).
--include ( "../../../utils/src/whistle_amqp.hrl" ).
--include ( "../include/amqp_client/include/amqp_client.hrl" ).
 
 -define ( SERVER, ?MODULE ).
 -define ( APP_NAME, <<"callflow">> ).
@@ -172,8 +170,9 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flow
          ),
          CallId = proplists:get_value(<<"Call-ID">>, Prop),
          Flow = proplists:get_value(CallId, Flows),
+%TODO: populate cf call with required data
          Call = #cf_call{call_id=CallId},
-         spawn(fun() -> cf_exe:start(Flow, Call) end);
+         spawn(fun() -> cf_exe:start(Call, Flow) end);
       <<"route_req">> ->
          format_log(
             info,
