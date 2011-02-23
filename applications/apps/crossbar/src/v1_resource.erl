@@ -48,10 +48,10 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
             {Methods, RD, Context#cb_context{req_verb=Verb, req_json=Json}}
     end.
 
-malformed_request(RD, #cb_context{req_json=malformed}=Context) ->
+malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     Context1 = Context#cb_context{
 		 resp_status = error
-		 ,resp_error_msg = <<"Invalid or malformed content">>
+		 ,resp_error_msg = <<"Invalid or malformed content: ", ErrBin/binary>>
 		 ,resp_error_code = 400
 		},
     Content = create_resp_content(RD, Context1),
@@ -219,7 +219,7 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_http_verb/2 :: (RD :: #wm_reqdata{}, JSON :: json_object() | malformed) -> binary()).
-get_http_verb(RD, malformed) ->
+get_http_verb(RD, {malformed, _}) ->
     whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
 get_http_verb(RD, JSON) ->
     HttpV = whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
@@ -240,7 +240,7 @@ override_verb(RD, JSON, <<"post">>) ->
     end;
 override_verb(_, _, _) -> false.
 
--spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | malformed).
+-spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | tuple(malformed, binary())).
 get_json_body(RD) ->
     try
 	case wrq:req_body(RD) of
@@ -249,11 +249,15 @@ get_json_body(RD) ->
 		JSON = mochijson2:decode(ReqBody),
 		case crossbar_util:is_valid_request_envelope(JSON) of
 		    true -> JSON;
-		    false -> malformed
+		    false -> {malformed, <<"Invalid request envelope">>}
 		end
 	end
     catch
-	_:_ -> malformed
+	_:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
+	    {malformed, list_to_binary(["Failed to decode: comma error around char ", whistle_util:to_list(S)])};
+	_:E ->
+	    format_log(error, "v1_resource: failed to convert to json(~p)~n", [E]),
+	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
 
 %%--------------------------------------------------------------------
