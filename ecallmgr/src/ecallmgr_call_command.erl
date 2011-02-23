@@ -155,7 +155,7 @@ get_fs_app(_Node, _UUID, Prop, _AmqpHost, <<"say">>=App) ->
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
 	    {App, Arg}
     end;
-get_fs_app(Node, UUID, Prop, _AmqpHost, <<"bridge">>=App) ->
+get_fs_app(Node, UUID, Prop, AmqpHost, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(Prop) of
 	false -> {error, "bridge failed to execute as Prop did not validate."};
 	true ->
@@ -169,7 +169,9 @@ get_fs_app(Node, UUID, Prop, _AmqpHost, <<"bridge">>=App) ->
 				<<"single">> -> "|";
 				_ -> "|"
 			    end,
-	    DialStrings = lists:map(fun get_bridge_endpoint/1, get_value(<<"Endpoints">>, Prop)),
+
+	    DialStrings = [ get_bridge_endpoint(EP, AmqpHost) || EP <- get_value(<<"Endpoints">>, Prop, [])],
+
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
 	    {App, BridgeCmd}
     end;
@@ -224,22 +226,14 @@ send_cmd(Node, UUID, AppName, Args) ->
 
 %% take an endpoint (/sofia/foo/bar), and optionally a caller id name and number
 %% and create the dial string ([origination_caller_id_name=Name,origination_caller_id_number=Num]Endpoint)
--spec(get_bridge_endpoint/1 :: ({struct, EndProp :: proplist()}) -> string()).
-get_bridge_endpoint({struct, EndProp}) ->
-    CIDName = get_value(<<"Caller-ID-Name">>, EndProp),
-    CIDNumber = get_value(<<"Caller-ID-Number">>, EndProp),
-    EndPoint = get_value(<<"Endpoint">>, EndProp),
-    EP = case {CIDName, CIDNumber} of
-	     {undefined, undefined} -> EndPoint;
-	     {undefined, Num} -> list_to_binary(["[origination_caller_id_number=", Num, "]", EndPoint]);
-	     {Name, undefined} -> list_to_binary(["[origination_caller_id_name=", Name, "]", EndPoint]);
-	     {Name, Num} ->
-		 list_to_binary(["[origination_caller_id_name=", Name
-				 , ",origination_caller_id_number=", Num, "]"
-				 ,EndPoint
-				])
-	 end,
-    binary_to_list(EP).
+-spec(get_bridge_endpoint/2 :: ({struct, EndProp :: proplist()}, AmqpHost :: string()) -> string()).
+get_bridge_endpoint({struct, EndProp}, AmqpHost) ->
+    case ecallmgr_fs_route:build_route(AmqpHost, EndProp, get_value(<<"Invite-Format">>, EndProp)) of
+	{error, Code} -> whistle_util:to_list(list_to_binary(["error/", Code]));
+	EndPoint ->
+	    CVs = ecallmgr_fs_route:get_channel_vars(EndProp),
+	    whistle_util:to_list(list_to_binary([CVs, EndPoint]))
+    end.
 
 -spec(media_path/2 :: (UUID :: binary(), Name :: binary()) -> list()).
 media_path(UUID, Name) ->

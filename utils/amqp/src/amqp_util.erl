@@ -22,7 +22,7 @@
 -export([delete_callevt_queue/2, delete_callctl_queue/2, delete_callmgr_queue/2]).
 
 -export([new_queue/1, new_queue/2, new_queue/3, delete_queue/2, basic_consume/2, basic_consume/3
-	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2
+	 ,basic_publish/4, basic_publish/5, channel_close/1, channel_close/2, basic_cancel/2
 	 ,channel_close/3, queue_delete/2, queue_delete/3]).
 
 -export([get_msg/2]).
@@ -323,11 +323,18 @@ basic_consume(Host, Queue, Options) ->
 	      ,nowait = get_value(nowait, Options, false)
 	     },
 
-	    QoS = #'basic.qos'{prefetch_count = get_value(prefetch_count, Options, 0)},
-	    amqp_channel:call(Channel, QoS),
-
 	    amqp_channel:subscribe(Channel, BC, self());
 	{error, _}=E -> E
+    end.
+
+basic_cancel(Host, Queue) ->
+    case amqp_manager:open_channel(self(), Host) of
+	{ok, Channel, _Ticket} ->
+	    BC = #'basic.cancel'{
+	      consumer_tag = Queue
+	     },
+	    amqp_channel:cast(Channel, BC);
+	E -> E
     end.
 
 %% generic publisher for an Exchange.Queue
