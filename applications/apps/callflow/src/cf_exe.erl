@@ -24,18 +24,26 @@ start ( Call, Flow ) ->
    {struct, Data} = proplists:get_value(<<"data">>, Flow),
    format_log(info, "CF EXECUTIONER (~p): Executing ~p...~n", [self(), Module]),
 
-%TODO: if something goes wrong move to the next node
-   CF_Module = list_to_existing_atom("cf_"++binary_to_list(Module)),
-   format_log(info, "CF Module: ~p~n", [CF_Module]),
-   CF_Module:handle(Data, Call#cf_call{cf_pid=self()}),
+   try list_to_existing_atom("cf_"++binary_to_list(Module)) of
+      CF_Module ->
+         format_log(info, "CF EXECUTIONER (~p): CF Module: ~p~n", [self(), CF_Module]),
+         CF_Module:handle(Data, Call#cf_call{cf_pid=self()})
+   catch
+      _:_ ->
+         format_log(error, "CF EXECUTIONER (~p): Module ~p doesn't exist!~n", [self(), Module]),
+         self() ! { continue, 1 }
+   end,
 
    receive
-      continue        -> self() ! { continue, 0 };
+      continue        -> self() ! { continue, 1 };
       { continue, N } ->
          format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...~n", [self()]),
          {struct, NewFlow} = case proplists:get_value(<<"children">>, Flow) of
-            []       -> { struct, [] };
-            Children -> lists:nth(N, Children)
+            undefined ->
+               format_log(error, "CF EXECUTIONER (~p): Something went horribly wrong...~n", [self()]),
+               exit("unexpected end of callflow");
+            []        -> { struct, [] };
+            Children  -> lists:nth(N, Children)
          end,
          case NewFlow of
             [] ->
