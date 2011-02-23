@@ -170,7 +170,7 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"bridge">>=App) ->
 				_ -> "|"
 			    end,
 
-	    DialStrings = [ get_bridge_endpoint(EP, AmqpHost) || EP <- get_value(<<"Endpoints">>, Prop, [])],
+	    DialStrings = [get_bridge_endpoint(EP, AmqpHost) || EP <- get_value(<<"Endpoints">>, Prop, [])],
 
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
 	    {App, BridgeCmd}
@@ -232,7 +232,7 @@ get_bridge_endpoint({struct, EndProp}, AmqpHost) ->
 	{error, Code} -> whistle_util:to_list(list_to_binary(["error/", Code]));
 	EndPoint ->
 	    CVs = ecallmgr_fs_route:get_channel_vars(EndProp),
-	    whistle_util:to_list(list_to_binary([CVs, EndPoint]))
+	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))
     end.
 
 -spec(media_path/2 :: (UUID :: binary(), Name :: binary()) -> list()).
