@@ -163,10 +163,10 @@
 %% Route Responses - Sub-section Route - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.3CRoute.3E
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-						,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-						,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
-						,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-						,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
+						 ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+						 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
+						 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
+						 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
 					   ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
 				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
@@ -372,7 +372,7 @@
 
 %% Bridge Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Bridge
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
--define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Bypass-Media">>, <<"Outgoing-Caller-ID-Name">>
+-define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Progress-Timeout">>, <<"Bypass-Media">>, <<"Outgoing-Caller-ID-Name">>
 					  ,<<"Outgoing-Caller-ID-Number">>, <<"Ringback">>
 					  ,<<"Ignore-Early-Media">>, <<"Dial-Endpoint-Method">>
 				     ]).
@@ -386,9 +386,11 @@
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}]).
 
 %% Endpoints - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#.3CEndpoint.3E
--define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Endpoint">>]).
--define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>]).
--define(BRIDGE_REQ_ENDPOINT_VALUES, []).
+-define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
+-define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+						    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+					      ]).
+-define(BRIDGE_REQ_ENDPOINT_VALUES, [{<<"Invite-Format">>, [<<"username">>, <<"npan">>, <<"1npan">>, <<"e164">>, <<"route">>]}]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, []).
 
 %% Answer - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Answer
