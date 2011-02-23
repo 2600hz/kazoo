@@ -20,8 +20,8 @@ init([]) -> {
    { 
       {one_for_one, 5, 10},
       [
-         ?CHILD(cf_route_handler, worker),
-         ?CHILD(cf_call_sup, supervisor)
+         ?CHILD(cf_responder, worker)
+%         ?CHILD(cf_call_sup, supervisor)
       ]
    } 
 }.

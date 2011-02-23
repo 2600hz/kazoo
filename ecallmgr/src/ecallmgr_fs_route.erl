@@ -11,7 +11,7 @@
 
 %% API
 -export([start_handler/3]).
--export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/3]).
+-export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/3, get_channel_vars/1]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
