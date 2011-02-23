@@ -325,7 +325,7 @@ validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data}=C
 	undefined ->
 	    crossbar_util:response_faulty_request(Context);
 	_ ->
-	    MaxEvents = whistle_util:to_integer(whapps_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
+	    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max-events">>, Data, ?MAX_STREAM_EVENTS)),
 	    add_stream(SubPid, Stream, MaxEvents),
 	    Streams = get_streams(SubPid),
 	    crossbar_util:response({struct, [{<<"streams">>, Streams}]}, Context)
@@ -357,7 +357,7 @@ validate([Stream], #cb_context{req_verb = <<"post">>, session=Session, req_data=
 		 {error, undefined} -> start_subscription_handler(Session)
 	     end,
 
-    MaxEvents = constrain_max_events(whapps_json:get_value([<<"data">>, <<"max-events">>], Data, ?MAX_STREAM_EVENTS)),
+    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max-events">>, Data, ?MAX_STREAM_EVENTS)),
 
     format_log(info, "Attempting to update ~p(~p) to ~p~n", [Stream, MaxEvents, SubPid]),
     update_stream(SubPid, Stream, MaxEvents),
