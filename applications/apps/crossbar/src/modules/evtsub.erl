@@ -46,7 +46,7 @@
 	  ,stream = <<>> :: binary()
 	  ,amqp_queue = <<>> :: binary()
 	  ,amqp_host = <<>> :: binary()
-	  ,current_events :: list(string()) %% list of JSON strings (not decoded via mochi; on-demand)
+	  ,current_events :: list(string()) %% list of JObj
 	  ,event_count = 0 :: integer()
 	  ,is_consuming = true :: boolean()
 	 }).
@@ -523,14 +523,15 @@ stream_loop(#stream_state{amqp_queue = <<>>}=StreamState) ->
 stream_loop(#stream_state{amqp_queue = {error, _}}=StreamState) ->
     stream_amqp_loop(start_amqp(StreamState), 0);
 stream_loop(#stream_state{amqp_queue=Q, amqp_host=H} = StreamState) ->
+try
     receive
 	{_, #amqp_msg{payload = Payload}} ->
-	    {struct, Prop} = mochijson:decode(Payload),
+	    {struct, Prop} = mochijson2:decode(Payload),
 	    true = validate_amqp(props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop), Prop),
 
 	    Events = StreamState#stream_state.current_events,
 	    EventCount = StreamState#stream_state.event_count,
-	    StreamState1 = case EventCount =:= StreamState#stream_state.max_events - 1 of
+	    StreamState1 = case EventCount =:= (StreamState#stream_state.max_events - 1) of
 			       true ->
 				   stop_consuming(H, Q),
 				   StreamState#stream_state{is_consuming = false};
@@ -556,7 +557,12 @@ stream_loop(#stream_state{amqp_queue=Q, amqp_host=H} = StreamState) ->
 	_Other ->
 	    format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
 	    stream_loop(StreamState)
-    end.
+    end
+catch
+  A:B ->
+	format_log(error, "Stream(~p).catch: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+	stream_loop(StreamState)
+end.
 
 %% loop a couple times to try to re-establish conn to amqp
 stream_amqp_loop(#stream_state{amqp_queue={error, _}, stream=Stream}, ?MAX_AMQP_RETRIES) ->
@@ -597,7 +603,8 @@ validate_amqp(<<"dialplan">>, <<"route_req">>, Prop) ->
     whistle_api:route_req_v(Prop);
 validate_amqp(<<"call_event">>, _, Prop) ->
     whistle_api:call_event_v(Prop);
-validate_amqp(_, _, _) -> false.
+validate_amqp(_Cat, _Name, _Prop) ->
+    false.
 
 -spec(constrain_max_events/1 :: (MaxEvents :: binary() | integer()) -> integer()).
 constrain_max_events(X) when not is_integer(X) ->
