@@ -399,6 +399,7 @@ flush_events(SubPid, Stream) ->
 get_streams(SubPid) ->
     SubPid ! {get_streams, self()},
     receive
+	{streams, []} -> <<"none">>;
 	{streams, Streams} -> Streams
     end.
 
@@ -421,6 +422,8 @@ rm_stream(SubPid, Stream, true) ->
 rm_stream(SubPid, Stream, false) ->
     SubPid ! {rm_stream, self(), Stream},
     receive
+	{streams, []} ->
+	    {<<"none">>, {struct, []}};
 	{streams, Streams} ->
 	    {Streams, {struct, []}}
     end.
@@ -490,7 +493,7 @@ subscriber_loop(Streams) ->
 	    RespPid ! {events, {struct, Evts}},
 	    subscriber_loop(Streams);
 	{get_streams, RespPid}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~p): recv ~p: ~p~n", [self(), _Recv, Streams]),
 	    RespPid ! {streams, [ S || {S, SPid} <- Streams,
 				       erlang:is_process_alive(SPid)
 				]},
@@ -553,6 +556,7 @@ try
 	    stream_loop(StreamState#stream_state{max_events=MaxEvt});
 	shutdown ->
 	    stop_consuming(H, Q),
+	    amqp_util:delete_queue(H, Q),
 	    ok;
 	_Other ->
 	    format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
@@ -574,9 +578,10 @@ stream_amqp_loop(#stream_state{amqp_queue=Q}=StreamState, _) when is_binary(Q) -
     stream_loop(StreamState).
 
 -spec(start_amqp/1 :: (StreamState :: #stream_state{}) -> #stream_state{}).
-start_amqp(#stream_state{stream=Stream}=StreamState) ->
+start_amqp(#stream_state{stream=Stream, amqp_queue=OldQ, amqp_host=OldH}=StreamState) ->
+    spawn(fun() -> amqp_util:delete_queue(OldH, OldQ) end),
     H = whapps_controller:get_amqp_host(),
-    Q = amqp_util:new_queue(H, <<>>),
+    Q = amqp_util:new_queue(H, <<>>, [{auto_delete, false}]),
     bind_to_exchange(Stream, H, Q),
     amqp_util:basic_consume(H, Q),
     StreamState#stream_state{amqp_queue=Q, amqp_host=H, current_events=[], event_count = 0, is_consuming = true}.
