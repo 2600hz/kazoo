@@ -379,7 +379,6 @@ validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context
     format_log(info, "EvtSub.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
 
-
 %% Subscriber-related functions
 %% Per-session process and helper functions to add/rm streams and get events associated with the streams
 
@@ -415,11 +414,15 @@ update_stream(SubPid, Stream, MaxEvents) ->
 
 %% {Streams, Events (if Flush == true)}
 -spec(rm_stream/3 :: (SubPid :: pid(), Stream :: binary() | all, Flush :: boolean()) -> tuple(list(binary()), json_objects())).
-rm_stream(SubPid, Stream, Flush) ->
-    SubPid ! {rm_stream, self(), Stream, Flush},
+rm_stream(SubPid, Stream, true) ->
+    Evts = flush_events(SubPid, Stream),
+    {Streams, _} = rm_stream(SubPid, Stream, false),
+    {Streams, Evts};
+rm_stream(SubPid, Stream, false) ->
+    SubPid ! {rm_stream, self(), Stream},
     receive
-	{streams, Streams, events, Events} ->
-	    {Streams, Events}
+	{streams, Streams} ->
+	    {Streams, {struct, []}}
     end.
 
 %% start the loop for a subscriber
@@ -453,31 +456,22 @@ subscriber_loop(Streams) ->
 		false -> ok
 	    end,
 	    subscriber_loop(Streams);
-	{rm_stream, RespPid, all, Flush}=_Recv ->
+	{rm_stream, RespPid, all}=_Recv ->
 	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
-	    Evts = lists:foldl(fun({Stream, SPid}, Acc) ->
-				       SPid ! {shutdown, self(), Flush},
-				       receive
-					   {events, Evts} -> [ {Stream, Evts} | Acc]
-				       end
-			       end, [], Streams),
-	    RespPid ! {streams, [], events, Evts},
+	    lists:foreach(fun({_, SPid}) -> SPid ! shutdown end, Streams),
+	    RespPid ! {streams, []},
 	    subscriber_loop([]);
-	{rm_stream, RespPid, Stream, Flush}=_Recv ->
+	{rm_stream, RespPid, Stream}=_Recv ->
 	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
 	    case lists:keyfind(Stream, 1, Streams) of
 		{_, Pid} ->
 		    unlink(Pid),
-		    Pid ! {shutdown, self(), Flush},
-		    Events = receive
-				 {events, Evts} -> Evts
-			     after 500 -> []
-			     end,
+		    Pid ! shutdown,
 		    Streams1 = lists:keydelete(Stream, 1, Streams),
-		    RespPid ! {streams, Streams1, events, Events},
+		    RespPid ! {streams, Streams1},
 		    subscriber_loop(Streams1);
 		false ->
-		    RespPid ! {streams, Streams, events, []},
+		    RespPid ! {streams, Streams},
 		    subscriber_loop(Streams)
 	    end;
 	{get_events, RespPid, ReqStream}=_Recv ->
@@ -556,16 +550,9 @@ stream_loop(#stream_state{amqp_queue=Q, amqp_host=H} = StreamState) ->
 	    end;
 	{set_max_events, MaxEvt} ->
 	    stream_loop(StreamState#stream_state{max_events=MaxEvt});
-	{shutdown, RespPid, true} ->
-	    RespPid ! {events, StreamState#stream_state.current_events},
-	    stop_consuming(H, Q),
-	    amqp_util:delete_queue(H, Q);
-	{shutdown, RespPid, false} ->
-	    RespPid ! {events, []},
-	    stop_consuming(H, Q),
-	    amqp_util:delete_queue(H, Q);
 	shutdown ->
-	    amqp_util:delete_queue(H, Q);
+	    stop_consuming(H, Q),
+	    ok;
 	_Other ->
 	    format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
 	    stream_loop(StreamState)
