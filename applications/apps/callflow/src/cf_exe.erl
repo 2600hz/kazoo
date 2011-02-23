@@ -27,7 +27,7 @@ start ( Call, Flow ) ->
 %TODO: if something goes wrong move to the next node
    CF_Module = list_to_existing_atom("cf_"++binary_to_list(Module)),
    format_log(info, "CF Module: ~p~n", [CF_Module]),
-   CF_Module:handle(Module, Data, Call#cf_call{cf_pid=self()}) end),
+   CF_Module:handle(Data, Call#cf_call{cf_pid=self()}),
 
    receive
       continue        -> self() ! { continue, 0 };
