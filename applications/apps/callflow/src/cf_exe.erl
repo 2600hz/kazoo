@@ -20,12 +20,15 @@
 -include ( "callflow.hrl" ).
 
 start ( Call, Flow ) ->
-   format_log(info, "TEST: ~p~n", [Flow]),
    Module = proplists:get_value(<<"module">>, Flow),
    {struct, Data} = proplists:get_value(<<"data">>, Flow),
    format_log(info, "CF EXECUTIONER (~p): Executing ~p...~n", [self(), Module]),
-   %calling handling module here...
-   %cf_Module:handle(Module, Data, Call#cf_call{pid=self()}),
+
+%TODO: if something goes wrong move to the next node
+   CF_Module = list_to_existing_atom("cf_"++binary_to_list(Module)),
+   format_log(info, "CF Module: ~p~n", [CF_Module]),
+   CF_Module:handle(Module, Data, Call#cf_call{cf_pid=self()}) end),
+
    receive
       continue        -> self() ! { continue, 0 };
       { continue, N } ->
