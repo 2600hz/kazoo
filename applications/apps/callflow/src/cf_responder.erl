@@ -24,8 +24,6 @@
 -import ( logger, [format_log/3] ).
 
 -include ( "callflow.hrl" ).
--include ( "../../../utils/src/whistle_amqp.hrl" ).
--include ( "../include/amqp_client/include/amqp_client.hrl" ).
 
 -define ( SERVER, ?MODULE ).
 -define ( APP_NAME, <<"callflow">> ).
