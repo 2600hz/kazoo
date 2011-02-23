@@ -501,6 +501,8 @@ is_valid_parent(_Doc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
+is_valid_doc(undefined) ->
+    {false, []};
 is_valid_doc({struct, Data}) ->
     Schema = [
 	   { [<<"base">>, <<"name">>]
