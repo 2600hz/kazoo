@@ -18,7 +18,7 @@ get_value([], Doc, _Default) -> Doc;
 get_value(Key, Doc, Default) when not is_list(Key)->
     get_value([Key], Doc, Default);
 get_value([K|Ks], {struct, Props}, Default) ->
-    get_value(Ks, props:get_value(whistle_util:to_binary(K), Props), Default);
+    get_value(Ks, props:get_value(whistle_util:to_binary(K), Props, Default), Default);
 get_value([K|Ks], Doc, Default) when is_list(Doc) ->
     case try lists:nth(whistle_util:to_integer(K), Doc) catch _:_ -> undefined end of
 	undefined -> Default;

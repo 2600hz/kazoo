@@ -29,7 +29,8 @@ start_full_test() ->
 
     true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.auth_req">>]}]),
     
-    true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp)
+    true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
+    logger:format_log(info, "Testing evtsub successful~n", [])
     catch
 	E:R ->
 	    logger:format_log(error, "Error ~p:~p~n~p~n", [E, R, erlang:get_stacktrace()])

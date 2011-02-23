@@ -46,7 +46,7 @@
 	  ,stream = <<>> :: binary()
 	  ,amqp_queue = <<>> :: binary()
 	  ,amqp_host = <<>> :: binary()
-	  ,current_events :: list(string()) %% list of JSON strings (not decoded via mochi; on-demand)
+	  ,current_events :: list(string()) %% list of JObj
 	  ,event_count = 0 :: integer()
 	  ,is_consuming = true :: boolean()
 	 }).
@@ -325,7 +325,7 @@ validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data}=C
 	undefined ->
 	    crossbar_util:response_faulty_request(Context);
 	_ ->
-	    MaxEvents = whistle_util:to_integer(whapps_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
+	    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max-events">>, Data, ?MAX_STREAM_EVENTS)),
 	    add_stream(SubPid, Stream, MaxEvents),
 	    Streams = get_streams(SubPid),
 	    crossbar_util:response({struct, [{<<"streams">>, Streams}]}, Context)
@@ -357,7 +357,7 @@ validate([Stream], #cb_context{req_verb = <<"post">>, session=Session, req_data=
 		 {error, undefined} -> start_subscription_handler(Session)
 	     end,
 
-    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
+    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max-events">>, Data, ?MAX_STREAM_EVENTS)),
 
     format_log(info, "Attempting to update ~p(~p) to ~p~n", [Stream, MaxEvents, SubPid]),
     update_stream(SubPid, Stream, MaxEvents),
@@ -378,7 +378,6 @@ validate([Stream], #cb_context{req_verb = <<"delete">>, session=Session, req_dat
 validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
     format_log(info, "EvtSub.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
-
 
 %% Subscriber-related functions
 %% Per-session process and helper functions to add/rm streams and get events associated with the streams
@@ -415,11 +414,15 @@ update_stream(SubPid, Stream, MaxEvents) ->
 
 %% {Streams, Events (if Flush == true)}
 -spec(rm_stream/3 :: (SubPid :: pid(), Stream :: binary() | all, Flush :: boolean()) -> tuple(list(binary()), json_objects())).
-rm_stream(SubPid, Stream, Flush) ->
-    SubPid ! {rm_stream, self(), Stream, Flush},
+rm_stream(SubPid, Stream, true) ->
+    Evts = flush_events(SubPid, Stream),
+    {Streams, _} = rm_stream(SubPid, Stream, false),
+    {Streams, Evts};
+rm_stream(SubPid, Stream, false) ->
+    SubPid ! {rm_stream, self(), Stream},
     receive
-	{streams, Streams, events, Events} ->
-	    {Streams, Events}
+	{streams, Streams} ->
+	    {Streams, {struct, []}}
     end.
 
 %% start the loop for a subscriber
@@ -453,31 +456,22 @@ subscriber_loop(Streams) ->
 		false -> ok
 	    end,
 	    subscriber_loop(Streams);
-	{rm_stream, RespPid, all, Flush}=_Recv ->
+	{rm_stream, RespPid, all}=_Recv ->
 	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
-	    Evts = lists:foldl(fun({Stream, SPid}, Acc) ->
-				       SPid ! {shutdown, self(), Flush},
-				       receive
-					   {events, Evts} -> [ {Stream, Evts} | Acc]
-				       end
-			       end, [], Streams),
-	    RespPid ! {streams, [], events, Evts},
+	    lists:foreach(fun({_, SPid}) -> SPid ! shutdown end, Streams),
+	    RespPid ! {streams, []},
 	    subscriber_loop([]);
-	{rm_stream, RespPid, Stream, Flush}=_Recv ->
+	{rm_stream, RespPid, Stream}=_Recv ->
 	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
 	    case lists:keyfind(Stream, 1, Streams) of
 		{_, Pid} ->
 		    unlink(Pid),
-		    Pid ! {shutdown, self(), Flush},
-		    Events = receive
-				 {events, Evts} -> Evts
-			     after 500 -> []
-			     end,
+		    Pid ! shutdown,
 		    Streams1 = lists:keydelete(Stream, 1, Streams),
-		    RespPid ! {streams, Streams1, events, Events},
+		    RespPid ! {streams, Streams1},
 		    subscriber_loop(Streams1);
 		false ->
-		    RespPid ! {streams, Streams, events, []},
+		    RespPid ! {streams, Streams},
 		    subscriber_loop(Streams)
 	    end;
 	{get_events, RespPid, ReqStream}=_Recv ->
@@ -529,14 +523,15 @@ stream_loop(#stream_state{amqp_queue = <<>>}=StreamState) ->
 stream_loop(#stream_state{amqp_queue = {error, _}}=StreamState) ->
     stream_amqp_loop(start_amqp(StreamState), 0);
 stream_loop(#stream_state{amqp_queue=Q, amqp_host=H} = StreamState) ->
+try
     receive
 	{_, #amqp_msg{payload = Payload}} ->
-	    {struct, Prop} = mochijson:decode(Payload),
+	    {struct, Prop} = mochijson2:decode(Payload),
 	    true = validate_amqp(props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop), Prop),
 
 	    Events = StreamState#stream_state.current_events,
 	    EventCount = StreamState#stream_state.event_count,
-	    StreamState1 = case EventCount =:= StreamState#stream_state.max_events - 1 of
+	    StreamState1 = case EventCount =:= (StreamState#stream_state.max_events - 1) of
 			       true ->
 				   stop_consuming(H, Q),
 				   StreamState#stream_state{is_consuming = false};
@@ -556,20 +551,18 @@ stream_loop(#stream_state{amqp_queue=Q, amqp_host=H} = StreamState) ->
 	    end;
 	{set_max_events, MaxEvt} ->
 	    stream_loop(StreamState#stream_state{max_events=MaxEvt});
-	{shutdown, RespPid, true} ->
-	    RespPid ! {events, StreamState#stream_state.current_events},
-	    stop_consuming(H, Q),
-	    amqp_util:delete_queue(H, Q);
-	{shutdown, RespPid, false} ->
-	    RespPid ! {events, []},
-	    stop_consuming(H, Q),
-	    amqp_util:delete_queue(H, Q);
 	shutdown ->
-	    amqp_util:delete_queue(H, Q);
+	    stop_consuming(H, Q),
+	    ok;
 	_Other ->
 	    format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
 	    stream_loop(StreamState)
-    end.
+    end
+catch
+  A:B ->
+	format_log(error, "Stream(~p).catch: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+	stream_loop(StreamState)
+end.
 
 %% loop a couple times to try to re-establish conn to amqp
 stream_amqp_loop(#stream_state{amqp_queue={error, _}, stream=Stream}, ?MAX_AMQP_RETRIES) ->
@@ -610,11 +603,12 @@ validate_amqp(<<"dialplan">>, <<"route_req">>, Prop) ->
     whistle_api:route_req_v(Prop);
 validate_amqp(<<"call_event">>, _, Prop) ->
     whistle_api:call_event_v(Prop);
-validate_amqp(_, _, _) -> false.
+validate_amqp(_Cat, _Name, _Prop) ->
+    false.
 
 -spec(constrain_max_events/1 :: (MaxEvents :: binary() | integer()) -> integer()).
 constrain_max_events(X) when not is_integer(X) ->
     constrain_max_events(whistle_util:to_integer(X));
 constrain_max_events(Max) when Max > ?MAX_STREAM_EVENTS -> ?MAX_STREAM_EVENTS;
 constrain_max_events(Min) when Min < 1 -> 1;
-constrain_max_events(Okay) -> Okay.
+constrain_max_events(Okay) -> whistle_util:to_integer(Okay).
