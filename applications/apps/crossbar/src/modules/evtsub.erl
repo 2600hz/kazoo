@@ -471,6 +471,7 @@ subscriber_loop(Streams) ->
 		    Pid ! {shutdown, self(), Flush},
 		    Events = receive
 				 {events, Evts} -> Evts
+			     after 500 -> []
 			     end,
 		    Streams1 = lists:keydelete(Stream, 1, Streams),
 		    RespPid ! {streams, Streams1, events, Events},
@@ -488,6 +489,7 @@ subscriber_loop(Streams) ->
 					       [ {Stream, {struct, []}} | Acc];
 					   {events, Events} ->
 					       [ {Stream, Events} | Acc ]
+				       after 500 -> Acc
 				       end;
 				  (_, Acc) -> Acc
 			       end, [], Streams),

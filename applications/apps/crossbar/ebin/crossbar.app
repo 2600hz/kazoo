@@ -5,7 +5,7 @@
                         crossbar_bindings,crossbar_doc,crossbar_module_sup,
                         crossbar_session,crossbar_sup,crossbar_util,
                         crossbar_validator,evtsub,noauthn,noauthz,nosipauth,
-                        plists,static_resource,users,v1_resource]},
+                        plists,static_resource,t_evtsub,users,v1_resource]},
               {registered,[]},
               {applications,[kernel,stdlib,crypto,mochiweb,webmachine]},
               {mod,{crossbar_app,[]}},
