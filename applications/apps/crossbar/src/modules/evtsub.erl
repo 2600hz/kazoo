@@ -357,7 +357,7 @@ validate([Stream], #cb_context{req_verb = <<"post">>, session=Session, req_data=
 		 {error, undefined} -> start_subscription_handler(Session)
 	     end,
 
-    MaxEvents = constrain_max_events(whapps_json:get_value([<<"data">>, <<"max_events">>], Data, ?MAX_STREAM_EVENTS)),
+    MaxEvents = constrain_max_events(whapps_json:get_value([<<"data">>, <<"max-events">>], Data, ?MAX_STREAM_EVENTS)),
 
     format_log(info, "Attempting to update ~p(~p) to ~p~n", [Stream, MaxEvents, SubPid]),
     update_stream(SubPid, Stream, MaxEvents),
