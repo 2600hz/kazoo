@@ -170,6 +170,7 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flow
          ),
          CallId = proplists:get_value(<<"Call-ID">>, Prop),
          Flow = proplists:get_value(CallId, Flows),
+%TODO: populate cf call with required data
          Call = #cf_call{call_id=CallId},
          spawn(fun() -> cf_exe:start(Call, Flow) end);
       <<"route_req">> ->
