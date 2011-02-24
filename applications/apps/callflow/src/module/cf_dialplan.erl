@@ -28,7 +28,7 @@ handle ( Data, #cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ, cf_pid=Pid} 
    amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
    amqp_util:basic_consume(AHost, AmqpQ),
 
-   Action = proplists:get_value(<<"action">>, Data),format_log(info, "Data: ~p~n", [Data]),
+   Action = proplists:get_value(<<"action">>, Data),
    {struct, AData} = proplists:get_value(<<"data">>, Data),
    Command = [
       {<<"Application-Name">>, Action},
