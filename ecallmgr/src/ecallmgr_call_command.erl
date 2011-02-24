@@ -160,10 +160,11 @@ get_fs_app(Node, UUID, Prop, AmqpHost, <<"bridge">>=App) ->
 	false -> {error, "bridge failed to execute as Prop did not validate."};
 	true ->
 	    set_timeout(Node, UUID, get_value(<<"Timeout">>, Prop)),
-	    set_bypass_media(Node, UUID, get_value(<<"Bypass-Media">>, Prop)),
+	    set_continue_on_fail(Node, UUID, get_value(<<"Continue-On-Fail">>, Prop)),
 	    set_eff_call_id_name(Node, UUID, get_value(<<"Outgoing-Caller-ID-Name">>, Prop)),
 	    set_eff_call_id_number(Node, UUID, get_value(<<"Outgoing-Caller-ID-Number">>, Prop)),
 	    set_ringback(Node, UUID, get_value(<<"Ringback">>, Prop)),
+
 	    DialSeparator = case get_value(<<"Dial-Endpoint-Method">>, Prop) of
 				<<"simultaneous">> -> ",";
 				<<"single">> -> "|";
@@ -231,7 +232,7 @@ get_bridge_endpoint({struct, EndProp}, AmqpHost) ->
     case ecallmgr_fs_route:build_route(AmqpHost, EndProp, get_value(<<"Invite-Format">>, EndProp)) of
 	{error, Code} -> whistle_util:to_list(list_to_binary(["error/", Code]));
 	EndPoint ->
-	    CVs = ecallmgr_fs_route:get_channel_vars(EndProp),
+	    CVs = ecallmgr_fs_route:get_leg_vars(EndProp),
 	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))
     end.
 
@@ -344,12 +345,27 @@ set_bypass_media(Node, UUID, <<"true">>) ->
 set_bypass_media(Node, UUID, <<"false">>) ->
     set(Node, UUID, "bypass_media=false").
 
+-spec(set_ignore_early_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
+set_ignore_early_media(_Node, _UUID, undefined) ->
+    ok;
+set_ignore_early_media(Node, UUID, <<"true">>) ->
+    set(Node, UUID, "ignore_early_media=true");
+set_ignore_early_media(Node, UUID, <<"false">>) ->
+    set(Node, UUID, "ignore_early_media=false").
+
 -spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
 set_timeout(_Node, _UUID, undefined) ->
     ok;
 set_timeout(Node, UUID, N) ->
     Timeout = [ $c,$a,$l,$l,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
     set(Node, UUID, Timeout).
+
+-spec(set_progress_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
+set_progress_timeout(_Node, _UUID, undefined) ->
+    ok;
+set_progress_timeout(Node, UUID, N) ->
+    ProgressTimeout = [ $p,$r,$o,$g,$r,$e,$s,$s,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
+    set(Node, UUID, ProgressTimeout).
 
 -spec(set_terminators/3 :: (Node :: atom(), UUID :: binary(), Terminators :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_terminators(_Node, _UUID, undefined) ->
@@ -366,6 +382,14 @@ set_ringback(_Node, _UUID, undefined) ->
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=${", RingBack, "}"]),
     set(Node, UUID, RB).
+ 
+-spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
+set_continue_on_fail(_Node, _UUID, undefined) ->
+    ok;
+set_continue_on_fail(Node, UUID, <<"true">>) ->
+    set(Node, UUID, "continue_on_fail=true");
+set_continue_on_fail(Node, UUID, <<"false">>) ->
+    set(Node, UUID, "continue_on_fail=false").
 
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
