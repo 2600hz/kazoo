@@ -24,8 +24,6 @@
 -import ( logger, [format_log/3] ).
 
 -include ( "callflow.hrl" ).
--include ( "../../../utils/src/whistle_amqp.hrl" ).
--include ( "../include/amqp_client/include/amqp_client.hrl" ).
 
 -define ( SERVER, ?MODULE ).
 -define ( APP_NAME, <<"callflow">> ).
@@ -35,7 +33,8 @@
    pid = <<>> :: binary(),
    amqp_host = "" :: string(),
    callmgr_q = <<>> :: binary(),
-   flows = [] :: proplist()
+   flows = [] :: proplist(),
+   req_props = [] :: proplist()
 } ).
 
 
@@ -91,7 +90,7 @@ init ( [] ) -> { ok, #state{}, 0 }.
    | tuple(stop, Reason :: term(), State :: term())
    | tuple(stop, Reason :: term(), Reply :: term(), State :: term())
 ).
-handle_call ( {add_flow, CallId, Flow}, _, #state{flows=Flows}=State ) ->
+handle_call ( {add_flow, CallId, Flow, ReqProp}, _, #state{flows=Flows, req_props=ReqProps}=State ) ->
    format_log(
       info,
       "CF RESPONDER (~p): Adding callflow for call: ~p~n~p~n",
@@ -102,14 +101,14 @@ handle_call ( {add_flow, CallId, Flow}, _, #state{flows=Flows}=State ) ->
       after 1000 -> fun() -> gen_server:call(State#state.pid, {remove_flow, CallId}) end
       end
    ),
-   { reply, ok, State#state{flows=Flows++[{CallId, Flow}]} };
-handle_call ( {remove_flow, CallId}, _, #state{flows=Flows}=State ) ->
+   { reply, ok, State#state{flows=Flows++[{CallId, Flow}], req_props=ReqProps++[{CallId, ReqProp}]} };
+handle_call ( {remove_flow, CallId}, _, #state{flows=Flows, req_props=ReqProps}=State ) ->
    format_log(
       info,
       "CF RESPONDER (~p): Removing callflow for call: ~p~n",
       [self(), CallId]
    ),
-   { reply, ok, State#state{flows=[E || {K, _} = E <- Flows, K =/= CallId]} };
+   { reply, ok, State#state{flows=[FE || {FK, _} = FE <- Flows, FK =/= CallId], req_props=[PE || {PK, _} = PE <- ReqProps, PK =/= CallId]} };
 handle_call ( Request, From, State ) ->
    format_log(
       error,
@@ -160,7 +159,7 @@ handle_info ( timeout, State ) ->
 handle_info ( #'basic.consume_ok'{}, State ) -> 
    format_log(info, "CF RESPONDER (~p): basic consume ok...~n", [self()]),
    { noreply, State };
-handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flows}=State ) ->
+handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flows, req_props=ReqProps}=State ) ->
    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
    Event = proplists:get_value(<<"Event-Name">>, Prop),
    case Event of
@@ -172,8 +171,15 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flow
          ),
          CallId = proplists:get_value(<<"Call-ID">>, Prop),
          Flow = proplists:get_value(CallId, Flows),
-%TODO: populate cf call with required data
-         Call = #cf_call{call_id=CallId},
+         ReqProp = proplists:get_value(CallId, ReqProps),
+         CtrlQ = proplists:get_value(<<"Control-Queue">>, Prop),
+         Call = #cf_call{
+            call_id=CallId,
+            amqp_h=State#state.amqp_host,
+            bdst_q=State#state.callmgr_q,
+            ctrl_q=CtrlQ,
+            route_request=ReqProp
+         },
          spawn(fun() -> cf_exe:start(Call, Flow) end);
       <<"route_req">> ->
          format_log(
@@ -345,7 +351,7 @@ process_req ( Msg_type, Proplist, _ ) ->
 -spec ( respond/4 :: (RespQ :: binary(), State :: proplist(), ReqProp :: proplist(), Flow :: proplist()) -> none() ).
 respond ( RespQ, #state{amqp_host=AHost}=State, ReqProp, Flow ) ->
    CallId = proplists:get_value(<<"Call-ID">>, ReqProp),
-   spawn(fun() -> gen_server:call(State#state.pid, {add_flow, CallId, Flow}) end),
+   spawn(fun() -> gen_server:call(State#state.pid, {add_flow, CallId, Flow, ReqProp}) end),
 
    Prop = [
       {<<"Test">>, <<"Testing was done successfully">>},

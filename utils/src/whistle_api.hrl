@@ -378,7 +378,7 @@
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
-			    ,{<<"Application-Name">>, <<"queue">>}
+			    ,{<<"Application-Name">>, <<"bridge">>}
 			    ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
 			    ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
 			    ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}

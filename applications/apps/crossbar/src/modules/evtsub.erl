@@ -27,6 +27,8 @@
 -define(SERVER, ?MODULE).
 -define(MAX_STREAM_EVENTS, 10). % how many events to store for a stream at a time
 -define(MAX_AMQP_RETRIES, 5). % how many times to retry connecting to the host before just going down
+-define(EMPTY_STREAMS, []).
+-define(EMPTY_EVENTS, {struct, []}).
 
 %% {SessionId, PidToQueueHandlingProc}
 -type evtsub_subscriber() :: tuple( binary(), pid()).
@@ -44,10 +46,12 @@
 -record(stream_state, {
 	  max_events = ?MAX_STREAM_EVENTS :: integer()
 	  ,stream = <<>> :: binary()
-	  ,amqp_queue = <<>> :: binary()
+	  ,amqp_queue = <<>> :: binary() | tuple(error, _)
 	  ,amqp_host = <<>> :: binary()
-	  ,current_events :: list(string()) %% list of JSON strings (not decoded via mochi; on-demand)
+	  ,current_events = [] :: json_objects() %% list of JObj
+	  ,overflow_events = [] :: json_objects()
 	  ,event_count = 0 :: integer()
+	  ,overflow_count = 0 :: integer()
 	  ,is_consuming = true :: boolean()
 	 }).
 
@@ -311,7 +315,7 @@ validate([], #cb_context{req_verb = <<"get">>, session=Session}=Context) ->
 	    crossbar_util:response({struct, [{<<"streams">>, Streams}, {<<"events">>, Events}]}, Context);
 	{error, undefined} ->
 	    start_subscription_handler(Session),
-	    crossbar_util:response({struct, [{<<"streams">>, []}, {<<"events">>, []}]}, Context)
+	    crossbar_util:response({struct, [{<<"streams">>, []}, {<<"events">>, ?EMPTY_EVENTS}]}, Context)
     end;
 validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data}=Context) ->
     %% create a queue bound to the event stream
@@ -337,7 +341,7 @@ validate([], #cb_context{req_verb = <<"delete">>, session=Session, req_data=Data
 		       rm_stream(SubPid, all, whistle_util:to_boolean(Flush));
 		   {error, undefined} ->
 		       start_subscription_handler(Session),
-		       {[], []}
+		       {[], ?EMPTY_EVENTS}
 	       end,
     crossbar_util:response({struct, [{<<"streams">>, Ss}, {<<"events">>, Es}]}, Context);
 validate([Stream], #cb_context{req_verb = <<"get">>, session=Session}=Context) ->
@@ -348,7 +352,7 @@ validate([Stream], #cb_context{req_verb = <<"get">>, session=Session}=Context) -
 	    crossbar_util:response({struct, [{<<"events">>, Events}]}, Context);
 	{error, undefined} ->
 	    start_subscription_handler(Session),
-	    crossbar_util:response({struct, [{<<"events">>, []}]}, Context)
+	    crossbar_util:response({struct, [{<<"events">>, ?EMPTY_EVENTS}]}, Context)
     end;
 validate([Stream], #cb_context{req_verb = <<"post">>, session=Session, req_data=Data}=Context) ->
     %% create a queue bound to the event stream
@@ -399,6 +403,7 @@ flush_events(SubPid, Stream) ->
 get_streams(SubPid) ->
     SubPid ! {get_streams, self()},
     receive
+	{streams, []} -> ?EMPTY_STREAMS;
 	{streams, Streams} -> Streams
     end.
 
@@ -412,8 +417,7 @@ update_stream(SubPid, Stream, MaxEvents) ->
     SubPid ! {update_stream, Stream, MaxEvents},
     ok.
 
-%% {Streams, Events (if Flush == true)}
--spec(rm_stream/3 :: (SubPid :: pid(), Stream :: binary() | all, Flush :: boolean()) -> tuple(list(binary()), json_objects())).
+-spec(rm_stream/3 :: (SubPid :: pid(), Stream :: binary() | 'all', Flush :: boolean()) -> tuple(list(binary()) | [], json_objects() | ?EMPTY_EVENTS)).
 rm_stream(SubPid, Stream, true) ->
     Evts = flush_events(SubPid, Stream),
     {Streams, _} = rm_stream(SubPid, Stream, false),
@@ -421,8 +425,10 @@ rm_stream(SubPid, Stream, true) ->
 rm_stream(SubPid, Stream, false) ->
     SubPid ! {rm_stream, self(), Stream},
     receive
+	{streams, []} ->
+	    {?EMPTY_STREAMS, ?EMPTY_EVENTS};
 	{streams, Streams} ->
-	    {Streams, {struct, []}}
+	    {Streams, ?EMPTY_EVENTS}
     end.
 
 %% start the loop for a subscriber
@@ -480,7 +486,7 @@ subscriber_loop(Streams) ->
 				       Pid ! {get_events, self()},
 				       receive
 					   {events, []} ->
-					       [ {Stream, {struct, []}} | Acc];
+					       [ {Stream, []} | Acc];
 					   {events, Events} ->
 					       [ {Stream, Events} | Acc ]
 				       after 500 -> Acc
@@ -490,7 +496,7 @@ subscriber_loop(Streams) ->
 	    RespPid ! {events, {struct, Evts}},
 	    subscriber_loop(Streams);
 	{get_streams, RespPid}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~p): recv ~p: ~p~n", [self(), _Recv, Streams]),
 	    RespPid ! {streams, [ S || {S, SPid} <- Streams,
 				       erlang:is_process_alive(SPid)
 				]},
@@ -522,24 +528,41 @@ stream_loop(#stream_state{amqp_queue = <<>>}=StreamState) ->
     stream_amqp_loop(start_amqp(StreamState), 0);
 stream_loop(#stream_state{amqp_queue = {error, _}}=StreamState) ->
     stream_amqp_loop(start_amqp(StreamState), 0);
+stream_loop(#stream_state{current_events = [], overflow_events = OE, overflow_count = OC}=StreamState) when OC > 0 ->
+    MaxEvents = StreamState#stream_state.max_events,
+    case OC > MaxEvents of
+	true ->
+	    {Curr, Over} = lists:split(MaxEvents, OE),
+	    stream_loop(StreamState#stream_state{current_events=Curr, event_count=MaxEvents, overflow_events=Over, overflow_count=(OC - MaxEvents)});
+	false ->
+	    stream_loop(StreamState#stream_state{current_events=OE, event_count=OC, overflow_events=[], overflow_count=0})
+    end;
 stream_loop(#stream_state{amqp_queue=Q, amqp_host=H} = StreamState) ->
+try
     receive
 	{_, #amqp_msg{payload = Payload}} ->
-	    {struct, Prop} = mochijson:decode(Payload),
+	    {struct, Prop} = JObj = mochijson2:decode(Payload),
 	    true = validate_amqp(props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop), Prop),
 
 	    Events = StreamState#stream_state.current_events,
 	    EventCount = StreamState#stream_state.event_count,
-	    StreamState1 = case EventCount =:= StreamState#stream_state.max_events - 1 of
-			       true ->
-				   stop_consuming(H, Q),
-				   StreamState#stream_state{is_consuming = false};
-			       false ->
-				   StreamState
-			   end,
-	    stream_loop(StreamState1#stream_state{current_events = [ {struct, Prop} | Events], event_count = EventCount + 1});
+	    OverflowEvents = StreamState#stream_state.overflow_events,
+	    OverflowCount = StreamState#stream_state.overflow_count,
+	    MaxEvents = StreamState#stream_state.max_events,
+
+	    format_log(info, "Stream(~p): EC: ~p OC: ~p ME: ~p~n", [self(), EventCount, OverflowCount, MaxEvents]),
+
+	    case EventCount of
+		MaxEvents ->
+		    stream_loop(StreamState#stream_state{overflow_events = [ JObj | OverflowEvents], overflow_count = OverflowCount + 1});
+		X when X =:= (MaxEvents-1) ->
+		    stop_consuming(H, Q),
+		    stream_loop(StreamState#stream_state{current_events = [ JObj | Events], event_count = EventCount + 1, is_consuming = false});
+		Y when Y < MaxEvents ->
+		    stream_loop(StreamState#stream_state{current_events = [ JObj | Events], event_count = EventCount + 1})
+	    end;
 	{amqp_host_down, _} ->
-	    stream_loop(StreamState#stream_state{amqp_queue = <<>>, amqp_host = <<>>, current_events = [], event_count = 0});
+	    stream_loop(StreamState#stream_state{amqp_queue = <<>>, amqp_host = <<>>});
 	{get_events, RespPid} ->
 	    RespPid ! {events, StreamState#stream_state.current_events},
 	    case StreamState#stream_state.is_consuming of
@@ -552,11 +575,17 @@ stream_loop(#stream_state{amqp_queue=Q, amqp_host=H} = StreamState) ->
 	    stream_loop(StreamState#stream_state{max_events=MaxEvt});
 	shutdown ->
 	    stop_consuming(H, Q),
+	    amqp_util:delete_queue(H, Q),
 	    ok;
 	_Other ->
 	    format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
 	    stream_loop(StreamState)
-    end.
+    end
+catch
+  A:B ->
+	format_log(error, "Stream(~p).catch: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+	stream_loop(StreamState)
+end.
 
 %% loop a couple times to try to re-establish conn to amqp
 stream_amqp_loop(#stream_state{amqp_queue={error, _}, stream=Stream}, ?MAX_AMQP_RETRIES) ->
@@ -568,12 +597,13 @@ stream_amqp_loop(#stream_state{amqp_queue=Q}=StreamState, _) when is_binary(Q) -
     stream_loop(StreamState).
 
 -spec(start_amqp/1 :: (StreamState :: #stream_state{}) -> #stream_state{}).
-start_amqp(#stream_state{stream=Stream}=StreamState) ->
+start_amqp(#stream_state{stream=Stream, amqp_queue=OldQ, amqp_host=OldH}=StreamState) ->
+    spawn(fun() -> amqp_util:delete_queue(OldH, OldQ) end),
     H = whapps_controller:get_amqp_host(),
-    Q = amqp_util:new_queue(H, <<>>),
+    Q = amqp_util:new_queue(H, <<>>, [{auto_delete, false}]),
     bind_to_exchange(Stream, H, Q),
     amqp_util:basic_consume(H, Q),
-    StreamState#stream_state{amqp_queue=Q, amqp_host=H, current_events=[], event_count = 0, is_consuming = true}.
+    StreamState#stream_state{amqp_queue=Q, amqp_host=H, is_consuming=true}.
 
 start_consuming(H, Q) ->
     amqp_util:basic_consume(H, Q).
@@ -597,7 +627,8 @@ validate_amqp(<<"dialplan">>, <<"route_req">>, Prop) ->
     whistle_api:route_req_v(Prop);
 validate_amqp(<<"call_event">>, _, Prop) ->
     whistle_api:call_event_v(Prop);
-validate_amqp(_, _, _) -> false.
+validate_amqp(_Cat, _Name, _Prop) ->
+    false.
 
 -spec(constrain_max_events/1 :: (MaxEvents :: binary() | integer()) -> integer()).
 constrain_max_events(X) when not is_integer(X) ->
