@@ -390,7 +390,7 @@
 						    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                                     ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-                                                    ,<<"Endpoint-Delay">>
+                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>
 					      ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [{<<"Invite-Format">>, [<<"username">>, <<"npan">>, <<"1npan">>, <<"e164">>, <<"route">>]}
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
