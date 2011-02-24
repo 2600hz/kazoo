@@ -232,11 +232,18 @@ create_routes(Flags, Carriers) ->
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
-    ChannelVars = [{<<"Rate">>, Flags#route_flags.rate}
+
+    ChannelVars0 = [{<<"Rate">>, Flags#route_flags.rate}
 		   ,{<<"Rate-Increment">>, Flags#route_flags.rate_increment}
 		   ,{<<"Rate-Minimum">>, Flags#route_flags.rate_minimum}
 		   ,{<<"Surcharge">>, Flags#route_flags.surcharge}
 		  ],
+
+   ChannelVars = case binary:longest_common_suffix([Flags#route_flags.callid, <<"-failover">>]) of
+		   0 -> ChannelVars0;
+		   _ -> [{<<"Failover-Route">>, <<"true">>} | ChannelVars0]
+		 end,
+
     case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID, ChannelVars}, Carriers) of
 	{[], _, _, _} ->
 	    {error, "Failed to find routes for the call"};

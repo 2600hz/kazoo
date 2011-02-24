@@ -79,7 +79,9 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
 %% @doc Extract just the default headers from a message
 %% @end
 %%--------------------------------------------------------------------
--spec(extract_defaults/1 :: (Prop :: proplist()) -> proplist()).
+-spec(extract_defaults/1 :: (Prop :: proplist() | json_object()) -> proplist()).
+extract_defaults({struct, Prop}) ->
+    extract_defaults(Prop);
 extract_defaults(Prop) ->
     ReqH = lists:foldl(fun(H, Acc) -> [{H, get_value(H, Prop)} | Acc] end, [], ?DEFAULT_HEADERS),
     lists:foldl(fun(H, Acc) ->
@@ -94,14 +96,18 @@ extract_defaults(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(auth_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(auth_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+auth_req({struct, Prop}) ->
+    auth_req(Prop);
 auth_req(Prop) ->
     case auth_req_v(Prop) of
 	true -> build_message(Prop, ?AUTH_REQ_HEADERS, ?OPTIONAL_AUTH_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for auth_req"}
     end.
 
--spec(auth_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(auth_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+auth_req_v({struct, Prop}) ->
+    auth_req_v(Prop);
 auth_req_v(Prop) ->
     validate(Prop, ?AUTH_REQ_HEADERS, ?AUTH_REQ_VALUES, ?AUTH_REQ_TYPES).
 
@@ -110,14 +116,18 @@ auth_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(auth_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(auth_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+auth_resp({struct, Prop}) ->
+    auth_resp(Prop);
 auth_resp(Prop) ->
     case auth_resp_v(Prop) of
 	true -> build_message(Prop, ?AUTH_RESP_HEADERS, ?OPTIONAL_AUTH_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for auth_resp"}
     end.
 
--spec(auth_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(auth_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+auth_resp_v({struct, Prop}) ->
+    auth_resp_v(Prop);
 auth_resp_v(Prop) ->
     validate(Prop, ?AUTH_RESP_HEADERS, ?AUTH_RESP_VALUES, ?AUTH_RESP_TYPES).
 
@@ -126,14 +136,18 @@ auth_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(reg_success/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(reg_success/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_success({struct, Prop}) ->
+    reg_success(Prop);
 reg_success(Prop) ->
     case reg_success_v(Prop) of
 	true -> build_message(Prop, ?REG_SUCCESS_HEADERS, ?OPTIONAL_REG_SUCCESS_HEADERS);
 	false -> {error, "Proplist failed validation for reg_success"}
     end.
 
--spec(reg_success_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(reg_success_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+reg_success_v({struct, Prop}) ->
+    reg_success_v(Prop);
 reg_success_v(Prop) ->
     validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES).
 
@@ -142,14 +156,18 @@ reg_success_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(reg_query/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(reg_query/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_query({struct, Prop}) ->
+    reg_query(Prop);
 reg_query(Prop) ->
     case reg_query_v(Prop) of
 	true -> build_message(Prop, ?REG_QUERY_HEADERS, ?OPTIONAL_REG_QUERY_HEADERS);
 	false -> {error, "Proplist failed validation for reg_query"}
     end.
 
--spec(reg_query_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(reg_query_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+reg_query_v({struct, Prop}) ->
+    reg_query_v(Prop);
 reg_query_v(Prop) ->
     validate(Prop, ?REG_QUERY_HEADERS, ?REG_QUERY_VALUES, ?REG_QUERY_TYPES).
 
@@ -158,14 +176,18 @@ reg_query_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(reg_query_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(reg_query_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+reg_query_resp({struct, Prop}) ->
+    reg_query_resp(Prop);
 reg_query_resp(Prop) ->
     case reg_query_resp_v(Prop) of
 	true -> build_message(Prop, ?REG_QUERY_RESP_HEADERS, ?OPTIONAL_REG_QUERY_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for reg_query_resp"}
     end.
 
--spec(reg_query_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(reg_query_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+reg_query_resp_v({struct, Prop}) ->
+    reg_query_resp_v(Prop);
 reg_query_resp_v(Prop) ->
     validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES).
 
@@ -174,14 +196,18 @@ reg_query_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(route_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+route_req({struct, Prop}) ->
+    route_req(Prop);
 route_req(Prop) ->
     case route_req_v(Prop) of
 	true -> build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for route_req"}
     end.
 
--spec(route_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(route_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+route_req_v({struct, Prop}) ->
+    route_req_v(Prop);
 route_req_v(Prop) ->
     validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES).
 
@@ -190,14 +216,18 @@ route_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(route_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+route_resp({struct, Prop}) ->
+    route_resp(Prop);
 route_resp(Prop) ->
     case route_resp_v(Prop) of
 	true -> build_message(Prop, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for route_resp"}
     end.
 
--spec(route_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(route_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+route_resp_v({struct, Prop}) ->
+    route_resp_v(Prop);
 route_resp_v(Prop) ->
     validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES)
 	andalso lists:all(fun({struct, R}) -> route_resp_route_v(R) end, get_value(<<"Routes">>, Prop)).
@@ -207,14 +237,18 @@ route_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_resp_route/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(route_resp_route/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+route_resp_route({struct, Prop}) ->
+    route_resp_route(Prop);
 route_resp_route(Prop) ->
     case route_resp_route_v(Prop) of
 	true -> build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
 	false -> {error, "Proplist failed validation for route_resp_route"}
     end.
 
--spec(route_resp_route_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(route_resp_route_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+route_resp_route_v({struct, Prop}) ->
+    route_resp_route_v(Prop);
 route_resp_route_v(Prop) ->
     validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES).
 
@@ -223,14 +257,18 @@ route_resp_route_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(route_win/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(route_win/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+route_win({struct, Prop}) ->
+    route_win(Prop);
 route_win(Prop) ->
     case route_win_v(Prop) of
 	true -> build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
 	false -> {error, "Proplist failed validation for route_win"}
     end.
 
--spec(route_win_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(route_win_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+route_win_v({struct, Prop}) ->
+    route_win_v(Prop);
 route_win_v(Prop) ->
     validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES).
 
@@ -239,14 +277,18 @@ route_win_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(resource_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+resource_req({struct, Prop}) ->
+    resource_req(Prop);
 resource_req(Prop) ->
     case resource_req_v(Prop) of
 	true -> build_message(Prop, ?RESOURCE_REQ_HEADERS, ?OPTIONAL_RESOURCE_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for resource_req"}
     end.
 
--spec(resource_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(resource_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+resource_req_v({struct, Prop}) ->
+    resource_req_v(Prop);
 resource_req_v(Prop) ->
     validate(Prop, ?RESOURCE_REQ_HEADERS, ?RESOURCE_REQ_VALUES, ?RESOURCE_REQ_TYPES).
 
@@ -255,14 +297,18 @@ resource_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(resource_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+resource_resp({struct, Prop}) ->
+    resource_resp(Prop);
 resource_resp(Prop) ->
     case resource_resp_v(Prop) of
 	true -> build_message(Prop, ?RESOURCE_RESP_HEADERS, ?OPTIONAL_RESOURCE_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for resource_resp"}
     end.
 
--spec(resource_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(resource_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+resource_resp_v({struct, Prop}) ->
+    resource_resp_v(Prop);
 resource_resp_v(Prop) ->
     validate(Prop, ?RESOURCE_RESP_HEADERS, ?RESOURCE_RESP_VALUES, ?RESOURCE_RESP_TYPES).
 
@@ -271,14 +317,18 @@ resource_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_error/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(resource_error/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+resource_error({struct, Prop}) ->
+    resource_error(Prop);
 resource_error(Prop) ->
     case resource_error_v(Prop) of
 	true -> build_message(Prop, ?RESOURCE_ERROR_HEADERS, ?OPTIONAL_RESOURCE_ERROR_HEADERS);
 	false -> {error, "Proplist failed validation for resource_error"}
     end.
 
--spec(resource_error_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(resource_error_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+resource_error_v({struct, Prop}) ->
+    resource_error_v(Prop);
 resource_error_v(Prop) ->
     validate(Prop, ?RESOURCE_ERROR_HEADERS, ?RESOURCE_ERROR_VALUES, ?RESOURCE_ERROR_TYPES).
 
@@ -287,14 +337,18 @@ resource_error_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(call_event/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(call_event/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_event({struct, Prop}) ->
+    call_event(Prop);
 call_event(Prop) ->
     case call_event_v(Prop) of
 	true -> build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
 	false -> {error, "Proplist failed validation for call_event"}
     end.
 
--spec(call_event_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(call_event_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+call_event_v({struct, Prop}) ->
+    call_event_v(Prop);
 call_event_v(Prop) ->
     validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES).
 
@@ -303,14 +357,18 @@ call_event_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(call_status_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(call_status_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_status_req({struct, Prop}) ->
+    call_status_req(Prop);
 call_status_req(Prop) ->
     case call_status_req_v(Prop) of
 	true -> build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for call_status req"}
     end.
 
--spec(call_status_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(call_status_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+call_status_req_v({struct, Prop}) ->
+    call_status_req_v(Prop);
 call_status_req_v(Prop) ->
     validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES).
 
@@ -319,14 +377,18 @@ call_status_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(call_status_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(call_status_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_status_resp({struct, Prop}) ->
+    call_status_resp(Prop);
 call_status_resp(Prop) ->
     case call_status_resp_v(Prop) of
 	true -> build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for call_status_resp"}
     end.
 
--spec(call_status_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(call_status_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+call_status_resp_v({struct, Prop}) ->
+    call_status_resp_v(Prop);
 call_status_resp_v(Prop) ->
     validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES).
 
@@ -335,14 +397,18 @@ call_status_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(call_cdr/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(call_cdr/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_cdr({struct, Prop}) ->
+    call_cdr(Prop);
 call_cdr(Prop) ->
     case call_cdr_v(Prop) of
 	true -> build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
 	false -> {error, "Proplist failed validation for call_cdr"}
     end.
 
--spec(call_cdr_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(call_cdr_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+call_cdr_v({struct, Prop}) ->
+    call_cdr_v(Prop);
 call_cdr_v(Prop) ->
     validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES).
 
@@ -351,14 +417,18 @@ call_cdr_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(error_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(error_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+error_resp({struct, Prop}) ->
+    error_resp(Prop);
 error_resp(Prop) ->
     case error_resp_v(Prop) of
 	true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for error_resp"}
     end.
 
--spec(error_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(error_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+error_resp_v({struct, Prop}) ->
+    error_resp_v(Prop);
 error_resp_v(Prop) ->
     validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES).
 
@@ -368,13 +438,17 @@ error_resp_v(Prop) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(store_req/1 :: ( Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+store_req({struct, Prop}) ->
+    store_req(Prop);
 store_req(Prop) ->
     case store_req_v(Prop) of
 	true -> build_message(Prop, ?STORE_REQ_HEADERS, ?OPTIONAL_STORE_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for store_req"}
     end.
 
--spec(store_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(store_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+store_req_v({struct, Prop}) ->
+    store_req_v(Prop);
 store_req_v(Prop) ->
     validate(Prop, ?STORE_REQ_HEADERS, ?STORE_REQ_VALUES, ?STORE_REQ_TYPES).
 
@@ -383,14 +457,18 @@ store_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(store_amqp_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(store_amqp_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+store_amqp_resp({struct, Prop}) ->
+    store_amqp_resp(Prop);
 store_amqp_resp(Prop) ->
     case store_amqp_resp_v(Prop) of
 	true -> build_message(Prop, ?STORE_AMQP_RESP_HEADERS, ?OPTIONAL_STORE_AMQP_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for store_amqp_resp"}
     end.
 
--spec(store_amqp_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(store_amqp_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+store_amqp_resp_v({struct, Prop}) ->
+    store_amqp_resp_v(Prop);
 store_amqp_resp_v(Prop) ->
     validate(Prop, ?STORE_AMQP_RESP_HEADERS, ?STORE_AMQP_RESP_VALUES, ?STORE_AMQP_RESP_TYPES).
 
@@ -399,14 +477,18 @@ store_amqp_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(store_http_resp/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(store_http_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+store_http_resp({struct, Prop}) ->
+    store_http_resp(Prop);
 store_http_resp(Prop) ->
     case store_http_resp_v(Prop) of
 	true -> build_message(Prop, ?STORE_HTTP_RESP_HEADERS, ?OPTIONAL_STORE_HTTP_RESP_HEADERS);
 	false -> {error, "Prop failed validation for store_http_resp"}
     end.
 
--spec(store_http_resp_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(store_http_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+store_http_resp_v({struct, Prop}) ->
+    store_http_resp_v(Prop);
 store_http_resp_v(Prop) ->
     validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES).
 
@@ -415,14 +497,18 @@ store_http_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(tones_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(tones_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+tones_req({struct, Prop}) ->
+    tones_req(Prop);
 tones_req(Prop) ->
     case tones_req_v(Prop) of
 	true -> build_message(Prop, ?TONES_REQ_HEADERS, ?OPTIONAL_TONES_REQ_HEADERS);
 	false -> {error, "Prop failed validation for tones_req"}
     end.
 
--spec(tones_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(tones_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+tones_req_v({struct, Prop}) ->
+    tones_req_v(Prop);
 tones_req_v(Prop) ->
     validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES).
 
@@ -431,14 +517,18 @@ tones_req_v(Prop) ->
 %% Takes proplist and returns a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(tones_req_tone/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(tones_req_tone/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+tones_req_tone({struct, Prop}) ->
+    tones_req_tone(Prop);
 tones_req_tone(Prop) ->
     case tones_req_tone_v(Prop) of
 	true -> build_message_specific(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
 	false -> {error, "Proplist failed validation for tones_req_tone"}
     end.
 
--spec(tones_req_tone_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(tones_req_tone_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+tones_req_tone_v({struct, Prop}) ->
+    tones_req_tone_v(Prop);
 tones_req_tone_v(Prop) ->
     validate_message(Prop, ?TONES_REQ_TONE_HEADERS, ?TONES_REQ_TONE_VALUES, ?TONES_REQ_TONE_TYPES).
 
@@ -447,14 +537,18 @@ tones_req_tone_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(tone_detect_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(tone_detect_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+tone_detect_req({struct, Prop}) ->
+    tone_detect_req(Prop);
 tone_detect_req(Prop) ->
     case tone_detect_req_v(Prop) of
 	true -> build_message(Prop, ?TONE_DETECT_REQ_HEADERS, ?OPTIONAL_TONE_DETECT_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for tone_detect"}
     end.
 
--spec(tone_detect_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(tone_detect_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+tone_detect_req_v({struct, Prop}) ->
+    tone_detect_req_v(Prop);
 tone_detect_req_v(Prop) ->
     validate(Prop, ?TONE_DETECT_REQ_HEADERS, ?TONE_DETECT_REQ_VALUES, ?TONE_DETECT_REQ_TYPES).
 
@@ -463,14 +557,18 @@ tone_detect_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(queue_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(queue_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+queue_req({struct, Prop}) ->
+    queue_req(Prop);
 queue_req(Prop) ->
     case queue_req_v(Prop) of
 	true -> build_message(Prop, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for queue_req"}
     end.
 
--spec(queue_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(queue_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+queue_req_v({struct, Prop}) ->
+    queue_req_v(Prop);
 queue_req_v(Prop) ->
     validate(Prop, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES).
 
@@ -479,14 +577,18 @@ queue_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(play_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(play_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+play_req({struct, Prop}) ->
+    play_req(Prop);
 play_req(Prop) ->
     case play_req_v(Prop) of
 	true -> build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for play_req"}
     end.
 
--spec(play_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(play_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+play_req_v({struct, Prop}) ->
+    play_req_v(Prop);
 play_req_v(Prop) ->
     validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES).
 
@@ -495,14 +597,18 @@ play_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(record_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(record_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+record_req({struct, Prop}) ->
+    record_req(Prop);
 record_req(Prop) ->
     case record_req_v(Prop) of
 	true -> build_message(Prop, ?RECORD_REQ_HEADERS, ?OPTIONAL_RECORD_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for record_req"}
     end.
 
--spec(record_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(record_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+record_req_v({struct, Prop}) ->
+    record_req_v(Prop);
 record_req_v(Prop) ->
     validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES).
 
@@ -511,14 +617,18 @@ record_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(bridge_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+bridge_req({struct, Prop}) ->
+    bridge_req(Prop);
 bridge_req(Prop) ->
     case bridge_req_v(Prop) of
 	true -> build_message(Prop, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for bridge_req"}
     end.
 
--spec(bridge_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(bridge_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+bridge_req_v({struct, Prop}) ->
+    bridge_req_v(Prop);
 bridge_req_v(Prop) ->
     validate(Prop, ?BRIDGE_REQ_HEADERS, ?BRIDGE_REQ_VALUES, ?BRIDGE_REQ_TYPES).
 
@@ -527,14 +637,18 @@ bridge_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_req_endpoint/1 :: (Prop :: proplist()) -> tuple(ok, proplist()) | tuple(error, string())).
+-spec(bridge_req_endpoint/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, proplist()) | tuple(error, string())).
+bridge_req_endpoint({struct, Prop}) ->
+    bridge_req_endpoint(Prop);
 bridge_req_endpoint(Prop) ->
     case bridge_req_endpoint_v(Prop) of
 	true -> build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
 	false -> {error, "Proplist failed validation for bridge_req_endpoint"}
     end.
 
--spec(bridge_req_endpoint_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(bridge_req_endpoint_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+bridge_req_endpoint_v({struct, Prop}) ->
+    bridge_req_endpoint_v(Prop);
 bridge_req_endpoint_v(Prop) ->
     validate_message(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?BRIDGE_REQ_ENDPOINT_VALUES, ?BRIDGE_REQ_ENDPOINT_TYPES).
 
@@ -543,14 +657,18 @@ bridge_req_endpoint_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(answer_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(answer_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+answer_req({struct, Prop}) ->
+    answer_req(Prop);
 answer_req(Prop) ->
     case answer_req_v(Prop) of
 	true -> build_message(Prop, ?ANSWER_REQ_HEADERS, ?OPTIONAL_ANSWER_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for answer_req"}
     end.
 
--spec(answer_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(answer_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+answer_req_v({struct, Prop}) ->
+    answer_req_v(Prop);
 answer_req_v(Prop) ->
     validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES).
 
@@ -559,14 +677,18 @@ answer_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(hangup_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(hangup_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+hangup_req({struct, Prop}) ->
+    hangup_req(Prop);
 hangup_req(Prop) ->
     case hangup_req_v(Prop) of
 	true -> build_message(Prop, ?HANGUP_REQ_HEADERS, ?OPTIONAL_HANGUP_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for hangup_req"}
     end.
 
--spec(hangup_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(hangup_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+hangup_req_v({struct, Prop}) ->
+    hangup_req_v(Prop);
 hangup_req_v(Prop) ->
     validate(Prop, ?HANGUP_REQ_HEADERS, ?HANGUP_REQ_VALUES, ?HANGUP_REQ_TYPES).
 
@@ -575,14 +697,18 @@ hangup_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(park_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(park_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+park_req({struct, Prop}) ->
+    park_req(Prop);
 park_req(Prop) ->
     case park_req_v(Prop) of
 	true -> build_message(Prop, ?PARK_REQ_HEADERS, ?OPTIONAL_PARK_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for park_req"}
     end.
 
--spec(park_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(park_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+park_req_v({struct, Prop}) ->
+    park_req_v(Prop);
 park_req_v(Prop) ->
     validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES).
 
@@ -591,14 +717,18 @@ park_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(set_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(set_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+set_req({struct, Prop}) ->
+    set_req(Prop);
 set_req(Prop) ->
     case set_req_v(Prop) of
 	true -> build_message(Prop, ?SET_REQ_HEADERS, ?OPTIONAL_SET_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for set_req"}
     end.
 
--spec(set_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(set_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+set_req_v({struct, Prop}) ->
+    set_req_v(Prop);
 set_req_v(Prop) ->
     validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES).
 
@@ -607,14 +737,18 @@ set_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(play_collect_digits_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(play_collect_digits_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+play_collect_digits_req({struct, Prop}) ->
+    play_collect_digits_req(Prop);
 play_collect_digits_req(Prop) ->
     case play_collect_digits_req_v(Prop) of
 	true -> build_message(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for play_collect_digits_req"}
     end.
 
--spec(play_collect_digits_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(play_collect_digits_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+play_collect_digits_req_v({struct, Prop}) ->
+    play_collect_digits_req_v(Prop);
 play_collect_digits_req_v(Prop) ->
     validate(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?PLAY_COLLECT_DIGITS_REQ_VALUES, ?PLAY_COLLECT_DIGITS_REQ_TYPES).
 
@@ -623,14 +757,18 @@ play_collect_digits_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(call_pickup_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(call_pickup_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+call_pickup_req({struct, Prop}) ->
+    call_pickup_req(Prop);
 call_pickup_req(Prop) ->
     case call_pickup_req_v(Prop) of
 	true -> build_message(Prop, ?CALL_PICKUP_REQ_HEADERS, ?OPTIONAL_CALL_PICKUP_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for call_pickup_req"}
     end.
 
--spec(call_pickup_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(call_pickup_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+call_pickup_req_v({struct, Prop}) ->
+    call_pickup_req_v(Prop);
 call_pickup_req_v(Prop) ->
     validate(Prop, ?CALL_PICKUP_REQ_HEADERS, ?CALL_PICKUP_REQ_VALUES, ?CALL_PICKUP_REQ_TYPES).
 
@@ -639,14 +777,18 @@ call_pickup_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(say_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(say_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+say_req({struct, Prop}) ->
+    say_req(Prop);
 say_req(Prop) ->
     case say_req_v(Prop) of
 	true -> build_message(Prop, ?SAY_REQ_HEADERS, ?OPTIONAL_SAY_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for say_req"}
     end.
 
--spec(say_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(say_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+say_req_v({struct, Prop}) ->
+    say_req_v(Prop);
 say_req_v(Prop) ->
     validate(Prop, ?SAY_REQ_HEADERS, ?SAY_REQ_VALUES, ?SAY_REQ_TYPES).
 
@@ -655,14 +797,18 @@ say_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(sleep_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(sleep_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+sleep_req({struct, Prop}) ->
+    sleep_req(Prop);
 sleep_req(Prop) ->
     case sleep_req_v(Prop) of
 	true -> build_message(Prop, ?SLEEP_REQ_HEADERS, ?OPTIONAL_SLEEP_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for sleep_req"}
     end.
 
--spec(sleep_req_v/1 :: (Prop :: proplist()) -> boolean()).
+-spec(sleep_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+sleep_req_v({struct, Prop}) ->
+    sleep_req_v(Prop);
 sleep_req_v(Prop) ->
     validate(Prop, ?SLEEP_REQ_HEADERS, ?SLEEP_REQ_VALUES, ?SLEEP_REQ_TYPES).
 
@@ -736,7 +882,7 @@ headers_to_json(HeadersProp) ->
 
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
--spec(defaults/1 :: (Prop :: proplist()) -> {proplist(), proplist()} | {error, string()}).
+-spec(defaults/1 :: (Prop :: proplist() | json_object()) -> {proplist(), proplist()} | {error, string()}).
 defaults(Prop) ->
     defaults(Prop, []).
 defaults(Prop, Headers) ->

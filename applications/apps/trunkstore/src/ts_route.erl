@@ -215,8 +215,7 @@ inbound_route(Flags) ->
     Route = [{<<"Weight-Cost">>, <<"1">>}
 	     ,{<<"Weight-Location">>, <<"1">>}
 	     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
-	     | Invite
-	    ],
+	     | Invite ],
     case whistle_api:route_resp_route_v(Route) of
 	true -> {ok, add_failover_route(Flags#route_flags.failover, Flags, {struct, Route})};
 	false ->
@@ -235,8 +234,9 @@ add_failover_route({<<"sip">>, URI}, Flags, InboundRoute) ->
 			     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
 			    ]}];
 %% route to a E.164 number - need to setup outbound for this sucker
-add_failover_route({<<"e164">>, DID}, Flags, InboundRoute) ->
+add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, InboundRoute) ->
     OutBFlags = Flags#route_flags{to_user=DID
+				  ,callid = <<CallID/binary, "-failover">>
 				  ,direction = <<"outbound">>
 				 },
     case ts_credit:check(OutBFlags) of

@@ -1,3 +1,5 @@
+-include("whistle_types.hrl").
+
 %% We pass Application custom channel variables with our own prefix
 %% When an event occurs, we include all prefixed vars in the API message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
@@ -372,16 +374,15 @@
 
 %% Bridge Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Bridge
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
--define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Progress-Timeout">>, <<"Bypass-Media">>, <<"Outgoing-Caller-ID-Name">>
-					  ,<<"Outgoing-Caller-ID-Number">>, <<"Ringback">>
-					  ,<<"Ignore-Early-Media">>, <<"Dial-Endpoint-Method">>
+-define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>
+                                      ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                      ,<<"Ringback">>, <<"Dial-Endpoint-Method">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"bridge">>}
 			    ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
-			    ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
-			    ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
+			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
 			   ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}]).
 
@@ -389,8 +390,15 @@
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
 						    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                                    ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
+                                                    ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
+                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>
 					      ]).
--define(BRIDGE_REQ_ENDPOINT_VALUES, [{<<"Invite-Format">>, [<<"username">>, <<"npan">>, <<"1npan">>, <<"e164">>, <<"route">>]}]).
+-define(BRIDGE_REQ_ENDPOINT_VALUES, [{<<"Invite-Format">>, [<<"username">>, <<"npan">>, <<"1npan">>, <<"e164">>, <<"route">>]}
+                                     ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
+                                     ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
+                                    ]).
+
 -define(BRIDGE_REQ_ENDPOINT_TYPES, []).
 
 %% Answer - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Answer
@@ -527,5 +535,3 @@
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
 			,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
 		   ]).
-
--type proplist() :: list(tuple(atom() | binary(), binary() | list() | fun() | integer() )).
