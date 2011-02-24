@@ -11,7 +11,7 @@
 
 %% API
 -export([start_handler/3]).
--export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/3, get_channel_vars/1]).
+-export([fetch_init/2, fetch_route/2, lookup_route/6, build_route/3, get_channel_vars/1, get_leg_vars/1]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
@@ -308,6 +308,10 @@ receive_reg_query_resp(User) ->
 	    exit(reg_query_timeout)
     end.
 
+get_leg_vars(Prop) ->
+    Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
+    lists:flatten(["[", string:join(lists:map(fun binary_to_list/1, Vars), ","), "]"]).
+
 get_channel_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
     lists:flatten(["{", string:join(lists:map(fun binary_to_list/1, Vars), ","), "}"]).
@@ -320,6 +324,10 @@ get_channel_vars({<<"Caller-ID-Name">>, V}, Vars) ->
     [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Number">>, V}, Vars) ->
     [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
+get_channel_vars({<<"Callee-ID-Name">>, V}, Vars) ->
+    [ list_to_binary(["sip_callee_id_name='", V, "'"]) | Vars];
+get_channel_vars({<<"Callee-ID-Number">>, V}, Vars) ->
+    [ list_to_binary(["sip_callee_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
@@ -340,6 +348,21 @@ get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
     [ list_to_binary([<<"rate_minimum=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Surcharge">>, V}, Vars) ->
     [ list_to_binary([<<"surcharge=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->   
+    [ list_to_binary([<<"ignore_early_media=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->   
+    [ list_to_binary([<<"bypass_media=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->   
+    [ list_to_binary([<<"continue_on_fail=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->   
+    [ list_to_binary([<<"leg_timeout=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Endpoint-Progress-Timeout">>, V}, Vars) ->   
+    [ list_to_binary([<<"leg_progress_timeout=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->   
+    [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->   
+    [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
+
 %% list of Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
