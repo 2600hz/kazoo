@@ -18,8 +18,8 @@
 
 -include("ts.hrl").
 
--spec(store_cdr/2 :: (CDRProp :: proplist(), Flags :: #route_flags{}) -> no_return()).
-store_cdr(CDRProp, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}) ->
+-spec(store_cdr/2 :: (CDR :: json_object(), Flags :: #route_flags{}) -> no_return()).
+store_cdr({struct, CDRProp}, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}) ->
     TScdr = [{<<"_id">>, get_value(<<"Call-ID">>, CDRProp)}
 	     ,{<<"Routes-Available">>, RGs}
 	     ,{<<"Route-Used">>, find_route_used(Dir, get_value(<<"To-Uri">>, CDRProp), RGs)}

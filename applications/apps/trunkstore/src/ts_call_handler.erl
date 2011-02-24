@@ -59,6 +59,7 @@
 		,call_activity_ref = undefined :: undefined | reference()
 		,call_status = up :: up | down
                 ,route_flags = #route_flags{} :: #route_flags{}
+		,leg_number = 1 :: integer() %% a-leg is 1, b-leg is 2, each transfer increments leg number
 	       }).
 
 %%%===================================================================
@@ -73,7 +74,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(CallID, AmqpHost, RouteFlags) ->
-    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags], []).
+    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags, 1], []).
+
+start_link(CallID, AmqpHost, RouteFlags, LegNumber) ->
+    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags, LegNumber+1], []).
 
 %% get_queue() -> Queue Name
 -spec(get_queue/1 :: (Pid :: pid()) -> tuple(ok, binary())).
@@ -95,7 +99,7 @@ get_queue(Pid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([CallID, AmqpHost, RouteFlags]) ->
+init([CallID, AmqpHost, RouteFlags, LegNumber]) ->
     process_flag(trap_exit, true),
 
     {ok, #state{callid = CallID
@@ -103,6 +107,7 @@ init([CallID, AmqpHost, RouteFlags]) ->
 		,amqp_h = AmqpHost
 		,route_flags = RouteFlags
 		,start_time = ts_util:current_tstamp()
+		,leg_number = LegNumber
 	       }}.
 
 %%--------------------------------------------------------------------
@@ -176,40 +181,71 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
     format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
     stop_call_activity_ref(Ref),
 
-    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    JObj = mochijson2:decode(binary_to_list(Payload)),
 
-    case get_value(<<"Event-Name">>, Prop) of
+    case whapps_json:get_value(<<"Event-Name">>, JObj) of
 	<<"cdr">> ->
 	    spawn(fun() ->
-			  true = whistle_api:call_cdr_v(Prop),
-			  update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
-			  ts_cdr:store_cdr(Prop, Flags)
+			  true = whistle_api:call_cdr_v(JObj),
+			  case S#state.leg_number of
+			      1 ->
+				  update_account(whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)), Flags),
+				  ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid);
+			      _ ->
+				  case whapps_json:get_value([<<"Custom-Channel-Vars">>, <<"Failover-Route">>], JObj, false) of
+				      <<"true">> ->
+					  ThisCallID = whapps_json:get_value([<<"Call-ID">>], JObj), % B-leg
+					  OtherCallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj), % A-leg
+					  AcctID = Flags#route_flags.diverted_account_doc_id,
+
+					  CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
+					  R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, 0.0)),
+					  RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, 0)),
+					  RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, 0)),
+					  S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs)),
+					  Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+
+					  ts_acctmgr:release_trunk(AcctID, <<OtherCallID/binary, "-failover">>, 0),
+					  ts_acctmgr:copy_reserve_trunk(AcctID, OtherCallID, ThisCallID, (R * RM + S)),
+					  ts_acctmgr:release_trunk(AcctID, ThisCallID, calculate_cost(R, RI, RM, S, Duration));
+				      _ ->
+					  ok
+				  end
+			  end,
+			  ts_cdr:store_cdr(JObj, Flags)
 		  end),
 	    {stop, normal, S};
 	<<"route_win">> ->
-	    true = whistle_api:route_win_v(Prop),	    
-	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), Prop]),
-	    {noreply, S#state{ctl_q=props:get_value(<<"Control-Queue">>, Prop), call_activity_ref=call_activity_ref(), call_status=up}};
+	    true = whistle_api:route_win_v(JObj),
+	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), JObj]),
+	    {noreply, S#state{ctl_q=whapps_json:get_value(<<"Control-Queue">>, JObj), call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"CHANNEL_BRIDGE">> ->
-	    true = whistle_api:call_event_v(Prop),
-	    OtherCallID = get_value(<<"Other-Leg-Unique-ID">>, Prop),
+	    true = whistle_api:call_event_v(JObj),
+	    OtherCallID = whapps_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
 	    OtherAcctID = Flags#route_flags.diverted_account_doc_id,
+	    AcctID = Flags#route_flags.account_doc_id, % don't lose the old account, in case of a failover route
+
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
 	    %% try to reserve a trunk for this leg
 	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
-	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=OtherAcctID
-												      ,direction = <<"inbound">>
-												      ,callid = OtherCallID
-												     }]),
+	    ts_call_sup:start_proc([OtherCallID
+				    ,whapps_controller:get_amqp_host()
+				    ,Flags#route_flags{account_doc_id=OtherAcctID
+						       ,callid = OtherCallID
+						       ,diverted_account_doc_id=AcctID
+						       ,direction = <<"inbound">>
+						      }
+				    ,S#state.leg_number]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"status_resp">> ->
-	    true = whistle_api:call_status_resp_v(Prop),
+	    true = whistle_api:call_status_resp_v(JObj),
 	    format_log(info, "TS_CALL(~p): Call is active, despite appearances~n", [self()]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	_EvtName ->
-	    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
+	    format_log(info, "TS_CALL(~p): Evt: ~p~n", [self(), _EvtName]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}}
     end;
 handle_info(_Info, S) ->
