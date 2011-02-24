@@ -28,7 +28,7 @@ start ( Call, Flow ) ->
 
    try list_to_existing_atom("cf_"++binary_to_list(Module)) of
       CF_Module ->
-         format_log(info, "CF EXECUTIONER (~p): CF Module: ~p~n", [self(), CF_Module]),
+%TODO: monitor the spawned process and move on if it dies...
          spawn(fun () -> CF_Module:handle(Data, NewCall) end)
    catch
       _:_ ->
@@ -52,15 +52,16 @@ wait ( Call, Flow ) ->
          end,
          case NewFlow of
             [] ->
-               start (Call, [{<<"module">>, <<"dialplan">>}, {<<"data">>, {struct, [{<<"action">>, <<"hangup">>}, {<<"data">>, {}}]}}]),
+               start (Call, [{<<"module">>, <<"dialplan">>}, {<<"data">>, {struct, [{<<"action">>, <<"hangup">>}, {<<"data">>, {struct, []}}]}}]),
                format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...~n", [self()]);
             _  -> start (Call, NewFlow)
          end;
-      { stop }        -> format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped~n", [self()]);
+      { stop }        ->
+         format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped~n", [self()]),
+         exit("End of execution");
       { heartbeat }   ->
          format_log(info, "CF EXECUTIONER (~p): Call is in progress...~n", [self()]),
          wait ( Call, Flow )
-   after 5000 -> wait(Call, Flow)
    end
 .
 

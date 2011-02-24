@@ -23,22 +23,34 @@
 -define(APP_VERSION, <<"0.1">>).
 
 handle ( Data, #cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ, cf_pid=Pid} ) ->
-   format_log(info, "CF DIALPLAN (~p): Start handling...~n", [self()]),
+   format_log(info, "CF DIALPLAN (~p): Handling...~n", [self()]),
    AmqpQ = amqp_util:new_queue(AHost),
    amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
    amqp_util:basic_consume(AHost, AmqpQ),
-   format_log(info, "CF DIALPLAN (~p): consuming...~n", [self()]),
 
-   Action = proplists:get_value(<<"action">>, Data),
+   Action = proplists:get_value(<<"action">>, Data),format_log(info, "Data: ~p~n", [Data]),
+   {struct, AData} = proplists:get_value(<<"data">>, Data),
    Command = [
       {<<"Application-Name">>, Action},
       {<<"Call-ID">>, CallId}
       | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
    ],
-   Request = list_to_existing_atom(binary_to_list(Action)++"_req"),
-   {ok, Json} = whistle_api:Request(Command),
-   amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>),
-   wait(<<"CHANNEL_EXECUTE_COMPLETE">>, Action, Pid)
+   WAction = case proplists:get_value(Action, ?DIALPLAN_MAP) of
+      undefined -> Action;
+      Found -> Found
+   end,
+   try list_to_existing_atom(binary_to_list(WAction)++"_req") of
+      Request ->
+         case whistle_api:Request(Command++AData) of
+            {ok, Json} ->
+               amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>),
+               wait(<<"CHANNEL_EXECUTE_COMPLETE">>, Action, Pid);
+            _          ->
+               Pid ! { continue }
+         end
+   catch
+      _:_ -> Pid ! { continue }
+   end
 .
 
 wait ( Name, Application, Pid ) ->
@@ -49,9 +61,9 @@ wait ( Name, Application, Pid ) ->
          EN = proplists:get_value(<<"Event-Name">>, Msg),
          AN = proplists:get_value(<<"Application-Name">>, Msg),
          case {EC, EN, AN} of
-            {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} -> format_log(info, "Stop...~n", []), Pid ! { stop };
-            {<<"call_event">>, Name, Application}       -> format_log(info, "Continue... ~p~n", [Pid]), Pid ! { continue };
-            {A, B, C}                                   -> format_log(info, "Waiting ~p ~p ~p~n", [A, B, C]),wait(Name, Application, Pid)
+            {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} -> Pid ! { stop };
+            {<<"call_event">>, Name, Application}       -> Pid ! { continue };
+            {_, _, _}                                   -> wait(Name, Application, Pid)
          end
    end
 .
