@@ -37,10 +37,10 @@ handle({struct, Props}, #cf_call{cf_pid=CFPid}=Call) ->
     case wait_for_bridge(WaitTimeout) of
         {_, channel_hungup} ->
             format_log(info, "CF_DEVICES(~p): Channel hungup, terminate call flow~n", [self()]),
-            CFPid ! stop;
+            CFPid ! { stop };
         {error, _} ->
             format_log(info, "CF_DEVICES(~p): Bridge failed, continue call flow~n", [self()]),
-            CFPid ! continue
+            CFPid ! { continue }
     end.   
 
 %%--------------------------------------------------------------------
