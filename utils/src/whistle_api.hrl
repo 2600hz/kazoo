@@ -1,3 +1,5 @@
+-include("whistle_types.hrl").
+
 %% We pass Application custom channel variables with our own prefix
 %% When an event occurs, we include all prefixed vars in the API message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
@@ -527,5 +529,3 @@
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
 			,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
 		   ]).
-
--type proplist() :: list(tuple(atom() | binary(), binary() | list() | fun() | integer() )).
