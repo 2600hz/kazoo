@@ -62,6 +62,8 @@ wait ( Call, Flow ) ->
       { heartbeat }   ->
          format_log(info, "CF EXECUTIONER (~p): Call is in progress...~n", [self()]),
          wait ( Call, Flow )
+   after
+      5000 -> wait(Call, Flow) %TODO: kill the spawned process and move to the next node
    end
 .
 
