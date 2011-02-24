@@ -18,95 +18,135 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
-%% -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call) -> ok).
-handle({struct, Props}, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ, call_id=CallId, cf_pid=CFPid}=Call) ->
-    format_log(info, "CF_DEVICES(~p): Spawned to bridge to ~p with ctrl_q ~p and call_id ~p~n", [self(), Props, CtrlQ, CallId]),
+-define(DEFAULT_TIMEOUT, 30).
 
-    AmqpQ = amqp_util:new_queue(AHost),
-    amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
-    amqp_util:basic_consume(AHost, AmqpQ),
-    
-%%    set_channel_vars(Call),
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Entry point for this module, attempts to call an endpoint as defined
+%% in the Data payload.  Returns continue if fails to connect or 
+%% stop when successfull.
+%% @end
+%%--------------------------------------------------------------------
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
+handle({struct, Props}, #cf_call{cf_pid=CFPid}=Call) ->
+    init_amqp(Call),
+    {ok, Endpoint} = get_endpoint(get_value(<<"database">>, Props), get_value(<<"endpoint">>, Props)),
+    bridge_endpoints([Endpoint], get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT), Call),
+    WaitTimeout = (whistle_util:to_integer(get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)) + 5) * 1000,
+    case wait_for_bridge(WaitTimeout) of
+        {_, channel_hungup} ->
+            format_log(info, "CF_DEVICES(~p): Channel hungup, terminate call flow~n", [self()]),
+            CFPid ! stop;
+        {error, _} ->
+            format_log(info, "CF_DEVICES(~p): Bridge failed, continue call flow~n", [self()]),
+            CFPid ! continue
+    end.   
 
-    bridge_endpoint(Call),
-
-    wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 300000),
-
-    CFPid ! stop,
-    ok.    
-
-wait() ->
-    receive
-        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
-            {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            format_log(info, "CF_DEVICES(~p): Received~nPayload: ~p~n", [self(), Msg]),
-            wait();
-        Payload ->
-            format_log(info, "CF_DEVICES(~p): Received unknown~nPayload: ~p~n", [self(), Payload]),
-            wait()
-    after
-        30000 -> ok
-    end.    
-
-answer_call(#cf_call{call_id=CallId} = Call) ->                               
-    Command = [
-                {<<"Application-Name">>, <<"answer">>}
-               ,{<<"Call-ID">>, CallId}
-             | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    format_log(info, "CF_DEVICES(~p): Sending command~nPayload: ~p~n", [self(), Command]),
-    {ok, Json} = whistle_api:answer_req(Command),
-    send_resp(Json, Call).
-
-
-set_channel_vars(#cf_call{call_id=CallId} = Call) ->                               
-    Command = [
-                {<<"Application-Name">>, <<"set">>}               
-               ,{<<"Custom-Channel-Vars">>, {struct, [{<<"hangup_after_bridge">>, <<"true">>},{<<"continue_on_fail">>, <<"true">>}]}}
-               ,{<<"Call-ID">>, CallId}
-             | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    format_log(info, "CF_DEVICES(~p): Sending command~nPayload: ~p~n", [self(), Command]),
-    {ok, Json} = whistle_api:set_req(Command),
-    send_resp(Json, Call).
-
-bridge_endpoint(#cf_call{call_id=CallId} = Call) ->                               
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Generates and sends the bridge call command
+%% @end
+%%--------------------------------------------------------------------
+-spec(bridge_endpoints/3 :: (Props :: proplist(), Timeout :: binary(), Call :: #cf_call{}) -> ok).
+bridge_endpoints(Endpoints, Timeout, #cf_call{call_id=CallId} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, [{struct, [
-                                              {<<"Invite-Format">>, <<"username">>}
-                                             ,{<<"To-User">>, <<"karl">>}
-                                             ,{<<"To-Realm">>, <<"172.16.1.185">>}                                             
-                                            ]}]}
-               ,{<<"Progress-Timeout">>, <<"6">>}
-               ,{<<"Timeout">>, <<"30">>}
+               ,{<<"Endpoints">>, Endpoints}
+               ,{<<"Continue-On-Fail">>, <<"true">>}
+               ,{<<"Timeout">>, Timeout}
                ,{<<"Call-ID">>, CallId}
              | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     format_log(info, "CF_DEVICES(~p): Sending command~nPayload: ~p~n", [self(), Command]),
     {ok, Json} = whistle_api:bridge_req(Command),
-    send_resp(Json, Call).
-    
-%%-spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
-send_resp(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
-    format_log(info, "CF_DEVICES(~p): Sent to ~p~n", [self(), CtrlQ]),
-    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
+    send_callctrl(Json, Call).
 
+get_endpoint(Db, Endpoint) ->
+    case couch_mgr:open_doc(Db, Endpoint) of
+        {ok, Doc} ->
+            Props = [
+                      {<<"Invite-Format">>, whapps_json:get_value(["sip", "invite-format"], Doc)}
+                     ,{<<"To-User">>, whapps_json:get_value(["sip", "username"], Doc)}
+                     ,{<<"To-Realm">>, whapps_json:get_value(["sip", "realm"], Doc)}
+                     ,{<<"To-DID">>, whapps_json:get_value(["sip", "number"], Doc)}
+                     ,{<<"Route">>, whapps_json:get_value(["sip", "url"], Doc)}
+                     ,{<<"Progress-Timeout">>, whapps_json:get_value(["sip", "progress-timeout"], Doc, <<"6">>)}
+                     ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], Doc)}
+                     ,{<<"Ignore-Early-Media">>, whapps_json:get_value(["media", "ignore-early-media"], Doc)}
+                     ,{<<"Codecs">>, whapps_json:get_value(["media", "codecs"], Doc)}
+                    ],
+            {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Props)}};
+        Error ->
+            format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Endpoint, Db, Error]),
+            {error, Error}
+    end.
 
-wait_for_call_event(Name, Application, Timeout) ->    
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Waits for and determines the status of the bridge command
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_bridge/1 :: (Timeout :: integer()) -> {ok|error, channel_hangup}|{error, bridge_failed|timeout}).    
+wait_for_bridge(Timeout) -> 
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            format_log(info, "CF_DEVICES(~p): Received~nPayload: ~p~n", [self(), Msg]),
-            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                { <<"Call-Event">>, Name, Application } ->                                
-                    {ok, Msg};
-                { <<"Call-Event">>, <<"CHANNEL_HANGUP">>, _Name } ->
-                    {error, channel_hungup};
-                _ ->
-                    wait_for_call_event(Name, Application, Timeout)
+             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
+                 { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
+                     wait_for_hangup();
+                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                     {error, channel_hungup};
+                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
+                     {error, bridge_failed};
+                 _ ->
+                     wait_for_bridge(Timeout)
             end
     after
         Timeout ->
             {error, timeout}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% When the bridge command is successfull this waits for the call to
+%% hangup
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_hangup/0 :: () -> {ok, channel_hangup}).    
+wait_for_hangup() -> 
+    receive
+        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
+            {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
+             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
+                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                     {ok, channel_hungup};
+                 _ ->
+                     wait_for_hangup()
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes a AMQP queue and consumer to recieve call events
+%% @end
+%%--------------------------------------------------------------------
+-spec(init_amqp/1 :: (Call :: #cf_call{}) -> no_return()).                          
+init_amqp(#cf_call{amqp_h=AHost, call_id=CallId}) ->
+    AmqpQ = amqp_util:new_queue(AHost),
+    amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
+    amqp_util:basic_consume(AHost, AmqpQ).    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Sends call commands to the appropriate call control process
+%% @end
+%%--------------------------------------------------------------------
+-spec(send_callctrl/2 :: (JSON :: iolist(), Call :: #cf_call{}) -> no_return()).
+send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
+    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).

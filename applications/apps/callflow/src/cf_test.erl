@@ -226,7 +226,11 @@ process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
       ,call_id = proplists:get_value(<<"Call-ID">>, Prop)
       ,cf_pid = self()
      },
-    Payload = {struct, []},
+    Payload = {struct, [
+                         {<<"database">>, <<"crossbar%2Fclients%2F58%2F39%2Fa3ed904ecdaeedebc8af6a1b7a1f">>} 
+                        ,{<<"endpoint">>, <<"7818711acb94ddc2f5ac26da6c5d8eaa">>}
+                        ,{<<"timeout">>, <<"15">>}
+                       ]},
     Pid = spawn(cf_devices, handle, [Payload, Call]),
     format_log(info, "CF_TEST(~p): Spawned cf_devices at ~p~n", [self(), Pid]),
     receive
@@ -238,11 +242,26 @@ process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
             ok
     after
         10000 -> error
-    end;
+    end,
+    hangup_call(Call);
 
 process_req(_MsgType, _Msg, _State) ->
     format_log(info, "CF_TEST(~p): Unhandled Msg ~p~nPayload: ~p~n", [self(), _MsgType, _Msg]).
 
+hangup_call(#cf_call{call_id=CallId} = Call) ->                               
+    Command = [
+                {<<"Application-Name">>, <<"hangup">>}
+               ,{<<"Call-ID">>, CallId}
+             | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+            ],
+    format_log(info, "CF_TEST(~p): Sending command~nPayload: ~p~n", [self(), Command]),
+    {ok, Json} = whistle_api:hangup_req(Command),
+    send_callctrl(Json, Call).
+
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(Json, RespQ, #state{amqp_host=AHost}) ->
     amqp_util:targeted_publish(AHost, RespQ, Json, <<"application/json">>).
+
+send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
+    format_log(info, "CF_DEVICES(~p): Sent to ~p~n", [self(), CtrlQ]),
+    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
