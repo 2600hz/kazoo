@@ -19,7 +19,7 @@
 
 -import(logger, [format_log/3]).
 
--include("callflow.hrl").
+-include("../callflow.hrl").
 
 -define(SERVER, ?MODULE).
 -define(APP_NAME, <<"cf_test">>).
