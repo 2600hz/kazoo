@@ -17,7 +17,10 @@ start_full_test() ->
     EmptyEvtSubResp = [{[<<"data">>, <<"streams">>], []}
 		       ,{[<<"data">>, <<"events">>], {struct, []}}
 		      ],
-    PutJSON = get_put_json(<<"directory.auth_req">>),
+
+    MaxEvents = 5,
+
+    PutJSON = get_put_json(<<"directory.auth_req">>, MaxEvents),
     DeleteJSON = get_delete_json(false),
 
     format_log(info, "GET ~s~n", [UrlBase]),
@@ -43,25 +46,21 @@ start_full_test() ->
 	format_log(info, "PUT ~s ~s~n", [UrlEvtBase, PutJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.auth_req">>]}]),
 
-	PublishNTimes = 15,
-	MaxEvents = 10,
+	PublishNTimes = 25, % divisible by MaxEvents please
 	lists:foreach(fun(_) -> publish_auth_req() end, lists:seq(1, PublishNTimes)),
 
-	format_log(info, "GET ~s~n", [UrlEvtBase]),
-	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", [{[<<"data">>, <<"events">>, <<"directory.auth_req">>]
-										, fun(V) ->
-											  format_log(info, "Len == ~p~n", [length(V)]),
-											  length(V) =:= MaxEvents
-										  end
-									       }]),
+	CmpFun = fun(V) ->
+			 format_log(info, "Len == ~p~n", [length(V)]),
+			 length(V) =:= MaxEvents
+		 end,
+	
+	lists:foreach(fun(_) ->
+			      format_log(info, "GET ~s~n", [UrlEvtBase]),
+			      true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", [{[<<"data">>, <<"events">>, <<"directory.auth_req">>]
+												      , CmpFun
+												     }])
+		      end, lists:seq(1, PublishNTimes div MaxEvents)),
 
-	format_log(info, "GET ~s~n", [UrlEvtBase]),
-	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", [{[<<"data">>, <<"events">>, <<"directory.auth_req">>]
-										, fun(V) ->
-											  format_log(info, "Len == ~p~n", [length(V)]),
-											  length(V) =:= (PublishNTimes - MaxEvents)
-										  end
-									       }]),
 	format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
 
@@ -88,8 +87,11 @@ verify_resp({_,Code,_,JSON}, Code, Rules) ->
 verify_resp(_, _, _) -> false.
 
 get_put_json(Stream) ->
+    get_put_json(Stream, 10).
+
+get_put_json(Stream, MaxEvts) ->
     mochijson2:encode({struct, [{<<"data">>, {struct, [{<<"stream">>, Stream}
-						       ,{<<"max_events">>, <<"2">>}
+						       ,{<<"max-events">>, MaxEvts}
 						      ]
 					     }
 				}
