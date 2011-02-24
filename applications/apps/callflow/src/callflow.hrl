@@ -4,6 +4,10 @@
 
 -define ( CALLFLOW_DB, "callflow" ).
 
+-define ( DIALPLAN_MAP, [
+   { <<"tone">>, <<"tones">> }
+] ).
+
 -record (cf_call, {
              amqp_h = <<>> :: binary()                            %% The AMPQ host the ctrl_q and bdst_q exist in
             ,ctrl_q = <<>> :: binary()                            %% The control queue for this request
