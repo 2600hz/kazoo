@@ -126,9 +126,9 @@ find_route(Flags, ApiProp) ->
 	    case lookup_did(Did) of
 		{error, _} ->
 		    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
-		{ok, _} -> % out-in scenario
+		{ok, DidProp} -> % out-in scenario
 		    OrigAcctId = Flags#route_flags.account_doc_id,
-		    FlagsIn0 = create_flags(Did, ApiProp),
+		    FlagsIn0 = create_flags(Did, ApiProp, DidProp),
 		    FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
 		    case ts_credit:check(FlagsIn1) of
 %% ts_acctmgr:has_flatrates(FlagsIn#route_flags.account_doc_id) orelse
@@ -271,13 +271,19 @@ fold_features(Features, Flags) ->
 
 -spec(create_flags/2 :: (Did :: binary(), ApiProp :: proplist()) -> #route_flags{}).
 create_flags(Did, ApiProp) ->
+    case lookup_did(Did) of
+	{ok, DidProp} ->
+	    create_flags(Did, ApiProp, DidProp);
+	{error, _E} ->
+	    create_flags(Did, ApiProp, [])
+    end.
+
+create_flags(_, ApiProp, DidProp) ->
     {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
 
-    F1 = case lookup_did(Did) of
-	     {ok, DidProp} ->
-		 add_auth_realm(flags_from_did(DidProp, #route_flags{}), get_value(<<"Realm">>, ChannelVars));
-	     {error, _E} ->
-		 add_auth_user(add_auth_realm(#route_flags{}, get_value(<<"Realm">>, ChannelVars)), get_value(<<"Username">>, ChannelVars))
+    F1 = case DidProp of
+	     [] -> add_auth_user(add_auth_realm(#route_flags{}, get_value(<<"Realm">>, ChannelVars)), get_value(<<"Username">>, ChannelVars));
+	     _ -> add_auth_realm(flags_from_did(DidProp, #route_flags{}), get_value(<<"Realm">>, ChannelVars))
 	 end,
 
     AuthUser = F1#route_flags.auth_user,
