@@ -316,9 +316,25 @@ stop_call_activity_ref(Ref) ->
     erlang:cancel_timer(Ref).
 
 %% Close down the A-Leg of a call
-close_down_call(JObj, Flags, 1) ->
+close_down_call(JObj, #route_flags{diverted_account_doc_id = <<>>}=Flags, 1) ->
     Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
     update_account(Duration, Flags);
+close_down_call(JObj, #route_flags{diverted_account_doc_id = Acct2ID, callid=CallID}=Flags, 1) ->
+    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    update_account(Duration, Flags),
+
+    %% Because the call may have never bridged, we need to go ahead and clear this second trunk
+    %% If it did bridge, ts_acctmgr will just error when the B-leg ts_call_handler tries to clear the trunk
+    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
+    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
+    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
+    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
+    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
+
+    ts_acctmgr:release_trunk(Acct2ID, CallID, calculate_cost(R, RI, RM, S, Duration)),
+    ts_acctmgr:release_trunk(Acct2ID, <<CallID/binary, "-failover">>, calculate_cost(R, RI, RM, S, Duration));
+    
 close_down_call(_JObj, #route_flags{scenario=inbound}, _LegNo) ->
     ok; %% a-leg takes care of it all, nothing to do
 close_down_call(_JObj, #route_flags{scenario=outbound}, _LegNo) ->

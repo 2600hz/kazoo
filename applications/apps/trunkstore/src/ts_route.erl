@@ -132,23 +132,21 @@ find_route(Flags, ApiProp) ->
 		    FlagsIn0 = create_flags(Did, ApiProp, DidProp),
 		    FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
 		    case ts_credit:check(FlagsIn1) of
-%% ts_acctmgr:has_flatrates(FlagsIn#route_flags.account_doc_id) orelse
-%% ts_acctmgr:has_credit(FlagsIn#route_flags.account_doc_id) of
 			{ok, FlagsIn} ->
 			    %% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
 			    format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n"
 				       , [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
 		    	    case inbound_route(FlagsIn) of
-		    		{ok, Routes, FlagsIn1} ->
+		    		{ok, Routes, FlagsIn2} ->
 				    case FlagsIn1#route_flags.scenario of
 					inbound ->
-					    response(Routes, ApiProp, FlagsIn1#route_flags{routes_generated=Routes
+					    response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
 											   ,account_doc_id=OrigAcctId
 											   ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
 											   ,scenario=outbound_inbound
 											  });
 					inbound_failover ->
-					    response(Routes, ApiProp, FlagsIn1#route_flags{routes_generated=Routes
+					    response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
 											   ,account_doc_id=OrigAcctId
 											   ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
 											   ,scenario=outbound_inbound_failover
