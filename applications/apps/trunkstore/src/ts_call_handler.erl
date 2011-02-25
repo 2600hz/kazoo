@@ -304,3 +304,91 @@ stop_call_activity_ref(undefined) ->
     ok;
 stop_call_activity_ref(Ref) ->
     erlang:cancel_timer(Ref).
+
+%% Close down the A-Leg of a call
+close_down_call(JObj, #route_flags{diverted_account_doc_id = <<>>}=Flags, 1) ->
+    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    update_account(Duration, Flags);
+close_down_call(JObj, #route_flags{diverted_account_doc_id = Acct2ID, callid=CallID}=Flags, 1) ->
+    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    update_account(Duration, Flags),
+
+    %% Because the call may have never bridged, we need to go ahead and clear this second trunk
+    %% If it did bridge, ts_acctmgr will just error when the B-leg ts_call_handler tries to clear the trunk
+    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
+    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
+    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
+    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
+    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
+
+    Cost = calculate_cost(R, RI, RM, S, Duration),
+    ts_acctmgr:release_trunk(Acct2ID, CallID, Cost),
+    ts_acctmgr:release_trunk(Acct2ID, <<CallID/binary, "-failover">>, Cost);
+close_down_call(_JObj, #route_flags{scenario=inbound}, _LegNo) ->
+    ok; %% a-leg takes care of it all, nothing to do
+close_down_call(_JObj, #route_flags{scenario=outbound}, _LegNo) ->
+    ok; %% a-leg takes care of it all, nothing to do
+close_down_call(JObj, #route_flags{scenario=inbound_failover, diverted_account_doc_id=AcctID}=Flags, _LegNo) ->
+    ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
+    FailCallID = <<ACallID/binary, "-failover">>, % A-leg
+
+    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
+    case whistle_util:to_boolean(whapps_json:get_value(<<"Failover-Route">>, CCVs, false)) of
+	false -> %% inbound route bridged
+	    ts_acctmgr:release_trunk(AcctID, FailCallID, 0);
+	true -> %% failover route bridged
+	    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
+	    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
+	    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
+	    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
+
+	    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+	    ts_acctmgr:release_trunk(AcctID, FailCallID, calculate_cost(R, RI, RM, S, Duration))
+    end;
+close_down_call(JObj, #route_flags{scenario=outbound_inbound, account_doc_id=Acct2ID}=Flags, _LegNo) ->
+    BCallID = whapps_json:get_value([<<"Call-ID">>], JObj),
+    ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
+
+    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
+    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
+    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
+    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
+    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
+
+    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+
+    %% copy acct2's A-leg trunk reservation to a B-leg trunk reservation
+    ts_acctmgr:copy_reserve_trunk(Acct2ID, ACallID, BCallID, (R * RM + S)),
+    ts_acctmgr:release_trunk(Acct2ID, ACallID, 0),
+    ts_acctmgr:release_trunk(Acct2ID, BCallID, calculate_cost(R, RI, RM, S, Duration));
+
+close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_doc_id=Acct2ID}=Flags, _LegNumber) ->
+    BCallID = whapps_json:get_value([<<"Call-ID">>], JObj),
+    ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
+
+    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
+    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
+    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
+    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
+    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
+
+    %% Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+
+    IsFailoverRoute = whistle_util:to_boolean(whapps_json:get_value(<<"Failover-Route">>, CCVs, false)),
+
+    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+
+    ts_acctmgr:release_trunk(Acct2ID, ACallID, 0),
+    ts_acctmgr:release_trunk(Acct2ID, <<ACallID/binary, "-failover">>, 0),
+
+    case IsFailoverRoute of
+	false -> %% inbound route bridged
+	    ts_acctmgr:copy_reserve_trunk(Acct2ID, ACallID, BCallID, (R*RM+S));
+	true ->
+	    ts_acctmgr:copy_reserve_trunk(Acct2ID, <<ACallID/binary, "-failover">>, BCallID, (R*RM+S))
+    end,
+    ts_acctmgr:release_trunk(Acct2ID, BCallID, calculate_cost(R, RI, RM, S, Duration)).

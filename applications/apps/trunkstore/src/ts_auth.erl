@@ -30,14 +30,20 @@
 -spec(handle_req/1 :: (Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(Prop) ->
     AuthU = get_value(<<"Auth-User">>, Prop),
-    AuthR = get_value(<<"Auth-Domain">>, Prop),
+    AuthR0 = get_value(<<"Auth-Domain">>, Prop),
 
-    %% [_FromUser, FromDomain] = binary:split(get_value(<<"From">>, Prop), <<"@">>),
-    %% Direction = case is_inbound(FromDomain) of
-    %% 		    true -> <<"inbound">>;
-    %% 		    false -> <<"outbound">>
-    %% 		end,
-    Direction = <<"outbound">>, %% if we're authing, it's an outbound call; no auth means carrier authed by ACL, hence inbound
+    %% if we're authing, it's an outbound call; no auth means carrier authed by ACL, hence inbound
+    %% until we introduce IP-based auth
+    Direction = <<"outbound">>,
+
+    AuthR = case ts_util:is_ipv4(AuthR0) of
+		true ->
+		    [_ToUser, ToDomain] = binary:split(get_value(<<"To">>, Prop), <<"@">>),
+		    format_log(info, "TS_AUTH(~p): Auth-Realm (~p) not a hostname, trying To-Domain(~p)~n", [self(), AuthR0, ToDomain]),
+		    ToDomain;
+		false ->
+		    AuthR0
+	    end,
 
     {ok, AuthProp} = lookup_user(AuthU, AuthR),
 

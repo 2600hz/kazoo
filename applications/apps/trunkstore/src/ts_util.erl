@@ -3,12 +3,17 @@
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% utility functions for Trunkstore
+%%%
+%%% Some functions make use of the inet_parse module. This is an undocumented
+%%% module, and as such the functions may change or be removed.
+%%%
 %%% @end
 %%% Created : 24 Nov 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ts_util).
 
 -export([find_ip/1, filter_active_calls/2, get_media_handling/1, current_tstamp/0]).
+-export([constrain_weight/1, is_ipv4/1, is_ipv6/1]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
@@ -33,6 +38,18 @@ find_ip(Domain) when is_list(Domain) ->
 			[Addr | _Rest] -> inet_parse:ntoa(Addr)
 		    end
 	    end
+    end.
+
+is_ipv4(Address) ->
+    case inet_parse:ipv4_address(whistle_util:to_list(Address)) of
+	{ok, _} -> true;
+	{error, _} -> false
+    end.
+
+is_ipv6(Address) ->
+    case inet_parse:ipv6_address(whistle_util:to_list(Address)) of
+	{ok, _} -> true;
+	{error, _} -> false
     end.
 
 %% FilterOn: CallID | flat_rate | per_min
