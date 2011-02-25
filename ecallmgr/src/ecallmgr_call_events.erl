@@ -28,6 +28,7 @@ start_link(Node, UUID, Host, CtlPid) ->
 
 init(Node, UUID, Host, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
+    erlang:monitor_node(Node, true),
     add_amqp_listener(Host, UUID),
     loop(Node, UUID, Host, CtlPid, infinity).
 
@@ -63,6 +64,8 @@ loop(Node, UUID, Host, CtlPid, Timeout) ->
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
 	    loop(Node, UUID, Host, CtlPid, Timeout1);
 	call_hangup ->
+	    shutdown(CtlPid, UUID);
+	{nodedown, Node} ->
 	    shutdown(CtlPid, UUID);
 	{amqp_host_down, H} ->
 	    format_log(info, "EVT(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
