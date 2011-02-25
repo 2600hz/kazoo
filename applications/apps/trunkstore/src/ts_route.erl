@@ -215,7 +215,7 @@ inbound_route(Flags) ->
 	     | Invite ],
     case whistle_api:route_resp_route_v(Route) of
 	true ->
-	    {Routes, Flags1} = add_failover_route(Flags#route_flags.failover, Flags#route_flags{scenario=inbound}, {struct, Route}),
+	    {Routes, Flags1} = add_failover_route(Flags#route_flags.failover, Flags, {struct, Route}),
 	    {ok, Routes, Flags1};
 	false ->
 	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route]),

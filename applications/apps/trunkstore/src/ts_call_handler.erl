@@ -332,9 +332,9 @@ close_down_call(JObj, #route_flags{diverted_account_doc_id = Acct2ID, callid=Cal
     RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
     S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
 
-    ts_acctmgr:release_trunk(Acct2ID, CallID, calculate_cost(R, RI, RM, S, Duration)),
-    ts_acctmgr:release_trunk(Acct2ID, <<CallID/binary, "-failover">>, calculate_cost(R, RI, RM, S, Duration));
-    
+    Cost = calculate_cost(R, RI, RM, S, Duration),
+    ts_acctmgr:release_trunk(Acct2ID, CallID, Cost),
+    ts_acctmgr:release_trunk(Acct2ID, <<CallID/binary, "-failover">>, Cost);
 close_down_call(_JObj, #route_flags{scenario=inbound}, _LegNo) ->
     ok; %% a-leg takes care of it all, nothing to do
 close_down_call(_JObj, #route_flags{scenario=outbound}, _LegNo) ->
