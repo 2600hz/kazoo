@@ -245,7 +245,8 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 		    { [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), Error]),
-		    [InboundRoute]
+		    ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
+		    { [InboundRoute], Flags#route_flags{scenario=inbound}}
 	    end;
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, Error]),
