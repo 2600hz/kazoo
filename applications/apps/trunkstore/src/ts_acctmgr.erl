@@ -19,6 +19,7 @@
 	 ,has_flatrates/1 %% has_flatrates(AcctId) - check if account has a free flatrate trunk
 	 ,reserve_trunk/2, reserve_trunk/3 %% reserve_trunk(AcctId, CallID[, Amount]) - only reserve if avail_credit > Amt (0 if unspecified)
 	 ,release_trunk/2, release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
+	 ,copy_reserve_trunk/4 %% when a failover trunk gets the b-leg callid resolved, copy its reserve doc to the b-leg callid
 	]).
 
 %% gen_server callbacks
@@ -36,6 +37,7 @@
 -define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 -define(EOD, end_of_day).
+-define(ACTIVE_CALL_TIMEOUT, 1000).
 
 -record(state, {
 	  current_write_db = ""
@@ -95,6 +97,11 @@ reserve_trunk(_, <<>>, _) ->
     {error, no_callid};
 reserve_trunk(Acct, CallID, Amt) ->
     gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt]}, infinity).
+
+%% when an a-leg CALLID-failover is resolved into a B-leg CallID, transfer the type of trunk to the B-leg CallID
+-spec(copy_reserve_trunk/4 :: (AcctID :: binary(), ACallID :: binary(), BCallID :: binary(), Amt :: float() | integer()) -> ok).
+copy_reserve_trunk(AcctID, ACallID, BCallID, Amt) ->
+    gen_server:call(?SERVER, {copy_reserve_trunk, whistle_util:to_binary(AcctID), [ACallID, BCallID, Amt]}, infinity).
 
 %% release a reserved trunk
 %% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
@@ -187,7 +194,21 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_
 		{ok, _} -> {reply, {ok, Type}, S};
 		{error, conflict} -> {reply, {error, entry_exists}, S}
 	    end
-    end.
+    end;
+handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, _, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    case trunk_type(RDB, AcctID, ACallID) of
+	non_existant ->
+	    case trunk_type(WDB, AcctID, ACallID) of
+		non_existant -> format_log(error, "TS_ACCTMGR(~p): Can't copy data from ~p to ~p for acct ~p, non_existant~n"
+					   ,[self(), ACallID, BCallID, AcctID]);
+		per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
+		flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
+	    end;
+	per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
+	flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
+    end,
+    {reply, ok, S}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -250,6 +271,8 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
 					  transfer_active_calls(Acct, RDB, WDB)
 				  end, get_accts(RDB)) end),
     couch_mgr:db_compact(RDB),
+    stop_replication(RDB, nodes()),
+    setup_replication(WDB, nodes()),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
@@ -391,6 +414,23 @@ release_doc(AcctId, CallID, per_min, Amt) ->
 		       ,{<<"doc_type">>, <<"release">>}
 		      ]).
 
+release_error_doc(AcctId, CallID, flat_rate) ->
+    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+			      ,{<<"call_id">>, CallID}
+			      ,{<<"trunk_type">>, flat_rate}
+			      ,{<<"doc_type">>, <<"release">>}
+			      ,{<<"release_error">>, true}
+			     ]).
+
+release_error_doc(AcctId, CallID, per_min, Amt) ->
+    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+		       ,{<<"call_id">>, CallID}
+		       ,{<<"trunk_type">>, per_min}
+		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
+		       ,{<<"doc_type">>, <<"release">>}
+		       ,{<<"release_error">>, true}
+		      ]).
+
 credit_doc(AcctId, Credit, Trunks, Extra) ->
     [{<<"acct_id">>, AcctId}
      ,{<<"amount">>, Credit}
@@ -431,9 +471,14 @@ transfer_active_calls(AcctId, RDB, WDB) ->
 	{ok, []} -> format_log(info, "TS_ACCTMGR.trans_active: No active for ~p~n", [AcctId]);
 	{ok, Calls} when is_list(Calls) ->
 	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, <<"active">>}] }) ->
-				  NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
-				  format_log(info, "TS_ACCTMGR.trans_active: Moving ~p over~n", [CallId]),
-				  couch_mgr:save_doc(WDB, {struct, NewDoc});
+				  case is_call_active(CallId) of
+				      true ->
+					  NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
+					  format_log(info, "TS_ACCTMGR.trans_active: Moving ~p over~n", [CallId]),
+					  couch_mgr:save_doc(WDB, {struct, NewDoc});
+				      false ->
+					  release_trunk_error(AcctId, CallId, RDB)
+				  end;
 			     (_) -> ok
 			  end, Calls)
     end.
@@ -491,3 +536,73 @@ update_views(DB) ->
 		  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
+setup_replication(_, []) -> ok;
+setup_replication(LocalDB, [N | Ns]) ->
+    [_, H] = binary:split(whistle_util:to_binary(N), <<"@">>),
+    UserPass = case couch_mgr:get_creds() of
+		   {"", ""} -> "";
+		   {U, P} -> list_to_binary([U, ":", P, "@"])
+	       end,
+    Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
+
+    Res = couch_mgr:replicate([{<<"source">>, Source}
+			       ,{<<"target">>, whistle_util:to_binary(LocalDB)}
+			       ,{<<"continuous">>, true}
+			      ]),
+    format_log(info, "TS_ACCTMGR.setup_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
+    setup_replication(LocalDB, Ns).
+
+stop_replication(_, []) -> ok;
+stop_replication(LocalDB, [N | Ns]) ->
+    [_, H] = binary:split(whistle_util:to_binary(N), <<"@">>),
+    UserPass = case couch_mgr:get_creds() of
+		   {"", ""} -> "";
+		   {U, P} -> list_to_binary([U, ":", P, "@"])
+	       end,
+    Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
+
+    Res = couch_mgr:replicate([{<<"source">>, Source}
+			       ,{<<"target">>, whistle_util:to_binary(LocalDB)}
+			       ,{<<"continuous">>, true}
+			       ,{<<"cancel">>, true}
+			      ]),
+    format_log(info, "TS_ACCTMGR.stop_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
+    setup_replication(LocalDB, Ns).
+
+is_call_active(CallID) ->
+    H = whapps_controller:get_amqp_host(),
+    Q = amqp_util:new_targeted_queue(H),
+    amqp_util:bind_q_to_targeted(H, Q),
+
+    Req = [{<<"Call-ID">>, CallID}
+	   | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
+
+    {ok, JSON} = whistle_api:call_status_req(Req),
+    amqp_util:callevt_publish(H, CallID, JSON, status_req),
+
+    is_call_active_loop().
+
+is_call_active_loop() ->
+    receive
+	{_, #amqp_msg{payload = Payload}} ->
+	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    whistle_api:call_status_resp_v(Prop);
+	_ ->
+	    is_call_active_loop()
+    after ?ACTIVE_CALL_TIMEOUT ->
+	    false
+    end.
+
+release_trunk_error(AcctId, CallID, DB) ->
+    format_log(info, "TS_ACCTMGR.release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
+
+    case trunk_type(DB, AcctId, CallID) of
+	non_existant -> format_log(info, "TS_ACCTMGR.release_error: Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
+	flat_rate -> couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, flat_rate));
+	per_min ->
+	    Amt = case ts_cdr:fetch_cdr(CallID) of
+		      {error, not_found} -> 0;
+		      {ok, {struct, CDR}} -> props:get_value(<<"Billing-Seconds">>, CDR, 0)
+		  end,
+	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, per_min, Amt))
+    end.

@@ -1,4 +1,6 @@
--include("../../../utils/src/whistle_types.hrl").
+-include("../../../src/whistle_types.hrl").
+-include("../../../src/whistle_amqp.hrl").
+-include("../include/amqp_client/include/amqp_client.hrl").
 -include("../src/crossbar_types.hrl").
 
 -define(CONTENT_PROVIDED, [

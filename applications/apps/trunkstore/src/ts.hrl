@@ -1,5 +1,7 @@
 -include_lib("couchbeam/include/couchbeam.hrl").
+-include("../include/amqp_client/include/amqp_client.hrl").
 -include("../../../src/whistle_types.hrl").
+-include("../../../utils/src/whistle_amqp.hrl").
 
 %% couch params for the trunk store and its views
 -define(TS_DB, "ts").
@@ -50,6 +52,7 @@
 	  ,account_doc_id = <<>> :: binary()             % doc id of the account
 	  ,diverted_account_doc_id = <<>> :: binary()    % if an outbound call routes to a known DID, route internally rather than over a carrier; for billing
           ,routes_generated = [] :: proplist()           % the routes generated during the routing phase
+	  ,scenario = inbound :: inbound | outbound | inbound_failover | outbound_inbound | outbound_inbound_failover % what scenario have we routed over
 	 }).
 
 

@@ -5,6 +5,6 @@ export ERL_LIBS=$PWD/../lib/
 
 exec erl -setcookie `cat ../confs/fs_conf/autoload_configs/.erlang.cookie` \
     -pa $PWD/ebin -pa $PWD/deps/*/ebin \
-    -boot start_sasl -name ecallmgr@`hostname` -s reloader -s ecallmgr
+    -boot start_sasl -name ecallmgr@whistle.local -s reloader -s ecallmgr
 #    -kernel error_logger '{file, "log/error_log"}' \
 

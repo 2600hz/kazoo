@@ -222,7 +222,7 @@ get_routes(Flags, Carriers) ->
 %% so return true if A's weight is greater than B's weight
 -spec(sort_carriers/2 :: (CarrierA :: tuple(), CarrierB :: tuple()) -> boolean()).
 sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
-    get_value(<<"weight_cost">>, CarrierAData, 0) >= get_value(<<"weight_cost">>, CarrierBData, 0).
+    ts_util:constrain_weight(get_value(<<"weight_cost">>, CarrierAData, 0)) >= ts_util:constrain_weight(get_value(<<"weight_cost">>, CarrierBData, 0)).
 
 %% transform Carriers proplist() into a list of Routes for the API
 -type routes() :: list(tuple(struct, proplist())).
@@ -232,11 +232,18 @@ create_routes(Flags, Carriers) ->
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
-    ChannelVars = [{<<"Rate">>, Flags#route_flags.rate}
+
+    ChannelVars0 = [{<<"Rate">>, Flags#route_flags.rate}
 		   ,{<<"Rate-Increment">>, Flags#route_flags.rate_increment}
 		   ,{<<"Rate-Minimum">>, Flags#route_flags.rate_minimum}
 		   ,{<<"Surcharge">>, Flags#route_flags.surcharge}
 		  ],
+
+   ChannelVars = case binary:longest_common_suffix([Flags#route_flags.callid, <<"-failover">>]) of
+		   0 -> ChannelVars0;
+		   _ -> [{<<"Failover-Route">>, <<"true">>} | ChannelVars0]
+		 end,
+
     case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID, ChannelVars}, Carriers) of
 	{[], _, _, _} ->
 	    {error, "Failed to find routes for the call"};
@@ -269,7 +276,7 @@ carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID, ChannelV
 -type g2r_acc() :: tuple(routes(), binary(), proplist(), proplist()).
 -spec(gateway_to_route/2 :: (Gateway :: proplist(), Acc :: g2r_acc()) -> g2r_acc()).
 gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
-    case get_value(<<"enabled">>, Gateway, <<"0">>) of
+    case whistle_util:to_binary(get_value(<<"enabled">>, Gateway, <<"0">>)) of
 	<<"1">> ->
 	    Dialstring = list_to_binary([<<"sip:">>
 					 ,get_value(<<"prefix">>, Gateway)

@@ -45,6 +45,9 @@
 
 -export([start_link/3, init/3]).
 
+%% Internal Functions
+-export([loop/7]).
+
 -include("../include/amqp_client/include/amqp_client.hrl").
 
 -import(logger, [log/2, format_log/3]).
@@ -57,7 +60,7 @@ start_link(Node, UUID, Amqp) ->
 init(Node, UUID, {AmqpHost, CtlQueue}) ->
     amqp_util:basic_consume(AmqpHost, CtlQueue),
     format_log(info, "CONTROL(~p): initial loop call, consuming on ~p~n", [self(), CtlQueue]),
-    loop(Node, UUID, queue:new(), <<>>, CtlQueue, erlang:now(), AmqpHost).
+    ?MODULE:loop(Node, UUID, queue:new(), <<>>, CtlQueue, erlang:now(), AmqpHost).
 
 %% CurrApp is the Whistle Application that is currently running in FS (or empty)
 %% the next command in CmdQ doesn't run until CurrApp translates to the Event Name
@@ -68,14 +71,17 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
 				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+	    format_log(info, "CONTROL(~p): Recv App ~p~n~p~n", [self(), get_value(<<"Application-Name">>, Prop), CmdQ]),
+
 	    NewCmdQ = case get_value(<<"Application-Name">>, Prop) of
 			  <<"queue">> -> %% list of commands that need to be added
 			      format_log(info, "CONTROL(~p): Recv App Cmd: Queue~n", [self()]),
 			      DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
 			      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
 					     ({struct, Cmd}, TmpQ) ->
-						  format_log(info, "CONTROL.queue: Cmd: ~p~n", [DefProp ++ Cmd]),
-						  queue:in(DefProp ++ Cmd, TmpQ)
+						  AppCmd = DefProp ++ Cmd,
+						  format_log(info, "CONTROL.queue: Cmd: ~p~n", [AppCmd]),
+						  queue:in(AppCmd, TmpQ)
 					  end, CmdQ, get_value(<<"Commands">>, Prop));
 			  _AppName ->
 			      queue:in(Prop, CmdQ)
@@ -86,29 +92,29 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 		    format_log(info, "CONTROL(~p): CmdQ not empty, running ~p~n", [self(), Cmd]),
 		    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd, AmqpHost),
 		    AppName = get_value(<<"Application-Name">>, Cmd),
-		    loop(Node, UUID, NewCmdQ1, AppName, CtlQ, StartT, AmqpHost);
+		    ?MODULE:loop(Node, UUID, NewCmdQ1, AppName, CtlQ, StartT, AmqpHost);
 		false ->
-		    loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT, AmqpHost)
+		    ?MODULE:loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT, AmqpHost)
 	    end;
 	{execute_complete, UUID, EvtName} ->
 	    format_log(info, "CONTROL(~p): CurrApp: ~p(~p) execute_complete: ~p~n", [self(), CurrApp, whistle_api:convert_whistle_app_name(CurrApp), EvtName]),
 	    case whistle_api:convert_whistle_app_name(CurrApp) of
 		<<>> ->
-		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
+		    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
 		EvtName ->
 		    case queue:out(CmdQ) of
 			{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, <<>>, CtlQ, StartT, AmqpHost);
 			{{value, Cmd}, CmdQ1} ->
 			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd, AmqpHost),
-			    loop(Node, UUID, CmdQ1, get_value(<<"Application-Name">>, Cmd), CtlQ, StartT, AmqpHost)
+			    ?MODULE:loop(Node, UUID, CmdQ1, get_value(<<"Application-Name">>, Cmd), CtlQ, StartT, AmqpHost)
 		    end;
 		_OtherEvt ->
 		    format_log(info, "CONTROL(~p): CurrApp: ~p Other: ~p~n", [self(), CurrApp, _OtherEvt]),
-		    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost)
+		    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost)
 	    end;
 	{execute, UUID, EvtName} ->
 	    format_log(info, "CONTROL(~p): CurrApp: ~p Received execute: ~p~n", [self(), CurrApp, EvtName]),
-	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
+	    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
 	{hangup, EvtPid, UUID} ->
 	    amqp_util:unbind_q_from_callctl(AmqpHost, CtlQ),
 	    amqp_util:delete_queue(AmqpHost, CtlQ), %% stop receiving messages
@@ -119,8 +125,8 @@ loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
 	    format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]);
 	#'basic.consume_ok'{}=BC ->
 	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
-	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
+	    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
 	_Msg ->
 	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [self(), _Msg]),
-	    loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost)
+	    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost)
     end.

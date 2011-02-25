@@ -11,15 +11,15 @@
 %%%-------------------------------------------------------------------
 -module(ts_cdr).
 
--export([store_cdr/2]).
+-export([store_cdr/2, fetch_cdr/1]).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
 -include("ts.hrl").
 
--spec(store_cdr/2 :: (CDRProp :: proplist(), Flags :: #route_flags{}) -> no_return()).
-store_cdr(CDRProp, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}) ->
+-spec(store_cdr/2 :: (CDR :: json_object(), Flags :: #route_flags{}) -> no_return()).
+store_cdr({struct, CDRProp}, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}) ->
     TScdr = [{<<"_id">>, get_value(<<"Call-ID">>, CDRProp)}
 	     ,{<<"Routes-Available">>, RGs}
 	     ,{<<"Route-Used">>, find_route_used(Dir, get_value(<<"To-Uri">>, CDRProp), RGs)}
@@ -52,3 +52,13 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 		end, [], Routes);
 find_route_used(<<"inbound">>, _, _) -> [].
 
+-spec(fetch_cdr/1 :: (CallID :: binary()) -> {error, not_found} | {ok, json_object()}).
+fetch_cdr(CallID) ->
+    case couch_mgr:open_doc(?TS_CDR_DB, CallID) of
+	{error, _} ->
+	    {error, not_found};
+	{ok, {struct, []}} ->
+	    {error, not_found};
+	{ok, Doc} ->
+	    Doc
+    end.

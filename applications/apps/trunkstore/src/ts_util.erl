@@ -71,3 +71,10 @@ get_media_handling(_) -> <<"bypass">>.
 -spec(current_tstamp/0 :: () -> integer()).
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+
+-spec(constrain_weight/1 :: (W :: binary() | integer()) -> integer()).
+constrain_weight(W) when not is_integer(W) ->
+    constrain_weight(whistle_util:to_integer(W));
+constrain_weight(W) when W > 100 -> 100;
+constrain_weight(W) when W < 1 -> 1;
+constrain_weight(W) -> W.

@@ -10,7 +10,7 @@
 
 -include("crossbar.hrl").
 
--export([validate/2, check/3]).
+-export([validate/2, check/4]).
 -export([required/1]).
 -export([not_empty/1, is_type/2, is_format/2]).
 -export([numeric_min/2, numeric_max/2, numeric_between/3]).
@@ -28,7 +28,7 @@
 -spec(validate/2 :: (Schema :: couch_schema(), Data :: proplist()) -> [] | list(json_object())).
 validate(Schema, Data) ->
     lists:foldl(fun({Path, Rules}, Results) ->
-			check(Rules, Path, Data) ++ Results
+			check(Rules, Path, Data, Results)
 		end, [], Schema).
 
 %%--------------------------------------------------------------------
@@ -39,8 +39,8 @@ validate(Schema, Data) ->
 %% the parameters provided to each
 %% @end
 %%--------------------------------------------------------------------
--spec(check/3 :: (Rules :: validator_rules(), Path :: [binary()] | binary(), Data :: proplist()) -> [] | list(json_object())).
-check(Rules, Path, Data) ->
+-spec(check/4 :: (Rules :: validator_rules(), Path :: [binary()] | binary(), Data :: proplist(), Acc0 :: list(json_object())) -> [] | list(json_object())).
+check(Rules, Path, Data, Acc0) ->
     Value = whapps_json:get_value(Path, {struct, Data}),
     lists:foldl(fun({Validator, Params}, Results) ->
 			case apply(?MODULE, Validator, [Value] ++ Params) of
@@ -52,7 +52,7 @@ check(Rules, Path, Data) ->
 					   ,{<<"parameters">>, Params}]
 				 } | Results]
 			end
-		end, [], Rules).
+		end, Acc0, Rules).
                 
 %%--------------------------------------------------------------------
 %% @public

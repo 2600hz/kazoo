@@ -24,22 +24,23 @@
 
 -import ( logger, [format_log/3] ).
 
--include ( "../crossbar.hrl" ).
--include_lib ( "webmachine/include/webmachine.hrl" ).
--include ( "../../../../utils/src/whistle_amqp.hrl" ).
--include ( "../../include/amqp_client/include/amqp_client.hrl" ).
+-include ( "callflow.hrl" ).
+-include ( "../../../utils/src/whistle_amqp.hrl" ).
+-include ( "../include/amqp_client/include/amqp_client.hrl" ).
 
 -define ( SERVER, ?MODULE ).
 -define ( APP_NAME, <<"callflow handler">> ).
 -define ( APP_VERSION, <<"0.1">> ).
 
 -record ( state, {
-   flow      = [] :: proplist(),
-   amqp_h    = "" :: string(),
-   amqp_q    = <<>> :: binary(),
-   ctrl_q    = <<>> :: binary(),
-   call_id   = <<>> :: binary(),
-   req_prop  = [] :: proplist()
+   opt       = <<>> :: binary(),      % option for choosing the next node to execute
+   cur       = <<>> :: binary(),      % current dialplan action
+   flow      = [] :: proplist(),      % callflow tree
+   amqp_h    = "" :: string(),        % amqp host
+   amqp_q    = <<>> :: binary(),      % amqp queue cf call handler listens to
+   ctrl_q    = <<>> :: binary(),      % control queue
+   call_id   = <<>> :: binary(),      % call id
+   req_prop  = [] :: proplist()       % route request property list
 } ).
 
 
@@ -173,46 +174,28 @@ handle_cast ( Msg, State ) ->
 handle_info ( #'basic.consume_ok'{}, State ) -> 
    format_log(info, "CF CALL HANDLER (~p): basic consume ok...~n", [self()]),
    { noreply, State };
-handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flow=Flow}=State ) ->
+handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{cur=Cur}=State ) ->
    format_log(
       info,
       "CF CALL HANDLER (~p): handling request request...~nProplist: ~p~nPayload:~p~n",
       [self(), Proplist, Payload]
    ),
+
    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
    Event = proplists:get_value(<<"Event-Name">>, Prop),
    App = proplists:get_value(<<"Application-Name">>, Prop),
+
    case { Event, App } of
-      {<<"route_win">>, _}                         -> { noreply, State#state{ctrl_q=proplists:get_value(<<"Control-Queue">>, Prop)} };
-      {<<"CHANNEL_EXECUTE">>, <<"park">>}          -> 
-         format_log(
-            info,
-            "CF CALL HANDLER (~p): Call is parked and callflow is being executed~n",
-            [self()]
-         ),
-         execute(Flow, State),
-         { noreply, State };
-      {<<"CHANNEL_EXECUTE_COMPLETE">>, <<"park">>} -> { noreply, State };
-      {<<"CHANNEL_EXECUTE_COMPLETE">>, A}          ->
-         format_log(
-            info,
-            "CF CALL HANDLER (~p): ~p execution is completed~n",
-            [self(), A]
-         ),
-         Module = proplists:get_value(<<"module">>, Flow),
-         case Module of
-            <<"hangup">> -> { noreply, State };
-            A ->
-               NewState = case proplists:get_value(<<"children">>, Flow) of
-                  [{struct, Child}|_] -> State#state{flow=Child};
-                  []                    -> Child = [], State
-               end,
-               execute(Child, NewState),
-               { noreply, NewState };
-            _ -> { noreply, State }
-         end;
-      {_, _}                                       ->
-         format_log(info, "CF CALL HANDLER (~p): Ignoring message...~n", [self()]),
+      { <<"route_win">>, _ }                  ->
+         { noreply, State#state{ctrl_q=proplists:get_value(<<"Control-Queue">>, Prop)} };
+      { <<"CHANNEL_EXECUTE">>, <<"park">> }   ->
+         format_log(info, "CF CALL HANDLER (~p): Call is parked and callflow is being executed~n", [self()]),
+         { noreply, execute(State) };
+      { <<"CHANNEL_EXECUTE_COMPLETE">>, Cur } ->
+         format_log(info, "CF CALL HANDLER (~p): ~p execution is completed~n", [self(), App]),
+         { noreply, next(State) };
+      { _, _ }                                ->
+         format_log(info, "CF CALL HANDLER (~p): Ignoring message: ~p:~p...~n", [self(), Event, App]),
          { noreply, State }
    end;
 handle_info ( Info, State ) ->
@@ -307,58 +290,73 @@ get_amqp_queue ( AHost, CallId ) ->
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% Executes the head node of the tree
+%% Executes the head node of the flow
 %%
 %% @end
 %%-----------------------------------------------------------------------------
-execute ( [], State ) ->
-   format_log(
-      error,
-      "CF CALL HANDLER (~p): Empty flow...~n",
-      [self()]
-   ),
-   Tree = [
-      {<<"module">>, <<"hangup">>},
-      {<<"data">>, {struct, []}}
-   ],
-   execute(Tree, State);
-execute ( Tree, State ) ->
-   Module = proplists:get_value(<<"module">>, Tree),
-   {struct, Data} = proplists:get_value(<<"data">>, Tree),
-   format_log(
-      info,
-      "CF CALL HANDLER (~p): Executing action module '~p' with data:~n~p~n",
-      [self(), Module, Data]
-   ),
+execute ( #state{flow=[]}=State )   ->
+   execute( State#state{flow=[{<<"module">>, <<"hangup">>}, {<<"data">>, {struct, []}}]} );
+execute ( #state{flow=Flow}=State ) ->
+   Module = proplists:get_value(<<"module">>, Flow),
+   {struct, Data} = proplists:get_value(<<"data">>, Flow),
 
-   Prop = [
+   Header = [
       {<<"Application-Name">>, Module},
       {<<"Call-ID">>, State#state.call_id}
       | whistle_api:default_headers(State#state.amqp_q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
    ],
 
-   case Module of
-      <<"hangup">> -> Result = whistle_api:hangup_req(Prop);
-      <<"tone">>   -> JSON = Prop ++ 
-                      Result = whistle_api:tones_req(Prop);
-      <<"answer">> -> Result = whistle_api:answer_req(Prop);
-      _            -> Result = {error, "Unknown action module"}
-   end,
-
-   case Result of
-      {ok, JSON} -> amqp_util:callctl_publish(State#state.amqp_h, State#state.ctrl_q, JSON, <<"application/json">>);
+   case validate(Header, Module, Data) of
+      {ok, JSON}      ->
+         format_log(info, "CF CALL HANDLER (~p): Executing ~p...~n", [self(), Module]),
+         amqp_util:callctl_publish(State#state.amqp_h, State#state.ctrl_q, JSON, <<"application/json">>),
+         State#state{cur=Module};
       {error, Reason} ->
          format_log(
             error,
-            "CF CALL HANDLER (~p): Error occurred trying to execute action module (~p)!~nReason: ~p~nExecuting the next node...~n",
-            [self(), Module, Reason]
+            "CF CALL HANDLER (~p): ~p failed validation: ~p~nData: ~p~nExecuting the next node...~n",
+            [self(), Module, Reason, Data]
          ),
-         NEXT = [
-            {<<"Application-Name">>, Module},
-            {<<"Call-ID">>, State#state.call_id}
-            | whistle_api:default_headers(State#state.amqp_q, <<"call_control">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-         ],
-         amqp_util:callctl_publish(State#state.amqp_h, State#state.amqp_q, NEXT, <<"application/json">>)
+         next(State)
+   end
+.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Strips the head off and executes the next child
+%% (the head of the tree must exist!)
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+next ( #state{cur=Cur}=State ) when Cur == <<"hangup">> -> State;
+next ( #state{opt=Opt, flow=Flow}=State )               ->
+   N = case Opt of _ -> 1 end,
+   {struct, Child} = case proplists:get_value(<<"children">>, Flow) of
+      []       -> { struct, [] };
+      Children -> lists:nth(N, Children)
+   end,
+
+   format_log(info, "CF CALL HANDLER (~p): Moving to the next node~n", [self()]),
+
+   execute(State#state{flow=Child})
+.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+validate ( Header, Module, Data ) ->
+   format_log(info, "CF CALL HANDLER (~p): Validating ~p...~n", [self(), Module]),
+   case Module of
+      <<"hangup">> -> 
+         whistle_api:hangup_req(Header);
+      <<"tone">>   -> whistle_api:tones_req(Header ++ Data);
+      <<"answer">> -> whistle_api:answer_req(Header);
+      _            -> {error, "Unknown action module"}
    end
 .
 

@@ -38,7 +38,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3, get_queue/1]).
+-export([start_link/3, start_link/4, get_queue/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,7 +47,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("ts.hrl").
 
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
@@ -60,6 +59,7 @@
 		,call_activity_ref = undefined :: undefined | reference()
 		,call_status = up :: up | down
                 ,route_flags = #route_flags{} :: #route_flags{}
+		,leg_number = 1 :: integer() %% a-leg is 1, b-leg is 2, each transfer increments leg number
 	       }).
 
 %%%===================================================================
@@ -74,7 +74,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(CallID, AmqpHost, RouteFlags) ->
-    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags], []).
+    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags, 1], []).
+
+start_link(CallID, AmqpHost, RouteFlags, LegNumber) ->
+    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags, LegNumber+1], []).
 
 %% get_queue() -> Queue Name
 -spec(get_queue/1 :: (Pid :: pid()) -> tuple(ok, binary())).
@@ -96,7 +99,7 @@ get_queue(Pid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([CallID, AmqpHost, RouteFlags]) ->
+init([CallID, AmqpHost, RouteFlags, LegNumber]) ->
     process_flag(trap_exit, true),
 
     {ok, #state{callid = CallID
@@ -104,6 +107,7 @@ init([CallID, AmqpHost, RouteFlags]) ->
 		,amqp_h = AmqpHost
 		,route_flags = RouteFlags
 		,start_time = ts_util:current_tstamp()
+		,leg_number = LegNumber
 	       }}.
 
 %%--------------------------------------------------------------------
@@ -154,11 +158,11 @@ handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) ->
 handle_info({amqp_host_down, H}, S) ->
     format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
     {noreply, S, 0};
-handle_info(call_activity_timeout, #state{call_status=down, call_activity_ref=Ref}=S) ->
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
     stop_call_activity_ref(Ref),
     format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
-    {stop, S, shutdown};
-handle_info(call_activity_timeout, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
+    {stop, shutdown, S};
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
     format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
     stop_call_activity_ref(Ref),
 
@@ -177,41 +181,48 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
     format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
     stop_call_activity_ref(Ref),
 
-    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    JObj = mochijson2:decode(binary_to_list(Payload)),
 
-    case get_value(<<"Event-Name">>, Prop) of
+    case whapps_json:get_value(<<"Event-Name">>, JObj) of
 	<<"cdr">> ->
 	    spawn(fun() ->
-			  true = whistle_api:call_cdr_v(Prop),
-			  update_account(whistle_util:to_integer(get_value(<<"Billing-Seconds">>, Prop)), Flags),
-			  ts_cdr:store_cdr(Prop, Flags)
+			  format_log(info, "TS_CALL(~p): Scenario(~p) for ~p~n", [self(), Flags#route_flags.scenario, Flags#route_flags.callid]),
+			  true = whistle_api:call_cdr_v(JObj),
+			  close_down_call(JObj, Flags, S#state.leg_number),
+			  ts_cdr:store_cdr(JObj, Flags)
 		  end),
 	    {stop, normal, S};
 	<<"route_win">> ->
-	    true = whistle_api:route_win_v(Prop),	    
-	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), Prop]),
-	    {noreply, S#state{ctl_q=props:get_value(<<"Control-Queue">>, Prop), call_activity_ref=call_activity_ref(), call_status=up}};
+	    true = whistle_api:route_win_v(JObj),
+	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), JObj]),
+	    {noreply, S#state{ctl_q=whapps_json:get_value(<<"Control-Queue">>, JObj), call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"CHANNEL_BRIDGE">> ->
-	    true = whistle_api:call_event_v(Prop),
-	    OtherCallID = get_value(<<"Other-Leg-Unique-ID">>, Prop),
+	    true = whistle_api:call_event_v(JObj),
+	    OtherCallID = whapps_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
 	    OtherAcctID = Flags#route_flags.diverted_account_doc_id,
+	    AcctID = Flags#route_flags.account_doc_id, % don't lose the old account, in case of a failover route
+
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
 	    %% try to reserve a trunk for this leg, and release the trunk if failover was configured
 	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid),
 	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
-	    ts_call_sup:start_proc([OtherCallID, whapps_controller:get_amqp_host(), Flags#route_flags{account_doc_id=OtherAcctID
-												      ,direction = <<"inbound">>
-												      ,callid = OtherCallID
-												     }]),
+	    ts_call_sup:start_proc([OtherCallID
+				    ,whapps_controller:get_amqp_host()
+				    ,Flags#route_flags{account_doc_id=OtherAcctID
+						       ,callid = OtherCallID
+						       ,diverted_account_doc_id=AcctID
+						       ,direction = <<"inbound">>
+						      }
+				    ,S#state.leg_number]),
 	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"status_resp">> ->
-	    true = whistle_api:call_status_resp_v(Prop),
+	    true = whistle_api:call_status_resp_v(JObj),
 	    format_log(info, "TS_CALL(~p): Call is active, despite appearances~n", [self()]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	_EvtName ->
-	    format_log(info, "TS_CALL(~p): Evt: ~p AppMsg: ~p~n", [self(), _EvtName, get_value(<<"Application-Response">>, Prop)]),
+	    format_log(info, "TS_CALL(~p): Evt: ~p~n", [self(), _EvtName]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}}
     end;
 handle_info(_Info, S) ->

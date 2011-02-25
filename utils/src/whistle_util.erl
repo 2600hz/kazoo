@@ -3,6 +3,7 @@
 -export([reload_changed/0, reload_all_apps/0, reload_app/1]).
 -export([to_e164/1, to_npanxxxxxx/1, to_1npanxxxxxx/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
+-export([to_boolean/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
 reload_changed() ->
@@ -121,6 +122,14 @@ to_atom(X, true) when is_list(X) ->
     list_to_atom(X);
 to_atom(X, true) ->
     to_atom(to_list(X), true).
+
+-spec(to_boolean/1 :: (X :: term()) -> boolean()).
+to_boolean(<<"true">>) -> true;
+to_boolean("true") -> true;
+to_boolean(true) -> true;
+to_boolean(<<"false">>) -> false;
+to_boolean("false") -> false;
+to_boolean(false) -> false.
 
 -spec(a1hash/3 :: (User :: binary() | list(), Realm :: binary() | list(), Password :: binary() | list()) -> string()).
 a1hash(User, Realm, Password) ->

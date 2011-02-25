@@ -11,7 +11,7 @@
 -include("reg.hrl").
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2, stop/1, setup_views/0, update_views/0]).
 
 %% ===================================================================
 %% Application callbacks
@@ -30,6 +30,11 @@ stop(_State) ->
     ok.
 
 setup_views() ->
-    lists:foreach(fun(File) ->
-			  couch_mgr:load_doc_from_file(?REG_DB, registration, File)
-		  end, ["registrations.json"]).
+    lists:foreach(fun({DB, File}) ->
+			  couch_mgr:load_doc_from_file(DB, registration, File)
+		  end, ?JSON_FILES).
+
+update_views() ->
+    lists:foreach(fun({DB, File}) ->
+			  couch_mgr:update_doc_from_file(DB, registration, File)
+		  end, ?JSON_FILES).

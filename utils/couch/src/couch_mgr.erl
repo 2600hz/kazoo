@@ -11,10 +11,10 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/3, get_host/0]).
+-export([start_link/0, set_host/1, set_host/3, get_host/0, get_creds/0]).
 
 %% System manipulation
--export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1]).
+-export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
 
 %% Document manipulation
 -export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
@@ -42,6 +42,7 @@
 -type change_handler_entry() :: tuple( tuple(string(), binary()), reference(), list(pid()) | []).
 -record(state, {
 	  connection = {} :: tuple(string(), #server{}) | {}
+	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
 	  ,change_handlers = [] :: list(change_handler_entry()) | []
 	 }).
 
@@ -106,6 +107,49 @@ db_info(DbName) ->
                 {error, _Error}=E -> E;
                 {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Replicate a DB from one host to another
+%%
+%% Proplist:
+%% [{<<"source">>, <<"http://some.couch.server:5984/source_db">>}
+%%  ,{<<"target">>, <<"target_db">>}
+%%
+%%   IMPORTANT: Use the atom true, not binary <<"true">> (though it may be changing in couch to allow <<"true">>)
+%%  ,{<<"create_target">>, true} % optional, creates the DB on target if non-existent
+%%  ,{<<"continuous">>, true} % optional, continuously update target from source
+%%  ,{<<"cancel">>, true} % optional, will cancel a replication (one-time or continuous)
+%%
+%%  ,{<<"filter">>, <<"source_design_doc/source_filter_name">>} % optional, filter what documents are sent from source to target
+%%  ,{<<"query_params">>, {struct, [{<<"key1">>, <<"value1">>}, {<<"key2">>, <<"value2">>}]} } % optional, send params to filter function
+%%  filter_fun: function(doc, req) -> boolean(); passed K/V pairs in query_params are in req in filter function
+%%
+%%  ,{<<"doc_ids">>, [<<"source_doc_id_1">>, <<"source_doc_id_2">>]} % optional, if you only want specific docs, no need for a filter
+%%
+%%  ,{<<"proxy">>, <<"http://some.proxy.server:12345">>} % optional, if you need to pass the replication via proxy to target
+%%   https support for proxying is suspect
+%% ].
+%%
+%% If authentication is needed at the source's end:
+%% {<<"source">>, <<"http://user:password@some.couch.server:5984/source_db">>}
+%%
+%% If source or target DB is on the current connection, you can just put the DB name, e.g:
+%% [{<<"source">>, <<"source_db">>}, {<<"target">>, <<"target_db">>}, ...]
+%% Then you don't have to specify the auth creds (if any) for the connection
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_replicate/1 :: (Prop :: tuple(struct, proplist()) | proplist()) -> tuple(ok, term()) | tuple(error, term())).
+db_replicate(Prop) when is_list(Prop) ->
+    db_replicate({struct, Prop});
+db_replicate({struct, _}=MochiJson) ->
+    case get_conn() of
+	{} -> {error, server_not_reachable};
+	Conn ->
+	    couchbeam:replicate(Conn, couchbeam_util:json_decode(mochijson2:encode(MochiJson)))
     end.
 
 %%--------------------------------------------------------------------
@@ -288,6 +332,9 @@ set_host(HostName, UserName, Password) ->
 get_host() ->
     gen_server:call(?MODULE, get_host).
 
+get_creds() ->
+    gen_server:call(?MODULE, {get_creds}).
+
 get_conn() ->
     gen_server:call(?MODULE, {get_conn}).
 
@@ -343,7 +390,7 @@ handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}
 	{error, _Error}=E ->
 	    {reply, E, State};
 	HC ->
-	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[], creds={User,Pass}}}
     end;
 handle_call({set_host, Host, User, Pass}, _From, State) ->
     format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
@@ -351,10 +398,12 @@ handle_call({set_host, Host, User, Pass}, _From, State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    {reply, ok, State#state{connection=HC, change_handlers=[]}}
+	    {reply, ok, State#state{connection=HC, change_handlers=[], creds={User,Pass}}}
     end;
 handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
+handle_call({get_creds}, _, #state{creds=Cred}=State) ->
+    {reply, Cred, State};
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
     case start_change_handler(DBName, DocID, Pid, State) of
 	{ok, _R, State1} -> {reply, ok, State1};
@@ -661,7 +710,7 @@ notify_pids(Change, DocID, Pids) ->
             {document_deleted, DocID}; % document deleted, no more looping
         undefined ->
             format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
-            {document_changes, DocID, lists:map(fun({C}) -> C end, get_value(<<"changes">>, Change))}
+            {document_changes, DocID, [ C || {C} <- get_value(<<"changes">>, Change)]}
         end,
     lists:foreach(fun(P) -> P ! SendToPid end, Pids).
 

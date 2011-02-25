@@ -72,6 +72,7 @@ loop(Node, UUID, Host, CtlPid, Timeout) ->
 				       ,payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    format_log(info, "EVT(~p): AMQP Msg ~p~n", [self(), Prop]),
+	    spawn(fun() -> handle_amqp_prop(get_value(<<"Event-Name">>, Prop), Prop, Host) end),
 	    loop(Node, UUID, Host, CtlPid, Timeout);
 	_Msg ->
 	    format_log(error, "EVT(~p): Unhandled FS Msg: ~n~p~n", [self(), _Msg]),
@@ -199,3 +200,21 @@ event_specific(<<"DTMF">>, Prop) ->
     ];
 event_specific(_Evt, _Prop) ->
     [].
+
+handle_amqp_prop(<<"status_req">>, Prop, AmqpHost) ->
+    try
+    true = whistle_api:call_status_req_v(Prop),
+    CallID = get_value(<<"Call-ID">>, Prop),
+    format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
+    RespProp = [{<<"Call-ID">>, CallID}
+		,{<<"Status">>, <<"active">>}
+		| whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, <<?APPNAME/binary, ".status">>, ?APPVER) ],
+    {ok, JSON} = whistle_api:call_status_resp(RespProp),
+    SrvID = get_value(<<"Server-ID">>, Prop),
+    format_log(info, "EVT.vall_status(~p): ~s", [CallID, JSON]),
+
+    amqp_util:targeted_publish(AmqpHost, SrvID, JSON)
+    catch
+	E:R ->
+	    format_log(error, "EVT.call_status err ~p: ~p", [E, R])
+    end.

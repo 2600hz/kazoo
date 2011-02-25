@@ -14,20 +14,17 @@
 get_value(Key, Doc) ->
     get_value(Key, Doc, undefined).
 
+get_value([], Doc, _Default) -> Doc;
 get_value(Key, Doc, Default) when not is_list(Key)->
     get_value([Key], Doc, Default);
-get_value([Key|T], Doc, Default) ->    
-    case Doc of
-        {struct, Props} ->
-            get_value(T, props:get_value(whistle_util:to_binary(Key), Props), Default);
-        Doc when is_list(Doc) ->
-            case try lists:nth(whistle_util:to_integer(Key), Doc) catch _:_ -> undefined end of
-                undefined -> Default;
-                Doc1 -> get_value(T, Doc1, Default)
-            end;
-        _Else -> Default
+get_value([K|Ks], {struct, Props}, Default) ->
+    get_value(Ks, props:get_value(whistle_util:to_binary(K), Props, Default), Default);
+get_value([K|Ks], Doc, Default) when is_list(Doc) ->
+    case try lists:nth(whistle_util:to_integer(K), Doc) catch _:_ -> undefined end of
+	undefined -> Default;
+	Doc1 -> get_value(Ks, Doc1, Default)
     end;
-get_value([], Doc, _Default) -> Doc.
+get_value(_, _, Default) -> Default.
 
 
 %% Figure out how to set the current key among a list of objects
