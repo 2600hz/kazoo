@@ -161,7 +161,7 @@ handle_info({amqp_host_down, H}, S) ->
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
     stop_call_activity_ref(Ref),
     format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
-    {stop, S, shutdown};
+    {stop, shutdown, S};
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
     format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
     stop_call_activity_ref(Ref),
