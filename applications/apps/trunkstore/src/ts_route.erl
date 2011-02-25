@@ -121,6 +121,7 @@ find_route(Flags, ApiProp) ->
 		    E
 	    end;
 	true ->
+	    try
 	    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
 	    Did = whistle_util:to_e164(ToUser),
 	    case lookup_did(Did) of
@@ -160,6 +161,10 @@ find_route(Flags, ApiProp) ->
 			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
 			    response(503, ApiProp, Flags)
 		    end
+	    end
+	    catch
+		A:B -> format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+		       response(503, ApiProp, Flags)
 	    end
     end.
 
@@ -220,7 +225,7 @@ inbound_route(Flags) ->
     end.
 
 -spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), Flags :: #route_flags{}, tuple(struct, proplist())) -> tuple(proplist(), #route_flags{})).
-add_failover_route({}, Flags, InboundRoute) -> {[InboundRoute], Flags};
+add_failover_route({}, Flags, InboundRoute) -> {[InboundRoute], Flags#route_flags{scenario=inbound}};
 %% route to a SIP URI
 add_failover_route({<<"sip">>, URI}, Flags, InboundRoute) ->
     { [InboundRoute, {struct, [{<<"Route">>, URI}
@@ -250,7 +255,7 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 	    end;
 	{error, Error} ->
 	    format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, Error]),
-	    {[InboundRoute], Flags}
+	    {[InboundRoute], Flags#route_flags{scenario=inbound}}
     end.
 
 -spec(inbound_features/1 :: (Flags :: #route_flags{}) -> #route_flags{}).
