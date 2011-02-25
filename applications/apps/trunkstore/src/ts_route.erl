@@ -149,29 +149,6 @@ find_route(Flags, ApiProp) ->
 			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn#route_flags.account_doc_id]),
 			    response(503, ApiProp, Flags)
 		    end
-
-		    %% Just check credit above - below we actually reserve a trunk for the wrong callid
-		    %% case ts_credit:check(FlagsIn) of
-		    %% 	{ok, _} ->
-		    %% 	    format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n", [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
-		    %% 	    case inbound_route(FlagsIn) of
-		    %% 		{ok, Routes} ->
-		    %% 		    response(Routes, ApiProp, FlagsIn#route_flags{routes_generated=Routes
-		    %% 								  ,account_doc_id=OrigAcctId
-		    %% 								  ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
-		    %% 								 });
-		    %% 		{error, _} ->
-		    %% 		    route_over_carriers(Flags, ApiProp)
-		    %% 	    end;
-		    %% 	{error, no_funds} ->
-		    %% 	    response(503, ApiProp, Flags);
-		    %% 	{error, no_route_found} ->
-		    %% 	    format_log(error, "TS_ROUTE(~p): No rating information found to handle re-routing to ~s~n", [self(), Did]),
-		    %% 	    {error, "No rating information found"};
-		    %% 	{error, entry_exists} ->
-		    %% 	    format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
-		    %% 	    {error, "Call-ID exists"}
-		    %% end
 	    end
     end.
 
