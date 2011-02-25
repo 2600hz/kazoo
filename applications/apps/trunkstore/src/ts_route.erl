@@ -129,10 +129,11 @@ find_route(Flags, ApiProp) ->
 		{ok, _} -> % out-in scenario
 		    OrigAcctId = Flags#route_flags.account_doc_id,
 		    FlagsIn0 = create_flags(Did, ApiProp),
-		    FlagsIn = FlagsIn0#route_flags{direction = <<"inbound">>},
-		    case ts_acctmgr:has_flatrates(FlagsIn#route_flags.account_doc_id) orelse
-			ts_acctmgr:has_credit(FlagsIn#route_flags.account_doc_id) of
-			true ->
+		    FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
+		    case ts_credit:check(FlagsIn1) of
+%% ts_acctmgr:has_flatrates(FlagsIn#route_flags.account_doc_id) orelse
+%% ts_acctmgr:has_credit(FlagsIn#route_flags.account_doc_id) of
+			{ok, FlagsIn} ->
 			    %% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
 			    format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n"
 				       , [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
@@ -155,8 +156,8 @@ find_route(Flags, ApiProp) ->
 		    		{error, _} ->
 		    		    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
 		    	    end;
-			false ->
-			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn#route_flags.account_doc_id]),
+			{error, _}  ->
+			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
 			    response(503, ApiProp, Flags)
 		    end
 	    end
@@ -328,6 +329,7 @@ flags_from_did(DidProp, Flags) ->
     {struct, AuthOpts} = get_value(<<"auth">>, DidProp, {struct, []}),
 
     {struct, Opts} = get_value(<<"options">>, DidProp, {struct, []}),
+    {struct, Acct} = get_value(<<"account">>, DidProp, {struct, []}),
 
     F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {struct, []})),
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {struct, []})),
@@ -335,7 +337,7 @@ flags_from_did(DidProp, Flags) ->
 			,account_doc_id = get_value(<<"id">>, DidProp)
 		       },
     F3 = add_auth_user(F2, get_value(<<"auth_user">>, AuthOpts)),
-    add_auth_realm(F3, get_value(<<"auth_realm">>, AuthOpts)).
+    add_auth_realm(F3, get_value(<<"auth_realm">>, AuthOpts, get_value(<<"auth_realm">>, Acct))).
 
 %% Flags from the Server
 %% - Inbound Format <- what format does the server expect the inbound caller-id in?
