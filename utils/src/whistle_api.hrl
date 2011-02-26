@@ -478,7 +478,7 @@
 				 ,<<"Timeout">>, <<"Terminators">>, <<"Media-Name">>, <<"Media-Tries">>
 				 ,<<"Failed-Media-Name">>, <<"Digits-Regex">>
 			    ]).
--define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Storage-Name">>]).
+-define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, []).
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
