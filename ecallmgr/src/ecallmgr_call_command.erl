@@ -61,7 +61,7 @@ get_fs_app(_Node, UUID, Prop, _AmqpHost, <<"play_and_collect_digits">>) ->
 	    InvalidMedia = media_path(UUID, get_value(<<"Failed-Media-Name">>, Prop)),
 	    Tries = get_value(<<"Media-Tries">>, Prop),
 	    Regex = get_value(<<"Digits-Regex">>, Prop),
-	    Storage = get_value(<<"Storage-Name">>, Prop, <<"ignore">>),
+	    Storage = <<"collected_digits">>,
 	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " ",
 				   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
 	    {<<"play_and_get_digits">>, Data}
@@ -240,7 +240,9 @@ get_bridge_endpoint({struct, EndProp}, AmqpHost) ->
 media_path(UUID, Name) ->
     case ecallmgr_media_registry:is_registered(UUID, Name) of
 	{true, GenName} -> get_media_path(GenName);
-	false -> binary_to_list(Name)
+        false -> whistle_util:to_binary(Name)
+%%        false when is_binary(Name) -> binary_to_list(Name);
+%%        false when is_list(Name) -> Name
     end.
 
 -spec(get_media_path/1 :: (Name :: binary() | string()) -> list()).

@@ -215,8 +215,8 @@ process_req({<<"dialplan">>, <<"route_req">>}, Prop, #state{cmgr_q=Cmgr_Q}=State
             | whistle_api:default_headers(Cmgr_Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
     format_log(info, "CF_TEST(~p): Respond to route_req~nPayload: ~p~n", [self(), Resp]),
-    {ok, Json} = whistle_api:route_resp(Resp),
-    send_resp(Json, RespQ, State);
+    {ok, Json} = whistle_api:route_resp(Resp);
+%%    send_resp(Json, RespQ, State);
 
 process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
     format_log(info, "CF_TEST(~p): Recieved route_win!~nPayload: ~p~n", [self(), Prop]),
@@ -231,7 +231,7 @@ process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
                         ,{<<"endpoint">>, <<"7818711acb94ddc2f5ac26da6c5d8eaa">>}
                         ,{<<"timeout">>, <<"15">>}
                        ]},
-    Pid = spawn(cf_devices, handle, [Payload, Call]),
+    Pid = spawn(cf_voicemail, handle, [Payload, Call]),
     format_log(info, "CF_TEST(~p): Spawned cf_devices at ~p~n", [self(), Pid]),
     receive
         continue -> 
@@ -241,7 +241,7 @@ process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
             format_log(error, "CF_TEST(~p): Received stop atom~n", [self()]),
             ok
     after
-        10000 -> error
+        100000 -> error
     end,
     hangup_call(Call);
 

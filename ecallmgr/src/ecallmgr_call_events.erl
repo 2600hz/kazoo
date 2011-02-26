@@ -151,6 +151,10 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
 	undefined ->
 	    io:format("WHISTLE_API: Didn't find ~p in supported~n", [Application]),
 	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
+        <<"play_and_collect_digits">> ->
+	    [{<<"Application-Name">>, <<"play_and_collect_digits">>} 
+	     ,{<<"Application-Response">>, get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
+	    ];
 	AppName ->
 	    [{<<"Application-Name">>, AppName}
 	     ,{<<"Application-Response">>, get_value(<<"Application-Response">>, Prop, <<"">>)}
@@ -195,11 +199,16 @@ event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
      ,{<<"Other-Leg-Unique-ID">>, get_value(<<"Other-Leg-Unique-ID">>, Prop)}
      ,{<<"Hangup-Cause">>, get_value(<<"Hangup-Cause">>, Prop, <<>>)}
     ];
+event_specific(<<"RECORD_STOP">>, Prop) ->
+    [{<<"Application-Name">>, <<"record">>}
+     ,{<<"Application-Response">>, get_value(<<"Record-File-Path">>, Prop, <<>>)}
+     ,{<<"Terminator">>, get_value(<<"variable_playback_terminator_used">>, Prop, <<>>)}
+    ];
 event_specific(<<"DETECTED_TONE">>, Prop) ->
     [{<<"Detected-Tone">>, get_value(<<"Detected-Tone">>, Prop, <<>>)}];
 event_specific(<<"DTMF">>, Prop) ->
-    [{<<"DTMF-Digit">>, get_value(<<"Digit">>, Prop, <<>>)}
-     ,{<<"DTMF-Duration">>, get_value(<<"Duration">>, Prop, <<>>)}
+    [{<<"DTMF-Digit">>, get_value(<<"DTMF-Digit">>, Prop, <<>>)}
+     ,{<<"DTMF-Duration">>, get_value(<<"DTMF-Duration">>, Prop, <<>>)}
     ];
 event_specific(_Evt, _Prop) ->
     [].
