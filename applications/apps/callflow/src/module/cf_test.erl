@@ -215,8 +215,8 @@ process_req({<<"dialplan">>, <<"route_req">>}, Prop, #state{cmgr_q=Cmgr_Q}=State
             | whistle_api:default_headers(Cmgr_Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
     format_log(info, "CF_TEST(~p): Respond to route_req~nPayload: ~p~n", [self(), Resp]),
-    {ok, Json} = whistle_api:route_resp(Resp),
-    send_resp(Json, RespQ, State);
+    {ok, Json} = whistle_api:route_resp(Resp);
+%%    send_resp(Json, RespQ, State);
 
 process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
     format_log(info, "CF_TEST(~p): Recieved route_win!~nPayload: ~p~n", [self(), Prop]),

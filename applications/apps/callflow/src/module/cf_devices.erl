@@ -29,7 +29,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
-handle({struct, Props}, #cf_call{cf_pid=CFPid}=Call) ->
+handle(Props, #cf_call{cf_pid=CFPid}=Call) ->
     init_amqp(Call),
     {ok, Endpoint} = get_endpoint(get_value(<<"database">>, Props), get_value(<<"endpoint">>, Props)),
     bridge_endpoints([Endpoint], get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT), Call),
