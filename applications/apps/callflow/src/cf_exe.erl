@@ -6,7 +6,8 @@
 %%% instructions
 %%%
 %%% @end
-%%% Created :  21 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
+%%% Created:       21 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
+%%% Last Modified: 23 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
 %%%============================================================================
 %%%
 
@@ -20,35 +21,47 @@
 -include ( "callflow.hrl" ).
 
 start ( Call, Flow ) ->
+   NewCall = Call#cf_call{cf_pid=self()},
    Module = proplists:get_value(<<"module">>, Flow),
    {struct, Data} = proplists:get_value(<<"data">>, Flow),
    format_log(info, "CF EXECUTIONER (~p): Executing ~p...~n", [self(), Module]),
 
-%TODO: if something goes wrong move to the next node
-   CF_Module = list_to_existing_atom("cf_"++binary_to_list(Module)),
-   format_log(info, "CF Module: ~p~n", [CF_Module]),
-   CF_Module:handle(Data, Call#cf_call{cf_pid=self()}),
+   try list_to_existing_atom("cf_"++binary_to_list(Module)) of
+      CF_Module ->
+%TODO: monitor the spawned process and move on if it dies...
+         spawn(fun () -> CF_Module:handle(Data, NewCall) end)
+   catch
+      _:_ ->
+         format_log(error, "CF EXECUTIONER (~p): Module ~p doesn't exist!~n", [self(), Module]),
+         self() ! { continue, 1 }
+   end,
+   wait( Call, Flow )
+.
 
+wait ( Call, Flow ) ->
    receive
-      continue        -> self() ! { continue, 0 };
+      { continue }    -> self() ! { continue, 1 }, wait(Call, Flow);
       { continue, N } ->
          format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...~n", [self()]),
          {struct, NewFlow} = case proplists:get_value(<<"children">>, Flow) of
-            []       -> { struct, [] };
-            Children -> lists:nth(N, Children)
+            undefined ->
+               format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...~n", [self()]),
+               exit("Bad things happened...");
+            []        -> { struct, [] };
+            Children  -> lists:nth(N, Children)
          end,
          case NewFlow of
             [] ->
-               spawn(fun() -> start (Call, [{<<"module">>, <<"hangup">>}, {<<"data">>, {struct, []}}]) end),
-               format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...~n", [self()]),
-               exit("end of the flow, hanging up");
-            _  ->
-               spawn(fun() -> start (Call, NewFlow) end),
-               exit("moving on")
+               start (Call, [{<<"module">>, <<"dialplan">>}, {<<"data">>, {struct, [{<<"action">>, <<"hangup">>}, {<<"data">>, {struct, []}}]}}]),
+               format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...~n", [self()]);
+            _  -> start (Call, NewFlow)
          end;
-      stop            ->
+      { stop }        ->
          format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped~n", [self()]),
-         exit("Requested stop")
+         exit("End of execution");
+      { heartbeat }   ->
+         format_log(info, "CF EXECUTIONER (~p): Call is in progress...~n", [self()]),
+         wait ( Call, Flow )
    end
 .
 
