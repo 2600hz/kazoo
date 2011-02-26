@@ -94,15 +94,15 @@ wait_for_bridge(Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                 { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
-                     wait_for_hangup();
-                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                     {error, channel_hungup};
-                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
-                     {error, bridge_failed};
-                 _ ->
-                     wait_for_bridge(Timeout)
+            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
+                { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
+                    wait_for_hangup();
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    {error, channel_hungup};
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
+                    {error, bridge_failed};
+                _ ->
+                    wait_for_bridge(Timeout)
             end
     after
         Timeout ->
@@ -121,11 +121,12 @@ wait_for_hangup() ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                     {ok, channel_hungup};
-                 _ ->
-                     wait_for_hangup()
+            format_log(info, "RECIEVED~nPayload: ~p~n", [Msg]),
+            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    {ok, channel_hungup};
+                _ ->
+                    wait_for_hangup()
             end
     end.
 
