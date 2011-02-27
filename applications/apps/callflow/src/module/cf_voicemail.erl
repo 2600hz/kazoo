@@ -21,7 +21,7 @@
 -define(DEFAULT_TIMEOUT, 30).
 -define(VM_SOUNDS, "/usr/local/freeswitch/sounds/en/us/callie/voicemail/8000/").
 
--define(PROMPT_GENERIC_GREETING, <<"phrase:voicemail_play_greeting:1005">>).
+-define(PROMPT_GENERIC_GREETING, <<"phrase:voicemail_play_greeting">>).
 -define(PROMPT_RECORD_MESSAGE, <<"phrase:voicemail_record_message">>).
 -define(PROMPT_RECORD_REVIEW, <<"phrase:voicemail_record_file_check">>).
 
@@ -40,12 +40,14 @@
          }).
 
 -record(mailbox, {
-           prompt_greeting = ?PROMPT_GENERIC_GREETING
+           prompt_greeting = undefined
+          ,prompt_generic_greeting = ?PROMPT_GENERIC_GREETING
           ,prompt_instructions = ?PROMPT_RECORD_MESSAGE
           ,prompt_record_review = ?PROMPT_RECORD_REVIEW
           ,file_id = undefined
           ,database = undefined
           ,mailbox_id = undefined
+          ,action = undefined
           ,rev = undefined
           ,skip_instructions = <<"false">>
           ,skip_greeting = <<"false">>
@@ -56,110 +58,191 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
-%% in the Data payload.  Returns continue if fails to connect or 
-%% stop when successfull.
+%% Entry point for this module, based on the payload will either
+%% connect a caller to check_voicemail or compose_voicemail.
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
-handle(Props, #cf_call{call_id=CallId, cf_pid=CFPid, amqp_h=AHost}=Call) ->
-    init_amqp(Call),
-    answer(Call),
-    compose_voicemail(get_mailbox(Props, Call), Call),
-    CFPid ! {stop}.
+handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
+    Box = get_mailbox(Data),
+    if
+        Box#mailbox.action == <<"compose">> ->
+            answer(Call),
+            CFPid ! compose_voicemail(Box, Call);
+        Box#mailbox.action == <<"check">> ->
+            answer(Call),
+            CFPid ! check_voicemail(Box, Call);
+        true ->
+            CFPid ! {continue}
+    end.
 
-get_mailbox(Props, Call) ->
-    Db = <<"crossbar%2Fclients%2F58%2F39%2Fa3ed904ecdaeedebc8af6a1b7a1f">>,
-    Mailbox = <<"7818711acb94ddc2f5ac26da6c7c8731">>,
-    case couch_mgr:open_doc(Db, Mailbox) of
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Fetches the mailbox parameters from the datastore and loads the
+%% mailbox record
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_mailbox/1 :: (Data :: json_object()) -> #mailbox{} | tuple(stop)).
+get_mailbox({struct, Props}) ->
+    Db = get_value(<<"database">>, Props),
+    Id = get_value(<<"id">>, Props),
+    case couch_mgr:open_doc(Db, Id) of
         {ok, Doc} ->
             #mailbox{
                        file_id = list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16)))
                       ,database = Db
-                      ,mailbox_id = Mailbox
+                      ,mailbox_id = Id
+                      ,action = get_value(<<"action">>, Props)
                       ,rev = whapps_json:get_value(["_rev"], Doc)
                     };
         _-> 
-            error
+            #mailbox{}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% The entry point for checking a voicemail box
+%% @end
+%%--------------------------------------------------------------------
+-spec(check_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> cf_exe_response()).
+check_voicemail(_Box, _Call) ->
+    {stop}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% The entry point for checking a voicemail box, typically plays the 
+%% voicemail greeting then goes to the voicemail instructions. However
+%% the greeting can be optionaly skipped.  Any digits skip to record
+%% unless they match the operator or login keys.
+%% @end
+%%--------------------------------------------------------------------
+-spec(compose_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> cf_exe_response()).
 compose_voicemail(#mailbox{skip_greeting = <<"true">>}=Box, Call) ->
     play_instructions(Box, Call);
-
-compose_voicemail(Box, Call) ->
-    Oper = Box#mailbox.keys#keys.operator,
-    case play_and_collect_digits(<<"1">>, <<"1">>, Box#mailbox.prompt_greeting, <<"1">>, <<"0">>, Call) of
-        {ok, Oper} ->
-            format_log(info, "Transfer the caller to operator~n", []),
-            {hunt, operator};
-        {ok, <<>>} ->
-            play_instructions(Box, Call);
-        {ok, _} ->
-            record_message(Box, Call);
-        Else ->
-            Else
-    end.
-
-play_instructions(#mailbox{skip_instructions = <<"true">>}=Box, Call) ->
-    record_message(Box, Call);
-
-play_instructions(Box, Call) ->
-    Oper = Box#mailbox.keys#keys.operator,
-    case play_and_collect_digits(<<"1">>, <<"1">>, Box#mailbox.prompt_instructions, <<"1">>, <<"0">>, Call) of
-        {ok, Oper} ->
-            format_log(info, "Transfer the caller to operator~n", []),
-            {hunt, operator};
-        {ok, _} ->
-            record_message(Box, Call);
-        Else ->
-            Else
-    end.
-
-record_message(Box, Call) ->
-    play_tones(Box#mailbox.tone_spec, Call),
-    record_file(Box#mailbox.file_id, Call),
-    case wait_for_call_event(<<"RECORD_STOP">>, <<"record">>, 30000) of
-        {ok, Msg} ->
-            Oper = Box#mailbox.keys#keys.operator,
-            case get_value(<<"Terminator">>, Msg) of
-                Oper -> 
-                    format_log(info, "Transfer the caller to operator~n", []),
-                    {hunt, operator};        
-                _ ->
-                    message_options(Box, Call)
-            end;                
-        {error, channel_hungup} ->            
-            format_log(info, "Channel hungup, store in phase 1~n", []),
-            {stop};
-        _ ->                
-            format_log(info, "Terminated~n", []),
-            {stop}                
-    end.
-
-message_options(Box, Call) ->
-    Keys = Box#mailbox.keys,
-    Oper = Keys#keys.operator,
-    Listen = Keys#keys.listen,
-    Save = Keys#keys.save,
-    Record = Keys#keys.record,
-    Tmp  = Box#mailbox.prompt_record_review,
-    Prompt = <<Tmp/binary, $:, Listen/binary, $:, Save/binary, $:, Record/binary>>, %%        io_lib:format(Box#mailbox.prompt_record_review, [Listen, Save, Record]),
-    case play_and_collect_digits(<<"1">>, <<"1">>, Prompt, <<"1">>, <<"0">>, Call) of
-        {ok, Oper} ->
-            format_log(info, "Store voicemail then transfer the caller to operator~n", []),
-            {hunt, operator};
-        {ok, Listen} ->
-            play_and_collect_digits(<<"1">>, <<"1">>, Box#mailbox.file_id, <<"1">>, <<"0">>, Call),
-            message_options(Box, Call);
-        {ok, Record} ->
-            record_message(Box, Call);
-        _ ->
-            store(Box, Call),
-            format_log(info, "Store voicemail~n", []),
+compose_voicemail(#mailbox{prompt_greeting=undefined, prompt_generic_greeting=GenericGreeting}=Box, Call) ->
+    Greeting = case binary:split(get_value(<<"To">>, Call#cf_call.route_request), <<"@">>) of
+                   [Number|_] ->
+                       <<GenericGreeting/binary, $:, Number/binary>>;
+                   _ ->
+                       GenericGreeting
+               end,
+    compose_voicemail(Box#mailbox{prompt_greeting = Greeting}, Call);
+compose_voicemail(#mailbox{prompt_greeting=Greeting, keys=Keys}=Box, Call) ->
+    case play_and_collect_digits(<<"1">>, <<"1">>, Greeting, <<"1">>, <<"0">>, Call) of
+        {ok, Digits} ->
+            if
+                Digits == <<>> ->
+                    play_instructions(Box, Call);
+                Digits == Keys#keys.operator ->
+                    {hunt, operator};
+                Digits == Keys#keys.login ->
+                    check_voicemail(Box, Call);
+                true ->
+                    record_message(Box, Call)
+            end;
+        _Else ->
             {stop}
     end.
 
-record_file(FileId, #cf_call{call_id=CallId}=Call) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Typically plays the voicemail  recording instructions then goes to the 
+%% record message function. However the instructions can be optionaly 
+%% skipped.  Any digits skip to record unless they match the operator 
+%% or login keys.
+%% @end
+%%--------------------------------------------------------------------
+-spec(play_instructions/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> cf_exe_response()).
+play_instructions(#mailbox{skip_instructions = <<"true">>}=Box, Call) ->
+    record_message(Box, Call);
+play_instructions(#mailbox{prompt_instructions=Instructions, keys=Keys}=Box, Call) ->
+    case play_and_collect_digits(<<"1">>, <<"1">>, Instructions, <<"1">>, <<"0">>, Call) of
+        {ok, Digits} ->
+            if
+                Digits == Keys#keys.operator ->
+                    {hunt, operator};
+                Digits == Keys#keys.login ->
+                    check_voicemail(Box, Call);
+                true ->
+                    record_message(Box, Call)
+            end;
+        _Else ->
+            {continue}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Records a voicemail message.  If the channel is hungup at this stage
+%% then the message is stored.  Any key press will end the recording
+%% and, unless that key matches the operator or login, the caller will
+%% be given review options for the voicemail.
+%% @end
+%%--------------------------------------------------------------------
+-spec(record_message/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> cf_exe_response()).
+record_message(#mailbox{keys=Keys}=Box, Call) ->
+    play_tones(Box, Call),
+    record_file(Box, Call),
+    case wait_for_call_event(<<"RECORD_STOP">>, <<"record">>) of
+        {ok, Msg} ->
+            Digits = get_value(<<"Terminator">>, Msg),
+            if
+                Digits == Keys#keys.operator ->
+                    {hunt, operator};
+                Digits == Keys#keys.login ->
+                    check_voicemail(Box, Call);
+                true ->
+                    message_options(Box, Call)
+            end;
+        _Else ->                
+            store(Box, Call),
+            {stop}                
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Provides review options for a recorded message, the caller can 
+%% choose to listen, re-record, or save the message.  Optionally
+%% they can also login to the mailbox or be transfered to the operator
+%% @end
+%%--------------------------------------------------------------------
+-spec(message_options/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> cf_exe_response()).
+message_options(#mailbox{file_id=FileId, keys=Keys}=Box, Call) ->
+    Prompt = <<(Box#mailbox.prompt_record_review)/binary, $:, (Keys#keys.listen)/binary, $:, (Keys#keys.save)/binary, $:, (Keys#keys.record)/binary>>,
+    case play_and_collect_digits(<<"1">>, <<"1">>, Prompt, <<"1">>, <<"0">>, Call) of
+        {ok, Digits} ->
+            if
+                Digits == Keys#keys.operator ->
+                    {hunt, operator};
+                Digits == Keys#keys.listen ->
+                    play_and_collect_digits(<<"1">>, <<"1">>, FileId, <<"1">>, <<"0">>, Call),
+                    message_options(Box, Call);
+                Digits == Keys#keys.record ->
+                    record_message(Box, Call);
+                true ->
+                    store(Box, Call),
+                    {stop}                
+            end;
+        _Else ->
+            store(Box, Call),
+            {stop}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to record a file, using
+%% any key as the terminator.
+%% @end
+%%--------------------------------------------------------------------
+-spec(record_file/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+record_file(#mailbox{file_id=FileId}, #cf_call{call_id=CallId}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"record">>}
                ,{<<"Media-Name">>, FileId}
@@ -168,11 +251,18 @@ record_file(FileId, #cf_call{call_id=CallId}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    format_log(info, "CF_VOICEMAIL(~p): Sent command~nPayload: ~p~n", [self(), Command]),
     {ok, Json} = whistle_api:record_req(Command),
     send_callctrl(Json, Call).
 
-store(#mailbox{database = Db, mailbox_id = Id, file_id = FileId, rev = Rev}, #cf_call{call_id=CallId}=Call) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to store the file as a
+%% couchdb attachement on the voicemail defintion document
+%% @end
+%%--------------------------------------------------------------------
+-spec(store/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId, rev=Rev}, #cf_call{call_id=CallId}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, FileId}
@@ -187,21 +277,35 @@ store(#mailbox{database = Db, mailbox_id = Id, file_id = FileId, rev = Rev}, #cf
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    format_log(info, "CF_VOICEMAIL(~p): Sent command~nPayload: ~p~n", [self(), Command]),
     {ok, Json} = whistle_api:store_req(Command),
     send_callctrl(Json, Call).
 
-play_tones(Tones, #cf_call{call_id=CallId}=Call) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to play a tone to the 
+%% caller, used to denote when recording is about to begin
+%% @end
+%%--------------------------------------------------------------------
+-spec(play_tones/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+play_tones(#mailbox{tone_spec=Tones}, #cf_call{call_id=CallId}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"tone">>}
                ,{<<"Tones">>, Tones}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    format_log(info, "CF_VOICEMAIL(~p): Sent command~nPayload: ~p~n", [self(), Command]),
     {ok, Json} = whistle_api:tones_req(Command),
     send_callctrl(Json, Call).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to answer the channel 
+%% and begin exchanging media with the caller
+%% @end
+%%--------------------------------------------------------------------
+-spec(answer/1 :: (Call :: #cf_call{}) -> no_return()).
 answer(#cf_call{call_id=CallId}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"answer">>}
@@ -210,7 +314,6 @@ answer(#cf_call{call_id=CallId}=Call) ->
               ],    
     {ok, Json} = whistle_api:answer_req(Command),
     send_callctrl(Json, Call).
-
 
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
@@ -244,65 +347,36 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInva
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    format_log(info, "CF_VOICEMAIL(~p): Sent command~nPayload: ~p~n", [self(), Command]),
     {ok, Json} = whistle_api:play_collect_digits_req(Command),
     send_callctrl(Json, Call),
-    case wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"play_and_collect_digits">>, 30000) of
+    case wait_for_call_event(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"play_and_collect_digits">>) of
         {ok, Msg} ->
             {ok, get_value(<<"Application-Response">>, Msg)};
-        Else ->
-            Else
+        _Else ->
+            {stop}
     end.
-            
-wait_for_call_event(Name, Application, Timeout) ->    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Low level function to consume call events, looping until a specific
+%% one occurs.  If the channel is hungup or no call events are recieved
+%% for the optional timeout period then errors are returned.
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_call_event/2 :: (Name :: binary(), Application :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).            
+wait_for_call_event(Name, Application) ->    
     receive
-        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
-            {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            format_log(info, "CF_VOICEMAIL(~p): Recieved~nPayload: ~p~n", [self(), Msg]),
+        {call_event, {struct, Msg}} ->
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
                 { <<"call_event">>, Name, Application } ->                                
                     {ok, Msg};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _Name } ->
                     {error, channel_hungup};
                 _ ->
-                    wait_for_call_event(Name, Application, Timeout)
-            end
-    after
-        Timeout ->
-            {error, timeout}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% When the bridge command is successfull this waits for the call to
-%% hangup
-%% @end
-%%--------------------------------------------------------------------
--spec(wait_for_hangup/0 :: () -> {ok, channel_hangup}).    
-wait_for_hangup() -> 
-    receive
-        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
-            {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                     {ok, channel_hungup};
-                 _ ->
-                     wait_for_hangup()
+                    wait_for_call_event(Name, Application)
             end
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes a AMQP queue and consumer to recieve call events
-%% @end
-%%--------------------------------------------------------------------
--spec(init_amqp/1 :: (Call :: #cf_call{}) -> no_return()).                          
-init_amqp(#cf_call{amqp_h=AHost, call_id=CallId}) ->
-    AmqpQ = amqp_util:new_queue(AHost),
-    amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
-    amqp_util:basic_consume(AHost, AmqpQ).    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,6 +384,6 @@ init_amqp(#cf_call{amqp_h=AHost, call_id=CallId}) ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec(send_callctrl/2 :: (JSON :: iolist(), Call :: #cf_call{}) -> no_return()).
+-spec(send_callctrl/2 :: (JSON :: json_object(), Call :: #cf_call{}) -> no_return()).
 send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
     amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
