@@ -6,13 +6,13 @@
 %%% @end
 %%% Created : 22 Feb 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cf_devices).
+-module(cf_ring_group).
 
 -include("../callflow.hrl").
 
 -export([handle/2]).
 
--define(APP_NAME, <<"cf_devices">>).
+-define(APP_NAME, <<"cf_ring_group">>).
 -define(APP_VERSION, <<"0.5">>).
 
 -import(props, [get_value/2, get_value/3]).
@@ -29,9 +29,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    {ok, Endpoint} = get_endpoint(Data),
-    bridge_endpoints([Endpoint], Data, Call),
+handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
+    Endpoints = lists:foldr(fun(Endpoint, Acc) ->
+                                    case get_endpoint(Endpoint) of
+                                        {ok, E} -> [E|Acc];
+                                        _ -> Acc
+                                    end
+                            end, [], whapps_json:get_value([<<"endpoints">>], Data, [])),
+    bridge_endpoints(Endpoints, Data, Call),
     case wait_for_bridge() of
         {_, channel_hungup} ->
             CFPid ! { stop };
@@ -53,8 +58,10 @@ bridge_endpoints(Endpoints, {struct, Props}, #cf_call{call_id=CallId} = Call) ->
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
                ,{<<"Call-ID">>, CallId}
+               ,{<<"Dial-Endpoint-Method">>, get_value(<<"strategy">>, Props, <<"simultaneous">>)}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
+            format_log(info, "SENT!~n~p~n", [Command]),
     {ok, Json} = whistle_api:bridge_req(Command),
     send_callctrl(Json, Call).
 
@@ -81,7 +88,7 @@ get_endpoint({struct, Props}) ->
                         ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], Doc)}
                         ,{<<"Endpoint-Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
                         ,{<<"Endpoint-Progress-Timeout">>, get_value(<<"progress-timeout">>, Props, <<"6">>)}
-                        ,{<<"Endpoint-Delay">>, whapps_json:get_value(<<"delay">>, Props)}
+                        ,{<<"Endpoint-Delay">>, get_value(<<"delay">>, Props)}
                         ,{<<"Codecs">>, whapps_json:get_value(["media", "codecs"], Doc)}
                     ],
             {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
