@@ -193,7 +193,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.evtsub">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.evtsub">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  Pid ! {binding_result, [RD, Context, Params]}
+		  Pid ! {binding_result, true, [RD, Context, Params]}
      	  end),
     {noreply, State};
 
@@ -332,7 +332,11 @@ validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data}=C
 	    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max-events">>, Data, ?MAX_STREAM_EVENTS)),
 	    add_stream(SubPid, Stream, MaxEvents),
 	    Streams = get_streams(SubPid),
-	    crossbar_util:response({struct, [{<<"streams">>, Streams}]}, Context)
+	    crossbar_util:response({struct, [{<<"streams">>, Streams}]}
+				   ,Context#cb_context{resp_headers=[
+								     {"Location", Stream}
+								     | Context#cb_context.resp_headers
+								    ]})
     end;
 validate([], #cb_context{req_verb = <<"delete">>, session=Session, req_data=Data}=Context) ->
     {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
@@ -372,7 +376,6 @@ validate([Stream], #cb_context{req_verb = <<"delete">>, session=Session, req_dat
     {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
 		   {ok, SubPid} ->
 		       Flush = whapps_json:get_value(<<"flush">>, Data, false),
-		       Stream = whapps_json:get_value(<<"stream">>, Data),
 		       rm_stream(SubPid, Stream, whistle_util:to_boolean(Flush));
 		   {error, undefined} ->
 		       start_subscription_handler(Session),
