@@ -22,7 +22,7 @@
 -define(APP_NAME, <<"cf_dialplan">>).
 -define(APP_VERSION, <<"0.1">>).
 
-handle ( Data, #cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ, cf_pid=Pid} ) ->
+handle ( {struct, Data}, #cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ, cf_pid=Pid} ) ->
    format_log(info, "CF DIALPLAN (~p): Handling...~n", [self()]),
    AmqpQ = amqp_util:new_queue(AHost),
    amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
