@@ -19,10 +19,9 @@ start_deps() ->
     ecallmgr_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
+    ensure_started(riak_err),
     ensure_started(whistle_amqp),
-    ensure_started(ibrowse),
-    ensure_started(dynamic_compile),
-    ensure_started(log_roller).
+    ensure_started(ibrowse).
 
 %% @spec stop() -> ok
 %% @doc Stop the callmgr server.
