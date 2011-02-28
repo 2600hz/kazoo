@@ -26,8 +26,7 @@ store_cdr({struct, CDRProp}, #route_flags{routes_generated=RGs, direction=Dir, a
 	     ,{<<"Rate-Used">>, RateName}
 	     ,{<<"Customer-Account-ID">>, DocID}
 	     | CDRProp],
-    format_log(info, "TS_CDR: Saving ~p~n", [TScdr]),
-    _ = couch_mgr:save_doc(?TS_CDR_DB, TScdr).
+    couch_mgr:save_doc(?TS_CDR_DB, TScdr).
 
 -spec(find_route_used/3 :: (Direction :: binary(), ToUri :: binary(), Routes :: list(tuple(struct, proplist()))) -> proplist()).
 find_route_used(<<"outbound">>, ToUri, Routes) ->

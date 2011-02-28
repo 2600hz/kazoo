@@ -48,6 +48,7 @@
 	  ,resp_error_msg = undefined :: json_string()
 	  ,resp_error_code = undefined :: json_number() | undefined
 	  ,resp_data = [] :: mochijson()
+	  ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,storage = [] :: proplist()
           ,start = undefined
 	 }).
