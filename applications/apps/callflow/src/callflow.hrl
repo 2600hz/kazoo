@@ -8,6 +8,8 @@
    { <<"tone">>, <<"tones">> }
 ] ).
 
+-type cf_exe_response() :: tuple(stop) | tuple (continue) | tuple(continue, integer()) | tuple(heartbeat).
+
 -record (cf_call, {
              amqp_h = <<>> :: binary()                            %% The AMPQ host the ctrl_q and bdst_q exist in
             ,ctrl_q = <<>> :: binary()                            %% The control queue for this request
