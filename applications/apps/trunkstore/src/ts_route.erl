@@ -373,7 +373,7 @@ flags_from_srv(Doc, #route_flags{auth_user=AuthUser}=Flags) ->
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			   ,media_handling = get_value(<<"media_handling">>, Options)
-			   ,progress_timeout = get_value(<<"progress_timeout">>, Options)
+			   ,progress_timeout = get_value(<<"progress_timeout">>, Options, none)
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
     add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})).
