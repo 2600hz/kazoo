@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/3, get_host/0, get_creds/0]).
+-export([start_link/0, set_host/1, set_host/3, get_host/0, get_creds/0, get_url/0]).
 
 %% System manipulation
 -export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
@@ -341,6 +341,18 @@ get_conn() ->
 get_db(DbName) ->
     Conn = gen_server:call(?MODULE, {get_conn}),
     open_db(whistle_util:to_list(DbName), Conn).
+
+get_url() ->    
+    case {whistle_util:to_binary(get_host()), get_creds()} of 
+        {<<"">>, _} -> 
+            undefined;
+        {H, {[], []}} ->
+            <<"http://", H/binary, ":5984", $/>>;
+        {H, {User, Pwd}} ->
+            U = whistle_util:to_binary(User),
+            P = whistle_util:to_binary(Pwd),
+            <<"http://", U/binary, $:, P/binary, $@, H/binary, ":5984", $/>>
+    end.
 
 add_change_handler(DBName, DocID) ->
     gen_server:call(?MODULE, {add_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).

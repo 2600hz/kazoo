@@ -145,6 +145,7 @@ delete_resource(RD, Context) ->
 finish_request(RD, #cb_context{start=T1}=Context) ->
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+
     case Context1#cb_context.session of
         undefined ->
             format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
@@ -434,7 +435,8 @@ create_resp_content(RD, Context) ->
 -spec(create_push_response/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
 create_push_response(RD, Context) ->
     Content = create_resp_content(RD, Context),
-    {succeeded(Context), wrq:set_resp_body(Content, RD), Context}.
+    RD1 = set_resp_headers(RD, Context),
+    {succeeded(Context), wrq:set_resp_body(Content, RD1), Context}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -446,9 +448,10 @@ create_push_response(RD, Context) ->
 -spec(create_pull_response/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 create_pull_response(RD, Context) ->
     Content = create_resp_content(RD, Context),
+    RD1 = set_resp_headers(RD, Context),
     case succeeded(Context) of
         false ->
-            {{halt, 500}, wrq:set_resp_body(Content, RD), Context};
+            {{halt, 500}, wrq:set_resp_body(Content, RD1), Context};
         true ->
             {Content, RD, Context}
     end.
@@ -464,6 +467,44 @@ succeeded(#cb_context{resp_status=success}) ->
     true;
 succeeded(_) ->
     false.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Iterate through #cb_context.resp_headers, setting the headers specified
+%% @end
+%%--------------------------------------------------------------------
+-spec(set_resp_headers/2 :: (RD0 :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
+set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
+    lists:foldl(fun({Header, Value}, RD) ->
+			{H, V} = fix_header(RD, Header, Value),
+			wrq:set_resp_header(H, V, RD)
+		end, RD0, Headers).
+
+-spec(fix_header/3 :: (RD :: #wm_reqdata{}, Header :: string(), Value :: string() | binary()) -> tuple(string(), string())).
+fix_header(RD, "Location"=H, Url) ->
+    %% http://some.host.com:port/"
+    Host = lists:concat(["http://", string:join(wrq:host_tokens(RD), "."), ":", integer_to_list(wrq:port(RD)), "/"]),
+
+    %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
+    PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
+    UrlTokens = string:tokens(whistle_util:to_list(Url), "/"),
+
+    Url1 = 
+	string:join(
+	  lists:reverse(
+	    lists:foldl(fun("..", []) -> [];
+			   ("..", [_ | PathTokens]) -> PathTokens;
+			   (".", PathTokens) -> PathTokens;
+			   (Segment, PathTokens) -> [Segment | PathTokens]
+			end, PathTokensRev, UrlTokens)
+	   ), "/"),
+
+    {H, Host ++ Url1};
+fix_header(_, H, V) ->
+    {whistle_util:to_list(H), whistle_util:to_list(V)}.
+
+    
 
 %%--------------------------------------------------------------------
 %% @private
