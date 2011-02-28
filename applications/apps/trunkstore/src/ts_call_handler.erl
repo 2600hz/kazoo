@@ -253,6 +253,12 @@ terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
     amqp_util:delete_queue(H, Q),
+    ok;
+terminate(_Unexpected, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
+    stop_call_activity_ref(Ref),
+    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
+    format_log(error, "TS_CALL(~p): terminating unexpectedly: took ~p~n~p~n", [self(), DeltaTime, _Unexpected]),
+    amqp_util:delete_queue(H, Q),
     ok.
 
 %%--------------------------------------------------------------------
