@@ -21,6 +21,7 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE). 
+-define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 
 -record(state, {
 	  amqp_host = "" :: string()
@@ -147,7 +148,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, State) -> handle_info(start_apps, State);
+handle_info(timeout, State) ->
+    handle_info(start_apps, State);
 handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
     State1 = case file:consult(Config) of

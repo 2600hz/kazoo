@@ -3,8 +3,12 @@
 cd `dirname $0`
 export ERL_LIBS=$PWD/../lib/
 
+sname="whistle_apps"
+[ ! -z "$1" ] && sname="$1"
+
 exec erl -detached -heart -setcookie `cat ../confs/fs_conf/autoload_configs/.erlang.cookie` \
     -pa $PWD/ebin -pa $PWD/deps/*/ebin -pa $PWD/apps/*/ebin \
-    -boot start_sasl -name whistle_apps -s reloader -s whistle_apps \
-    -mnesia dir '"priv/mnesia"' \
-    -kernel error_logger '{file, "log/error_log"}'
+    -riak_err term_max_size 8192 fmt_max_bytes 9000 \
+    -kernel error_logger '{file, "log/error_log"}' \
+    -boot start_sasl -name whistle_apps -s reloader -s whistle_apps
+
