@@ -68,7 +68,8 @@
          ,amqp_h = <<>> :: string()
          ,amqp_q = <<>> :: binary()
 	 ,start_time = erlang:now() :: tuple()
-}).
+	 ,is_node_up = true :: boolean()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -143,9 +144,33 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{amqp_h=H, amqp_q=Q}=State) ->
+handle_info(timeout, #state{node=N, amqp_h=H, amqp_q=Q}=State) ->
+    erlang:monitor_node(N, true),
     amqp_util:basic_consume(H, Q),
     {noreply, State};
+
+handle_info({nodedown, Node}, #state{node=Node}=State) ->
+    format_log(error, "CONTROL(~p): nodedown ~p~n", [self(), Node]),
+    erlang:monitor_node(Node, false),
+    timer:send_after(0, self(), {is_node_up, 100}),
+    {noreply, State#state{is_node_up=false}};
+
+handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
+    format_log(error, "CONTROL(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
+    case net_adm:ping(Node) of
+	pong ->
+	    erlang:monitor_node(Node, true),
+	    format_log(info, "CONTROL(~p): node_is_up ~p~n", [self(), Node]),
+	    {noreply, State#state{is_node_up=true}};
+	pang ->
+	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+		true ->
+		    timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+		false ->
+		    timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
+	    end,
+	    {noreply, State}
+    end;
 
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
@@ -166,7 +191,7 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
 		  _AppName ->
 		      queue:in(JObj, State#state.command_q)
 	      end,
-    case (not queue:is_empty(NewCmdQ)) andalso State#state.current_app =:= <<>> of
+    case State#state.is_node_up andalso (not queue:is_empty(NewCmdQ)) andalso State#state.current_app =:= <<>> of
 	true ->
 	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
 	    ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
@@ -181,7 +206,10 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 	<<>> ->
 	    {noreply, State};
 	EvtName ->
-	    case queue:out(State#state.command_q) of
+	    case State#state.is_node_up andalso queue:out(State#state.command_q) of
+		false ->
+		    %% if the node is down, don't inject the next FS event
+		    {noreply, State#state{current_app = <<>>}};
 		{empty, _} ->
 		    {noreply, State#state{current_app = <<>>}};
 		{{value, Cmd}, CmdQ1} ->
@@ -192,9 +220,6 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 	    {noreply, State}
     end;
 
-handle_info({execute, _UUID, _EvtName}, State) ->
-    {noreply, State};
-
 handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_time=StartT}=State) ->
     amqp_util:unbind_q_from_callctl(H, Q),
     amqp_util:delete_queue(H, Q), %% stop receiving messages
@@ -203,9 +228,18 @@ handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_
     EvtPid ! {ctl_down, self()},
     {stop, normal, State};
 
+handle_info(is_amqp_up, #state{amqp_h=H, amqp_q=Q}=State) ->
+    case restart_amqp_queue(H, Q) of
+	ok -> {noreply, State};
+	{error, _} ->
+	    timer:send_after(1000, self(), is_amqp_up),
+	    {noreply, State}
+    end;
+
 handle_info({amqp_host_down, H}, State) ->
     format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
-    {stop, normal, State};
+    timer:send_after(1000, self(), is_amqp_up),
+    {noreply, State};
 
 handle_info(_Msg, State) ->
     format_log(info, "CONTROL(~p): Unhandled message: ~p~n", [self(), _Msg]),
@@ -236,6 +270,13 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+-spec(restart_amqp_queue/2 :: (Host :: string(), Queue :: binary()) -> 'ok' | tuple('error', term())).
+restart_amqp_queue(Host, Queue) ->
+    case amqp_util:new_callctl_queue(Host, Queue) of
+	Q when Q =:= Queue ->
+	    amqp_util:bind_q_to_callctl(Host, Queue),
+	    amqp_util:basic_consume(Host, Queue),
+	    ok;
+	{error, _}=E ->
+	    E
+    end.

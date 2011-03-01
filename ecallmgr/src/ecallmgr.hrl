@@ -16,3 +16,4 @@
 		    }).
 
 -define(DEFAULT_DOMAIN, <<"trunks.2600hz.com">>).
+-define(MAX_TIMEOUT_FOR_NODE_RESTART, 300000). % 5 minutes

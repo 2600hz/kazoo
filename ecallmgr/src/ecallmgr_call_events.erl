@@ -29,6 +29,12 @@ start_link(Node, UUID, Host, CtlPid) ->
 init(Node, UUID, Host, CtlPid) ->
     freeswitch:handlecall(Node, UUID),
     erlang:monitor_node(Node, true),
+
+    case CtlPid of
+	undefined -> ok;
+	_ -> link(CtlPid) %% CtlPid goes down if we go down
+    end,
+
     add_amqp_listener(Host, UUID),
     loop(Node, UUID, Host, CtlPid, infinity).
 

@@ -117,8 +117,6 @@
 -define(ROUTE_MOD, ecallmgr_fs_route).
 -define(NODE_MOD, ecallmgr_fs_node).
 
--define(MAX_TIMEOUT_FOR_NODE_RESTART, 300000). % 5 minutes
-
 -record(node_handler, {node = 'undefined' :: atom()
 		       ,options = [] :: proplist()
 		       ,auth_handler_pid = undefined :: pid() | undefined
