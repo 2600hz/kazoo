@@ -109,6 +109,7 @@
 -import(logger, [log/2, format_log/3]).
 
 -include("freeswitch_xml.hrl").
+-include("ecallmgr.hrl").
 -include("whistle_api.hrl").
 
 -define(SERVER, ?MODULE).

@@ -1,4 +1,6 @@
+-ifndef(WHISTLE_TYPES_INCLUDED).
 -include("whistle_types.hrl").
+-endif.
 
 %% We pass Application custom channel variables with our own prefix
 %% When an event occurs, we include all prefixed vars in the API message

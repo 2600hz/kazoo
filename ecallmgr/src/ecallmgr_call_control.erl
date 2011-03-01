@@ -38,95 +38,204 @@
 %%% application's execute (think set commands, like playback terminators);
 %%% we can note the event happended, and continue looping as we were.
 %%%
+%%% 
+%%%
 %%% @end
 %%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control).
 
--export([start_link/3, init/3]).
+-behaviour(gen_server).
 
-%% Internal Functions
--export([loop/7]).
+%% API
+-export([start_link/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+	 terminate/2, code_change/3]).
 
--import(logger, [log/2, format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
+-import(logger, [format_log/3]).
 
-%% Node, UUID, {AmqpHost, CtlQueue}
+-include("ecallmgr.hrl").
+
+-define(SERVER, ?MODULE). 
+
+-record(state, {
+	  node = undefined :: atom()
+	 ,uuid = <<>> :: binary()
+         ,command_q = queue:new() :: queue()
+         ,current_app = <<>> :: binary()
+         ,amqp_h = <<>> :: string()
+         ,amqp_q = <<>> :: binary()
+	 ,start_time = erlang:now() :: tuple()
+}).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
 start_link(Node, UUID, Amqp) ->
-    {ok, spawn_link(ecallmgr_call_control, init, [Node, UUID, Amqp])}.
+    gen_server:start_link(?MODULE, [Node, UUID, Amqp], []).
 
-init(Node, UUID, {AmqpHost, CtlQueue}) ->
-    amqp_util:basic_consume(AmqpHost, CtlQueue),
-    format_log(info, "CONTROL(~p): initial loop call, consuming on ~p~n", [self(), CtlQueue]),
-    ?MODULE:loop(Node, UUID, queue:new(), <<>>, CtlQueue, erlang:now(), AmqpHost).
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
 
-%% CurrApp is the Whistle Application that is currently running in FS (or empty)
-%% the next command in CmdQ doesn't run until CurrApp translates to the Event Name
-%% passed from the Event queue on the {command_execute_complete, ...} message
-loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost) ->
-    format_log(info, "CONTROL(~p): entered loop(~p)~nUUID: ~p~n", [self(), CurrApp, UUID]),
-    receive
-	{#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
-				       ,payload = Payload}} ->
-	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "CONTROL(~p): Recv App ~p~n~p~n", [self(), get_value(<<"Application-Name">>, Prop), CmdQ]),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([Node, UUID, {AmqpHost, CtlQueue}]) ->
+    {ok, #state{node=Node, uuid=UUID, command_q = queue:new(), current_app = <<>>, amqp_h = AmqpHost, amqp_q = CtlQueue, start_time = erlang:now()}, 0}.
 
-	    NewCmdQ = case get_value(<<"Application-Name">>, Prop) of
-			  <<"queue">> -> %% list of commands that need to be added
-			      format_log(info, "CONTROL(~p): Recv App Cmd: Queue~n", [self()]),
-			      DefProp = whistle_api:extract_defaults(Prop), %% each command lacks the default headers
-			      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
-					     ({struct, Cmd}, TmpQ) ->
-						  AppCmd = DefProp ++ Cmd,
-						  format_log(info, "CONTROL.queue: Cmd: ~p~n", [AppCmd]),
-						  queue:in(AppCmd, TmpQ)
-					  end, CmdQ, get_value(<<"Commands">>, Prop));
-			  _AppName ->
-			      queue:in(Prop, CmdQ)
-		      end,
-	    case (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= <<>> of
-		true ->
-		    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
-		    format_log(info, "CONTROL(~p): CmdQ not empty, running ~p~n", [self(), Cmd]),
-		    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd, AmqpHost),
-		    AppName = get_value(<<"Application-Name">>, Cmd),
-		    ?MODULE:loop(Node, UUID, NewCmdQ1, AppName, CtlQ, StartT, AmqpHost);
-		false ->
-		    ?MODULE:loop(Node, UUID, NewCmdQ, CurrApp, CtlQ, StartT, AmqpHost)
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info(timeout, #state{amqp_h=H, amqp_q=Q}=State) ->
+    amqp_util:basic_consume(H, Q),
+    {noreply, State};
+
+handle_info(#'basic.consume_ok'{}, State) ->
+    {noreply, State};
+
+handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, State) ->
+    JObj = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "CONTROL(~p): Recv App ~p~n", [self(), whapps_json:get_value(<<"Application-Name">>, JObj)]),
+
+    NewCmdQ = case whapps_json:get_value(<<"Application-Name">>, JObj) of
+		  <<"queue">> -> %% list of commands that need to be added
+		      DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
+		      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
+				     ({struct, Cmd}, TmpQ) ->
+					  AppCmd = DefProp ++ Cmd,
+					  format_log(info, "CONTROL.queue: Cmd: ~p~n", [AppCmd]),
+					  queue:in({struct, AppCmd}, TmpQ)
+				  end, State#state.command_q, whapps_json:get_value(<<"Commands">>, JObj));
+		  _AppName ->
+		      queue:in(JObj, State#state.command_q)
+	      end,
+    case (not queue:is_empty(NewCmdQ)) andalso State#state.current_app =:= <<>> of
+	true ->
+	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
+	    ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
+	    AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),
+	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName}};
+	false ->
+	    {noreply, State#state{command_q = NewCmdQ}}
+    end;
+
+handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.uuid ->
+    case whistle_api:convert_whistle_app_name(State#state.current_app) of
+	<<>> ->
+	    {noreply, State};
+	EvtName ->
+	    case queue:out(State#state.command_q) of
+		{empty, _} ->
+		    {noreply, State#state{current_app = <<>>}};
+		{{value, Cmd}, CmdQ1} ->
+		    ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
+		    {noreply, State#state{command_q = CmdQ1, current_app = whapps_json:get_value(<<"Application-Name">>, Cmd)}}
 	    end;
-	{execute_complete, UUID, EvtName} ->
-	    format_log(info, "CONTROL(~p): CurrApp: ~p(~p) execute_complete: ~p~n", [self(), CurrApp, whistle_api:convert_whistle_app_name(CurrApp), EvtName]),
-	    case whistle_api:convert_whistle_app_name(CurrApp) of
-		<<>> ->
-		    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
-		EvtName ->
-		    case queue:out(CmdQ) of
-			{empty, _CmdQ1} -> loop(Node, UUID, CmdQ, <<>>, CtlQ, StartT, AmqpHost);
-			{{value, Cmd}, CmdQ1} ->
-			    ecallmgr_call_command:exec_cmd(Node, UUID, Cmd, AmqpHost),
-			    ?MODULE:loop(Node, UUID, CmdQ1, get_value(<<"Application-Name">>, Cmd), CtlQ, StartT, AmqpHost)
-		    end;
-		_OtherEvt ->
-		    format_log(info, "CONTROL(~p): CurrApp: ~p Other: ~p~n", [self(), CurrApp, _OtherEvt]),
-		    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost)
-	    end;
-	{execute, UUID, EvtName} ->
-	    format_log(info, "CONTROL(~p): CurrApp: ~p Received execute: ~p~n", [self(), CurrApp, EvtName]),
-	    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
-	{hangup, EvtPid, UUID} ->
-	    amqp_util:unbind_q_from_callctl(AmqpHost, CtlQ),
-	    amqp_util:delete_queue(AmqpHost, CtlQ), %% stop receiving messages
-	    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
-		       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
-	    EvtPid ! {ctl_down, self()};
-	{amqp_host_down, H} ->
-	    format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]);
-	#'basic.consume_ok'{}=BC ->
-	    format_log(info, "CONTROL(~p): Curr(~p) received BC ~p~n", [self(), CurrApp, BC]),
-	    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost);
-	_Msg ->
-	    format_log(info, "CONTROL(~p): Recv Unknown Msg:~n~p~n", [self(), _Msg]),
-	    ?MODULE:loop(Node, UUID, CmdQ, CurrApp, CtlQ, StartT, AmqpHost)
-    end.
+	_OtherEvt ->
+	    {noreply, State}
+    end;
+
+handle_info({execute, _UUID, _EvtName}, State) ->
+    {noreply, State};
+
+handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_time=StartT}=State) ->
+    amqp_util:unbind_q_from_callctl(H, Q),
+    amqp_util:delete_queue(H, Q), %% stop receiving messages
+    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
+	       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
+    EvtPid ! {ctl_down, self()},
+    {stop, normal, State};
+
+handle_info({amqp_host_down, H}, State) ->
+    format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
+    {stop, normal, State};
+
+handle_info(_Msg, State) ->
+    format_log(info, "CONTROL(~p): Unhandled message: ~p~n", [self(), _Msg]),
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================

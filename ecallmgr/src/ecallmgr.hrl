@@ -1,3 +1,6 @@
+-include("../include/amqp_client/include/amqp_client.hrl").
+-include("whistle_types.hrl").
+
 -record(handler_stats, {lookups_success = 0 :: integer()
 			,lookups_failed = 0 :: integer()
                         ,lookups_timeout = 0 :: integer()

@@ -12,7 +12,7 @@
 -export([start_link/4, init/4]).
 
 -include("whistle_api.hrl").
--include("../include/amqp_client/include/amqp_client.hrl").
+-include("ecallmgr.hrl").
 
 -import(logger, [log/2, format_log/3]).
 -import(props, [get_value/2, get_value/3]).
