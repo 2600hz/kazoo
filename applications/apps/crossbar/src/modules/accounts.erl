@@ -98,7 +98,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~w", [_Msg]),
+    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -165,7 +165,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
                       #cb_context{resp_status=success, doc=Doc}=Context1 ->
                           case couch_mgr:db_create(get_db_name(Doc)) of
                             false ->
-                                format_log(error, "ACCOUNTS(~w): Failed to create database: ~w~n", [self(), get_db_name(Doc)]),
+                                format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), get_db_name(Doc)]),
                                 crossbar_doc:delete(Context1),
                                 Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
                             true ->
@@ -193,12 +193,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
     {noreply, State};
 
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    %%format_log(info, "ACCOUNTS(~w): unhandled binding: ~w~n", [self(), Route]),
+    %%format_log(info, "ACCOUNTS(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "ACCOUNTS(~w): unhandled info ~w~n", [self(), _Info]),
+    format_log(info, "ACCOUNTS(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -566,7 +566,7 @@ update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
                     List -> lists:nthtail(1,List)
                 end,
             NewTree = lists:filter(fun(E) -> E =/= DocId end, ParentTree ++ SubTree),
-            %%io:format("Tree:~w~nSubTree: ~w~nNewTree:~w~n:Doc:~w~n", [Tree, SubTree, NewTree, crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], NewTree, Doc)]),
+            %%io:format("Tree:~p~nSubTree: ~p~nNewTree:~p~n:Doc:~p~n", [Tree, SubTree, NewTree, crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], NewTree, Doc)]),
             [whapps_json:set_value([<<"pvt_identifier">>, <<"tree">>], NewTree, Doc) | Acc];
         _Else ->
             Acc

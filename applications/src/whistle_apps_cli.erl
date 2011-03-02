@@ -30,8 +30,8 @@ usage() ->
      ,{" ~s <command> ...",[Script]}
      ,""
      ,"Commands:"
-     ,{" set_amqp_host <host>  Set the amqp host (e.g. ~w)", [net_adm:localhost()]}
-     ,{" set_couch_host <host>  Set the amqp host (e.g. ~w)", [net_adm:localhost()]}
+     ,{" set_amqp_host <host>  Set the amqp host (e.g. ~p)", [net_adm:localhost()]}
+     ,{" set_couch_host <host>  Set the amqp host (e.g. ~p)", [net_adm:localhost()]}
      ," start_app <whapp>  Start (if not already) the whapp"
      ," stop_app <whapp>  Stop (if started) the whapp"
      ," running_apps  List of whapps currently running"
@@ -39,54 +39,54 @@ usage() ->
 
 set_amqp_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
-    format("Setting AMQP host to ~w on ~w~n", [Host, Node]),
+    format("Setting AMQP host to ~p on ~p~n", [Host, Node]),
     case rpc_call(Node, whapps_controller, set_amqp_host, Arg) of
 	{ok, ok} ->
-	    {ok, "Set whistle controller's amqp host to ~w", [Host]};
+	    {ok, "Set whistle controller's amqp host to ~p", [Host]};
 	{ok, Other} ->
-	    {ok, "Something unexpected happened while setting the amqp host: ~w", [Other]}
+	    {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
     end.
 
 set_couch_host(always, [Host]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
-    format("Setting CouchDB Host to ~w on ~w~n", [Host, Node]),
+    format("Setting CouchDB Host to ~p on ~p~n", [Host, Node]),
     User = io:get_line("CouchDB Username: "),
     Pass = io:get_line("CouchDB Password: "),
     case rpc_call(Node, whapps_controller, set_couch_host, [Host, string:strip(User, right, $\n), string:strip(Pass, right, $\n)]) of
 	{ok, ok} ->
-	    {ok, "Set whistle controller's couch host to ~w", [Host]};
+	    {ok, "Set whistle controller's couch host to ~p", [Host]};
 	{ok, Other} ->
-	    {ok, "Something unexpected happened while setting the couch host: ~w", [Other]}
+	    {ok, "Something unexpected happened while setting the couch host: ~p", [Other]}
     end.
 
 start_app(always, [Whapp]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
-    format("Starting whapp ~w on ~w~n", [Whapp, Node]),
+    format("Starting whapp ~p on ~p~n", [Whapp, Node]),
     case rpc_call(Node, whapps_controller, start_app, [list_to_atom(Whapp)]) of
 	{ok, ok} ->
-	    {ok, "~w started successfully", [Whapp]};
+	    {ok, "~p started successfully", [Whapp]};
 	{ok, Other} ->
-	    {ok, "Something unexpected happened while starting ~w: ~w", [Whapp, Other]}
+	    {ok, "Something unexpected happened while starting ~p: ~p", [Whapp, Other]}
     end.
 
 stop_app(always, [Whapp]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
-    format("Stopping whapp ~w on ~w~n", [Whapp, Node]),
+    format("Stopping whapp ~p on ~p~n", [Whapp, Node]),
     case rpc_call(Node, whapps_controller, stop_app, [list_to_atom(Whapp)]) of
 	{ok, ok} ->
-	    {ok, "~w stopped successfully", [Whapp]};
+	    {ok, "~p stopped successfully", [Whapp]};
 	{ok, Other} ->
-	    {ok, "Something unexpected happened while stopping ~w: ~w", [Whapp, Other]}
+	    {ok, "Something unexpected happened while stopping ~p: ~p", [Whapp, Other]}
     end.
 
 running_apps(always, []) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
-    format("Searching for running whapps on ~w~n", [Node]),
+    format("Searching for running whapps on ~p~n", [Node]),
     case rpc_call(Node, whapps_controller, running_apps, []) of
 	{ok, Apps} when is_list(Apps) ->
-	    {ok, "~w~n", [Apps]};
+	    {ok, "~p~n", [Apps]};
 	{ok, Other} ->
-	    {ok, "Something unexpected happened while looking for running whapps: ~w", [Other]}
+	    {ok, "Something unexpected happened while looking for running whapps: ~p", [Other]}
     end.
 
 rpc_call(Node, M, F, A) ->
@@ -94,5 +94,5 @@ rpc_call(Node, M, F, A) ->
 	pong ->
 	    {ok, rpc:call(Node, M, F, A)};
 	pang ->
-	    {ok, "~w not reachable", [Node]}
+	    {ok, "~p not reachable", [Node]}
     end.

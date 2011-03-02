@@ -80,7 +80,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(Req, _From, []=C) ->
-    format_log(error, "TS_CARRIER(~w): No carrier information for Req ~w~n", [self(), Req]),
+    format_log(error, "TS_CARRIER(~p): No carrier information for Req ~p~n", [self(), Req]),
     {reply, no_carrier_information, C};
 handle_call({route, Flags}, _From, Carriers) ->
     {reply, get_routes(Flags, Carriers), Carriers}.
@@ -113,11 +113,11 @@ handle_info(refresh, OldCarriers) ->
 	{ok, Carriers} ->
 	    {noreply, Carriers};
 	{error, _Err} ->
-	    format_log(error, "TS_CARRIER(~w): Error getting carriers: ~w~n", [self(), _Err]),
+	    format_log(error, "TS_CARRIER(~p): Error getting carriers: ~p~n", [self(), _Err]),
 	    {noreply, OldCarriers}
     end;
 handle_info({document_changes, DocID, Changes}, Carriers) ->
-    format_log(info, "TS_CARRIER(~w): Changes on ~w. ~w~n", [self(), DocID, Changes]),
+    format_log(info, "TS_CARRIER(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
     CurrRev = get_value(<<"_rev">>, Carriers),
     ChangedCarriers = lists:foldl(fun(ChangeProp, Cs) ->
 					  case get_value(<<"rev">>, ChangeProp) of
@@ -128,7 +128,7 @@ handle_info({document_changes, DocID, Changes}, Carriers) ->
 						  NewCarriers
 					  end
 				  end, Carriers, Changes),
-    format_log(info, "TS_CARRIER(~w): Changed carriers from ~w to ~w~n", [self(), CurrRev, get_value(<<"_rev">>, ChangedCarriers)]),
+    format_log(info, "TS_CARRIER(~p): Changed carriers from ~p to ~p~n", [self(), CurrRev, get_value(<<"_rev">>, ChangedCarriers)]),
     {noreply, ChangedCarriers};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -145,7 +145,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    format_log(error, "TS_CARRIER(~w): Going down: ~w~n", [self(), _Reason]),
+    format_log(error, "TS_CARRIER(~p): Going down: ~p~n", [self(), _Reason]),
     couch_mgr:rm_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
     ok.
 
@@ -166,16 +166,16 @@ code_change(_OldVsn, State, _Extra) ->
 get_current_carriers() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_CARRIERS_DOC) of
 	{error, not_found} ->
-	    format_log(info, "TS_CARRIER(~w): No document(~w) found~n", [self(), ?TS_CARRIERS_DOC]),
+	    format_log(info, "TS_CARRIER(~p): No document(~p) found~n", [self(), ?TS_CARRIERS_DOC]),
 	    {error, "No matching carriers"};
 	{error, db_not_reachable} ->
-	    format_log(info, "TS_CARRIER(~w): No DB(~w) found~n", [self(), ?TS_DB]),
+	    format_log(info, "TS_CARRIER(~p): No DB(~p) found~n", [self(), ?TS_DB]),
 	    {error, "DB not accessible"};
 	{ok, []} ->
-	    format_log(info, "TS_CARRIER(~w): No Carriers defined~n", [self()]),
+	    format_log(info, "TS_CARRIER(~p): No Carriers defined~n", [self()]),
 	    {error, "No matching carriers"};
 	{ok, {struct, Carriers}} when is_list(Carriers) ->
-	    format_log(info, "TS_CARRIER(~w): Carriers pulled. Rev: ~w~n", [self(), get_value(<<"_rev">>, Carriers)]),
+	    format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Carriers)]),
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
 	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))}
     end.
@@ -202,7 +202,7 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 -spec(get_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
 get_routes(Flags, Carriers) ->
     User = Flags#route_flags.to_user,
-    format_log(info, "TS_CARRIER(~w): Find route to ~w~n", [self(), User]),
+    format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
 
     Carriers1 = lists:filter(fun({_CarrierName, CarrierData}) ->
 				     lists:any(fun(Regex) ->
@@ -296,7 +296,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 	    case whistle_api:route_resp_route_v(R) of
 		true -> {[{struct, R} | CRs], Regexed, BaseRouteData, ChannelVars};
 		false ->
-		    format_log(error, "TS_CARRIER.gateway_to_route Error validating route~n~w~n", [R]),
+		    format_log(error, "TS_CARRIER.gateway_to_route Error validating route~n~p~n", [R]),
 		    Acc
 	    end;
 	_ -> Acc

@@ -321,7 +321,7 @@ clean_expired() ->
                                                        Else -> Else
                                                    end
 					   end, Sessions)),
-						%format_log(info, "CB_SESSION(~w): Cleaned ~w sessions~n", [self(), length(Docs)]),
+						%format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
 	    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs)
     end.
 

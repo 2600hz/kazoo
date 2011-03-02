@@ -71,7 +71,7 @@ start_link(Job_ID, AHost, Interval) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Job_ID, AHost, Interval]) ->
-    format_log(info, "MONITOR_JOB(~w): Starting new job with id ~w and amqp host ~w on a interval of ~w~n", [self(), Job_ID, AHost, Interval]),
+    format_log(info, "MONITOR_JOB(~p): Starting new job with id ~p and amqp host ~p on a interval of ~p~n", [self(), Job_ID, AHost, Interval]),
     {ok, TRef} = send_interval(Interval, iteration_cycle),
     {ok, #state{amqp_host = AHost, job_id = Job_ID, tref = TRef, interval = Interval}}.
 
@@ -90,35 +90,35 @@ init([Job_ID, AHost, Interval]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost}, _From, #state{job_id = Job_ID} = State) ->
-    format_log(info, "MONITOR_JOB(~w): Job ~w updated Updating amqp host to ~w~n", [self(), Job_ID, AHost]),
+    format_log(info, "MONITOR_JOB(~p): Job ~p updated Updating amqp host to ~p~n", [self(), Job_ID, AHost]),
     {reply, amqp_host_updated, State#state{amqp_host = AHost}};
 
 handle_call({set_interval, Interval}, _From, #state{tref = CurTRef, job_id = Job_ID, interval = CurInterval} = State)  when Interval /= CurInterval->
     cancel(CurTRef),
     {ok, TRef} = send_interval(Interval, iteration_cycle), 
-    format_log(info, "MONITOR_JOB(~w): Job ~w updated the interval to ~w~n", [self(), Job_ID, Interval]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p updated the interval to ~p~n", [self(), Job_ID, Interval]), 
     {reply, interval_set, State#state{tref = TRef, interval = Interval}};
 
 handle_call({pause}, _From, #state{tref = TRef, job_id = Job_ID} = State) ->
     cancel(TRef),
-    format_log(info, "MONITOR_JOB(~w): Job ~w has been paused~n", [self(), Job_ID]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p has been paused~n", [self(), Job_ID]), 
     {reply, paused, State#state{tref = false}};
 
 handle_call({resume}, _From, #state{tref = CurrentTRef, interval = Interval, job_id = Job_ID} = State) ->
     cancel(CurrentTRef),
     {ok, TRef} = send_interval(Interval, iteration_cycle),
-    format_log(info, "MONITOR_JOB(~w): Job ~w has been resumed with an interval of ~w~n", [self(), Job_ID, Interval]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p has been resumed with an interval of ~p~n", [self(), Job_ID, Interval]), 
     {reply, resumed, State#state{tref = TRef}};
 
 handle_call({update_task, Task_ID, Type, Options}, _From, #state{tasks = Tasks, job_id = Job_ID} = State) ->
     Task = #task{type = Type, options = Options},
     UpdatedTasks = proplists:delete(Task_ID, Tasks),
-    format_log(info, "MONITOR_JOB(~w): Job ~w updated task~n~w~n", [self(), Job_ID, Task]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p updated task~n~p~n", [self(), Job_ID, Task]), 
     {reply, task_updated, State#state{tasks = [{Task_ID, Task}|UpdatedTasks]}};
 
 handle_call({rm_task, Task_ID}, _From, #state{tasks = Tasks, job_id = Job_ID} = State) ->
     NewTasks = proplists:delete(Task_ID, Tasks),
-    format_log(info, "MONITOR_JOB(~w): Job ~w removed task ~w~n", [self(), Job_ID, Task_ID]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p removed task ~p~n", [self(), Job_ID, Task_ID]), 
     {reply, task_removed, State#state{tasks = NewTasks}};
 
 handle_call({list_tasks}, _From, #state{tasks = Tasks} = State) ->
@@ -139,7 +139,7 @@ handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval
                                  undefined ->
                                      {{ok, CurTRef}, CurInterval};
                                  JobInterval when JobInterval /= CurInterval ->
-                                     format_log(info, "MONITOR_JOB(~w): Job ~w imported a new interval of ~w~n", [self(), Job_ID, JobInterval]), 
+                                     format_log(info, "MONITOR_JOB(~p): Job ~p imported a new interval of ~p~n", [self(), Job_ID, JobInterval]), 
                                      cancel(CurTRef),
                                      {send_interval(JobInterval, iteration_cycle), JobInterval};
                                  _ ->
@@ -151,8 +151,8 @@ handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval
                                 {struct, Opt} = get_value(<<"options">>, Task, {struct, []}),
                                 [{Task_ID, #task{type = Type, options = Opt}} | TasksIn]
                         end, [], whapps_json:get_value(["tasks"], Job, [])),
-    format_log(info, "MONITOR_JOB(~w): Job ~w imported ~w tasks~n", [self(), Job_ID, length(Tasks)]),
-    format_log(info, "Second: ~w~n", [Tasks]),    
+    format_log(info, "MONITOR_JOB(~p): Job ~p imported ~p tasks~n", [self(), Job_ID, length(Tasks)]),
+    format_log(info, "Second: ~p~n", [Tasks]),    
     {reply, ok, State#state{tref = TRef, interval = Interval, tasks = Tasks}};
 
 handle_call(_Request, _From, State) ->
@@ -185,14 +185,14 @@ handle_info(stop, State) ->
     {stop, normal, State};
 
 handle_info({'EXIT', _Pid, _Reason}, State) ->
-    format_log(error, "MONITOR_JOB(~w): Received EXIT(~w) from ~w...~n", [self(), _Reason, _Pid]),
+    format_log(error, "MONITOR_JOB(~p): Received EXIT(~p) from ~p...~n", [self(), _Reason, _Pid]),
     {stop, normal, State};
 
 handle_info(iteration_cycle, #state{tasks = []} = State) ->
     {stop, normal, State};
     
 handle_info(iteration_cycle, #state{job_id = Job_ID, iteration = Iteration} = State) ->
-    format_log(info, "MONITOR_JOB(~w): Job ~w woke up~n", [self(), Job_ID]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p woke up~n", [self(), Job_ID]), 
     spawn_link(fun() -> run_job(State) end),
     {noreply, State#state{iteration = Iteration + 1}};
 
@@ -212,7 +212,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{tref = TRef, job_id = Job_ID}) ->
     cancel(TRef),
-    format_log(info, "MONITOR_JOB(~w): Job ~w going down (~w)...~n", [self(), Job_ID, _Reason]),
+    format_log(info, "MONITOR_JOB(~p): Job ~p going down (~p)...~n", [self(), Job_ID, _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -243,10 +243,10 @@ create_job_q(AHost) ->
     amqp_util:targeted_exchange(AHost),
     Q = amqp_util:new_monitor_queue(AHost),
     %% Bind the queue to the targeted exchange
-    format_log(info, "MONITOR_JOB(~w): Bind ~w as a targeted queue for job~n", [self(), Q]),
+    format_log(info, "MONITOR_JOB(~p): Bind ~p as a targeted queue for job~n", [self(), Q]),
     amqp_util:bind_q_to_targeted(AHost, Q),
     %% Register a consumer to listen to the queue
-    format_log(info, "MONITOR_JOB~w): Consume on ~w for job~n", [self(), Q]),
+    format_log(info, "MONITOR_JOB~p): Consume on ~p for job~n", [self(), Q]),
     amqp_util:basic_consume(AHost, Q),
     {ok, Q}.
 
@@ -284,7 +284,7 @@ run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = It
     %% Convert Resp to JSON
     %% Send JSON
     amqp_util:queue_delete(AHost, Job_Q),
-    format_log(info, "MONITOR_JOB(~w): JOB COMPLETE!!!~nPayload: ~w~n ", [self(), Resp]).
+    format_log(info, "MONITOR_JOB(~p): JOB COMPLETE!!!~nPayload: ~p~n ", [self(), Resp]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -302,11 +302,11 @@ start_tasks([], _AHost, _Job_Q, _Job_ID, _Iteration, Started) ->
 start_tasks([{Task_ID, Task}|T], AHost, Job_Q, Job_ID, Iteration, Started) ->
     case create_req(Task, Job_Q, Task_ID, Job_ID, Iteration) of
         {ok, JSON} -> 
-            format_log(info, "MONITOR_JOB(~w): Job ~w started task ~w~n~w~n", [self(), Job_ID, Task_ID, Task]),
+            format_log(info, "MONITOR_JOB(~p): Job ~p started task ~p~n~p~n", [self(), Job_ID, Task_ID, Task]),
             send_req(AHost, JSON, type_to_routing_key(Task#task.type)),
             start_tasks(T, AHost, Job_Q, Job_ID, Iteration, [{to_binary(Task_ID), Task}|Started]);
         {error, Error} -> 
-            format_log(error, "MONITOR_JOB(~w): Create task request error ~w~n ", [self(), Error]),
+            format_log(error, "MONITOR_JOB(~p): Create task request error ~p~n ", [self(), Error]),
             start_tasks(T, AHost, Job_Q, Job_ID, Iteration, Started)
     end.
 
@@ -366,5 +366,5 @@ create_req(Task, Job_Q, Task_ID, Job_ID, Iteration) ->
 %% @end
 %%--------------------------------------------------------------------
 send_req(AHost, JSON, RoutingKey) ->
-    format_log(info, "MONITOR_JOB(~w): Sending request to monitor queue on ~w with key ~w~n", [self(), AHost, RoutingKey]),
+    format_log(info, "MONITOR_JOB(~p): Sending request to monitor queue on ~p with key ~p~n", [self(), AHost, RoutingKey]),
     amqp_util:monitor_publish(AHost, JSON, <<"application/json">>, RoutingKey).

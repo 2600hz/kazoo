@@ -110,36 +110,36 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, State) ->
     H = whapps_controller:get_amqp_host(),
     Q = start_amqp(H),
-    format_log(info, "REG_SRV(~w): Q: ~s on H: ~s~n", [self(), Q, H]),
+    format_log(info, "REG_SRV(~p): Q: ~s on H: ~s~n", [self(), Q, H]),
 
     Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
-    format_log(info, "REG_SRV(~w): Starting timer for ~w msec: ~w~n", [self(), ?CLEANUP_RATE, Ref]),
+    format_log(info, "REG_SRV(~p): Starting timer for ~p msec: ~p~n", [self(), ?CLEANUP_RATE, Ref]),
 
     {noreply, State#state{cleanup_ref=Ref, amqp_host=H, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
 
 handle_info(Req, #state{my_q={error, _}}=State) ->
     H = whapps_controller:get_amqp_host(),
     Q = start_amqp(H),
-    format_log(info, "REG_SRV(~w): restarting amqp with H: ~s; will retry in a bit if failed~n", [self(), H]),
+    format_log(info, "REG_SRV(~p): restarting amqp with H: ~s; will retry in a bit if failed~n", [self(), H]),
     handle_info(Req, State#state{amqp_host=H, my_q=Q, is_amqp_up=is_binary(Q)});
 
 handle_info({timeout, _, _}, #state{is_amqp_up=false}=S) ->
     handle_info(timeout, S);
 
 handle_info({amqp_host_down, H}, S) ->
-    format_log(info, "REG_SRV(~w): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
+    format_log(info, "REG_SRV(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
     AHost = whapps_controller:get_amqp_host(),
     Q = start_amqp(AHost),
     {noreply, S#state{amqp_host=AHost, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
 
 handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref}=S) ->
-    format_log(info, "REG_SRV(~w): Time to clean old registrations~n", [self()]),
+    format_log(info, "REG_SRV(~p): Time to clean old registrations~n", [self()]),
     spawn(fun() -> cleanup_registrations() end),
     NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     {noreply, S#state{cleanup_ref=NewRef}};
 
 handle_info({timeout, Ref1, _}, #state{cleanup_ref=Ref}=S) ->
-    format_log(info, "REG_SRV(~w): wrong ref ~w, expected ~w~n", [self(), Ref1, Ref]),
+    format_log(info, "REG_SRV(~p): wrong ref ~p, expected ~p~n", [self(), Ref1, Ref]),
     erlang:cancel_timer(Ref),
     NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     {noreply, S#state{cleanup_ref=NewRef}};
@@ -152,7 +152,7 @@ handle_info({'basic.consume_ok', _}, S) ->
     {noreply, S};
 
 handle_info(_Info, State) ->
-    format_log(info, "REG_SRV: unhandled info: ~w~n", [_Info]),
+    format_log(info, "REG_SRV: unhandled info: ~p~n", [_Info]),
     {noreply, State, 1000}.
 
 %%--------------------------------------------------------------------
@@ -324,5 +324,5 @@ auth_specific_response(403) ->
      ,{<<"Tenant-ID">>, <<"ignore">>}].
 
 send_resp(JSON, RespQ, Host) ->
-    format_log(info, "TS_RESPONDER(~w): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
+    format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
     amqp_util:targeted_publish(Host, RespQ, JSON, <<"application/json">>).

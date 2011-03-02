@@ -91,7 +91,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~w", [_Msg]),
+    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -105,22 +105,22 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {<<"">>, _}}, State) ->
-    format_log(info, "NOAUTHN(~w): NO SOUP FOR YOU!~n", [self()]),
+    format_log(info, "NOAUTHN(~p): NO SOUP FOR YOU!~n", [self()]),
     Pid ! {binding_result, false, []},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {_Auth, _}}, State) ->
-    format_log(info, "NOAUTHN(~w): Willkommen. Bienvenue. Welcome. C'mon in~n", [self()]),
+    format_log(info, "NOAUTHN(~p): Willkommen. Bienvenue. Welcome. C'mon in~n", [self()]),
     Pid ! {binding_result, true, []},
     {noreply, State};
 
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    format_log(info, "NOAUTHN(~w): unhandled binding: ~w~n~w~n", [self(), Route, Payload]),
+    format_log(info, "NOAUTHN(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
     Pid ! {binding_result, false, []},
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "NOAUTHN(~w): unhandled info ~w~n", [self(), _Info]),
+    format_log(info, "NOAUTHN(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

@@ -93,7 +93,7 @@ init ( [] ) -> { ok, #state{}, 0 }.
 handle_call ( {add_flow, CallId, Flow, ReqProp}, _, #state{flows=Flows, req_props=ReqProps}=State ) ->
    format_log(
       info,
-      "CF RESPONDER (~w): Adding callflow for call: ~w~n~w~n",
+      "CF RESPONDER (~p): Adding callflow for call: ~p~n~p~n",
       [self(), CallId, Flow]
    ),
    spawn(
@@ -105,14 +105,14 @@ handle_call ( {add_flow, CallId, Flow, ReqProp}, _, #state{flows=Flows, req_prop
 handle_call ( {remove_flow, CallId}, _, #state{flows=Flows, req_props=ReqProps}=State ) ->
    format_log(
       info,
-      "CF RESPONDER (~w): Removing callflow for call: ~w~n",
+      "CF RESPONDER (~p): Removing callflow for call: ~p~n",
       [self(), CallId]
    ),
    { reply, ok, State#state{flows=[FE || {FK, _} = FE <- Flows, FK =/= CallId], req_props=[PE || {PK, _} = PE <- ReqProps, PK =/= CallId]} };
 handle_call ( Request, From, State ) ->
    format_log(
       error,
-      "CF RESPONDER (~w): Unhandled call message:~nRequest: ~w~nFrom: ~w~n",
+      "CF RESPONDER (~p): Unhandled call message:~nRequest: ~p~nFrom: ~p~n",
       [self(), Request, From]
    ),
    { reply, ok, State }
@@ -133,7 +133,7 @@ handle_call ( Request, From, State ) ->
 handle_cast ( Msg, State ) ->
    format_log(
       error,
-      "CF RESPONDER (~w): Unhandled cast message:~nMessage: ~w~n",
+      "CF RESPONDER (~p): Unhandled cast message:~nMessage: ~p~n",
       [self(), Msg]
    ),
    { noreply, State }
@@ -152,12 +152,12 @@ handle_cast ( Msg, State ) ->
    | tuple(stop, Reason :: term(), State :: term())
 ).
 handle_info ( timeout, State ) ->
-   format_log(info, "CF RESPONDER (~w): timeout...~n", [self()]),
+   format_log(info, "CF RESPONDER (~p): timeout...~n", [self()]),
    AHost = whapps_controller:get_amqp_host(),
    {ok, CQ} = start_amqp(AHost),
    { noreply, State#state{amqp_host=AHost, callmgr_q=CQ, pid=self()} };
 handle_info ( #'basic.consume_ok'{}, State ) -> 
-   format_log(info, "CF RESPONDER (~w): basic consume ok...~n", [self()]),
+   format_log(info, "CF RESPONDER (~p): basic consume ok...~n", [self()]),
    { noreply, State };
 handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flows, req_props=ReqProps}=State ) ->
    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
@@ -166,7 +166,7 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flow
       <<"route_win">> ->
          format_log(
             info,
-            "CF RESPONDER (~w): spawning callflow execution process...~n",
+            "CF RESPONDER (~p): spawning callflow execution process...~n",
             [self()]
          ),
          CallId = proplists:get_value(<<"Call-ID">>, Prop),
@@ -184,7 +184,7 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flow
       <<"route_req">> ->
          format_log(
             info,
-            "CF RESPONDER (~w): handling route request...~nProplist: ~w~nPayload:~w~n",
+            "CF RESPONDER (~p): handling route request...~nProplist: ~p~nPayload:~p~n",
             [self(), Proplist, Payload]
          ),
          spawn(fun() -> handle_req(Proplist#'P_basic'.content_type, Payload, State) end)
@@ -193,7 +193,7 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flow
 handle_info ( Info, State ) ->
    format_log(
       error,
-      "CF RESPONDER (~w): Unhandled info message:~nInfo: ~w~n",
+      "CF RESPONDER (~p): Unhandled info message:~nInfo: ~p~n",
       [self(), Info]
    ),
    { noreply, State }
@@ -248,7 +248,7 @@ code_change ( _OldVsn, State, _Extra ) -> { ok, State }.
 start_amqp ( AHost ) ->
    format_log(
       info,
-      "CF RESPONDER (~w): Starting AMPQ: ~w~n",
+      "CF RESPONDER (~p): Starting AMPQ: ~p~n",
       [self(), AHost]
    ),
 
@@ -264,7 +264,7 @@ start_amqp ( AHost ) ->
 
    format_log(
       info,
-      "CF RESPONDER (~w): Consuming on call manager queue: ~w~n",
+      "CF RESPONDER (~p): Consuming on call manager queue: ~p~n",
       [self(), CallmgrQueue]
    ),
    { ok, CallmgrQueue }
@@ -289,7 +289,7 @@ handle_req ( <<"application/json">>, Payload, State ) ->
    {struct, JSON} = mochijson2:decode(binary_to_list(Payload)),
    format_log(
       info,
-      "CF RESPONDER (~w): Received JSON: ~w~n",
+      "CF RESPONDER (~p): Received JSON: ~p~n",
       [self(), JSON]
    ),
    process_req(
@@ -304,7 +304,7 @@ handle_req ( <<"application/json">>, Payload, State ) ->
 handle_req ( ContentType, _Payload, _ ) ->
    format_log(
       error,
-      "CF RESPONDER (~w): Unknown content type: ~w~n",
+      "CF RESPONDER (~p): Unknown content type: ~p~n",
       [self(), ContentType]
    )
 .
@@ -320,23 +320,23 @@ handle_req ( ContentType, _Payload, _ ) ->
 process_req ( {<<"dialplan">>, <<"route_req">>, To}, Proplist, #state{}=State ) ->
    format_log(
       progress,
-      "CF RESPONDER (~w): Processing route request to: ~w~n",
+      "CF RESPONDER (~p): Processing route request to: ~p~n",
       [self(), To]
    ),
    case validate(To) of
       { success, Flow } ->
-         format_log(info, "CF RESPONDER (~w): Required callflow exists! Responding...~n", [self()]),
+         format_log(info, "CF RESPONDER (~p): Required callflow exists! Responding...~n", [self()]),
          RespQ = proplists:get_value(<<"Server-ID">>, Proplist),
          respond(RespQ, State, Proplist, Flow);
       { error, Msg }    ->
-         format_log(error, "CF RESPONDER (~w): ~w~n", [self(), Msg]);
+         format_log(error, "CF RESPONDER (~p): ~p~n", [self(), Msg]);
       Unknown           ->
-         format_log(error, "CF RESPONDER (~w): Unknown validation response: ~w~n", [self(), Unknown])
+         format_log(error, "CF RESPONDER (~p): Unknown validation response: ~p~n", [self(), Unknown])
    end;
 process_req ( Msg_type, Proplist, _ ) ->
    format_log(
       error,
-      "CF RESPONDER (~w): Unknown route request:~nType: ~w~nProplist: ~w~n",
+      "CF RESPONDER (~p): Unknown route request:~nType: ~p~nProplist: ~p~n",
       [self(), Msg_type, Proplist]
    )
 .

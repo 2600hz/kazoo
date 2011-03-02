@@ -293,7 +293,7 @@ winkstart_envelope({Status, Data, Msg, Code}) -> winkstart_envelope(Status, Data
 
 -spec(winkstart_envelope/2 :: (Status :: crossbar_status(), Data :: proplist()) -> iolist()).
 winkstart_envelope(success, Data) ->
-    format_log(info, "Envelope: D: ~w~n", [Data]),
+    format_log(info, "Envelope: D: ~p~n", [Data]),
     mochijson2:encode({struct, [{status, <<"success">>}
 				,{data, {struct, Data}}
 			       ]});

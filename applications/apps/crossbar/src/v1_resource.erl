@@ -148,10 +148,10 @@ finish_request(RD, #cb_context{start=T1}=Context) ->
 
     case Context1#cb_context.session of
         undefined ->
-            format_log(info, "Request fulfilled in ~w ms~n", [timer:now_diff(now(), T1)*0.001]),
+            format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
             {true, RD1, Context1};
         #session{}=S ->
-            format_log(info, "Request fulfilled in ~w ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
+            format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
             {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}
     end.
 
@@ -257,7 +257,7 @@ get_json_body(RD) ->
 	_:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
 	    {malformed, list_to_binary(["Failed to decode: comma error around char ", whistle_util:to_list(S)])};
 	_:E ->
-	    format_log(error, "v1_resource: failed to convert to json(~w)~n", [E]),
+	    format_log(error, "v1_resource: failed to convert to json(~p)~n", [E]),
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
 

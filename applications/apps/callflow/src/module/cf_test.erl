@@ -70,12 +70,12 @@ set_amqp_host(AHost) ->
 init([]) ->
     State = #state{},
     AHost = State#state.amqp_host,
-    format_log(info, "CF_TEST(~w): Starting server with amqp host ~w~n", [self(), AHost]),
+    format_log(info, "CF_TEST(~p): Starting server with amqp host ~p~n", [self(), AHost]),
     {ok, Cmgr_Q} = start_amqp(AHost),
     {ok, State#state{cmgr_q = Cmgr_Q}};
 
 init([AHost]) ->
-    format_log(info, "CF_TEST(~w): Starting server with amqp host ~w~n", [self(), AHost]),
+    format_log(info, "CF_TEST(~p): Starting server with amqp host ~p~n", [self(), AHost]),
     {ok, Cmgr_Q} = start_amqp(AHost),
     {ok, #state{amqp_host=AHost, cmgr_q=Cmgr_Q}}.
 
@@ -94,7 +94,7 @@ init([AHost]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost1}, _From, #state{amqp_host=AHost2}=State) ->
-    format_log(info, "CF_TEST(~w): Updating amqp host from ~w to ~w~n", [self(), AHost2, AHost1]),
+    format_log(info, "CF_TEST(~p): Updating amqp host from ~p to ~p~n", [self(), AHost2, AHost1]),
     amqp_manager:close_channel(self(), AHost2),
     {ok, Cmgr_Q} = start_amqp(AHost1),
     {reply, ok, State#state{amqp_host = AHost1, cmgr_q = Cmgr_Q}};
@@ -113,7 +113,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~w", [_Msg]),
+    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -130,14 +130,14 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
     case amqp_util:is_json(Props) of
         true ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            format_log(info, "CF_TEST(~w): Received message~nPayload: ~w~n", [self(), Msg]),
+            format_log(info, "CF_TEST(~p): Received message~nPayload: ~p~n", [self(), Msg]),
             spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
         _ ->
-            format_log(info, "CF_TEST(~w): Recieved non JSON AMQP msg content type~n", [self()])
+            format_log(info, "CF_TEST(~p): Recieved non JSON AMQP msg content type~n", [self()])
     end,
     {noreply, State};
 handle_info(_Info, State) ->
-    format_log(info, "CF_TEST(~w): unhandled info ~w~n", [self(), _Info]),
+    format_log(info, "CF_TEST(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -202,7 +202,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, #state{cmgr_q=Cmgr_Q}=State
             ,{<<"Auth-Password">>, proplists:get_value(<<"Auth-User">>, Prop)}
             | whistle_api:default_headers(Cmgr_Q, <<"directory">>, <<"auth_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
-    format_log(info, "CF_TEST(~w): Respond to auth_req~nPayload: ~w~n", [self(), Resp]),
+    format_log(info, "CF_TEST(~p): Respond to auth_req~nPayload: ~p~n", [self(), Resp]),
     {ok, Json} = whistle_api:auth_resp(Resp),
     send_resp(Json, RespQ, State);
 
@@ -214,12 +214,12 @@ process_req({<<"dialplan">>, <<"route_req">>}, Prop, #state{cmgr_q=Cmgr_Q}=State
             ,{<<"Method">>, <<"park">>}
             | whistle_api:default_headers(Cmgr_Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
-    format_log(info, "CF_TEST(~w): Respond to route_req~nPayload: ~w~n", [self(), Resp]),
+    format_log(info, "CF_TEST(~p): Respond to route_req~nPayload: ~p~n", [self(), Resp]),
     {ok, Json} = whistle_api:route_resp(Resp);
 %%    send_resp(Json, RespQ, State);
 
 process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
-    format_log(info, "CF_TEST(~w): Recieved route_win!~nPayload: ~w~n", [self(), Prop]),
+    format_log(info, "CF_TEST(~p): Recieved route_win!~nPayload: ~p~n", [self(), Prop]),
     Call = #cf_call{
       amqp_h = State#state.amqp_host
       ,ctrl_q = proplists:get_value(<<"Control-Queue">>, Prop)
@@ -232,13 +232,13 @@ process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
                         ,{<<"timeout">>, <<"15">>}
                        ]},
     Pid = spawn(cf_voicemail, handle, [Payload, Call]),
-    format_log(info, "CF_TEST(~w): Spawned cf_devices at ~w~n", [self(), Pid]),
+    format_log(info, "CF_TEST(~p): Spawned cf_devices at ~p~n", [self(), Pid]),
     receive
         continue -> 
-            format_log(info, "CF_TEST(~w): Received continue atom~n", [self()]),
+            format_log(info, "CF_TEST(~p): Received continue atom~n", [self()]),
             ok;
         stop -> 
-            format_log(error, "CF_TEST(~w): Received stop atom~n", [self()]),
+            format_log(error, "CF_TEST(~p): Received stop atom~n", [self()]),
             ok
     after
         100000 -> error
@@ -246,7 +246,7 @@ process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
     hangup_call(Call);
 
 process_req(_MsgType, _Msg, _State) ->
-    format_log(info, "CF_TEST(~w): Unhandled Msg ~w~nPayload: ~w~n", [self(), _MsgType, _Msg]).
+    format_log(info, "CF_TEST(~p): Unhandled Msg ~p~nPayload: ~p~n", [self(), _MsgType, _Msg]).
 
 hangup_call(#cf_call{call_id=CallId} = Call) ->                               
     Command = [
@@ -254,7 +254,7 @@ hangup_call(#cf_call{call_id=CallId} = Call) ->
                ,{<<"Call-ID">>, CallId}
              | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    format_log(info, "CF_TEST(~w): Sending command~nPayload: ~w~n", [self(), Command]),
+    format_log(info, "CF_TEST(~p): Sending command~nPayload: ~p~n", [self(), Command]),
     {ok, Json} = whistle_api:hangup_req(Command),
     send_callctrl(Json, Call).
 
@@ -263,5 +263,5 @@ send_resp(Json, RespQ, #state{amqp_host=AHost}) ->
     amqp_util:targeted_publish(AHost, RespQ, Json, <<"application/json">>).
 
 send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
-    format_log(info, "CF_DEVICES(~w): Sent to ~w~n", [self(), CtrlQ]),
+    format_log(info, "CF_DEVICES(~p): Sent to ~p~n", [self(), CtrlQ]),
     amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).

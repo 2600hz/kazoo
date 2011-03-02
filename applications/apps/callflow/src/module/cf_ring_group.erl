@@ -61,7 +61,7 @@ bridge_endpoints(Endpoints, {struct, Props}, #cf_call{call_id=CallId} = Call) ->
                ,{<<"Dial-Endpoint-Method">>, get_value(<<"strategy">>, Props, <<"simultaneous">>)}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-            format_log(info, "SENT!~n~w~n", [Command]),
+            format_log(info, "SENT!~n~p~n", [Command]),
     {ok, Json} = whistle_api:bridge_req(Command),
     send_callctrl(Json, Call).
 
@@ -93,7 +93,7 @@ get_endpoint({struct, Props}) ->
                     ],
             {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
         {error, _}=E ->
-            format_log(error, "CF_DEVICES(~w): Could not locate endpoint ~w in ~w (~w)~n", [self(), Id, Db, E]),
+            format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Id, Db, E]),
             E
     end.
 

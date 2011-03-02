@@ -24,13 +24,13 @@ find_ip(Domain) when is_binary(Domain) ->
 find_ip(Domain) when is_list(Domain) ->
     case inet_parse:address(Domain) of
 	{ok, _I} ->
-	    io:format("ts_util: is an ip: ~w (~w)~n", [Domain, _I]),
+	    io:format("ts_util: is an ip: ~p (~p)~n", [Domain, _I]),
 	    Domain;
 	Huh ->
-	    io:format("ts_util: is a domain: ~w (~w)~n", [Domain, Huh]),
+	    io:format("ts_util: is a domain: ~p (~p)~n", [Domain, Huh]),
 	    case inet:gethostbyname(Domain, inet) of %% eventually we'll want to support both IPv4 and IPv6
 		{error, _Err} ->
-		    io:format("ts_util: err getting hostname: ~w~n", [_Err]),
+		    io:format("ts_util: err getting hostname: ~p~n", [_Err]),
 		    Domain;
 		{ok, Hostent} when is_record(Hostent, hostent) ->
 		    case Hostent#hostent.h_addr_list of

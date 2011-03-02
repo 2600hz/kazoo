@@ -102,7 +102,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({set_amqp_host, Host}, #state{amqp_host=OldHost, callmgr_q=OldQ}=State) ->
     NewQ = start_amqp(Host, OldHost, OldQ),
-    format_log(info, "RSCMGR(~w): Change Amqp from ~w to ~w: ~w~n", [self(), OldHost, Host, NewQ]),
+    format_log(info, "RSCMGR(~p): Change Amqp from ~p to ~p: ~p~n", [self(), OldHost, Host, NewQ]),
     {noreply, State#state{amqp_host=Host, callmgr_q=NewQ}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -122,7 +122,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
     spawn(fun() -> handle_resource_req(Payload, AmqpHost) end),
     {noreply, State};
 handle_info(_Info, State) ->
-    format_log(info, "RSCMGR(~w): Unhandled info ~w~n", [self(), _Info]),
+    format_log(info, "RSCMGR(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -137,7 +137,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{amqp_host=Host, callmgr_q=Q}) ->
-    format_log(info, "RSCMGR(~w): Going down(~w). H: ~w Q: ~w~n", [self(), _Reason, Host, Q]),
+    format_log(info, "RSCMGR(~p): Going down(~p). H: ~p Q: ~p~n", [self(), _Reason, Host, Q]),
     amqp_util:delete_callmgr_queue(Host, Q),
     ok.
 
@@ -173,7 +173,7 @@ handle_resource_req(Payload, AmqpHost) ->
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
     case whistle_api:resource_req_v(Prop) of
 	true ->
-	    format_log(info, "RSCMGR.h_res_req(~w): Req: ~w~n", [self(), Prop]),
+	    format_log(info, "RSCMGR.h_res_req(~p): Req: ~p~n", [self(), Prop]),
 	    Options = get_request_options(Prop),
 	    Nodes = get_resources(request_type(Prop), Options),
 
@@ -187,16 +187,16 @@ handle_resource_req(Payload, AmqpHost) ->
 		ok -> ok
 	    end;
 	false ->
-	    format_log(error, "RSCMGR.h_res_req(~w): Failed to validate ~w~n", [self(), Prop])
+	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validate ~p~n", [self(), Prop])
     end.
 
 -spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
 get_resources({<<"originate">>, <<"resource_req">>, <<"audio">>=Type}, Options) ->
-    format_log(info, "RSCMGR.get_res(~w): Type ~w Options: ~w~n", [self(), Type, Options]),
+    format_log(info, "RSCMGR.get_res(~p): Type ~p Options: ~p~n", [self(), Type, Options]),
     FSAvail = ecallmgr_fs_handler:request_resource(Type, Options), % merge other switch results into this list as well (eventually)
     lists:usort(fun sort_resources/2, FSAvail);
 get_resources(_Type, _Options) ->
-    format_log(error, "RSCMGR.get_res(~w): Unknown request type ~w~n", [self(), _Type]),
+    format_log(error, "RSCMGR.get_res(~p): Unknown request type ~p~n", [self(), _Type]),
     [].
 
 -spec(request_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary(), binary())).
@@ -235,7 +235,7 @@ start_channel(N, Route, Amqp) ->
 	    spawn(fun() -> send_uuid_to_app(Amqp, UUID, CtlQ) end),
 	    {ok, AvailableChan};
 	{resource_error, E} ->
-	    format_log(error, "RSCMGR.st_ch(~w): Error starting channel on ~w: ~w~n", [self(), Pid, E]),
+	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
 	    spawn(fun() -> send_failed_consume(Route, Amqp, E) end),
 	    {error, E}
     end.
@@ -251,7 +251,7 @@ send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
 	       ,{<<"Control-Queue">>, CtlQ}
 		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, whistle_util:to_binary(Vsn))],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
-    format_log(info, "RSC_MGR: Sending resp to ~w: ~s~n", [AppQ, JSON]),
+    format_log(info, "RSC_MGR: Sending resp to ~p: ~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 -spec(send_failed_req/3 :: (Prop :: proplist(), Host :: string(), Failed :: integer()) -> no_return()).
@@ -264,7 +264,7 @@ send_failed_req(Prop, Host, Failed) ->
 		,{<<"Failed-Attempts">>, Failed}
 		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
-    format_log(info, "RSC_MGR: Sending err to ~w~n~s~n", [AppQ, JSON]),
+    format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 -spec(send_failed_consume/3 :: (Route :: binary() | list(), Amqp :: tuple(Host :: string(), Prop :: proplist()), E :: binary()) -> no_return()).
@@ -278,7 +278,7 @@ send_failed_consume(Route, {Host, Prop}, E) ->
 		,{<<"Failure-Message">>, whistle_util:to_binary(E)}
 		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
-    format_log(info, "RSC_MGR: Sending err to ~w~n~s~n", [AppQ, JSON]),
+    format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 %% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first) 

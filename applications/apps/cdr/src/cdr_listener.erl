@@ -177,5 +177,5 @@ start_amqp(Host) ->
 
 handle_cdr(<<"application/json">>, JSON) ->
     {struct, Prop} = mochijson2:decode(binary_to_list(JSON)),
-    format_log(info, "CDR_L(~w): Recv ~s~n", [self(), JSON]),
+    format_log(info, "CDR_L(~p): Recv ~s~n", [self(), JSON]),
     {ok, _} = couch_mgr:save_doc(?CDR_DB, Prop).

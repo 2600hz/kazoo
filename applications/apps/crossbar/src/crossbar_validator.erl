@@ -425,11 +425,11 @@ width_test() ->
 
 validate(Succeed, Fail, Func) ->
     lists:foreach(fun(Elem) ->
-                          io:format("~w~n", [Elem]),
+                          io:format("~p~n", [Elem]),
 			  ?assertEqual(true, Func(Elem))
 		  end, Succeed),
     lists:foreach(fun(Elem) ->
-                          io:format("~w~n", [Elem]),
+                          io:format("~p~n", [Elem]),
 			  ?assertEqual(false, Func(Elem))
 		  end, Fail).
 -endif.

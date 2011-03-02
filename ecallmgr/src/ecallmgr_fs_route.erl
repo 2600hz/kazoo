@@ -53,24 +53,24 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 		    Self = self(),
 		    LookupPid = spawn_link(?MODULE, lookup_route, [Node, State, ID, UUID, Self, Data]),
 		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-		    format_log(info, "FETCH_ROUTE(~w): fetch route: Id: ~w UUID: ~w Lookup: ~w Req#: ~w~n"
+		    format_log(info, "FETCH_ROUTE(~p): fetch route: Id: ~p UUID: ~p Lookup: ~p Req#: ~p~n"
 			       ,[self(), ID, UUID, LookupPid, LookupsReq]),
 		    ?MODULE:fetch_route(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()}|LUs]
 								  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
-		    format_log(info, "FETCH_ROUTE(~w): Ignoring event ~w~n", [self(), _Other]),
+		    format_log(info, "FETCH_ROUTE(~p): Ignoring event ~p~n", [self(), _Other]),
 		    ?MODULE:fetch_route(Node, State)
 	    end;
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "FETCH_ROUTE(~w): fetch unknown: Se: ~w So: ~w, K: ~w V: ~w ID: ~w~nD: ~w~n", [self(), _Section, _Something, _Key, _Value, ID, _Data]),
+	    format_log(info, "FETCH_ROUTE(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [self(), _Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:fetch_route(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "FETCH_ROUTE(~w): Node ~w exited", [self(), Node]),
+	    format_log(error, "FETCH_ROUTE(~p): Node ~p exited", [self(), Node]),
 	    freeswitch:close(Node),
 	    ok;
 	{xml_response, ID, XML} ->
-	    format_log(info, "FETCH_ROUTE(~w): Received XML for ID ~w~n", [self(), ID]),
+	    format_log(info, "FETCH_ROUTE(~p): Received XML for ID ~p~n", [self(), ID]),
 	    freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_route(Node, State);
 	shutdown ->
@@ -81,7 +81,7 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 				  end
 			  end, LUs),
 	    freeswitch:close(Node),
-	    format_log(error, "FETCH_ROUTE(~w): shutting down~n", [self()]);
+	    format_log(error, "FETCH_ROUTE(~p): shutting down~n", [self()]);
 	{lookup_finished, LookupPid, EndResult} ->
 	    close_lookup(LookupPid, Node, State, EndResult);
 	%% send diagnostic info
@@ -94,7 +94,7 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 	    Pid ! Resp,
 	    ?MODULE:fetch_route(Node, State);
 	Other ->
-	    format_log(info, "FETCH_ROUTE(~w): got other response: ~w", [self(), Other]),
+	    format_log(info, "FETCH_ROUTE(~p): got other response: ~p", [self(), Other]),
 	    ?MODULE:fetch_route(Node, State)
     end.
 
@@ -102,7 +102,7 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
     case lists:keyfind(LookupPid, 1, LUs) of
 	{LookupPid, ID, StartTime} ->
 	    RunTime = timer:now_diff(erlang:now(), StartTime) div 1000,
-	    format_log(info, "FETCH_ROUTE(~w): lookup (~w:~w) finished in ~w ms~n", [self(), LookupPid, ID, RunTime]),
+	    format_log(info, "FETCH_ROUTE(~p): lookup (~p:~p) finished in ~p ms~n", [self(), LookupPid, ID, RunTime]),
 	    Stats1 = case EndResult of
 			 success -> Stats#handler_stats{lookups_success=Stats#handler_stats.lookups_success+1};
 			 failed -> Stats#handler_stats{lookups_failed=Stats#handler_stats.lookups_failed+1};
@@ -110,7 +110,7 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
 		     end,
 	    ?MODULE:fetch_route(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs), stats=Stats1});
 	false ->
-	    format_log(error, "FETCH_ROUTE(~w): unknown lookup ~w~n", [self(), LookupPid]),
+	    format_log(error, "FETCH_ROUTE(~p): unknown lookup ~p~n", [self(), LookupPid]),
 	    ?MODULE:fetch_route(Node, State)
     end.
 
@@ -130,13 +130,13 @@ lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID,
 	       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, Vsn)],
     EndResult = case whistle_api:route_req(DefProp) of
 		    {ok, JSON} ->
-			format_log(info, "L/U.route(~w): Sending RouteReq JSON to Host(~w)~n", [self(), Host]),
+			format_log(info, "L/U.route(~p): Sending RouteReq JSON to Host(~p)~n", [self(), Host]),
 			send_request(Host, JSON),
 			Result = handle_response(ID, UUID, CtlQ, HState, FetchPid),
 			amqp_util:queue_delete(Host, Q),
 			Result;
 		    {error, _Msg} ->
-			format_log(error, "L/U.route(~w): Route Req API error ~w~n", [self(), _Msg]),
+			format_log(error, "L/U.route(~p): Route Req API error ~p~n", [self(), _Msg]),
 			failed
 		end,
     FetchPid ! {lookup_finished, self(), EndResult}.
@@ -149,21 +149,21 @@ recv_response(ID) ->
 	#'basic.consume_ok'{} ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
-	    format_log(info, "L/U.route(~w): Recv Content: ~w Payload: ~s~n", [self(), Props#'P_basic'.content_type, binary_to_list(Payload)]),
+	    format_log(info, "L/U.route(~p): Recv Content: ~p Payload: ~s~n", [self(), Props#'P_basic'.content_type, binary_to_list(Payload)]),
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
 	    case whistle_api:route_resp_v(Prop) andalso get_value(<<"Msg-ID">>, Prop) =:= ID of
 		true ->
 		    Prop;
 		false ->
-		    format_log(error, "L/U.route(~w): Invalid Route Resp~n~w~n", [self(), Prop]),
+		    format_log(error, "L/U.route(~p): Invalid Route Resp~n~p~n", [self(), Prop]),
 		    invalid_route_resp
 	    end;
 	shutdown -> shutdown;
 	_Msg ->
-	    format_log(info, "L/U.route(~w): Unexpected: received ~w off rabbit~n", [self(), _Msg]),
+	    format_log(info, "L/U.route(~p): Unexpected: received ~p off rabbit~n", [self(), _Msg]),
 	    recv_response(ID)
     after 4000 ->
-	    format_log(info, "L/U.route(~w): Failed to receive after 4000ms~n", [self()]),
+	    format_log(info, "L/U.route(~p): Failed to receive after 4000ms~n", [self()]),
 	    timeout
     end.
 
@@ -185,23 +185,23 @@ bind_channel_qs(Host, UUID, Node) ->
     CtlQueue.
 
 send_control_queue(_Host, _Q, undefined) ->
-    format_log(error, "L/U.route(~w): Cannot send control Q(~w) to undefined server-id~n", [self(), _Q]),
+    format_log(error, "L/U.route(~p): Cannot send control Q(~p) to undefined server-id~n", [self(), _Q]),
     failed;
 send_control_queue(Host, CtlProp, AppQ) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->
 	    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>),
 	    %% execute the publish command
-	    format_log(info, "L/U.route(~w): Sending AppQ(~w) the control Q~n", [self(), AppQ]),
+	    format_log(info, "L/U.route(~p): Sending AppQ(~p) the control Q~n", [self(), AppQ]),
 	    success;
 	{error, _Msg} ->
-	    format_log(error, "L/U.route(~w): Sending Ctl to AppQ(~w) failed: ~w~n", [self(), AppQ, _Msg]),
+	    format_log(error, "L/U.route(~p): Sending Ctl to AppQ(~p) failed: ~p~n", [self(), AppQ, _Msg]),
 	    failed
     end.
 
 %% Prop = Route Response
 generate_xml(<<"bridge">>, Routes, _Prop, AmqpHost) ->
-    format_log(info, "L/U.route(~w): BRIDGEXML: Routes:~n~w~n", [self(), Routes]),
+    format_log(info, "L/U.route(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
     %% format the Route based on protocol
     {_Idx, Extensions, Errors} = lists:foldl(fun({struct, RouteProp}, {Idx, Acc, ErrAcc}) ->
 						     case ?MODULE:build_route(AmqpHost, RouteProp, get_value(<<"Invite-Format">>, RouteProp)) of
@@ -228,10 +228,10 @@ generate_xml(<<"bridge">>, Routes, _Prop, AmqpHost) ->
 
     case Extensions of
 	[] ->
-	    format_log(info, "L/U.route(~w): ErrorXML: ~s~n", [self(), Errors]),
+	    format_log(info, "L/U.route(~p): ErrorXML: ~s~n", [self(), Errors]),
 	    lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Errors]));
 	_ ->
-	    format_log(info, "L/U.route(~w): RoutesXML: ~s~n", [self(), Extensions]),
+	    format_log(info, "L/U.route(~p): RoutesXML: ~s~n", [self(), Extensions]),
 	    lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]))
     end;
 generate_xml(<<"park">>, _Routes, _Prop, _H) ->
@@ -239,7 +239,7 @@ generate_xml(<<"park">>, _Routes, _Prop, _H) ->
 generate_xml(<<"error">>, _Routes, Prop, _H) ->
     ErrCode = get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
-    format_log(info, "L/U.route(~w): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
+    format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
 
 -spec(build_route/3 :: (AmqpHost :: string(), RouteProp :: proplist() | json_object(), DIDFormat :: binary()) -> binary() | tuple(error, integer())).
@@ -298,14 +298,14 @@ receive_reg_query_resp(User) ->
 	    receive_reg_query_resp(User);
 	{_, #amqp_msg{payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "ECALL_UTIL: RegQResp:~n~w~n", [Prop]),
+	    format_log(info, "ECALL_UTIL: RegQResp:~n~p~n", [Prop]),
 	    true = whistle_api:reg_query_resp_v(Prop),
 
 	    {struct, [{<<"Contact">>, Contact}]} = props:get_value(<<"Fields">>, Prop),
 	    
 	    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>)
     after 2000 ->
-	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~w~n", [User]),
+	    format_log(error, "ECALL_UTIL: Timed out waiting for Contact for ~p~n", [User]),
 	    exit(reg_query_timeout)
     end.
 
@@ -372,14 +372,14 @@ get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
 			[ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
 		end, Vars, Custom);
 get_channel_vars({_K, _V}, Vars) ->
-    %format_log(info, "L/U.route(~w): Unknown channel var ~w::~w~n", [self(), _K, _V]),
+    %format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
 handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, FetchPid) ->
     T1 = erlang:now(),
     case recv_response(ID) of
 	shutdown ->
-	    format_log(error, "L/U.route(~w): Shutting down for ID ~w~n", [self(), ID]),
+	    format_log(error, "L/U.route(~p): Shutting down for ID ~p~n", [self(), ID]),
 	    failed;
 	timeout ->
 	    FetchPid ! {xml_response, ID, ?ROUTE_NOT_FOUND_RESPONSE},
@@ -390,7 +390,7 @@ handle_response(ID, UUID, CtlQ, #handler_state{amqp_host=Host, app_vsn=Vsn}, Fet
 	Prop ->
 	    true = whistle_api:route_resp_v(Prop),
 	    Xml = generate_xml(get_value(<<"Method">>, Prop), get_value(<<"Routes">>, Prop), Prop, Host),
-	    format_log(info, "L/U.route(~w): Sending XML to FS(~w) took ~wms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
+	    format_log(info, "L/U.route(~p): Sending XML to FS(~p) took ~pms ~n", [self(), ID, timer:now_diff(erlang:now(), T1) div 1000]),
 	    FetchPid ! {xml_response, ID, Xml},
 
 	    CtlProp = [{<<"Msg-ID">>, UUID}

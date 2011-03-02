@@ -24,7 +24,7 @@
 %%%===================================================================
 -spec(handle_req/1 :: (ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(ApiProp) ->
-    format_log(info, "TS_ROUTE(~w): Handling Route Request~n", [self()]),
+    format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
 	    {error, "No Custom Vars"};
@@ -44,7 +44,7 @@ handle_req(ApiProp) ->
 %%%===================================================================
 -spec(inbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
 inbound_handler(ApiProp) ->
-    format_log(info, "TS_ROUTE(~w): Inbound handler starting...~n", [self()]),
+    format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     Flags = create_flags(whistle_util:to_e164(ToUser), ApiProp),
     case Flags#route_flags.account_doc_id of
@@ -54,7 +54,7 @@ inbound_handler(ApiProp) ->
 
 -spec(outbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
 outbound_handler(ApiProp) ->
-    format_log(info, "TS_ROUTE(~w): Outbound handler starting...~n", [self()]),
+    format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
     Did = whistle_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
     Flags = create_flags(Did, ApiProp),
     process_routing(outbound_features(Flags), ApiProp).
@@ -75,19 +75,19 @@ lookup_did(Did) ->
     Options = [{"keys", [Did]}],
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 	{error, _} ->
-	    format_log(error, "TS_ROUTE(~w): No ~w view found while looking up ~w~n"
+	    format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n"
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
 	    {error, "No DIDLOOKUP view"};
 	{ok, []} ->
-	    format_log(info, "TS_ROUTE(~w): No DID(s) matching ~w~n", [self(), Options]),
+	    format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
 	    {error, "No matching DID"};
 	{ok, [{struct, ViewProp} | _Rest]} ->
 	    OurDid = get_value(<<"key">>, ViewProp),
-	    format_log(info, "TS_ROUTE(~w): DID doc found for ~w~n", [self(), OurDid]),
+	    format_log(info, "TS_ROUTE(~p): DID doc found for ~p~n", [self(), OurDid]),
 	    {struct, Value} = get_value(<<"value">>, ViewProp),
 	    {ok, [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value]};
 	_Else ->
-	    format_log(error, "TS_ROUTE(~w): Got something unexpected~n~w~n", [self(), _Else]),
+	    format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 	    {error, "Unexpected error in outbound_handler"}
     end.
 
@@ -98,13 +98,13 @@ process_routing(Flags, ApiProp) ->
 	    %% call may proceed
 	    find_route(Flags1, ApiProp);
 	{error, entry_exists} ->
-	    format_log(error, "TS_ROUTE(~w): Call-ID ~w has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
+	    format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
 	    {error, "Call-ID exists"};
 	{error, no_route_found} ->
-	    format_log(error, "TS_ROUTE(~w): No rating information found to handle routing to ~s~n", [self(), Flags#route_flags.to_user]),
+	    format_log(error, "TS_ROUTE(~p): No rating information found to handle routing to ~s~n", [self(), Flags#route_flags.to_user]),
 	    {error, "No rating information found"};
 	{error, no_funds} ->
-	    format_log(error, "TS_ROUTE(~w): No funds/flat rate trunks to route call~n", [self()]),
+	    format_log(error, "TS_ROUTE(~p): No funds/flat rate trunks to route call~n", [self()]),
 	    response(503, ApiProp, Flags)
     end.
 
@@ -117,7 +117,7 @@ find_route(Flags, ApiProp) ->
 		{ok, Routes, InboundFlags} ->
 		    response(Routes, ApiProp, InboundFlags#route_flags{routes_generated=Routes});
 		{error, Error}=E ->
-		    format_log(error, "TS_ROUTE(~w): Inbound Routing Error ~w~n", [self(), Error]),
+		    format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
 		    E
 	    end;
 	true ->
@@ -134,7 +134,7 @@ find_route(Flags, ApiProp) ->
 		    case ts_credit:check(FlagsIn1) of
 			{ok, FlagsIn} ->
 			    %% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
-			    format_log(info, "TS_ROUTE(~w): Rerouting ~w back to known user ~s@~s~n"
+			    format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n"
 				       , [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
 		    	    case inbound_route(FlagsIn) of
 		    		{ok, Routes, FlagsIn2} ->
@@ -156,12 +156,12 @@ find_route(Flags, ApiProp) ->
 		    		    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
 		    	    end;
 			{error, _}  ->
-			    format_log(error, "TS_ROUTE(~w): Unable to route back to ~w, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
+			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
 			    response(503, ApiProp, Flags)
 		    end
 	    end
 	    catch
-		A:B -> format_log(error, "TS_ROUTE(~w): Exception when going outbound: ~w: ~w~n~w~n", [self(), A, B, erlang:get_stacktrace()]),
+		A:B -> format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
 		       response(503, ApiProp, Flags)
 	    end
     end.
@@ -172,7 +172,7 @@ route_over_carriers(Flags, ApiProp) ->
 	{ok, Routes} ->
 	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
 	{error, Error} ->
-	    format_log(error, "TS_ROUTE(~w): Outbound Routing Error ~w~n", [self(), Error]),
+	    format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
 	    {error, "We don't handle this route"}
     end.
 
@@ -224,7 +224,7 @@ inbound_route(Flags) ->
 	    {Routes, Flags1} = add_failover_route(Flags#route_flags.failover, Flags, {struct, Route1}),
 	    {ok, Routes, Flags1};
 	false ->
-	    format_log(error, "TS_ROUTE(~w): Failed to validate Route ~w~n", [self(), Route1]),
+	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route1]),
 	    {error, "Inbound route validation failed"}
     end.
 
@@ -250,15 +250,15 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 	{ok, OutBFlags1} ->
 	    case ts_carrier:route(OutBFlags1) of
 		{ok, Routes} ->
-		    %%format_log(info, "TS_ROUTE(~w): Generated Outbound Routes For Failover~n~w~n", [self(), Routes]),
+		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
 		    { [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
 		{error, Error} ->
-		    format_log(error, "TS_ROUTE(~w): Outbound Routing Error For Failover ~w~n", [self(), Error]),
+		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), Error]),
 		    ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
 		    { [InboundRoute], Flags#route_flags{scenario=inbound}}
 	    end;
 	{error, Error} ->
-	    format_log(error, "TS_ROUTE(~w): Failed to secure credit for failover DID(~w): ~w~n", [self(), DID, Error]),
+	    format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, Error]),
 	    {[InboundRoute], Flags#route_flags{scenario=inbound}}
     end.
 
@@ -300,7 +300,7 @@ create_flags(_, ApiProp, DidProp) ->
 
     F3 = case lookup_users_account(AuthUser, Realm) of
 	     {error, _E1} ->
-		 format_log(error, "TS_ROUTE(~w).create_flags: Failed to lookup doc for ~w@~w: ~w", [self(), AuthUser, Realm, _E1]),
+		 format_log(error, "TS_ROUTE(~p).create_flags: Failed to lookup doc for ~p@~p: ~p", [self(), AuthUser, Realm, _E1]),
 		 case couch_mgr:open_doc(?TS_DB, F1#route_flags.account_doc_id) of
 		     {error, _E2} -> F1;
 		     {ok, {struct, Doc1}} ->

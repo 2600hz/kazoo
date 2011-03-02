@@ -168,7 +168,7 @@ handle_info(start_apps, #state{apps=As}=State) ->
 	     end,
     {noreply, State1};
 handle_info(_Info, State) ->
-    format_log(info, "WHAPPS(~w): Unhandled info ~w~n", [self(), _Info]),
+    format_log(info, "WHAPPS(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -183,7 +183,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{apps=As}) ->
-    format_log(info, "WHAPPS(~w): Terminating(~w)~n", [self(), _Reason]),
+    format_log(info, "WHAPPS(~p): Terminating(~p)~n", [self(), _Reason]),
     lists:foreach(fun(App) -> spawn(fun() -> rm_app(App, []) end) end, As),
     ok.
 
@@ -203,17 +203,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 add_app(App, As) ->
-    format_log(info, "APPS(~w): Starting app ~w if not in ~w~n", [self(), App, As]),
+    format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
     case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
 	false -> As;
 	{ok, _} -> application:start(App), [App  | As];
 	{ok, _, _} -> application:start(App), [App | As];
-	_E -> format_log(error, "WHAPPS_CTL(~w): ~w~n", [self(), _E]), As
+	_E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), As
     end.
 
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
-    format_log(info, "APPS(~w): Stopping app ~w if in ~w~n", [self(), App, As]),
-    format_log(info, "APPS(~w): Stopping app_sup: ~w~n", [self(), whistle_apps_sup:stop_app(App)]),
-    format_log(info, "APPS(~w): Stopping application: ~w~n", [self(), application:stop(App)]),
+    format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
+    format_log(info, "APPS(~p): Stopping app_sup: ~p~n", [self(), whistle_apps_sup:stop_app(App)]),
+    format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
     lists:delete(App, As).
