@@ -134,24 +134,25 @@ handle_call({run_job}, _From, #state{tref = CurTRef, interval = Interval} = Stat
     spawn_link(fun() -> run_job(State) end),
     {reply, cycle_started, State#state{tref = TRef}};
 
-handle_call({sync, {Job}}, _From, #state{job_id = Job_ID, tref = CurTRef, interval = CurInterval} = State) ->
-    {{ok, TRef}, Interval} = case get_value(<<"interval">>, Job) of
-        undefined ->
-            {{ok, CurTRef}, CurInterval};
-        JobInterval when JobInterval /= CurInterval ->
-            format_log(info, "MONITOR_JOB(~p): Job ~p imported a new interval of ~p~n", [self(), Job_ID, JobInterval]), 
-            cancel(CurTRef),
-            {send_interval(JobInterval, iteration_cycle), JobInterval};
-        _ ->
-            {{ok, CurTRef}, CurInterval}
-    end,
-    Tasks = lists:foldl(fun({Task}, TasksIn) -> 
-        Task_ID = to_list(get_value(<<"task_id">>, Task)),
-        Type    = to_list(get_value(<<"type">>, Task)),
-        {Opt}   = get_value(<<"options">>, Task, []),
-        [{Task_ID, #task{type = Type, options = Opt}} | TasksIn]
-    end, [], get_value(<<"tasks">>, Job, [])),
-    format_log(info, "MONITOR_JOB(~p): Job ~p imported ~p tasks~n", [self(), Job_ID, length(Tasks)]), 
+handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval = CurInterval} = State) ->
+    {{ok, TRef}, Interval} = case whapps_json:get_value(["interval"], Job) of
+                                 undefined ->
+                                     {{ok, CurTRef}, CurInterval};
+                                 JobInterval when JobInterval /= CurInterval ->
+                                     format_log(info, "MONITOR_JOB(~p): Job ~p imported a new interval of ~p~n", [self(), Job_ID, JobInterval]), 
+                                     cancel(CurTRef),
+                                     {send_interval(JobInterval, iteration_cycle), JobInterval};
+                                 _ ->
+                                     {{ok, CurTRef}, CurInterval}
+                             end,
+    Tasks = lists:foldl(fun({struct, Task}, TasksIn) -> 
+                                Task_ID = to_list(get_value(<<"task_id">>, Task)),
+                                Type    = to_list(get_value(<<"type">>, Task)),
+                                {struct, Opt} = get_value(<<"options">>, Task, {struct, []}),
+                                [{Task_ID, #task{type = Type, options = Opt}} | TasksIn]
+                        end, [], whapps_json:get_value(["tasks"], Job, [])),
+    format_log(info, "MONITOR_JOB(~p): Job ~p imported ~p tasks~n", [self(), Job_ID, length(Tasks)]),
+    format_log(info, "Second: ~p~n", [Tasks]),    
     {reply, ok, State#state{tref = TRef, interval = Interval, tasks = Tasks}};
 
 handle_call(_Request, _From, State) ->

@@ -41,13 +41,14 @@ start(AHost, Msg, Route) ->
 originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
     Def = monitor_api:default_headers(Server_ID, <<"originate">>, <<"resource_req">>, Msg_ID),
     Req = [
-         {<<"Resource-Type">>, <<"audio">>}
-        ,{<<"Route">>, Route}
+            {<<"Resource-Type">>, <<"audio">>}
+           ,{<<"Invite-Format">>, <<"route">>}
+           ,{<<"Route">>, Route}           
     ],
     format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p~n", [self(), Route]),
     {ok, JSON} = whistle_api:resource_req(lists:append([Def, Req])),
     amqp_util:callmgr_publish(AHost, JSON, <<"application/json">>, ?KEY_RESOURCE_REQ),
-    wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 10000).
+    wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 15000).
 
 answer_call(AHost, CQ, Call_ID, Server_ID) ->
     format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p answer~n", [self(), Call_ID]),
@@ -62,8 +63,8 @@ answer_call(AHost, CQ, Call_ID, Server_ID) ->
 test_tones(AHost, CQ, Call_ID, Server_ID) ->
     arm_tone_detector(AHost, CQ, Call_ID, Server_ID),
     generate_tone(AHost, CQ, Call_ID, Server_ID),    
-    Start = wait_for_call_event_exec(<<"play">>, 10000),
-    End = wait_for_call_event_exec(<<"park">>, 10000),
+    Start = wait_for_call_event_exec(<<"play">>, 15000),
+    End = wait_for_call_event_exec(<<"park">>, 15000),
     case {Start, End} of
         {{ok, StartMsg}, {ok, EndMsg}} ->
             Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, EndMsg)) 
@@ -135,6 +136,7 @@ wait_for_msg_type(Category, Name, Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
+            format_log(info, "Payload: ~p~n", [Msg]),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
                 { Category, Name } ->
                     {ok, Msg};
@@ -164,11 +166,12 @@ wait_for_call_event(Name, Application, Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
+            format_log(info, "Payload: ~p~n", [Msg]),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                { <<"Call-Event">>, Name, Application } ->                
+                { <<"call_event">>, Name, Application } ->                
                     format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p published anticipated event ~p~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
                     {ok, Msg};
-                { <<"Call-Event">>, <<"CHANNEL_HANGUP">>, _Name } ->
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _Name } ->
                     format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p hungup before anticipated event ~p~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
                     {error, channel_hungup};
                 _ ->
