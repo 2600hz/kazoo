@@ -20,8 +20,6 @@ start_deps() ->
     ensure_started(crypto),
     ensure_started(whistle_amqp),
     ensure_started(whistle_couch),
-    ensure_started(dynamic_compile),
-    ensure_started(log_roller),
     ensure_started(ibrowse).
 
 %% @spec stop() -> ok

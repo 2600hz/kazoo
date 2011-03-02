@@ -17,6 +17,7 @@ start() ->
 
 start_deps() ->
     ecallmgr_deps:ensure(),
+    logger:start(),
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(riak_err),
