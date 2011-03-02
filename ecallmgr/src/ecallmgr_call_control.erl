@@ -149,13 +149,13 @@ handle_info(timeout, #state{node=N, amqp_h=H, amqp_q=Q}=State) ->
     amqp_util:basic_consume(H, Q),
     {noreply, State};
 
-handle_info({nodedown, Node}, #state{node=Node}=State) ->
+handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     format_log(error, "CONTROL(~p): nodedown ~p~n", [self(), Node]),
     erlang:monitor_node(Node, false),
     timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
-handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
+handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
     format_log(error, "CONTROL(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
     case net_adm:ping(Node) of
 	pong ->
@@ -222,7 +222,7 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 
 handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_time=StartT}=State) ->
     amqp_util:unbind_q_from_callctl(H, Q),
-    amqp_util:delete_queue(H, Q), %% stop receiving messages
+    amqp_util:queue_delete(H, Q), %% stop receiving messages
     format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
 	       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
     EvtPid ! {ctl_down, self()},

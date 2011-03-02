@@ -52,8 +52,9 @@
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
 
 -record(state, {callid = <<>> :: binary()
-		,amqp_q = <<>> :: binary()
+		,amqp_q = {error, undefined} :: binary() | tuple(error, term())
 		,amqp_h = "" :: string()
+		,is_amqp_up = true :: boolean()
 		,ctl_q = <<>> :: binary() %% the control queue for the call, if we won the route_resp race
 		,start_time = 0 :: integer() %% the timestamp of when this process started
 		,call_activity_ref = undefined :: undefined | reference()
@@ -150,19 +151,33 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) ->
+handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) when not is_binary(Q) ->
     H = whapps_controller:get_amqp_host(),
     NewQ = get_amqp_queue(H, CallID, Q),
 
-    {noreply, S#state{amqp_h=H, amqp_q=NewQ}};
-handle_info({amqp_host_down, H}, S) ->
-    format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
-    {noreply, S, 0};
+    {noreply, S#state{amqp_h=H, amqp_q=NewQ}, 1000};
+
+handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
+    format_log(info, "TS_CALL(~p): AmqpHost ~s went down~n", [self(), H]),
+    timer:send_after(1000, self(), is_amqp_up),
+    {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
+
+handle_info(is_amqp_up, #state{callid=CallID, amqp_q={error, _}, is_amqp_up=false}=State) ->
+    H = whapps_controller:get_amqp_host(),
+    NewQ = get_amqp_queue(H, CallID),
+    case is_binary(NewQ) of
+	true ->
+	    {noreply, State#state{amqp_q = NewQ, is_amqp_up = true}};
+	false ->
+	    timer:send_after(1000, self(), is_amqp_up),
+	    {noreply, State}
+    end;
+
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
     stop_call_activity_ref(Ref),
     format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
     {stop, shutdown, S};
-handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) when is_binary(Q) ->
     format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
     stop_call_activity_ref(Ref),
 
@@ -205,6 +220,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
 	    %% try to reserve a trunk for this leg
+	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid),
 	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
 	    ts_call_sup:start_proc([OtherCallID
 				    ,whapps_controller:get_amqp_host()
@@ -410,10 +426,10 @@ get_call_duration(JObj, Flags) ->
 
 -spec(get_call_duration/3 :: (JObj :: json_object(), Flags :: #route_flags{}, StartTime :: integer()) -> integer()).
 get_call_duration(JObj, #route_flags{rate_minimum=RM}, StartTime) ->
-    Guess = case StartTime > 0 andalso ts_util:current_tstamp() - StartTime of
+    Guess = case StartTime > 0 andalso (ts_util:current_tstamp() - StartTime) of
 		false -> RM;
 		%% if no duration from JObj, and elapsed time is > twice the timeout
-		X when X > (2 * ?CALL_ACTIVITY_TIMEOUT) -> X - (2 * ?CALL_ACTIVITY_TIMEOUT);
+		X when X >= (2 * ?CALL_ACTIVITY_TIMEOUT) -> X - (2 * ?CALL_ACTIVITY_TIMEOUT);
 		Y when Y < RM -> RM;
 		Z -> Z
 	    end,
