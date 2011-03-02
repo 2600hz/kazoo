@@ -52,8 +52,9 @@
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
 
 -record(state, {callid = <<>> :: binary()
-		,amqp_q = <<>> :: binary()
+		,amqp_q = {error, undefined} :: binary() | tuple(error, term())
 		,amqp_h = "" :: string()
+		,is_amqp_up = true :: boolean()
 		,ctl_q = <<>> :: binary() %% the control queue for the call, if we won the route_resp race
 		,start_time = 0 :: integer() %% the timestamp of when this process started
 		,call_activity_ref = undefined :: undefined | reference()
@@ -150,19 +151,33 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) ->
+handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) when not is_binary(Q) ->
     H = whapps_controller:get_amqp_host(),
     NewQ = get_amqp_queue(H, CallID, Q),
 
-    {noreply, S#state{amqp_h=H, amqp_q=NewQ}};
-handle_info({amqp_host_down, H}, S) ->
-    format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
-    {noreply, S, 0};
+    {noreply, S#state{amqp_h=H, amqp_q=NewQ}, 1000};
+
+handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
+    format_log(info, "TS_CALL(~p): AmqpHost ~s went down~n", [self(), H]),
+    timer:send_after(1000, self(), is_amqp_up),
+    {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
+
+handle_info(is_amqp_up, #state{callid=CallID, amqp_q={error, _}, is_amqp_up=false}=State) ->
+    H = whapps_controller:get_amqp_host(),
+    NewQ = get_amqp_queue(H, CallID),
+    case is_binary(NewQ) of
+	true ->
+	    {noreply, State#state{amqp_q = NewQ, is_amqp_up = true}};
+	false ->
+	    timer:send_after(1000, self(), is_amqp_up),
+	    {noreply, State}
+    end;
+
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
     stop_call_activity_ref(Ref),
     format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
     {stop, shutdown, S};
-handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) ->
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) when is_binary(Q) ->
     format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
     stop_call_activity_ref(Ref),
 
@@ -205,6 +220,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
 	    %% try to reserve a trunk for this leg
+	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid),
 	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
 	    ts_call_sup:start_proc([OtherCallID
 				    ,whapps_controller:get_amqp_host()
@@ -239,12 +255,12 @@ handle_info(_Info, S) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
+terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=StartT, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
-    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
-    format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk with ~p seconds elapsed, billing for ~p seconds"
-	       ,[self(), DeltaTime, Flags#route_flags.rate_minimum]),
-    update_account(Flags#route_flags.rate_minimum, Flags), % charge for minimmum seconds since we apparently messed up
+    Duration = get_call_duration([], Flags, StartT),
+    format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk and billing for ~p seconds"
+	       ,[self(), Duration]),
+    update_account(Duration, Flags), % charge for minimmum seconds since we apparently messed up
     amqp_util:delete_queue(H, Q),
     ok;
 terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
@@ -306,7 +322,8 @@ update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=Do
 %% Sur :: surcharge, in dollars, (0.05, 5 cents to connect the call)
 %% Secs :: billable seconds
 -spec(calculate_cost/5 :: (R :: float() | integer(), RI :: integer(), RM :: integer(), Sur :: float() | integer(), Secs :: integer()) -> float()).
-calculate_cost(_, _, _, _, 0) -> 0;
+calculate_cost(_, _, _, _, 0) -> 0.0;
+calculate_cost(R, 0, RM, Sur, Secs) -> calculate_cost(R, 60, RM, Sur, Secs);
 calculate_cost(R, RI, RM, Sur, Secs) ->
     case Secs =< RM of
 	true -> Sur + ((RM / 60) * R);
@@ -323,20 +340,17 @@ stop_call_activity_ref(Ref) ->
 
 %% Close down the A-Leg of a call
 close_down_call(JObj, #route_flags{diverted_account_doc_id = <<>>}=Flags, 1) ->
-    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    Duration = get_call_duration(JObj, Flags),
     update_account(Duration, Flags);
 close_down_call(JObj, #route_flags{diverted_account_doc_id = Acct2ID, callid=CallID}=Flags, 1) ->
-    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    Duration = get_call_duration(JObj, Flags),
     update_account(Duration, Flags),
 
     %% Because the call may have never bridged, we need to go ahead and clear this second trunk
     %% If it did bridge, ts_acctmgr will just error when the B-leg ts_call_handler tries to clear the trunk
     CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
 
-    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
-    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
-    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
-    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
+    {R, RI, RM, S} = get_rate_data(CCVs, Flags),
 
     Cost = calculate_cost(R, RI, RM, S, Duration),
     ts_acctmgr:release_trunk(Acct2ID, CallID, Cost),
@@ -345,7 +359,7 @@ close_down_call(_JObj, #route_flags{scenario=inbound}, _LegNo) ->
     ok; %% a-leg takes care of it all, nothing to do
 close_down_call(_JObj, #route_flags{scenario=outbound}, _LegNo) ->
     ok; %% a-leg takes care of it all, nothing to do
-close_down_call(JObj, #route_flags{scenario=inbound_failover, diverted_account_doc_id=AcctID}=Flags, _LegNo) ->
+close_down_call(JObj, #route_flags{scenario=inbound_failover, diverted_account_doc_id=AAcctID}=Flags, _LegNo) ->
     ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
     FailCallID = <<ACallID/binary, "-failover">>, % A-leg
 
@@ -353,28 +367,21 @@ close_down_call(JObj, #route_flags{scenario=inbound_failover, diverted_account_d
 
     case whistle_util:to_boolean(whapps_json:get_value(<<"Failover-Route">>, CCVs, false)) of
 	false -> %% inbound route bridged
-	    ts_acctmgr:release_trunk(AcctID, FailCallID, 0);
+	    ts_acctmgr:release_trunk(AAcctID, FailCallID, 0);
 	true -> %% failover route bridged
-	    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
-	    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
-	    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
-	    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
+	    {R, RI, RM, S} = get_rate_data(CCVs, Flags),
+	    Duration = get_call_duration(JObj, Flags),
 
-	    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
-	    ts_acctmgr:release_trunk(AcctID, FailCallID, calculate_cost(R, RI, RM, S, Duration))
+	    ts_acctmgr:release_trunk(AAcctID, FailCallID, calculate_cost(R, RI, RM, S, Duration))
     end;
 close_down_call(JObj, #route_flags{scenario=outbound_inbound, account_doc_id=Acct2ID}=Flags, _LegNo) ->
     BCallID = whapps_json:get_value([<<"Call-ID">>], JObj),
     ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
 
     CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    {R, RI, RM, S} = get_rate_data(CCVs, Flags),
 
-    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
-    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
-    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
-    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
-
-    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    Duration = get_call_duration(JObj, Flags),
 
     %% copy acct2's A-leg trunk reservation to a B-leg trunk reservation
     ts_acctmgr:copy_reserve_trunk(Acct2ID, ACallID, BCallID, (R * RM + S)),
@@ -387,16 +394,11 @@ close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_d
 
     CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
 
-    R = whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate)),
-    RI = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment)),
-    RM = whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum)),
-    S = whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge)),
-
-    %% Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    {R, RI, RM, S} = get_rate_data(CCVs, Flags),
 
     IsFailoverRoute = whistle_util:to_boolean(whapps_json:get_value(<<"Failover-Route">>, CCVs, false)),
 
-    Duration = whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj)),
+    Duration = get_call_duration(JObj, Flags),
 
     ts_acctmgr:release_trunk(Acct2ID, ACallID, 0),
     ts_acctmgr:release_trunk(Acct2ID, <<ACallID/binary, "-failover">>, 0),
@@ -408,3 +410,27 @@ close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_d
 	    ts_acctmgr:copy_reserve_trunk(Acct2ID, <<ACallID/binary, "-failover">>, BCallID, (R*RM+S))
     end,
     ts_acctmgr:release_trunk(Acct2ID, BCallID, calculate_cost(R, RI, RM, S, Duration)).
+
+-spec(get_rate_data/2 :: (CCVs :: json_object(), Flags :: #route_flags{}) -> tuple(float(), integer(), integer(), float())).
+get_rate_data({struct, _}=CCVs, #route_flags{}=Flags) ->
+    {
+      whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate))
+      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment))
+      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum))
+      ,whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge))
+    }.
+
+-spec(get_call_duration/2 :: (JObj :: json_object(), Flags :: #route_flags{}) -> integer()).
+get_call_duration(JObj, Flags) ->
+    get_call_duration(JObj, Flags, 0).
+
+-spec(get_call_duration/3 :: (JObj :: json_object(), Flags :: #route_flags{}, StartTime :: integer()) -> integer()).
+get_call_duration(JObj, #route_flags{rate_minimum=RM}, StartTime) ->
+    Guess = case StartTime > 0 andalso (ts_util:current_tstamp() - StartTime) of
+		false -> RM;
+		%% if no duration from JObj, and elapsed time is > twice the timeout
+		X when X >= (2 * ?CALL_ACTIVITY_TIMEOUT) -> X - (2 * ?CALL_ACTIVITY_TIMEOUT);
+		Y when Y < RM -> RM;
+		Z -> Z
+	    end,
+    whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj, Guess)).

@@ -28,6 +28,8 @@ get_value(_, _, Default) -> Default.
 
 
 %% Figure out how to set the current key among a list of objects
+set_value(Key, Value, Doc) when not is_list(Key) ->
+    set_value([Key], Value, Doc);
 set_value([Key|T], Value, [{struct, _}|_]=Doc) ->
     Key1 = whistle_util:to_integer(Key),
     case Key1 > length(Doc) of

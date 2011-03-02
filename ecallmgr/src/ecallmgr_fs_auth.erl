@@ -15,7 +15,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
 -include("whistle_amqp.hrl").
