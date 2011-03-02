@@ -136,7 +136,6 @@ wait_for_msg_type(Category, Name, Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            format_log(info, "Payload: ~p~n", [Msg]),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
                 { Category, Name } ->
                     {ok, Msg};
@@ -166,7 +165,6 @@ wait_for_call_event(Name, Application, Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            format_log(info, "Payload: ~p~n", [Msg]),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
                 { <<"call_event">>, Name, Application } ->                
                     format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p published anticipated event ~p~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
