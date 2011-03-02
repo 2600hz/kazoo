@@ -113,11 +113,11 @@ handle_call({rm_node, Node}, _From, Nodes) ->
 	    {reply, {error, {node_unkown, Node}}, Nodes}
     end;
 handle_call({view}, _From, Nodes) ->
-    format_log(info, "DIAG_SERVER: Nodes to view: ~p~n", [Nodes]),
+    format_log(info, "DIAG_SERVER: Nodes to view: ~w~n", [Nodes]),
     lists:foreach(fun display_node/1, Nodes),
     {reply, ok, Nodes};
 handle_call({view, Node}, _From, Nodes) ->
-    format_log(info, "DIAG_SERVER: Node to view: ~p~n", [Node]),
+    format_log(info, "DIAG_SERVER: Node to view: ~w~n", [Node]),
     case lists:member(Node, Nodes) of
 	true ->
 	    case display_node(Node) of
@@ -191,12 +191,12 @@ code_change(_OldVsn, State, _Extra) ->
 display_node(Node) ->
     case rpc:call(Node, ecallmgr, diagnostics, []) of
 	{badrpc, Reason} ->
-	    io:format("DIAG_SERVER: Error getting data from ~p: ~p~n", [Node, Reason]),
+	    io:format("DIAG_SERVER: Error getting data from ~w: ~w~n", [Node, Reason]),
 	    error;
 	Data ->
 	    lists:foreach(fun({freeswitch_nodes, FSData}) ->
 				  display_fs_data(FSData);
-			     (X) -> io:format("DIAG_SERVER: Unknown result.~n~p~n", [X])
+			     (X) -> io:format("DIAG_SERVER: Unknown result.~n~w~n", [X])
 			  end, Data),
 	    ok
     end.
@@ -221,7 +221,7 @@ display_fs_data(Data, Opt) ->
 	       ,{route_handler, {ok, [{lookups_success,0}, {lookups_failed,0}, {lookups_timeout,0}, {lookups_requested,0}]}}
 	      ],
 
-    io:format("Diagnostics for ~p (~s) on ~p at ~2.2.0w:~2.2.0w:~2.2.0w on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
+    io:format("Diagnostics for ~w (~s) on ~w at ~2.2.0w:~2.2.0w:~2.2.0w on ~w-~w-~w~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
     AccNodes = lists:foldr(fun(T, Acc)  ->
 				   case Opt of
 				       all -> show_node(T), merge_data(T, Acc);
@@ -268,14 +268,14 @@ merge_data(T, Acc0) ->
 
 show_node(T) ->
     [Node | L] = tuple_to_list(T),
-    io:format("  Node Diagnostics for ~p~n", [Node]),
+    io:format("  Node Diagnostics for ~w~n", [Node]),
     io:format(?HANDLER_LINE_HEADER, []),
     lists:foreach(fun({H, Data}) -> show_line(H, Data) end, L).
 
 show_line(Type, {error, Error, Reason}) ->
-    io:format("  |  ~11.s | ERROR(~p): ~p~n", [Type, Error, Reason]);
+    io:format("  |  ~11.s | ERROR(~w): ~w~n", [Type, Error, Reason]);
 show_line(Type, {'EXIT', _Pid, Cause}) ->
-    io:format("  |  ~11.s | ERROR(exit): ~p~n", [Type, Cause]);
+    io:format("  |  ~11.s | ERROR(exit): ~w~n", [Type, Cause]);
 show_line(node_handler=Handler, {ok, Data}) ->
     io:format("~n", []),
     io:format(?NODE_LINE_HEADER, []),
@@ -291,8 +291,8 @@ show_line(Handler, {ok, Data}) when is_list(Data) ->
     R = integer_to_list(LR),
 
     Format = fun(0) -> "0 (0%)";
-		(X) when is_integer(X) -> io_lib:format("~p (~p%)", [X, round(X / LR * 100)]);
-		(Y) -> io_lib:format("Huh: ~p", [Y])
+		(X) when is_integer(X) -> io_lib:format("~w (~w%)", [X, round(X / LR * 100)]);
+		(Y) -> io_lib:format("Huh: ~w", [Y])
 	     end,
 
     S = Format(get_value(lookups_success, Data, 0)),
@@ -302,7 +302,7 @@ show_line(Handler, {ok, Data}) when is_list(Data) ->
     U = get_uptime(get_value(uptime, Data, 0)),
     io:format(?HANDLER_LINE, [Type, R, S, T, F, A, U]);
 show_line(Handler, {error, E, _}) ->
-    io:format(" ~p: ~p~n", [Handler, E]).
+    io:format(" ~w: ~w~n", [Handler, E]).
 
 
 %% uptime, in microseconds
@@ -310,26 +310,26 @@ get_uptime(0) ->
     "N/A";
 %% when less than 1 second, time in milliseconds
 get_uptime(Micro) when Micro < ?MICRO_TO_SEC ->
-    io_lib:format("~pms", [Micro div 1000]);
+    io_lib:format("~wms", [Micro div 1000]);
 %% when less than 1 minute, time in seconds
 get_uptime(Micro) when Micro < 60 * ?MICRO_TO_SEC ->
-    io_lib:format("~ps", [Micro div ?MICRO_TO_SEC]);
+    io_lib:format("~ws", [Micro div ?MICRO_TO_SEC]);
 %% when less than 10 minutes, time in MmSs
 get_uptime(Micro) when Micro < 600 * ?MICRO_TO_SEC ->
     S = Micro div ?MICRO_TO_SEC,
     M = S div 60,
-    io_lib:format("~pm~ps", [M rem 60, S rem 60]);
+    io_lib:format("~wm~ws", [M rem 60, S rem 60]);
 %% when less than 1 hour, time in mins
 get_uptime(Micro) when Micro < 3600 * ?MICRO_TO_SEC ->
-    io_lib:format("~pm", [Micro div (60 * ?MICRO_TO_SEC)]);
+    io_lib:format("~wm", [Micro div (60 * ?MICRO_TO_SEC)]);
 %% when less than 1 day, time in HhMm
 get_uptime(Micro) when Micro < 86400 * ?MICRO_TO_SEC ->
     M = Micro div (60 * ?MICRO_TO_SEC),
     H = M div 60,
-    io_lib:format("~ph~pm", [H rem 24, M rem 60]);
+    io_lib:format("~wh~wm", [H rem 24, M rem 60]);
 %% when greater than 1 day, time in DdHhMm
 get_uptime(Micro) ->
     M = Micro div (60 * ?MICRO_TO_SEC),
     H = M div 60,
     D = H div 24,
-    io_lib:format("~pd~ph~pm", [D, H rem 24, M rem 60]).
+    io_lib:format("~wd~wh~wm", [D, H rem 24, M rem 60]).

@@ -15,7 +15,7 @@
 -import(proplists, [get_value/2, get_value/3]).
 
 -define(RESULT_FIELDS, ["Target","TX","RX","Loss","Time","Min","Avg","Max","Mdev","Host"]).
--define(PING_CMD, "echo -n `echo -n $(ping -i 0.5 -W 1 -n -q -c ~p ~p) | cut -d' ' -f3,13,16,18,22,26 | sed -r 's/\\/| /,/g' | sed 's/[^0-9.,]//g'`").
+-define(PING_CMD, "echo -n `echo -n $(ping -i 0.5 -W 1 -n -q -c ~w ~w) | cut -d' ' -f3,13,16,18,22,26 | sed -r 's/\\/| /,/g' | sed 's/[^0-9.,]//g'`").
 -define(FAIL_LOSS, 2).
 
 ping(Dest) ->
@@ -24,7 +24,7 @@ ping(Dest) ->
 ping(Dest, Count) ->
     Cmd = io_lib:format(?PING_CMD, [Count, Dest]),
     Result = string:tokens(os:cmd(Cmd), ","),
-    format_log(info, "MONITOR_ICMP(~p): Ping to ~p returned~n~p~n", [self(), Dest, Result]),
+    format_log(info, "MONITOR_ICMP(~w): Ping to ~w returned~n~w~n", [self(), Dest, Result]),
     case Result of
         [] -> 
             [{"Error", "Agent could not execute ping"}];

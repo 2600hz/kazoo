@@ -90,16 +90,16 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		<<"HEARTBEAT">> ->
 		    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
 		<<"CUSTOM">> ->
-		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
+		    format_log(info, "FS_NODE(~w): Evt: ~w~n", [self(), EvtName]),
 		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
 		    ?MODULE:monitor_loop(Node, S);
 		_ ->
-		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
+		    format_log(info, "FS_NODE(~w): Evt: ~w~n", [self(), EvtName]),
 		    ?MODULE:monitor_loop(Node, S)
 	    end;
 	{event, [UUID | Data]} ->
 	    EvtName = get_value(<<"Event-Name">>, Data),
-	    format_log(info, "FS_NODE(~p): Evt: ~p UUID: ~p~n", [self(), EvtName, UUID]),
+	    format_log(info, "FS_NODE(~w): Evt: ~w UUID: ~w~n", [self(), EvtName, UUID]),
 	    case EvtName of
 		<<"CHANNEL_CREATE">> ->
 		    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{created_channels=Cr+1}});
@@ -137,27 +137,27 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    spawn(fun() -> originate_channel(Node, S#handler_state.amqp_host, Pid, Route, AvailChan) end),
 	    ?MODULE:monitor_loop(Node, S);
 	Msg ->
-	    format_log(info, "FS_NODE(~p): Recv ~p~n", [self(), Msg]),
+	    format_log(info, "FS_NODE(~w): Recv ~w~n", [self(), Msg]),
 	    ?MODULE:monitor_loop(Node, S)
     end.
 
 -spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
 originate_channel(Node, Host, Pid, Route, AvailChan) ->
-    format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
+    format_log(info, "FS_NODE(~w): DS ~w~n", [self(), Route]),
     OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
-    format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
+    format_log(info, "FS_NODE(~w): Orig ~w~n", [self(), OrigStr]),
     case freeswitch:api(Node, originate, OrigStr, 9000) of
 	{ok, X} ->
-	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
+	    format_log(info, "FS_NODE(~w): Originate to ~w resulted in ~w~n", [self(), Route, X]),
 	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
 	    CtlQ = start_call_handling(Node, Host, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), Route, ErrMsg]),
+	    format_log(info, "FS_NODE(~w): Failed to originate ~w: ~w~n", [self(), Route, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), Route]),
+	    format_log(info, "FS_NODE(~w): Originate to ~w timed out~n", [self(), Route]),
 	    Pid ! {resource_error, timeout}
     end.
 
@@ -175,7 +175,7 @@ diagnostics(Pid, Stats) ->
     Pid ! Resp.
 
 channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
-    format_log(info, "FS_NODE(~p): Avail: ~p MinReq: ~p~n", [self(), AvailChan, MinReq]),
+    format_log(info, "FS_NODE(~w): Avail: ~w MinReq: ~w~n", [self(), AvailChan, MinReq]),
     case MinReq > AvailChan of
 	true -> Pid ! {resource_response, FSHandlerPid, []};
 	false -> Pid ! {resource_response, FSHandlerPid, [{node, FSHandlerPid}
@@ -225,9 +225,9 @@ publish_register_event(Data, Host, AppVsn) ->
 				  end
 			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
     case whistle_api:reg_success(ApiProp) of
-	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~p~n", [E]);
+	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~w~n", [E]);
 	{ok, JSON} ->
-	    format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
+	    format_log(info, "FS_NODE.p_reg_evt(~w): ~s~n", [self(), JSON]),
 	    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>)
     end.
 

@@ -85,7 +85,7 @@ get_endpoint({struct, Props}) ->
                     ],
             {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
         {error, _}=E ->
-            format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Id, Db, E]),
+            format_log(error, "CF_DEVICES(~w): Could not locate endpoint ~w in ~w (~w)~n", [self(), Id, Db, E]),
             E
     end.
 

@@ -79,12 +79,12 @@ set_amqp_host(AHost) ->
 init([]) ->
     State = #state{},
     AHost = State#state.amqp_host,
-    format_log(info, "NO_SIP_AUTH(~p): Starting server with amqp host ~p~n", [self(), AHost]),
+    format_log(info, "NO_SIP_AUTH(~w): Starting server with amqp host ~w~n", [self(), AHost]),
     {ok, Auth_Q} = start_amqp(AHost),
     {ok, State#state{auth_q = Auth_Q}};
 
 init([AHost]) ->
-    format_log(info, "NO_SIP_AUTH(~p): Starting server with amqp host ~p~n", [self(), AHost]),
+    format_log(info, "NO_SIP_AUTH(~w): Starting server with amqp host ~w~n", [self(), AHost]),
     {ok, Auth_Q} = start_amqp(AHost),
     {ok, #state{amqp_host=AHost, auth_q=Auth_Q}}.
 
@@ -103,7 +103,7 @@ init([AHost]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost1}, _From, #state{amqp_host=AHost2}=State) ->
-    format_log(info, "NO_SIP_AUTH(~p): Updating amqp host from ~p to ~p~n", [self(), AHost2, AHost1]),
+    format_log(info, "NO_SIP_AUTH(~w): Updating amqp host from ~w to ~w~n", [self(), AHost2, AHost1]),
     amqp_manager:close_channel(self(), AHost2),
     {ok, Auth_Q} = start_amqp(AHost1),
     {reply, ok, State#state{amqp_host = AHost1, auth_q = Auth_Q}};
@@ -122,7 +122,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~p", [_Msg]),
+    io:format("Unhandled ~w", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -141,11 +141,11 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
             spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
         _ ->
-            format_log(info, "NO_SIP_AUTH(~p): Recieved non JSON AMQP msg content type~n", [self()])
+            format_log(info, "NO_SIP_AUTH(~w): Recieved non JSON AMQP msg content type~n", [self()])
     end,
     {noreply, State};
 handle_info(_Info, State) ->
-    format_log(info, "NO_SIP_AUTH(~p): unhandled info ~p~n", [self(), _Info]),
+    format_log(info, "NO_SIP_AUTH(~w): unhandled info ~w~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -215,7 +215,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
     send_resp(Json, RespQ, State);
 
 process_req(_MsgType, _Msg, _State) ->
-    format_log(error, "NO_SIP_AUTH(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Msg]).
+    format_log(error, "NO_SIP_AUTH(~w): Unhandled Msg ~w~nJSON: ~w~n", [self(), _MsgType, _Msg]).
 
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(Json, RespQ, #state{amqp_host=AHost}) ->

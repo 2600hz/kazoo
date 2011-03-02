@@ -91,7 +91,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~p", [_Msg]),
+    io:format("Unhandled ~w", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -113,12 +113,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, Payload}, State) -
     {noreply, State};
 
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    format_log(info, "NOAUTHZ(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
+    format_log(info, "NOAUTHZ(~w): unhandled binding: ~w~n~w~n", [self(), Route, Payload]),
     Pid ! {binding_result, false, []},
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "NOAUTHZ(~p): unhandled info ~p~n", [self(), _Info]),
+    format_log(info, "NOAUTHZ(~w): unhandled info ~w~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

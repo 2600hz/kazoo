@@ -26,7 +26,7 @@ start(AHost, Msg, Route) ->
         {ok, Resource} ->
             CQ = get_value(<<"Control-Queue">>, Resource),
             Call_ID = get_value(<<"Call-ID">>, Resource),
-            format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p connected to ~p~n", [self(), Call_ID, Route]),
+            format_log(info, "MONITOR_CALL_BASIC(~w): Channel ~w connected to ~w~n", [self(), Call_ID, Route]),
             amqp_util:bind_q_to_callevt(AHost, Task_Q, Call_ID),
             answer_call(AHost, CQ, Call_ID, Task_Q),
             Rslt = test_tones(AHost, CQ, Call_ID, Task_Q),
@@ -35,7 +35,7 @@ start(AHost, Msg, Route) ->
             {error, [{<<"Error">>, E}, {<<"Success">>, <<"false">>}]}
     end,
     amqp_util:queue_delete(AHost, Task_Q),
-    format_log(info, "MONITOR_CALL_BASIC(~p): Basic call test completed~n~p~n", [self(), Result]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Basic call test completed~n~w~n", [self(), Result]),
     Result.
 
 originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
@@ -45,13 +45,13 @@ originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
            ,{<<"Invite-Format">>, <<"route">>}
            ,{<<"Route">>, Route}           
     ],
-    format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p~n", [self(), Route]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Originate call to ~w~n", [self(), Route]),
     {ok, JSON} = whistle_api:resource_req(lists:append([Def, Req])),
     amqp_util:callmgr_publish(AHost, JSON, <<"application/json">>, ?KEY_RESOURCE_REQ),
     wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 15000).
 
 answer_call(AHost, CQ, Call_ID, Server_ID) ->
-    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p answer~n", [self(), Call_ID]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Channel ~w answer~n", [self(), Call_ID]),
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
          {<<"Call-ID">>, Call_ID}
@@ -79,7 +79,7 @@ test_tones(AHost, CQ, Call_ID, Server_ID) ->
     end.
 
 hangup_call(AHost, CQ, Call_ID, Server_ID) ->
-    format_log(info, "MONITOR_CALL_BASIC(~p): Hangup ~p~n", [self(), Call_ID]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Hangup ~w~n", [self(), Call_ID]),
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
          {<<"Call-ID">>, Call_ID}
@@ -92,17 +92,17 @@ create_task_q(AHost) ->
     Q = amqp_util:new_monitor_queue(AHost),
 
     %% Bind the queue to the targeted exchange
-    format_log(info, "MONITOR_CALL_BASIC(~p): Bind ~p as a targeted queue for task~n", [self(), Q]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Bind ~w as a targeted queue for task~n", [self(), Q]),
     amqp_util:bind_q_to_targeted(AHost, Q),
 
     %% Register a consumer to listen to the queue
-    format_log(info, "MONITOR_CALL_BASIC(~p): Consume on ~p for task~n", [self(), Q]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Consume on ~w for task~n", [self(), Q]),
     amqp_util:basic_consume(AHost, Q),
 
     {ok, Q}.
 
 arm_tone_detector(AHost, CQ, Call_ID, Server_ID) ->
-    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p arm tone detection~n", [self(), Call_ID]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Channel ~w arm tone detection~n", [self(), Call_ID]),
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
          {<<"Call-ID">>, Call_ID}
@@ -116,7 +116,7 @@ arm_tone_detector(AHost, CQ, Call_ID, Server_ID) ->
     amqp_util:callctl_publish(AHost, CQ, JSON).
 
 generate_tone(AHost, CQ, Call_ID, Server_ID) ->
-    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p generate tones~n", [self(), Call_ID]),
+    format_log(info, "MONITOR_CALL_BASIC(~w): Channel ~w generate tones~n", [self(), Call_ID]),
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
          {<<"Call-ID">>, Call_ID}
@@ -141,17 +141,17 @@ wait_for_msg_type(Category, Name, Timeout) ->
                     {ok, Msg};
                 { <<"originate">>, <<"originate_error">> } ->
                     Error = get_value(<<"Failure-Message">>, Msg),
-                    format_log(info, "MONITOR_CALL_BASIC(~p): Recieved originator error ~p~n", [self(), Error]),
+                    format_log(info, "MONITOR_CALL_BASIC(~w): Recieved originator error ~w~n", [self(), Error]),
                     {error, Error};
                 { <<"originate">>, <<"resource_error">> } ->
-                    format_log(info, "MONITOR_CALL_BASIC(~p): Recieved originator error resource_unavliable~n", [self()]),
+                    format_log(info, "MONITOR_CALL_BASIC(~w): Recieved originator error resource_unavliable~n", [self()]),
                     {error, resources_unavaliable};
                 _ ->
                     wait_for_msg_type(Category, Name, Timeout)
             end
     after
         Timeout ->
-            format_log(info, "MONITOR_CALL_BASIC(~p): Timed out waiting for orignate response~n", [self()]),
+            format_log(info, "MONITOR_CALL_BASIC(~w): Timed out waiting for orignate response~n", [self()]),
             {error, timeout}
     end.
 
@@ -167,16 +167,16 @@ wait_for_call_event(Name, Application, Timeout) ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
                 { <<"call_event">>, Name, Application } ->                
-                    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p published anticipated event ~p~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
+                    format_log(info, "MONITOR_CALL_BASIC(~w): Channel ~w published anticipated event ~w~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
                     {ok, Msg};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _Name } ->
-                    format_log(info, "MONITOR_CALL_BASIC(~p): Channel ~p hungup before anticipated event ~p~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
+                    format_log(info, "MONITOR_CALL_BASIC(~w): Channel ~w hungup before anticipated event ~w~n", [self(), get_value(<<"Call-ID">>, Msg), Application]),
                     {error, channel_hungup};
                 _ ->
                     wait_for_call_event(Name, Application, Timeout)
             end
     after
         Timeout ->
-            format_log(info, "MONITOR_CALL_BASIC(~p): Timeout while waiting for call event ~p~n", [self(), Application]),
+            format_log(info, "MONITOR_CALL_BASIC(~w): Timeout while waiting for call event ~w~n", [self(), Application]),
             {error, timeout}
     end.

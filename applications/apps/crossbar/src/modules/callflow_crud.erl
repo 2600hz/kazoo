@@ -86,7 +86,7 @@ init ( [] ) -> bind_to_crossbar(), { ok, #state{} }.
 handle_call ( Request, From, State ) ->
    format_log(
       error,
-      "CF CRUD (~p): Unhandled call message:~nRequest: ~p~nFrom: ~p~n",
+      "CF CRUD (~w): Unhandled call message:~nRequest: ~w~nFrom: ~w~n",
       [self(), Request, From]
    ),
    { reply, ok, State }
@@ -107,7 +107,7 @@ handle_call ( Request, From, State ) ->
 handle_cast ( Msg, State ) ->
    format_log(
       error,
-      "CF CRUD (~p): Unhandled cast message:~nMessage: ~p~n",
+      "CF CRUD (~w): Unhandled cast message:~nMessage: ~w~n",
       [self(), Msg]
    ),
    { noreply, State }
@@ -126,27 +126,27 @@ handle_cast ( Msg, State ) ->
    | tuple(stop, Reason :: term(), State :: term())
 ).
 handle_info ( {binding_fired, Pid, <<"v1_resource.allowed_methods.callflow">>, Payload}, State ) ->
-   format_log(info, "CF CRUD (~p): checking allowed methods...", [self()]),
+   format_log(info, "CF CRUD (~w): checking allowed methods...", [self()]),
    spawn(fun ( ) ->
       {Result, Payload1} = allowed_methods(Payload),
       Pid ! { binding_result, Result, Payload1 }
    end),
    { noreply, State };
 handle_info ( {binding_fired, Pid, <<"v1_resource.resource_exists.callflow">>, Payload}, State ) ->
-   format_log(info, "CF CRUD (~p): checking if resource exists...", [self()]),
+   format_log(info, "CF CRUD (~w): checking if resource exists...", [self()]),
    spawn(fun ( ) ->
       Pid ! { binding_result, true, Payload }
    end),
    { noreply, State };
 handle_info ( {binding_fired, Pid, <<"v1_resource.validate.callflow">>, [RD, Context | Params]}, State ) ->
-   format_log(info, "CF CRUD (~p): validating...", [self()]),
+   format_log(info, "CF CRUD (~w): validating...", [self()]),
    spawn(fun ( ) ->
       Context1 = validate(wrq:method(RD), Params, Context#cb_context{}),
       Pid ! { binding_result, true, [RD, Context1, Params] }
    end),
    { noreply, State };
 handle_info ( {binding_fired, Pid, <<"v1_resource.execute.put.callflow">>, [RD, Context | Params]}, State ) ->
-   format_log(info, "CF CRUD (~p): putting...", [self()]),
+   format_log(info, "CF CRUD (~w): putting...", [self()]),
    spawn(fun ( ) ->
       case crossbar_doc:save(Context#cb_context{db_name="callflow"}) of
          #cb_context{resp_status=success}=Context1 -> io:format("Success",[]),
@@ -157,7 +157,7 @@ handle_info ( {binding_fired, Pid, <<"v1_resource.execute.put.callflow">>, [RD, 
    end),
    { noreply, State };
 handle_info ( {binding_fired, Pid, <<"v1_resource.execute.get.callflow">>, [RD, Context | Params]}, State ) ->
-   format_log(info, "CF CRUD (~p): getting...", [self()]),
+   format_log(info, "CF CRUD (~w): getting...", [self()]),
    case Params of
       [ ] ->
          spawn(fun ( ) ->
@@ -172,14 +172,14 @@ handle_info ( {binding_fired, Pid, <<"v1_resource.execute.get.callflow">>, [RD, 
    end,
    { noreply, State };
 handle_info ( {binding_fired, Pid, <<"v1_resource.execute.post.callflow">>, [RD, Context | Params]}, State ) ->
-   format_log(info, "CF CRUD (~p): posting...", [self()]),
+   format_log(info, "CF CRUD (~w): posting...", [self()]),
    spawn(fun ( ) ->
       Context1 = crossbar_doc:save(Context#cb_context{}),
       Pid ! { binding_result, true, [RD, Context1, Params] }
    end),
    { noreply, State };
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflow">>, [RD, Context | Params]}, State) ->
-   format_log(info, "CF CRUD (~p): deleting...", [self()]),
+   format_log(info, "CF CRUD (~w): deleting...", [self()]),
    spawn(fun ( ) ->
       Context1 = crossbar_doc:delete(Context#cb_context{}),
       Pid ! { binding_result, true, [RD, Context1, Params] }
@@ -188,7 +188,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflow">>, [RD,
 handle_info ( Info, State ) ->
    format_log(
       error,
-      "CF CRUD (~p): Unhandled info message:~nInfo: ~p~n",
+      "CF CRUD (~w): Unhandled info message:~nInfo: ~w~n",
       [self(), Info]
    ),
    { noreply, State }
@@ -268,14 +268,14 @@ allowed_methods ( _ ) -> { false, [] }.
 validate ( 'GET', [], Context ) ->
    format_log(
       progress,
-      "CF CRUD (~p): Getting existing callflows:~n",
+      "CF CRUD (~w): Getting existing callflows:~n",
       [self()]
    ),
    Context#cb_context{resp_status=success};
 validate ( 'PUT', [], #cb_context{req_data={struct, Data}}=Context ) ->
    format_log(
       progress,
-      "CF CRUD (~p): Creating new callflow:~n~p~n",
+      "CF CRUD (~w): Creating new callflow:~n~w~n",
       [self(), Data]
    ),
 % Data proplist should be checked against a view
@@ -283,14 +283,14 @@ validate ( 'PUT', [], #cb_context{req_data={struct, Data}}=Context ) ->
 validate ( 'GET', [Id], Context ) ->
    format_log(
       progress,
-      "CF CRUD (~p): Getting existing callflow by id: ~p~n",
+      "CF CRUD (~w): Getting existing callflow by id: ~w~n",
       [self(), Id]
    ),
    crossbar_doc:load(Id, Context);
 validate ( 'POST', [Id], #cb_context{req_data={struct, Data}}=Context ) ->
    format_log(
       progress,
-      "CF CRUD (~p): Updating existing callflow: ~p~n~p~n",
+      "CF CRUD (~w): Updating existing callflow: ~w~n~w~n",
       [self(), Id, Data]
    ),
 % Data proplist should be checked against a view
@@ -298,7 +298,7 @@ validate ( 'POST', [Id], #cb_context{req_data={struct, Data}}=Context ) ->
 validate ( 'DELETE', [Id], Context ) ->
    format_log(
       progress,
-      "CF CRUD (~p): Deleting existing callflow: ~p~n",
+      "CF CRUD (~w): Deleting existing callflow: ~w~n",
       [self(), Id]
    ),
    crossbar_doc:load(Id, Context);

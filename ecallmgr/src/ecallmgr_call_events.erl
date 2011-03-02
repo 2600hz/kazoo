@@ -130,19 +130,19 @@ handle_info(timeout, #state{node=Node, uuid=UUID, amqp_h=H}=State) ->
     end;
 
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
-    format_log(error, "EVT(~p): nodedown ~p~n", [self(), Node]),
+    format_log(error, "EVT(~w): nodedown ~w~n", [self(), Node]),
     erlang:monitor_node(Node, false),
     timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false}=State) ->
-    format_log(error, "EVT(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
+    format_log(error, "EVT(~w): nodedown ~w, trying ping, then waiting ~w if it fails~n", [self(), Node, Timeout]),
     case net_adm:ping(Node) of
 	pong ->
 	    erlang:monitor_node(Node, true),
 	    case freeswitch:handlecall(Node, UUID) of
 		ok ->
-		    format_log(info, "EVT(~p): node_is_up ~p~n", [self(), Node]),
+		    format_log(info, "EVT(~w): node_is_up ~w~n", [self(), Node]),
 		    {noreply, State#state{is_node_up=true}};
 		_ -> {stop, normal, State}
 	    end;
@@ -157,7 +157,7 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
     end;
 
 handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, amqp_h=Host}=State) ->
-    format_log(info, "EVT(~p): {Call, {Event}} for ~p: ~p~n", [self(), UUID, props:get_value(<<"Event-Name">>, Data)]),
+    format_log(info, "EVT(~w): {Call, {Event}} for ~w: ~w~n", [self(), UUID, props:get_value(<<"Event-Name">>, Data)]),
 
     case State#state.is_amqp_up of
 	true ->
@@ -170,7 +170,7 @@ handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, amqp_h=Host}=State
 handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUID, amqp_h=Host, ctlpid=CtlPid}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     AppName = props:get_value(<<"Application">>, Data),
-    format_log(info, "EVT(~p): {Call_Event, {Event}} for ~p(~p): ~p. Sendable: ~p~n"
+    format_log(info, "EVT(~w): {Call_Event, {Event}} for ~w(~w): ~w. Sendable: ~w~n"
 	       ,[self(), UUID, AppName, EvtName, State#state.is_amqp_up]),
 
     case EvtName of
@@ -179,7 +179,7 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 		undefined -> ok;
 		OtherUUID ->
 		    _Pid = ecallmgr_call_sup:start_event_process(Node, OtherUUID, Host, undefined),
-		    format_log(info, "EVT(~p): New Evt Listener for ~p: ~p~n", [self(), OtherUUID, _Pid])
+		    format_log(info, "EVT(~w): New Evt Listener for ~w: ~w~n", [self(), OtherUUID, _Pid])
 	    end;
 	_ -> ok
     end,
@@ -203,7 +203,7 @@ handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid}=State) ->
     {stop, normal, State};
 
 handle_info({amqp_host_down, H}, State) ->
-    format_log(info, "EVT(~p): AmqpHost ~s went down; queueing events~n", [self(), H]),
+    format_log(info, "EVT(~w): AmqpHost ~s went down; queueing events~n", [self(), H]),
     timer:send_after(1000, self(), is_amqp_up),
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
@@ -219,12 +219,12 @@ handle_info(is_amqp_up, #state{uuid=UUID, amqp_h=H, amqp_q={error, _}}=State) ->
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "EVT(~p): AMQP Msg ~s~n", [self(), Payload]),
+    format_log(info, "EVT(~w): AMQP Msg ~s~n", [self(), Payload]),
     spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, State#state.amqp_h, State#state.is_node_up) end),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "EVT(~p): unhandled info: ~p~n", [self(), _Info]),
+    format_log(info, "EVT(~w): unhandled info: ~w~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -267,7 +267,7 @@ shutdown(CtlPid, UUID) ->
     receive {ctl_down, CtlPid} -> ok
     after 500 -> ok end,
 
-    format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]).
+    format_log(info, "EVT(~w): Call Hangup for ~w, going down now~n", [self(), UUID]).
 
 %% let the ctl process know a command finished executing
 -spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
@@ -275,10 +275,10 @@ send_ctl_event(undefined, _, _, _) -> ok;
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pid(CtlPid) ->
     case erlang:is_process_alive(CtlPid) of
 	true ->
-	    format_log(info, "EVT.send_ctl(~p): Pid: ~p UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName]),
+	    format_log(info, "EVT.send_ctl(~w): Pid: ~w UUID: ~w ExecComplete App: ~w~n", [self(), CtlPid, UUID, AppName]),
 	    CtlPid ! {execute_complete, UUID, AppName};
 	false ->
-	    format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
+	    format_log(info, "EVT.send_ctl(~w): Pid: ~w(dead) UUID: ~w ExecComplete App: ~w~n", [self(), CtlPid, UUID, AppName])
     end;
 send_ctl_event(_, _, _, _) -> ok.
 
@@ -305,7 +305,7 @@ publish_msg(Host, UUID, Prop) ->
 	    {ok, JSON} = whistle_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(Host, UUID, JSON, event);
 	false ->
-	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName]),
+	    format_log(info, "EVT(~w): Skipped event ~w~n", [self(), EvtName]),
 	    ok
     end.
 
@@ -326,7 +326,7 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
     Application = props:get_value(<<"Application">>, Prop),
     case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
 	undefined ->
-	    io:format("WHISTLE_API: Didn't find ~p in supported~n", [Application]),
+	    io:format("WHISTLE_API: Didn't find ~w in supported~n", [Application]),
 	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
         <<"play_and_collect_digits">> ->
 	    [{<<"Application-Name">>, <<"play_and_collect_digits">>} 
@@ -341,7 +341,7 @@ event_specific(<<"CHANNEL_EXECUTE">>, Prop) ->
     Application = props:get_value(<<"Application">>, Prop),
     case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
 	undefined ->
-	    io:format("WHISTLE_API: Didn't find ~p in supported~n", [Application]),
+	    io:format("WHISTLE_API: Didn't find ~w in supported~n", [Application]),
 	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
 	AppName ->
 	    [{<<"Application-Name">>, AppName}
@@ -394,7 +394,7 @@ handle_amqp_prop(<<"status_req">>, JObj, AmqpHost, IsNodeUp) ->
     try
     true = whistle_api:call_status_req_v(JObj),
     CallID = whapps_json:get_value(<<"Call-ID">>, JObj),
-    format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
+    format_log(info, "EVT.call_status for ~w is up, responding~n", [CallID]),
 
     {Status, ErrMsg} = case IsNodeUp of
 			   true -> {<<"active">>, {ignore, me}};
@@ -406,12 +406,12 @@ handle_amqp_prop(<<"status_req">>, JObj, AmqpHost, IsNodeUp) ->
 		| whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, <<?APPNAME/binary, ".status">>, ?APPVER) ],
     {ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
     SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
-    format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
+    format_log(info, "EVT.call_status(~w): ~s", [CallID, JSON]),
 
     amqp_util:targeted_publish(AmqpHost, SrvID, JSON)
     catch
 	E:R ->
-	    format_log(error, "EVT.call_status err ~p: ~p", [E, R])
+	    format_log(error, "EVT.call_status err ~w: ~w", [E, R])
     end.
 
 -spec(send_cdr/4 :: (Host :: string(), UUID :: binary(), EvtName :: binary(), Data :: proplist()) -> no_return()).
@@ -422,16 +422,16 @@ send_cdr(_, _, _, _) -> ok.
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
 -spec(send_queued/4 :: (H :: string(), UUID :: binary(), Evts :: list(proplist()) | [], Tries :: integer()) -> no_return()).
 send_queued(_, _, _, 10) ->
-    format_log(info, "EVT.send_queued(~p): Failed after 10 times, going down~n", [self()]);
+    format_log(info, "EVT.send_queued(~w): Failed after 10 times, going down~n", [self()]);
 send_queued(_, _, [], _) ->
-    format_log(info, "EVT.send_queued(~p): No queued events.~n", [self()]);
+    format_log(info, "EVT.send_queued(~w): No queued events.~n", [self()]);
 send_queued(H, UUID, Evts, Tries) ->
     case amqp_util:new_callevt_queue(H, <<>>) of
 	{error, _} ->
 	    timer:sleep(1000),
 	    send_queued(H, UUID, Evts, Tries+1);
 	Q ->
-	    format_log(info, "EVT.send_queued(~p): Sending queued events on try ~p~n", [self(), Tries]),
+	    format_log(info, "EVT.send_queued(~w): Sending queued events on try ~w~n", [self(), Tries]),
 	    amqp_util:queue_delete(H, Q),
 	    [ publish_msg(H, UUID, E) || E <- lists:reverse(Evts) ]
     end.

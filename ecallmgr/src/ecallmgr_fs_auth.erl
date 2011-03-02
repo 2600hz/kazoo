@@ -54,24 +54,24 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 		    Self = self(),
 		    LookupPid = spawn_link(?MODULE, lookup_user, [State, ID, Self, Host, Data]),
 		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-		    format_log(info, "FETCH_USER(~p): fetch directory: Id: ~p Lookup ~p (Number ~p)~n", [self(), ID, LookupPid, LookupsReq]),
+		    format_log(info, "FETCH_USER(~w): fetch directory: Id: ~w Lookup ~w (Number ~w)~n", [self(), ID, LookupPid, LookupsReq]),
 		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()} | LUs]
 								 ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
-		    format_log(info, "FETCH_USER(~p): Ignoring event ~p~n~p~n", [self(), _Other, Data]),
+		    format_log(info, "FETCH_USER(~w): Ignoring event ~w~n~w~n", [self(), _Other, Data]),
 		    ?MODULE:fetch_user(Node, State)
 	    end;
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
-	    format_log(info, "FETCH_USER(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n~p~n"
+	    format_log(info, "FETCH_USER(~w): fetch unknown: Se: ~w So: ~w, K: ~w V: ~w ID: ~w~n~w~n"
 		       ,[self(), _Section, _Something, _Key, _Value, ID, _Data]),
 	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:fetch_user(Node, State);
 	{nodedown, Node} ->
-	    format_log(error, "FETCH_USER(~p): Node ~p exited", [self(), Node]),
+	    format_log(error, "FETCH_USER(~w): Node ~w exited", [self(), Node]),
 	    freeswitch:close(Node),
 	    ok;
 	{xml_response, ID, XML} ->
-	    format_log(info, "FETCH_USER(~p): Received XML for ID ~p~n", [self(), ID]),
+	    format_log(info, "FETCH_USER(~w): Received XML for ID ~w~n", [self(), ID]),
 	    freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_user(Node, State);
 	shutdown ->
@@ -82,7 +82,7 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 				  end
 			  end, LUs),
 	    freeswitch:close(Node),
-	    format_log(error, "FETCH_USER(~p): shutting down~n", [self()]);
+	    format_log(error, "FETCH_USER(~w): shutting down~n", [self()]);
 	{lookup_finished, LookupPid, EndResult} ->
 	    close_lookup(LookupPid, Node, State, EndResult);
 	{diagnostics, Pid} ->
@@ -94,7 +94,7 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 	    Pid ! Resp,
 	    ?MODULE:fetch_user(Node, State);
 	Other ->
-	    format_log(info, "FETCH_USER(~p): got other response: ~p", [self(), Other]),
+	    format_log(info, "FETCH_USER(~w): got other response: ~w", [self(), Other]),
 	    ?MODULE:fetch_user(Node, State)
     end.
 
@@ -102,7 +102,7 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
     case lists:keyfind(LookupPid, 1, LUs) of
 	{LookupPid, ID, StartTime} ->
 	    RunTime = timer:now_diff(erlang:now(), StartTime) div 1000,
-	    format_log(info, "FETCH_USER(~p): lookup (~p:~p) finished in ~p ms~n"
+	    format_log(info, "FETCH_USER(~w): lookup (~w:~w) finished in ~w ms~n"
 		       ,[self(), LookupPid, ID, RunTime]),
 	    Stats1 = case EndResult of 
 			 success -> Stats#handler_stats{lookups_success=Stats#handler_stats.lookups_success+1};
@@ -111,7 +111,7 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
 		     end,
 	    ?MODULE:fetch_user(Node, State#handler_state{lookups=lists:keydelete(LookupPid, 1, LUs), stats=Stats1});
 	false ->
-	    format_log(error, "FETCH_USER(~p): unknown lookup ~p~n", [self(), LookupPid]),
+	    format_log(error, "FETCH_USER(~w): unknown lookup ~w~n", [self(), LookupPid]),
 	    ?MODULE:fetch_user(Node, State)
     end.
 
@@ -128,14 +128,14 @@ lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
 	    | whistle_api:default_headers(Q, <<"directory">>, <<"auth_req">>, <<"ecallmgr.auth">>, Vsn)],
     EndResult = case whistle_api:auth_req(Prop) of
 		    {ok, JSON} ->
-			format_log(info, "L/U.user(~p): Sending JSON to Host(~p)~n~s~n", [self(), AmqpHost, JSON]),
+			format_log(info, "L/U.user(~w): Sending JSON to Host(~w)~n~s~n", [self(), AmqpHost, JSON]),
 			send_request(AmqpHost, JSON),
 			Result = handle_response(ID, Data, FetchPid),
 			amqp_util:unbind_q_from_targeted(AmqpHost, Q),
 			amqp_util:queue_delete(AmqpHost, Q),
 			Result;
 		    {error, _Msg} ->
-			format_log(error, "L/U.user(~p): Auth_Req API error ~s~n", [self(), _Msg]),
+			format_log(error, "L/U.user(~w): Auth_Req API error ~s~n", [self(), _Msg]),
 			amqp_util:unbind_q_from_targeted(AmqpHost, Q),
 			amqp_util:queue_delete(AmqpHost, Q),
 			failed
@@ -148,26 +148,26 @@ recv_response(ID) ->
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    format_log(info, "L/U.user(~p): Recv Content: ~p EvtName: ~p~n", [self(), Props#'P_basic'.content_type, get_value(<<"Event-Name">>, Prop)]),
+	    format_log(info, "L/U.user(~w): Recv Content: ~w EvtName: ~w~n", [self(), Props#'P_basic'.content_type, get_value(<<"Event-Name">>, Prop)]),
 	    case get_value(<<"Msg-ID">>, Prop) of
 		ID ->
 		    case whistle_api:auth_resp_v(Prop) of
 			true -> Prop;
 			false ->
-			    format_log(error, "L/U.user(~p): Invalid Auth Resp~n~p~n", [self(), Prop]),
+			    format_log(error, "L/U.user(~w): Invalid Auth Resp~n~w~n", [self(), Prop]),
 			    invalid_auth_resp
 		    end;
 		_BadId ->
-		    format_log(info, "L/U.user(~p): Recv Msg ~p when expecting ~p~n", [self(), _BadId, ID]),
+		    format_log(info, "L/U.user(~w): Recv Msg ~w when expecting ~w~n", [self(), _BadId, ID]),
 		    recv_response(ID)
 	    end;
 	shutdown ->
 	    shutdown;
 	Msg ->
-	    format_log(info, "L/U.user(~p): Received ~p off rabbit~n", [self(), Msg]),
+	    format_log(info, "L/U.user(~w): Received ~w off rabbit~n", [self(), Msg]),
 	    recv_response(ID)
     after 4000 ->
-	    format_log(info, "L/U.user(~p): Failed to receive after 4000ms~n", [self()]),
+	    format_log(info, "L/U.user(~w): Failed to receive after 4000ms~n", [self()]),
 	    timeout
     end.
 
@@ -186,7 +186,7 @@ handle_response(ID, Data, FetchPid) ->
     %% recv resp from rabbit
     case recv_response(ID) of
 	shutdown ->
-	    format_log(error, "L/U.user(~p): Shutting down for ID ~p~n", [self(), ID]),
+	    format_log(error, "L/U.user(~w): Shutting down for ID ~w~n", [self(), ID]),
 	    failed;
 	timeout ->
 	    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE},
@@ -202,7 +202,7 @@ handle_response(ID, Data, FetchPid) ->
 		    Pass = get_value(<<"Auth-Password">>, Prop),
 		    ChannelParams = get_channel_params(Prop),
 		    Resp = lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Domain, User, Pass, ChannelParams])),
-		    format_log(info, "L/U.user(~p): Sending pass resp (took ~pms)~n"
+		    format_log(info, "L/U.user(~w): Sending pass resp (took ~wms)~n"
 			       ,[self(), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, Resp},
 		    success;
@@ -212,17 +212,17 @@ handle_response(ID, Data, FetchPid) ->
 		    Resp = lists:flatten(
 			     io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams])
 			    ),
-		    format_log(info, "L/U.user(~p): Sending hashed resp (took ~pms)~n"
+		    format_log(info, "L/U.user(~w): Sending hashed resp (took ~wms)~n"
 			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, Resp},
 		    success;
 		<<"ip">> ->
-		    format_log(info, "L/U.user(~p): Unsupported auth by IP (took ~pms)~n"
+		    format_log(info, "L/U.user(~w): Unsupported auth by IP (took ~wms)~n"
 			       , [self(), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE},
 		    failed;
 		<<"error">> ->
-		    format_log(info, "L/U.user(~p): Auth by Error: ~p (took ~pms)~n"
+		    format_log(info, "L/U.user(~w): Auth by Error: ~w (took ~wms)~n"
 			       ,[self(), get_value(<<"Auth-Password">>, Prop), timer:now_diff(erlang:now(), T1) div 1000]),
 		    FetchPid ! {xml_response, ID, ?EMPTYRESPONSE},
 		    failed

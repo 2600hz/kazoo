@@ -43,7 +43,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
 	      ,resp_etag=rev_to_etag(Doc)
 	     };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
+            format_log(error, "Unexpected return from datastore: ~w~n", [_Else]),
             Context
     end.
 
@@ -100,7 +100,7 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
                 ,resp_etag=rev_to_etag(Doc)
             };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
+            format_log(error, "Unexpected return from datastore: ~w~n", [_Else]),
             Context
     end.
 
@@ -136,7 +136,7 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
                 ,resp_etag=rev_to_etag(Doc1)
             };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
+            format_log(error, "Unexpected return from datastore: ~w~n", [_Else]),
             Context
     end.
 
@@ -163,7 +163,7 @@ delete(#cb_context{db_name=DB, doc=Doc}=Context) ->
                 ,resp_data=[]
             };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
+            format_log(error, "Unexpected return from datastore: ~w~n", [_Else]),
             Context
     end.
 
@@ -189,7 +189,7 @@ public_fields({struct, Json}) ->
             {struct, PubDoc ++ [{<<"id">>, Id}]}
     end;
 public_fields(Json) ->
-    format_log(error, "Unhandled Json format in public_fields:~n~p~n", [Json]),
+    format_log(error, "Unhandled Json format in public_fields:~n~w~n", [Json]),
     Json.
 
 %%--------------------------------------------------------------------
@@ -207,7 +207,7 @@ private_fields({struct, Json}) ->
                         is_private_key(K)
                  end, Json);
 private_fields(Json) ->
-    format_log(error, "Unhandled Json format in private fields:~n~p~n", [Json]),
+    format_log(error, "Unhandled Json format in private fields:~n~w~n", [Json]),
     Json.
     
 %%--------------------------------------------------------------------
@@ -240,5 +240,5 @@ rev_to_etag({struct, Props}) ->
             undefined
     end;
 rev_to_etag(_Json) ->
-    format_log(error, "Unhandled Json format in rev to etag:~n~p~n", [_Json]),
+    format_log(error, "Unhandled Json format in rev to etag:~n~w~n", [_Json]),
     undefined.

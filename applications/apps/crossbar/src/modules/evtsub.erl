@@ -210,12 +210,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.evtsub">>, [RD, C
     {noreply, State};
 
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    %%format_log(info, "ACCOUNTS(~p): unhandled binding: ~p~n", [self(), Route]),
+    %%format_log(info, "ACCOUNTS(~w): unhandled binding: ~w~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "EVTSUB(~p): unhandled info ~p~n", [self(), _Info]),
+    format_log(info, "EVTSUB(~w): unhandled info ~w~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -367,7 +367,7 @@ validate([Stream], #cb_context{req_verb = <<"post">>, session=Session, req_data=
 
     MaxEvents = constrain_max_events(whapps_json:get_value(<<"max-events">>, Data, ?MAX_STREAM_EVENTS)),
 
-    format_log(info, "Attempting to update ~p(~p) to ~p~n", [Stream, MaxEvents, SubPid]),
+    format_log(info, "Attempting to update ~w(~w) to ~w~n", [Stream, MaxEvents, SubPid]),
     update_stream(SubPid, Stream, MaxEvents),
     Streams = get_streams(SubPid),
     crossbar_util:response({struct, [{<<"streams">>, Streams}]}, Context);
@@ -383,7 +383,7 @@ validate([Stream], #cb_context{req_verb = <<"delete">>, session=Session, req_dat
 	       end,
     crossbar_util:response({struct, [{<<"streams">>, Ss}, {<<"events">>, Es}]}, Context);
 validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
-    format_log(info, "EvtSub.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
+    format_log(info, "EvtSub.validate: P: ~w~nV: ~s Ns: ~w~nData: ~w~nContext: ~w~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
 
 %% Subscriber-related functions
@@ -439,26 +439,26 @@ rm_stream(SubPid, Stream, false) ->
 start_subscription_handler(Session) ->
     Pid = spawn(fun() -> process_flag(trap_exit, true), subscriber_loop([]) end),
     ?MODULE:add_subscriber_pid(Session#session.'_id', Pid),
-    format_log(info, "Subscriber(~p): Started for ~p~n", [Pid, Session#session.'_id']),
+    format_log(info, "Subscriber(~w): Started for ~w~n", [Pid, Session#session.'_id']),
     Pid.
 
 -spec(subscriber_loop/1 :: (Streams :: subscriber_stream_list()) -> no_return()).
 subscriber_loop(Streams) ->
     receive
 	{add_stream, Stream, MaxEvents}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~w): recv ~w~n", [self(), _Recv]),
 	    case lists:keyfind(Stream, 1, Streams) of
 		{_, _Pid} ->
-		    format_log(info, "Subscriber(~p): Already have stream ~p~n", [self(), Stream]),
+		    format_log(info, "Subscriber(~w): Already have stream ~w~n", [self(), Stream]),
 		    subscriber_loop(Streams);
 		false ->
 		    Pid = spawn(fun() -> stream_loop(start_amqp(#stream_state{max_events=MaxEvents, stream=Stream})) end),
 		    link(Pid),
-		    format_log(info, "Subscriber(~p): Adding stream ~p: ~p~n", [self(), Stream, Pid]),
+		    format_log(info, "Subscriber(~w): Adding stream ~w: ~w~n", [self(), Stream, Pid]),
 		    subscriber_loop([ {Stream, Pid} | Streams])
 	    end;
 	{update_stream, Stream, MaxEvents}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~w): recv ~w~n", [self(), _Recv]),
 	    case lists:keyfind(Stream, 1, Streams) of
 		{_, SPid} ->
 		    SPid ! {set_max_events, MaxEvents};
@@ -466,12 +466,12 @@ subscriber_loop(Streams) ->
 	    end,
 	    subscriber_loop(Streams);
 	{rm_stream, RespPid, all}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~w): recv ~w~n", [self(), _Recv]),
 	    lists:foreach(fun({_, SPid}) -> SPid ! shutdown end, Streams),
 	    RespPid ! {streams, []},
 	    subscriber_loop([]);
 	{rm_stream, RespPid, Stream}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~w): recv ~w~n", [self(), _Recv]),
 	    case lists:keyfind(Stream, 1, Streams) of
 		{_, Pid} ->
 		    unlink(Pid),
@@ -484,7 +484,7 @@ subscriber_loop(Streams) ->
 		    subscriber_loop(Streams)
 	    end;
 	{get_events, RespPid, ReqStream}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~w): recv ~w~n", [self(), _Recv]),
 	    Evts = lists:foldl(fun({Stream, Pid}, Acc) when ReqStream =:= all orelse ReqStream =:= Stream ->
 				       Pid ! {get_events, self()},
 				       receive
@@ -499,24 +499,24 @@ subscriber_loop(Streams) ->
 	    RespPid ! {events, {struct, Evts}},
 	    subscriber_loop(Streams);
 	{get_streams, RespPid}=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p: ~p~n", [self(), _Recv, Streams]),
+	    format_log(info, "Subscriber(~w): recv ~w: ~w~n", [self(), _Recv, Streams]),
 	    RespPid ! {streams, [ S || {S, SPid} <- Streams,
 				       erlang:is_process_alive(SPid)
 				]},
 	    subscriber_loop(Streams);
 	shutdown=_Recv ->
-	    format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    format_log(info, "Subscriber(~w): recv ~w~n", [self(), _Recv]),
 	    lists:foreach(fun({_, Pid}) -> Pid ! shutdown end, Streams),
 	    ok;
 	{'EXIT', StreamPid, _Reason} ->
 	    case lists:keyfind(StreamPid, 2, Streams) of
 		false -> subscriber_loop(Streams);
 		{Stream, _} ->
-		    format_log(error, "Subscriber(~p): ~p(~p) went down: ~p~n", [self(), Stream, StreamPid, _Reason]),
+		    format_log(error, "Subscriber(~w): ~w(~w) went down: ~w~n", [self(), Stream, StreamPid, _Reason]),
 		    subscriber_loop(lists:keydelete(Stream,1, Streams))
 	    end;
 	_Other ->
-	    format_log(info, "Subscriber(~p): Recv ~p~n", [self(), _Other]),
+	    format_log(info, "Subscriber(~w): Recv ~w~n", [self(), _Other]),
 	    subscriber_loop(Streams)
     after 5000 ->
 	    subscriber_loop([ {S, SPid} || {S, SPid} <- Streams,
@@ -553,7 +553,7 @@ try
 	    OverflowCount = StreamState#stream_state.overflow_count,
 	    MaxEvents = StreamState#stream_state.max_events,
 
-	    format_log(info, "Stream(~p): EC: ~p OC: ~p ME: ~p~n", [self(), EventCount, OverflowCount, MaxEvents]),
+	    format_log(info, "Stream(~w): EC: ~w OC: ~w ME: ~w~n", [self(), EventCount, OverflowCount, MaxEvents]),
 
 	    case EventCount of
 		MaxEvents ->
@@ -581,12 +581,12 @@ try
 	    amqp_util:delete_queue(H, Q),
 	    ok;
 	_Other ->
-	    format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
+	    format_log(error, "Stream(~w): Unknown msg: ~w~n", [self(), _Other]),
 	    stream_loop(StreamState)
     end
 catch
   A:B ->
-	format_log(error, "Stream(~p).catch: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+	format_log(error, "Stream(~w).catch: ~w: ~w~n~w~n", [self(), A, B, erlang:get_stacktrace()]),
 	stream_loop(StreamState)
 end.
 

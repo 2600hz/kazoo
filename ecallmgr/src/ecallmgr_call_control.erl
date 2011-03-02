@@ -150,17 +150,17 @@ handle_info(timeout, #state{node=N, amqp_h=H, amqp_q=Q}=State) ->
     {noreply, State};
 
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
-    format_log(error, "CONTROL(~p): nodedown ~p~n", [self(), Node]),
+    format_log(error, "CONTROL(~w): nodedown ~w~n", [self(), Node]),
     erlang:monitor_node(Node, false),
     timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
-    format_log(error, "CONTROL(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
+    format_log(error, "CONTROL(~w): nodedown ~w, trying ping, then waiting ~w if it fails~n", [self(), Node, Timeout]),
     case net_adm:ping(Node) of
 	pong ->
 	    erlang:monitor_node(Node, true),
-	    format_log(info, "CONTROL(~p): node_is_up ~p~n", [self(), Node]),
+	    format_log(info, "CONTROL(~w): node_is_up ~w~n", [self(), Node]),
 	    {noreply, State#state{is_node_up=true}};
 	pang ->
 	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
@@ -177,7 +177,7 @@ handle_info(#'basic.consume_ok'{}, State) ->
 
 handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "CONTROL(~p): Recv App ~p~n", [self(), whapps_json:get_value(<<"Application-Name">>, JObj)]),
+    format_log(info, "CONTROL(~w): Recv App ~w~n", [self(), whapps_json:get_value(<<"Application-Name">>, JObj)]),
 
     NewCmdQ = case whapps_json:get_value(<<"Application-Name">>, JObj) of
 		  <<"queue">> -> %% list of commands that need to be added
@@ -185,7 +185,7 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
 		      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
 				     ({struct, Cmd}, TmpQ) ->
 					  AppCmd = DefProp ++ Cmd,
-					  format_log(info, "CONTROL.queue: Cmd: ~p~n", [AppCmd]),
+					  format_log(info, "CONTROL.queue: Cmd: ~w~n", [AppCmd]),
 					  queue:in({struct, AppCmd}, TmpQ)
 				  end, State#state.command_q, whapps_json:get_value(<<"Commands">>, JObj));
 		  _AppName ->
@@ -223,7 +223,7 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_time=StartT}=State) ->
     amqp_util:unbind_q_from_callctl(H, Q),
     amqp_util:queue_delete(H, Q), %% stop receiving messages
-    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
+    format_log(info, "CONTROL(~w): Received hangup, exiting (Time since process started: ~wms)~n"
 	       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
     EvtPid ! {ctl_down, self()},
     {stop, normal, State};
@@ -237,12 +237,12 @@ handle_info(is_amqp_up, #state{amqp_h=H, amqp_q=Q}=State) ->
     end;
 
 handle_info({amqp_host_down, H}, State) ->
-    format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
+    format_log(info, "CONTROL(~w): AmqpHost ~s went down, so we are too~n", [self(), H]),
     timer:send_after(1000, self(), is_amqp_up),
     {noreply, State};
 
 handle_info(_Msg, State) ->
-    format_log(info, "CONTROL(~p): Unhandled message: ~p~n", [self(), _Msg]),
+    format_log(info, "CONTROL(~w): Unhandled message: ~w~n", [self(), _Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

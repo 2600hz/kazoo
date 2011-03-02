@@ -31,7 +31,7 @@ usage() ->
      ,""
      ,"Commands:"
      ," status [node | acc]  View status of connected FS nodes, or specify a node (e.g. 'freeswitch@server.com') or acc to get just the accumulated results"
-     ,{" set_amqp_host <host>  Set the amqp host (e.g. ~p)", [net_adm:localhost()]}
+     ,{" set_amqp_host <host>  Set the amqp host (e.g. ~w)", [net_adm:localhost()]}
      ," add_fs_node <node>  Add a FreeSWITCH node to ecallmgr (e.g. 'freeswitch@server.com')"
      ," rm_fs_node <node>  Remove a FreeSWITCH node from ecallmgr (e.g. 'freeswitch@server.com')"
     ].
@@ -50,30 +50,30 @@ status(always, [DisplayOpt]) ->
 
 set_amqp_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
-    format("Setting AMQP host to ~p on ~p~n", [Host, Node]),
+    format("Setting AMQP host to ~w on ~w~n", [Host, Node]),
     case rpc_call(Node, ecallmgr_fs_handler, set_amqp_host, Arg) of
 	{ok, ok} ->
-	    {ok, "Set ecallmgr's amqp host to ~p", [Host]};
+	    {ok, "Set ecallmgr's amqp host to ~w", [Host]};
 	{ok, Other} ->
-	    {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
+	    {ok, "Something unexpected happened while setting the amqp host: ~w", [Other]}
     end.
 
 add_fs_node(always, [FSNode]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     case rpc_call(Node, ecallmgr_fs_handler, add_fs_node, [list_to_atom(FSNode)]) of
 	{ok, ok} ->
-	    {ok, "Added ~p successfully~n", [FSNode]};
+	    {ok, "Added ~w successfully~n", [FSNode]};
 	{ok, Res} ->
-	    {ok, "Failed to add node(~p): ~p~n", [FSNode, Res]}
+	    {ok, "Failed to add node(~w): ~w~n", [FSNode, Res]}
     end.
 
 rm_fs_node(always, [FSNode]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     case rpc_call(Node, ecallmgr_fs_handler, rm_fs_node, [list_to_atom(FSNode)]) of
 	{ok, _} ->
-	    {ok, "Removed ~p successfully~n", [FSNode]};
+	    {ok, "Removed ~w successfully~n", [FSNode]};
 	Other -> %{ok, Res} ->
-	    {ok, "Failed to remove node(~p): ~p~n", [FSNode, Other]}
+	    {ok, "Failed to remove node(~w): ~w~n", [FSNode, Other]}
     end.
 
 rpc_call(Node, M, F, A) ->
@@ -81,5 +81,5 @@ rpc_call(Node, M, F, A) ->
 	pong ->
 	    {ok, rpc:call(Node, M, F, A)};
 	pang ->
-	    {ok, "~p not reachable", [Node]}
+	    {ok, "~w not reachable", [Node]}
     end.

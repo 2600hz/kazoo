@@ -29,11 +29,11 @@ exec_cmd(Node, UUID, JObj, AmqpHost) ->
 	    AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
 	    case get_fs_app(Node, UUID, JObj, AmqpHost, AppName) of
 		{error, _Msg}=Err -> Err;
-		{_, noop} -> format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]), ok;
+		{_, noop} -> format_log(info, "CONTROL(~w): Noop for ~w~n", [self(), AppName]), ok;
 		{App, AppData} -> send_cmd(Node, UUID, App, AppData)
 	    end;
 	false ->
-	    format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
+	    format_log(error, "CONTROL(~w): Cmd Not for us(~w) but for ~w~n", [self(), UUID, DestID]),
 	    {error, "Command not for this node"}
     end.
 
@@ -103,13 +103,13 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
 			    %% stream file over HTTP PUSH
 			    spawn(fun() -> stream_over_http(File, Verb, JObj, AmqpHost) end);
 			false ->
-			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), File]);
+			    format_log(error, "CONTROL(~w): File ~w has gone missing!~n", [self(), File]);
 			_Method ->
 			    %% unhandled method
-			    format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
+			    format_log(error, "CONTROL(~w): Unhandled stream method ~w~n", [self(), _Method])
 		    end;
 		false ->
-		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, JObj])
+		    format_log(error, "CONTROL(~w): Failed to find ~w for storing~n~w~n", [self(), Name, JObj])
 	    end
     end;
 get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tone">>) ->
@@ -209,7 +209,7 @@ get_fs_app(Node, UUID, JObj, _AmqpHost, <<"set">>=AppName) ->
 		  end, Custom),
     {AppName, noop};
 get_fs_app(_Node, _UUID, _JObj, _AmqpHost, _App) ->
-    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
+    format_log(error, "CONTROL(~w): Unknown App ~w:~n~w~n", [self(), _App, _JObj]),
     {error, "Application unknown"}.
 
 %%%===================================================================
@@ -218,7 +218,7 @@ get_fs_app(_Node, _UUID, _JObj, _AmqpHost, _App) ->
 %% send the SendMsg proplist to the freeswitch node
 -spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) ->
-    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, whistle_util:to_list(AppName), whistle_util:to_list(Args)]),
+    format_log(info, "CONTROL(~w): SendMsg -> Node: ~w UUID: ~w App: ~w Args: ~w~n", [self(), Node, UUID, whistle_util:to_list(AppName), whistle_util:to_list(Args)]),
     freeswitch:sendmsg(Node, UUID, [
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", whistle_util:to_list(AppName)}
@@ -300,15 +300,15 @@ stream_over_http(File, Verb, JObj, AmqpHost) ->
 										 ]}
 								   ,JObj)) of
 		{ok, JSON} ->
-		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
+		    format_log(info, "CONTROL(~w): Ibrowse recv back ~w~n", [self(), JSON]),
 		    amqp_util:targeted_publish(AmqpHost, AppQ, JSON, <<"application/json">>);
 		{error, Msg} ->
-		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
+		    format_log(error, "CONTROL(~w): store_http_resp error: ~w~n", [self(), Msg])
 	    end;
 	{error, Error} ->
-	    format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error]);
+	    format_log(error, "CONTROL(~w): Ibrowse error: ~w~n", [self(), Error]);
 	{ibrowse_req_id, ReqId} ->
-	    format_log(error, "CONTROL(~p): Ibrowse_req_id: ~p~n", [self(), ReqId])
+	    format_log(error, "CONTROL(~w): Ibrowse_req_id: ~w~n", [self(), ReqId])
     end.
 
 -spec(stream_file/1 :: ({undefined | io_device(), string()}) -> {ok, list(), tuple()} | eof).

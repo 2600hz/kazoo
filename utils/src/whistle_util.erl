@@ -16,7 +16,7 @@ reload_all_apps() ->
 reload_app(stdlib) -> ok;
 reload_app(kernel) -> ok;
 reload_app(App) ->
-    io:format("Reloading App ~p~n", [App]),
+    io:format("Reloading App ~w~n", [App]),
     {ok, Prop} = application:get_all_key(App),
     case proplists:get_value(modules, Prop, []) of
 	[] ->
@@ -24,7 +24,7 @@ reload_app(App) ->
 	Mods ->
 	    reloader:reload_modules(Mods)
     end,
-    io:format("Reloading ~p Done...~n", [App]).
+    io:format("Reloading ~w Done...~n", [App]).
 
 
 -spec(to_hex/1 :: (S :: term()) -> string()).

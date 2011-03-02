@@ -103,7 +103,7 @@ handle_info(timeout, #state{amqp_q=Q}=S) ->
     H = whapps_controller:get_amqp_host(),
     {noreply, S#state{amqp_h=H}};
 handle_info({amqp_host_down, H}, S) ->
-    format_log(info, "TS_CALL(~p): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
+    format_log(info, "TS_CALL(~w): Amqp Host ~s went down, restarting amqp in a bit~n", [self(), H]),
     {noreply, S, 0};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -142,7 +142,7 @@ get_amqp_queue(AmqpHost, CallID) ->
 
 get_amqp_queue(AmqpHost, CallID, Q) ->
     EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
-    format_log(info, "TS_CLEANUP(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
+    format_log(info, "TS_CLEANUP(~w): Listening on Q: ~w for call events relating to ~w~n", [self(), EvtQ, CallID]),
 
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),

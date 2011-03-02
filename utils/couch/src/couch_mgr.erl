@@ -58,7 +58,7 @@
 -spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    logger:format_log(info, "Read into ~w from CouchDB dir: ~w~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
@@ -69,7 +69,7 @@ load_doc_from_file(DB, App, File) ->
 -spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
 update_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    logger:format_log(info, "Read into ~w from CouchDB dir: ~w~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
@@ -397,7 +397,7 @@ init(_) ->
 handle_call(get_host, _From, #state{connection={H,_}}=State) ->
     {reply, H, State};
 handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}=State) ->
-    format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
+    format_log(info, "WHISTLE_COUCH(~w): Updating host from ~w to ~w~n", [self(), OldHost, Host]),
     case get_new_connection(Host, User, Pass) of
 	{error, _Error}=E ->
 	    {reply, E, State};
@@ -405,7 +405,7 @@ handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}
 	    {reply, ok, State#state{connection=HC, change_handlers=[], creds={User,Pass}}}
     end;
 handle_call({set_host, Host, User, Pass}, _From, State) ->
-    format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
+    format_log(info, "WHISTLE_COUCH(~w): Setting host for the first time to ~w~n", [self(), Host]),
     case get_new_connection(Host, User, Pass) of
 	{error, _Error}=E ->
 	    {reply, E, State};
@@ -427,7 +427,7 @@ handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, #state{change_hand
 	{{error, _}=E, CH2} -> {reply, E, State#state{change_handlers=CH2}}
     end;
 handle_call(Req, From, #state{connection={}}=State) ->
-    format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p) with no auth~n", [self(), net_adm:localhost()]),
+    format_log(info, "WHISTLE_COUCH(~w): No connection, trying localhost(~w) with no auth~n", [self(), net_adm:localhost()]),
     case get_new_connection(net_adm:localhost(), "", "") of
 	{error, _Error}=E ->
 	    {reply, E, State};
@@ -436,7 +436,7 @@ handle_call(Req, From, #state{connection={}}=State) ->
 	    handle_call(Req, From, State#state{connection=HC, change_handlers=[]})
     end;
 handle_call(_Request, _From, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
+    format_log(error, "WHISTLE_COUCH(~w): Failed call ~w with state ~w~n", [self(), _Request, State]),
     {reply, {error, unhandled_call}, State}.
 
 %%--------------------------------------------------------------------
@@ -463,7 +463,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): DONE change handler ref ~p~n", [self(), ReqID]),
+    format_log(info, "WHISTLE_COUCH.wait(~w): DONE change handler ref ~w~n", [self(), ReqID]),
     case lists:keyfind(ReqID, 2, CH) of
 	false -> {noreply, State};
 	{{_, DocID}=Key,_,Pids}=Item ->
@@ -476,10 +476,10 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
     end;
 handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
     DocID = get_value(<<"id">>, Change),
-    %%format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
+    %%format_log(info, "WHISTLE_COUCH.wait(~w): keyfind res = ~w~n", [self(), lists:keyfind(ReqID, 2, CH)]),
     case lists:keyfind(ReqID, 2, CH) of
 	false ->
-	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
+	    format_log(info, "WHISTLE_COUCH.wait(~w): ~w not found, skipping~n", [self(), DocID]),
 	    {noreply, State};
 	{{_, DocID}, _, Pids} ->
 	    notify_pids(Change, DocID, Pids),
@@ -489,7 +489,7 @@ handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
 	    {noreply, State}    
     end;
 handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
+    format_log(info, "WHISTLE_COUCH.wait(~w): connection closed for change handlers: reqid ~w~n", [self(), ReqID]),
     CH1 = lists:foldl(fun({{_, DocID}=Key, RID, Pids}=Item, Acc) when RID =:= ReqID ->
 			      TmpCH = [Item],
 			      lists:foreach(fun(P) ->
@@ -501,10 +501,10 @@ handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=Stat
 		      end, [], CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info({_ReqID, {error, E}}, State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): ERROR ~p for reqid ~p~n", [self(), E, _ReqID]),
+    format_log(info, "WHISTLE_COUCH.wait(~w): ERROR ~w for reqid ~w~n", [self(), E, _ReqID]),
     {noreply, State};
 handle_info({'DOWN', _MRefConn, process, Pid, _Reason}, #state{change_handlers=CH}=State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), Pid, _Reason]),
+    format_log(error, "WHISTLE_COUCH(~w): Pid(~w) went down: ~w~n", [self(), Pid, _Reason]),
     CH1 = lists:foldl(fun({Key, _, _}=Item, Acc) ->
 			      case stop_change_handler(Key, Pid, [Item]) of
 				  {_, []} -> Acc;
@@ -513,7 +513,7 @@ handle_info({'DOWN', _MRefConn, process, Pid, _Reason}, #state{change_handlers=C
 		    end, [], CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
-    format_log(error, "WHISTLE_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
+    format_log(error, "WHISTLE_COUCH(~w): EXIT received for ~w with reason ~w~n", [self(), Pid, _Reason]),
     CH1 = lists:foldl(fun({Key, _, _}=Item, Acc) ->
 			      case stop_change_handler(Key, Pid, [Item]) of
 				  {_, []} -> Acc;
@@ -522,7 +522,7 @@ handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
 		    end, [], CH),
     {noreply, State#state{change_handlers=CH1}};
 handle_info(_Info, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
+    format_log(error, "WHISTLE_COUCH(~w): Unexpected info ~w~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -610,7 +610,7 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_ha
 		    {error, db_not_reachable, State};
 		Db ->
 		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"} | Opts]),
-		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
+		    format_log(info, "WHISTLE_COUCH(~w): Added handler for ~w(~w) ref ~w~n", [self(), DocID, Pid, ReqID]),
 		    link(Pid),
 		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid]} | CH]}}
 	    end;
@@ -619,7 +619,7 @@ start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_ha
 		false ->
 		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid | Pids]} | lists:keydelete({DBName, DocID}, 1, CH)]}};
 		true ->
-		    %%format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
+		    %%format_log(info, "WHISTLE_COUCH(~w): Found handler for ~w(~w)~n", [self(), DocID, Pid]),
 		    {error, handler_exists, State}
 	    end
     end.
@@ -636,10 +636,10 @@ get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, 
 -spec(get_new_conn/2 :: (Host :: string(), Opts :: proplist()) -> tuple(string(), #server{}) | tuple(error, term())).
 get_new_conn(Host, Opts) ->
     Conn = couchbeam:server_connection(Host, 5984, "", Opts),
-    format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
+    format_log(info, "WHISTLE_COUCH(~w): Host ~w Opts ~w has conn ~w~n", [self(), Host, Opts, Conn]),
     case couchbeam:server_info(Conn) of
 	{ok, _Version} ->
-	    format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
+	    format_log(info, "WHISTLE_COUCH(~w): Connected to ~w~n~w~n", [self(), Host, _Version]),
 	    spawn(fun() ->
 			  case props:get_value(basic_auth, Opts) of
 			      undefined -> save_config(Host);
@@ -648,7 +648,7 @@ get_new_conn(Host, Opts) ->
 		  end),
 	    {Host, Conn};
 	{error, Err}=E ->
-	    format_log(error, "WHISTLE_COUCH(~p): Unable to connect to ~p: ~p~n", [self(), Host, Err]),
+	    format_log(error, "WHISTLE_COUCH(~w): Unable to connect to ~w: ~w~n", [self(), Host, Err]),
 	    E
     end.
 
@@ -718,10 +718,10 @@ init_state() ->
 notify_pids(Change, DocID, Pids) ->
     SendToPid = case get_value(<<"deleted">>, Change) of
         true ->
-            format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
+            format_log(info, "WHISTLE_COUCH.wait(~w): ~w deleted~n", [self(), DocID]),
             {document_deleted, DocID}; % document deleted, no more looping
         undefined ->
-            format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
+            format_log(info, "WHISTLE_COUCH.wait(~w): ~w change sending to ~w~n", [self(), DocID, Pids]),
             {document_changes, DocID, [ C || {C} <- get_value(<<"changes">>, Change)]}
         end,
     lists:foreach(fun(P) -> P ! SendToPid end, Pids).
@@ -747,6 +747,6 @@ save_config(H) ->
 save_config(H, U, P) ->
     {ok, Config} = get_startup_config(),
     file:write_file(?STARTUP_FILE
-		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
+		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~w.~n", [Item]) | Acc] end
 				 , "", [{couch_host, H, U, P} | lists:keydelete(couch_host, 1, Config)])
 		   ).

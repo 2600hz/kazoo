@@ -39,7 +39,7 @@ handle_req(Prop) ->
     AuthR = case ts_util:is_ipv4(AuthR0) of
 		true ->
 		    [_ToUser, ToDomain] = binary:split(get_value(<<"To">>, Prop), <<"@">>),
-		    format_log(info, "TS_AUTH(~p): Auth-Realm (~p) not a hostname, trying To-Domain(~p)~n", [self(), AuthR0, ToDomain]),
+		    format_log(info, "TS_AUTH(~w): Auth-Realm (~w) not a hostname, trying To-Domain(~w)~n", [self(), AuthR0, ToDomain]),
 		    ToDomain;
 		false ->
 		    AuthR0
@@ -73,25 +73,25 @@ handle_req(Prop) ->
   %% is_inbound(Domain) ->
     %% IP = ts_util:find_ip(Domain),
     %% Options = [{"key", IP}],
-    %% format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
+    %% format_log(info, "TS_AUTH(~w): lookup_carrier using ~w(~w) in ~w~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
     %% case couch_mgr:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
     %% 	{error, not_found} ->
-    %% 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
+    %% 	    format_log(info, "TS_AUTH(~w): No Carrier matching ~w(~w)~n", [self(), Domain, IP]),
     %% 	    false;
     %% 	{error,  db_not_reachable} ->
-    %% 	    format_log(info, "TS_AUTH(~p): No DB accessible~n", [self()]),
+    %% 	    format_log(info, "TS_AUTH(~w): No DB accessible~n", [self()]),
     %% 	    false;
     %% 	{error, view_not_found} ->
-    %% 	    format_log(info, "TS_AUTH(~p): View ~p missing~n", [self(), ?TS_VIEW_CARRIERIP]),
+    %% 	    format_log(info, "TS_AUTH(~w): View ~w missing~n", [self(), ?TS_VIEW_CARRIERIP]),
     %% 	    false;
     %% 	{ok, []} ->
-    %% 	    format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
+    %% 	    format_log(info, "TS_AUTH(~w): No Carrier matching ~w(~w)~n", [self(), Domain, IP]),
     %% 	    false;
     %% 	{ok, [{struct, ViewProp} | _Rest]} ->
-    %% 	    format_log(info, "TS_AUTH(~p): Carrier found for ~p(~p)~n~p~n", [self(), Domain, IP, ViewProp]),
+    %% 	    format_log(info, "TS_AUTH(~w): Carrier found for ~w(~w)~n~w~n", [self(), Domain, IP, ViewProp]),
     %% 	    true;
     %% 	_Else ->
-    %% 	    format_log(error, "TS_AUTH(~p): Got something unexpected during inbound check~n~p~n", [self(), _Else]),
+    %% 	    format_log(error, "TS_AUTH(~w): Got something unexpected during inbound check~n~w~n", [self(), _Else]),
     %% 	    false
     %% end.
 

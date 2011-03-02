@@ -93,7 +93,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~p", [_Msg]),
+    io:format("Unhandled ~w", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -150,12 +150,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Co
     {noreply, State};
 
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    %%format_log(info, "USERS(~p): unhandled binding: ~p~n", [self(), Route]),
+    %%format_log(info, "USERS(~w): unhandled binding: ~w~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "USERS(~p): unhandled info ~p~n", [self(), _Info]),
+    format_log(info, "USERS(~w): unhandled info ~w~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

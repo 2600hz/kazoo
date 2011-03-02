@@ -50,7 +50,7 @@
 -spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: string(), EvtProp :: proplist()) -> no_return()).
 new_cdr(UUID, AmqpHost, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
-    format_log(info, "CALL_CDR(~p): ~s~n", [UUID, CDRJson]),
+    format_log(info, "CALL_CDR(~w): ~s~n", [UUID, CDRJson]),
     amqp_util:callevt_publish(AmqpHost, UUID, CDRJson, cdr).
 
 -spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).

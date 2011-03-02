@@ -59,7 +59,7 @@
 %%--------------------------------------------------------------------
 -spec(map/2 :: (Routing :: binary(), Payload :: term()) -> list(tuple(term(), term()))).
 map(Routing, Payload) ->
-    format_log(info, "Running map: ~p~n", [Routing]),
+    format_log(info, "Running map: ~w~n", [Routing]),
     lists:foldl(fun({B, Ps}, Acc) ->
                        case binding_matches(B, Routing) of
                            true -> map_bind_results(Ps, Payload, Acc, Routing);
@@ -76,7 +76,7 @@ map(Routing, Payload) ->
 %%--------------------------------------------------------------------
 -spec(fold/2 :: (Routing :: binary(), Payload :: term()) -> term()).
 fold(Routing, Payload) ->
-    format_log(info, "Running fold: ~p~n", [Routing]),
+    format_log(info, "Running fold: ~w~n", [Routing]),
     lists:foldl(fun({B, Ps}, Acc) ->
                        case binding_matches(B, Routing) of
                            true -> fold_bind_results(Ps, Acc, Routing);
@@ -161,7 +161,7 @@ init([]) ->
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
     {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
-    format_log(info, "CB_BINDING(~p): ~p binding ~p~n", [self(), From, Binding]),
+    format_log(info, "CB_BINDING(~w): ~w binding ~w~n", [self(), From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
 	false ->
 	    link(From),
@@ -214,7 +214,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
-    format_log(info, "BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
+    format_log(info, "BINDINGS(~w): ~w went down(~w)~n", [self(), Pid, _Reason]),
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, remove_subscriber(Pid, Subs)} | Acc]
 		      end, [], Bs),
@@ -375,7 +375,7 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
 		    fold_bind_results(ReRunQ, Payload, Route, queue:len(ReRunQ), queue:new());
 		PidsLen ->
 		    %% If all Pids 'eoq'ed, ReRunQ will be the same queue, and Payload will be unchanged - exit the fold
-		    format_log(error, "CB_BIND(~p): Loop detected for ~p, returning~n", [self(), Route]),
+		    format_log(error, "CB_BIND(~w): Loop detected for ~w, returning~n", [self(), Route]),
 		    Payload
 	    end;
 

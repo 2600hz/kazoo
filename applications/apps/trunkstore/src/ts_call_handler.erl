@@ -158,7 +158,7 @@ handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) when not is_binary(Q) ->
     {noreply, S#state{amqp_h=H, amqp_q=NewQ}, 1000};
 
 handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
-    format_log(info, "TS_CALL(~p): AmqpHost ~s went down~n", [self(), H]),
+    format_log(info, "TS_CALL(~w): AmqpHost ~s went down~n", [self(), H]),
     timer:send_after(1000, self(), is_amqp_up),
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
@@ -175,10 +175,10 @@ handle_info(is_amqp_up, #state{callid=CallID, amqp_q={error, _}, is_amqp_up=fals
 
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
     stop_call_activity_ref(Ref),
-    format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
+    format_log(info, "TS_CALL(~w): No status_resp received; assuming call is down and we missed it.~n", [self()]),
     {stop, shutdown, S};
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) when is_binary(Q) ->
-    format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
+    format_log(info, "TS_CALL(~w): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
     stop_call_activity_ref(Ref),
 
     Prop = [{<<"Call-ID">>, CallID} | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_call_handler">>, <<"0.5.3">>)],
@@ -186,14 +186,14 @@ handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref,
 	{ok, JSON} ->
 	    amqp_util:callevt_publish(H, CallID, JSON, status_req);
 	{error, E} ->
-	    format_log(error, "TS_CALL(~p): sending status_req failed: ~p~n", [self(), E])
+	    format_log(error, "TS_CALL(~w): sending status_req failed: ~w~n", [self(), E])
     end,
     {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=down}};
 handle_info(#'basic.consume_ok'{}, #state{call_activity_ref=Ref}=S) ->
     stop_call_activity_ref(Ref),
     {noreply, S#state{call_activity_ref=call_activity_ref()}};
 handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags, call_activity_ref=Ref}=S) ->
-    format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
+    format_log(info, "TS_CALL(~w): Recv off amqp: ~s~n", [self(), Payload]),
     stop_call_activity_ref(Ref),
 
     JObj = mochijson2:decode(binary_to_list(Payload)),
@@ -201,7 +201,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
     case whapps_json:get_value(<<"Event-Name">>, JObj) of
 	<<"cdr">> ->
 	    spawn(fun() ->
-			  format_log(info, "TS_CALL(~p): Scenario(~p) for ~p~n", [self(), Flags#route_flags.scenario, Flags#route_flags.callid]),
+			  format_log(info, "TS_CALL(~w): Scenario(~w) for ~w~n", [self(), Flags#route_flags.scenario, Flags#route_flags.callid]),
 			  true = whistle_api:call_cdr_v(JObj),
 			  close_down_call(JObj, Flags, S#state.leg_number),
 			  ts_cdr:store_cdr(JObj, Flags)
@@ -209,7 +209,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    {stop, normal, S};
 	<<"route_win">> ->
 	    true = whistle_api:route_win_v(JObj),
-	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), JObj]),
+	    format_log(info, "TS_CALL(~w): route win received~n~w~n", [self(), JObj]),
 	    {noreply, S#state{ctl_q=whapps_json:get_value(<<"Control-Queue">>, JObj), call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(JObj),
@@ -230,18 +230,18 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 						       ,direction = <<"inbound">>
 						      }
 				    ,S#state.leg_number]),
-	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
+	    format_log(info, "TS_CALL(~w): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"status_resp">> ->
 	    true = whistle_api:call_status_resp_v(JObj),
-	    format_log(info, "TS_CALL(~p): Call is active, despite appearances~n", [self()]),
+	    format_log(info, "TS_CALL(~w): Call is active, despite appearances~n", [self()]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	_EvtName ->
-	    format_log(info, "TS_CALL(~p): Evt: ~p~n", [self(), _EvtName]),
+	    format_log(info, "TS_CALL(~w): Evt: ~w~n", [self(), _EvtName]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}}
     end;
 handle_info(_Info, S) ->
-    format_log(error, "TS_CALL(~p): Unhandled info: ~p~n", [self(), _Info]),
+    format_log(error, "TS_CALL(~w): Unhandled info: ~w~n", [self(), _Info]),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -258,7 +258,7 @@ handle_info(_Info, S) ->
 terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=StartT, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
     Duration = get_call_duration([], Flags, StartT),
-    format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk and billing for ~p seconds"
+    format_log(error, "TS_CALL(~w): terminating via shutdown, releasing trunk and billing for ~w seconds"
 	       ,[self(), Duration]),
     update_account(Duration, Flags), % charge for minimmum seconds since we apparently messed up
     amqp_util:delete_queue(H, Q),
@@ -266,13 +266,13 @@ terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=Sta
 terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
-    format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
+    format_log(error, "TS_CALL(~w): terminating normally: took ~w~n", [self(), DeltaTime]),
     amqp_util:delete_queue(H, Q),
     ok;
 terminate(_Unexpected, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
-    format_log(error, "TS_CALL(~p): terminating unexpectedly: took ~p~n~p~n", [self(), DeltaTime, _Unexpected]),
+    format_log(error, "TS_CALL(~w): terminating unexpectedly: took ~w~n~w~n", [self(), DeltaTime, _Unexpected]),
     amqp_util:delete_queue(H, Q),
     ok.
 
@@ -296,7 +296,7 @@ get_amqp_queue(AmqpHost, CallID) ->
 
 get_amqp_queue(AmqpHost, CallID, Q) ->
     EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
-    format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
+    format_log(info, "TS_CALL(~w): Listening on Q: ~w for call events relating to ~w~n", [self(), EvtQ, CallID]),
 
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
     amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),

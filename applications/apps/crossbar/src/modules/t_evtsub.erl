@@ -50,7 +50,7 @@ start_full_test() ->
 	lists:foreach(fun(_) -> publish_auth_req() end, lists:seq(1, PublishNTimes)),
 
 	CmpFun = fun(V) ->
-			 format_log(info, "Len == ~p~n", [length(V)]),
+			 format_log(info, "Len == ~w~n", [length(V)]),
 			 length(V) =:= MaxEvents
 		 end,
 	
@@ -69,7 +69,7 @@ start_full_test() ->
 	E:R ->
 	    format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
 	    true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
-	    format_log(error, "Error ~p:~p~n~p~n", [E, R, erlang:get_stacktrace()])
+	    format_log(error, "Error ~w:~w~n~w~n", [E, R, erlang:get_stacktrace()])
     end.
 
 verify_resp({_,Code,_,JSON}, Code, Rules) ->
@@ -81,7 +81,7 @@ verify_resp({_,Code,_,JSON}, Code, Rules) ->
 	      Fun(V);
 	 ({KeyPath, Result}) ->
 	      V = whapps_json:get_value(KeyPath, JObj),
-	      format_log(info, "~p: Is ~p == ~p~n", [KeyPath, V, Result]),
+	      format_log(info, "~w: Is ~w == ~w~n", [KeyPath, V, Result]),
 	      V == Result
       end, Rules);
 verify_resp(_, _, _) -> false.

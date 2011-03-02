@@ -204,7 +204,7 @@ init([]) ->
 %% #state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, Host}, _From, #state{amqp_host=H}=State) ->
-    format_log(info, "FS_HANDLER(~p): Switching AMQP hosts from ~p to ~p~n", [self(), H, Host]),
+    format_log(info, "FS_HANDLER(~w): Switching AMQP hosts from ~w to ~w~n", [self(), H, Host]),
     start_amqp(Host),
     {reply, ok, State#state{amqp_host=Host}};
 handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
@@ -240,10 +240,10 @@ handle_call({rm_fs_node, Node}, _From, State) ->
     {reply, Resp, State1};
 handle_call({request_resource, Type, Options}, _From, #state{fs_nodes=Nodes}=State) ->
     Resp = process_resource_request(Type, Nodes, Options),
-    format_log(info, "FS_HANDLER(~p): Resource Resp: ~p~n", [self(), Resp]),
+    format_log(info, "FS_HANDLER(~w): Resource Resp: ~w~n", [self(), Resp]),
     {reply, Resp, State};
 handle_call(_Request, _From, State) ->
-    format_log(error, "FS_HANDLER(~p): Unhandled call ~p~n", [self(), _Request]),
+    format_log(error, "FS_HANDLER(~w): Unhandled call ~w~n", [self(), _Request]),
     {reply, {error, unhandled_request}, State}.
 
 %%--------------------------------------------------------------------
@@ -270,22 +270,22 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
-    format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n~p~n", [self(), HPid, Reason, Nodes]),
+    format_log(error, "FS_HANDLER(~w): Handler(~w) EXITed: ~w~n~w~n", [self(), HPid, Reason, Nodes]),
     NewNodes = check_down_pid(Nodes, HPid, Host),
     {noreply, State#state{fs_nodes=NewNodes}};
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
     case lists:filter(fun(#node_handler{node=Node1}) when Node =:= Node1 -> true; (_) -> false end, Nodes) of
 	[] ->
-	    format_log(info, "FS_HANDLER(~p): Received nodedown for ~p but node is not known~n", [self(), Node]),
+	    format_log(info, "FS_HANDLER(~w): Received nodedown for ~w but node is not known~n", [self(), Node]),
 	    {noreply, State};
 	[#node_handler{node=Node, options=Opts}=N|_] ->
 	    erlang:monitor_node(Node, false),
 	    WatchPid = spawn_link(fun() -> watch_node_for_restart(Node, Opts) end),
-	    format_log(info, "FS_HANDLER(~p): Node ~p has gone down~n", [self(), Node]),
+	    format_log(info, "FS_HANDLER(~w): Node ~w has gone down~n", [self(), Node]),
 	    {noreply, State#state{fs_nodes=[N#node_handler{node_watch_pid=WatchPid} | lists:keydelete(Node, 2, Nodes)]}}
     end;
 handle_info(_Info, State) ->
-    format_log(info, "FS_HANDLER(~p): Unhandled Info: ~p~n", [self(), _Info]),
+    format_log(info, "FS_HANDLER(~w): Unhandled Info: ~w~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -301,7 +301,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{fs_nodes=Nodes, amqp_host=H}) ->
     Self = self(),
-    format_log(error, "FS_HANDLER(~p): terminating: ~p~n", [Self, _Reason]),
+    format_log(error, "FS_HANDLER(~w): terminating: ~w~n", [Self, _Reason]),
     lists:foreach(fun close_node/1, Nodes),
     amqp_util:channel_close(H),
     ok.
@@ -335,14 +335,14 @@ watch_node_for_restart(Node, Opts, Timeout) ->
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
 	pong ->
-	    format_log(info, "FS_HANDLER.is_node_up(~p): ~p has risen~n", [self(), Node]),
+	    format_log(info, "FS_HANDLER.is_node_up(~w): ~w has risen~n", [self(), Node]),
 	    ?MODULE:add_fs_node(Node, Opts);
 	pang ->
 	    receive
-		shutdown -> format_log(info, "FS_HANDLER(~p): watcher going down for ~p~n", [self(), Node])
+		shutdown -> format_log(info, "FS_HANDLER(~w): watcher going down for ~w~n", [self(), Node])
 	    after
 		Timeout ->
-		    format_log(info, "FS_HANDLER.is_node_up(~p): trying ~p again, then waiting for ~p secs~n", [self(), Node, Timeout div 1000]),
+		    format_log(info, "FS_HANDLER.is_node_up(~w): trying ~w again, then waiting for ~w secs~n", [self(), Node, Timeout div 1000]),
 		    watch_node_for_restart(Node, Opts, Timeout)
 	    end
     end.
@@ -388,17 +388,17 @@ check_down_pid(Nodes, HPid, Host) ->
 restart_handler(Node, Options, Host, _, undefined, StartFun) ->
     case StartFun(Node, Options, Host) of
 	{error, Err} ->
-	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
+	    format_log(error, "FS_HANDLER.rstrt_h(~w): Error ~w starting handler~n", [self(), Err]),
 	    undefined;
 	Pid when is_pid(Pid) -> Pid
     end;
 restart_handler(Node, Options, Host, HPid, HPid, StartFun) ->
     case StartFun(Node, Options, Host) of
 	{error, Err} ->
-	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
+	    format_log(error, "FS_HANDLER.rstrt_h(~w): Error ~w restarting handler ~w~n", [self(), Err, HPid]),
 	    undefined;
 	Pid when is_pid(Pid) ->
-	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
+	    format_log(info, "FS_HANDLER.rstrt_h(~w): Restarting ~w as ~w~n", [self(), HPid, Pid]),
 	    Pid
     end;
 restart_handler(_, _, _, _, Pid, _) -> Pid.
@@ -441,18 +441,18 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
 							    }
 					       | Nodes]}};
 		pang ->
-		    format_log(error, "FS_HANDLER(~p): ~p not responding~n", [self(), Node]),
+		    format_log(error, "FS_HANDLER(~w): ~w not responding~n", [self(), Node]),
 		    {{error, no_connection}, State}
 	    end;
 	[#node_handler{node=Node, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}=N] ->
-	    format_log(info, "FS_HANDLER(~p): handlers known ~p~n", [self(), N]),
+	    format_log(info, "FS_HANDLER(~w): handlers known ~w~n", [self(), N]),
 	    Restart = fun(Pid, _StartFun) when is_pid(Pid) ->
 			      Pid ! {update_options, Options},
 			      Pid;
 			 (_, StartFun) ->
 			      case StartFun(Node, Options, Host) of
 				  {error, E} ->
-				      format_log(error, "FS_HANDLER.add(~p): Handler start on ~p failed because ~p~n", [self(), Node, E]),
+				      format_log(error, "FS_HANDLER.add(~w): Handler start on ~w failed because ~w~n", [self(), Node, E]),
 				      undefined;
 				  Pid -> Pid
 			      end
@@ -468,7 +468,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
 rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
     case lists:keyfind(Node, 2, Nodes) of
 	false ->
-	    format_log(error, "FS_HANDLER(~p): No handlers found for ~p~n", [self(), Node]),
+	    format_log(error, "FS_HANDLER(~w): No handlers found for ~w~n", [self(), Node]),
 	    {{error, no_node, Node}, State};
 	N ->
 	    Res = close_node(N),
@@ -510,19 +510,19 @@ start_handler(Node, Options, Host, Mod) ->
 		link(Pid),
 		Pid;
 	    {error, _Other}=E ->
-		format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p~n", [self(), Mod, Node, Host, _Other]),
+		format_log(error, "FS_HANDLER(~w): Failed to start ~w for ~w on ~w: got ~w~n", [self(), Mod, Node, Host, _Other]),
 		E
 	end
     catch
 	What:Why ->
-	    format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p:~p~n", [self(), Mod, Node, Host, What, Why]),
+	    format_log(error, "FS_HANDLER(~w): Failed to start ~w for ~w on ~w: got ~w:~w~n", [self(), Mod, Node, Host, What, Why]),
 	    {error, Why}
     end.
 
 -spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(#node_handler{}), Options :: proplist()) -> list(proplist()) | []).
 process_resource_request(<<"audio">>=Type, Nodes, Options) ->
     NodesResp = lists:map(fun(#node_handler{node_handler_pid=NodePid}=N) ->
-				  format_log(info, "FS_HANDLER.prr: NodePid ~p N ~p~n", [NodePid, N]),
+				  format_log(info, "FS_HANDLER.prr: NodePid ~w N ~w~n", [NodePid, N]),
 				  NodePid ! {resource_request, self(), Type, Options},
 				  receive
 				      {resource_response, NodePid, Resp} ->
@@ -533,7 +533,7 @@ process_resource_request(<<"audio">>=Type, Nodes, Options) ->
 			  end, Nodes),
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
-    format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),
+    format_log(info, "FS_HANDLER(~w): Unhandled resource request type ~w~n", [self(), Type]),
     [].
 
 -spec(start_amqp/1 :: (Host :: string()) -> no_return()).

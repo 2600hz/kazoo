@@ -34,7 +34,7 @@ update_views() ->
     lists:foreach(fun(File) ->
 			  case couch_mgr:update_doc_from_file(?TS_DB, trunkstore, File) of
 			      {ok, _} -> logger:format_log(info, "Updating ~s: success~n", [File]);
-			      {error, Reason} -> logger:format_log(info, "Updating ~s: error ~p~n", [File, Reason])
+			      {error, Reason} -> logger:format_log(info, "Updating ~s: error ~w~n", [File, Reason])
 			  end
 		  end, ?TS_COUCH_DESIGN_DOCS),
     ts_acctmgr:update_views().
@@ -63,7 +63,7 @@ start_replication([N | Ns]) ->
 						     ,{<<"target">>, Target}
 						     ,{<<"continuous">>, true}
 						    ]),
-			  logger:format_log(info, "TS_ACCTMGR.setup_replication: From ~s to ~s: ~p~n", [Source, Target, Res])
+			  logger:format_log(info, "TS_ACCTMGR.setup_replication: From ~s to ~s: ~w~n", [Source, Target, Res])
 		  end, Sources),
     start_replication(Ns).
 
@@ -87,6 +87,6 @@ stop_replication([N | Ns]) ->
 						     ,{<<"continuous">>, true}
 						     ,{<<"cancel">>, true}
 						    ]),
-			  logger:format_log(info, "TS_ACCTMGR.stop_replication: From ~s to ~s: ~p~n", [Source, Target, Res])
+			  logger:format_log(info, "TS_ACCTMGR.stop_replication: From ~s to ~s: ~w~n", [Source, Target, Res])
 		  end, Sources),
     stop_replication(Ns).
