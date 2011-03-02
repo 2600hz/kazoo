@@ -136,10 +136,14 @@ init([AHost]) ->
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host = CurAHost} = State) ->
     format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurAHost, AHost]),
+    %% Update the AMQP host of all the JOB
     lists:foreach(fun({_,Pid,_,_}) -> 
-        gen_server:call(Pid, {set_amqp_host, AHost}, infinity) end, supervisor:which_children(monitor_job_sup)),
+                          gen_server:call(Pid, {set_amqp_host, AHost}, infinity) 
+                  end, supervisor:which_children(monitor_job_sup)),
+    %% Update the AMQP host of all the Agents
     lists:foreach(fun({_,Pid,_,_}) -> 
-        gen_server:call(Pid, {set_amqp_host, AHost}, infinity) end, supervisor:which_children(monitor_agent_sup)),
+                          gen_server:call(Pid, {set_amqp_host, AHost}, infinity) 
+                  end, supervisor:which_children(monitor_agent_sup)),
     {reply, ok, State#state{amqp_host = AHost}};
 
 handle_call({start_job, Job_ID, Interval}, _From, State) ->
@@ -179,10 +183,12 @@ handle_call({sync_job, Job_ID}, _From, State) ->
         [] ->
             spawn(fun() -> rm_job(Job_ID) end),
             {reply, ok, State};
-        [{Job}] ->
+        [{struct, Job}=J] ->
+            format_log(info, "First: ~p~n", [J]),
             case ensure_running(Job_ID, State) of
                 {Pid, NewState} ->
                     gen_server:call(Pid, {sync, get_value(<<"value">>, Job, [])}, infinity),
+                    format_log(info, "~p~n", get_value(<<"value">>, Job, [])),
                     {reply, ok, NewState};
                 _ ->
                     {reply, ok, State}
@@ -309,13 +315,10 @@ get_jobs(State) ->
 get_jobs(#state{database = DB, db_view = View}, Key) ->
     Options = case to_binary(Key) of <<>> -> []; K -> [{"key", K}] end, 
     case couch_mgr:get_results(DB, View, Options) of
-        false ->
-            format_log(error, "MONITOR_MASTER(~p): Missing view ~p~n", [self(), View]),
-            {error, missing_view};
-        {error, not_found} ->
-            format_log(info, "MONITOR_MASTER(~p): Result not found~n", [self()]),
-            {error, not_found};
-        Jobs ->
+        {error, _}=E ->
+            format_log(info, "MONITOR_MASTER(~p): Result not found (~p)~n", [self(), E]),
+            E;
+        {ok, Jobs} ->
             format_log(info, "MONITOR_MASTER(~p): Found ~p jobs in the database ~p using options ~p~n", [self(), length(Jobs), DB, Options]), 
             Jobs
     end.

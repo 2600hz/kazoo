@@ -27,9 +27,7 @@ start_deps() ->
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(ibrowse),
-    ensure_started(couchbeam),
-    ensure_started(dynamic_compile),
-    ensure_started(log_roller).
+    ensure_started(couchbeam).
 
 %% @spec stop() -> ok
 %% @doc Stop the couch server.

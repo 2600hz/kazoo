@@ -155,6 +155,16 @@ find_route(Flags, ApiProp) ->
 		    		{error, _} ->
 		    		    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
 		    	    end;
+
+			%% someone on the account is calling someone else on the same account; don't allocate a trunk
+			{error, entry_exists} ->
+			    case inbound_route(FlagsIn1) of
+				{ok, Routes, _} ->
+				    response(Routes, ApiProp, Flags#route_flags{direction = <<"inbound">>});
+				{error, _} ->
+				    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
+			    end;
+
 			{error, _}  ->
 			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
 			    response(503, ApiProp, Flags)
