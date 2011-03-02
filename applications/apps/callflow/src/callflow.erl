@@ -17,10 +17,7 @@ start_deps ( ) ->
    ensure_started(crypto),
    ensure_started(inets),
    ensure_started(whistle_amqp),
-   ensure_started(whistle_couch),
-   ensure_started(dynamic_compile),
-   ensure_started(log_roller)
-.
+   ensure_started(whistle_couch).
 
 ensure_started ( App ) ->
    case application:start(App) of
