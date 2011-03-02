@@ -23,7 +23,6 @@
 
 -include("whistle_api.hrl").
 -include("whistle_amqp.hrl").
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE). 

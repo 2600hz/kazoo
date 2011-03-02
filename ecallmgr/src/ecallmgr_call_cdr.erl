@@ -15,6 +15,7 @@
 -import(logger, [log/2, format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
+-include("ecallmgr.hrl").
 -include("whistle_amqp.hrl").
 -include("whistle_api.hrl").
 
@@ -46,7 +47,7 @@
 			   ]).
 -define(FS_TO_WHISTLE_OUTBOUND_MAP, [{<<"variable_sip_cid_type">>, <<"Caller-ID-Type">>}]).
 
--spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: binary(), EvtProp :: proplist()) -> no_return()).
+-spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: string(), EvtProp :: proplist()) -> no_return()).
 new_cdr(UUID, AmqpHost, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
     format_log(info, "CALL_CDR(~p): ~s~n", [UUID, CDRJson]),
