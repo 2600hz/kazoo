@@ -21,7 +21,6 @@
 
 -define(SERVER, ?MODULE).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
--define(DEFAULT_PROGRESS_TIMEOUT, 6). % seconds to timeout if no progress
 
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).

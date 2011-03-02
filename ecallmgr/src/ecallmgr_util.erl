@@ -14,7 +14,7 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
+-include("ecallmgr.hrl").
 -include("whistle_api.hrl").
 
 %% retrieves the sip address for the 'to' field

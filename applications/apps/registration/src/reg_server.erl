@@ -29,7 +29,8 @@
 
 -record(state, {
 	  amqp_host = "localhost" :: string()
-	  ,my_q = <<>> :: binary()
+	  ,is_amqp_up = true :: boolean()
+	  ,my_q = {error, undefined} :: binary() | tuple(error, term())
 	  ,cleanup_ref = undefined :: undefined | reference()
 	 }).
 
@@ -106,11 +107,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_, #state{my_q={error, _}}=State) ->
-    H = whapps_controller:get_amqp_host(),
-    Q = start_amqp(H),
-    format_log(info, "REG_SRV(~p): restarting amqp with H: ~s; will retry in a bit if failed~n", [self(), H]),
-    {noreply, State#state{amqp_host=H, my_q=Q}, 5000};
 handle_info(timeout, State) ->
     H = whapps_controller:get_amqp_host(),
     Q = start_amqp(H),
@@ -118,23 +114,46 @@ handle_info(timeout, State) ->
 
     Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     format_log(info, "REG_SRV(~p): Starting timer for ~p msec: ~p~n", [self(), ?CLEANUP_RATE, Ref]),
-    {noreply, State#state{cleanup_ref=Ref, amqp_host=H, my_q=Q}};
+
+    {noreply, State#state{cleanup_ref=Ref, amqp_host=H, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
+
+handle_info(Req, #state{my_q={error, _}}=State) ->
+    H = whapps_controller:get_amqp_host(),
+    Q = start_amqp(H),
+    format_log(info, "REG_SRV(~p): restarting amqp with H: ~s; will retry in a bit if failed~n", [self(), H]),
+    handle_info(Req, State#state{amqp_host=H, my_q=Q, is_amqp_up=is_binary(Q)});
+
+handle_info({timeout, _, _}, #state{is_amqp_up=false}=S) ->
+    handle_info(timeout, S);
+
 handle_info({amqp_host_down, H}, S) ->
     format_log(info, "REG_SRV(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
     AHost = whapps_controller:get_amqp_host(),
     Q = start_amqp(AHost),
-    {noreply, S#state{amqp_host=AHost, my_q=Q}, 1000};
+    {noreply, S#state{amqp_host=AHost, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
+
 handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref}=S) ->
     format_log(info, "REG_SRV(~p): Time to clean old registrations~n", [self()]),
     spawn(fun() -> cleanup_registrations() end),
     NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     {noreply, S#state{cleanup_ref=NewRef}};
+
+handle_info({timeout, Ref1, _}, #state{cleanup_ref=Ref}=S) ->
+    format_log(info, "REG_SRV(~p): wrong ref ~p, expected ~p~n", [self(), Ref1, Ref]),
+    erlang:cancel_timer(Ref),
+    NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
+    {noreply, S#state{cleanup_ref=NewRef}};
+
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
+
+handle_info({'basic.consume_ok', _}, S) ->
+    {noreply, S};
+
 handle_info(_Info, State) ->
     format_log(info, "REG_SRV: unhandled info: ~p~n", [_Info]),
-    {noreply, State}.
+    {noreply, State, 1000}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -176,12 +195,11 @@ start_amqp(Host) ->
 -spec(stop_amqp/2 :: (Host :: string(), Q :: binary()) -> no_return()).
 stop_amqp(Host, Q) ->
     amqp_util:unbind_q_from_broadcast(Host, Q),
-    amqp_util:delete_queue(Host, Q).
+    amqp_util:queue_delete(Host, Q).
 
 -spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
 handle_req(<<"application/json">>, Payload, State) ->
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "REG_SRV(~p): Recv JSON~nPayload: ~p~n", [self(), Prop]),
     process_req(get_msg_type(Prop), Prop, State).
 
 -spec(get_msg_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary())).
@@ -213,7 +231,6 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
     RespQ = props:get_value(<<"Server-ID">>, Prop),
     send_resp(JSON, RespQ, State#state.amqp_host);
 process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
-    format_log(info, "REG_SRV: Reg success~n~p~n", [Prop]),
     true = whistle_api:reg_success_v(Prop),
 
     Contact = props:get_value(<<"Contact">>, Prop),
@@ -255,7 +272,6 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 											,whistle_util:to_binary(?MODULE)
 										    ,?APP_VSN)
 						    ]),
-	    format_log(info, "REG_SRV: req_query_resp: ~s~n", [JSON]),
 	    amqp_util:targeted_publish(State#state.amqp_host, RespServer, JSON, <<"application/json">>)
     end,
     ok;

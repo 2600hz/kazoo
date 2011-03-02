@@ -16,7 +16,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("freeswitch_xml.hrl").
 -include("whistle_api.hrl").
 -include("whistle_amqp.hrl").
@@ -243,7 +242,9 @@ generate_xml(<<"error">>, _Routes, Prop, _H) ->
     format_log(info, "L/U.route(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg])).
 
--spec(build_route/3 :: (AmqpHost :: string(), RouteProp :: proplist(), DIDFormat :: binary()) -> binary() | tuple(error, integer())).
+-spec(build_route/3 :: (AmqpHost :: string(), RouteProp :: proplist() | json_object(), DIDFormat :: binary()) -> binary() | tuple(error, integer())).
+build_route(H, {struct, RouteProp}, DIDFormat) ->
+    build_route(H, RouteProp, DIDFormat);
 build_route(_AmqpHost, RouteProp, <<"route">>) ->
     get_value(<<"Route">>, RouteProp);
 build_route(AmqpHost, RouteProp, <<"username">>) ->
@@ -308,10 +309,12 @@ receive_reg_query_resp(User) ->
 	    exit(reg_query_timeout)
     end.
 
+get_leg_vars({struct, Prop}) -> get_leg_vars(Prop);
 get_leg_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
     lists:flatten(["[", string:join(lists:map(fun binary_to_list/1, Vars), ","), "]"]).
 
+get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
     lists:flatten(["{", string:join(lists:map(fun binary_to_list/1, Vars), ","), "}"]).
