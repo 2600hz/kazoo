@@ -72,21 +72,21 @@ wait ( Call, Flow, Pid ) ->
            wait(Call, Flow, Pid);
        {'EXIT', _Pid, Reason} ->
            format_log(info, "CF EXECUTIONER (~p): Module died unexpectedly (~p)~n", [self(), Reason]),
-           self() ! { continue, 1 },
+           self() ! { continue, <<"_">> },
            wait(Call, Flow, Pid);
        { continue } -> 
-           self() ! { continue, 1 }, 
+           self() ! { continue, <<"_">> }, 
            wait(Call, Flow, Pid);
-       { continue, N } ->
+       { continue, Key } ->
            format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...~n", [self()]),
            {struct, NewFlow} = case get_value(<<"children">>, Flow) of
-                                   undefined ->
-                                       format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...~n", [self()]),
-                                       exit("Bad things happened...");
-                                   [] -> 
+                                   []       ->
                                        { struct, [] };
-                                   Children -> 
-                                       lists:nth(N, Children)
+                                   {struct, Children} ->
+                                       proplists:get_value(Key, Children);
+                                   _        ->
+                                       format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...~n", [self()]),
+                                       exit("Bad things happened...")
                                end,
            case NewFlow of
                [] ->

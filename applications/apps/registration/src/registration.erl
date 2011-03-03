@@ -27,8 +27,6 @@ start_deps() ->
     ensure_started(sasl), % logging
     ensure_started(crypto), % random
     ensure_started(whistle_amqp), % amqp wrapper
-    ensure_started(dynamic_compile), % for logging
-    ensure_started(log_roller), % for distrubuted logging
     ensure_started(whistle_couch). % couch wrapper
 
 %% @spec stop() -> ok

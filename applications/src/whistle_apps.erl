@@ -24,6 +24,7 @@ start() ->
 start_deps() ->
     reloader:start(),
     whistle_apps_deps:ensure(),
+    logger:start(),
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(riak_err),
