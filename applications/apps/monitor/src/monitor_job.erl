@@ -139,7 +139,6 @@ handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval
                                  undefined ->
                                      {{ok, CurTRef}, CurInterval};
                                  JobInterval when JobInterval /= CurInterval ->
-                                     format_log(info, "MONITOR_JOB(~p): Job ~p imported a new interval of ~p~n", [self(), Job_ID, JobInterval]), 
                                      cancel(CurTRef),
                                      {send_interval(JobInterval, iteration_cycle), JobInterval};
                                  _ ->
@@ -151,8 +150,7 @@ handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval
                                 {struct, Opt} = get_value(<<"options">>, Task, {struct, []}),
                                 [{Task_ID, #task{type = Type, options = Opt}} | TasksIn]
                         end, [], whapps_json:get_value(["tasks"], Job, [])),
-    format_log(info, "MONITOR_JOB(~p): Job ~p imported ~p tasks~n", [self(), Job_ID, length(Tasks)]),
-    format_log(info, "Second: ~p~n", [Tasks]),    
+    format_log(info, "MONITOR_JOB(~p): Job ~p imported ~p tasks for execution every ~p~n", [self(), Job_ID, length(Tasks), Interval]),
     {reply, ok, State#state{tref = TRef, interval = Interval, tasks = Tasks}};
 
 handle_call(_Request, _From, State) ->
@@ -192,7 +190,7 @@ handle_info(iteration_cycle, #state{tasks = []} = State) ->
     {stop, normal, State};
     
 handle_info(iteration_cycle, #state{job_id = Job_ID, iteration = Iteration} = State) ->
-    format_log(info, "MONITOR_JOB(~p): Job ~p woke up~n", [self(), Job_ID]), 
+    format_log(info, "MONITOR_JOB(~p): Job ~p woke up~n", [self(), Job_ID]),
     spawn_link(fun() -> run_job(State) end),
     {noreply, State#state{iteration = Iteration + 1}};
 
@@ -243,10 +241,8 @@ create_job_q(AHost) ->
     amqp_util:targeted_exchange(AHost),
     Q = amqp_util:new_monitor_queue(AHost),
     %% Bind the queue to the targeted exchange
-    format_log(info, "MONITOR_JOB(~p): Bind ~p as a targeted queue for job~n", [self(), Q]),
     amqp_util:bind_q_to_targeted(AHost, Q),
     %% Register a consumer to listen to the queue
-    format_log(info, "MONITOR_JOB~p): Consume on ~p for job~n", [self(), Q]),
     amqp_util:basic_consume(AHost, Q),
     {ok, Q}.
 
@@ -284,7 +280,15 @@ run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = It
     %% Convert Resp to JSON
     %% Send JSON
     amqp_util:queue_delete(AHost, Job_Q),
-    format_log(info, "MONITOR_JOB(~p): JOB COMPLETE!!!~nPayload: ~p~n ", [self(), Resp]).
+    case get_value(<<"Success">>, Resp) of 
+        <<"false">> ->         
+            format_log(info, "MONITOR_JOB(~p): Job failed~n ", [self()]),
+            {ok, FileId} = file:open("/tmp/" ++ "monitor_task_" ++ binary_to_list(Job_ID) ++ ".txt", [append]),
+            io:fwrite(FileId, "~s~n", [mochijson2:encode({struct, Resp})]),
+            file:close(FileId);
+        <<"true">> ->            
+            format_log(info, "MONITOR_JOB(~p): Job completed successfully~n ", [self()])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -302,7 +306,6 @@ start_tasks([], _AHost, _Job_Q, _Job_ID, _Iteration, Started) ->
 start_tasks([{Task_ID, Task}|T], AHost, Job_Q, Job_ID, Iteration, Started) ->
     case create_req(Task, Job_Q, Task_ID, Job_ID, Iteration) of
         {ok, JSON} -> 
-            format_log(info, "MONITOR_JOB(~p): Job ~p started task ~p~n~p~n", [self(), Job_ID, Task_ID, Task]),
             send_req(AHost, JSON, type_to_routing_key(Task#task.type)),
             start_tasks(T, AHost, Job_Q, Job_ID, Iteration, [{to_binary(Task_ID), Task}|Started]);
         {error, Error} -> 
@@ -366,5 +369,4 @@ create_req(Task, Job_Q, Task_ID, Job_ID, Iteration) ->
 %% @end
 %%--------------------------------------------------------------------
 send_req(AHost, JSON, RoutingKey) ->
-    format_log(info, "MONITOR_JOB(~p): Sending request to monitor queue on ~p with key ~p~n", [self(), AHost, RoutingKey]),
     amqp_util:monitor_publish(AHost, JSON, <<"application/json">>, RoutingKey).

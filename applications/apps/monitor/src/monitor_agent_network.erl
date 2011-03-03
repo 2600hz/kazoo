@@ -172,17 +172,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 start_amqp(AHost) ->
     amqp_util:monitor_exchange(AHost),
-
     Agent_Q = amqp_util:new_monitor_queue(AHost, ?SERVER),
-
     %% Bind the queue to the topic exchange
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Bind ~p for ~p~n", [self(), Agent_Q, ?KEY_AGENT_NET_REQ]),
     amqp_util:bind_q_to_monitor(AHost, Agent_Q, ?KEY_AGENT_NET_REQ),
-
     %% Register a consumer to listen to the queue
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Consume on ~p~n", [self(), Agent_Q]),
     amqp_util:basic_consume(AHost, Agent_Q, [{exclusive, false}]),
-
     {ok, Agent_Q}.
 
 %%--------------------------------------------------------------------
@@ -233,5 +227,4 @@ process_req(_MsgType, _Prop, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 send_resp(JSON, RespQ, AHost) ->
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Sending response to ~p at ~p~n", [self(), RespQ, AHost]),
     amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
