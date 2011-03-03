@@ -130,9 +130,7 @@ find_outbound_route(Flags, ApiProp) ->
 	[ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
 	Did = whistle_util:to_e164(ToUser),
 
-	case (not Flags#route_flags.force_outbound) andalso lookup_did(Did) of
-	    false -> % if force_outbound == true
-		route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
+	case lookup_did(Did) of
 	    {error, _} -> % if lookup_did(Did) failed
 		route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
 	    {ok, DidProp} -> % out-in scenario
@@ -140,7 +138,9 @@ find_outbound_route(Flags, ApiProp) ->
 		FlagsIn0 = create_flags(Did, ApiProp, DidProp),
 		FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
 
-		case ts_credit:check(FlagsIn1) of
+		case (not FlagsIn1#route_flags.force_outbound) andalso  ts_credit:check(FlagsIn1) of
+		    false -> % if force_outbound == true
+			route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
 		    {ok, FlagsIn} ->
 			%% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
 			format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n"
@@ -176,12 +176,15 @@ find_outbound_route(Flags, ApiProp) ->
 		    
 		    {error, _}  ->
 			format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
+			ts_acctmgr:release_trunk(FlagsIn1#route_flags.account_doc_id, FlagsIn1#route_flags.callid),
 			response(503, ApiProp, Flags)
 		end
 	end
     catch
-	A:B -> format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
-	       response(503, ApiProp, Flags)
+	A:B ->
+	    format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+	    ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid),
+	    response(503, ApiProp, Flags)
     end.
 
 -spec(route_over_carriers/2 :: (Flags :: #route_flags{}, ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
@@ -415,7 +418,7 @@ flags_from_account(Doc, Flags) ->
 
 -spec(add_force_outbound/2 :: (F :: #route_flags{}, Force :: boolean()) -> #route_flags{}).
 add_force_outbound(#route_flags{force_outbound=undefined}=F, Force) ->
-    F#route_flags{force_outbound=whistle_util:to_binary(Force)};
+    F#route_flags{force_outbound=whistle_util:to_boolean(Force)};
 add_force_outbound(F, _) -> F.
 
 -spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: tuple(proplist())) -> #route_flags{}).
