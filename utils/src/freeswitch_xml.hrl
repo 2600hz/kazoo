@@ -87,7 +87,11 @@
 "<document type=\"freeswitch/xml\">
   <section name=\"dialplan\" description=\"Route Bridge Response\">
     <context name=\"context_2\">
-      <action application=\"respond\" data=\"~s~s\" />
+      <extension>
+        <condition>
+          <action application=\"respond\" data=\"~s~s\" />
+        </condition>
+      </extension>
     </context>
   </section>
 </document>").

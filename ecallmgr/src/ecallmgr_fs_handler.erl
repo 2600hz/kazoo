@@ -109,14 +109,13 @@
 -import(logger, [log/2, format_log/3]).
 
 -include("freeswitch_xml.hrl").
+-include("ecallmgr.hrl").
 -include("whistle_api.hrl").
 
 -define(SERVER, ?MODULE).
 -define(AUTH_MOD, ecallmgr_fs_auth).
 -define(ROUTE_MOD, ecallmgr_fs_route).
 -define(NODE_MOD, ecallmgr_fs_node).
-
--define(MAX_TIMEOUT_FOR_NODE_RESTART, 300000). % 5 minutes
 
 -record(node_handler, {node = 'undefined' :: atom()
 		       ,options = [] :: proplist()

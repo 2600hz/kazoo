@@ -68,6 +68,7 @@ filter_active_calls(CallID, ActiveCalls) ->
 get_media_handling(<<"process">>) -> <<"process">>;
 get_media_handling(_) -> <<"bypass">>.
 
+%% returns, in seconds, the current timestamp
 -spec(current_tstamp/0 :: () -> integer()).
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).

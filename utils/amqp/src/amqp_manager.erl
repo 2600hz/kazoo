@@ -19,6 +19,7 @@
 
 %% API
 -export([start_link/0, start/0, open_channel/1, open_channel/2, close_channel/2, stop/0]).
+-export([is_available/1]).
 
 -define(SERVER, ?MODULE).
 -define(DEFAULT_AMQP_HOST, "whistle-erl001-fmt.2600hz.org").
@@ -77,6 +78,10 @@ close_channel(Pid, Host) ->
 stop() ->
     exit(whereis(?SERVER), normal).
 
+-spec(is_available/1 :: (Host :: string()) -> boolean()).
+is_available(Host) ->
+    gen_server:call(?SERVER, {is_available, Host}).
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -107,6 +112,21 @@ init([]) ->
 %% HostInfo =
 %% [ {connection, Connection, MRef} OR {ProcessPid, ProcessMRef, ChannelPid, ChanMRef, Ticket} ]
 %%--------------------------------------------------------------------
+handle_call({is_available, Host}, _, Hosts) ->
+    case lists:keyfind(Host, 1, Hosts) of
+	false ->
+	    case get_new_connection(create_amqp_params(Host)) of
+		{error, _} -> {reply, false, Hosts};
+		{Conn, ConnMRef} ->
+		    {reply, true, [ {Host, [{connection, Conn, ConnMRef}]} | Hosts ]}
+	    end;
+	{_, HostInfo} ->
+	    case lists:keyfind(connection, 1, HostInfo) of
+		{_, Conn, _} -> {reply, erlang:is_process_alive(Conn), Hosts};
+		_ -> {reply, false, Hosts}
+	    end
+    end;
+	    
 handle_call({open_channel, Pid, Host}, _From, Hosts) ->
     case lists:keyfind(Host, 1, Hosts) of
 	%% Unknown Host, need to create a Connection before a channel
@@ -207,10 +227,17 @@ code_change(_OldVsn, Hosts, _Extra) ->
 			      tuple(reply, tuple(ok, pid(), integer()), amqp_mgr_state())).
 start_channel(Pid, Host, HostInfo, Hosts) ->
     {_, Conn, _} = lists:keyfind(connection, 1, HostInfo),
-    {Channel, ChanMRef, ProcessMRef, Ticket} = open_amqp_channel(Conn, Pid),
-    HostInfo1 = [{Pid, ProcessMRef, Channel, ChanMRef, Ticket} | HostInfo],
-    format_log(info, "AMQP_MGR(~p): Open Channel for Known Host(~p) and Process pid ~p: ~n", [self(), Host, Pid]),
-    {reply, {ok, Channel, Ticket}, [{Host, HostInfo1} | lists:keydelete(Host, 1, Hosts)]}.
+
+    try
+	{Channel, ChanMRef, ProcessMRef, Ticket} = open_amqp_channel(Conn, Pid),
+	HostInfo1 = [{Pid, ProcessMRef, Channel, ChanMRef, Ticket} | HostInfo],
+	format_log(info, "AMQP_MGR(~p): Open Channel for Known Host(~p) and Process pid ~p: ~n", [self(), Host, Pid]),
+	{reply, {ok, Channel, Ticket}, [{Host, HostInfo1} | lists:keydelete(Host, 1, Hosts)]}
+    catch
+	_:Err ->
+	    format_log(error, "AMQP_MGR(~p): Failed to open channel (~p) for host ~p and proc ~p~n", [self(), Err, Host, Pid]),
+	    {reply, {error, Err}, Hosts}
+    end.
 
 -spec(start_connection_and_channel/3 :: (Pid :: pid(), Host :: string(), Hosts :: amqp_mgr_state()) ->
 					     tuple(reply, tuple(ok, pid(), integer()) | tuple(error, term()), amqp_mgr_state())).
@@ -240,11 +267,16 @@ find_down_pid(DownPid, {Host, HostInfo}=Host0, Hosts0) ->
 		    %% restart channel
 		    {connection, Conn, _} = lists:keyfind(connection, 1, HostInfo),
 		    format_log(info, "AMQP_MGR(~p): restart channel using conn ~p(~p) for ~p~n", [self(), Conn, Host, ProcessPid]),
-		    {Channel, ChanMRef, ProcessMRef, Ticket} = open_amqp_channel(Conn, ProcessPid),
+
+		    try
+			{Channel, ChanMRef, ProcessMRef, Ticket} = open_amqp_channel(Conn, ProcessPid),
 		    
-		    [{Host, [{ProcessPid, ProcessMRef, Channel, ChanMRef, Ticket}
-			     | lists:keydelete(DownPid, ?CHANNEL_PID, HostInfo)]}
-		     | Hosts0];
+			[{Host, [{ProcessPid, ProcessMRef, Channel, ChanMRef, Ticket}
+				 | lists:keydelete(DownPid, ?CHANNEL_PID, HostInfo)]}
+			 | Hosts0]
+		    catch
+			_:_ -> [{Host, lists:keydelete(DownPid, ?CHANNEL_PID, HostInfo)} | Hosts0]
+		    end;
 		false ->
 		    case lists:keyfind(DownPid, ?PROCESS_PID, HostInfo) of
 			{DownPid, DownMRef, Channel, ChanMRef, _Ticket} ->

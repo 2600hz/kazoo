@@ -351,7 +351,7 @@ move_db() ->
     MnesiaDir = filename:dirname(dir() ++ "/"),
     {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
     BackupDir = lists:flatten(
-                  io_lib:format("~s_~w~2..0w~2..0w~2..0w~2..0w~2..0w",
+                  io_lib:format("~s_~p~2..0w~2..0w~2..0w~2..0w~2..0w",
                                 [MnesiaDir,
                                  Year, Month, Day, Hour, Minute, Second])),
     case file:rename(MnesiaDir, BackupDir) of
@@ -498,7 +498,7 @@ leave_cluster(Nodes, RunningNodes) ->
 read_term_file(File) -> file:consult(File).
 
 write_term_file(File, Terms) ->
-    file:write_file(File, list_to_binary([io_lib:format("~w.~n", [Term]) ||
+    file:write_file(File, list_to_binary([io_lib:format("~p.~n", [Term]) ||
                                              Term <- Terms])).
 
 recursive_delete(Files) ->

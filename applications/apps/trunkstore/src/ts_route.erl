@@ -155,6 +155,16 @@ find_route(Flags, ApiProp) ->
 		    		{error, _} ->
 		    		    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
 		    	    end;
+
+			%% someone on the account is calling someone else on the same account; don't allocate a trunk
+			{error, entry_exists} ->
+			    case inbound_route(FlagsIn1) of
+				{ok, Routes, _} ->
+				    response(Routes, ApiProp, Flags#route_flags{direction = <<"inbound">>});
+				{error, _} ->
+				    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
+			    end;
+
 			{error, _}  ->
 			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
 			    response(503, ApiProp, Flags)
@@ -213,12 +223,18 @@ inbound_route(Flags) ->
 	      }
 	     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
 	     | Invite ],
-    case whistle_api:route_resp_route_v(Route) of
+
+    Route1 = case Flags#route_flags.progress_timeout of
+		 none -> Route;
+		 Secs -> [{<<"Progress-Timeout">>, whistle_util:to_integer(Secs)} | Route]
+	     end,
+
+    case whistle_api:route_resp_route_v(Route1) of
 	true ->
-	    {Routes, Flags1} = add_failover_route(Flags#route_flags.failover, Flags, {struct, Route}),
+	    {Routes, Flags1} = add_failover_route(Flags#route_flags.failover, Flags, {struct, Route1}),
 	    {ok, Routes, Flags1};
 	false ->
-	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route]),
+	    format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route1]),
 	    {error, "Inbound route validation failed"}
     end.
 
@@ -367,6 +383,7 @@ flags_from_srv(Doc, #route_flags{auth_user=AuthUser}=Flags) ->
 			   ,codecs=get_value(<<"codecs">>, Srv, [])
 			   ,account_doc_id = get_value(<<"_id">>, Doc, Flags#route_flags.account_doc_id)
 			   ,media_handling = get_value(<<"media_handling">>, Options)
+			   ,progress_timeout = get_value(<<"progress_timeout">>, Options, none)
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
     add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})).

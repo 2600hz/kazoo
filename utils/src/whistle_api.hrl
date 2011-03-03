@@ -1,4 +1,6 @@
+-ifndef(WHISTLE_TYPES_INCLUDED).
 -include("whistle_types.hrl").
+-endif.
 
 %% We pass Application custom channel variables with our own prefix
 %% When an event occurs, we include all prefixed vars in the API message
@@ -263,7 +265,7 @@
 -define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
 				  ,{<<"Event-Name">>, <<"status_resp">>}
-				  ,{<<"Status">>, <<"active">>}
+				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
 				 ]).
 -define(CALL_STATUS_RESP_TYPES, []).
 
