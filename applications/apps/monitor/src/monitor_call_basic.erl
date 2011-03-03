@@ -42,6 +42,10 @@ originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
     Req = [
             {<<"Resource-Type">>, <<"audio">>}
            ,{<<"Invite-Format">>, <<"route">>}
+           ,{<<"Auth-User">>, <<"cust_rdflterr">>}
+           ,{<<"Auth-Password">>, <<"v01c3bus!">>}
+           ,{<<"Caller-ID-Name">>, <<"2600hz Monitoring">>}
+           ,{<<"Caller-ID-Number">>, <<"4158867900">>}
            ,{<<"Route">>, Route}           
     ],
     format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p~n", [self(), Route]),

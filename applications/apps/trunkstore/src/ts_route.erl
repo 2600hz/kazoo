@@ -121,59 +121,67 @@ find_route(Flags, ApiProp) ->
 		    E
 	    end;
 	true ->
-	    try
-	    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
-	    Did = whistle_util:to_e164(ToUser),
-	    case lookup_did(Did) of
-		{error, _} ->
-		    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
-		{ok, DidProp} -> % out-in scenario
-		    OrigAcctId = Flags#route_flags.account_doc_id,
-		    FlagsIn0 = create_flags(Did, ApiProp, DidProp),
-		    FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
-		    case ts_credit:check(FlagsIn1) of
-			{ok, FlagsIn} ->
-			    %% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
-			    format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n"
-				       , [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
-		    	    case inbound_route(FlagsIn) of
-		    		{ok, Routes, FlagsIn2} ->
-				    case FlagsIn1#route_flags.scenario of
-					inbound ->
-					    response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
-											   ,account_doc_id=OrigAcctId
-											   ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
-											   ,scenario=outbound_inbound
-											  });
-					inbound_failover ->
-					    response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
-											   ,account_doc_id=OrigAcctId
-											   ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
-											   ,scenario=outbound_inbound_failover
-											  })
-				    end;
-		    		{error, _} ->
-		    		    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
-		    	    end;
+	    find_outbound_route(Flags, ApiProp)
+    end.
 
-			%% someone on the account is calling someone else on the same account; don't allocate a trunk
-			{error, entry_exists} ->
-			    case inbound_route(FlagsIn1) of
-				{ok, Routes, _} ->
-				    response(Routes, ApiProp, Flags#route_flags{direction = <<"inbound">>});
-				{error, _} ->
-				    route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
-			    end;
+-spec(find_outbound_route/2 :: (Flags :: #route_flags{}, ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+find_outbound_route(Flags, ApiProp) ->
+    try
+	[ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
+	Did = whistle_util:to_e164(ToUser),
 
-			{error, _}  ->
-			    format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
-			    response(503, ApiProp, Flags)
-		    end
-	    end
-	    catch
-		A:B -> format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
-		       response(503, ApiProp, Flags)
-	    end
+	case (not Flags#route_flags.force_outbound) andalso lookup_did(Did) of
+	    false -> % if force_outbound == true
+		route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
+	    {error, _} -> % if lookup_did(Did) failed
+		route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
+	    {ok, DidProp} -> % out-in scenario
+		OrigAcctId = Flags#route_flags.account_doc_id,
+		FlagsIn0 = create_flags(Did, ApiProp, DidProp),
+		FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
+
+		case ts_credit:check(FlagsIn1) of
+		    {ok, FlagsIn} ->
+			%% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
+			format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n"
+				   , [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
+			case inbound_route(FlagsIn) of
+			    {ok, Routes, FlagsIn2} ->
+				case FlagsIn1#route_flags.scenario of
+				    inbound ->
+					response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
+										       ,account_doc_id=OrigAcctId
+										       ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
+										       ,scenario=outbound_inbound
+										      });
+				    inbound_failover ->
+					response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
+										       ,account_doc_id=OrigAcctId
+										       ,diverted_account_doc_id=FlagsIn#route_flags.account_doc_id
+										       ,scenario=outbound_inbound_failover
+										      })
+				end;
+			    {error, _} ->
+				route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
+			end;
+
+		    %% someone on the account is calling someone else on the same account; don't allocate a trunk
+		    {error, entry_exists} ->
+			case inbound_route(FlagsIn1) of
+			    {ok, Routes, _} ->
+				response(Routes, ApiProp, Flags#route_flags{direction = <<"inbound">>});
+			    {error, _} ->
+				route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
+			end;
+		    
+		    {error, _}  ->
+			format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
+			response(503, ApiProp, Flags)
+		end
+	end
+    catch
+	A:B -> format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+	       response(503, ApiProp, Flags)
     end.
 
 -spec(route_over_carriers/2 :: (Flags :: #route_flags{}, ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
@@ -363,7 +371,8 @@ flags_from_did(DidProp, Flags) ->
 			,account_doc_id = get_value(<<"id">>, DidProp)
 		       },
     F3 = add_auth_user(F2, get_value(<<"auth_user">>, AuthOpts)),
-    add_auth_realm(F3, get_value(<<"auth_realm">>, AuthOpts, get_value(<<"auth_realm">>, Acct))).
+    F4 = add_auth_realm(F3, get_value(<<"auth_realm">>, AuthOpts, get_value(<<"auth_realm">>, Acct))),
+    add_force_outbound(F4, get_value(<<"force_outbound">>, DidOptions, false)).
 
 %% Flags from the Server
 %% - Inbound Format <- what format does the server expect the inbound caller-id in?
@@ -386,7 +395,8 @@ flags_from_srv(Doc, #route_flags{auth_user=AuthUser}=Flags) ->
 			   ,progress_timeout = get_value(<<"progress_timeout">>, Options, none)
 			  },
     F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
-    add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})).
+    F2 = add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})),
+    add_force_outbound(F2, get_value(<<"force_outbound">>, Options, false)).
 
 %% Flags from the Account
 %% - Credit available
@@ -402,6 +412,11 @@ flags_from_account(Doc, Flags) ->
 		       ,get_value(<<"caller_id">>, Acct, {struct, []})),
     F2 = add_failover(F1, get_value(<<"failover">>, Acct, {struct, []})),
     add_auth_realm(F2, get_value(<<"auth_realm">>, Acct)).
+
+-spec(add_force_outbound/2 :: (F :: #route_flags{}, Force :: boolean()) -> #route_flags{}).
+add_force_outbound(#route_flags{force_outbound=undefined}=F, Force) ->
+    F#route_flags{force_outbound=whistle_util:to_binary(Force)};
+add_force_outbound(F, _) -> F.
 
 -spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: tuple(proplist())) -> #route_flags{}).
 add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
