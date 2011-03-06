@@ -297,11 +297,12 @@
 %% Store Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Store
 -define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Media-Transfer-Method">>
 				,<<"Media-Transfer-Destination">>]).
--define(OPTIONAL_STORE_REQ_HEADERS, [<<"Media-Additional-Headers">>]).
+-define(OPTIONAL_STORE_REQ_HEADERS, [<<"Media-Additional-Headers">>, <<"Insert-At">>]).
 -define(STORE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"store">>}
 			   ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
+			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			  ]).
 -define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
 
@@ -332,10 +333,11 @@
 
 %% Tones Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Generate_Tone
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
--define(OPTIONAL_TONES_REQ_HEADERS, []).
+-define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>]).
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			   ,{<<"Event-Name">>, <<"command">>}
-			   ,{<<"Application-Name">>, <<"tone">>}
+			   ,{<<"Application-Name">>, <<"tones">>}
+			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			  ]).
 -define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}]).
 
@@ -348,11 +350,12 @@
 
 %% Tone Detect - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Tone_Detection
 -define(TONE_DETECT_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tone-Detect-Name">>, <<"Frequencies">>]).
--define(OPTIONAL_TONE_DETECT_REQ_HEADERS, [<<"Sniff-Direction">>, <<"Timeout">>, <<"On-Success">>, <<"Hits-Needed">>]).
+-define(OPTIONAL_TONE_DETECT_REQ_HEADERS, [<<"Sniff-Direction">>, <<"Timeout">>, <<"On-Success">>, <<"Hits-Needed">>, <<"Insert-At">>]).
 -define(TONE_DETECT_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"tone_detect">>}
 				 ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
+				 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 				]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
 				,{<<"Timeout">>, fun(<<"+", T/binary>>) ->
@@ -368,23 +371,26 @@
 
 %% Queue Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Queue
 -define(QUEUE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Commands">>]).
--define(OPTIONAL_QUEUE_REQ_HEADERS, []).
+-define(OPTIONAL_QUEUE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(QUEUE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			   ,{<<"Event-Name">>, <<"command">>}
-			   ,{<<"Application-Name">>, <<"queue">>}]).
+			   ,{<<"Application-Name">>, <<"queue">>}
+			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			  ]).
 -define(QUEUE_REQ_TYPES, [{<<"Commands">>, fun is_list/1}]).
 
 %% Bridge Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Bridge
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>
                                       ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-                                      ,<<"Ringback">>, <<"Dial-Endpoint-Method">>
+                                      ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"bridge">>}
 			    ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
 			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
+			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			   ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}]).
 
@@ -400,42 +406,45 @@
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                     ]).
-
 -define(BRIDGE_REQ_ENDPOINT_TYPES, []).
 
 %% Answer - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Answer
 -define(ANSWER_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_ANSWER_REQ_HEADERS, []).
+-define(OPTIONAL_ANSWER_REQ_HEADERS, [<<"Insert-At">>]).
 -define(ANSWER_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"answer">>}
+			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			   ]).
 -define(ANSWER_REQ_TYPES, []).
 
 %% Hangup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hangup
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_HANGUP_REQ_HEADERS, []).
+-define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>]).
 -define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"hangup">>}
+			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			   ]).
 -define(HANGUP_REQ_TYPES, []).
 
 %% Park - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FPark
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_PARK_REQ_HEADERS, []).
+-define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>]).
 -define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"park">>}
+			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			 ]).
 -define(PARK_REQ_TYPES, []).
 
 %% Set - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FSet
 -define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>]).
--define(OPTIONAL_SET_REQ_HEADERS, []).
+-define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
-			  ,{<<"Event-Name">>, <<"command">>}
-			  ,{<<"Application-Name">>, <<"set">>}
+			 ,{<<"Event-Name">>, <<"command">>}
+			 ,{<<"Application-Name">>, <<"set">>}
+			 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			 ]).
 -define(SET_REQ_TYPES, [
 			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
@@ -449,31 +458,34 @@
 
 %% Call Pickup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Call_Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, []).
+-define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
-			  ,{<<"Event-Name">>, <<"command">>}
-			  ,{<<"Application-Name">>, <<"call_pickup">>}
-			 ]).
+				 ,{<<"Event-Name">>, <<"command">>}
+				 ,{<<"Application-Name">>, <<"call_pickup">>}
+				 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+				]).
 -define(CALL_PICKUP_REQ_TYPES, []).
 
 
 %% Play Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Play
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>]).
+-define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>]).
 -define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"play">>}
+			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			 ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
 %% Record Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Record
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
-					  ,<<"Silence-Hits">>
+					  ,<<"Silence-Hits">>, <<"Insert-At">>
 				     ]).
 -define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"record">>}
+			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			   ]).
 -define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
@@ -482,37 +494,39 @@
 				 ,<<"Timeout">>, <<"Terminators">>, <<"Media-Name">>, <<"Media-Tries">>
 				 ,<<"Failed-Media-Name">>, <<"Digits-Regex">>
 			    ]).
--define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, []).
+-define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Insert-At">>]).
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
-			    ,{<<"Event-Name">>, <<"command">>}
-			    ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
-			   ]).
+					 ,{<<"Event-Name">>, <<"command">>}
+					 ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
+					 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+					]).
 -define(PLAY_COLLECT_DIGITS_REQ_TYPES, []).
 
 %% Say - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Say
 -define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
--define(OPTIONAL_SAY_REQ_HEADERS, []).
+-define(OPTIONAL_SAY_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SAY_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
-			    ,{<<"Event-Name">>, <<"command">>}
-			    ,{<<"Application-Name">>, <<"say">>}
-			    ,{<<"Type">>, [<<"number">>, <<"items">>, <<"persons">>, <<"messages">>, <<"currency">>
-					       ,<<"time_measurement">>, <<"current_date">>, <<"current_time">>
-					       ,<<"current_date_time">>, <<"telephone_number">>, <<"telephone_extension">>
-					       ,<<"url">>, <<"ip_address">>, <<"e-mail_address">>, <<"postal_address">>
-					       ,<<"account_number">>, <<"name_spelled">>, <<"name_phonetic">>, <<"short_date_time">>]}
-			    ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
-			   ]).
+			 ,{<<"Event-Name">>, <<"command">>}
+			 ,{<<"Application-Name">>, <<"say">>}
+			 ,{<<"Type">>, [<<"number">>, <<"items">>, <<"persons">>, <<"messages">>, <<"currency">>
+					    ,<<"time_measurement">>, <<"current_date">>, <<"current_time">>
+					    ,<<"current_date_time">>, <<"telephone_number">>, <<"telephone_extension">>
+					    ,<<"url">>, <<"ip_address">>, <<"e-mail_address">>, <<"postal_address">>
+					    ,<<"account_number">>, <<"name_spelled">>, <<"name_phonetic">>, <<"short_date_time">>]}
+			 ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
+			 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			]).
 -define(SAY_REQ_TYPES, []).
 
 %% Sleep - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Sleep
 -define(SLEEP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Time">>]).
--define(OPTIONAL_SLEEP_REQ_HEADERS, []).
+-define(OPTIONAL_SLEEP_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SLEEP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
-			    ,{<<"Event-Name">>, <<"command">>}
-			    ,{<<"Application-Name">>, <<"sleep">>}
-			   ]).
+			   ,{<<"Event-Name">>, <<"command">>}
+			   ,{<<"Application-Name">>, <<"sleep">>}
+			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			  ]).
 -define(SLEEP_REQ_TYPES, []).
-
 
 %% [{FreeSWITCH-App-Name, Whistle-App-Name}]
 %% Dialplan-related applications
@@ -537,3 +551,21 @@
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
 			,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"RECORD_STOP">>
 		   ]).
+
+%% List of tuples: {dialplan application-name, validation_fun}
+-define(DIALPLAN_APPLICATIONS, [
+				{<<"bridge">>, fun whistle_api:bridge_req_v/1}
+				,{<<"answer">>, fun whistle_api:answer_req_v/1}
+				,{<<"play">>, fun whistle_api:play_req_v/1}
+				,{<<"record">>, fun whistle_api:record_req_v/1}
+				,{<<"store">>, fun whistle_api:store_req_v/1}
+				,{<<"play_and_collect_digits">>, fun whistle_api:play_collect_digits_req_v/1}
+				,{<<"tones">>, fun whistle_api:tones_req_v/1}
+				,{<<"tone_detect">>, fun whistle_api:tone_detect_req_v/1}
+				,{<<"park">>, fun whistle_api:park_req_v/1}
+				,{<<"call_pickup">>, fun whistle_api:call_pickup_req_v/1}
+				,{<<"hangup">>, fun whistle_api:hangup_req_v/1}
+				,{<<"say">>, fun whistle_api:say_req_v/1}
+				,{<<"sleep">>, fun whistle_api:sleep_req_v/1}
+				,{<<"set">>, fun whistle_api:set_req_v/1}
+			       ]).

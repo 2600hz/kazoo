@@ -36,7 +36,7 @@
 %%% the CurrApp. If EvtName and the converted Whistle name don't match,
 %%% something else executed that might have been related to the main
 %%% application's execute (think set commands, like playback terminators);
-%%% we can note the event happended, and continue looping as we were.
+%%% we can note the event happened, and continue looping as we were.
 %%%
 %%% 
 %%%
@@ -177,20 +177,14 @@ handle_info(#'basic.consume_ok'{}, State) ->
 
 handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "CONTROL(~p): Recv App ~p~n", [self(), whapps_json:get_value(<<"Application-Name">>, JObj)]),
+    format_log(info, "CONTROL(~p): Recv App ~s, insert-at: ~s~n", [self(), whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Insert-At">>, JObj, tail)]),
 
-    NewCmdQ = case whapps_json:get_value(<<"Application-Name">>, JObj) of
-		  <<"queue">> -> %% list of commands that need to be added
-		      DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
-		      lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
-				     ({struct, Cmd}, TmpQ) ->
-					  AppCmd = DefProp ++ Cmd,
-					  format_log(info, "CONTROL.queue: Cmd: ~p~n", [AppCmd]),
-					  queue:in({struct, AppCmd}, TmpQ)
-				  end, State#state.command_q, whapps_json:get_value(<<"Commands">>, JObj));
-		  _AppName ->
-		      queue:in(JObj, State#state.command_q)
+    NewCmdQ = try
+		  insert_command(State, whapps_json:get_value(<<"Insert-At">>, JObj, <<"tail">>), JObj)
+	      catch
+		  _:_ -> State#state.command_q
 	      end,
+
     case State#state.is_node_up andalso (not queue:is_empty(NewCmdQ)) andalso State#state.current_app =:= <<>> of
 	true ->
 	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
@@ -279,4 +273,50 @@ restart_amqp_queue(Host, Queue) ->
 	    ok;
 	{error, _}=E ->
 	    E
+    end.
+
+%% execute all commands in JObj immediately, irregardless of what is running (if anything).
+-spec(insert_command/3 :: (State :: #state{}, InsertAt :: binary(), JObj :: json_object()) -> queue()).
+insert_command(State, <<"now">>, JObj) ->
+    case whapps_json:get_value(<<"Application-Name">>, JObj) of
+	<<"queue">> ->
+	    true = whistle_api:queue_req_v(JObj),
+	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
+	    lists:foreach(fun({struct, []}) -> ok;
+			     ({struct, Cmd}) ->
+				  AppCmd = {struct, DefProp ++ Cmd},
+				  true = whistle_api:dialplan_req_v(AppCmd),
+				  AppName = whapps_json:get_value(<<"Application-Name">>, AppCmd),
+				  format_log(info, "CONTROL.queue: Exec now Cmd: ~p~n", [AppName]),
+				  ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, AppCmd, State#state.amqp_h)
+			  end, whapps_json:get_value(<<"Commands">>, JObj)),
+	    State#state.command_q;
+	AppName ->
+	    true = whistle_api:dialplan_req_v(JObj),
+	    format_log(info, "CONTROL: Exec now Cmd: ~p~n", [AppName]),
+	    ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, JObj, State#state.amqp_h),
+	    State#state.command_q
+    end;
+insert_command(_State, <<"flush">>, JObj) ->
+    insert_command_into_queue(queue:new(), fun queue:in/2, JObj);
+insert_command(State, <<"head">>, JObj) ->
+    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj);
+insert_command(State, <<"tail">>, JObj) ->
+    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj).
+
+-spec(insert_command_into_queue/3 :: (Q :: queue(), InsertFun :: fun(), JObj :: json_object()) -> queue()).
+insert_command_into_queue(Q, InsertFun, JObj) ->
+    case whapps_json:get_value(<<"Application-Name">>, JObj) of
+	<<"queue">> -> %% list of commands that need to be added
+	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
+	    lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
+			   ({struct, Cmd}, TmpQ) ->
+				AppCmd = {struct, DefProp ++ Cmd},
+				true = whistle_api:dialplan_req_v(AppCmd),
+				format_log(info, "CONTROL.queue: insert Cmd: ~p~n", [whapps_json:get_value(<<"Application-Name">>, AppCmd)]),
+				InsertFun({struct, AppCmd}, TmpQ)
+			end, Q, whapps_json:get_value(<<"Commands">>, JObj));
+	_AppName ->
+	    true = whistle_api:dialplan_req_v(JObj),
+	    InsertFun(JObj, Q)
     end.
