@@ -300,7 +300,14 @@ insert_command(State, <<"now">>, JObj) ->
 insert_command(_State, <<"flush">>, JObj) ->
     insert_command_into_queue(queue:new(), fun queue:in/2, JObj);
 insert_command(State, <<"head">>, JObj) ->
-    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj);
+    case whapps_json:get_value(<<"Application-Name">>, JObj) of
+	<<"queue">> ->
+	    Commands = whapps_json:get_value(<<"Commands">>, JObj),
+	    JObj2 = whapps_json:set_value(<<"Commands">>, lists:reverse(Commands), JObj),
+	    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj2);
+	_ ->
+	    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj)
+    end;
 insert_command(State, <<"tail">>, JObj) ->
     insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj).
 
@@ -308,6 +315,7 @@ insert_command(State, <<"tail">>, JObj) ->
 insert_command_into_queue(Q, InsertFun, JObj) ->
     case whapps_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> -> %% list of commands that need to be added
+	    true = whistle_api:queue_req_v(JObj),
 	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
 	    lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
 			   ({struct, Cmd}, TmpQ) ->
