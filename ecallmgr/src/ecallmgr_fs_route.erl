@@ -250,15 +250,20 @@ build_route(_AmqpHost, RouteProp, <<"route">>) ->
 build_route(AmqpHost, RouteProp, <<"username">>) ->
     User = get_value(<<"To-User">>, RouteProp),
     Realm = get_value(<<"To-Realm">>, RouteProp),
-    lookup_reg(AmqpHost, Realm, User);
+    lookup_and_replace(AmqpHost, Realm, User, User);
 build_route(AmqpHost, RouteProp, DIDFormat) ->
     User = get_value(<<"To-User">>, RouteProp),
     Realm = get_value(<<"To-Realm">>, RouteProp),
+    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
+    lookup_and_replace(AmqpHost, Realm, User, DID).
+
+-spec(lookup_and_replace/4 :: (AmqpHost :: string(), Realm :: binary(), User :: binary(), Replace :: binary()) -> binary() | tuple(error, integer())).
+lookup_and_replace(AmqpHost, Realm, User, Replace) ->
     case lookup_reg(AmqpHost, Realm, User) of
 	{error, timeout} -> {error, 503};
 	Contact ->
-	    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
-	    binary:replace(binary:replace(Contact, User, DID), [<<"<">>, <<">">>], <<>>, [global])
+	    [_, HostPlus] = binary:split(Contact, <<"@">>),
+	    binary:replace(<<Replace/binary, "@", HostPlus/binary>>, [<<"<">>, <<">">>], <<>>, [global])
     end.
 
 -spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
