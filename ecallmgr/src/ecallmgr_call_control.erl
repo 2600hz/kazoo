@@ -152,7 +152,7 @@ handle_info(timeout, #state{node=N, amqp_h=H, amqp_q=Q}=State) ->
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     format_log(error, "CONTROL(~p): nodedown ~p~n", [self(), Node]),
     erlang:monitor_node(Node, false),
-    timer:send_after(0, self(), {is_node_up, 100}),
+    {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
@@ -163,12 +163,12 @@ handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
 	    format_log(info, "CONTROL(~p): node_is_up ~p~n", [self(), Node]),
 	    {noreply, State#state{is_node_up=true}};
 	pang ->
-	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-		true ->
-		    timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
-		false ->
-		    timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
-	    end,
+	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+			  true ->
+			      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+			  false ->
+			      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
+		      end,
 	    {noreply, State}
     end;
 
@@ -188,7 +188,7 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
     case State#state.is_node_up andalso (not queue:is_empty(NewCmdQ)) andalso State#state.current_app =:= <<>> of
 	true ->
 	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
-	    ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
+	    ok = ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
 	    AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),
 	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName}};
 	false ->
@@ -207,7 +207,7 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 		{empty, _} ->
 		    {noreply, State#state{current_app = <<>>}};
 		{{value, Cmd}, CmdQ1} ->
-		    ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
+		    ok = ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
 		    {noreply, State#state{command_q = CmdQ1, current_app = whapps_json:get_value(<<"Application-Name">>, Cmd)}}
 	    end;
 	_OtherEvt ->
@@ -215,6 +215,10 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
     end;
 
 handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_time=StartT}=State) ->
+    lists:foreach(fun(Cmd) ->
+			  ok = ecallmgr_call_command:exec_cmd(State#state.node, UUID, Cmd, H)
+		  end, post_hangup_commands(State#state.command_q)),
+
     amqp_util:unbind_q_from_callctl(H, Q),
     amqp_util:queue_delete(H, Q), %% stop receiving messages
     format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
@@ -226,13 +230,13 @@ handle_info(is_amqp_up, #state{amqp_h=H, amqp_q=Q}=State) ->
     case restart_amqp_queue(H, Q) of
 	ok -> {noreply, State};
 	{error, _} ->
-	    timer:send_after(1000, self(), is_amqp_up),
+	    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
 	    {noreply, State}
     end;
 
 handle_info({amqp_host_down, H}, State) ->
     format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
-    timer:send_after(1000, self(), is_amqp_up),
+    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
     {noreply, State};
 
 handle_info(_Msg, State) ->
@@ -278,7 +282,17 @@ restart_amqp_queue(Host, Queue) ->
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
 -spec(insert_command/3 :: (State :: #state{}, InsertAt :: binary(), JObj :: json_object()) -> queue()).
 insert_command(State, <<"now">>, JObj) ->
-    case whapps_json:get_value(<<"Application-Name">>, JObj) of
+    case State#state.is_node_up andalso whapps_json:get_value(<<"Application-Name">>, JObj) of
+	false ->
+	    {Mega,Sec,Micro} = erlang:now(),
+	    Prop = [ {<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
+		     ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
+		     ,{<<"Call-ID">>, State#state.uuid}
+		     ,{<<"Channel-Call-State">>, <<"ERROR">>}
+		     ,{<<"Custom-Channel-Vars">>, JObj}
+		   ],
+	    ecallmgr_call_events:publish_msg(State#state.amqp_h, State#state.uuid, Prop),
+	    State#state.command_q;
 	<<"queue">> ->
 	    true = whistle_api:queue_req_v(JObj),
 	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
@@ -294,7 +308,7 @@ insert_command(State, <<"now">>, JObj) ->
 	AppName ->
 	    true = whistle_api:dialplan_req_v(JObj),
 	    format_log(info, "CONTROL: Exec now Cmd: ~p~n", [AppName]),
-	    ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, JObj, State#state.amqp_h),
+	    ok = ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, JObj, State#state.amqp_h),
 	    State#state.command_q
     end;
 insert_command(_State, <<"flush">>, JObj) ->
@@ -328,3 +342,9 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 	    true = whistle_api:dialplan_req_v(JObj),
 	    InsertFun(JObj, Q)
     end.
+
+-spec(post_hangup_commands/1 :: (CmdQ :: queue()) -> json_objects()).
+post_hangup_commands(CmdQ) ->
+    lists:filter(fun(JObj) ->
+			 lists:member(whapps_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
+		 end, queue:to_list(CmdQ)).

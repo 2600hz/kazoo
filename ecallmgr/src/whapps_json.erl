@@ -42,7 +42,7 @@ set_value([Key|T], Value, [{struct, _}|_]=Doc) ->
             catch
                 %% There are no more keys in the list, add it unless not an object
                 error:badarg ->
-                    try {struct, _} = Value catch _:_ -> error(badarg) end,
+                    _ = try {struct, _} = Value catch _:_ -> error(badarg) end,
                     Doc ++ [Value]
             end;
         %% The object index exists so iterate into the object and updat it

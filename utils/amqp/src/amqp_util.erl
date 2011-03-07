@@ -4,6 +4,8 @@
 
 -import(props, [get_value/2, get_value/3]).
 
+-export([is_host_available/1]).
+
 -export([targeted_exchange/1, targeted_publish/3, targeted_publish/4]).
 -export([callctl_exchange/1, callctl_publish/3, callctl_publish/4]).
 -export([callevt_exchange/1, callevt_publish/3, callevt_publish/4]).
@@ -437,3 +439,7 @@ get_msg_type(Msg) ->
 
 is_json(Props) ->
     Props#'P_basic'.content_type == <<"application/json">>.
+
+-spec(is_host_available/1 :: (Host :: string()) -> boolean()).
+is_host_available(Host) ->
+    couch_mgr:is_available(Host).

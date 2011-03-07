@@ -20,7 +20,7 @@
 -define(EVENT_CAT, <<"call_event">>).
 
 %% API
--export([start_link/4]).
+-export([start_link/4, publish_msg/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -132,7 +132,7 @@ handle_info(timeout, #state{node=Node, uuid=UUID, amqp_h=H}=State) ->
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     format_log(error, "EVT(~p): nodedown ~p~n", [self(), Node]),
     erlang:monitor_node(Node, false),
-    timer:send_after(0, self(), {is_node_up, 100}),
+    {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false}=State) ->
@@ -147,12 +147,12 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 		_ -> {stop, normal, State}
 	    end;
 	pang ->
-	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-		true ->
-		    timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
-		false ->
-		    timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
-	    end,
+	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+			  true ->
+			      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+			  false ->
+			      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
+		      end,
 	    {noreply, State}
     end;
 
@@ -204,7 +204,7 @@ handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid}=State) ->
 
 handle_info({amqp_host_down, H}, State) ->
     format_log(info, "EVT(~p): AmqpHost ~s went down; queueing events~n", [self(), H]),
-    timer:send_after(1000, self(), is_amqp_up),
+    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
 handle_info(is_amqp_up, #state{uuid=UUID, amqp_h=H, amqp_q={error, _}}=State) ->
@@ -213,7 +213,7 @@ handle_info(is_amqp_up, #state{uuid=UUID, amqp_h=H, amqp_q={error, _}}=State) ->
 	true ->
 	    {noreply, State#state{amqp_q = Q1, is_amqp_up = true}};
 	false ->
-	    timer:send_after(1000, self(), is_amqp_up),
+	    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
 	    {noreply, State}
     end;
 
@@ -258,10 +258,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec(shutdown/2 :: (CtlPid :: pid() | undefined, UUID :: binary()) -> no_return()).
 shutdown(CtlPid, UUID) ->
     case CtlPid of
-	undefined -> ok;
-	_ -> CtlPid ! {hangup, self(), UUID}
+	undefined ->
+	    ok;
+	_ ->
+	    CtlPid ! {hangup, self(), UUID},
+	    ok
     end,
 
     receive {ctl_down, CtlPid} -> ok
@@ -305,8 +309,7 @@ publish_msg(Host, UUID, Prop) ->
 	    {ok, JSON} = whistle_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(Host, UUID, JSON, event);
 	false ->
-	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName]),
-	    ok
+	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName])
     end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
@@ -426,12 +429,13 @@ send_queued(_, _, _, 10) ->
 send_queued(_, _, [], _) ->
     format_log(info, "EVT.send_queued(~p): No queued events.~n", [self()]);
 send_queued(H, UUID, Evts, Tries) ->
-    case amqp_util:new_callevt_queue(H, <<>>) of
+    case amqp_util:is_host_available(H) of
 	{error, _} ->
-	    timer:sleep(1000),
+	    ok = timer:sleep(1000),
 	    send_queued(H, UUID, Evts, Tries+1);
 	Q ->
 	    format_log(info, "EVT.send_queued(~p): Sending queued events on try ~p~n", [self(), Tries]),
 	    amqp_util:queue_delete(H, Q),
-	    [ publish_msg(H, UUID, E) || E <- lists:reverse(Evts) ]
+	    lists:foreach(fun(E) -> publish_msg(H, UUID, E) end, lists:reverse(Evts)),
+	    ok
     end.
