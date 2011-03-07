@@ -470,7 +470,7 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
 	{{_, DocID}=Key,_,Pids}=Item ->
 	    TmpCH = [Item],
 	    lists:foreach(fun(P) ->
-				  stop_change_handler(Key, P, TmpCH),
+				  _ = stop_change_handler(Key, P, TmpCH),
 				  P ! {change_handler_done, DocID}
 			  end, Pids),
 	    {noreply, State#state{change_handlers=lists:keydelete(ReqID, 2, CH)}}
@@ -494,7 +494,7 @@ handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=Stat
     CH1 = lists:foldl(fun({{_, DocID}=Key, RID, Pids}=Item, Acc) when RID =:= ReqID ->
 			      TmpCH = [Item],
 			      lists:foreach(fun(P) ->
-						    stop_change_handler(Key, P, TmpCH),
+						    _ = stop_change_handler(Key, P, TmpCH),
 						    P ! {change_handler_down, DocID}
 					    end, Pids),
 			      Acc;

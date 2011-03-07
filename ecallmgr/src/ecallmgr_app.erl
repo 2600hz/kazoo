@@ -27,5 +27,5 @@ start_call(Args) ->
     io:format("ECALLMGR_APP: Res: ~p~n", [_Res]).
 
 end_call(Ref) ->
-    supervisor:terminate_child(ecallmgr_call_sup, Ref),
+    _ = supervisor:terminate_child(ecallmgr_call_sup, Ref),
     supervisor:delete_child(ecallmgr_call_sup, Ref).
