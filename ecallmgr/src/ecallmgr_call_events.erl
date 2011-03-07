@@ -222,7 +222,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
     format_log(info, "EVT(~p): AMQP Msg ~s~n", [self(), Payload]),
     IsUp = is_node_up(State#state.node, State#state.uuid),
     spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, State#state.amqp_h, IsUp) end),
-    {noreply, State#state{is_node_up=IsUp};
+    {noreply, State#state{is_node_up=IsUp}};
 
 handle_info(_Info, State) ->
     format_log(info, "EVT(~p): unhandled info: ~p~n", [self(), _Info]),
@@ -441,7 +441,7 @@ send_queued(H, UUID, Evts, Tries) ->
 	    ok
     end.
 
--spec(is_node_up/2 :: (Node :: atom(), UUID :: binary() -> boolean()).
+-spec(is_node_up/2 :: (Node :: atom(), UUID :: binary()) -> boolean()).
 is_node_up(Node, UUID) ->
     true =:= freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
 					     ,{"execute-app-name", "uuid_exists"}
