@@ -258,9 +258,7 @@ build_route(AmqpHost, RouteProp, DIDFormat) ->
 	{error, timeout} -> {error, 503};
 	Contact ->
 	    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
-	    Encoded = binary:replace(Contact, User, DID),
-	    Unquoted = whistle_util:to_binary(mochiweb_util:unquote(Encoded)),
-	    binary:replace(Unquoted, [<<"<">>, <<">">>], <<>>, [global])
+	    binary:replace(binary:replace(Contact, User, DID), [<<"<">>, <<">">>], <<>>, [global])
     end.
 
 -spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
