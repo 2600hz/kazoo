@@ -220,8 +220,9 @@ handle_info(is_amqp_up, #state{uuid=UUID, amqp_h=H, amqp_q={error, _}}=State) ->
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
     format_log(info, "EVT(~p): AMQP Msg ~s~n", [self(), Payload]),
-    spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, State#state.amqp_h, State#state.is_node_up) end),
-    {noreply, State};
+    IsUp = is_node_up(State#state.node, State#state.uuid),
+    spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, State#state.amqp_h, IsUp) end),
+    {noreply, State#state{is_node_up=IsUp};
 
 handle_info(_Info, State) ->
     format_log(info, "EVT(~p): unhandled info: ~p~n", [self(), _Info]),
@@ -395,23 +396,23 @@ event_specific(_Evt, _Prop) ->
 
 handle_amqp_prop(<<"status_req">>, JObj, AmqpHost, IsNodeUp) ->
     try
-    true = whistle_api:call_status_req_v(JObj),
-    CallID = whapps_json:get_value(<<"Call-ID">>, JObj),
-    format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
+	true = whistle_api:call_status_req_v(JObj),
+	CallID = whapps_json:get_value(<<"Call-ID">>, JObj),
+	format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
 
-    {Status, ErrMsg} = case IsNodeUp of
-			   true -> {<<"active">>, {ignore, me}};
-			   false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
-		       end,
+	{Status, ErrMsg} = case IsNodeUp of
+			       true -> {<<"active">>, {ignore, me}};
+			       false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
+			   end,
 
-    RespJObj = [{<<"Call-ID">>, CallID}
-		,{<<"Status">>, Status}
-		| whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, <<?APPNAME/binary, ".status">>, ?APPVER) ],
-    {ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
-    SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
-    format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
+	RespJObj = [{<<"Call-ID">>, CallID}
+		    ,{<<"Status">>, Status}
+		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, <<?APPNAME/binary, ".status">>, ?APPVER) ],
+	{ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
+	SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
+	format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
 
-    amqp_util:targeted_publish(AmqpHost, SrvID, JSON)
+	amqp_util:targeted_publish(AmqpHost, SrvID, JSON)
     catch
 	E:R ->
 	    format_log(error, "EVT.call_status err ~p: ~p", [E, R])
@@ -439,3 +440,10 @@ send_queued(H, UUID, Evts, Tries) ->
 	    lists:foreach(fun(E) -> publish_msg(H, UUID, E) end, lists:reverse(Evts)),
 	    ok
     end.
+
+-spec(is_node_up/2 :: (Node :: atom(), UUID :: binary() -> boolean()).
+is_node_up(Node, UUID) ->
+    true =:= freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+					     ,{"execute-app-name", "uuid_exists"}
+					     ,{"execute-app-arg", whistle_util:to_list(UUID)}
+					    ]).
