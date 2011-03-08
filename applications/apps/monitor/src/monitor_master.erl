@@ -175,8 +175,7 @@ handle_call({sync_job, Job_ID}, _From, State) ->
         [] ->
             spawn(fun() -> rm_job(Job_ID) end),
             {reply, ok, State};
-        [{struct, Job}=J] ->
-            format_log(info, "First: ~p~n", [J]),
+        [{struct, Job}  ] ->
             case ensure_running(Job_ID, State) of
                 {Pid, NewState} ->
                     gen_server:call(Pid, {sync, get_value(<<"value">>, Job, [])}, infinity),

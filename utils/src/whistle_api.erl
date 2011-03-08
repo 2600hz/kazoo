@@ -44,7 +44,7 @@
 	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
 	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
-	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1
+	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1, dialplan_req_v/1
 	]).
 
 %% FS-specific routines
@@ -190,6 +190,25 @@ reg_query_resp_v({struct, Prop}) ->
     reg_query_resp_v(Prop);
 reg_query_resp_v(Prop) ->
     validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Dialplan Request Validation
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(dialplan_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+dialplan_req_v({struct, Prop}) ->
+    dialplan_req_v(Prop);
+dialplan_req_v(Prop) ->
+    dialplan_req_v(Prop, props:get_value(<<"Application-Name">>, Prop)).
+
+dialplan_req_v(Prop, AppName) ->
+    case lists:keyfind(AppName, 1, ?DIALPLAN_APPLICATIONS) of
+	false ->
+	    throw({invalid_dialplan_object, Prop});
+	{_, VFun} ->
+	    VFun(Prop)
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Request - see wiki

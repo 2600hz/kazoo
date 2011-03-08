@@ -59,11 +59,12 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 								  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}});
 		_Other ->
 		    format_log(info, "FETCH_ROUTE(~p): Ignoring event ~p~n", [self(), _Other]),
+		    ok = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 		    ?MODULE:fetch_route(Node, State)
 	    end;
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
 	    format_log(info, "FETCH_ROUTE(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [self(), _Section, _Something, _Key, _Value, ID, _Data]),
-	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+	    ok = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:fetch_route(Node, State);
 	{nodedown, Node} ->
 	    format_log(error, "FETCH_ROUTE(~p): Node ~p exited", [self(), Node]),
@@ -71,7 +72,7 @@ fetch_route(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State
 	    ok;
 	{xml_response, ID, XML} ->
 	    format_log(info, "FETCH_ROUTE(~p): Received XML for ID ~p~n", [self(), ID]),
-	    freeswitch:fetch_reply(Node, ID, XML),
+	    ok = freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_route(Node, State);
 	shutdown ->
 	    lists:foreach(fun({Pid, _CallID, _StartTime}) ->
@@ -250,17 +251,20 @@ build_route(_AmqpHost, RouteProp, <<"route">>) ->
 build_route(AmqpHost, RouteProp, <<"username">>) ->
     User = get_value(<<"To-User">>, RouteProp),
     Realm = get_value(<<"To-Realm">>, RouteProp),
-    lookup_reg(AmqpHost, Realm, User);
+    lookup_and_replace(AmqpHost, Realm, User, User);
 build_route(AmqpHost, RouteProp, DIDFormat) ->
     User = get_value(<<"To-User">>, RouteProp),
     Realm = get_value(<<"To-Realm">>, RouteProp),
+    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
+    lookup_and_replace(AmqpHost, Realm, User, DID).
+
+-spec(lookup_and_replace/4 :: (AmqpHost :: string(), Realm :: binary(), User :: binary(), Replace :: binary()) -> binary() | tuple(error, integer())).
+lookup_and_replace(AmqpHost, Realm, User, Replace) ->
     case lookup_reg(AmqpHost, Realm, User) of
 	{error, timeout} -> {error, 503};
 	Contact ->
-	    DID = format_did(get_value(<<"To-DID">>, RouteProp), DIDFormat),
-	    Encoded = binary:replace(Contact, User, DID),
-	    Unquoted = whistle_util:to_binary(mochiweb_util:unquote(Encoded)),
-	    binary:replace(Unquoted, [<<"<">>, <<">">>], <<>>, [global])
+	    [_, HostPlus] = binary:split(Contact, <<"@">>),
+	    binary:replace(<<Replace/binary, "@", HostPlus/binary>>, [<<"<">>, <<">">>], <<>>, [global])
     end.
 
 -spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).

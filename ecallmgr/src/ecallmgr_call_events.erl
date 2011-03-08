@@ -16,11 +16,12 @@
 -import(logger, [log/2, format_log/3]).
 
 -define(APPNAME, <<"ecallmgr.call.event">>).
--define(APPVER, <<"0.6.1">>).
+-define(APPVER, <<"0.7.3">>).
 -define(EVENT_CAT, <<"call_event">>).
+-define(MAX_FAILED_NODE_CHECKS, 5).
 
 %% API
--export([start_link/4]).
+-export([start_link/4, publish_msg/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -37,6 +38,7 @@
 	  ,is_node_up = true :: boolean()
 	  ,is_amqp_up = true :: boolean()
 	  ,queued_events = [] :: list(proplist()) | []
+	  ,failed_node_checks = 0 :: integer()
 	 }).
 
 %%%===================================================================
@@ -132,7 +134,7 @@ handle_info(timeout, #state{node=Node, uuid=UUID, amqp_h=H}=State) ->
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     format_log(error, "EVT(~p): nodedown ~p~n", [self(), Node]),
     erlang:monitor_node(Node, false),
-    timer:send_after(0, self(), {is_node_up, 100}),
+    {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false}=State) ->
@@ -143,17 +145,22 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 	    case freeswitch:handlecall(Node, UUID) of
 		ok ->
 		    format_log(info, "EVT(~p): node_is_up ~p~n", [self(), Node]),
-		    {noreply, State#state{is_node_up=true}};
+		    {noreply, State#state{is_node_up=true, failed_node_checks=0}};
 		_ -> {stop, normal, State}
 	    end;
 	pang ->
 	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
 		true ->
-		    timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+		    case State#state.failed_node_checks > ?MAX_FAILED_NODE_CHECKS of
+			true ->
+			    {stop, normal, State};
+			false ->
+			    timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
+			    {noreply, State#state{is_node_up=false, failed_node_checks=State#state.failed_node_checks+1}}
+		    end;
 		false ->
 		    timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
-	    end,
-	    {noreply, State}
+	    end
     end;
 
 handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, amqp_h=Host}=State) ->
@@ -193,18 +200,24 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 	    {noreply, State#state{queued_events = [Data | State#state.queued_events]}}
     end;
 
+handle_info(call_hangup, #state{is_node_up=false}=State) ->
+    format_log(info, "EVT(~p): call_hangup received, is_node_up is false; let's wait and see if FS restarts in time (tried ~s times already)~n", [self(), State#state.failed_node_checks]),
+    {noreply, State};
+
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid, is_amqp_up=false, queued_events=Evts, amqp_h=H}=State) ->
+    format_log(info, "EVT(~p): call_hangup received, is_amqp_up is false; sending queued if amqp comes back up.~n", [self()]),
     spawn(fun() -> send_queued(H, UUID, Evts, 0) end),
     shutdown(CtlPid, UUID),
     {stop, normal, State};
 
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid}=State) ->
+    format_log(info, "EVT(~p): call_hangup received, everything looks normal, so going down~n", [self()]),
     shutdown(CtlPid, UUID),
     {stop, normal, State};
 
 handle_info({amqp_host_down, H}, State) ->
     format_log(info, "EVT(~p): AmqpHost ~s went down; queueing events~n", [self(), H]),
-    timer:send_after(1000, self(), is_amqp_up),
+    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
 handle_info(is_amqp_up, #state{uuid=UUID, amqp_h=H, amqp_q={error, _}}=State) ->
@@ -213,15 +226,27 @@ handle_info(is_amqp_up, #state{uuid=UUID, amqp_h=H, amqp_q={error, _}}=State) ->
 	true ->
 	    {noreply, State#state{amqp_q = Q1, is_amqp_up = true}};
 	false ->
-	    timer:send_after(1000, self(), is_amqp_up),
+	    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
 	    {noreply, State}
     end;
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
     format_log(info, "EVT(~p): AMQP Msg ~s~n", [self(), Payload]),
-    spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, State#state.amqp_h, State#state.is_node_up) end),
-    {noreply, State};
+    IsUp = is_node_up(State#state.node, State#state.uuid),
+    spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, State#state.amqp_h, IsUp) end),
+
+    case IsUp of
+	true ->
+	    {noreply, State#state{is_node_up=IsUp, failed_node_checks=0}};
+	false ->
+	    case State#state.failed_node_checks > ?MAX_FAILED_NODE_CHECKS of
+		true ->
+		    {stop, normal, State};
+		false ->
+		    {noreply, State#state{is_node_up=IsUp, failed_node_checks=State#state.failed_node_checks+1}}
+	    end
+    end;
 
 handle_info(_Info, State) ->
     format_log(info, "EVT(~p): unhandled info: ~p~n", [self(), _Info]),
@@ -238,9 +263,11 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{ctlpid=undefined}) ->
+terminate(_Reason, #state{uuid=UUID, ctlpid=undefined}) ->
+    format_log(info, "EVT(~p): Terminating ~p (~p), no ctlpid~n", [self(), UUID, _Reason]),
     ok;
 terminate(_Reason, #state{uuid=UUID, ctlpid=CtlPid}) ->
+    format_log(info, "EVT(~p): Terminating ~p (~p)~n", [self(), UUID, _Reason]),
     shutdown(CtlPid, UUID).
 
 %%--------------------------------------------------------------------
@@ -258,10 +285,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec(shutdown/2 :: (CtlPid :: pid() | undefined, UUID :: binary()) -> no_return()).
 shutdown(CtlPid, UUID) ->
     case CtlPid of
-	undefined -> ok;
-	_ -> CtlPid ! {hangup, self(), UUID}
+	undefined ->
+	    ok;
+	_ ->
+	    CtlPid ! {hangup, self(), UUID},
+	    ok
     end,
 
     receive {ctl_down, CtlPid} -> ok
@@ -305,8 +336,7 @@ publish_msg(Host, UUID, Prop) ->
 	    {ok, JSON} = whistle_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(Host, UUID, JSON, event);
 	false ->
-	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName]),
-	    ok
+	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName])
     end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
@@ -392,23 +422,23 @@ event_specific(_Evt, _Prop) ->
 
 handle_amqp_prop(<<"status_req">>, JObj, AmqpHost, IsNodeUp) ->
     try
-    true = whistle_api:call_status_req_v(JObj),
-    CallID = whapps_json:get_value(<<"Call-ID">>, JObj),
-    format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
+	true = whistle_api:call_status_req_v(JObj),
+	CallID = whapps_json:get_value(<<"Call-ID">>, JObj),
+	format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
 
-    {Status, ErrMsg} = case IsNodeUp of
-			   true -> {<<"active">>, {ignore, me}};
-			   false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
-		       end,
+	{Status, ErrMsg} = case IsNodeUp of
+			       true -> {<<"active">>, {ignore, me}};
+			       false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
+			   end,
 
-    RespJObj = [{<<"Call-ID">>, CallID}
-		,{<<"Status">>, Status}
-		| whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, <<?APPNAME/binary, ".status">>, ?APPVER) ],
-    {ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
-    SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
-    format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
+	RespJObj = [{<<"Call-ID">>, CallID}
+		    ,{<<"Status">>, Status}
+		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, <<?APPNAME/binary, ".status">>, ?APPVER) ],
+	{ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
+	SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
+	format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
 
-    amqp_util:targeted_publish(AmqpHost, SrvID, JSON)
+	amqp_util:targeted_publish(AmqpHost, SrvID, JSON)
     catch
 	E:R ->
 	    format_log(error, "EVT.call_status err ~p: ~p", [E, R])
@@ -426,12 +456,20 @@ send_queued(_, _, _, 10) ->
 send_queued(_, _, [], _) ->
     format_log(info, "EVT.send_queued(~p): No queued events.~n", [self()]);
 send_queued(H, UUID, Evts, Tries) ->
-    case amqp_util:new_callevt_queue(H, <<>>) of
+    case amqp_util:is_host_available(H) of
 	{error, _} ->
-	    timer:sleep(1000),
+	    ok = timer:sleep(1000),
 	    send_queued(H, UUID, Evts, Tries+1);
 	Q ->
 	    format_log(info, "EVT.send_queued(~p): Sending queued events on try ~p~n", [self(), Tries]),
 	    amqp_util:queue_delete(H, Q),
-	    [ publish_msg(H, UUID, E) || E <- lists:reverse(Evts) ]
+	    lists:foreach(fun(E) -> publish_msg(H, UUID, E) end, lists:reverse(Evts)),
+	    ok
+    end.
+
+-spec(is_node_up/2 :: (Node :: atom(), UUID :: binary()) -> boolean()).
+is_node_up(Node, UUID) ->
+    case freeswitch:api(Node, uuid_exists, whistle_util:to_list(UUID)) of
+	{ok, IsUp} -> whistle_util:to_boolean(IsUp);
+	_ -> false
     end.
