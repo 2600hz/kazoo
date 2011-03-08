@@ -263,9 +263,11 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{ctlpid=undefined}) ->
+terminate(_Reason, #state{uuid=UUID, ctlpid=undefined}) ->
+    format_log(info, "EVT(~p): Terminating ~p (~p), no ctlpid~n", [self(), UUID, _Reason]),
     ok;
 terminate(_Reason, #state{uuid=UUID, ctlpid=CtlPid}) ->
+    format_log(info, "EVT(~p): Terminating ~p (~p)~n", [self(), UUID, _Reason]),
     shutdown(CtlPid, UUID).
 
 %%--------------------------------------------------------------------
