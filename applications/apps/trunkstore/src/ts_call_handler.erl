@@ -433,4 +433,5 @@ get_call_duration(JObj, #route_flags{rate_minimum=RM}, StartTime) ->
 		Y when Y < RM -> RM;
 		Z -> Z
 	    end,
+    format_log(info, "TS_CALL(~p): get_call_d: BillSecs: ~p, StartTime: ~p, Guess: ~p~n", [self(), whapps_json:get_value(<<"Billing-Seconds">>, JObj), StartTime, Guess]),
     whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj, Guess)).
