@@ -16,8 +16,9 @@
 -import(logger, [log/2, format_log/3]).
 
 -define(APPNAME, <<"ecallmgr.call.event">>).
--define(APPVER, <<"0.6.1">>).
+-define(APPVER, <<"0.7.3">>).
 -define(EVENT_CAT, <<"call_event">>).
+-define(MAX_FAILED_NODE_CHECKS, 5).
 
 %% API
 -export([start_link/4, publish_msg/3]).
@@ -37,6 +38,7 @@
 	  ,is_node_up = true :: boolean()
 	  ,is_amqp_up = true :: boolean()
 	  ,queued_events = [] :: list(proplist()) | []
+	  ,failed_node_checks = 0 :: integer()
 	 }).
 
 %%%===================================================================
@@ -143,17 +145,22 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 	    case freeswitch:handlecall(Node, UUID) of
 		ok ->
 		    format_log(info, "EVT(~p): node_is_up ~p~n", [self(), Node]),
-		    {noreply, State#state{is_node_up=true}};
+		    {noreply, State#state{is_node_up=true, failed_node_checks=0}};
 		_ -> {stop, normal, State}
 	    end;
 	pang ->
-	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-			  true ->
-			      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
-			  false ->
-			      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
-		      end,
-	    {noreply, State}
+	    case State#state.failed_node_checks > ?MAX_FAILED_NODE_CHECKS of
+		true ->
+		    {stop, normal, State};
+		false ->
+		    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+				  true ->
+				      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+				  false ->
+				      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
+			      end,
+		    {noreply, State#state{is_node_up=false, failed_node_checks=State#state.failed_node_checks+1}}
+	    end
     end;
 
 handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, amqp_h=Host}=State) ->
@@ -222,7 +229,18 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
     format_log(info, "EVT(~p): AMQP Msg ~s~n", [self(), Payload]),
     IsUp = is_node_up(State#state.node, State#state.uuid),
     spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, State#state.amqp_h, IsUp) end),
-    {noreply, State#state{is_node_up=IsUp}};
+
+    case IsUp of
+	true ->
+	    {noreply, State#state{is_node_up=IsUp, failed_node_checks=0}};
+	false ->
+	    case State#state.failed_node_checks > ?MAX_FAILED_NODE_CHECKS of
+		true ->
+		    {stop, normal, State};
+		false ->
+		    {noreply, State#state{is_node_up=IsUp, failed_node_checks=State#state.failed_node_checks+1}}
+	    end
+    end;
 
 handle_info(_Info, State) ->
     format_log(info, "EVT(~p): unhandled info: ~p~n", [self(), _Info]),
