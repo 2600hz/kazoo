@@ -1,6 +1,6 @@
 {application,ecallmgr,
              [{description,"Manage resource requests and interface with FreeSWITCH"},
-              {vsn,"0.7.1"},
+              {vsn,"0.7.4"},
               {registered,[]},
               {applications,[kernel,stdlib,crypto,sasl,whistle_amqp]},
               {mod,{ecallmgr_app,[ecallmgr,ecallmgr_app,ecallmgr_sup,
