@@ -164,9 +164,4 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 generate_name(CallID, Name) ->
-    to_hex(erlang:md5(list_to_binary([CallID,Name,"shh"]))).
-
-to_hex(Bin) when is_binary(Bin) ->
-    to_hex(binary_to_list(Bin));
-to_hex(L) when is_list(L) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- L])).
+    whistle_util:to_hex(erlang:md5(list_to_binary([CallID,Name,"shh"]))).

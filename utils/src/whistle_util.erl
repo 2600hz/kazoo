@@ -18,7 +18,7 @@ reload_app(kernel) -> ok;
 reload_app(App) ->
     io:format("Reloading App ~p~n", [App]),
     {ok, Prop} = application:get_all_key(App),
-    case proplists:get_value(modules, Prop, []) of
+    case props:get_value(modules, Prop, []) of
 	[] ->
 	    io:format("No Mods to reload~n", []);
 	Mods ->
