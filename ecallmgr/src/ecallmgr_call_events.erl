@@ -149,17 +149,17 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 		_ -> {stop, normal, State}
 	    end;
 	pang ->
-	    case State#state.failed_node_checks > ?MAX_FAILED_NODE_CHECKS of
+	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
 		true ->
-		    {stop, normal, State};
+		    case State#state.failed_node_checks > ?MAX_FAILED_NODE_CHECKS of
+			true ->
+			    {stop, normal, State};
+			false ->
+			    timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
+			    {noreply, State#state{is_node_up=false, failed_node_checks=State#state.failed_node_checks+1}}
+		    end;
 		false ->
-		    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-				  true ->
-				      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
-				  false ->
-				      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
-			      end,
-		    {noreply, State#state{is_node_up=false, failed_node_checks=State#state.failed_node_checks+1}}
+		    timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
 	    end
     end;
 
