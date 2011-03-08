@@ -443,7 +443,7 @@ send_queued(H, UUID, Evts, Tries) ->
 
 -spec(is_node_up/2 :: (Node :: atom(), UUID :: binary()) -> boolean()).
 is_node_up(Node, UUID) ->
-    true =:= freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-					     ,{"execute-app-name", "uuid_exists"}
-					     ,{"execute-app-arg", whistle_util:to_list(UUID)}
-					    ]).
+    case freeswitch:api(Node, uuid_exists, whistle_util:to_list(UUID)) of
+	{ok, IsUp} -> whistle_util:to_boolean(IsUp);
+	_ -> false
+    end.
