@@ -200,12 +200,18 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 	    {noreply, State#state{queued_events = [Data | State#state.queued_events]}}
     end;
 
+handle_info(call_hangup, #state{is_node_up=false}=State) ->
+    format_log(info, "EVT(~p): call_hangup received, is_node_up is false; let's wait and see if FS restarts in time (tried ~s times already)~n", [self(), State#state.failed_node_checks]),
+    {noreply, State};
+
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid, is_amqp_up=false, queued_events=Evts, amqp_h=H}=State) ->
+    format_log(info, "EVT(~p): call_hangup received, is_amqp_up is false; sending queued if amqp comes back up.~n", [self()]),
     spawn(fun() -> send_queued(H, UUID, Evts, 0) end),
     shutdown(CtlPid, UUID),
     {stop, normal, State};
 
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid}=State) ->
+    format_log(info, "EVT(~p): call_hangup received, everything looks normal, so going down~n", [self()]),
     shutdown(CtlPid, UUID),
     {stop, normal, State};
 
