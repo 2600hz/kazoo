@@ -34,18 +34,27 @@ init(Opts) ->
     %%{{trace, "/tmp"}, Context}.
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
-    Json = get_json_body(RD),
-    Verb = get_http_verb(RD, Json),
-    Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
-    Loaded = lists:map(fun whistle_util:to_binary/1, erlang:loaded()),
+    Context1 = case wrq:get_req_header("Content-Type", RD) of
+		   "multipart/form-data" ++ _ ->
+		       extract_files_and_params(RD, Context);
+		   "application/json" ++ _ ->
+		       Context#cb_context{req_json=get_json_body(RD)};
+		   "application/x-json" ++ _ ->
+		       Context#cb_context{req_json=get_json_body(RD)};
+		   _ ->
+		       extract_file(RD, Context)
+	       end,
 
-    case parse_path_tokens(Tokens, Loaded, []) of
+    Verb = get_http_verb(RD, Context1#cb_context.req_json),
+    Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
+
+    case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
             Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),
-            {Methods1, RD, Context#cb_context{req_nouns=Nouns, req_verb=Verb, req_json=Json}};
+            {Methods1, RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb}};
         [] ->
-            {Methods, RD, Context#cb_context{req_verb=Verb, req_json=Json}}
+            {Methods, RD, Context1#cb_context{req_verb=Verb}}
     end.
 
 malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
@@ -198,6 +207,11 @@ to_xml(RD, Context) ->
 %% is returned.
 %% @end
 %%--------------------------------------------------------------------
+-spec(parse_path_tokens/1 :: (Tokens :: list()) -> proplist()).
+parse_path_tokens(Tokens) ->
+    Loaded = lists:map(fun({Mod, _, _, _}) -> whistle_util:to_binary(Mod) end, supervisor:which_children(crossbar_module_sup)),
+    parse_path_tokens(Tokens, Loaded, []).
+
 -spec(parse_path_tokens/3 :: (Tokens :: list(), Loaded :: list(), Events :: list()) -> proplist()).
 parse_path_tokens([], _Loaded, Events) ->
     Events;
@@ -260,6 +274,52 @@ get_json_body(RD) ->
 	    format_log(error, "v1_resource: failed to convert to json(~p)~n", [E]),
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
+
+-spec(extract_files_and_params/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+extract_files_and_params(RD, Context) ->
+    try
+	Boundry = webmachine_multipart:find_boundary(RD),
+	{ReqProp, FilesProp} = get_streamed_body(
+				 webmachine_multipart:stream_parts(
+				   wrq:stream_req_body(RD, 1024), Boundry), [], []),
+	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
+    catch
+	A:B ->
+	    format_log(error, "v1.extract_files_and_params: exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+	    Context
+    end.
+
+-spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+extract_file(RD, Context) ->
+    FileContents = wrq:req_body(RD),
+    ContentType = wrq:get_req_header("Content-Type", RD),
+    ContentSize = wrq:get_req_header("Content-Length", RD),
+    Context#cb_context{req_files=[ {<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content-type">>, ContentType}
+											     ,{<<"content-length">>, ContentSize}
+											    ]}}
+								   ,{<<"contents">>, FileContents}
+								   ]}}]}.
+
+-spec(get_streamed_body/3 :: (Term :: term(), ReqProp :: proplist(), FilesProp :: proplist()) -> tuple(proplist(), proplist())).
+get_streamed_body(done_parts, ReqProp, FilesProp) ->
+    {ReqProp, FilesProp};
+get_streamed_body({{_, {Params, []}, Content}, Next}, ReqProp, FilesProp) ->
+    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
+    Value = binary:replace(whistle_util:to_binary(Content), <<$\r,$\n>>, <<>>, [global]),
+    get_streamed_body(Next(), [{Key, Value} | ReqProp], FilesProp);
+get_streamed_body({{_, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
+    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
+    FileName = whistle_util:to_binary(props:get_value(<<"filename">>, Params)),
+
+    Value = whistle_util:to_binary(Content),
+
+    get_streamed_body(Next(), ReqProp, [{Key, {struct, [{<<"headers">>, {struct, Hdrs}}
+							,{<<"contents">>, Value}
+							,{<<"filename">>, FileName}
+						       ]}}
+					| FilesProp]).
+
+
 
 %%--------------------------------------------------------------------
 %% @private

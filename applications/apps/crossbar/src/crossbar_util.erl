@@ -272,7 +272,10 @@ pull_from_body_and_qs(RD) ->
 		   {struct, Prop} = mochijson2:decode(ReqBody),
 		   Prop
 	       catch
-		   _:_ -> mochiweb_util:parse_qs(ReqBody)
+		   _:_ ->
+		       lists:map(fun({K, V}) ->
+					 {whistle_util:to_binary(K), whistle_util:to_binary(V)}
+				 end, mochiweb_util:parse_qs(ReqBody))
 	       end,
     QS = wrq:req_qs(RD),
     lists:ukeymerge(1, lists:ukeysort(1, PostBody), lists:ukeysort(1, QS)).

@@ -38,7 +38,8 @@
           ,auth_token = <<"">> :: binary()
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
-          ,req_json = [] :: mochijson()
+          ,req_json = {struct, []} :: json_object()
+	  ,req_files = [] :: list(proplist()) | []
           ,req_data = [] :: mochijson()
           ,db_name = undefined :: string() | undefined
           ,doc = undefined :: json_object() | json_objects() | undefined
