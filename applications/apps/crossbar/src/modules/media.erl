@@ -27,6 +27,11 @@
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
 
+-define(METADATA_FIELDS, [<<"display_name">>, <<"description">>, <<"media_type">>
+			      ,<<"status">>, <<"length">>, <<"size">>
+			      ,<<"streamable">>, <<"format">>, <<"sample">>
+			]). % until validation is in place
+
 %%%===================================================================
 %%% API
 %%%===================================================================
