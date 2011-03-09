@@ -48,7 +48,6 @@
           ,database = undefined
           ,mailbox_id = undefined
           ,action = undefined
-          ,rev = undefined
           ,skip_instructions = <<"false">>
           ,skip_greeting = <<"false">>
           ,tone_spec = [{struct, [{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}]}]
@@ -89,13 +88,12 @@ get_mailbox({struct, Props}) ->
     Db = get_value(<<"database">>, Props),
     Id = get_value(<<"id">>, Props),
     case couch_mgr:open_doc(Db, Id) of
-        {ok, Doc} ->
+        {ok, _Doc} ->
             #mailbox{
                        file_id = list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16)))
                       ,database = Db
                       ,mailbox_id = Id
                       ,action = get_value(<<"action">>, Props)
-                      ,rev = whapps_json:get_value(["_rev"], Doc)
                     };
         _-> 
             #mailbox{}
@@ -262,7 +260,7 @@ record_file(#mailbox{file_id=FileId}, #cf_call{call_id=CallId}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(store/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId, rev=Rev}, #cf_call{call_id=CallId}=Call) ->
+store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=CallId}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, FileId}
@@ -271,7 +269,7 @@ store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId, rev=Rev}, #cf_call{ca
                                                      ,Db/binary
                                                      ,$/, Id/binary
                                                      ,$/, FileId/binary
-                                                     ,"?rev=", Rev/binary
+                                                     ,"?rev=", (couch_mgr:lookup_doc_rev(Db, Id))/binary
                                                    >>}
                ,{<<"Additional-Headers">>, [{struct, [{<<"Content-Type">>, <<"audio/x-wav">>}]}]}
                ,{<<"Call-ID">>, CallId}
