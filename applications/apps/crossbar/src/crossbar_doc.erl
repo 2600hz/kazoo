@@ -158,12 +158,13 @@ delete(#cb_context{db_name=DB, doc=Doc}=Context) ->
     case couch_mgr:del_doc(DB, Doc) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
-	{ok, _} ->
+	{ok, _Doc} ->
+	    format_log(info, "CB_DOC.delete: result: ~p~n", [_Doc]),
             Context#cb_context{
-                 doc=undefined
-                ,resp_status=success
-                ,resp_data=[]
-            };
+	      doc=undefined
+	      ,resp_status=success
+	      ,resp_data=[]
+	     };
         _Else ->
             format_log(error, "CB_DOC.delete: Unexpected return from datastore: ~p~n", [_Else]),
             Context

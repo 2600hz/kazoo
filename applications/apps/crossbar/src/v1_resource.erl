@@ -454,11 +454,13 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
+	    format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             Content = create_resp_content(RD, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
+	    format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             case Verb of
                 <<"put">> ->
                     {false, RD1, Context1};
@@ -573,49 +575,40 @@ fix_header(_, H, V) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
-create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_error_msg=E, resp_error_code=C}) ->
-    io:format("A: ~p, D: ~p, S: ~p, E: ~p C: ~p~n", [A, D, S, E, C]),
-    case {S, C} of
-	{success, _} ->
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"data">>, D}
-            ];
-	{Status, undefined} ->
-            Msg =
-                case E of
-                    undefined ->
-			StatusBin = whistle_util:to_binary(Status),
-                        <<"Unspecified server error: ", StatusBin/binary>>;
-                    Else ->
-                        whistle_util:to_binary(Else)
-                end,
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"message">>, Msg}
-                ,{<<"error">>, 500}
-                ,{<<"data">>, D}
-            ];
-	{Status, ErrCode} ->
-            Msg =
-                case E of
-                    undefined ->
-			StatusBin = whistle_util:to_binary(Status),
-			ErrCodeBin = whistle_util:to_binary(ErrCode),
-                        <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
-                    Else ->
-                        whistle_util:to_binary(Else)
-                end,
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"message">>, Msg}
-                ,{<<"error">>, C}
-                ,{<<"data">>, D}
-            ]
-    end.
+create_resp_envelope(#cb_context{resp_status = success}=C) ->
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, success}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ];
+create_resp_envelope(#cb_context{resp_error_code = undefined}=C) ->
+    Msg = case C#cb_context.resp_error_msg of
+	      undefined ->
+		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
+		  <<"Unspecified server error: ", StatusBin/binary>>;
+	      Else ->
+		  whistle_util:to_binary(Else)
+	  end,
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, C#cb_context.resp_status}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, 500}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ];
+create_resp_envelope(C) ->
+    Msg = case C#cb_context.resp_error_msg of
+	      undefined ->
+		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
+		  ErrCodeBin = whistle_util:to_binary(C#cb_context.resp_error_code),
+		  <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
+	      Else ->
+		  whistle_util:to_binary(Else)
+	  end,
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, C#cb_context.resp_status}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, C#cb_context.resp_error_code}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
