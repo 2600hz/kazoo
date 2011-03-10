@@ -80,10 +80,7 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
 forbidden(RD, Context) ->
     case is_authentic(RD, Context) of
         true ->
-            case is_permitted(Context) of
-                true -> {false, RD, Context};
-                false -> {true, RD, Context}
-            end;
+            {not is_permitted(Context), RD, Context};
         false ->
             {{halt, 401}, RD, Context}
     end.
