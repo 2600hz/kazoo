@@ -101,11 +101,11 @@ to_list(X) when is_list(X) ->
 to_binary(X) when is_float(X) ->
     to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) ->
-    to_binary(integer_to_list(X));
+    list_to_binary(integer_to_list(X));
 to_binary(X) when is_atom(X) ->
     list_to_binary(atom_to_list(X));
 to_binary(X) when is_list(X) ->
-    list_to_binary(X);
+    iolist_to_binary(X);
 to_binary(X) when is_binary(X) ->
     X.
 

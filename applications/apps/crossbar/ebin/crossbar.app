@@ -4,7 +4,7 @@
               {modules,[accounts,callflow_crud,crossbar,crossbar_app,
                         crossbar_bindings,crossbar_doc,crossbar_module_sup,
                         crossbar_resource,crossbar_session,crossbar_sup,
-                        crossbar_util,crossbar_validator,evtsub,noauthn,
+                        crossbar_util,crossbar_validator,evtsub,media,noauthn,
                         noauthz,nosipauth,plists,static_resource,t_evtsub,
                         users,v1_resource]},
               {registered,[]},

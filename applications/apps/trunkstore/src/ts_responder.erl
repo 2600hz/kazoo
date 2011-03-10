@@ -137,7 +137,7 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
     {noreply, State};
 
-handle_info({'basic.consume_ok', _}, S) ->
+handle_info(#'basic.consume_ok'{}, S) ->
     {noreply, S};
 
 %% catch all so we don't lose state

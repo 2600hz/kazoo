@@ -1,13 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, James Aimonetti
 %%% @doc
 %%% Account module
 %%%
 %%% Handle client requests for account documents
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 10 Feb 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(evtsub).
 
