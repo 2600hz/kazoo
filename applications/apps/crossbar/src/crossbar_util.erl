@@ -171,7 +171,7 @@ response_invalid_data(Fields, Context) ->
 %%--------------------------------------------------------------------
 -spec(response_db_missing/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_db_missing(Context) ->
-    response(fatal, <<"data collection missing">>, 503, Context).
+    response(fatal, <<"data collection missing: database not found">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public

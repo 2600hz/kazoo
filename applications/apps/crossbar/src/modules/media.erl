@@ -63,6 +63,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, ok)).
 init([]) ->
+    accounts:update_all_accounts("media_doc.json"),
     bind_to_crossbar(),
     {ok, ok}.
 
@@ -152,6 +153,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
     	  end),
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"accounts.created">>, _}, State) ->
+    Pid ! {binding_result, true, "media_doc.json"},
+    {noreply, State};
+
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
@@ -195,12 +200,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
+-spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"v1_resource.allowed_methods.media">>),
-    crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>),
-    crossbar_bindings:bind(<<"v1_resource.validate.media">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.media">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.media">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.media">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.media">>),
+    _ = crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -253,37 +259,40 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    crossbar_util:response([{struct, [{<<"id">>, <<"test1234">>}, {<<"display_name">>, <<"Test 1234">>}, {<<"media_format">>, <<"ogg">>}]}], Context);
+    lookup_media(Context);
 
 validate([], #cb_context{req_verb = <<"put">>, req_data=Data}=Context) ->
     Name = whapps_json:get_value(<<"display_name">>, Data),
-    
-    case lookup_media_by_name(Name) of
-	{error, not_found} ->
-	    create_media(Name, Data);
+
+    case Name =/= undefined andalso lookup_media_by_name(Name, Context) of
+	false ->
+	    crossbar_util:response_invalid_data([<<"display_name">>], Context);
+	#cb_context{resp_status=success, doc=[{struct, _}=Doc|_]}=Context1 ->
+	    DocID = whapps_json:get_value(<<"id">>, Doc),
+	    Context1#cb_context{resp_headers=[{"Location", DocID} | Context1#cb_context.resp_headers]};
 	_ ->
-	    crossbar_util:response_faulty_request(Context)
+	    case create_media_meta(Data, Context) of
+		#cb_context{resp_status=success, resp_data=RespData}=Context2 ->
+		    DocID = whapps_json:get_value(<<"id">>, RespData),
+		    Context2#cb_context{resp_data=[], resp_headers=[{"Location", DocID} | Context2#cb_context.resp_headers]};
+		Context3 ->
+		    format_log(info, "MEDIA.v.PUT: ERROR~n", []),
+		    Context3
+	    end
     end;
 
 validate([MediaID], #cb_context{req_verb = <<"get">>}=Context) ->
-    case lookup_media_by_id(MediaID) of
-	{error, not_found} ->
-	    crossbar_util:response_bad_identifier(MediaID, Context);
-	MediaDoc ->
-	    Context#cb_context{resp_status=success, doc=MediaDoc}
-    end;
+    get_media_doc(MediaID, Context);
 
-validate([MediaID], #cb_context{req_verb = <<"post">>, req_data=_Data}=Context) ->
-    case lookup_media_by_id(MediaID) of
-	{error, not_found} ->
-	    crossbar_util:response_bad_identifier(MediaID, Context);
-	MediaDoc ->
-	    %% need to update
-	    Context#cb_context{resp_status=success, doc=MediaDoc}
+validate([MediaID], #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
+    case crossbar_doc:load_merge(MediaID, Data, Context) of
+	#cb_context{resp_status=success}=Context1 ->
+	    crossbar_doc:save(Context1);
+	Context2 -> Context2
     end;
 
 validate([MediaID], #cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) ->
-    case lookup_media_by_id(MediaID) of
+    case lookup_media_by_id(MediaID, Context) of
 	{error, not_found} ->
 	    crossbar_util:response_bad_identifier(MediaID, Context);
 	_MediaDoc ->
@@ -292,7 +301,7 @@ validate([MediaID], #cb_context{req_verb = <<"delete">>, req_data=_Data}=Context
     end;
 
 validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>, req_data=_Data}=Context) ->
-    case lookup_media_by_id(MediaID) of
+    case lookup_media_by_id(MediaID, Context) of
 	{error, not_found} ->
 	    crossbar_util:response_bad_identifier(MediaID, Context);
 	MediaDoc ->
@@ -304,11 +313,39 @@ validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context
     format_log(info, "Media.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
 
-create_media(_Name, _Data) ->
-    ok.
+create_media_meta(Data, Context) ->
+    Doc1 = lists:foldr(fun(Meta, DocAcc) ->
+			       case whapps_json:get_value(Meta, Data) of
+				   undefined -> DocAcc;
+				   V -> [{Meta, whistle_util:to_binary(V)} | DocAcc]
+			       end
+		       end, [], ?METADATA_FIELDS),
+    crossbar_doc:save(Context#cb_context{doc=[{<<"pvt_type">>, <<"media">>} | Doc1]}).
 
-lookup_media_by_id(_MediaID) ->
-    ok.
+%% GET /media
+-spec(lookup_media/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+lookup_media(Context) ->
+    Context1 = crossbar_doc:load_view({"media_doc", "listing_by_name"}, [], Context),
+    case Context1#cb_context.resp_status =:= success of
+	true ->
+	    Resp = lists:map(fun(ViewObj) ->
+				     whapps_json:get_value(<<"value">>, ViewObj)
+			     end, Context1#cb_context.doc),
+	    crossbar_util:response(Resp, Context1);
+	false ->
+	    Context1
+    end.
 
-lookup_media_by_name(_MediaName) ->
-    ok.
+%% GET /media/MediaID
+-spec(lookup_media_by_id/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+lookup_media_by_id(MediaID, Context) ->
+    crossbar_doc:load_view({"media_doc", "listing_by_id"}, [{<<"key">>, MediaID}], Context).
+
+-spec(lookup_media_by_name/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+lookup_media_by_name(MediaName, Context) ->
+    crossbar_doc:load_view({"media_doc", "listing_by_name"}, [{<<"key">>, MediaName}], Context).
+
+%% GET/POST/DELETE /media/MediaID
+-spec(get_media_doc/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+get_media_doc(MediaID, Context) ->
+    crossbar_doc:load(MediaID, Context).

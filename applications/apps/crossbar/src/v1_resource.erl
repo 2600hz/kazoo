@@ -57,11 +57,12 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
             {Methods, RD, Context1#cb_context{req_verb=Verb}}
     end.
 
+-spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
 malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     Context1 = Context#cb_context{
 		 resp_status = error
 		 ,resp_error_msg = <<"Invalid or malformed content: ", ErrBin/binary>>
-		 ,resp_error_code = 400
+		     ,resp_error_code = 400
 		},
     Content = create_resp_content(RD, Context1),
     RD1 = wrq:set_resp_body(Content, RD),
@@ -140,12 +141,12 @@ expires(RD, #cb_context{resp_expires=Expires}=Context) ->
 
 process_post(RD, Context) ->
     Event = <<"v1_resource.process_post">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 delete_resource(RD, Context) ->
     Event = <<"v1_resource.delete_resource">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 finish_request(RD, #cb_context{start=T1}=Context) ->
@@ -166,17 +167,17 @@ finish_request(RD, #cb_context{start=T1}=Context) ->
 %%%===================================================================
 from_json(RD, Context) ->
     Event = <<"v1_resource.from_json">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 from_xml(RD, Context) ->
     Event = <<"v1_resource.from_xml">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 from_form(RD, Context) ->
     Event = <<"v1_resource.from_form">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 %%%===================================================================
@@ -184,12 +185,12 @@ from_form(RD, Context) ->
 %%%===================================================================
 to_json(RD, Context) ->
     Event = <<"v1_resource.to_json">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 to_xml(RD, Context) ->
     Event = <<"v1_resource.to_xml">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 %%%===================================================================
@@ -288,14 +289,16 @@ extract_files_and_params(RD, Context) ->
 
 -spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
 extract_file(RD, Context) ->
-    FileContents = wrq:req_body(RD),
+    FileContents = whistle_util:to_binary(wrq:req_body(RD)),
     ContentType = wrq:get_req_header("Content-Type", RD),
     ContentSize = wrq:get_req_header("Content-Length", RD),
-    Context#cb_context{req_files=[ {<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content-type">>, ContentType}
-											     ,{<<"content-length">>, ContentSize}
-											    ]}}
-								   ,{<<"contents">>, FileContents}
-								   ]}}]}.
+    Context#cb_context{req_files=[{<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content-type">>, ContentType}
+											    ,{<<"content-length">>, ContentSize}
+											   ]}}
+								  ,{<<"contents">>, FileContents}
+								 ]}
+				  }]
+		      }.
 
 -spec(get_streamed_body/3 :: (Term :: term(), ReqProp :: proplist(), FilesProp :: proplist()) -> tuple(proplist(), proplist())).
 get_streamed_body(done_parts, ReqProp, FilesProp) ->
@@ -571,6 +574,7 @@ fix_header(_, H, V) ->
 %%--------------------------------------------------------------------
 -spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
 create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_error_msg=E, resp_error_code=C}) ->
+    io:format("A: ~p, D: ~p, S: ~p, E: ~p C: ~p~n", [A, D, S, E, C]),
     case {S, C} of
 	{success, _} ->
 	    [
@@ -578,11 +582,12 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
                 ,{<<"status">>, S}
                 ,{<<"data">>, D}
             ];
-	{_, undefined} ->
+	{Status, undefined} ->
             Msg =
                 case E of
                     undefined ->
-                        <<"Unspecified server error">>;
+			StatusBin = whistle_util:to_binary(Status),
+                        <<"Unspecified server error: ", StatusBin/binary>>;
                     Else ->
                         whistle_util:to_binary(Else)
                 end,
@@ -593,11 +598,13 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
                 ,{<<"error">>, 500}
                 ,{<<"data">>, D}
             ];
-	_ ->
+	{Status, ErrCode} ->
             Msg =
                 case E of
                     undefined ->
-                        <<"Unspecified server error">>;
+			StatusBin = whistle_util:to_binary(Status),
+			ErrCodeBin = whistle_util:to_binary(ErrCode),
+                        <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
                     Else ->
                         whistle_util:to_binary(Else)
                 end,
