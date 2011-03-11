@@ -115,12 +115,13 @@ response_faulty_request(Context) ->
 %% @public
 %% @doc
 %% Create a standard response if the requested ID did not match a
-%% data record
+%% data record. Using 404 as 410 is a permanent Gone, while 404 is
+%% a softer not found now.
 %% @end
 %%--------------------------------------------------------------------
 -spec(response_bad_identifier/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 response_bad_identifier(Id, Context) ->
-    response(error, <<"bad identifier">>, 410, [Id], Context).
+    response(error, <<"bad identifier">>, 404, [Id], Context).
 
 %%--------------------------------------------------------------------
 %% @public

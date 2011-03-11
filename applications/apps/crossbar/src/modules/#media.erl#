@@ -273,6 +273,17 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+add_content_types({Context, _}) ->
+    
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Paths contains the tokenized portions of the URI after the module
 %% /account/{AID}/media => Paths == []
 %% /account/{AID}/media/{MediaID} => Paths = [<<MediaID>>]
