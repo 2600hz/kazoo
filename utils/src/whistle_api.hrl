@@ -534,7 +534,7 @@
 -define(SUPPORTED_APPLICATIONS, [{<<"playback">>, <<"play">>}
 				 ,{<<"hangup">>, <<"hangup">>}
 				 ,{<<"record">>, <<"record">>}
-				 ,{<<"playback">>, <<"tone">>}
+				 ,{<<"playback">>, <<"tones">>}
 				 ,{<<"park">>, <<"park">>}
 				 ,{<<"set">>, <<"set">>}
 				 ,{<<"say">>, <<"say">>}
