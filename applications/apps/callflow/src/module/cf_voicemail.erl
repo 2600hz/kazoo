@@ -272,6 +272,7 @@ store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=Cal
                                                      ,"?rev=", (couch_mgr:lookup_doc_rev(Db, Id))/binary
                                                    >>}
                ,{<<"Additional-Headers">>, [{struct, [{<<"Content-Type">>, <<"audio/x-wav">>}]}]}
+               ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
@@ -288,7 +289,7 @@ store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=Cal
 -spec(play_tones/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 play_tones(#mailbox{tone_spec=Tones}, #cf_call{call_id=CallId}=Call) ->
     Command = [
-                {<<"Application-Name">>, <<"tone">>}
+                {<<"Application-Name">>, <<"tones">>}
                ,{<<"Tones">>, Tones}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
