@@ -261,7 +261,7 @@ build_route(AmqpHost, RouteProp, DIDFormat) ->
 -spec(lookup_and_replace/4 :: (AmqpHost :: string(), Realm :: binary(), User :: binary(), Replace :: binary()) -> binary() | tuple(error, integer())).
 lookup_and_replace(AmqpHost, Realm, User, Replace) ->
     case lookup_reg(AmqpHost, Realm, User) of
-	{error, timeout} -> {error, 503};
+	{error, timeout} -> {error, "503"};
 	Contact ->
 	    [_, HostPlus] = binary:split(Contact, <<"@">>),
 	    binary:replace(<<Replace/binary, "@", HostPlus/binary>>, [<<"<">>, <<">">>], <<>>, [global])
