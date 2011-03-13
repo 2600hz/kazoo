@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start/1, start_link/0, set_amqp_host/1]).
+-export([start/0, start/1, start_link/0, set_amqp_host/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -42,6 +42,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+start() ->
+    gen_server:start({local, ?SERVER}, ?MODULE, ["localhost"], []).
+
 start(AHost) ->
     gen_server:start({local, ?SERVER}, ?MODULE, [AHost], []).
 

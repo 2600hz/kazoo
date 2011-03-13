@@ -62,6 +62,7 @@ start_link() ->
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
     bind_to_crossbar(),
+    accounts:update_all_accounts("users.json"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -149,6 +150,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Co
 	  end),
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"account.created">>, Payload}, State) ->    
+    Pid ! {binding_result, true, "users.json"},
+    {noreply, State};
+
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     %%format_log(info, "USERS(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
@@ -198,7 +203,8 @@ bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
     crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
     crossbar_bindings:bind(<<"v1_resource.validate.users">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.users">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.users">>),
+    crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -34,25 +34,35 @@ init(Opts) ->
     %%{{trace, "/tmp"}, Context}.
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
-    Json = get_json_body(RD),
-    Verb = get_http_verb(RD, Json),
-    Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
-    Loaded = lists:map(fun whistle_util:to_binary/1, erlang:loaded()),
+    Context1 = case wrq:get_req_header("Content-Type", RD) of
+		   "multipart/form-data" ++ _ ->
+		       extract_files_and_params(RD, Context);
+		   "application/json" ++ _ ->
+		       Context#cb_context{req_json=get_json_body(RD)};
+		   "application/x-json" ++ _ ->
+		       Context#cb_context{req_json=get_json_body(RD)};
+		   _ ->
+		       extract_file(RD, Context)
+	       end,
 
-    case parse_path_tokens(Tokens, Loaded, []) of
+    Verb = get_http_verb(RD, Context1#cb_context.req_json),
+    Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
+
+    case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
             Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),
-            {Methods1, RD, Context#cb_context{req_nouns=Nouns, req_verb=Verb, req_json=Json}};
+            {Methods1, RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb}};
         [] ->
-            {Methods, RD, Context#cb_context{req_verb=Verb, req_json=Json}}
+            {Methods, RD, Context1#cb_context{req_verb=Verb}}
     end.
 
+-spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
 malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     Context1 = Context#cb_context{
 		 resp_status = error
 		 ,resp_error_msg = <<"Invalid or malformed content: ", ErrBin/binary>>
-		 ,resp_error_code = 400
+		     ,resp_error_code = 400
 		},
     Content = create_resp_content(RD, Context1),
     RD1 = wrq:set_resp_body(Content, RD),
@@ -71,10 +81,7 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
 forbidden(RD, Context) ->
     case is_authentic(RD, Context) of
         true ->
-            case is_permitted(Context) of
-                true -> {false, RD, Context};
-                false -> {true, RD, Context}
-            end;
+            {not is_permitted(Context), RD, Context};
         false ->
             {{halt, 401}, RD, Context}
     end.
@@ -134,12 +141,12 @@ expires(RD, #cb_context{resp_expires=Expires}=Context) ->
 
 process_post(RD, Context) ->
     Event = <<"v1_resource.process_post">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 delete_resource(RD, Context) ->
     Event = <<"v1_resource.delete_resource">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 finish_request(RD, #cb_context{start=T1}=Context) ->
@@ -160,17 +167,17 @@ finish_request(RD, #cb_context{start=T1}=Context) ->
 %%%===================================================================
 from_json(RD, Context) ->
     Event = <<"v1_resource.from_json">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 from_xml(RD, Context) ->
     Event = <<"v1_resource.from_xml">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 from_form(RD, Context) ->
     Event = <<"v1_resource.from_form">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 %%%===================================================================
@@ -178,12 +185,12 @@ from_form(RD, Context) ->
 %%%===================================================================
 to_json(RD, Context) ->
     Event = <<"v1_resource.to_json">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 to_xml(RD, Context) ->
     Event = <<"v1_resource.to_xml">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 %%%===================================================================
@@ -198,6 +205,11 @@ to_xml(RD, Context) ->
 %% is returned.
 %% @end
 %%--------------------------------------------------------------------
+-spec(parse_path_tokens/1 :: (Tokens :: list()) -> proplist()).
+parse_path_tokens(Tokens) ->
+    Loaded = lists:map(fun({Mod, _, _, _}) -> whistle_util:to_binary(Mod) end, supervisor:which_children(crossbar_module_sup)),
+    parse_path_tokens(Tokens, Loaded, []).
+
 -spec(parse_path_tokens/3 :: (Tokens :: list(), Loaded :: list(), Events :: list()) -> proplist()).
 parse_path_tokens([], _Loaded, Events) ->
     Events;
@@ -260,6 +272,54 @@ get_json_body(RD) ->
 	    format_log(error, "v1_resource: failed to convert to json(~p)~n", [E]),
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
+
+-spec(extract_files_and_params/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+extract_files_and_params(RD, Context) ->
+    try
+	Boundry = webmachine_multipart:find_boundary(RD),
+	{ReqProp, FilesProp} = get_streamed_body(
+				 webmachine_multipart:stream_parts(
+				   wrq:stream_req_body(RD, 1024), Boundry), [], []),
+	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
+    catch
+	A:B ->
+	    format_log(error, "v1.extract_files_and_params: exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+	    Context
+    end.
+
+-spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+extract_file(RD, Context) ->
+    FileContents = whistle_util:to_binary(wrq:req_body(RD)),
+    ContentType = wrq:get_req_header("Content-Type", RD),
+    ContentSize = wrq:get_req_header("Content-Length", RD),
+    Context#cb_context{req_files=[{<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content-type">>, ContentType}
+											    ,{<<"content-length">>, ContentSize}
+											   ]}}
+								  ,{<<"contents">>, FileContents}
+								 ]}
+				  }]
+		      }.
+
+-spec(get_streamed_body/3 :: (Term :: term(), ReqProp :: proplist(), FilesProp :: proplist()) -> tuple(proplist(), proplist())).
+get_streamed_body(done_parts, ReqProp, FilesProp) ->
+    {ReqProp, FilesProp};
+get_streamed_body({{_, {Params, []}, Content}, Next}, ReqProp, FilesProp) ->
+    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
+    Value = binary:replace(whistle_util:to_binary(Content), <<$\r,$\n>>, <<>>, [global]),
+    get_streamed_body(Next(), [{Key, Value} | ReqProp], FilesProp);
+get_streamed_body({{_, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
+    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
+    FileName = whistle_util:to_binary(props:get_value(<<"filename">>, Params)),
+
+    Value = whistle_util:to_binary(Content),
+
+    get_streamed_body(Next(), ReqProp, [{Key, {struct, [{<<"headers">>, {struct, Hdrs}}
+							,{<<"contents">>, Value}
+							,{<<"filename">>, FileName}
+						       ]}}
+					| FilesProp]).
+
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -394,11 +454,13 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
+	    format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             Content = create_resp_content(RD, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
+	    format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             case Verb of
                 <<"put">> ->
                     {false, RD1, Context1};
@@ -513,45 +575,40 @@ fix_header(_, H, V) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
-create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_error_msg=E, resp_error_code=C}) ->
-    case {S, C} of
-	{success, _} ->
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"data">>, D}
-            ];
-	{_, undefined} ->
-            Msg =
-                case E of
-                    undefined ->
-                        <<"Unspecified server error">>;
-                    Else ->
-                        whistle_util:to_binary(Else)
-                end,
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"message">>, Msg}
-                ,{<<"error">>, 500}
-                ,{<<"data">>, D}
-            ];
-	_ ->
-            Msg =
-                case E of
-                    undefined ->
-                        <<"Unspecified server error">>;
-                    Else ->
-                        whistle_util:to_binary(Else)
-                end,
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"message">>, Msg}
-                ,{<<"error">>, C}
-                ,{<<"data">>, D}
-            ]
-    end.
+create_resp_envelope(#cb_context{resp_status = success}=C) ->
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, success}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ];
+create_resp_envelope(#cb_context{resp_error_code = undefined}=C) ->
+    Msg = case C#cb_context.resp_error_msg of
+	      undefined ->
+		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
+		  <<"Unspecified server error: ", StatusBin/binary>>;
+	      Else ->
+		  whistle_util:to_binary(Else)
+	  end,
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, C#cb_context.resp_status}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, 500}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ];
+create_resp_envelope(C) ->
+    Msg = case C#cb_context.resp_error_msg of
+	      undefined ->
+		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
+		  ErrCodeBin = whistle_util:to_binary(C#cb_context.resp_error_code),
+		  <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
+	      Else ->
+		  whistle_util:to_binary(Else)
+	  end,
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, C#cb_context.resp_status}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, C#cb_context.resp_error_code}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ].
 
 %%--------------------------------------------------------------------
 %% @private

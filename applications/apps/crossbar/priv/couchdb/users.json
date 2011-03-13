@@ -1,0 +1,8 @@
+{
+   "_id": "_design/users",
+   "views": {
+       "list": {
+           "map": "function(doc) { if ( doc.pvt_type == 'user') emit(doc._id, doc); }"
+       }
+   }
+}

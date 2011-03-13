@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, update_all_accounts/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,6 +47,32 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Update a document in each crossbar account database with the
+%% file contents.  This is intended for _design docs....
+%%
+%% @spec update_all_accounts() -> ok | error
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_all_accounts/1 :: (File :: list() | binary()) -> ok | error).
+update_all_accounts(File) ->
+    case crossbar_doc:load_view(?ACCOUNTS_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
+        #cb_context{resp_status=success, doc=Doc} ->
+            lists:foreach(fun(Account) ->                                  
+                                  DbName = get_db_name(whapps_json:get_value(["id"], Account)),
+                                  case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
+                                      {error, not_found} ->
+                                          couch_mgr:load_doc_from_file(DbName, crossbar, File);
+                                      Else ->
+                                          Else
+                                  end
+                          end, Doc),
+                ok;
+        _Else ->
+            error
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -163,13 +189,18 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
     spawn(fun() ->
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                          case couch_mgr:db_create(get_db_name(Doc)) of
-                            false ->
-                                format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), get_db_name(Doc)]),
-                                crossbar_doc:delete(Context1),
-                                Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
-                            true ->
-                                Pid ! {binding_result, true, [RD, Context1, Params]}
+                          DbName = get_db_name(Doc),
+                          case couch_mgr:db_create(DbName) of
+                              false ->
+                                  format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), get_db_name(Doc)]),
+                                  crossbar_doc:delete(Context1),
+                                  Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
+                              true ->
+                                  Responses = crossbar_bindings:map(<<"account.created">>, Context1),                                  
+                                  lists:foreach(fun({true, File}) ->                                         
+                                                        couch_mgr:load_doc_from_file(DbName, crossbar, File)
+                                                end, crossbar_bindings:succeeded(Responses)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]}
                           end;
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
@@ -597,6 +628,8 @@ set_private_fields(Doc) ->
 get_db_name({struct, _}=Doc) ->
     get_db_name([whapps_json:get_value(["_id"], Doc)]);
 get_db_name([DocId]) when is_binary(DocId) ->
+    get_db_name(DocId);
+get_db_name(DocId) when is_binary(DocId) ->
     Id = whistle_util:to_list(DocId),
     Db = ["crossbar%2Fclients%2F", string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
     whistle_util:to_binary(Db);

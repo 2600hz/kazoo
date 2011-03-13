@@ -43,8 +43,8 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
 	      ,resp_etag=rev_to_etag(Doc)
 	     };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
-            Context
+            format_log(error, "CB_DOC.load: Unexpected return from datastore: ~p~n", [_Else]),
+            Context#cb_context{doc=[]}
     end.
 
 load_from_file(Db, File) ->
@@ -93,15 +93,17 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:get_results(DB, View, Options) of
 	{error, invalid_view_name} ->
             crossbar_util:response_missing_view(Context);
+	{error, not_found} ->
+	    crossbar_util:response_missing_view(Context);
 	{ok, Doc} ->
             Context#cb_context{
-                 doc=Doc
-                ,resp_status=success
-                ,resp_etag=rev_to_etag(Doc)
-            };
+	      doc=Doc
+	      ,resp_status=success
+	      ,resp_etag=rev_to_etag(Doc)
+	     };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
-            Context
+            format_log(error, "CB_DOC.load_view: Unexpected return from datastore: ~p~n", [_Else]),
+            Context#cb_context{doc=[]}
     end.
 
 load_view(View, Options, Context, Filter) ->
@@ -136,7 +138,7 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
                 ,resp_etag=rev_to_etag(Doc1)
             };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
+            format_log(error, "CB_DOC.save: Unexpected return from datastore: ~p~n", [_Else]),
             Context
     end.
 
@@ -156,14 +158,15 @@ delete(#cb_context{db_name=DB, doc=Doc}=Context) ->
     case couch_mgr:del_doc(DB, Doc) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
-	{ok, _} ->
+	{ok, _Doc} ->
+	    format_log(info, "CB_DOC.delete: result: ~p~n", [_Doc]),
             Context#cb_context{
-                 doc=undefined
-                ,resp_status=success
-                ,resp_data=[]
-            };
+	      doc=undefined
+	      ,resp_status=success
+	      ,resp_data=[]
+	     };
         _Else ->
-            format_log(error, "Unexpected return from datastore: ~p~n", [_Else]),
+            format_log(error, "CB_DOC.delete: Unexpected return from datastore: ~p~n", [_Else]),
             Context
     end.
 
