@@ -480,6 +480,7 @@ execute_request(RD, Context) ->
 -spec(create_resp_content/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> iolist()).
 create_resp_content(RD, Context) ->
     Prop = create_resp_envelope(Context),
+    io:format("v1: get_resp_type: ~p~n", [get_resp_type(RD)]),
     case get_resp_type(RD) of
 	xml ->
             io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), [])]);
@@ -540,7 +541,7 @@ succeeded(_) ->
 set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
     lists:foldl(fun({Header, Value}, RD) ->
 			{H, V} = fix_header(RD, Header, Value),
-			wrq:set_resp_header(H, V, RD)
+			wrq:set_resp_header(H, V, wrq:remove_resp_header(H, RD))
 		end, RD0, Headers).
 
 -spec(fix_header/3 :: (RD :: #wm_reqdata{}, Header :: string(), Value :: string() | binary()) -> tuple(string(), string())).
