@@ -11,6 +11,7 @@
 -export([response/2, response/3, response/4, response/5]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
+-export([response_conflicting_docs/1]).
 -export([response_datastore_timeout/1]).
 -export([response_datastore_conn_refused/1]).
 -export([response_invalid_data/2]).
@@ -122,6 +123,17 @@ response_faulty_request(Context) ->
 -spec(response_bad_identifier/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 response_bad_identifier(Id, Context) ->
     response(error, <<"bad identifier">>, 404, [Id], Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the requested resource update fails
+%% because of a conflict in the DB
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_conflicting_docs/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_conflicting_docs(Context) ->
+    response(error, <<"conflicting documents">>, 409, Context).
 
 %%--------------------------------------------------------------------
 %% @public

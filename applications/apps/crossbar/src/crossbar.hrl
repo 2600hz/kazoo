@@ -12,6 +12,7 @@
                             {from_xml, ["application/xml"]}
                            ,{from_json, ["application/json","application/x-json"]}
 			   ,{from_form, ["application/x-www-form-urlencoded"]}
+			   ,{from_binary, []}
 			  ]).
 
 -define(ALLOWED_METHODS, [

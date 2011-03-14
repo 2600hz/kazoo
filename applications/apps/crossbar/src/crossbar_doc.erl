@@ -151,6 +151,8 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
     case couch_mgr:save_doc(DB, Doc) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
+	{error, conflict} ->
+	    crossbar_util:response_conflicting_docs(Context);
 	{ok, Doc1} ->
             Context#cb_context{
                  doc=Doc1
@@ -169,9 +171,15 @@ save_attachment(DocId, AName, Contents, Context) ->
 save_attachment(_, _, _, #cb_context{db_name=undefined}=Context, _) ->
     crossbar_util:response_db_missing(Context);
 save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
-    case couch_mgr:put_attachment(DB, DocId, AName, Contents, Options) of
+    Opts1 = case props:get_value(rev, Options) of
+		undefined -> [{rev, couch_mgr:lookup_doc_rev(DB, DocId)} | Options];
+		O -> O
+	    end,
+    case couch_mgr:put_attachment(DB, DocId, AName, Contents, Opts1) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
+	{error, conflict} ->
+	    crossbar_util:response_conflicting_docs(Context);
 	{ok, _Res} ->
 	    format_log(info, "CB_DOC.save_attach Res: ~p~n", [_Res]),
             Context#cb_context{

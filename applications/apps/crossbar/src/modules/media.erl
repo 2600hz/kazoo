@@ -108,10 +108,17 @@ handle_cast(_, S) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.init">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.media">>, {RD, Context, Params}}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = add_content_types(Payload),
-                  Pid ! {binding_result, Result, Payload1}
+		  Context1 = content_types_provided(Params, Context),
+                  Pid ! {binding_result, true, {RD, Context1, Params}}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.content_types_accepted.media">>, {RD, Context, Params}}, State) ->
+    spawn(fun() ->
+		  Context1 = content_types_accepted(Params, Context),
+                  Pid ! {binding_result, true, {RD, Context1, Params}}
 	  end),
     {noreply, State};
 
@@ -205,10 +212,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
 			  Context1 = delete_media_binary(MediaID, Context),
 			  Pid ! {binding_result, Context1#cb_context.resp_status =:= success, [RD, Context1, Params]}
 		  end);
-	[MediaID] ->
+	[_] ->
 	    spawn(fun() ->
 			  crossbar_util:binding_heartbeat(Pid),
-			  Context1 = delete_media(MediaID, Context),
+			  Context1 = delete_media(Context),
 			  Pid ! {binding_result, Context1#cb_context.resp_status =:= success, [RD, Context1, Params]}
 		  end)
     end,
@@ -263,12 +270,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.init">>), %% add content types accepted/provided
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.media">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.#.media">>),
     _ = crossbar_bindings:bind(<<"account.created">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+content_types_provided([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
+    CTP = [{to_binary, ["audio/x-wav"]}],
+    Context#cb_context{content_types_provided=CTP};
+content_types_provided(_, Context) -> Context.
+
+content_types_accepted([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>}=Context) ->
+    CTA = [{from_binary, ["audio/x-wav"]}],
+    Context#cb_context{content_types_accepted=CTA};
+content_types_accepted(_, Context) -> Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -395,6 +420,7 @@ create_media_meta(Data, Context) ->
     crossbar_doc:save(Context#cb_context{doc=[{<<"pvt_type">>, <<"media">>} | Doc1]}).
 
 update_media_binary(MediaID, Contents, Context, Options) ->
+    format_log(info, "media: save attachment: ~p: Opts: ~p~n", [MediaID, Options]),
     crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Options).
 
 %% GET /media
@@ -428,11 +454,11 @@ lookup_media_by_name(MediaName, Context) ->
 lookup_media_by_id(MediaID, Context) ->
     crossbar_doc:load_view({"media_doc", "listing_by_id"}, [{<<"key">>, MediaID}], Context).
 
-delete_media(MediaID, Context) ->
-    crossbar_doc:delete(MediaID, Context).
+delete_media(Context) ->
+    crossbar_doc:delete(Context).
 
 delete_media_binary(MediaID, Context) ->
-    crossbar_doc:delete(MediaID, attachment_name(MediaID), Context).
+    crossbar_doc:delete_attachment(MediaID, attachment_name(MediaID), Context).
 
 attachment_name(MediaID) ->
     <<MediaID/binary, "-raw">>.
