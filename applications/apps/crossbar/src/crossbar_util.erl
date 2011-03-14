@@ -11,6 +11,7 @@
 -export([response/2, response/3, response/4, response/5]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
+-export([response_conflicting_docs/1]).
 -export([response_datastore_timeout/1]).
 -export([response_datastore_conn_refused/1]).
 -export([response_invalid_data/2]).
@@ -115,12 +116,24 @@ response_faulty_request(Context) ->
 %% @public
 %% @doc
 %% Create a standard response if the requested ID did not match a
-%% data record
+%% data record. Using 404 as 410 is a permanent Gone, while 404 is
+%% a softer not found now.
 %% @end
 %%--------------------------------------------------------------------
 -spec(response_bad_identifier/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 response_bad_identifier(Id, Context) ->
-    response(error, <<"bad identifier">>, 410, [Id], Context).
+    response(error, <<"bad identifier">>, 404, [Id], Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a standard response if the requested resource update fails
+%% because of a conflict in the DB
+%% @end
+%%--------------------------------------------------------------------
+-spec(response_conflicting_docs/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+response_conflicting_docs(Context) ->
+    response(error, <<"conflicting documents">>, 409, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -171,7 +184,7 @@ response_invalid_data(Fields, Context) ->
 %%--------------------------------------------------------------------
 -spec(response_db_missing/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_db_missing(Context) ->
-    response(fatal, <<"data collection missing">>, 503, Context).
+    response(fatal, <<"data collection missing: database not found">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -272,7 +285,10 @@ pull_from_body_and_qs(RD) ->
 		   {struct, Prop} = mochijson2:decode(ReqBody),
 		   Prop
 	       catch
-		   _:_ -> mochiweb_util:parse_qs(ReqBody)
+		   _:_ ->
+		       lists:map(fun({K, V}) ->
+					 {whistle_util:to_binary(K), whistle_util:to_binary(V)}
+				 end, mochiweb_util:parse_qs(ReqBody))
 	       end,
     QS = wrq:req_qs(RD),
     lists:ukeymerge(1, lists:ukeysort(1, PostBody), lists:ukeysort(1, QS)).

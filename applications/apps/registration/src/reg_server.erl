@@ -324,5 +324,5 @@ auth_specific_response(403) ->
      ,{<<"Tenant-ID">>, <<"ignore">>}].
 
 send_resp(JSON, RespQ, Host) ->
-    format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
+    format_log(info, "REG_SERVE(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
     amqp_util:targeted_publish(Host, RespQ, JSON, <<"application/json">>).

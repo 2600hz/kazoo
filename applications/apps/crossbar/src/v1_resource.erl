@@ -11,8 +11,8 @@
 -module(v1_resource).
 
 -export([init/1]).
--export([to_json/2, to_xml/2]).
--export([from_json/2, from_xml/2, from_form/2]).
+-export([to_json/2, to_xml/2, to_binary/2]).
+-export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
 -export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([expires/2, generate_etag/2]).
@@ -31,28 +31,41 @@
 init(Opts) ->
     {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{start=now()}, Opts}),
     {ok, Context}.
-    %%{{trace, "/tmp"}, Context}.
+    %% {{trace, "/tmp"}, Context}.
+    %% wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp"). % in your running shell to look at trace files
+    %% binds http://host/wmtrace and stores the files in /tmp
+    %% wmtrace_resource:remove_dispatch_rules/0 removes the trace rule
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
-    Json = get_json_body(RD),
-    Verb = get_http_verb(RD, Json),
-    Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
-    Loaded = lists:map(fun whistle_util:to_binary/1, erlang:loaded()),
+    Context1 = case wrq:get_req_header("Content-Type", RD) of
+		   "multipart/form-data" ++ _ ->
+		       extract_files_and_params(RD, Context);
+		   "application/json" ++ _ ->
+		       Context#cb_context{req_json=get_json_body(RD)};
+		   "application/x-json" ++ _ ->
+		       Context#cb_context{req_json=get_json_body(RD)};
+		   _ ->
+		       extract_file(RD, Context)
+	       end,
 
-    case parse_path_tokens(Tokens, Loaded, []) of
+    Verb = get_http_verb(RD, Context1#cb_context.req_json),
+    Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
+
+    case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
             Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),
-            {Methods1, RD, Context#cb_context{req_nouns=Nouns, req_verb=Verb, req_json=Json}};
+            {Methods1, RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb}};
         [] ->
-            {Methods, RD, Context#cb_context{req_verb=Verb, req_json=Json}}
+            {Methods, RD, Context1#cb_context{req_verb=Verb}}
     end.
 
+-spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
 malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     Context1 = Context#cb_context{
 		 resp_status = error
 		 ,resp_error_msg = <<"Invalid or malformed content: ", ErrBin/binary>>
-		 ,resp_error_code = 400
+		     ,resp_error_code = 400
 		},
     Content = create_resp_content(RD, Context1),
     RD1 = wrq:set_resp_body(Content, RD),
@@ -71,10 +84,7 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
 forbidden(RD, Context) ->
     case is_authentic(RD, Context) of
         true ->
-            case is_permitted(Context) of
-                true -> {false, RD, Context};
-                false -> {true, RD, Context}
-            end;
+            {not is_permitted(Context), RD, Context};
         false ->
             {{halt, 401}, RD, Context}
     end.
@@ -98,25 +108,42 @@ resource_exists(RD, Context) ->
 	    {false, RD, Context}
     end.
 
-content_types_provided(RD, #cb_context{content_types_provided=CTP}=Context) ->
-    CTP1 = lists:foldr(fun({Fun, L}, Acc) ->
-			       lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
-		       end, [], CTP),
-    {CTP1, RD, Context}.
+%% each successive cb module adds/removes the content types they provide (to be matched against the request Accept header)
+content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
+    Context1 = lists:foldr(fun({Mod, Params}, Context0) ->
+				   Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
+				   Payload = {RD, Context0, Params},
+				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
+				   Context01
+			   end, Context, Nouns),
+    format_log(info, "v1: ctp: req: ~p Pro: ~p~n", [wrq:get_req_header("Accept", RD), Context1#cb_context.content_types_provided]),
+    CTP = lists:foldr(fun({Fun, L}, Acc) ->
+			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
+		      end, [], Context1#cb_context.content_types_provided),
+    {CTP, RD, Context1}.
 
-content_types_accepted(RD, #cb_context{content_types_accepted=CTA}=Context) ->
-    CTA1 = lists:foldr(fun({Fun, L}, Acc) ->
-			       lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
-		       end, [], CTA),
-    {CTA1, RD, Context}.
+content_types_accepted(RD, #cb_context{req_nouns=Nouns}=Context) ->
+    Context1 = lists:foldr(fun({Mod, Params}, Context0) ->
+				   Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
+				   Payload = {RD, Context0, Params},
+				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
+				   Context01
+			   end, Context, Nouns),
+    format_log(info, "v1: cta: req: ~p Acc: ~p~n", [wrq:get_req_header("Content-Type", RD), Context1#cb_context.content_types_accepted]),
+    CTA = lists:foldr(fun({Fun, L}, Acc) ->
+			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
+		      end, [], Context1#cb_context.content_types_accepted),
+    {CTA, RD, Context1}.
 
 generate_etag(RD, Context) ->
     Event = <<"v1_resource.etag">>,
+    format_log(info, "~p: ~p~n", [Event, Context#cb_context.resp_etag]),
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    format_log(info, "~p: after: ~p~n", [Event, Context1#cb_context.resp_etag]),
     case Context1#cb_context.resp_etag of
         automatic ->
-            RespContent = create_resp_content(RD1, Context1),
-            {mochihex:to_hex(crypto:md5(RespContent)), RD1, Context1};
+            RespContent = create_resp_content(RD, Context1),
+            {mochihex:to_hex(crypto:md5(RespContent)), RD, Context1};
         undefined ->
             {undefined, RD1, Context1};
         Tag when is_list(Tag) ->
@@ -134,12 +161,12 @@ expires(RD, #cb_context{resp_expires=Expires}=Context) ->
 
 process_post(RD, Context) ->
     Event = <<"v1_resource.process_post">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 delete_resource(RD, Context) ->
     Event = <<"v1_resource.delete_resource">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 finish_request(RD, #cb_context{start=T1}=Context) ->
@@ -160,31 +187,48 @@ finish_request(RD, #cb_context{start=T1}=Context) ->
 %%%===================================================================
 from_json(RD, Context) ->
     Event = <<"v1_resource.from_json">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 from_xml(RD, Context) ->
     Event = <<"v1_resource.from_xml">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 from_form(RD, Context) ->
     Event = <<"v1_resource.from_form">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
+    create_push_response(RD, Context).
+
+from_binary(RD, Context) ->
+    Event = <<"v1_resource.from_binary">>,
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
 %%%===================================================================
 %%% Content Providers
 %%%===================================================================
+-spec(to_json/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_json(RD, Context) ->
     Event = <<"v1_resource.to_json">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    format_log(info, "~p~n", [Event]),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
+-spec(to_xml/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_xml(RD, Context) ->
     Event = <<"v1_resource.to_xml">>,
-    crossbar_bindings:map(Event, {RD, Context}),
+    format_log(info, "~p~n", [Event]),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
+
+-spec(to_binary/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
+to_binary(RD, Context) ->
+    Event = <<"v1_resource.to_binary">>,
+    format_log(info, "~p~n", [Event]),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
+
+    {Context#cb_context.resp_data, set_resp_headers(RD, Context), Context}.
 
 %%%===================================================================
 %%% Internal functions
@@ -198,6 +242,11 @@ to_xml(RD, Context) ->
 %% is returned.
 %% @end
 %%--------------------------------------------------------------------
+-spec(parse_path_tokens/1 :: (Tokens :: list()) -> proplist()).
+parse_path_tokens(Tokens) ->
+    Loaded = lists:map(fun({Mod, _, _, _}) -> whistle_util:to_binary(Mod) end, supervisor:which_children(crossbar_module_sup)),
+    parse_path_tokens(Tokens, Loaded, []).
+
 -spec(parse_path_tokens/3 :: (Tokens :: list(), Loaded :: list(), Events :: list()) -> proplist()).
 parse_path_tokens([], _Loaded, Events) ->
     Events;
@@ -261,6 +310,54 @@ get_json_body(RD) ->
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
 
+-spec(extract_files_and_params/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+extract_files_and_params(RD, Context) ->
+    try
+	Boundry = webmachine_multipart:find_boundary(RD),
+	{ReqProp, FilesProp} = get_streamed_body(
+				 webmachine_multipart:stream_parts(
+				   wrq:stream_req_body(RD, 1024), Boundry), [], []),
+	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
+    catch
+	A:B ->
+	    format_log(error, "v1.extract_files_and_params: exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+	    Context
+    end.
+
+-spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+extract_file(RD, Context) ->
+    FileContents = whistle_util:to_binary(wrq:req_body(RD)),
+    ContentType = wrq:get_req_header("Content-Type", RD),
+    ContentSize = wrq:get_req_header("Content-Length", RD),
+    Context#cb_context{req_files=[{<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content-type">>, ContentType}
+											    ,{<<"content-length">>, ContentSize}
+											   ]}}
+								  ,{<<"contents">>, FileContents}
+								 ]}
+				  }]
+		      }.
+
+-spec(get_streamed_body/3 :: (Term :: term(), ReqProp :: proplist(), FilesProp :: proplist()) -> tuple(proplist(), proplist())).
+get_streamed_body(done_parts, ReqProp, FilesProp) ->
+    {ReqProp, FilesProp};
+get_streamed_body({{_, {Params, []}, Content}, Next}, ReqProp, FilesProp) ->
+    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
+    Value = binary:replace(whistle_util:to_binary(Content), <<$\r,$\n>>, <<>>, [global]),
+    get_streamed_body(Next(), [{Key, Value} | ReqProp], FilesProp);
+get_streamed_body({{_, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
+    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
+    FileName = whistle_util:to_binary(props:get_value(<<"filename">>, Params)),
+
+    Value = whistle_util:to_binary(Content),
+
+    get_streamed_body(Next(), ReqProp, [{Key, {struct, [{<<"headers">>, {struct, Hdrs}}
+							,{<<"contents">>, Value}
+							,{<<"filename">>, FileName}
+						       ]}}
+					| FilesProp]).
+
+
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -316,10 +413,10 @@ get_auth_token(RD, JsonToken, Verb) ->
         undefined ->
             case Verb of
                 <<"get">> ->
-                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), ""));
+                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), <<>>));
 		_ ->
 		    JsonToken
-            end;
+	    end;
         AuthToken ->
             whistle_util:to_binary(AuthToken)
     end.
@@ -394,11 +491,13 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
-            Content = create_resp_content(RD, Context1),
+	    format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+            Content = create_resp_content(RD1, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
+	    format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             case Verb of
                 <<"put">> ->
                     {false, RD1, Context1};
@@ -417,12 +516,15 @@ execute_request(RD, Context) ->
 %%--------------------------------------------------------------------
 -spec(create_resp_content/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> iolist()).
 create_resp_content(RD, Context) ->
-    Prop = create_resp_envelope(Context),
     case get_resp_type(RD) of
 	xml ->
+	    Prop = create_resp_envelope(Context),
             io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), [])]);
         json ->
-            mochijson2:encode({struct, Prop})
+	    Prop = create_resp_envelope(Context),
+            mochijson2:encode({struct, Prop});
+	binary ->
+	    Context#cb_context.resp_data
     end.
 
 %%--------------------------------------------------------------------
@@ -476,15 +578,20 @@ succeeded(_) ->
 %%--------------------------------------------------------------------
 -spec(set_resp_headers/2 :: (RD0 :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
 set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
+    format_log(info, "v1.set_resp_headers: ~p~n", [Headers]),
     lists:foldl(fun({Header, Value}, RD) ->
 			{H, V} = fix_header(RD, Header, Value),
-			wrq:set_resp_header(H, V, RD)
+			wrq:set_resp_header(H, V, wrq:remove_resp_header(H, RD))
 		end, RD0, Headers).
 
 -spec(fix_header/3 :: (RD :: #wm_reqdata{}, Header :: string(), Value :: string() | binary()) -> tuple(string(), string())).
 fix_header(RD, "Location"=H, Url) ->
     %% http://some.host.com:port/"
-    Host = lists:concat(["http://", string:join(wrq:host_tokens(RD), "."), ":", integer_to_list(wrq:port(RD)), "/"]),
+    Port = case wrq:port(RD) of
+	       80 -> "";
+	       P -> [":", whistle_util:to_list(P)]
+	   end,
+    Host = ["http://", string:join(wrq:host_tokens(RD), "."), Port, "/"],
 
     %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
     PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
@@ -500,7 +607,7 @@ fix_header(RD, "Location"=H, Url) ->
 			end, PathTokensRev, UrlTokens)
 	   ), "/"),
 
-    {H, Host ++ Url1};
+    {H, lists:concat([Host | [Url1]])};
 fix_header(_, H, V) ->
     {whistle_util:to_list(H), whistle_util:to_list(V)}.
 
@@ -513,45 +620,40 @@ fix_header(_, H, V) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
-create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_error_msg=E, resp_error_code=C}) ->
-    case {S, C} of
-	{success, _} ->
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"data">>, D}
-            ];
-	{_, undefined} ->
-            Msg =
-                case E of
-                    undefined ->
-                        <<"Unspecified server error">>;
-                    Else ->
-                        whistle_util:to_binary(Else)
-                end,
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"message">>, Msg}
-                ,{<<"error">>, 500}
-                ,{<<"data">>, D}
-            ];
-	_ ->
-            Msg =
-                case E of
-                    undefined ->
-                        <<"Unspecified server error">>;
-                    Else ->
-                        whistle_util:to_binary(Else)
-                end,
-	    [
-                 {<<"auth-token">>, A}
-                ,{<<"status">>, S}
-                ,{<<"message">>, Msg}
-                ,{<<"error">>, C}
-                ,{<<"data">>, D}
-            ]
-    end.
+create_resp_envelope(#cb_context{resp_status = success}=C) ->
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, success}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ];
+create_resp_envelope(#cb_context{resp_error_code = undefined}=C) ->
+    Msg = case C#cb_context.resp_error_msg of
+	      undefined ->
+		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
+		  <<"Unspecified server error: ", StatusBin/binary>>;
+	      Else ->
+		  whistle_util:to_binary(Else)
+	  end,
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, C#cb_context.resp_status}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, 500}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ];
+create_resp_envelope(C) ->
+    Msg = case C#cb_context.resp_error_msg of
+	      undefined ->
+		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
+		  ErrCodeBin = whistle_util:to_binary(C#cb_context.resp_error_code),
+		  <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
+	      Else ->
+		  whistle_util:to_binary(Else)
+	  end,
+    [{<<"auth-token">>, C#cb_context.auth_token}
+     ,{<<"status">>, C#cb_context.resp_status}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, C#cb_context.resp_error_code}
+     ,{<<"data">>, C#cb_context.resp_data}
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -560,13 +662,15 @@ create_resp_envelope(#cb_context{auth_token=A, resp_data=D, resp_status=S, resp_
 %% based on the request....
 %% @end
 %%--------------------------------------------------------------------
--spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml).
+-spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml|binary).
 get_resp_type(RD) ->
-    case wrq:get_resp_header("Content-Type",RD) of
+    format_log(info, "Resp Header: ~p~n", [wrq:get_resp_header("Content-Type",RD)]),
+    case wrq:get_resp_header("Content-Type", RD) of
         "application/xml" -> xml;
         "application/json" -> json;
         "application/x-json" -> json;
-        _Else -> json
+	undefined -> json;
+        _Else -> binary
     end.
 
 %%--------------------------------------------------------------------

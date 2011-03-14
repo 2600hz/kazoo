@@ -12,6 +12,7 @@
                             {from_xml, ["application/xml"]}
                            ,{from_json, ["application/json","application/x-json"]}
 			   ,{from_form, ["application/x-www-form-urlencoded"]}
+			   ,{from_binary, []}
 			  ]).
 
 -define(ALLOWED_METHODS, [
@@ -38,7 +39,8 @@
           ,auth_token = <<"">> :: binary()
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
-          ,req_json = [] :: mochijson()
+          ,req_json = {struct, []} :: json_object() | tuple(malformed, binary())
+	  ,req_files = [] :: list(tuple(binary(), json_object())) | []
           ,req_data = [] :: mochijson()
           ,db_name = undefined :: string() | undefined
           ,doc = undefined :: json_object() | json_objects() | undefined

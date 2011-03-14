@@ -22,11 +22,12 @@ start() ->
     application:start(whistle_apps).
 
 start_deps() ->
-    reloader:start(),
     whistle_apps_deps:ensure(),
+    reloader:start(),
     logger:start(),
     ensure_started(sasl),
     ensure_started(crypto),
+    ensure_started(ibrowse),
     ensure_started(riak_err),
     ensure_started(couchbeam),
     ensure_started(whistle_amqp),
