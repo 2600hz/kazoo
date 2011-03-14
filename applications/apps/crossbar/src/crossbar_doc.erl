@@ -8,8 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_doc).
 
--export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4]).
--export([save/1, delete/1]).
+-export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3]).
+-export([save/1, delete/1, save_attachment/4, save_attachment/5, delete_attachment/3]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1]).
 
@@ -114,6 +114,27 @@ load_view(View, Options, Context, Filter) ->
             Else
     end.
 
+load_attachment(_, _, #cb_context{db_name=undefined}=Context) ->
+    crossbar_util:response_db_missing(Context);
+load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
+    io:format("CB_DOC: load_attach: ~p ~p ~p~n", [DB, DocId, AName]),
+    case couch_mgr:fetch_attachment(DB, DocId, AName) of
+        {error, db_not_reachable} ->
+            crossbar_util:response_datastore_timeout(Context);
+	{error, not_found} ->
+	    crossbar_util:response_bad_identifier(DocId, Context);
+	{ok, AttachBin} ->
+	    format_log(info, "CB_DOC.load_attach: Res: ~p~n", [AttachBin]),
+            Context#cb_context{
+	      resp_status=success
+	      ,resp_data=AttachBin
+	      ,resp_etag=rev_to_etag(couch_mgr:lookup_doc_rev(DB, DocId))
+            };
+        _Else ->
+            format_log(error, "CB_DOC.load_attach: Unexpected return from datastore: ~p~n", [_Else]),
+            Context
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -130,6 +151,8 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
     case couch_mgr:save_doc(DB, Doc) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
+	{error, conflict} ->
+	    crossbar_util:response_conflicting_docs(Context);
 	{ok, Doc1} ->
             Context#cb_context{
                  doc=Doc1
@@ -139,6 +162,33 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
             };
         _Else ->
             format_log(error, "CB_DOC.save: Unexpected return from datastore: ~p~n", [_Else]),
+            Context
+    end.
+
+save_attachment(DocId, AName, Contents, Context) ->
+    save_attachment(DocId, AName, Contents, Context, []).
+
+save_attachment(_, _, _, #cb_context{db_name=undefined}=Context, _) ->
+    crossbar_util:response_db_missing(Context);
+save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
+    Opts1 = case props:get_value(rev, Options) of
+		undefined -> [{rev, couch_mgr:lookup_doc_rev(DB, DocId)} | Options];
+		O -> O
+	    end,
+    case couch_mgr:put_attachment(DB, DocId, AName, Contents, Opts1) of
+        {error, db_not_reachable} ->
+            crossbar_util:response_datastore_timeout(Context);
+	{error, conflict} ->
+	    crossbar_util:response_conflicting_docs(Context);
+	{ok, _Res} ->
+	    format_log(info, "CB_DOC.save_attach Res: ~p~n", [_Res]),
+            Context#cb_context{
+	      resp_status=success
+	      ,resp_data=[]
+	      ,resp_etag=rev_to_etag(couch_mgr:lookup_doc_rev(DB, DocId))
+            };
+        _Else ->
+            format_log(error, "CB_DOC.save_attach: Unexpected return from datastore: ~p~n", [_Else]),
             Context
     end.
 
@@ -167,6 +217,26 @@ delete(#cb_context{db_name=DB, doc=Doc}=Context) ->
 	     };
         _Else ->
             format_log(error, "CB_DOC.delete: Unexpected return from datastore: ~p~n", [_Else]),
+            Context
+    end.
+
+delete_attachment(_, _, #cb_context{db_name=undefined}=Context) ->
+    crossbar_util:response_db_missing(Context);
+delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
+    case couch_mgr:delete_attachment(DB, DocId, AName) of
+        {error, db_not_reachable} ->
+            crossbar_util:response_datastore_timeout(Context);
+	{error, not_found} ->
+	    crossbar_util:response_bad_identifier(DocId, Context);
+	{ok, _Res} ->
+	    format_log(info, "CB_DOC.del_attach Res: ~p~n", [_Res]),
+            Context#cb_context{
+	      resp_status=success
+	      ,resp_data=[]
+	      ,resp_etag=rev_to_etag(couch_mgr:lookup_doc_rev(DB, DocId))
+            };
+        _Else ->
+            format_log(error, "CB_DOC.del_attach: Unexpected return from datastore: ~p~n", [_Else]),
             Context
     end.
 
@@ -237,11 +307,16 @@ rev_to_etag([{struct, _}|_])->
 rev_to_etag({struct, Props}) ->
     case props:get_value([<<"_rev">>], Props) of
         Rev when is_list(Rev) ->
-            ETag = whistle_util:to_list(Rev),
-            string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
+	    rev_to_etag(Rev);
         _Else ->
             undefined
     end;
+rev_to_etag([]) -> undefined;
+rev_to_etag(Rev) when is_binary(Rev) ->
+    rev_to_etag(whistle_util:to_list(Rev));
+rev_to_etag(ETag) when is_list(ETag) ->
+    format_log(error, "Etag in rev to etag: ~p~n", [ETag]),
+    string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
 rev_to_etag(_Json) ->
     format_log(error, "Unhandled Json format in rev to etag:~n~p~n", [_Json]),
     undefined.

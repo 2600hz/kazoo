@@ -112,7 +112,7 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, JObj])
 	    end
     end;
-get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tone">>) ->
+get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
 	false -> {error, "tones failed to execute as JObj did not validate."};
 	true ->
