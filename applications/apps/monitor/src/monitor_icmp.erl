@@ -23,8 +23,8 @@ ping(Dest) ->
 
 ping(Dest, Count) ->
     Cmd = io_lib:format(?PING_CMD, [Count, Dest]),
-    Result = string:tokens(os:cmd(Cmd), ","),
-    format_log(info, "MONITOR_ICMP(~p): Ping to ~p returned~n~p~n", [self(), Dest, Result]),
+    Result = string:tokens(os:cmd(Cmd), ", "),
+    format_log(info, "MONITOR_ICMP(~p): Ping to ~p returned ~p", [self(), Dest, Result]),
     case Result of
         [] -> 
             [{"Error", "Agent could not execute ping"}];

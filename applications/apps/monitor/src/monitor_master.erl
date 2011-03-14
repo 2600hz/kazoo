@@ -118,6 +118,7 @@ list_tasks(Job_ID) ->
 %%--------------------------------------------------------------------
 init([AHost]) ->
     couch_mgr:add_change_handler(?MONITOR_DB, <<"">>),
+    couch_mgr:load_doc_from_file(?MONITOR_DB, monitor, "monitor.json"),
     {ok, #state{amqp_host = AHost}}.
 
 %%--------------------------------------------------------------------
@@ -135,7 +136,7 @@ init([AHost]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host = CurAHost} = State) ->
-    format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p~n", [self(), CurAHost, AHost]),
+    format_log(info, "MONITOR_MASTER(~p): Updating amqp host from ~p to ~p", [self(), CurAHost, AHost]),
     %% Update the AMQP host of all the JOB
     lists:foreach(fun({_,Pid,_,_}) -> 
                           gen_server:call(Pid, {set_amqp_host, AHost}, infinity) 
@@ -187,7 +188,7 @@ handle_call({sync_job, Job_ID}, _From, State) ->
             case ensure_running(Job_ID, State) of
                 {Pid, NewState} ->
                     gen_server:call(Pid, {sync, get_value(<<"value">>, Job, [])}, infinity),
-                    format_log(info, "~p~n", get_value(<<"value">>, Job, [])),
+                    format_log(info, "~p", get_value(<<"value">>, Job, [])),
                     {reply, ok, NewState};
                 _ ->
                     {reply, ok, State}
@@ -254,7 +255,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _MonitorRef, _Type, Job_PID, _Info}, #state{jobs = CurJobs} = State) ->
     Jobs = lists:filter(fun({_, #job{processID = Pid}}) -> Pid /= Job_PID end, CurJobs),
-    format_log(info, "MONITOR_MASTER(~p): Job PID ~p went down (~p)~n", [self(), Job_PID, _Info]),
+    format_log(info, "MONITOR_MASTER(~p): Job PID ~p went down (~p)", [self(), Job_PID, _Info]),
     {noreply, State#state{jobs = Jobs}};
 
 handle_info({document_deleted, Doc_ID}, State) ->
@@ -280,7 +281,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    format_log(error, "MONITOR_MASTER(~p): Going down (~p)...~n", [self(), _Reason]),
+    format_log(error, "MONITOR_MASTER(~p): Going down (~p)...", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -315,10 +316,10 @@ get_jobs(#state{database = DB, db_view = View}, Key) ->
     Options = case to_binary(Key) of <<>> -> []; K -> [{"key", K}] end, 
     case couch_mgr:get_results(DB, View, Options) of
         {error, _}=E ->
-            format_log(info, "MONITOR_MASTER(~p): Result not found (~p)~n", [self(), E]),
+            format_log(info, "MONITOR_MASTER(~p): Result not found (~p)", [self(), E]),
             E;
         {ok, Jobs} ->
-            format_log(info, "MONITOR_MASTER(~p): Found ~p jobs in the database ~p using options ~p~n", [self(), length(Jobs), DB, Options]), 
+            format_log(info, "MONITOR_MASTER(~p): Found ~p jobs in the database ~p using options ~p", [self(), length(Jobs), DB, Options]), 
             Jobs
     end.
 
