@@ -181,8 +181,8 @@ generate_tones(AHost, CtrlQ, CallId) ->
 %%--------------------------------------------------------------------
 determine_results() ->
     try
-        {ok, StartMsg} = wait_for_call_event(<<"CHANNEL_EXECUTE">>, <<"play">>, 10000),
-        {ok, EndMsg} = wait_for_call_event(<<"CHANNEL_EXECUTE">>, <<"park">>, 10000),
+        {ok, StartMsg} = wait_for_call_event(<<"CHANNEL_EXECUTE">>, <<"play">>, 5000),
+        {ok, EndMsg} = wait_for_call_event(<<"CHANNEL_EXECUTE">>, <<"park">>, 5000),
         Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, EndMsg)) 
             - whistle_util:to_integer(get_value(<<"Timestamp">>, StartMsg)),
         {ok, [{<<"Delay">>, Delay}, {<<"Success">>, <<"true">>}]}
