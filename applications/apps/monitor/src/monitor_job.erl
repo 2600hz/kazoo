@@ -280,15 +280,9 @@ run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = It
     %% Convert Resp to JSON
     %% Send JSON
     amqp_util:queue_delete(AHost, Job_Q),
-    case get_value(<<"Success">>, Resp) of 
-        <<"false">> ->         
-            format_log(info, "MONITOR_JOB(~p): Job failed ", [self()]),
-            {ok, FileId} = file:open("/tmp/" ++ "monitor_task_" ++ binary_to_list(Job_ID) ++ ".txt", [append]),
-            io:fwrite(FileId, "~s~n", [mochijson2:encode({struct, Resp})]),
-            file:close(FileId);
-        <<"true">> ->            
-            format_log(info, "MONITOR_JOB(~p): Job completed successfully", [self()])
-    end.
+    {ok, FileId} = file:open("/tmp/" ++ "monitor_task_" ++ binary_to_list(Job_ID) ++ ".txt", [append]),
+    io:fwrite(FileId, "~s~n", [mochijson2:encode({struct, Resp})]),
+    file:close(FileId).
 
 %%--------------------------------------------------------------------
 %% @private
