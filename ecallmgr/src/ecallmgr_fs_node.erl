@@ -70,9 +70,9 @@ start_handler(Node, Options, AmqpHost) ->
 monitor_node(Node, #handler_state{}=S) ->
     %% do init
     erlang:monitor_node(Node, true),
-    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-			    ,'CUSTOM', 'sofia::register'
-			   ]),
+    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+				 ,'CUSTOM', 'sofia::register'
+				]),
     ?MODULE:monitor_loop(Node, S).
 
 %% If we start up while there are active channels, we'll have negative active_channels in our stats.
@@ -166,7 +166,7 @@ start_call_handling(Node, Host, UUID) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
     {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
-    ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
+    {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
     CtlQueue.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).

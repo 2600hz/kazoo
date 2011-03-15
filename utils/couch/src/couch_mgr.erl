@@ -17,7 +17,7 @@
 -export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
 
 %% Document manipulation
--export([save_doc/2, open_doc/2, open_doc/3, del_doc/2]).
+-export([save_doc/2, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% Views
@@ -63,7 +63,10 @@ load_doc_from_file(DB, App, File) ->
 	{ok, Bin} = file:read_file(Path),
 	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
-	_Type:Reason -> {error, Reason}
+        _Type:{badmatch,{error,Reason}} ->
+            {error, Reason};
+ 	_Type:Reason ->
+            {error, Reason}
     end.
 
 -spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
@@ -75,8 +78,11 @@ update_doc_from_file(DB, App, File) ->
 	{struct, Prop} = mochijson2:decode(Bin),
 	{ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
 	?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]})
-    catch
-	_Type:Reason -> {error, Reason}
+    catch        
+        _Type:{badmatch,{error,Reason}} ->
+            {error, Reason};
+ 	_Type:Reason -> 
+            {error, Reason}
     end.
 
 %%--------------------------------------------------------------------
@@ -227,6 +233,24 @@ open_doc(DbName, DocId, Options) ->
                 {error, _Error}=E -> E;
                 {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% get the revision of a document (much faster than requesting the whole document)
+%% @end
+%%--------------------------------------------------------------------
+-spec(lookup_doc_rev/2 :: (DbName :: string(), DocId :: binary()) -> tuple(error, term()) | binary()).
+lookup_doc_rev(DbName, DocId) ->
+    case get_db(DbName) of
+	{error, _} -> {error, db_not_reachable};
+	Db ->
+	    case couchbeam:lookup_doc_rev(Db, DocId) of
+		{error, _}=E -> E;
+		Rev ->
+		    binary:replace(whistle_util:to_binary(Rev), <<"\"">>, <<>>, [global])
+	    end
     end.
 
 %%--------------------------------------------------------------------
@@ -469,7 +493,7 @@ handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
 	{{_, DocID}=Key,_,Pids}=Item ->
 	    TmpCH = [Item],
 	    lists:foreach(fun(P) ->
-				  stop_change_handler(Key, P, TmpCH),
+				  _ = stop_change_handler(Key, P, TmpCH),
 				  P ! {change_handler_done, DocID}
 			  end, Pids),
 	    {noreply, State#state{change_handlers=lists:keydelete(ReqID, 2, CH)}}
@@ -493,7 +517,7 @@ handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=Stat
     CH1 = lists:foldl(fun({{_, DocID}=Key, RID, Pids}=Item, Acc) when RID =:= ReqID ->
 			      TmpCH = [Item],
 			      lists:foreach(fun(P) ->
-						    stop_change_handler(Key, P, TmpCH),
+						    _ = stop_change_handler(Key, P, TmpCH),
 						    P ! {change_handler_down, DocID}
 					    end, Pids),
 			      Acc;

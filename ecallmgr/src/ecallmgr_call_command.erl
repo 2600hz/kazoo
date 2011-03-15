@@ -44,7 +44,7 @@ get_fs_app(Node, UUID, JObj, _AmqpHost, <<"play">>) ->
 	false -> {error, "play failed to execute as JObj did not validate."};
 	true ->
 	    F = media_path(UUID, whapps_json:get_value(<<"Media-Name">>, JObj)),
-	    set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
+	    ok = set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"playback">>, F}
     end;
 get_fs_app(_Node, _UUID, _JObj, _AmqpHost, <<"hangup">>=App) ->
@@ -77,7 +77,7 @@ get_fs_app(Node, UUID, JObj, _AmqpHost, <<"record">>) ->
 						    ,whapps_json:get_value(<<"Silence-Threshold">>, JObj, "200"), " "
 						    ,whapps_json:get_value(<<"Silence-Hits">>, JObj, "3")
 						   ])),
-	    set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
+	    ok = set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"record">>, RecArg}
     end;
 get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
@@ -112,7 +112,7 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, JObj])
 	    end
     end;
-get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tone">>) ->
+get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
 	false -> {error, "tones failed to execute as JObj did not validate."};
 	true ->
@@ -159,11 +159,11 @@ get_fs_app(Node, UUID, JObj, AmqpHost, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(JObj) of
 	false -> {error, "bridge failed to execute as JObj did not validate."};
 	true ->
-	    set_timeout(Node, UUID, whapps_json:get_value(<<"Timeout">>, JObj)),
-	    set_continue_on_fail(Node, UUID, whapps_json:get_value(<<"Continue-On-Fail">>, JObj)),
-	    set_eff_call_id_name(Node, UUID, whapps_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
-	    set_eff_call_id_number(Node, UUID, whapps_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
-	    set_ringback(Node, UUID, whapps_json:get_value(<<"Ringback">>, JObj)),
+	    ok = set_timeout(Node, UUID, whapps_json:get_value(<<"Timeout">>, JObj)),
+	    ok = set_continue_on_fail(Node, UUID, whapps_json:get_value(<<"Continue-On-Fail">>, JObj)),
+	    ok = set_eff_call_id_name(Node, UUID, whapps_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
+	    ok = set_eff_call_id_number(Node, UUID, whapps_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
+	    ok = set_ringback(Node, UUID, whapps_json:get_value(<<"Ringback">>, JObj)),
 
 	    DialSeparator = case whapps_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
 				<<"simultaneous">> -> ",";
@@ -320,7 +320,7 @@ stream_file({Iod, _File}=State) ->
         {ok, Data} ->
             {ok, Data, State};
         eof ->
-	    file:close(Iod),
+	    ok = file:close(Iod),
 	    eof
     end.
 
@@ -338,21 +338,21 @@ set_eff_call_id_number(Node, UUID, Num) ->
     N = list_to_binary(["effective_caller_id_number=", whistle_util:to_list(Num)]),
     set(Node, UUID, N).
 
--spec(set_bypass_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_bypass_media(_Node, _UUID, undefined) ->
-    ok;
-set_bypass_media(Node, UUID, <<"true">>) ->
-    set(Node, UUID, "bypass_media=true");
-set_bypass_media(Node, UUID, <<"false">>) ->
-    set(Node, UUID, "bypass_media=false").
+%% -spec(set_bypass_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
+%% set_bypass_media(_Node, _UUID, undefined) ->
+%%     ok;
+%% set_bypass_media(Node, UUID, <<"true">>) ->
+%%     set(Node, UUID, "bypass_media=true");
+%% set_bypass_media(Node, UUID, <<"false">>) ->
+%%     set(Node, UUID, "bypass_media=false").
 
--spec(set_ignore_early_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_ignore_early_media(_Node, _UUID, undefined) ->
-    ok;
-set_ignore_early_media(Node, UUID, <<"true">>) ->
-    set(Node, UUID, "ignore_early_media=true");
-set_ignore_early_media(Node, UUID, <<"false">>) ->
-    set(Node, UUID, "ignore_early_media=false").
+%% -spec(set_ignore_early_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
+%% set_ignore_early_media(_Node, _UUID, undefined) ->
+%%     ok;
+%% set_ignore_early_media(Node, UUID, <<"true">>) ->
+%%     set(Node, UUID, "ignore_early_media=true");
+%% set_ignore_early_media(Node, UUID, <<"false">>) ->
+%%     set(Node, UUID, "ignore_early_media=false").
 
 -spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
 set_timeout(_Node, _UUID, undefined) ->
@@ -361,12 +361,12 @@ set_timeout(Node, UUID, N) ->
     Timeout = [ $c,$a,$l,$l,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
     set(Node, UUID, Timeout).
 
--spec(set_progress_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
-set_progress_timeout(_Node, _UUID, undefined) ->
-    ok;
-set_progress_timeout(Node, UUID, N) ->
-    ProgressTimeout = [ $p,$r,$o,$g,$r,$e,$s,$s,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
-    set(Node, UUID, ProgressTimeout).
+%% -spec(set_progress_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
+%% set_progress_timeout(_Node, _UUID, undefined) ->
+%%     ok;
+%% set_progress_timeout(Node, UUID, N) ->
+%%     ProgressTimeout = [ $p,$r,$o,$g,$r,$e,$s,$s,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
+%%     set(Node, UUID, ProgressTimeout).
 
 -spec(set_terminators/3 :: (Node :: atom(), UUID :: binary(), Terminators :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_terminators(_Node, _UUID, undefined) ->

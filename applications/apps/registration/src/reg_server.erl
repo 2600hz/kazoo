@@ -17,9 +17,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--include("../include/amqp_client/include/amqp_client.hrl").
 -include("reg.hrl").
--include("../../src/whistle_types.hrl").
 
 -import(logger, [format_log/3]).
 
@@ -200,6 +198,7 @@ stop_amqp(Host, Q) ->
 -spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
 handle_req(<<"application/json">>, Payload, State) ->
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
+    format_log(info, "REG_SRV(~p): handle msg ~s~n", [self(), Payload]),
     process_req(get_msg_type(Prop), Prop, State).
 
 -spec(get_msg_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary())).
@@ -233,9 +232,10 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
     true = whistle_api:reg_success_v(Prop),
 
-    Contact = props:get_value(<<"Contact">>, Prop),
-    Unquoted = whistle_util:to_binary(mochiweb_util:unquote(Contact)),
-    Contact1 = binary:replace(Unquoted, [<<"<">>, <<">">>], <<>>, [global]),
+    [User, AfterAt] = binary:split(props:get_value(<<"Contact">>, Prop), <<"@">>), % only one @ allowed
+
+    AfterUnquoted = whistle_util:to_binary(mochiweb_util:unquote(AfterAt)),
+    Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
     MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()}
 			 ,{<<"Contact">>, Contact1}
 			 | lists:keydelete(<<"Contact">>, 1, Prop)]
@@ -324,5 +324,5 @@ auth_specific_response(403) ->
      ,{<<"Tenant-ID">>, <<"ignore">>}].
 
 send_resp(JSON, RespQ, Host) ->
-    format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
+    format_log(info, "REG_SERVE(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
     amqp_util:targeted_publish(Host, RespQ, JSON, <<"application/json">>).

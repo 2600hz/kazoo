@@ -290,7 +290,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 		 ,{<<"Auth-User">>, get_value(<<"username">>, Gateway)}
 		 ,{<<"Auth-Password">>, get_value(<<"password">>, Gateway)}
 		 ,{<<"Codecs">>, get_value(<<"codecs">>, Gateway, [])}
-		 ,{<<"Progress-Timeout">>, get_value(<<"progress_timer">>, Gateway, ?DEFAULT_PROGRESS_TIMEOUT)}
+		 ,{<<"Progress-Timeout">>, get_value(<<"progress_timeout">>, Gateway, ?DEFAULT_PROGRESS_TIMEOUT)}
 		 ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Carrier-Route">>, Dialstring} | ChannelVars]}}
 		 | BaseRouteData ],
 	    case whistle_api:route_resp_route_v(R) of

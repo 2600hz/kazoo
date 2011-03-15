@@ -171,7 +171,7 @@ response_invalid_data(Fields, Context) ->
 %%--------------------------------------------------------------------
 -spec(response_db_missing/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 response_db_missing(Context) ->
-    response(fatal, <<"data collection missing">>, 503, Context).
+    response(fatal, <<"data collection missing: database not found">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -272,7 +272,10 @@ pull_from_body_and_qs(RD) ->
 		   {struct, Prop} = mochijson2:decode(ReqBody),
 		   Prop
 	       catch
-		   _:_ -> mochiweb_util:parse_qs(ReqBody)
+		   _:_ ->
+		       lists:map(fun({K, V}) ->
+					 {whistle_util:to_binary(K), whistle_util:to_binary(V)}
+				 end, mochiweb_util:parse_qs(ReqBody))
 	       end,
     QS = wrq:req_qs(RD),
     lists:ukeymerge(1, lists:ukeysort(1, PostBody), lists:ukeysort(1, QS)).

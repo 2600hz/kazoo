@@ -80,12 +80,13 @@ wait ( Call, Flow, Pid ) ->
        { continue, Key } ->
            format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...~n", [self()]),
            {struct, NewFlow} = case get_value(<<"children">>, Flow) of
-                                   []       ->
+                                   {struct, []} ->
                                        { struct, [] };
                                    {struct, Children} ->
                                        proplists:get_value(Key, Children);
-                                   _        ->
+                                   _ ->
                                        format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...~n", [self()]),
+                                       hangup(Call),
                                        exit("Bad things happened...")
                                end,
            case NewFlow of
@@ -97,6 +98,7 @@ wait ( Call, Flow, Pid ) ->
            end;
        { stop } ->
            format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped~n", [self()]),
+           hangup(Call),
            exit("End of execution");
        { heartbeat } ->
            wait( Call, Flow, Pid );
@@ -110,6 +112,7 @@ wait ( Call, Flow, Pid ) ->
    after
        120000 -> 
            format_log(info, "CF EXECUTIONER (~p): Callflow timeout!~n", [self()]),
+           hangup(Call),
            exit("No call events in 2 mintues")
    end
 .
@@ -125,6 +128,23 @@ init_amqp(#cf_call{amqp_h=AHost, call_id=CallId}) ->
     AmqpQ = amqp_util:new_queue(AHost),
     amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
     amqp_util:basic_consume(AHost, AmqpQ).    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to hangup the channel 
+%% @end
+%%--------------------------------------------------------------------
+-spec(hangup/1 :: (Call :: #cf_call{}) -> no_return()).
+hangup(#cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ}) ->
+    Command = [
+                {<<"Application-Name">>, <<"hangup">>}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, <<"cf_exe">>, <<"1.0">>)
+              ],    
+    {ok, Json} = whistle_api:hangup_req(Command),
+    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
 
 %%%============================================================================
 %%%== END =====
