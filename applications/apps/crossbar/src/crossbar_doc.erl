@@ -124,12 +124,14 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 	{error, not_found} ->
 	    crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, AttachBin} ->
+	    #cb_context{doc=Doc} = Context1 = load(DocId, Context),
 	    format_log(info, "CB_DOC.load_attach: Res: ~p~n", [AttachBin]),
-            Context#cb_context{
+            Context1#cb_context{
 	      resp_status=success
+	      ,doc=Doc
 	      ,resp_data=AttachBin
-	      ,resp_etag=rev_to_etag(couch_mgr:lookup_doc_rev(DB, DocId))
-            };
+	      ,resp_etag=rev_to_etag(Doc)
+	     };
         _Else ->
             format_log(error, "CB_DOC.load_attach: Unexpected return from datastore: ~p~n", [_Else]),
             Context
