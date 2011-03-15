@@ -29,7 +29,8 @@
 -define(VIEW_FILE, <<"media_doc.json">>).
 
 -define(METADATA_FIELDS, [<<"display_name">>, <<"description">>, <<"media_type">>
-			      ,<<"status">>, <<"length">>, <<"size">>
+			      ,<<"status">>, <<"content_size">>, <<"size">>
+			      ,<<"content-type">>, <<"content-length">>
 			      ,<<"streamable">>, <<"format">>, <<"sample">>
 			]). % until validation is in place
 
@@ -148,8 +149,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Conte
     case Params of
 	[_MediaID, ?BIN_DATA] ->
 	    spawn(fun() ->
-			  Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>, <<"audio/x-wav">>}
-									,{<<"Content-Length">>, whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
+			  Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>
+									     ,whapps_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
+									,{<<"Content-Length">>
+									      ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
 									| Context#cb_context.resp_headers]},
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end);
@@ -286,12 +289,12 @@ bind_to_crossbar() ->
 %% @end
 %%--------------------------------------------------------------------
 content_types_provided([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
-    CTP = [{to_binary, ["audio/x-wav"]}],
+    CTP = [{to_binary, ["audio/*"]}],
     Context#cb_context{content_types_provided=CTP};
 content_types_provided(_, Context) -> Context.
 
 content_types_accepted([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>}=Context) ->
-    CTA = [{from_binary, ["audio/x-wav"]}],
+    CTA = [{from_binary, ["audio/*"]}],
     Context#cb_context{content_types_accepted=CTA};
 content_types_accepted(_, Context) -> Context.
 
@@ -413,7 +416,7 @@ validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context
 create_media_meta(Data, Context) ->
     Doc1 = lists:foldr(fun(Meta, DocAcc) ->
 			       case whapps_json:get_value(Meta, Data) of
-				   undefined -> DocAcc;
+				   undefined -> [{Meta, <<>>} | DocAcc];
 				   V -> [{Meta, whistle_util:to_binary(V)} | DocAcc]
 			       end
 		       end, [], ?METADATA_FIELDS),
@@ -421,7 +424,14 @@ create_media_meta(Data, Context) ->
 
 update_media_binary(MediaID, Contents, Context, Options) ->
     format_log(info, "media: save attachment: ~p: Opts: ~p~n", [MediaID, Options]),
-    crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Options).
+    case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Options) of
+	#cb_context{resp_status=success}=Context1 ->
+	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
+	    Doc1 = lists:foldl(fun({K,V}, D0) -> whapps_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0) end, Doc, Options),
+	    crossbar_doc:save(Context#cb_context{doc=Doc1}),
+	    Context1;
+	C -> C
+    end.
 
 %% GET /media
 -spec(lookup_media/1 :: (Context :: #cb_context{}) -> #cb_context{}).
