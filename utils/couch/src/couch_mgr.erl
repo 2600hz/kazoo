@@ -20,6 +20,9 @@
 -export([save_doc/2, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
+%% attachments
+-export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3]).
+
 %% Views
 -export([get_all_results/2, get_results/3]).
 
@@ -111,7 +114,7 @@ db_info(DbName) ->
         Conn ->
             case couchbeam:db_info(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
                 {error, _Error}=E -> E;
-                {ok, Info} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Info))}
+                {ok, Info} -> {ok, prepare_doc_for_load(Info)}
             end
     end.
 
@@ -155,7 +158,7 @@ db_replicate({struct, _}=MochiJson) ->
     case get_conn() of
 	{} -> {error, server_not_reachable};
 	Conn ->
-	    couchbeam:replicate(Conn, couchbeam_util:json_decode(mochijson2:encode(MochiJson)))
+	    couchbeam:replicate(Conn, prepare_doc_for_save(MochiJson))
     end.
 
 %%--------------------------------------------------------------------
@@ -231,7 +234,7 @@ open_doc(DbName, DocId, Options) ->
 	Db ->
             case couchbeam:open_doc(Db, DocId, Options) of
                 {error, _Error}=E -> E;
-                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+                {ok, Doc1} -> {ok, prepare_doc_for_load(Doc1)}
             end
     end.
 
@@ -266,9 +269,9 @@ save_doc(DbName, [{struct, _}|_]=Doc) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
 	Db ->
-            case couchbeam:save_docs(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+            case couchbeam:save_docs(Db, prepare_doc_for_save(Doc)) of
                 {error, _Error}=E -> E;
-                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+                {ok, Doc1} -> {ok, prepare_doc_for_load(Doc1)}
             end
     end;
 save_doc(DbName, Doc) when is_list(Doc) ->
@@ -277,9 +280,9 @@ save_doc(DbName, {struct, _}=Doc) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
 	Db -> 
-            case couchbeam:save_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+            case couchbeam:save_doc(Db, prepare_doc_for_save(Doc)) of
                 {error, _Error}=E -> E;
-                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+                {ok, Doc1} -> {ok, prepare_doc_for_load(Doc1)}
             end
     end.
 
@@ -294,10 +297,43 @@ del_doc(DbName, Doc) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
 	Db ->
-	    case couchbeam:delete_doc(Db, couchbeam_util:json_decode(mochijson2:encode(Doc))) of
+	    case couchbeam:delete_doc(Db, prepare_doc_for_save(Doc)) of
                 {error, _Error}=E -> E;
-                {ok, Doc1} -> {ok, mochijson2:decode(couchbeam_util:json_encode(Doc1))}
+                {ok, Doc1} -> {ok, prepare_doc_for_load(Doc1)}
             end
+    end.
+
+%%%===================================================================
+%%% Attachment Functions
+%%%===================================================================
+-spec(fetch_attachment/3 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
+fetch_attachment(DbName, DocId, AName) ->
+    case get_db(DbName) of
+	{error, _} -> {error, db_not_reachable};
+	Db ->
+	    couchbeam:fetch_attachment(Db, DocId, AName)
+    end.
+
+%% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
+-spec(put_attachment/4 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
+put_attachment(DbName, DocId, AName, Contents) ->
+    put_attachment(DbName, DocId, AName, Contents, [{rev, ?MODULE:lookup_doc_rev(DbName, DocId)}]).
+
+-spec(put_attachment/5 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary(), Options :: proplist()) -> tuple(ok, binary()) | tuple(error, term())).
+put_attachment(DbName, DocId, AName, Contents, Options) ->
+    case get_db(DbName) of
+	{error, _} -> {error, db_not_reachable};
+	Db ->
+	    couchbeam:put_attachment(Db, DocId, AName, Contents, Options)
+    end.
+
+delete_attachment(DbName, DocId, AName) ->
+    delete_attachment(DbName, DocId, AName, [{rev, ?MODULE:lookup_doc_rev(DbName, DocId)}]).
+delete_attachment(DbName, DocId, AName, Options) ->
+    case get_db(DbName) of
+	{error, _} -> {error, db_not_reachable};
+	Db ->
+	    couchbeam:delete_attachment(Db, DocId, AName, Options)
     end.
 
 %%%===================================================================
@@ -325,7 +361,7 @@ get_results(DbName, DesignDoc, ViewOptions) ->
 		    case couchbeam_view:fetch(View) of
 			{ok, {Prop}} ->
 			    Rows = get_value(<<"rows">>, Prop, []),
-                            {ok, mochijson2:decode(couchbeam_util:json_encode(Rows))};
+                            {ok, prepare_doc_for_load(Rows)};
 			{error, _Error}=E -> E
 		    end
 	    end
@@ -774,3 +810,22 @@ save_config(H, U, P) ->
 		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
 				 , "", [{couch_host, H, U, P} | lists:keydelete(couch_host, 1, Config)])
 		   ).
+
+prepare_doc_for_save({struct, _}=Doc) ->
+    couchbeam_util:json_decode(mochijson2:encode(Doc));
+prepare_doc_for_save(BinDoc) when is_binary(BinDoc) ->
+    couchbeam_util:json_decode(BinDoc);
+prepare_doc_for_save({_}=Doc) ->
+    Doc.
+
+prepare_doc_for_load([]) -> [];
+prepare_doc_for_load({struct, _}=Doc)->
+    Doc;
+prepare_doc_for_load([{struct, _}|_]=Docs) ->
+    Docs;
+prepare_doc_for_load([{_}|_]=Docs) ->
+    lists:map(fun prepare_doc_for_load/1, Docs);
+prepare_doc_for_load(BinDoc) when is_binary(BinDoc) ->
+    mochijson2:decode(BinDoc);
+prepare_doc_for_load({_}=Doc) ->
+    mochijson2:decode(couchbeam_util:json_encode(Doc)).

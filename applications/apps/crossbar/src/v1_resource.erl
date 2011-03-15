@@ -11,8 +11,8 @@
 -module(v1_resource).
 
 -export([init/1]).
--export([to_json/2, to_xml/2]).
--export([from_json/2, from_xml/2, from_form/2]).
+-export([to_json/2, to_xml/2, to_binary/2]).
+-export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
 -export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([expires/2, generate_etag/2]).
@@ -31,7 +31,10 @@
 init(Opts) ->
     {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{start=now()}, Opts}),
     {ok, Context}.
-    %%{{trace, "/tmp"}, Context}.
+    %% {{trace, "/tmp"}, Context}.
+    %% wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp"). % in your running shell to look at trace files
+    %% binds http://host/wmtrace and stores the files in /tmp
+    %% wmtrace_resource:remove_dispatch_rules/0 removes the trace rule
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Context1 = case wrq:get_req_header("Content-Type", RD) of
@@ -105,25 +108,42 @@ resource_exists(RD, Context) ->
 	    {false, RD, Context}
     end.
 
-content_types_provided(RD, #cb_context{content_types_provided=CTP}=Context) ->
-    CTP1 = lists:foldr(fun({Fun, L}, Acc) ->
-			       lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
-		       end, [], CTP),
-    {CTP1, RD, Context}.
+%% each successive cb module adds/removes the content types they provide (to be matched against the request Accept header)
+content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
+    Context1 = lists:foldr(fun({Mod, Params}, Context0) ->
+				   Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
+				   Payload = {RD, Context0, Params},
+				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
+				   Context01
+			   end, Context, Nouns),
+    format_log(info, "v1: ctp: req: ~p Pro: ~p~n", [wrq:get_req_header("Accept", RD), Context1#cb_context.content_types_provided]),
+    CTP = lists:foldr(fun({Fun, L}, Acc) ->
+			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
+		      end, [], Context1#cb_context.content_types_provided),
+    {CTP, RD, Context1}.
 
-content_types_accepted(RD, #cb_context{content_types_accepted=CTA}=Context) ->
-    CTA1 = lists:foldr(fun({Fun, L}, Acc) ->
-			       lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
-		       end, [], CTA),
-    {CTA1, RD, Context}.
+content_types_accepted(RD, #cb_context{req_nouns=Nouns}=Context) ->
+    Context1 = lists:foldr(fun({Mod, Params}, Context0) ->
+				   Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
+				   Payload = {RD, Context0, Params},
+				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
+				   Context01
+			   end, Context, Nouns),
+    format_log(info, "v1: cta: req: ~p Acc: ~p~n", [wrq:get_req_header("Content-Type", RD), Context1#cb_context.content_types_accepted]),
+    CTA = lists:foldr(fun({Fun, L}, Acc) ->
+			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
+		      end, [], Context1#cb_context.content_types_accepted),
+    {CTA, RD, Context1}.
 
 generate_etag(RD, Context) ->
     Event = <<"v1_resource.etag">>,
+    format_log(info, "~p: ~p~n", [Event, Context#cb_context.resp_etag]),
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    format_log(info, "~p: after: ~p~n", [Event, Context1#cb_context.resp_etag]),
     case Context1#cb_context.resp_etag of
         automatic ->
-            RespContent = create_resp_content(RD1, Context1),
-            {mochihex:to_hex(crypto:md5(RespContent)), RD1, Context1};
+            RespContent = create_resp_content(RD, Context1),
+            {mochihex:to_hex(crypto:md5(RespContent)), RD, Context1};
         undefined ->
             {undefined, RD1, Context1};
         Tag when is_list(Tag) ->
@@ -180,18 +200,35 @@ from_form(RD, Context) ->
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
+from_binary(RD, Context) ->
+    Event = <<"v1_resource.from_binary">>,
+    _ = crossbar_bindings:map(Event, {RD, Context}),
+    create_push_response(RD, Context).
+
 %%%===================================================================
 %%% Content Providers
 %%%===================================================================
+-spec(to_json/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_json(RD, Context) ->
     Event = <<"v1_resource.to_json">>,
+    format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
+-spec(to_xml/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_xml(RD, Context) ->
     Event = <<"v1_resource.to_xml">>,
+    format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
+
+-spec(to_binary/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
+to_binary(RD, Context) ->
+    Event = <<"v1_resource.to_binary">>,
+    format_log(info, "~p~n", [Event]),
+    _ = crossbar_bindings:map(Event, {RD, Context}),
+
+    {Context#cb_context.resp_data, set_resp_headers(RD, Context), Context}.
 
 %%%===================================================================
 %%% Internal functions
@@ -376,10 +413,10 @@ get_auth_token(RD, JsonToken, Verb) ->
         undefined ->
             case Verb of
                 <<"get">> ->
-                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), ""));
+                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), <<>>));
 		_ ->
 		    JsonToken
-            end;
+	    end;
         AuthToken ->
             whistle_util:to_binary(AuthToken)
     end.
@@ -455,7 +492,7 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     case succeeded(Context1) of
         false ->
 	    format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
-            Content = create_resp_content(RD, Context1),
+            Content = create_resp_content(RD1, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
@@ -479,12 +516,15 @@ execute_request(RD, Context) ->
 %%--------------------------------------------------------------------
 -spec(create_resp_content/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> iolist()).
 create_resp_content(RD, Context) ->
-    Prop = create_resp_envelope(Context),
     case get_resp_type(RD) of
 	xml ->
+	    Prop = create_resp_envelope(Context),
             io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), [])]);
         json ->
-            mochijson2:encode({struct, Prop})
+	    Prop = create_resp_envelope(Context),
+            mochijson2:encode({struct, Prop});
+	binary ->
+	    Context#cb_context.resp_data
     end.
 
 %%--------------------------------------------------------------------
@@ -538,15 +578,20 @@ succeeded(_) ->
 %%--------------------------------------------------------------------
 -spec(set_resp_headers/2 :: (RD0 :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
 set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
+    format_log(info, "v1.set_resp_headers: ~p~n", [Headers]),
     lists:foldl(fun({Header, Value}, RD) ->
 			{H, V} = fix_header(RD, Header, Value),
-			wrq:set_resp_header(H, V, RD)
+			wrq:set_resp_header(H, V, wrq:remove_resp_header(H, RD))
 		end, RD0, Headers).
 
 -spec(fix_header/3 :: (RD :: #wm_reqdata{}, Header :: string(), Value :: string() | binary()) -> tuple(string(), string())).
 fix_header(RD, "Location"=H, Url) ->
     %% http://some.host.com:port/"
-    Host = lists:concat(["http://", string:join(wrq:host_tokens(RD), "."), ":", integer_to_list(wrq:port(RD)), "/"]),
+    Port = case wrq:port(RD) of
+	       80 -> "";
+	       P -> [":", whistle_util:to_list(P)]
+	   end,
+    Host = ["http://", string:join(wrq:host_tokens(RD), "."), Port, "/"],
 
     %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
     PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
@@ -562,7 +607,7 @@ fix_header(RD, "Location"=H, Url) ->
 			end, PathTokensRev, UrlTokens)
 	   ), "/"),
 
-    {H, Host ++ Url1};
+    {H, lists:concat([Host | [Url1]])};
 fix_header(_, H, V) ->
     {whistle_util:to_list(H), whistle_util:to_list(V)}.
 
@@ -617,13 +662,15 @@ create_resp_envelope(C) ->
 %% based on the request....
 %% @end
 %%--------------------------------------------------------------------
--spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml).
+-spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml|binary).
 get_resp_type(RD) ->
-    case wrq:get_resp_header("Content-Type",RD) of
+    format_log(info, "Resp Header: ~p~n", [wrq:get_resp_header("Content-Type",RD)]),
+    case wrq:get_resp_header("Content-Type", RD) of
         "application/xml" -> xml;
         "application/json" -> json;
         "application/x-json" -> json;
-        _Else -> json
+	undefined -> json;
+        _Else -> binary
     end.
 
 %%--------------------------------------------------------------------
