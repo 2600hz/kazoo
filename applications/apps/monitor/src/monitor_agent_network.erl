@@ -63,7 +63,7 @@ set_amqp_host(AHost) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AHost]) ->
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Starting server with amqp host ~p~n", [self(), AHost]),
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Starting server with amqp host ~p", [self(), AHost]),
     {ok, Agent_Q} = start_amqp(AHost),
     {ok, #state{amqp_host=AHost, agent_q=Agent_Q}}.
 
@@ -82,7 +82,7 @@ init([AHost]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({set_amqp_host, AHost}, _From, #state{amqp_host=CurAHost} = State) ->
-    format_log(info, "MONITOR_AGENT_NETWORK(~p): Updating amqp host from ~p to ~p~n", [self(), CurAHost, AHost]),
+    format_log(info, "MONITOR_AGENT_NETWORK(~p): Updating amqp host from ~p to ~p", [self(), CurAHost, AHost]),
     amqp_manager:close_channel(self(), CurAHost),
     {ok, Agent_Q} = start_amqp(AHost),
     {reply, ok, State#state{amqp_host = AHost, agent_q = Agent_Q}};
@@ -114,7 +114,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', _Pid, Reason}, State) ->
-    format_log(error, "MONITOR_AGENT_CALL(~p): Received EXIT(~p) from ~p...~n", [self(), Reason, _Pid]),
+    format_log(error, "MONITOR_AGENT_CALL(~p): Received EXIT(~p) from ~p...", [self(), Reason, _Pid]),
     {stop, Reason, State};
 
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
@@ -123,7 +123,7 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
             spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
         _ ->
-            format_log(info, "MONITOR_AGENT_NETWORK(~p): Recieved non JSON AMQP msg content type~n", [self()])
+            format_log(info, "MONITOR_AGENT_NETWORK(~p): Recieved non JSON AMQP msg content type", [self()])
     end,
     {noreply, State};
 
@@ -142,7 +142,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    format_log(error, "MONITOR_AGENT_NETWORK(~p): Going down(~p)...~n", [self(), _Reason]),
+    format_log(error, "MONITOR_AGENT_NETWORK(~p): Going down(~p)...", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -210,11 +210,11 @@ process_req({<<"task">>, <<"ping_net_req">>}, Prop, #state{amqp_host = AHost, ag
             {ok, JSON} = monitor_api:ping_net_resp(Headers),
             send_resp(JSON, RespQ, AHost);
         _ ->
-            format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_net_req~n", [self()])
+            format_log(error, "MONITOR_AGENT_NETWORK.ping(~p): Failed to validate ping_net_req", [self()])
     end;
 
 process_req(_MsgType, _Prop, _State) ->
-    format_log(error, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Prop]).
+    format_log(error, "MONITOR_AGENT_NETWORK(~p): Unhandled Msg ~p JSON: ~p", [self(), _MsgType, _Prop]).
 
 %%--------------------------------------------------------------------
 %% @private
