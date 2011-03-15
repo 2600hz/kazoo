@@ -23,16 +23,16 @@ start(AHost, Msg, Route) ->
     Msg_ID = get_value(<<"Msg-ID">>, Msg),
     {ok, Task_Q} = create_task_q(AHost),
     Result = case originate_call_req(AHost, Msg_ID, Route, Task_Q) of 
-        {ok, Resource} ->
-            CQ = get_value(<<"Control-Queue">>, Resource),
-            Call_ID = get_value(<<"Call-ID">>, Resource),
-            amqp_util:bind_q_to_callevt(AHost, Task_Q, Call_ID),
-            answer_call(AHost, CQ, Call_ID, Task_Q),
-            Rslt = test_tones(AHost, CQ, Call_ID, Task_Q),
-            hangup_call(AHost, CQ, Call_ID, Task_Q), Rslt;
-        {error, E} ->
-            {error, [{<<"Error">>, E}, {<<"Success">>, <<"false">>}]}
-    end,
+                 {ok, Resource} ->
+                     CQ = get_value(<<"Control-Queue">>, Resource),
+                     Call_ID = get_value(<<"Call-ID">>, Resource),
+                     amqp_util:bind_q_to_callevt(AHost, Task_Q, Call_ID),
+                     answer_call(AHost, CQ, Call_ID, Task_Q),
+                     Rslt = test_tones(AHost, CQ, Call_ID, Task_Q),
+                     hangup_call(AHost, CQ, Call_ID, Task_Q), Rslt;
+                 {error, E} ->
+                     {error, [{<<"Error">>, E}, {<<"Success">>, <<"false">>}]}
+             end,
     amqp_util:queue_delete(AHost, Task_Q),
     format_log(info, "MONITOR_CALL_BASIC(~p): Basic call test completed ~p", [self(), Result]),
     Result.
@@ -45,18 +45,18 @@ originate_call_req(AHost, Msg_ID, Route, Server_ID) ->
            ,{<<"Caller-ID-Name">>, <<"2600hz Monitoring">>}
            ,{<<"Caller-ID-Number">>, <<"4158867900">>}
            ,{<<"Route">>, Route}           
-    ],
+          ],
     format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p", [self(), Route]),
     {ok, JSON} = whistle_api:resource_req(lists:append([Def, Req])),
     amqp_util:callmgr_publish(AHost, JSON, <<"application/json">>, ?KEY_RESOURCE_REQ),
-    wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 20000).
+    wait_for_msg_type(<<"originate">>, <<"resource_resp">>, 5000).
 
 answer_call(AHost, CQ, Call_ID, Server_ID) ->
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
-         {<<"Call-ID">>, Call_ID}
-        ,{<<"Application-Name">>, <<"answer">>}
-    ],
+            {<<"Call-ID">>, Call_ID}
+           ,{<<"Application-Name">>, <<"answer">>}
+          ],
     {ok, JSON} = whistle_api:answer_req(lists:append([Def, Req])),
     amqp_util:callctl_publish(AHost, CQ, JSON).
 
@@ -68,7 +68,7 @@ test_tones(AHost, CQ, Call_ID, Server_ID) ->
     case {Start, End} of
         {{ok, StartMsg}, {ok, EndMsg}} ->
             Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, EndMsg)) 
-                    - whistle_util:to_integer(get_value(<<"Timestamp">>, StartMsg)),
+                - whistle_util:to_integer(get_value(<<"Timestamp">>, StartMsg)),
             {ok, [{<<"Delay">>, Delay}, {<<"Success">>, <<"true">>}]};
         {{error, E}, _} ->
             {error, [{<<"Error">>, E}, {<<"Success">>, <<"false">>}]};
@@ -81,9 +81,10 @@ test_tones(AHost, CQ, Call_ID, Server_ID) ->
 hangup_call(AHost, CQ, Call_ID, Server_ID) ->
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
-         {<<"Call-ID">>, Call_ID}
-        ,{<<"Application-Name">>, <<"hangup">>}
-    ],
+            {<<"Call-ID">>, Call_ID}
+           ,{<<"Insert-At">>, <<"now">>}
+           ,{<<"Application-Name">>, <<"hangup">>}
+          ],
     {ok, JSON} = whistle_api:hangup_req(lists:append([Def, Req])),
     amqp_util:callctl_publish(AHost, CQ, JSON).
 
@@ -98,29 +99,29 @@ create_task_q(AHost) ->
 arm_tone_detector(AHost, CQ, Call_ID, Server_ID) ->
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
-         {<<"Call-ID">>, Call_ID}
-        ,{<<"Application-Name">>, <<"tone_detect">>}
-        ,{<<"Tone-Detect-Name">>, Call_ID}
-        ,{<<"Frequencies">>, [?FREQ]}
-        ,{<<"Sniff-Direction">>, <<"read">>}
-        ,{<<"Timeout">>, <<"0">>}
-    ],
+            {<<"Call-ID">>, Call_ID}
+           ,{<<"Application-Name">>, <<"tone_detect">>}
+           ,{<<"Tone-Detect-Name">>, Call_ID}
+           ,{<<"Frequencies">>, [?FREQ]}
+           ,{<<"Sniff-Direction">>, <<"read">>}
+           ,{<<"Timeout">>, <<"0">>}
+          ],
     {ok, JSON} = whistle_api:tone_detect_req(lists:append([Def, Req])),
     amqp_util:callctl_publish(AHost, CQ, JSON).
 
 generate_tones(AHost, CQ, Call_ID, Server_ID) ->
     Def = monitor_api:default_headers(Server_ID, <<"call_control">>, <<"command">>),
     Req = [
-         {<<"Call-ID">>, Call_ID}
-        ,{<<"Application-Name">>, <<"tones">>}
-        ,{<<"Tones">>, [
-            {struct, [
-                 {<<"Frequencies">>, [?FREQ]}
-                ,{<<"Duration-ON">>, <<"5000">>}
-                ,{<<"Duration-OFF">>, <<"10">>}
-            ]}
-        ]}
-    ],
+            {<<"Call-ID">>, Call_ID}
+           ,{<<"Application-Name">>, <<"tones">>}
+           ,{<<"Tones">>, [
+                           {struct, [
+                                      {<<"Frequencies">>, [?FREQ]}
+                                     ,{<<"Duration-ON">>, <<"5000">>}
+                                     ,{<<"Duration-OFF">>, <<"10">>}
+                                    ]}
+                          ]}
+          ],
     {ok, JSON} = whistle_api:tones_req(lists:append([Def, Req])),
     amqp_util:callctl_publish(AHost, CQ, JSON).
 
@@ -128,6 +129,7 @@ wait_for_msg_type(Category, Name, Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
+            format_log(info, "MONITOR_CALL_BASIC(~p): wait_for_msg_type ~p", [self(), Msg]),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
                 { Category, Name } ->
                     {ok, Msg};
@@ -154,6 +156,7 @@ wait_for_call_event(Name, Application, Timeout) ->
     receive
         {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
+            format_log(info, "MONITOR_CALL_BASIC(~p): wait_for_call_event ~p", [self(), Msg]),
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
                 { <<"call_event">>, Name, Application } ->                
                     {ok, Msg};
