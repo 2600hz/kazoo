@@ -236,6 +236,8 @@ bind_q_to_callctl(Host, Queue, Routing) ->
 
 
 %% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallId
+bind_q_to_callevt(Host, Queue, media_req) ->
+    bind_q_to_exchange(Host, Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Host, Queue, CallId) ->
     bind_q_to_callevt(Host, Queue, CallId, events).
 
@@ -444,4 +446,4 @@ is_json(Props) ->
 
 -spec(is_host_available/1 :: (Host :: string()) -> boolean()).
 is_host_available(Host) ->
-    couch_mgr:is_available(Host).
+    amqp_manager:is_available(Host).
