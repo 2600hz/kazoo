@@ -34,7 +34,7 @@
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
-	 ,sleep_req/1, tone_detect_req/1, set_req/1
+	 ,sleep_req/1, tone_detect_req/1, set_req/1, media_req/1, media_resp/1
 	]).
 
 %% Validation functions
@@ -45,6 +45,7 @@
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
 	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
 	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1, dialplan_req_v/1
+	 ,media_req_v/1, media_resp_v/1
 	]).
 
 %% FS-specific routines
@@ -610,6 +611,42 @@ play_req_v({struct, Prop}) ->
     play_req_v(Prop);
 play_req_v(Prop) ->
     validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Request media - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+media_req({struct, Prop}) ->
+    media_req(Prop);
+media_req(Prop) ->
+    case media_req_v(Prop) of
+	true -> build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for media_req"}
+    end.
+
+media_req_v({struct, Prop}) ->
+    media_req_v(Prop);
+media_req_v(Prop) ->
+    validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Response with media - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+media_resp({struct, Prop}) ->
+    media_resp(Prop);
+media_resp(Prop) ->
+    case media_resp_v(Prop) of
+	true -> build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for media_resp"}
+    end.
+
+media_resp_v({struct, Prop}) ->
+    media_resp_v(Prop);
+media_resp_v(Prop) ->
+    validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Record media - see wiki
