@@ -1,7 +1,7 @@
 -include_lib("couchbeam/include/couchbeam.hrl").
--include("../include/amqp_client/include/amqp_client.hrl").
--include("../../../src/whistle_types.hrl").
--include("../../../utils/src/whistle_amqp.hrl").
+-include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/whistle_amqp.hrl").
 
 %% couch params for the trunk store and its views
 -define(TS_DB, "ts").
