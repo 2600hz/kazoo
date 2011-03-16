@@ -489,10 +489,10 @@
 %% Media Response
 -define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
 -define(OPTIONAL_MEDIA_RESP_HEADERS, []).
--define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, "media"}
+-define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, "media"}
 			   ,{<<"Event-Name">>, <<"media_resp">>}
 			  ]).
--define(MEDIA_REQ_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; (_) -> false end}]).
+-define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; (_) -> false end}]).
 
 %% Record Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Record
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
