@@ -2,7 +2,7 @@
              [{description,"Callflow - traversing throught the tree..."},
               {vsn,"0.0.1"},
               {modules,[callflow,callflow_app,callflow_sup,cf_call_sup,
-                        cf_device,cf_dialplan,cf_exe,cf_responder,
+                        cf_device,cf_dialplan,cf_exe,cf_menu,cf_responder,
                         cf_ring_group,cf_test,cf_voicemail]},
               {registered,[]},
               {applications,[kernel,stdlib,crypto]},
