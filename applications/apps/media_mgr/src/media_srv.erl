@@ -130,7 +130,7 @@ handle_info({amqp_host_down, _}, S) ->
     {noreply, S#state{amqp_q={error, amqp_down}, is_amqp_up=false}, 0};
 
 handle_info({_, #amqp_msg{payload = Payload}}, S) ->
-    spawn(fun() -> handle_req(mochijson2:decode(Payload), S) end),
+    spawn(fun() -> handle_req(mochijson2:decode(Payload)) end),
     {noreply, S};
 
 handle_info(_Info, State) ->
