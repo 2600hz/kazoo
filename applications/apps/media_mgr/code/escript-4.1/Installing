@@ -1,0 +1,29 @@
+
+When you install Erlang, escript might be included.
+
+To test if escript is installed give the following
+command in this directory
+
+	$ ./factorial 10
+
+If this succeeds then escript is installed.
+
+If escript is not installed then give the following
+command
+
+	$ make
+
+This creates a script called escript.
+
+You can test this in the current working directory.
+
+	$ ./factorial 12
+	factorial 12 = 479001600
+	$ ./hello
+	Hello world
+
+Now you can either add escript to your PATH or move
+escript to some directory in your PATH. I usually move
+
+escript to my ~/bin directory which is in my PATH.
+

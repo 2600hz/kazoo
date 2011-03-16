@@ -1,0 +1,6 @@
+#! /bin/bash
+function escape() {
+  for arg in $*; do echo \\${arg}; done
+}
+args=`escape $*`
+erl -pa /home/joe/2006/book/JAERLANG/Book/code/escript-4.1 -boot start_clean -noshell -s escript start $0 $args

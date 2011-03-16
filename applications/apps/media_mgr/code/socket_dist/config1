@@ -1,0 +1,2 @@
+{port, 2233}.
+{service, math, password, "qwerty", mfa, mod_math, run, []}.

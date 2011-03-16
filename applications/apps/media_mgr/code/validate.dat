@@ -1,0 +1,10 @@
+Equal = fun(X,X) -> {equal, true}; 
+           (X,Y) -> {equal, false, {X, Y}} end.
+Equal(1+2,3).
+Equal(lists:reverse("abc"), "cba").
+Equal(lists:reverse("abc"), "cbx").
+Equal(lists:max([56,3,45,2]), 56).
+Hypot = fun(X,Y) -> math:sqrt(X*X + Y*Y) end.
+X=3.
+Equal(Hypot(X,4),7).
+

@@ -1,0 +1,41 @@
+Files names
+
+test1     -- test function
+any_apply -- apply any function
+
+mod_*    Plugings for lib_auth_spawn
+
+lib_*    Auth spawn and related routines
+
+lib_auth_spawn.erl  
+lib_auth.erl  
+lib_auth_test.erl  
+lib_tcp_cs.erl  
+lib_tcp_mm.erl
+
+irc_client.erl            -- client controller
+irc_client_widget.erl     -- client widget
+irc_group_controller.erl  -- group controller
+irc_server.erl            -- server
+mod_irc_controller.erl    -- plugin for auth
+
+start_server()       ${HOME}/.erlang_config/auth_spawn.conf)
+start_server(Conf)
+
+{port, 1234}.
+{service, srpc,  password, "secret",     mfa, mod_srpc,  start, [test1]}.
+{service, root,  password, "verySecret", mfa, mod_srpc,  start, [any_apply]}.
+{service, test1, password, "test1",      mfa, mod_test1, start, {hi, joe}}.
+{service, echo,  password, "echo1",      mfa, mod_echo,  start, {server,args}}.
+{service, fac,   password, "facSecret",  mfa, mod_fac,   run, []}.
+
+Client code:
+ 
+connect([{Host,Port,Service,Pwd}]) -> {ok, Pid} | error
+connect(Conf)
+connect()
+
+rpc(Pid, Mod, Func, Args)
+cast(Pid, Mod, Func, Args)
+stop(Pid)
+

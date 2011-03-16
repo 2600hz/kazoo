@@ -1,6 +1,6 @@
 {application,crossbar,
              [{description,"Crossbar - REST Interface to the stars"},
-              {vsn,"0.0.2"},
+              {vsn,"0.3.5"},
               {modules,[accounts,callflow_crud,crossbar,crossbar_app,
                         crossbar_bindings,crossbar_doc,crossbar_module_sup,
                         crossbar_resource,crossbar_session,crossbar_sup,

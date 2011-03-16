@@ -1,4 +1,4 @@
 -include_lib("couchbeam/include/couchbeam.hrl").
--include_lib("rabbitmq/include/amqp_client.hrl"). %/include/amqp_client.hrl").
+-include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 -include("../../../src/whistle_types.hrl").
 -include("../../../utils/src/whistle_amqp.hrl").

@@ -1,0 +1,26 @@
+#!/usr/bin/env escript
+
+%% Example of an interpreted script
+
+%% Usage:
+%%   fib <Int>
+
+-export([main/1]).
+
+main([X]) ->
+    case (catch list_to_integer(X)) of
+	{'EXIT', _} ->
+	    usage();
+	J ->
+	    N = fib(J),
+	    io:format("fib ~w = ~w~n",[J, N])
+    end;
+main(_) ->
+    usage().
+
+usage() ->
+    io:format("Usage fib <Int>~n").
+
+fib(0) -> 1;
+fib(1) -> 1;
+fib(N) -> fib(N-1) + fib(N-2).

@@ -1,0 +1,6 @@
+%% This directory contains all the code for the
+%% indexing program described in chapter <nn>
+%% Of Programming Erlang
+%% It makes use of one file outside the diectory
+%% ../354984si.ngl.gz
+ 

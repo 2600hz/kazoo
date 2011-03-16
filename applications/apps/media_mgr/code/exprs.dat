@@ -1,0 +1,5 @@
+X=1+2.
+5*4+10.
+lists:reverse("esirprus esirprus").
+Hypot = fun(X,Y) -> math:sqrt(X*X + Y*Y) end.
+Hypot(X,4).

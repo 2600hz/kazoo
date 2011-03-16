@@ -1,0 +1,27 @@
+(setq default-frame-alist
+      '((top . 10) (left . 10)
+        (width . 80) (height . 43)
+        (cursor-color . "blue")
+        (cursor-type . box)
+        (foreground-color . "black")
+        (background-color . "white")
+        (font . "-*-Courier New-bold-r-*-*-18-108-120-120-c-*-iso8859-8")))
+
+(show-paren-mode)
+
+(global-font-lock-mode t)
+(setq font-lock-maximum-decoration t)
+
+
+;; Erlang stuff this is the path to erlang
+
+;; windows path below -- change to match your environment
+(setq load-path (cons  "c:/Program Files/erl5.5.3/lib/tools-2.5.3/emacs"
+		        load-path))
+
+(require 'erlang-start)
+
+;; (if window-system
+;;    (add-hook 'erlang-mode-hook 'erlang-font-lock-level-3))
+
+ (add-hook 'erlang-mode-hook 'erlang-font-lock-level-3)

@@ -1,0 +1,7 @@
+{port, 1234}.
+{service, nameServer, password, "ABXy45", mfa, mod_name_server, start_me_up, notUsed}.
+{service, srpc,  password, "secret",     mfa, mod_srpc,  start, [test1]}.
+{service, root,  password, "verySecret", mfa, mod_srpc,  start, [any_apply]}.
+{service, test1, password, "test1",      mfa, mod_test1, start, {hi, joe}}.
+{service, echo,  password, "echo1",      mfa, mod_echo,  start, {server,args}}.
+{service, math,   password, "qwerty",     mfa, mod_math,   run, []}.

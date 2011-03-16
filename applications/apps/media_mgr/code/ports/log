@@ -1,0 +1,23 @@
+To build the first example we need complex.c port.c and erl_comm.c
+
+gcc -o extprg complex.c erl_comm.c port.c
+
+1> complex1:start("extprg").
+<0.42.0>
+2> complex1:bar(5).
+10
+3> complex1:foo(5).
+6
+4> complex1:stop.  
+** 1: illegal expression **
+5> complex1:stop().
+stop
+
+(solaris)
+gcc -shared -o example_drv.so -fpic  complex.c port_driver.c
+
+complex5:start("example_drv"). 
+<0.44.0>
+complex5:foo(8).
+
+ 

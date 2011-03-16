@@ -1,0 +1,148 @@
+<!--
+ ! Excerpted from "Programming Erlang",
+ ! published by The Pragmatic Bookshelf.
+ ! Copyrights apply to this code. It may not be used to create training material, 
+ ! courses, books, articles, and the like. Contact us if you are in doubt.
+ ! We make no guarantees that this code is fit for any purpose. 
+ ! Visit http://www.pragmaticprogrammer.com/titles/jaerlang for more book information.
+-->
+<style>
+body { margin-left:5em}
+</style>
+
+<body>
+<center>
+    <font size="+2"><i>escript</i></font>
+
+<p>A simple one pass "load and go" 
+<p>Erlang scripting interface
+<p>Joe Armstrong
+<br>Robert Virding
+<p>3 - April - 2001
+<p>
+<p>Last revised 20 - February - 2004 - tested with R11-B3
+on Solaris with a bash shell.
+
+</center>
+
+<h3>Installation</h3>
+
+<ol>
+<li>Fetch <a href="escript-4.1.tgz">escript-4.1.tgz</a>
+<li>Unpack.
+<li>Type make.
+<li>Move the file <b>escript</b> to somewhere in your path.
+</ol>
+<h3>Testing</h3>
+<ul>
+<pre>
+<b>
+./fibc abc
+Usage fib <Int>
+> ./factorial abc
+Usage factorial &lt;Int>  
+> ./fibc 20
+fib 20 = 10946
+</b>
+</pre>
+</ul>
+
+The <b>fibi</b> script is as follows:
+<ul>
+<pre>
+<b>
+#!/usr/bin/env escript
+
+%% Example of an interpreted script
+
+%% Usage:
+%%   fib <Int>
+
+-export([main/1]).
+
+main([X]) ->
+    case (catch list_to_integer(X)) of
+	{'EXIT', _} ->
+	    usage();
+	J ->
+	    N = fib(J),
+	    io:format("fib ~w = ~w~n",[J, N])
+    end;
+main(_) ->
+    usage().
+
+usage() ->
+    io:format("Usage fib <Int>~n").
+
+fib(0) -> 1;
+fib(1) -> 1;
+fib(N) -> fib(N-1) + fib(N-2).
+
+</b>
+</pre>
+</ul>
+
+<h3>Compiled or Interpreted code?</h3>
+
+<p>The default mode of <b>escript</b> is to interpret the code. By adding
+the attribute:
+<ul><pre><b>
+-mode(compile).
+</b></pre></ul>
+
+<p>Will cause the code in the script to be compiled, instead of interpreted.
+Note that for many scripts interpreting the code is much faster than compiling
+the code. We can time the code as follows:
+
+<pre><b>
+$ time fibc 20
+fib 20 = 10946
+
+real    0m1.041s
+user    0m0.540s
+sys     0m0.280s
+</b>
+</pre>
+
+<p>Here is a table comparing fibi (fibonacci interpreted) with
+fibc (compiled):
+
+<table>
+  <tr><td><b>EXpression</b></td><td><b>time (secs)</b></td></tr>
+  <tr><td>fibi 20</td><td><b>0.93</b></td></tr>
+  <tr><td>fibc 20</td><td><b>1.041</b></td></tr>
+  <tr><td>fibc 30</td><td><b>1.36</b></td></tr>
+  <tr><td>fibi 30</td><td><b>38.90</b></td></tr>
+</table>
+
+<p>You have to decide for yourself which is faster.</p>
+
+<h3>Release Notes</h3>
+
+<p>The origonal version was writen by Joe Armstrong and Robert Virding
+probably on 3 april 2001.
+
+     <p>Up to version-3.0 needed a slightly hacked version of
+     <b>erl_eval.erl</b>. These changes are now integrated into the
+     official distribution.
+
+
+<h3>Bugs</h3>
+<ul>
+<li>8 years too late :-)
+<li>Imports, exports macros and includes are not understood.
+<li>The escaping in the the <b>escript</b> script works in 
+bash - but maybe not in sh.
+</ul>
+
+<h3>Versions</h3>
+<ul>
+<li><b>escript-2.0</b> Added suggestion by Luke Gorrie on quoting
+		  arguments. Added <b>-mode(compile)</b>.
+<li><b>escript-3.0</b> Added Fix by  Bengt Kleberg (should be
+<tt>#! /bin/sh</tt> not <tt>#!/bin/sh</tt>). 
+</ul>
+
+</ul>
+
+</body>
