@@ -66,6 +66,7 @@ start_link() ->
 -spec(init/1 :: (_) -> tuple(ok, ok)).
 init([]) ->
     accounts:update_all_accounts(?VIEW_FILE),
+    accounts:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
     bind_to_crossbar(),
     {ok, ok}.
 
@@ -226,6 +227,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"accounts.created">>, _}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
+    accounts:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->

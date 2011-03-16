@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, update_all_accounts/1]).
+-export([start_link/0, update_all_accounts/1, replicate_from_accounts/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -70,6 +70,24 @@ update_all_accounts(File) ->
                                   end
                           end, Doc),
                 ok;
+        _Else ->
+            error
+    end.
+
+-spec(replicate_from_accounts/2 :: (TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
+replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
+    case crossbar_doc:load_view(?ACCOUNTS_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
+        #cb_context{resp_status=success, doc=Doc} ->
+	    BaseReplicate = [{<<"target">>, TargetDB}
+			     ,{<<"filter">>, FilterDoc}
+			     ,{<<"create_target">>, true}
+			    ],
+
+            lists:foreach(fun(Account) ->                                  
+                                  DbName = get_db_name(whapps_json:get_value(["id"], Account), unencoded),
+				  couch_mgr:db_replicate([{<<"source">>, DbName} | BaseReplicate])
+                          end, Doc),
+	    ok;
         _Else ->
             error
     end.
@@ -620,20 +638,27 @@ set_private_fields(Doc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will verify an account id is valid, and if so retur
+%% This function will verify an account id is valid, and if so return
 %% the name of the account database
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_db_name/1 :: (DocId :: list(binary()) | json_object()) -> undefined | binary()).
-get_db_name({struct, _}=Doc) ->
-    get_db_name([whapps_json:get_value(["_id"], Doc)]);
-get_db_name([DocId]) when is_binary(DocId) ->
-    get_db_name(DocId);
-get_db_name(DocId) when is_binary(DocId) ->
+get_db_name(Doc) -> get_db_name(Doc, encoded).
+
+-spec(get_db_name/2 :: (DocId :: list(binary()) | json_object(), Encoded :: unencoded | encoded) -> undefined | binary()).
+get_db_name({struct, _}=Doc, Encoded) ->
+    get_db_name([whapps_json:get_value(["_id"], Doc)], Encoded);
+get_db_name([DocId], Encoded) when is_binary(DocId) ->
+    get_db_name(DocId, Encoded);
+get_db_name(DocId, encoded) when is_binary(DocId) ->
     Id = whistle_util:to_list(DocId),
     Db = ["crossbar%2Fclients%2F", string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
     whistle_util:to_binary(Db);
-get_db_name(_) ->
+get_db_name(DocId, unencoded) when is_binary(DocId) ->
+    Id = whistle_util:to_list(DocId),
+    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
+    whistle_util:to_binary(Db);
+get_db_name(_, _) ->
     undefined.
 
 %%--------------------------------------------------------------------
