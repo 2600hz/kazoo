@@ -150,14 +150,18 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
     handle_info(start_apps, State);
+handle_info({set_apps, As1}, State) ->
+    {noreply, State#state{apps=As1}};
 handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
     State1 = case file:consult(Config) of
 		 {ok, Ts} ->
+		     CouchH = couch_mgr:get_host(),
 		     case lists:keyfind(default_couch_host, 1, Ts) of
 			 false -> ok;
-			 {default_couch_host, H} -> couch_mgr:set_host(H);
-			 {default_couch_host, H, U, P} -> couch_mgr:set_host(H, U, P)
+			 {default_couch_host, H} when CouchH =/= H -> couch_mgr:set_host(H);
+			 {default_couch_host, H, U, P} when CouchH =/= H -> couch_mgr:set_host(H, U, P);
+			 _ -> ok
 		     end,
 
 		     As1 = lists:foldl(fun(App, Acc) ->
@@ -203,13 +207,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 add_app(App, As) ->
-    format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
-    case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
-	false -> As;
-	{ok, _} -> application:start(App), [App  | As];
-	{ok, _, _} -> application:start(App), [App | As];
-	_E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), As
-    end.
+    Srv = self(),
+    spawn(fun() ->
+		  format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
+		  As1 = case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
+			    false -> As;
+			    {ok, _} -> application:start(App), [App  | As];
+			    {ok, _, _} -> application:start(App), [App | As];
+			    _E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), As
+			end,
+		  Srv ! {set_apps, As1}
+	  end).
+		  
 
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
