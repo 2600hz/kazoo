@@ -110,7 +110,6 @@
 
 -include("freeswitch_xml.hrl").
 -include("ecallmgr.hrl").
--include("whistle_api.hrl").
 
 -define(SERVER, ?MODULE).
 -define(AUTH_MOD, ecallmgr_fs_auth).

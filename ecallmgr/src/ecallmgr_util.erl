@@ -15,7 +15,6 @@
 -import(logger, [format_log/3]).
 
 -include("ecallmgr.hrl").
--include("whistle_api.hrl").
 
 %% retrieves the sip address for the 'to' field
 -spec(get_sip_to/1 :: (Prop :: proplist()) -> binary()).

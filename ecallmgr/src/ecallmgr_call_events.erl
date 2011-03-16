@@ -10,7 +10,6 @@
 -module(ecallmgr_call_events).
 -behaviour(gen_server).
 
--include("whistle_api.hrl").
 -include("ecallmgr.hrl").
 
 -import(logger, [log/2, format_log/3]).

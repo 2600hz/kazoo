@@ -16,8 +16,6 @@
 -import(props, [get_value/2, get_value/3]).
 
 -include("ecallmgr.hrl").
--include("whistle_amqp.hrl").
--include("whistle_api.hrl").
 
 -define(APPNAME, <<"ecallmgr.call.cdr">>).
 -define(APPVER, <<"0.3.1">>).

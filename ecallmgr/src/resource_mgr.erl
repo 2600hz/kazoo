@@ -21,8 +21,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--include("whistle_api.hrl").
--include("whistle_amqp.hrl").
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE). 

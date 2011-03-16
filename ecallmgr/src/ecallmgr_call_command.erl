@@ -15,7 +15,6 @@
 
 -define(LOCAL_MEDIA_PATH, "/tmp/").
 
--include("whistle_api.hrl").
 -include("ecallmgr.hrl").
 
 -type fd() :: tuple().
