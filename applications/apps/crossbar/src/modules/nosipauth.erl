@@ -30,7 +30,7 @@
 
 -import(logger, [format_log/3]).
 
--include("../crossbar.hrl").
+-include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 

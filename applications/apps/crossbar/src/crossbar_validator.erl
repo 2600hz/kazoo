@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_validator).
 
--include("crossbar.hrl").
+-include("../include/crossbar.hrl").
 
 -export([validate/2, check/4]).
 -export([required/1]).

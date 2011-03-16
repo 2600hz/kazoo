@@ -1,7 +1,7 @@
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 -include_lib("whistle/include/whistle_types.hrl").
 -include_lib("whistle/include/whistle_amqp.hrl").
--include("../src/crossbar_types.hrl").
+-include("crossbar_types.hrl").
 
 -define(CONTENT_PROVIDED, [
                             {to_json, ["application/json","application/x-json"]}

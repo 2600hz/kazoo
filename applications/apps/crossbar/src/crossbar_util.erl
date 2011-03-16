@@ -27,7 +27,7 @@
 
 -export([is_valid_request_envelope/1, is_valid_response_envelope/1]).
 
--include("crossbar.hrl").
+-include("../include/crossbar.hrl").
 
 -import(logger, [format_log/3]).
 
