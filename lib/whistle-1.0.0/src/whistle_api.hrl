@@ -494,6 +494,15 @@
 			  ]).
 -define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; (_) -> false end}]).
 
+%% Media Error
+-define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
+-define(OPTIONAL_MEDIA_ERROR_HEADERS, [<<"Error-Msg">>]).
+-define(MEDIA_ERROR_VALUES, [{<<"Event-Category">>, <<"media">>}
+			     ,{<<"Event-Name">>, <<"media_error">>}
+			     ,{<<"Error-Code">>, [<<"not_found">>, <<"no_data">>, <<"other">>]}
+			     ]).
+-define(MEDIA_ERROR_TYPES, []).
+
 %% Record Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Record
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
