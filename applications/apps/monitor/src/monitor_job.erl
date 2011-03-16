@@ -10,8 +10,8 @@
 
 -behaviour(gen_server).
 
--include("../include/monitor_amqp.hrl").
--include("../include/monitor_couch.hrl").
+-include("monitor_amqp.hrl").
+-include("monitor_couch.hrl").
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).

@@ -5,7 +5,7 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
--include("../include/monitor_amqp.hrl").
+-include("monitor_amqp.hrl").
 
 %% ===================================================================
 %% Application callbacks

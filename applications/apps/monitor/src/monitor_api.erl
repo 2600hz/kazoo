@@ -33,7 +33,7 @@
 
 -import(proplists, [get_value/2, get_value/3, delete/2, is_defined/2]).
 
--include("../include/monitor_api.hrl").
+-include("monitor_api.hrl").
 
 %%%===================================================================
 %%% API
