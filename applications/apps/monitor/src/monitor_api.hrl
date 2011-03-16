@@ -1,4 +1,4 @@
--type proplist() :: list(tuple(binary(), (binary() | list() | fun()) )).
+-include_lib("whistle/include/whistle_types.hrl").
 
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
