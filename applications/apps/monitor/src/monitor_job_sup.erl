@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include("../include/monitor_amqp.hrl").
+-include("monitor_amqp.hrl").
 
 %% API
 -export([start_link/0]).
