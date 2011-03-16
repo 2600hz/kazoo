@@ -17,9 +17,15 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
+-define(MEDIA_DB, "media_files").
 
--record(state, {}).
+-record(state, {
+	  media_id = <<>> :: binary()
+	  ,send_to = [] :: list(binary()) | []
+	  ,stream_type = single :: single | continuous
+	  ,shout_url = <<>> :: binary()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -33,7 +39,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link(?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -50,8 +56,8 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{}}.
+init([MediaID, To, Type]) ->
+    {ok, #state{media_id=MediaID, send_to=[To], stream_type=Type}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -94,7 +100,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, S) ->
+    {noreply, S};
+
+handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_id=M}=S) ->
+    spawn(fun() ->
+		  {ok, ShoutSrv} = media_shout_sup:start_shout(M, ListenerQ, continuous),
+		  media_srv:add_stream(M, ShoutSrv)
+	  end),
+    {noreply, S};
+
+handle_info({add_listener, ListenerQ}, #state{media_id=M, shout_url = <<>>}=S) ->
+    {noreply, S#state{send_to=[ListenerQ | S#state.send_to]}};
+
 handle_info(_Info, State) ->
+    logger:format_log(info, "MEDIA_SHOUT(~p): Recv info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
