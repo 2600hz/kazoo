@@ -22,7 +22,7 @@
 
 -import(logger, [format_log/3]).
 
--include("../crossbar.hrl").
+-include("../../crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(MAX_STREAM_EVENTS, 10). % how many events to store for a stream at a time
