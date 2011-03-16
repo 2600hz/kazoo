@@ -13,7 +13,7 @@
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1]).
 
--include("crossbar.hrl").
+-include("../include/crossbar.hrl").
 
 -import(logger, [format_log/3]).
 
