@@ -165,6 +165,7 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 start_call_handling(Node, Host, UUID) ->
     CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
     amqp_util:bind_q_to_callctl(Host, CtlQueue),
+
     {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
     {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
     CtlQueue.

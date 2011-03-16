@@ -1,0 +1,139 @@
+ 1) 3-april-2001
+   
+   Joe Armstrong amd Robert Virding write escript.
+
+   This is a pure erlang applications that allows erlang modules
+   to be used as scripts:
+
+   Example:
+
+	./factorial 123
+        factorial 123 = 1214630436702532967576624324188129585545
+                        4217088483382315328918161829235892362167
+                        6688311569606126402021707358352212940477
+                        8259109157041165147218602951990626164673
+                        0733907419814952960000000000000000000000
+                        000000
+
+   The file factorial contains the following:
+
+        #!/usr/bin/env escript
+
+        %%
+        %% Usage:
+        %%   factorial <Int>
+        
+        %% Example of an interpreted script
+        
+        -export([main/1]).
+        
+        main([X]) ->
+            case (catch list_to_integer(X)) of
+        	{'EXIT', _} ->
+        	    usage();
+        	J ->
+        	    N = fac(J),
+        	    io:format("factorial ~w = ~w~n",[J, N])
+            end;
+        main(_) ->
+            usage().
+        
+        usage() ->
+            io:format("Usage factorial <Int>~n").
+        
+        fac(0) -> 1;
+        fac(N) ->
+            N * fac(N-1).
+        
+2) Escript has a rather long startup time
+
+	time ./factorial 1  
+	...
+	real    0m0.745s
+
+   So I investigated why. The reason has to do with code loading ...
+
+3) I wrote SAE - stand-alone Erlang to solve this
+   Then I implemented escript in SAE
+
+   escript with SAE started very quickly (0.0N) seconds (ish)
+
+4) Integration of SAE with the standard release was pretty difficult
+   (lots of modules have to be changed)
+
+5) SAE never made it into the main release - but parts of it
+   found there way into the bootstrap compiler.
+
+6) escript ran for a while on SAE - but every new release
+   of Erlang required major effort to get it running again.
+
+7) Escript stops working on the latest version of the system,
+   because it now depends upon SAE which is broken.
+
+   ...
+
+8) I stop using escript and forget about it.
+
+9) I start writing a book. <<The book please buy it>>.
+
+10) I want to describe loads of *useful* and little known tools.
+
+11) I want make sure that escript works.
+
+12) I google escript - since Iäve now *lost* the code 
+
+13) Google finds escript on MY web site (holy cows) - irony yes.
+
+    This is the old "pure-erlang" version "pre SAE"
+
+14) I compile this version
+
+    It is broken.
+
+    It depends opon a hacked version of erl_eval
+    this needs syncing with the latest version.
+
+15) I look at the latest version of erl_eval
+
+    I find this comment:
+
+	%% Is used by standalone Erlang (escript).
+        %% Also used by shell.erl.
+        -export([match_clause/4]).
+
+    I suspect that erl_eval.erl is "up to date" with my hacked version,
+    I check - it is.
+
+16) I wonder.
+
+    "is escript" in the *current* system?
+
+17) I check
+
+    yes - it's in erts/boot/src/escript.erl
+
+18) Does it work?
+
+    no
+
+19) I fix it
+	
+    It works
+
+20) Is it installed by default?
+
+    No
+
+21) Is it documented
+
+    No
+
+22) I fix it - fix the documentation
+    and post to the Erlang list
+
+
+23) Decide to document escript in the Erlang book
+    which means it must go back into the standard distribution.
+
+
+/Joe

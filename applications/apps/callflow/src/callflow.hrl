@@ -1,6 +1,6 @@
--include("../../../src/whistle_types.hrl").
--include("../../../src/whistle_amqp.hrl").
--include("../include/amqp_client/include/amqp_client.hrl").
+-include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/whistle_amqp.hrl").
+-include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 
 -define ( CALLFLOW_DB, "callflow" ).
 

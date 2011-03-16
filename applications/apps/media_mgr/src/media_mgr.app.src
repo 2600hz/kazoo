@@ -1,0 +1,14 @@
+{application, media_mgr,
+ [
+  {description, "Media Manager - Stream media via Shout from Couch"}
+  ,{vsn, "0.0.1"}
+  ,{modules, []}
+  ,{registered, []}
+  ,{applications, [
+		   kernel
+		   ,stdlib
+		   ,crypto
+		  ]}
+  ,{mod, { media_mgr_app, []} }
+  ,{env, []}
+ ]}.

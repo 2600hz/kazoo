@@ -383,6 +383,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% set the host to connect to
+-spec(set_host/1 :: (HostName :: string()) -> ok | tuple(error, term())).
 set_host(HostName) ->
     set_host(HostName, "", "").
 
