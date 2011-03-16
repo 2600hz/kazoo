@@ -29,7 +29,7 @@
 -define(SESSION_EXPIRED, {"session", "expired_time"}).
 
 -include_lib("webmachine/include/webmachine.hrl").
--include("crossbar.hrl").
+-include("../include/crossbar.hrl").
 
 -record(state, {
 	 }).
