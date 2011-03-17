@@ -480,7 +480,7 @@
 %% Media Request - when streaming is needed
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
 -define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>]).
--define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, "media"}
+-define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
 			   ,{<<"Event-Name">>, <<"media_req">>}
 			   ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
 			  ]).
@@ -489,7 +489,7 @@
 %% Media Response
 -define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
 -define(OPTIONAL_MEDIA_RESP_HEADERS, []).
--define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, "media"}
+-define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
 			   ,{<<"Event-Name">>, <<"media_resp">>}
 			  ]).
 -define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; (_) -> false end}]).

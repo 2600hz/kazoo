@@ -150,20 +150,24 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
     handle_info(start_apps, State);
+handle_info({add_successful_app, A}, State) ->
+    format_log(info, "WHAPPS(~p): Adding app to ~p~n", [self(), A]),
+    {noreply, State#state{apps=[A | State#state.apps]}};
 handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
     State1 = case file:consult(Config) of
 		 {ok, Ts} ->
+		     CouchH = couch_mgr:get_host(),
 		     case lists:keyfind(default_couch_host, 1, Ts) of
 			 false -> ok;
-			 {default_couch_host, H} -> couch_mgr:set_host(H);
-			 {default_couch_host, H, U, P} -> couch_mgr:set_host(H, U, P)
+			 {default_couch_host, H} when CouchH =/= H -> couch_mgr:set_host(H);
+			 {default_couch_host, H, U, P} when CouchH =/= H -> couch_mgr:set_host(H, U, P);
+			 _ -> ok
 		     end,
 
-		     As1 = lists:foldl(fun(App, Acc) ->
-					       add_app(App, Acc)
-				       end, As, props:get_value(start, Ts, [])),
-		     State#state{apps=As1, amqp_host=props:get_value(default_amqp_host, Ts, net_adm:localhost())};
+		     Apps = props:get_value(start, Ts, []),
+		     lists:foreach(fun(App) -> add_app(App, As) end, Apps),
+		     State#state{amqp_host=props:get_value(default_amqp_host, Ts, net_adm:localhost())};
 		 _ -> State
 	     end,
     {noreply, State1};
@@ -203,13 +207,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 add_app(App, As) ->
-    format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
-    case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
-	false -> As;
-	{ok, _} -> application:start(App), [App  | As];
-	{ok, _, _} -> application:start(App), [App | As];
-	_E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), As
-    end.
+    Srv = self(),
+    spawn(fun() ->
+		  format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
+		  A = case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
+			  false -> undefined;
+			  {ok, _} -> application:start(App), App;
+			  {ok, _, _} -> application:start(App), App;
+			  _E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), undefined
+		      end,
+		  Srv ! {add_successful_app, A}
+	  end).
+		  
 
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
