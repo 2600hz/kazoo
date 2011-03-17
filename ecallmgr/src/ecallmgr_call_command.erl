@@ -152,6 +152,7 @@ get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"say">>=App) ->
 	    Method = whapps_json:get_value(<<"Method">>, JObj),
 	    Txt = whapps_json:get_value(<<"Say-Text">>, JObj),
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
+            format_log(info, "BUILT COMMAND: conference ~p", [Arg]),
 	    {App, Arg}
     end;
 get_fs_app(Node, UUID, JObj, AmqpHost, <<"bridge">>=App) ->
@@ -207,10 +208,19 @@ get_fs_app(Node, UUID, JObj, _AmqpHost, <<"set">>=AppName) ->
 			  set(Node, UUID, Arg)
 		  end, Custom),
     {AppName, noop};
+get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"conference">>=App) ->
+    case whistle_api:conference_req_v(JObj) of
+	false -> {error, "conference failed to execute as JObj did not validate."};
+	true ->
+	    ConfName = whapps_json:get_value(<<"Conference-ID">>, JObj),
+	    Flags = get_conference_flags(JObj),
+	    Arg = list_to_binary([ConfName, "@default", Flags]),
+	    {App, Arg}
+    end;
 get_fs_app(_Node, _UUID, _JObj, _AmqpHost, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
     {error, "Application unknown"}.
-
+          
 %%%===================================================================
 %%% Internal helper functions
 %%%===================================================================
@@ -394,3 +404,18 @@ set_continue_on_fail(Node, UUID, <<"false">>) ->
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
+
+%% builds a FS specific flag string for the conference command
+-spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).                                     
+get_conference_flags(JObj) ->    
+    Flags = [
+             <<Flag/binary, Delim/binary>>
+                 || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
+                    ,whistle_util:to_boolean(whapps_json:get_value(Parameter, JObj, false))
+            ],
+    case list_to_binary(Flags) of
+        <<>> ->
+            <<>>;
+        F ->
+            <<"+flags{", (binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
+    end.
