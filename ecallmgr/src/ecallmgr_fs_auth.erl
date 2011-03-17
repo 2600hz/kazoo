@@ -62,7 +62,7 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 	{fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]} ->
 	    format_log(info, "FETCH_USER(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n~p~n"
 		       ,[self(), _Section, _Something, _Key, _Value, ID, _Data]),
-	    ok = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?MODULE:fetch_user(Node, State);
 	{nodedown, Node} ->
 	    format_log(error, "FETCH_USER(~p): Node ~p exited", [self(), Node]),
@@ -70,7 +70,7 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 	    ok;
 	{xml_response, ID, XML} ->
 	    format_log(info, "FETCH_USER(~p): Received XML for ID ~p~n", [self(), ID]),
-	    ok = freeswitch:fetch_reply(Node, ID, XML),
+	    freeswitch:fetch_reply(Node, ID, XML),
 	    ?MODULE:fetch_user(Node, State);
 	shutdown ->
 	    lists:foreach(fun({Pid, _CallID, _StartTime}) ->
