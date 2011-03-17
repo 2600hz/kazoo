@@ -150,8 +150,9 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
     handle_info(start_apps, State);
-handle_info({set_apps, As1}, State) ->
-    {noreply, State#state{apps=As1}};
+handle_info({add_successful_app, A}, State) ->
+    format_log(info, "WHAPPS(~p): Adding app to ~p~n", [self(), A]),
+    {noreply, State#state{apps=[A | State#state.apps]}};
 handle_info(start_apps, #state{apps=As}=State) ->
     Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
     State1 = case file:consult(Config) of
@@ -164,10 +165,9 @@ handle_info(start_apps, #state{apps=As}=State) ->
 			 _ -> ok
 		     end,
 
-		     As1 = lists:foldl(fun(App, Acc) ->
-					       add_app(App, Acc)
-				       end, As, props:get_value(start, Ts, [])),
-		     State#state{apps=As1, amqp_host=props:get_value(default_amqp_host, Ts, net_adm:localhost())};
+		     Apps = props:get_value(start, Ts, []),
+		     lists:foreach(fun(App) -> add_app(App, As) end, Apps),
+		     State#state{amqp_host=props:get_value(default_amqp_host, Ts, net_adm:localhost())};
 		 _ -> State
 	     end,
     {noreply, State1};
@@ -210,13 +210,13 @@ add_app(App, As) ->
     Srv = self(),
     spawn(fun() ->
 		  format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
-		  As1 = case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
-			    false -> As;
-			    {ok, _} -> application:start(App), [App  | As];
-			    {ok, _, _} -> application:start(App), [App | As];
-			    _E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), As
-			end,
-		  Srv ! {set_apps, As1}
+		  A = case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
+			  false -> undefined;
+			  {ok, _} -> application:start(App), App;
+			  {ok, _, _} -> application:start(App), App;
+			  _E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), undefined
+		      end,
+		  Srv ! {add_successful_app, A}
 	  end).
 		  
 
