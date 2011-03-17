@@ -59,10 +59,10 @@ start_replication([N | Ns]) ->
 		,{list_to_binary(["http://", UserPass, H, ":5984/", ?TS_CDR_DB]), whistle_util:to_binary(?TS_CDR_DB)}],
 
     lists:foreach(fun({Source, Target}) ->
-			  Res = couch_mgr:replicate([{<<"source">>, Source}
-						     ,{<<"target">>, Target}
-						     ,{<<"continuous">>, true}
-						    ]),
+			  Res = couch_mgr:db_replicate([{<<"source">>, Source}
+							,{<<"target">>, Target}
+							,{<<"continuous">>, true}
+						       ]),
 			  logger:format_log(info, "TS_ACCTMGR.setup_replication: From ~s to ~s: ~p~n", [Source, Target, Res])
 		  end, Sources),
     start_replication(Ns).
@@ -82,11 +82,11 @@ stop_replication([N | Ns]) ->
 		,{list_to_binary(["http://", UserPass, H, ":5984/", ?TS_CDR_DB]), whistle_util:to_binary(?TS_CDR_DB)}],
 
     lists:foreach(fun({Source, Target}) ->
-			  Res = couch_mgr:replicate([{<<"source">>, Source}
-						     ,{<<"target">>, Target}
-						     ,{<<"continuous">>, true}
-						     ,{<<"cancel">>, true}
-						    ]),
+			  Res = couch_mgr:db_replicate([{<<"source">>, Source}
+							,{<<"target">>, Target}
+							,{<<"continuous">>, true}
+							,{<<"cancel">>, true}
+						       ]),
 			  logger:format_log(info, "TS_ACCTMGR.stop_replication: From ~s to ~s: ~p~n", [Source, Target, Res])
 		  end, Sources),
     stop_replication(Ns).
