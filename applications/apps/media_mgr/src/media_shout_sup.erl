@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_shout/3]).
+-export([start_link/0, start_shout/4]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -32,8 +32,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_shout(MediaID, To, Type) ->
-    supervisor:start_child(?SERVER, [MediaID, To, Type]).
+start_shout(MediaID, To, Type, Port) ->
+    supervisor:start_child(?SERVER, [MediaID, To, Type, Port]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -60,7 +60,7 @@ init([]) ->
     AChild = {media_shout, {media_shout, start_link, []},
 	      Restart, Shutdown, Type, [media_shout]},
 
-    {ok, {{simple_one_for_one, 5, 10}, [AChild]}}.
+    {ok, {{simple_one_for_one, 1, 2}, [AChild]}}.
 
 %%%===================================================================
 %%% Internal functions

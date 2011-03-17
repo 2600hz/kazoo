@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_stream/2]).
+-export([start_link/0, add_stream/2, next_port/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -22,9 +22,9 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
--define(APP_VSN, "0.2.0").
+-define(APP_VSN, <<"0.2.0">>).
 -define(PORT_RANGE, 0). % use 0 to have OS assign port #, {Low, Hi} for range of ports to try
--define(PORT_OPTIONS, [binary, {packet,0}, {active,true}]).
+-define(PORT_OPTIONS, [binary, {packet,0}, {active,false}, {reuseaddr, true}]).
 -define(MAX_RESERVED_PORTS, 10).
 
 -record(state, {
@@ -55,6 +55,9 @@ start_link() ->
 
 add_stream(MediaID, ShoutSrv) ->
     gen_server:cast(?SERVER, {add_stream, MediaID, ShoutSrv}).
+
+next_port() ->
+    gen_server:call(?SERVER, next_port).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -88,6 +91,20 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(next_port, From, #state{ports=Ports}=S) ->
+    case queue:out(Ports) of
+	{{value, Port}, Ps1} ->
+	    {reply, Port, S#state{ports=updated_reserved_ports(Ps1)}};
+	{empty, _} ->
+	    handle_call({next_port, from_empty}, From, S#state{ports=updated_reserved_ports(Ports)})
+    end;
+handle_call({next_port, from_empty}, _, #state{ports=Ports}=S) ->
+    case queue:out(Ports) of
+	{{value, Port}, Ps1} ->
+	    {reply, Port, S#state{ports=updated_reserved_ports(Ps1)}};
+	{empty, _} ->
+	    {reply, no_ports, S}
+    end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -127,8 +144,11 @@ handle_info(timeout, #state{amqp_q={error, _}=QE}=S) ->
     H = whapps_controller:get_amqp_host(),
     format_log(info, "MEDIA_SRV(~p): Failed to start q (~p), trying again on ~p~n", [self(), QE, H]),
     case amqp_util:is_host_available(H) of
-	true -> {noreply, S#state{is_amqp_up=true, amqp_q=start_amqp(H)}};
-	false -> {noreply, S#state{is_amqp_up=false}, 1000}
+	true ->
+	    Q = start_amqp(H),
+	    {noreply, S#state{is_amqp_up=is_binary(Q), amqp_q=Q}};
+	false ->
+	    {noreply, S#state{is_amqp_up=false}, 1000}
     end;
 handle_info(timeout, #state{amqp_q=Q, is_amqp_up=false}=S) ->
     H = whapps_controller:get_amqp_host(),
@@ -136,20 +156,32 @@ handle_info(timeout, #state{amqp_q=Q, is_amqp_up=false}=S) ->
     NewQ = start_amqp(H),
     format_log(info, "MEDIA_SRV(~p): Stopping ~p, listening on ~p @ ~p~n", [self(), Q, NewQ, H]),
     {noreply, S#state{amqp_q=NewQ, is_amqp_up=is_binary(NewQ)}};
+handle_info(timeout, #state{amqp_q=Q, is_amqp_up=true}=S) when is_binary(Q) ->
+    {noreply, S};
 
-handle_info({amqp_host_down, _}, S) ->
+handle_info({amqp_host_down, H}, S) ->
+    format_log(info, "MEDIA_SRV(~p): AMQP Host(~p) down~n", [self(), H]),
     {noreply, S#state{amqp_q={error, amqp_down}, is_amqp_up=false}, 0};
 
-handle_info({_, #amqp_msg{payload = Payload}}, #state{streams=Ss}=S) ->
-    spawn(fun() ->
-		  JObj = mochijson2:decode(Payload),
-		  try
-		      handle_req(JObj, Ss)
-		  catch
-		      _:Err -> send_error_resp(JObj, whapps_controller:get_amqp_host(), <<"other">>, Err)
-		  end
-	  end),
-    {noreply, S};
+handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports}=S) ->
+    format_log(info, "MEDIA_SRV(~p): Recv JSON: ~p~n", [self(), Payload]),
+    JObj = try mochijson2:decode(Payload) catch _:Err1 -> format_log(info, "Err decoding ~p~n", [Err1]), {error, Err1} end,
+
+    S1 = try
+	     Ports1 = case queue:is_empty(Ports) of
+			  true -> updated_reserved_ports(Ports);
+			  false -> Ports
+		      end,
+	     false = queue:is_empty(Ports1),
+	     handle_req(JObj, S#state{ports=Ports1})
+	 catch
+	     _:Err ->
+		 format_log(info, "Err handling req: ~p~n", [Err]),
+		 send_error_resp(JObj, whapps_controller:get_amqp_host(), <<"other">>, Err),
+		 S
+	 end,
+    format_log(info, "MEDIA_SRV(~p): Req handled~n", [self()]),
+    {noreply, S1};
 
 handle_info({'DOWN', Ref, process, ShoutSrv, Info}, #state{streams=Ss}=S) ->
     case lists:keyfind(ShoutSrv, 2, Ss) of
@@ -161,8 +193,12 @@ handle_info({'DOWN', Ref, process, ShoutSrv, Info}, #state{streams=Ss}=S) ->
 	    {noreply, S}
     end;
 
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}, S) ->
+    format_log(info, "MEDIA_SRV(~p): Consuming, tag: ~p~n", [self(), CTag]),
+    {noreply, S};
+
 handle_info(_Info, State) ->
-    format_log(info, "MEDIA_SRV(~p): Unhandled info ~p~n", [self(), _Info]),
+    format_log(info, "MEDIA_SRV(~p): Unhandled info ~p~nstate: ~p~n", [self(), _Info, State]),
     {noreply, State, 1000}.
 
 %%--------------------------------------------------------------------
@@ -196,10 +232,10 @@ code_change(_OldVsn, State, _Extra) ->
 start_amqp(H) ->
     Q = amqp_util:new_queue(H, <<>>),
 
-    amqp_util:bind_q_to_callevt(H, Q, ?KEY_CALL_MEDIA_REQ),
-    amqp_util:bind_q_to_targeted(H, Q, Q),
+    format_log(info, "Bind to callevt: ~p~n", [amqp_util:bind_q_to_callevt(H, Q, ?KEY_CALL_MEDIA_REQ)]),
+    format_log(info, "Bind to targeted: ~p~n", [amqp_util:bind_q_to_targeted(H, Q, Q)]),
 
-    amqp_util:basic_consume(H, Q),
+    format_log(info, "Consume: ~p~n", [amqp_util:basic_consume(H, Q)]),
     Q.
 
 send_error_resp(JObj, H, ErrCode, <<>>) ->
@@ -220,29 +256,41 @@ send_error_resp(JObj, H, _ErrCode, ErrMsg) ->
     {ok, JSON} = whistle_api:media_error(Prop),
     amqp_util:targeted_publish(H, To, JSON).
 
-handle_req(JObj, Streams) ->
+-spec(handle_req/2 :: (JObj :: json_object(), S :: #state{}) -> #state{}).
+handle_req(JObj, State) ->
     true = whistle_api:media_req_v(JObj),
 
     case whapps_json:get_value(<<"Stream-Type">>, JObj, <<"new">>) of
-	<<"new">> -> start_stream(JObj);
-	<<"extant">> -> join_stream(JObj, Streams)
+	<<"new">> -> start_stream(JObj, State);
+	<<"extant">> -> join_stream(JObj, State)
     end.
 
-start_stream(JObj) ->
+-spec(start_stream/2 :: (JObj :: json_object(), S :: #state{}) -> #state{}).
+start_stream(JObj, #state{ports=Ports}=S) ->
     MediaID = whapps_json:get_value(<<"Media-Name">>, JObj),
     To = whapps_json:get_value(<<"Server-ID">>, JObj),
-    {ok, _} = media_shout_sup:start_shout(MediaID, To, single).
+    {{value, Port}, Ps1} = queue:out(Ports),
 
-join_stream(JObj, Streams) ->
+    format_log(info, "MEDIA_SRV(~p): Starting stream~n", [self()]),
+    {ok, _} = media_shout_sup:start_shout(MediaID, To, single, Port),
+    S#state{ports=Ps1}.
+
+-spec(join_stream/2 :: (JObj :: json_object(), S :: #state{}) -> #state{}).
+join_stream(JObj, #state{streams=Streams, ports=Ports}=S) ->
     MediaID = whapps_json:get_value(<<"Media-Name">>, JObj),
     To = whapps_json:get_value(<<"Server-ID">>, JObj),
 
     case lists:keyfind(MediaID, 1, Streams) of
 	{_, ShoutSrv, _} ->
-	    ShoutSrv ! {add_listener, To};
+	    format_log(info, "MEDIA_SRV(~p): Joining stream~n", [self()]),
+	    ShoutSrv ! {add_listener, To},
+	    S;
 	false ->
-	    {ok, ShoutSrv} = media_shout_sup:start_shout(MediaID, To, continuous),
-	    ?SERVER:add_stream(MediaID, ShoutSrv)
+	    {{value, Port}, Ps1} = queue:out(Ports),
+	    format_log(info, "MEDIA_SRV(~p): Starting stream instead of joining~n", [self()]),
+	    {ok, ShoutSrv} = media_shout_sup:start_shout(MediaID, To, continuous, Port),
+	    ?SERVER:add_stream(MediaID, ShoutSrv),
+	    S#state{ports=Ps1}
     end.
 
 updated_reserved_ports(Ps) ->
@@ -259,15 +307,14 @@ fill_ports(Ps, ?MAX_RESERVED_PORTS, _) ->
 
 fill_ports(Ps, Len, 0) ->
     {ok, Port} = gen_tcp:listen(0, ?PORT_OPTIONS),
-    {ok, PortNo} = inet:port(Port),
-    fill_ports(queue:in({PortNo, Port}, Ps), Len+1, 0);
+    fill_ports(queue:in(Port, Ps), Len+1, 0);
 
 fill_ports(Ps, Len, {End, End}) ->
     fill_ports(Ps, Len, ?PORT_RANGE);
 fill_ports(Ps, Len, {Curr, End}) ->
     case gen_tcp:listen(Curr, ?PORT_OPTIONS) of
 	{ok, Port} ->
-	    fill_ports(queue:in({Curr, Port}, Ps), Len+1, {Curr+1, End});
+	    fill_ports(queue:in(Port, Ps), Len+1, {Curr+1, End});
 	{error, _} ->
 	    fill_ports(Ps, Len, {Curr+1, End})
     end.
