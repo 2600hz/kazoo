@@ -54,7 +54,7 @@ bridge_endpoints(Endpoints, {struct, Props}, #cf_call{call_id=CallId} = Call) ->
                ,{<<"Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Json} = whistle_api:bridge_req(Command),
     send_callctrl(Json, Call).

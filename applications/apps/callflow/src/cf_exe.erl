@@ -141,7 +141,7 @@ hangup(#cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ}) ->
                 {<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, <<"cf_exe">>, <<"1.0">>)
+               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, <<"cf_exe">>, <<"1.0">>)
               ],    
     {ok, Json} = whistle_api:hangup_req(Command),
     amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).

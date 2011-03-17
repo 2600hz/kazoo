@@ -255,7 +255,7 @@ hangup_call(#cf_call{call_id=CallId} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"hangup">>}
                ,{<<"Call-ID">>, CallId}
-             | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+             | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     format_log(info, "CF_TEST(~p): Sending command~nPayload: ~p~n", [self(), Command]),
     {ok, Json} = whistle_api:hangup_req(Command),
