@@ -145,7 +145,7 @@ arm_tone_detector(AHost, CtrlQ, CallId) ->
                ,{<<"Frequencies">>, [?FREQ]}
                ,{<<"Sniff-Direction">>, <<"read">>}
                ,{<<"Timeout">>, <<"0">>}
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:tone_detect_req(Command),
     send_callctrl(Json, AHost, CtrlQ).
@@ -168,7 +168,7 @@ generate_tones(AHost, CtrlQ, CallId) ->
                                         ]}
                           ]
                 }
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:tones_req(Command),
     send_callctrl(Json, AHost, CtrlQ).
@@ -204,7 +204,7 @@ hangup_call(AHost, CtrlQ, CallId) ->
                 {<<"Call-ID">>, CallId}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Application-Name">>, <<"hangup">>}
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:hangup_req(Command),
     send_callctrl(Json, AHost, CtrlQ).

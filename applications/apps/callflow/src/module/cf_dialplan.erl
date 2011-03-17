@@ -33,7 +33,7 @@ handle ( {struct, Data}, #cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ, cf
    Command = [
       {<<"Application-Name">>, Action},
       {<<"Call-ID">>, CallId}
-      | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+      | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
    ],
    WAction = case proplists:get_value(Action, ?DIALPLAN_MAP) of
       undefined -> Action;

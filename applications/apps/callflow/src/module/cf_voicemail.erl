@@ -247,7 +247,7 @@ record_file(#mailbox{file_id=FileId}, #cf_call{call_id=CallId}=Call) ->
                ,{<<"Terminators">>, ["#","1","2","3","4","5","6","7","8","9","0","*"]}
                ,{<<"Time-Limit">>, <<"120">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:record_req(Command),
     send_callctrl(Json, Call).
@@ -274,7 +274,7 @@ store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=Cal
                ,{<<"Additional-Headers">>, [{struct, [{<<"Content-Type">>, <<"audio/x-wav">>}]}]}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:store_req(Command),
     send_callctrl(Json, Call).
@@ -292,7 +292,7 @@ play_tones(#mailbox{tone_spec=Tones}, #cf_call{call_id=CallId}=Call) ->
                 {<<"Application-Name">>, <<"tones">>}
                ,{<<"Tones">>, Tones}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:tones_req(Command),
     send_callctrl(Json, Call).
@@ -309,7 +309,7 @@ answer(#cf_call{call_id=CallId}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"answer">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:answer_req(Command),
     send_callctrl(Json, Call).
@@ -344,7 +344,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInva
                ,{<<"Failed-Media-Name">>, MediaInvalid}
                ,{<<"Digits-Regex">>, Regex}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(CallId, <<"call_command">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:play_collect_digits_req(Command),
     send_callctrl(Json, Call),
