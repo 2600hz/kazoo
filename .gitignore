@@ -3,9 +3,13 @@
 */mnesia
 */error_log
 */ebin/*.beam
+*/ebin/*.app
 utils/*/ebin/*.beam
+utils/*/ebin/*.app
 applications/apps/*/ebin/*.beam
+applications/apps/*/ebin/*.app
 rabbit/{rabbitmq-}*/ebin/*.beam
+rabbit/{rabbitmq-}*/ebin/*.app
 .eunit
 rabbit/rabbit-config/log/*.log*
 rabbit/rabbit-config/mnesia/*

@@ -545,10 +545,10 @@ setup_replication(LocalDB, [N | Ns]) ->
 	       end,
     Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
 
-    Res = couch_mgr:replicate([{<<"source">>, Source}
-			       ,{<<"target">>, whistle_util:to_binary(LocalDB)}
-			       ,{<<"continuous">>, true}
-			      ]),
+    Res = couch_mgr:db_replicate([{<<"source">>, Source}
+				  ,{<<"target">>, whistle_util:to_binary(LocalDB)}
+				  ,{<<"continuous">>, true}
+				 ]),
     format_log(info, "TS_ACCTMGR.setup_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
     setup_replication(LocalDB, Ns).
 
@@ -561,11 +561,11 @@ stop_replication(LocalDB, [N | Ns]) ->
 	       end,
     Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
 
-    Res = couch_mgr:replicate([{<<"source">>, Source}
-			       ,{<<"target">>, whistle_util:to_binary(LocalDB)}
-			       ,{<<"continuous">>, true}
-			       ,{<<"cancel">>, true}
-			      ]),
+    Res = couch_mgr:db_replicate([{<<"source">>, Source}
+				  ,{<<"target">>, whistle_util:to_binary(LocalDB)}
+				  ,{<<"continuous">>, true}
+				  ,{<<"cancel">>, true}
+				 ]),
     format_log(info, "TS_ACCTMGR.stop_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
     setup_replication(LocalDB, Ns).
 

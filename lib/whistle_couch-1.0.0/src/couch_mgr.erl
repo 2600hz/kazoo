@@ -33,7 +33,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
--include("../../src/whistle_types.hrl"). % get the whistle types
+-include_lib("whistle/include/whistle_types.hrl"). % get the whistle types
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
