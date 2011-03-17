@@ -17,21 +17,19 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-include("media.hrl").
+
 -define(SERVER, ?MODULE).
 -define(APP_VSN, <<"0.2.0">>).
 -define(MEDIA_DB, "media_files").
 
 -record(state, {
-	  media_id = <<>> :: binary()
-	  ,content_type = <<>> :: binary()
-	  ,content = <<>> :: binary()
+	  media_file = #media_file{} :: #media_file{}
+	  ,media_id = <<>> :: binary()
 	  ,port = undefined :: undefined | port()
 	  ,socket = undefined :: undefined | port()
 	  ,send_to = [] :: list(binary()) | []
 	  ,stream_type = single :: single | continuous
-	  ,shout_url = <<>> :: binary()
-	  ,attachment_name = <<>> :: binary()
-          ,request_buf = [] :: list()
 	 }).
 
 %%%===================================================================
@@ -123,24 +121,22 @@ handle_info(timeout, #state{media_id=M}=S) ->
 		undefined ->
 		    {stop, no_attachment_exists, S};
 		{struct, [{Attachment, Props} | _]} ->
-		    logger:format_log(info, "SHOUT(~p): Attachement for Doc(~p): ~p~n~p~n", [self(), M, Attachment, Props]),
-
-		    {ok, Content} = couch_mgr:fetch_attachment(?MEDIA_DB, M, Attachment),
-		    logger:format_log(info, "SHOUT(~p): Content pulled~n", [self()]),
-
+		    MediaName = mochiweb_util:quote_plus(whapps_json:get_value(<<"display_name">>, Doc)),
 		    CT = whapps_json:get_value(<<"content-type">>, Doc, whapps_json:get_value(<<"content_type">>, Props)),
-		    logger:format_log(info, "SHOUT(~p): CT:  ~p~n", [self(), CT]),
+		    {ok, Content} = couch_mgr:fetch_attachment(?MEDIA_DB, M, Attachment),
 
 		    {ok, PortNo} = inet:port(S#state.port),
-		    Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream"]),
-		    logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), Url, S#state.send_to]),
+		    StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream"]),
+		    logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, S#state.send_to]),
 
-		    shout:start(S#state.port, {M, Content}),
+		    Media = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName},
 
-		    lists:foreach(fun(To) -> send_media_resp(M, Url, To) end, S#state.send_to),
+		    shout:start(S#state.port, Media, S#state.stream_type),
 
-		    logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), Url]),
-		    {noreply, S#state{content_type=CT, shout_url=Url, attachment_name=Attachment, content=Content}};
+		    lists:foreach(fun(To) -> send_media_resp(M, StreamUrl, To) end, S#state.send_to),
+
+		    logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
+		    {noreply, S#state{media_file=Media}};
 		{error, Err} ->
 		    logger:format_log(error, "SHOUT(~p): accept failed ~p~n", [self(), Err]),
 		    {stop, normal, S}
@@ -162,8 +158,8 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_id=M}=S)
 	  end),
     {noreply, S};
 
-handle_info({add_listener, ListenerQ}, #state{media_id=M, shout_url=Url}=S) ->
-    send_media_resp(M, Url, ListenerQ),
+handle_info({add_listener, ListenerQ}, #state{media_id=M, media_file=Media}=S) ->
+    send_media_resp(M, Media#media_file.stream_url, ListenerQ),
     {noreply, S#state{send_to=[ListenerQ | S#state.send_to]}};
 
 handle_info(_Info, State) ->
