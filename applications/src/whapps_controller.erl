@@ -117,16 +117,16 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({start_app, App}, #state{apps=As}=State) ->
-    As1 = add_app(App, As),
-    {noreply, State#state{apps=As1}};
+    add_app(App, As),
+    {noreply, State};
 handle_cast({stop_app, App}, #state{apps=As}=State) ->
     As1 = rm_app(App, As),
     {noreply, State#state{apps=As1}};
 handle_cast({restart_app, App}, #state{apps=As}=State) ->
     As1 = rm_app(App, As),
     whistle_util:reload_app(App),
-    As2 = add_app(App, As1),
-    {noreply, State#state{apps=As2}};
+    add_app(App, As1),
+    {noreply, State#state{apps=As1}};
 handle_cast({set_amqp_host, H}, #state{apps=As}=State) ->
     lists:foreach(fun(A) ->
 			  case erlang:function_exported(A, set_amqp_host, 1) of
