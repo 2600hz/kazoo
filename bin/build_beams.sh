@@ -4,10 +4,6 @@ cd `dirname $0`
 export ERL_LIBS=$PWD/../lib/
 
 echo "Compiling utils"
-cd ../utils/amqp/
-rebar clean compile
-cd ../couch
-rebar clean compile
 cd ../diagnostics
 rebar clean compile
 
