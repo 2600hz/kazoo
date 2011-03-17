@@ -5,6 +5,5 @@
               {applications,[kernel,stdlib]},
               {mod,{whistle_couch_app,[]}},
               {env,[]},
-              {modules,[couch_mgr,logger,props,whistle_couch,
-                        whistle_couch_app,whistle_couch_deps,
-                        whistle_couch_sup,whistle_util]}]}.
+              {modules,[couch_mgr,whistle_couch,whistle_couch_app,
+                        whistle_couch_deps,whistle_couch_sup]}]}.
