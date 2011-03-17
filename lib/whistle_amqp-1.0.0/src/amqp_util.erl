@@ -73,10 +73,10 @@ callevt_publish(Host, Payload, media) ->
 callevt_publish(Host, CallId, Payload) ->
     callevt_publish(Host, CallId, Payload, event).
 
-callevt_publish(Host, Payload, CallId, event) ->
+callevt_publish(Host, CallId, Payload, event) ->
     basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallId/binary>>, Payload, <<"application/json">>);
-callevt_publish(Host, CallID, Payload, status_req) ->
-    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, <<"application/json">>);
+callevt_publish(Host, CallId, Payload, status_req) ->
+    basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallId/binary>>, Payload, <<"application/json">>);
 callevt_publish(Host, CallId, Payload, cdr) ->
     basic_publish(Host, ?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>).
 
