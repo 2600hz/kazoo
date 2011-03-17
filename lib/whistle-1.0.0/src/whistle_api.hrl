@@ -554,6 +554,133 @@
 			  ]).
 -define(SLEEP_REQ_TYPES, []).
 
+
+%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONFERENCE_REQ_HEADERS, [<<"Insert-At">>, <<"Mute">>, <<"Deaf">>, <<"Moderator">>]).
+-define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+                                ,{<<"Event-Name">>, <<"command">>}
+                                ,{<<"Application-Name">>, <<"conference">>}
+                                ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+                                ,{<<"Mute">>, [<<"true">>, <<"false">>]}
+                                ,{<<"Deaf">>, [<<"true">>, <<"false">>]}
+                                ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
+                               ]).
+-define(CONFERENCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                               ,{<<"Conference-ID">>, fun is_binary/1}
+                              ]).
+
+%% Conference::Members - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_MEMBERS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>, <<"Restrict-To">>]).
+-define(CONF_MEMBERS_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"members">>}
+                              ]).
+-define(CONF_MEMBERS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                              ,{<<"Restrict-To">>, fun is_list/1}
+                             ]).
+
+%% Conference::Play - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
+-define(OPTIONAL_CONF_PLAY_REQ_HEADERS, [<<"Insert-At">>, <<"Member-ID">>]).
+-define(CONF_PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"play">>}
+                              ]).
+-define(CONF_PLAY_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                              ,{<<"Media-Name">>, fun is_binary/1}
+                              ,{<<"Member-ID">>, fun is_binary/1}
+                             ]).
+
+%% Conference:: - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_DEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+-define(OPTIONAL_CONF_DEAF_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CONF_DEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"deaf">>}
+                              ]).
+-define(CONF_DEAF_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                              ,{<<"Member-ID">>, fun is_binary/1}
+                             ]).
+
+%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_UNDEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+-define(OPTIONAL_CONF_UNDEAF_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CONF_UNDEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                                 ,{<<"Event-Name">>, <<"command">>}
+                                 ,{<<"Application-Name">>, <<"undeaf">>}
+                                ]).
+-define(CONF_UNDEAF_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                                ,{<<"Member-ID">>, fun is_binary/1}
+                               ]).
+
+%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_MUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+-define(OPTIONAL_CONF_MUTE_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CONF_MUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"mute">>}
+                              ]).
+-define(CONF_MUTE_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                              ,{<<"Member-ID">>, fun is_binary/1}
+                             ]).
+
+%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_UNMUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+-define(OPTIONAL_CONF_UNMUTE_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CONF_UNMUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                                 ,{<<"Event-Name">>, <<"command">>}
+                                 ,{<<"Application-Name">>, <<"unmute">>}
+                                ]).
+-define(CONF_UNMUTE_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                                ,{<<"Member-ID">>, fun is_binary/1}
+                               ]).
+
+%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_KICK_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+-define(OPTIONAL_CONF_KICK_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CONF_KICK_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"kick">>}
+                              ]).
+-define(CONF_KICK_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                              ,{<<"Member-ID">>, fun is_binary/1}
+                             ]).
+
+%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_MOVE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-From">>, <<"Conference-To">>, <<"Member-ID">>]).
+-define(OPTIONAL_CONF_MOVE_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CONF_MOVE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"move">>}
+                              ]).
+-define(CONF_MOVE_REQ_TYPES, [{<<"Conference-From">>, fun is_binary/1}
+                               ,{<<"Conference-To">>, fun is_binary/1}
+                               ,{<<"Member-ID">>, fun is_binary/1}
+                              ]).
+
+%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+-define(CONF_RELATE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>, <<"Correlate-ID">>]).
+-define(OPTIONAL_CONF_RELATE_REQ_HEADERS, [<<"Insert-At">>, <<"Relationship">>]).
+-define(CONF_RELATE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+                                 ,{<<"Event-Name">>, <<"command">>}
+                                 ,{<<"Application-Name">>, <<"kick">>}
+                                 ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"reset">>]}
+                                ]).
+-define(CONF_RELATE_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                                ,{<<"Member-ID">>, fun is_binary/1}
+                                ,{<<"Correlate-ID">>, fun is_binary/1}
+                               ]).
+
+%% [{FreeSWITCH-Flage-Name, Whistle-Flag-Name}]
+%% Conference-related entry flags
+%% convert from FS conference flags to Whistle conference flags
+-define(CONFERENCE_FLAGS, [{<<"mute">>, <<"Mute">>}
+                           ,{<<"deaf">>, <<"Deaf">>}
+                           ,{<<"moderator">>, <<"Moderator">>}
+                           ]).
+                                
 %% [{FreeSWITCH-App-Name, Whistle-App-Name}]
 %% Dialplan-related applications
 %% convert from FS-named applications to Whistle-named Dialplan applications
@@ -571,6 +698,7 @@
 				 ,{<<"tone_detect">>, <<"tone_detect">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				 ,{<<"respond">>, <<"respond">>}
+				 ,{<<"conference">>, <<"conference">>}
 				]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
@@ -596,4 +724,5 @@
 				,{<<"say">>, fun whistle_api:say_req_v/1}
 				,{<<"sleep">>, fun whistle_api:sleep_req_v/1}
 				,{<<"set">>, fun whistle_api:set_req_v/1}
+				,{<<"conference">>, fun whistle_api:conference_req_v/1}
 			       ]).
