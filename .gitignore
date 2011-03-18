@@ -15,3 +15,5 @@ rabbit/rabbit-config/log/*.log*
 rabbit/rabbit-config/mnesia/*
 applications/apps/*/log/*
 applications/priv/mnesia/*.*
+lib/whistle*/ebin/*.beam
+lib/whistle*/ebin/*.app
