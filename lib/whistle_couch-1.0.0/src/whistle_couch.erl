@@ -24,8 +24,11 @@ start() ->
 
 start_deps() ->
     whistle_couch_deps:ensure(?MODULE),
+    reloader:start(),
+    logger:start(),
     ensure_started(sasl),
     ensure_started(crypto),
+    ensure_started(riak_err),
     ensure_started(ibrowse),
     ensure_started(couchbeam).
 
