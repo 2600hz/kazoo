@@ -150,6 +150,9 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
     handle_info(start_apps, State);
+handle_info({add_successful_app, undefined}, State) ->
+    format_log(info, "WHAPPS(~p): Failed to add app~n", [self()]),
+    {noreply, State};
 handle_info({add_successful_app, A}, State) ->
     format_log(info, "WHAPPS(~p): Adding app to ~p~n", [self(), A]),
     {noreply, State#state{apps=[A | State#state.apps]}};

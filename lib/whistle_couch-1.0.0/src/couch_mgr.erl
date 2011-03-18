@@ -41,8 +41,8 @@
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
-%% ChangeHandlers :: [{DBName, DocID}, ReqID, [Pid]]
--type change_handler_entry() :: tuple( tuple(string(), binary()), reference(), list(pid()) | []).
+%% ChangeHandlers :: [Pid, DBName], Pid :: gen_change process
+-type change_handler_entry() :: tuple(pid(), string()) | [].
 -record(state, {
 	  connection = {} :: tuple(string(), #server{}) | {}
 	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
@@ -477,23 +477,29 @@ handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
 handle_call({get_creds}, _, #state{creds=Cred}=State) ->
     {reply, Cred, State};
-handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, State) ->
-    case start_change_handler(DBName, DocID, Pid, State) of
-	{ok, _R, State1} -> {reply, ok, State1};
-	{error, E, State2} -> {reply, {error, E}, State2}
+handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH, connection={_,Conn}}=State) ->
+    case lists:keyfind(DBName, 2, CH) of
+	{Srv, _} ->
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {reply, ok, State};
+	false ->
+	    {ok, Srv} = change_mgr_sup:start_handler(open_db(whistle_util:to_list(DBName), Conn), []),
+	    erlang:monitor(process, Srv),
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {reply, ok, State#state{change_handlers=[{Srv, DBName} | CH]}}
     end;
-handle_call({rm_change_handler, DBName, DocID}, {From, _Ref}, #state{change_handlers=CH}=State) ->
-    case stop_change_handler({DBName, DocID}, From, CH) of
-	{ok, CH1} -> {reply, ok, State#state{change_handlers=CH1}};
-	{{error, _}=E, CH2} -> {reply, E, State#state{change_handlers=CH2}}
-    end;
+handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
+    case lists:keyfind(DBName, 2, CH) of
+	{Srv, _} -> change_handler:rm_listener(Srv, Pid, DocID);
+	false -> ok
+    end,
+    {reply, ok, State};
 handle_call(Req, From, #state{connection={}}=State) ->
     format_log(info, "WHISTLE_COUCH(~p): No connection, trying localhost(~p) with no auth~n", [self(), net_adm:localhost()]),
     case get_new_connection(net_adm:localhost(), "", "") of
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    close_handlers(State#state.change_handlers),
 	    handle_call(Req, From, State#state{connection=HC, change_handlers=[]})
     end;
 handle_call(_Request, _From, State) ->
@@ -523,65 +529,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({ReqID, done}, #state{change_handlers=CH}=State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): DONE change handler ref ~p~n", [self(), ReqID]),
-    case lists:keyfind(ReqID, 2, CH) of
-	false -> {noreply, State};
-	{{_, DocID}=Key,_,Pids}=Item ->
-	    TmpCH = [Item],
-	    lists:foreach(fun(P) ->
-				  _ = stop_change_handler(Key, P, TmpCH),
-				  P ! {change_handler_done, DocID}
-			  end, Pids),
-	    {noreply, State#state{change_handlers=lists:keydelete(ReqID, 2, CH)}}
-    end;
-handle_info({ReqID, {change, {Change}}}, #state{change_handlers=CH}=State) ->
-    DocID = get_value(<<"id">>, Change),
-    %%format_log(info, "WHISTLE_COUCH.wait(~p): keyfind res = ~p~n", [self(), lists:keyfind(ReqID, 2, CH)]),
-    case lists:keyfind(ReqID, 2, CH) of
-	false ->
-	    format_log(info, "WHISTLE_COUCH.wait(~p): ~p not found, skipping~n", [self(), DocID]),
-	    {noreply, State};
-	{{_, DocID}, _, Pids} ->
-	    notify_pids(Change, DocID, Pids),
-	    {noreply, State};
-	{{_, <<>>}, _, Pids} ->
-	    notify_pids(Change, DocID, Pids),
-	    {noreply, State}    
-    end;
-handle_info({ReqID, {error, connection_closed}}, #state{change_handlers=CH}=State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): connection closed for change handlers: reqid ~p~n", [self(), ReqID]),
-    CH1 = lists:foldl(fun({{_, DocID}=Key, RID, Pids}=Item, Acc) when RID =:= ReqID ->
-			      TmpCH = [Item],
-			      lists:foreach(fun(P) ->
-						    _ = stop_change_handler(Key, P, TmpCH),
-						    P ! {change_handler_down, DocID}
-					    end, Pids),
-			      Acc;
-			 (C, Acc) -> [C | Acc]
-		      end, [], CH),
-    {noreply, State#state{change_handlers=CH1}};
-handle_info({_ReqID, {error, E}}, State) ->
-    format_log(info, "WHISTLE_COUCH.wait(~p): ERROR ~p for reqid ~p~n", [self(), E, _ReqID]),
-    {noreply, State};
-handle_info({'DOWN', _MRefConn, process, Pid, _Reason}, #state{change_handlers=CH}=State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Pid(~p) went down: ~p~n", [self(), Pid, _Reason]),
-    CH1 = lists:foldl(fun({Key, _, _}=Item, Acc) ->
-			      case stop_change_handler(Key, Pid, [Item]) of
-				  {_, []} -> Acc;
-				  {_, [Item1]} -> [ Item1 | Acc]
-			      end
-		    end, [], CH),
-    {noreply, State#state{change_handlers=CH1}};
-handle_info({'EXIT', Pid, _Reason}, #state{change_handlers=CH}=State) ->
-    format_log(error, "WHISTLE_COUCH(~p): EXIT received for ~p with reason ~p~n", [self(), Pid, _Reason]),
-    CH1 = lists:foldl(fun({Key, _, _}=Item, Acc) ->
-			      case stop_change_handler(Key, Pid, [Item]) of
-				  {_, []} -> Acc;
-				  {_, [Item1]} -> [ Item1 | Acc]
-			      end
-		    end, [], CH),
-    {noreply, State#state{change_handlers=CH1}};
+handle_info({'DOWN', Ref, process, Srv, complete}, #state{change_handlers=CH}=State) ->
+    format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after complete~n", [self(), Srv]),
+    erlang:demonitor(Ref, [flush]),
+    {noreply, State#state{change_handlers=lists:keydelete(Srv, 1, CH)}};
+handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{change_handlers=CH}=State) ->
+    format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after conn closed~n", [self(), Srv]),
+    erlang:demonitor(Ref, [flush]),
+    {noreply, State#state{change_handlers=lists:keydelete(Srv, 1, CH)}};
 handle_info(_Info, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -614,76 +569,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(close_handlers/1 :: (CHs :: list(change_handler_entry())) -> no_return()).
-close_handlers(CHs) ->
-    lists:foreach(fun({{_, DocID}, _, Pids}) ->
-			  lists:foreach(fun(P) -> unlink(P), P ! {change_handler_down, DocID} end, Pids)
-		  end, CHs).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(stop_change_handler/3 :: (Key :: tuple(string(), binary()), Pid :: pid(), CH :: list(change_handler_entry())) -> tuple(ok, list(change_handler_entry())) | tuple(tuple(error, term()), list(change_handler_entry()))).
-stop_change_handler({_,_}=Key, Pid, CH) ->
-    unlink(Pid),
-    case lists:keyfind(Key, 1, CH) of
-	false -> {{error, doc_unmonitored}, CH};
-	{Key, ReqID, Pids} when is_list(Pids) ->
-	    Pids1 = lists:foldl(fun(P, AccPids) when P =:= Pid -> AccPids;
-				   (P, AccPids) ->
-					case erlang:is_process_alive(P) of
-					    true -> [P | AccPids];
-					    false -> AccPids
-					end
-				end, [], Pids),
-	    case Pids1 of
-		[] ->
-		    {ok, lists:keydelete(Key, 1, CH)};
-		_ ->
-		    {ok, [ {Key, ReqID, Pids1} | lists:keydelete(Key, 1, CH)]}
-	    end
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(start_change_handler/4 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}) -> tuple(ok, term(), #state{}) | tuple(error, term(), #state{})).
-start_change_handler(DBName, <<>>, Pid, State) ->
-    start_change_handler(DBName, <<>>, Pid, State, []);
-start_change_handler(DBName, DocID, Pid, State) ->
-    start_change_handler(DBName, DocID, Pid, State, [{filter, <<"filter/by_doc">>}, {name, DocID}]).
-
--spec(start_change_handler/5 :: (DBName :: string(), DocID :: binary(), Pid :: pid(), State :: #state{}, Opts :: proplist()) -> tuple(ok, reference(), #state{}) | tuple(error, term(), #state{})).
-start_change_handler(DBName, DocID, Pid, #state{connection={_H, Conn}, change_handlers=CH}=State, Opts) ->
-    case lists:keyfind({DBName, DocID}, 1, CH) of
-	false ->
-	    case open_db(DBName, Conn) of
-		{error, db_not_reachable} ->
-		    {error, db_not_reachable, State};
-		Db ->
-		    {ok, ReqID} = couchbeam:changes_wait(Db, self(), [{heartbeat, "true"} | Opts]),
-		    format_log(info, "WHISTLE_COUCH(~p): Added handler for ~p(~p) ref ~p~n", [self(), DocID, Pid, ReqID]),
-		    link(Pid),
-		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid]} | CH]}}
-	    end;
-	{{DBName, DocID}, ReqID, Pids} ->
-	    case lists:member(Pid, Pids) of
-		false ->
-		    {ok, ReqID, State#state{change_handlers=[{{DBName, DocID}, ReqID, [Pid | Pids]} | lists:keydelete({DBName, DocID}, 1, CH)]}};
-		true ->
-		    %%format_log(info, "WHISTLE_COUCH(~p): Found handler for ~p(~p)~n", [self(), DocID, Pid]),
-		    {error, handler_exists, State}
-	    end
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -768,24 +653,6 @@ init_state() ->
 	    end;
 	_ -> #state{}
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% notify_pids, sends change notifications to a list of PIDs, return void
-%% @end
-%%--------------------------------------------------------------------
--spec(notify_pids/3 :: (Change :: proplist(), DocID :: binary(), Pids :: list(pid())) -> ok).
-notify_pids(Change, DocID, Pids) ->
-    SendToPid = case get_value(<<"deleted">>, Change) of
-        true ->
-            format_log(info, "WHISTLE_COUCH.wait(~p): ~p deleted~n", [self(), DocID]),
-            {document_deleted, DocID}; % document deleted, no more looping
-        undefined ->
-            format_log(info, "WHISTLE_COUCH.wait(~p): ~p change sending to ~p~n", [self(), DocID, Pids]),
-            {document_changes, DocID, [ C || {C} <- get_value(<<"changes">>, Change)]}
-        end,
-    lists:foreach(fun(P) -> P ! SendToPid end, Pids).
 
 %%--------------------------------------------------------------------
 %% @private
