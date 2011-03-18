@@ -280,6 +280,12 @@ handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, cur
     {noreply, S};
 handle_info({document_deleted, AcctId}, S) ->
     format_log(info, "TS_ACCTMGR(~p): Account Doc ~p deleted~n", [self(), AcctId]),
+    {noreply, S};
+handle_info({change_handler_terminating, DB, Doc}, S) ->
+    format_log(info, "TS_ACCTMGR(~p): Change Handler down for ~p ~p~n", [self(), DB, Doc]),
+    {noreply, S};
+handle_info(_Info, S) ->
+    format_log(info, "TS_ACCTMGR(~p): Uhandled info: ~p~n", [self(), _Info]),
     {noreply, S}.
 
 %%--------------------------------------------------------------------

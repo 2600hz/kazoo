@@ -158,7 +158,8 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 			    {noreply, State#state{is_node_up=false, failed_node_checks=State#state.failed_node_checks+1}}
 		    end;
 		false ->
-		    timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
+		    timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
+		    {noreply, State}
 	    end
     end;
 

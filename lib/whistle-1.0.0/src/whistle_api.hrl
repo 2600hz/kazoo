@@ -298,7 +298,7 @@
 -define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Media-Transfer-Method">>
 				,<<"Media-Transfer-Destination">>]).
 -define(OPTIONAL_STORE_REQ_HEADERS, [<<"Media-Additional-Headers">>, <<"Insert-At">>]).
--define(STORE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(STORE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"store">>}
 			   ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
@@ -334,7 +334,7 @@
 %% Tones Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Generate_Tone
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
 -define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>]).
--define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"tones">>}
 			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -343,7 +343,7 @@
 
 -define(TONES_REQ_TONE_HEADERS, [<<"Frequencies">>, <<"Duration-ON">>, <<"Duration-OFF">>]).
 -define(OPTIONAL_TONES_REQ_TONE_HEADERS, [<<"Volume">>, <<"Repeat">>]).
--define(TONES_REQ_TONE_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(TONES_REQ_TONE_VALUES, [{<<"Event-Category">>, <<"call">>}
 				,{<<"Event-Name">>, <<"command">>}
 			       ]).
 -define(TONES_REQ_TONE_TYPES, []).
@@ -351,7 +351,7 @@
 %% Tone Detect - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Tone_Detection
 -define(TONE_DETECT_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tone-Detect-Name">>, <<"Frequencies">>]).
 -define(OPTIONAL_TONE_DETECT_REQ_HEADERS, [<<"Sniff-Direction">>, <<"Timeout">>, <<"On-Success">>, <<"Hits-Needed">>, <<"Insert-At">>]).
--define(TONE_DETECT_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(TONE_DETECT_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"tone_detect">>}
 				 ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
@@ -372,7 +372,7 @@
 %% Queue Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Queue
 -define(QUEUE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Commands">>]).
 -define(OPTIONAL_QUEUE_REQ_HEADERS, [<<"Insert-At">>]).
--define(QUEUE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(QUEUE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"queue">>}
 			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -385,7 +385,7 @@
                                       ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
                                       ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
 				     ]).
--define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"bridge">>}
 			    ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
@@ -411,7 +411,7 @@
 %% Answer - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Answer
 -define(ANSWER_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_ANSWER_REQ_HEADERS, [<<"Insert-At">>]).
--define(ANSWER_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(ANSWER_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"answer">>}
 			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -421,7 +421,7 @@
 %% Hangup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hangup
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>]).
--define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"hangup">>}
 			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -431,7 +431,7 @@
 %% Park - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FPark
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>]).
--define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"park">>}
 			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -441,7 +441,7 @@
 %% Set - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FSet
 -define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>]).
 -define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).
--define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			 ,{<<"Event-Name">>, <<"command">>}
 			 ,{<<"Application-Name">>, <<"set">>}
 			 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -459,7 +459,7 @@
 %% Call Pickup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Call_Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>]).
--define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"call_pickup">>}
 				 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -470,7 +470,7 @@
 %% Play Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Play
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>]).
--define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"play">>}
 			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -508,7 +508,7 @@
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
 					  ,<<"Silence-Hits">>, <<"Insert-At">>
 				     ]).
--define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"record">>}
 			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -521,7 +521,7 @@
 				 ,<<"Failed-Media-Name">>, <<"Digits-Regex">>
 			    ]).
 -define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Insert-At">>]).
--define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 					 ,{<<"Event-Name">>, <<"command">>}
 					 ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
 					 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -531,7 +531,7 @@
 %% Say - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Say
 -define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
 -define(OPTIONAL_SAY_REQ_HEADERS, [<<"Insert-At">>]).
--define(SAY_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(SAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			 ,{<<"Event-Name">>, <<"command">>}
 			 ,{<<"Application-Name">>, <<"say">>}
 			 ,{<<"Type">>, [<<"number">>, <<"items">>, <<"persons">>, <<"messages">>, <<"currency">>
@@ -547,7 +547,7 @@
 %% Sleep - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Sleep
 -define(SLEEP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Time">>]).
 -define(OPTIONAL_SLEEP_REQ_HEADERS, [<<"Insert-At">>]).
--define(SLEEP_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(SLEEP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"sleep">>}
 			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -558,7 +558,7 @@
 %% Conference - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).
 -define(OPTIONAL_CONFERENCE_REQ_HEADERS, [<<"Insert-At">>, <<"Mute">>, <<"Deaf">>, <<"Moderator">>]).
--define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call_control">>}
+-define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
                                 ,{<<"Application-Name">>, <<"conference">>}
                                 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
@@ -573,7 +573,7 @@
 %% Conference::Members - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_MEMBERS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
 -define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>, <<"Restrict-To">>]).
--define(CONF_MEMBERS_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_MEMBERS_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"members">>}
                               ]).
@@ -584,7 +584,7 @@
 %% Conference::Play - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_CONF_PLAY_REQ_HEADERS, [<<"Insert-At">>, <<"Member-ID">>]).
--define(CONF_PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"play">>}
                               ]).
@@ -596,7 +596,7 @@
 %% Conference:: - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_DEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_DEAF_REQ_HEADERS, [<<"Insert-At">>]).
--define(CONF_DEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_DEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"deaf">>}
                               ]).
@@ -607,7 +607,7 @@
 %% Conference - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_UNDEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_UNDEAF_REQ_HEADERS, [<<"Insert-At">>]).
--define(CONF_UNDEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_UNDEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"undeaf">>}
                                 ]).
@@ -618,7 +618,7 @@
 %% Conference - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_MUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_MUTE_REQ_HEADERS, [<<"Insert-At">>]).
--define(CONF_MUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_MUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"mute">>}
                               ]).
@@ -629,7 +629,7 @@
 %% Conference - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_UNMUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_UNMUTE_REQ_HEADERS, [<<"Insert-At">>]).
--define(CONF_UNMUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_UNMUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"unmute">>}
                                 ]).
@@ -640,7 +640,7 @@
 %% Conference - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_KICK_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_KICK_REQ_HEADERS, [<<"Insert-At">>]).
--define(CONF_KICK_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_KICK_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"kick">>}
                               ]).
@@ -651,7 +651,7 @@
 %% Conference - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_MOVE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-From">>, <<"Conference-To">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_MOVE_REQ_HEADERS, [<<"Insert-At">>]).
--define(CONF_MOVE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_MOVE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"move">>}
                               ]).
@@ -663,7 +663,7 @@
 %% Conference - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_RELATE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>, <<"Correlate-ID">>]).
 -define(OPTIONAL_CONF_RELATE_REQ_HEADERS, [<<"Insert-At">>, <<"Relationship">>]).
--define(CONF_RELATE_REQ_VALUES, [{<<"Event-Category">>, <<"conf_control">>}
+-define(CONF_RELATE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"kick">>}
                                  ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"reset">>]}
