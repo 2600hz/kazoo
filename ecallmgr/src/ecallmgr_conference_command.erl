@@ -63,7 +63,7 @@ get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"play">>) ->
                 MemberId when is_binary(MemberId) ->
                     <<"play ", Media/binary, " ", MemberId/binary>>;
                 _ ->
-                    <<"play", Media/binary>>                                      
+                    <<"play ", Media/binary>>                                      
             end
     end;
 get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"deaf">>) ->
