@@ -39,8 +39,9 @@
         ]).
 
 % Conference Members
--export([conference_members_req/1, conference_play_req/1, conference_deaf_req/1, conference_undeaf_req/1
-         ,conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1, conference_move_req/1
+-export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1, 
+         conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1, 
+         conference_move_req/1
 	]).
 
 %% Validation functions
@@ -52,8 +53,8 @@
 	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
 	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1, dialplan_req_v/1
 	 ,media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1, conference_members_req_v/1
-         ,conference_play_req_v/1, conference_deaf_req_v/1, conference_undeaf_req_v/1, conference_mute_req_v/1
-         ,conference_unmute_req_v/1, conference_kick_req_v/1, conference_move_req_v/1
+         ,conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1, conference_undeaf_req_v/1
+         ,conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1, conference_move_req_v/1
 	]).
 
 %% FS-specific routines
@@ -937,6 +938,25 @@ conference_members_req_v({struct, Prop}) ->
 conference_members_req_v(Prop) ->
     validate(Prop, ?CONF_MEMBERS_REQ_HEADERS, ?CONF_MEMBERS_REQ_VALUES, ?CONF_MEMBERS_REQ_TYPES).
 
+%%--------------------------------------------------------------------
+%% @doc Conference::members - The response to members - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(conference_members_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+conference_members_resp({struct, Prop}) ->
+    conference_members_resp(Prop);
+conference_members_resp(Prop) ->
+    case conference_members_resp_v(Prop) of
+	true -> build_message(Prop, ?CONF_MEMBERS_RESP_HEADERS, ?OPTIONAL_CONF_MEMBERS_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for conference_members_resp"}
+    end.
+
+-spec(conference_members_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+conference_members_resp_v({struct, Prop}) ->
+    conference_members_resp_v(Prop);
+conference_members_resp_v(Prop) ->
+    validate(Prop, ?CONF_MEMBERS_RESP_HEADERS, ?CONF_MEMBERS_RESP_VALUES, ?CONF_MEMBERS_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference::play - Play audio to all or a single 
