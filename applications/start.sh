@@ -3,10 +3,14 @@
 cd `dirname $0`
 export ERL_LIBS=$PWD/../lib/
 
-if [ -n $1 ]; then
-    SHELL_NAME="$1"
-else
+if [ -z $1 ]; then
     SHELL_NAME="whistle_apps@`hostname`"
+else
+    SHELL_NAME="$1"
+fi
+
+if [[ ! "$SHELL_NAME" == *@*  ]]; then
+    SHELL_NAME="${SHELL_NAME}@`hostname`"
 fi
 
 exec erl -detached -heart -setcookie `cat ../confs/fs_conf/autoload_configs/.erlang.cookie` \
