@@ -240,14 +240,14 @@ message_options(#mailbox{file_id=FileId, keys=Keys}=Box, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(record_file/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-record_file(#mailbox{file_id=FileId}, #cf_call{call_id=CallId}=Call) ->
+record_file(#mailbox{file_id=FileId}, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"record">>}
                ,{<<"Media-Name">>, FileId}
                ,{<<"Terminators">>, ["#","1","2","3","4","5","6","7","8","9","0","*"]}
                ,{<<"Time-Limit">>, <<"120">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:record_req(Command),
     send_callctrl(Json, Call).
@@ -260,7 +260,7 @@ record_file(#mailbox{file_id=FileId}, #cf_call{call_id=CallId}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(store/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=CallId}=Call) ->
+store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, FileId}
@@ -274,7 +274,7 @@ store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=Cal
                ,{<<"Additional-Headers">>, [{struct, [{<<"Content-Type">>, <<"audio/x-wav">>}]}]}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:store_req(Command),
     send_callctrl(Json, Call).
@@ -287,12 +287,12 @@ store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=Cal
 %% @end
 %%--------------------------------------------------------------------
 -spec(play_tones/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-play_tones(#mailbox{tone_spec=Tones}, #cf_call{call_id=CallId}=Call) ->
+play_tones(#mailbox{tone_spec=Tones}, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"tones">>}
                ,{<<"Tones">>, Tones}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:tones_req(Command),
     send_callctrl(Json, Call).
@@ -305,11 +305,11 @@ play_tones(#mailbox{tone_spec=Tones}, #cf_call{call_id=CallId}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(answer/1 :: (Call :: #cf_call{}) -> no_return()).
-answer(#cf_call{call_id=CallId}=Call) ->
+answer(#cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"answer">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:answer_req(Command),
     send_callctrl(Json, Call).
@@ -332,7 +332,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Restries, Timeout, MediaInv
 play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInvalid, Regex, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInvalid, Regex, [<<"#">>], Call).
 
-play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInvalid, Regex, Terminators, #cf_call{call_id=CallId}=Call) ->
+play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInvalid, Regex, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"play_and_collect_digits">>}
                ,{<<"Minimum-Digits">>, MinDigits}
@@ -344,7 +344,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInva
                ,{<<"Failed-Media-Name">>, MediaInvalid}
                ,{<<"Digits-Regex">>, Regex}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
     {ok, Json} = whistle_api:play_collect_digits_req(Command),
     send_callctrl(Json, Call),
@@ -366,7 +366,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInva
 -spec(wait_for_call_event/2 :: (Name :: binary(), Application :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).            
 wait_for_call_event(Name, Application) ->    
     receive
-        {call_event, {struct, Msg}} ->
+        {amqp_msg, {struct, Msg}} ->
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
                 { <<"call_event">>, Name, Application } ->                                
                     {ok, Msg};

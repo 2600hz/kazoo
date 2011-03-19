@@ -46,7 +46,7 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(bridge_endpoints/3 :: (Endpoints :: list(json_object()), Data :: json_object(), Call :: #cf_call{}) -> ok).
-bridge_endpoints(Endpoints, {struct, Props}, #cf_call{call_id=CallId} = Call) ->
+bridge_endpoints(Endpoints, {struct, Props}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
@@ -54,7 +54,7 @@ bridge_endpoints(Endpoints, {struct, Props}, #cf_call{call_id=CallId} = Call) ->
                ,{<<"Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Json} = whistle_api:bridge_req(Command),
     send_callctrl(Json, Call).
@@ -98,7 +98,7 @@ get_endpoint({struct, Props}) ->
 -spec(wait_for_bridge/0 :: () -> {ok|error, channel_hangup}|{error, bridge_failed|timeout}).    
 wait_for_bridge() -> 
     receive
-        {call_event, {struct, Msg}} ->
+        {amqp_msg, {struct, Msg}} ->
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
                 { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
                     wait_for_hangup();
@@ -121,7 +121,7 @@ wait_for_bridge() ->
 -spec(wait_for_hangup/0 :: () -> {ok, channel_hangup}).    
 wait_for_hangup() -> 
     receive
-        {call_event, {struct, Msg}} ->
+        {amqp_msg, {struct, Msg}} ->
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
                     {ok, channel_hungup};
