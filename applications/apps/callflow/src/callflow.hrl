@@ -12,6 +12,7 @@
 
 -record (cf_call, {
              amqp_h = <<>> :: binary()                            %% The AMPQ host the ctrl_q and bdst_q exist in
+            ,amqp_q = <<>> :: binary()                            %% The AMPQ queue that we consume on
             ,ctrl_q = <<>> :: binary()                            %% The control queue for this request
             ,bdst_q = <<>> :: binary()                            %% The broadcast queue the request was recieved on
             ,call_id = <<>> :: binary()                           %% The call-id of this request
