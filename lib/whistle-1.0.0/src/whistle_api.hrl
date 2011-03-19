@@ -572,14 +572,21 @@
 
 %% Conference::Members - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_MEMBERS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>, <<"Restrict-To">>]).
+-define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_MEMBERS_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"members">>}
                               ]).
--define(CONF_MEMBERS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                              ,{<<"Restrict-To">>, fun is_list/1}
-                             ]).
+-define(CONF_MEMBERS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
+-define(CONF_MEMBERS_RESP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONF_MEMBERS_RESP_HEADERS, [<<"Insert-At">>, <<"Members">>, <<"Error">>]).
+-define(CONF_MEMBERS_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                               ,{<<"Event-Name">>, <<"response">>}
+                               ,{<<"Application-Name">>, <<"members">>}
+                              ]).
+-define(CONF_MEMBERS_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
 
 %% Conference::Play - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
