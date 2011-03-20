@@ -63,6 +63,7 @@ b_members(ConfId, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(play/3 :: (Media :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(play/4 :: (Media :: binary(), MemberId :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 
 play(Media, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
     Command = [

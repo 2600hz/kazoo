@@ -11,6 +11,7 @@
 -include("callflow.hrl").
 
 -export([answer/1, hangup/1]).
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([tones/2]).
@@ -21,6 +22,7 @@
 -export([conference/2, conference/3, conference/4, conference/5]).
 
 -export([b_answer/1, b_hangup/1]).
+-export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8]).
 -export([b_play/2, b_play/3]).
 -export([b_play_and_collect_digit/2]).
 -export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6, 
@@ -28,6 +30,7 @@
 -export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
 
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
+-export([wait_for_bridge/1, wait_for_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_hangup/0]).
 -export([send_callctrl/2]).
@@ -83,6 +86,72 @@ hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
 b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to bridge the call
+%% @end
+%%--------------------------------------------------------------------
+-spec(bridge/2 :: (Endpoints :: list(json_object()), Call :: #cf_call{}) -> ok).
+-spec(bridge/3 :: (Endpoints :: list(json_object()), Timeout :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/4 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/5 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/6 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/7 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/8 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_bridge/2 :: (Endpoints :: list(json_object()), Call :: #cf_call{}) -> ok).
+-spec(b_bridge/3 :: (Endpoints :: list(json_object()), Timeout :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_bridge/4 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_bridge/5 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_bridge/6 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_bridge/7 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_bridge/8 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+
+bridge(Endpoints, Call) ->
+    bridge(Endpoints, <<"26">>, Call).
+bridge(Endpoints, Timeout, Call) ->
+    bridge(Endpoints, Timeout, <<"single">>, Call).
+bridge(Endpoints, Timeout, Strategy, Call) ->
+    bridge(Endpoints, Timeout, Strategy, <<>>, Call).
+bridge(Endpoints, Timeout, Strategy, CIDNum, Call) ->
+    bridge(Endpoints, Timeout, Strategy, CIDNum, <<>>, Call).
+bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, Call) ->
+    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, <<"true">>, <<"us-ring">>, Call).
+bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Call) ->
+    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, <<"us-ring">>, Call).
+bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, Endpoints}
+               ,{<<"Timeout">>, Timeout}
+               ,{<<"Continue-On-Fail">>, ContinueOnFail}
+               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+               ,{<<"Ringback">>, Ringback}
+               ,{<<"Dial-Endpoint-Method">>, Strategy}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+            ],
+    {ok, Json} = whistle_api:bridge_req(Command),
+    send_callctrl(Json, Call).
+
+b_bridge(Endpoints, Call) ->
+    b_bridge(Endpoints, <<"26">>, Call).
+b_bridge(Endpoints, Timeout, Call) ->
+    b_bridge(Endpoints, Timeout, <<"single">>, Call).
+b_bridge(Endpoints, Timeout, Strategy, Call) ->
+    b_bridge(Endpoints, Timeout, Strategy, <<>>, Call).
+b_bridge(Endpoints, Timeout, Strategy, CIDNum, Call) ->
+    b_bridge(Endpoints, Timeout, Strategy, CIDNum, <<>>, Call).
+b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, Call) ->
+    b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, <<"true">>, <<"us-ring">>, Call).
+b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Call) ->
+    b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, <<"us-ring">>, Call).
+b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, Call) ->
+    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, Call),
+    wait_for_bridge((whistle_util:to_integer(Timeout)*1000) + 5000).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -184,6 +253,13 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
 -spec(play_and_collect_digits/7 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
 -spec(play_and_collect_digits/8 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
 -spec(play_and_collect_digits/9 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Terminators :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(b_play_and_collect_digit/2 :: (Media :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(b_play_and_collect_digits/4 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(b_play_and_collect_digits/5 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(b_play_and_collect_digits/6 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(b_play_and_collect_digits/7 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(b_play_and_collect_digits/8 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(b_play_and_collect_digits/9 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Terminators :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
  
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
@@ -342,7 +418,13 @@ wait_for_message(Application, Event, Type, Timeout) ->
         Timeout ->
             {error, timeout}
     end.
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Wait for a DTMF event and extract the digits when it comes
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_dtmf/1 :: (Timeout :: integer()) -> tuple(ok, binary()) | tuple(error, atom())).    
 wait_for_dtmf(Timeout) ->
     receive
         {amqp_msg, {struct, Msg}} ->
@@ -358,6 +440,51 @@ wait_for_dtmf(Timeout) ->
         Timeout ->
             {error, timeout}
     end.    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Waits for and determines the status of the bridge command
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_bridge/1 :: (Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).    
+wait_for_bridge(Timeout) -> 
+    receive
+        {amqp_msg, {struct, Msg}} ->
+            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
+                { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
+                    {ok, Msg};
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                    {error, channel_hungup};
+                { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+                    {error, bridge_failed};
+                _ ->
+                    wait_for_bridge(Timeout)
+            end
+    after
+        Timeout ->
+            {error, timeout}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Wait forever for the channel to hangup
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_unbridge/0 :: () -> tuple(ok, channel_hangup)).    
+wait_for_unbridge() -> 
+    receive
+        {amqp_msg, {struct, Msg}} ->
+            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
+                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
+                    {ok, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
+                    {ok, channel_hungup};
+                _ ->
+                    wait_for_unbridge()
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

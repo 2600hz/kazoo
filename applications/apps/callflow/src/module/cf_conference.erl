@@ -89,14 +89,14 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
             join_conference(Conf, Call, member),
             caller_controls(Conf, Call),
             announce_leave(Conf, Call),
-            continue;
+            CFPid ! {continue};
         moderator ->
             join_conference(Conf, Call, moderator),
             caller_controls(Conf, Call),
             announce_leave(Conf, Call),                
-            continue;
+            CFPid ! {continue};
         stop ->
-            stop
+            CFPid ! {stop}
     end.
 
 %%--------------------------------------------------------------------
