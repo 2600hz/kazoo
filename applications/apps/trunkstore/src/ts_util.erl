@@ -82,10 +82,10 @@ constrain_weight(W) -> W.
 
 %% return rate information as channel vars
 get_base_channel_vars(Flags) ->
-    ChannelVars0 = [{<<"Rate">>, Flags#route_flags.rate}
-		    ,{<<"Rate-Increment">>, Flags#route_flags.rate_increment}
-		    ,{<<"Rate-Minimum">>, Flags#route_flags.rate_minimum}
-		    ,{<<"Surcharge">>, Flags#route_flags.surcharge}
+    ChannelVars0 = [{<<"Rate">>, whistle_util:to_binary(Flags#route_flags.rate)}
+		    ,{<<"Rate-Increment">>, whistle_util:to_binary(Flags#route_flags.rate_increment)}
+		    ,{<<"Rate-Minimum">>, whistle_util:to_binary(Flags#route_flags.rate_minimum)}
+		    ,{<<"Surcharge">>, whistle_util:to_binary(Flags#route_flags.surcharge)}
 		   ],
 
     case binary:longest_common_suffix([Flags#route_flags.callid, <<"-failover">>]) of
