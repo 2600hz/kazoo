@@ -3,8 +3,15 @@
 cd `dirname $0`
 export ERL_LIBS=$PWD/../lib/
 
-sname="whistle_apps"
-[ ! -z "$1" ] && sname="$1"
+if [ -z $1 ]; then
+    SHELL_NAME="whistle_apps@`hostname`"
+else
+    SHELL_NAME="$1"
+fi
+
+if [[ ! "$SHELL_NAME" == *@*  ]]; then
+    SHELL_NAME="${SHELL_NAME}@`hostname`"
+fi
 
 exec erl -detached -heart -setcookie `cat ../confs/fs_conf/autoload_configs/.erlang.cookie` \
     -pa $PWD/ebin -pa $PWD/apps/*/ebin \
@@ -12,5 +19,4 @@ exec erl -detached -heart -setcookie `cat ../confs/fs_conf/autoload_configs/.erl
     -sasl errlog_type error \
     -sasl sasl_error_logger '{file, "log/error_log.sasl"}' \
     -kernel error_logger '{file, "log/error_log"}' \
-    -boot start_sasl -name whistle_apps -s reloader -s whistle_apps
-
+    -boot start_sasl -name ${SHELL_NAME} -s reloader -s whistle_apps

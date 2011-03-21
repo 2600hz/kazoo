@@ -200,9 +200,9 @@ start_amqp(AHost) ->
 process_req({<<"directory">>, <<"auth_req">>}, Prop, #state{cmgr_q=Cmgr_Q}=State) ->
     RespQ = proplists:get_value(<<"Server-ID">>, Prop),
     Resp = [
-             {<<"Msg-ID">>, proplists:get_value(<<"Msg-ID">>, Prop)}
+             {<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Prop)}
             ,{<<"Auth-Method">>, <<"password">>}
-            ,{<<"Auth-Password">>, proplists:get_value(<<"Auth-User">>, Prop)}
+            ,{<<"Auth-Password">>, props:get_value(<<"Auth-User">>, Prop)}
             | whistle_api:default_headers(Cmgr_Q, <<"directory">>, <<"auth_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
     format_log(info, "CF_TEST(~p): Respond to auth_req~nPayload: ~p~n", [self(), Resp]),
@@ -212,7 +212,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, #state{cmgr_q=Cmgr_Q}=State
 process_req({<<"dialplan">>, <<"route_req">>}, Prop, #state{cmgr_q=Cmgr_Q}=State) ->
     RespQ = proplists:get_value(<<"Server-ID">>, Prop),
     Resp = [
-             {<<"Msg-ID">>, proplists:get_value(<<"Msg-ID">>, Prop)}
+             {<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Prop)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             | whistle_api:default_headers(Cmgr_Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
@@ -225,8 +225,8 @@ process_req({<<"dialplan">>, <<"route_win">>}, Prop, State) ->
     format_log(info, "CF_TEST(~p): Recieved route_win!~nPayload: ~p~n", [self(), Prop]),
     Call = #cf_call{
       amqp_h = State#state.amqp_host
-      ,ctrl_q = proplists:get_value(<<"Control-Queue">>, Prop)
-      ,call_id = proplists:get_value(<<"Call-ID">>, Prop)
+      ,ctrl_q = props:get_value(<<"Control-Queue">>, Prop)
+      ,call_id = props:get_value(<<"Call-ID">>, Prop)
       ,cf_pid = self()
      },
     Payload = {struct, [

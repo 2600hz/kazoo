@@ -188,7 +188,7 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
     case State#state.is_node_up andalso (not queue:is_empty(NewCmdQ)) andalso State#state.current_app =:= <<>> of
 	true ->
 	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
-	    ok = ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
+	    ok = execute_control_request(Cmd, State),
 	    AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),
 	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName}};
 	false ->
@@ -207,7 +207,7 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 		{empty, _} ->
 		    {noreply, State#state{current_app = <<>>}};
 		{{value, Cmd}, CmdQ1} ->
-		    ok = ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, Cmd, State#state.amqp_h),
+		    ok = execute_control_request(Cmd, State),
 		    {noreply, State#state{command_q = CmdQ1, current_app = whapps_json:get_value(<<"Application-Name">>, Cmd)}}
 	    end;
 	_OtherEvt ->
@@ -216,7 +216,7 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 
 handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_time=StartT}=State) ->
     lists:foreach(fun(Cmd) ->
-			  ok = ecallmgr_call_command:exec_cmd(State#state.node, UUID, Cmd, H)
+                          ok = execute_control_request(Cmd, State)
 		  end, post_hangup_commands(State#state.command_q)),
 
     amqp_util:unbind_q_from_callctl(H, Q),
@@ -302,13 +302,13 @@ insert_command(State, <<"now">>, JObj) ->
 				  true = whistle_api:dialplan_req_v(AppCmd),
 				  AppName = whapps_json:get_value(<<"Application-Name">>, AppCmd),
 				  format_log(info, "CONTROL.queue: Exec now Cmd: ~p~n", [AppName]),
-				  ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, AppCmd, State#state.amqp_h)
+                                  ok = execute_control_request(Cmd, State)
 			  end, whapps_json:get_value(<<"Commands">>, JObj)),
 	    State#state.command_q;
 	AppName ->
-	    true = whistle_api:dialplan_req_v(JObj),
+%	    true = whistle_api:dialplan_req_v(JObj),
 	    format_log(info, "CONTROL: Exec now Cmd: ~p~n", [AppName]),
-	    ok = ecallmgr_call_command:exec_cmd(State#state.node, State#state.uuid, JObj, State#state.amqp_h),
+            ok = execute_control_request(JObj, State),
 	    State#state.command_q
     end;
 insert_command(_State, <<"flush">>, JObj) ->
@@ -348,3 +348,13 @@ post_hangup_commands(CmdQ) ->
     lists:filter(fun(JObj) ->
 			 lists:member(whapps_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
 		 end, queue:to_list(CmdQ)).
+
+
+execute_control_request(Cmd, #state{node=Node, uuid=UUID, amqp_h=H}) ->
+    Mod = erlang:binary_to_existing_atom(<<"ecallmgr_"
+                                           ,(whapps_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
+                                           ,"_"
+                                           ,(whapps_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
+                                         >>, latin1),
+    format_log(info, "RUNNING ~p", [Mod]),
+    Mod:exec_cmd(Node, UUID, Cmd, H).
