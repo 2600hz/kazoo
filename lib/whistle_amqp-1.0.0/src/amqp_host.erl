@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, publish/4, consume/3, get_misc_channel/2, misc_req/3, misc_req/4]).
+-export([start_link/2, publish/4, consume/3, get_misc_channel/2, misc_req/3, misc_req/4, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -73,6 +73,9 @@ misc_req(Srv, From, Req) ->
 misc_req(Srv, From, Req1, Req2) ->
     gen_server:cast(Srv, {misc_req, From, Req1, Req2}).
 
+stop(Srv) ->
+    gen_server:call(Srv, stop).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -105,9 +108,11 @@ init([_Host, Conn]) when is_pid(Conn) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------				   
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call(stop, {From, _}, State) ->
+    case whereis(amqp_manager) =:= From of
+	true -> {stop, normal, State};
+	false -> {reply, {error, you_are_not_my_boss}, State}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -339,28 +344,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_channel/1 :: (Connection :: undefined | tuple(pid(), reference()) | pid()) -> channel_data() | tuple(error, no_connection)).
+-spec(start_channel/1 :: (Connection :: undefined | tuple(pid(), reference()) | pid()) -> channel_data() | tuple(error, no_connection) | closing).
 start_channel(undefined) ->
     {error, no_connection};
 start_channel({Connection, _}) ->
     start_channel(Connection);
 start_channel(Connection) when is_pid(Connection) ->
     %% Open an AMQP channel to access our realm
-    {ok, Channel} = amqp_connection:open_channel(Connection),
+    case amqp_connection:open_channel(Connection) of
+	{ok, Channel} ->
+	    #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
 
-    #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
+	    ChanMRef = erlang:monitor(process, Channel),
+	    {Channel, ChanMRef, Ticket};
+	E -> E
+    end.
 
-    ChanMRef = erlang:monitor(process, Channel),
-    {Channel, ChanMRef, Ticket}.
-
--spec(start_channel/2 :: (Connection :: undefined | tuple(pid(), reference()) | pid(), Pid :: pid()) -> channel_data() | tuple(error, no_connection)).
+-spec(start_channel/2 :: (Connection :: undefined | tuple(pid(), reference()) | pid(), Pid :: pid()) -> channel_data() | tuple(error, no_connection) | closing).
 start_channel(Connection, Pid) ->
     case start_channel(Connection) of
 	{C, _, T} = Channel ->
 	    amqp_channel:register_return_handler(C, Pid),
 	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util:access_request()),
 	    Channel;
-	{error, no_connection}=E -> E
+	E -> E
     end.
 
 load_exchanges(Channel, Ticket) ->
@@ -390,6 +397,9 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 					  {CNew, RefNew, TNew} -> dict:store(FromPid, {CNew, RefNew, TNew, FromRef}, AccDict);
 					  {error, no_connection} ->
 					      FromPid ! {amqp_lost_channel, no_connection},
+					      dict:erase(FromPid, AccDict);
+					  closing ->
+					      FromPid ! {amqp_lost_channel, no_connection},
 					      dict:erase(FromPid, AccDict)
 				      end;
 
@@ -406,4 +416,3 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 				      AccDict
 			      end, Cs, Cs)
 	       }.
-    
