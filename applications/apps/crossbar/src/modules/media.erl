@@ -27,6 +27,8 @@
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
 -define(VIEW_FILE, <<"media_doc.json">>).
+-define(AGG_DB, <<"media_files">>).
+-define(AGG_FILTER, <<"media_doc/export">>).
 
 -define(METADATA_FIELDS, [<<"display_name">>, <<"description">>, <<"media_type">>
 			      ,<<"status">>, <<"content_size">>, <<"size">>
@@ -66,7 +68,7 @@ start_link() ->
 -spec(init/1 :: (_) -> tuple(ok, ok)).
 init([]) ->
     accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
+    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     bind_to_crossbar(),
     {ok, ok}.
 
@@ -183,6 +185,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, Cont
 			  Contents = whapps_json:get_value(<<"contents">>, FileObj),
 
 			  Context1 = update_media_binary(MediaID, Contents, Context, Headers),
+			  spawn(fun() ->
+					accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+				end),
 			  Pid ! {binding_result, (Context1#cb_context.resp_status =:= success), [RD, Context1, Params]}
 		  end)
     end,
@@ -425,8 +430,10 @@ create_media_meta(Data, Context) ->
     crossbar_doc:save(Context#cb_context{doc=[{<<"pvt_type">>, <<"media">>} | Doc1]}).
 
 update_media_binary(MediaID, Contents, Context, Options) ->
-    format_log(info, "media: save attachment: ~p: Opts: ~p~n", [MediaID, Options]),
-    case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Options) of
+    %% format_log(info, "media: save attachment: ~p: Opts: ~p~n", [MediaID, Options]),
+    Opts = [{content_type, props:get_value(<<"content-type">>, Options, <<"application/octet-stream">>)}
+	    ,{content_length, props:get_value(<<"content-length">>, Options, binary:referenced_byte_size(Contents))}],
+    case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Opts) of
 	#cb_context{resp_status=success}=Context1 ->
 	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
 	    Doc1 = lists:foldl(fun({K,V}, D0) -> whapps_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0) end, Doc, Options),

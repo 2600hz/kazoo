@@ -32,8 +32,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_shout(MediaID, To, Type, Port) ->
-    supervisor:start_child(?SERVER, [MediaID, To, Type, Port]).
+start_shout(Media, To, Type, Port) ->
+    supervisor:start_child(?SERVER, [Media, To, Type, Port]).
 
 %%%===================================================================
 %%% Supervisor callbacks

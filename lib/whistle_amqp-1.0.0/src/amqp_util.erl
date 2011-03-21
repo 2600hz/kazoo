@@ -57,7 +57,7 @@ bind_q_to_monitor(Host, Queue, Routing) ->
 
 %% Publish Messages to a given Exchange.Queue
 targeted_publish(Host, Queue, Payload) ->
-    targeted_publish(Host, Queue, Payload, undefined).
+    targeted_publish(Host, Queue, Payload, <<"application/json">>).
 
 targeted_publish(Host, Queue, Payload, ContentType) ->
     basic_publish(Host, ?EXCHANGE_TARGETED, Queue, Payload, ContentType).
