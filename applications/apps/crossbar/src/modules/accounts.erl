@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, update_all_accounts/1, replicate_from_accounts/2]).
+-export([start_link/0, update_all_accounts/1, replicate_from_accounts/2, replicate_from_account/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -91,6 +91,15 @@ replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
         _Else ->
             error
     end.
+
+-spec(replicate_from_account/3 :: (SourceDB :: binary(), TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
+replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) ->
+    BaseReplicate = [{<<"source">>, get_db_name(SourceDB, unencoded)}
+		     ,{<<"target">>, TargetDB}
+		     ,{<<"filter">>, FilterDoc}
+		     ,{<<"create_target">>, true}
+		    ],
+    couch_mgr:db_replicate(BaseReplicate).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -655,9 +664,16 @@ get_db_name(DocId, encoded) when is_binary(DocId) ->
     Db = ["crossbar%2Fclients%2F", string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
     whistle_util:to_binary(Db);
 get_db_name(DocId, unencoded) when is_binary(DocId) ->
-    Id = whistle_util:to_list(DocId),
-    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
-    whistle_util:to_binary(Db);
+    case binary:longest_common_prefix([<<"crossbar%2Fclients%2F">>, DocId]) of
+	0 ->
+	    format_log(info, "DocID unenc: ~p~n", [DocId]),
+	    Id = whistle_util:to_list(DocId),
+	    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
+	    whistle_util:to_binary(Db);
+	_ ->
+	    %% already encoded, convert %2F to /
+	    whistle_util:to_binary(mochiweb_util:unquote(DocId))
+    end;
 get_db_name(_, _) ->
     undefined.
 

@@ -11,11 +11,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4]).
+-export([start_link/4, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
+
+-import(logger, [format_log/3]).
 
 -include("media.hrl").
 
@@ -28,6 +30,10 @@
 	  media_file = #media_file{} :: #media_file{}
 	  ,media_id = <<>> :: binary()
 	  ,lsocket = undefined :: undefined | port()
+	  ,db = <<>> :: binary()
+	  ,doc = <<>> :: binary()
+	  ,attachment = <<>> :: binary()
+          ,media_name = <<>> :: binary()
 	  ,send_to = [] :: list(binary()) | []
 	  ,stream_type = single :: single | continuous
           ,media_loop = undefined :: undefined | pid()
@@ -44,8 +50,11 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(MediaID, To, Type, Port) ->
-    gen_server:start_link(?MODULE, [MediaID, To, Type, Port], []).
+start_link(Media, To, Type, Port) ->
+    gen_server:start_link(?MODULE, [Media, To, Type, Port], []).
+
+stop(Srv) ->
+    gen_server:cast(Srv, stop).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -62,13 +71,21 @@ start_link(MediaID, To, Type, Port) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([MediaID, To, Type, Port]) ->
-    logger:format_log(info, "Starting up SHOUT on ~p for Media ~p of type ~p~n", [Port, MediaID, Type]),
-
+init([Media, To, Type, Port]) ->
+    {MediaName, Db, Doc, Attachment} = Media,
+    logger:format_log(info, "Starting up SHOUT on ~p for Media ~p of type ~p~n", [Port, MediaName, Type]),
     case inet:getstat(Port) of
 	{ok, _} ->
 	    process_flag(trap_exit, true),
-	    {ok, #state{media_id=MediaID, lsocket=Port, send_to=[To], stream_type=Type}, 0};
+	    {ok, #state{
+	       db=Db
+	       ,doc=Doc
+	       ,attachment=Attachment
+	       ,media_name=MediaName
+	       ,lsocket=Port
+	       ,send_to=[To]
+	       ,stream_type=Type
+	      }, 0};
 	{error, Posix} ->
 	    logger:format_log(error, "SHOUT server failed to start; lsock ~p error: ~p~n", [Port, Posix]),
 	    {stop, Posix}
@@ -102,8 +119,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast(stop, State) ->
+    {stop, externally_stopped, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -119,69 +136,51 @@ handle_cast(_Msg, State) ->
 %% handle_info(_, #state{stream_type=continuous}=S) ->
 %%     {stop, continuous_not_implemented, S};
 
-handle_info(timeout, #state{media_id=M}=S) ->
+handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName}=S) ->
     try
-    case couch_mgr:open_doc(?MEDIA_DB, M) of
-	{ok, Doc} ->
-	    logger:format_log(info, "SHOUT(~p): Opened Doc for ~p~n", [self(), M]),
-	    case whistle_util:is_true(whapps_json:get_value(<<"streamable">>, Doc, true))
-		andalso whapps_json:get_value(<<"_attachments">>, Doc) of
-		false ->
-		    {stop, media_streaming_disallowed, S};
-		undefined ->
-		    {stop, no_attachment_exists, S};
-		{struct, [{Attachment, Props} | _]} ->
-		    MediaName = mochiweb_util:quote_plus(whapps_json:get_value(<<"display_name">>, Doc)),
-		    CT = whapps_json:get_value(<<"content-type">>, Doc, whapps_json:get_value(<<"content_type">>, Props)),
-		    {ok, Content} = couch_mgr:fetch_attachment(?MEDIA_DB, M, Attachment),
+	CT = <<"audio/mpeg">>,
+	{ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
 
-		    {ok, PortNo} = inet:port(S#state.lsocket),
-		    StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream"]),
-		    logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, S#state.send_to]),
+	{ok, PortNo} = inet:port(S#state.lsocket),
+	StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
+	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, S#state.send_to]),
 
-		    lists:foreach(fun(To) -> send_media_resp(M, StreamUrl, To) end, S#state.send_to),
+	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, S#state.send_to),
 
-		    logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
+	logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
 
-		    Self = self(),
-		    spawn(fun() -> start_acceptor(Self, S#state.lsocket) end),
+	Self = self(),
+	spawn(fun() -> start_acceptor(Self, S#state.lsocket) end),
 
-		    Size = binary:referenced_byte_size(Content),
-		    ChunkSize = case ?CHUNKSIZE > Size of
-				    true -> Size;
-				    false -> ?CHUNKSIZE
-				end,
+	Size = binary:referenced_byte_size(Content),
+	ChunkSize = case ?CHUNKSIZE > Size of
+			true -> Size;
+			false -> ?CHUNKSIZE
+		    end,
 
-		    Resp = response(MediaName, ChunkSize, StreamUrl, CT),
-		    Header = get_header(MediaName, StreamUrl),
+	Resp = response(MediaName, ChunkSize, StreamUrl, CT),
+	Header = get_header(MediaName, StreamUrl),
 
-		    MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
+	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 					,shout_response=Resp, shout_header={0,Header}, continuous=(S#state.stream_type =:= continuous)},
-		    MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
+	MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
+		
+	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
+    catch A:B ->
+	    logger:format_log(info, "Exception Thrown: ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+	    {stop, normal, S}
+    end;
 
-		    {noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}};
-		{error, Err} ->
-		    logger:format_log(error, "SHOUT(~p): accept failed ~p~n", [self(), Err]),
-		    {stop, normal, S}
-	    end;
-	{error, E} ->
-	    logger:format_log(error, "Failed to find ~p:~p - ~p~n", [?MEDIA_DB, M, E]),
-	    {stop, doc_not_found, S}
-    end
-catch A:B ->
-	logger:format_log(info, "Exception Thrown: ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
-	{stop, normal, S}
-end;
-
-handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_id=M}=S) ->
+handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=MediaName, db=Db, doc=Doc, attachment=Attachment}=S) ->
     spawn(fun() ->
-		  {ok, ShoutSrv} = media_shout_sup:start_shout(M, ListenerQ, continuous, media_srv:next_port()),
-		  media_srv:add_stream(M, ShoutSrv)
+                  Media = {MediaName, Db, Doc, Attachment},
+		  {ok, ShoutSrv} = media_shout_sup:start_shout(Media, ListenerQ, continuous, media_srv:next_port()),
+		  media_srv:add_stream(MediaName, ShoutSrv)
 	  end),
     {noreply, S};
 
-handle_info({add_listener, ListenerQ}, #state{media_id=M, media_file=Media}=S) ->
-    send_media_resp(M, Media#media_file.stream_url, ListenerQ),
+handle_info({add_listener, ListenerQ}, #state{media_name=MediaName, media_file=Media}=S) ->
+    send_media_resp(MediaName, Media#media_file.stream_url, ListenerQ),
     {noreply, S#state{send_to=[ListenerQ | S#state.send_to]}};
 
 handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile}=S) ->
