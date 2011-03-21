@@ -17,6 +17,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-import(logger, [format_log/3]).
+
 -include("media.hrl").
 
 -define(SERVER, ?MODULE).
@@ -24,8 +26,11 @@
 -define(MEDIA_DB, "media_files").
 
 -record(state, {
-	  media_file = #media_file{} :: #media_file{}
-	  ,media_id = <<>> :: binary()
+ 	   media_file = #media_file{} :: #media_file{}
+	  ,db = <<>> :: binary()
+	  ,doc = <<>> :: binary()
+	  ,attachment = <<>> :: binary()
+          ,media_name = <<>> :: binary()
 	  ,port = undefined :: undefined | port()
 	  ,socket = undefined :: undefined | port()
 	  ,send_to = [] :: list(binary()) | []
@@ -43,8 +48,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(MediaID, To, Type, Port) ->
-    gen_server:start_link(?MODULE, [MediaID, To, Type, Port], []).
+start_link(Media, To, Type, Port) ->
+    gen_server:start_link(?MODULE, [Media, To, Type, Port], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -61,9 +66,18 @@ start_link(MediaID, To, Type, Port) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([MediaID, To, Type, Port]) ->
-    logger:format_log(info, "Starting up SHOUT on ~p for Media ~p of type ~p~n", [Port, MediaID, Type]),
-    {ok, #state{media_id=MediaID, port=Port, send_to=[To], stream_type=Type}, 0}.
+init([Media, To, Type, Port]) ->
+    {MediaName, Db, Doc, Attachment} = Media,
+    logger:format_log(info, "Starting up SHOUT on ~p for Media ~p of type ~p~n", [Port, MediaName, Type]),
+    {ok, #state{
+        db=Db
+       ,doc=Doc
+       ,attachment=Attachment
+       ,media_name=MediaName
+       ,port=Port
+       ,send_to=[To]
+       ,stream_type=Type
+      }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,57 +123,38 @@ handle_cast(_Msg, State) ->
 handle_info(_, #state{stream_type=continuous}=S) ->
     {stop, continuous_not_implemented, S};
 
-handle_info(timeout, #state{media_id=M}=S) ->
+handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName}=S) ->
     try
-    case couch_mgr:open_doc(?MEDIA_DB, M) of
-	{ok, Doc} ->
-	    logger:format_log(info, "SHOUT(~p): Opened Doc for ~p~n", [self(), M]),
-	    case whistle_util:is_true(whapps_json:get_value(<<"streamable">>, Doc, true))
-		andalso whapps_json:get_value(<<"_attachments">>, Doc) of
-		false ->
-		    {stop, media_streaming_disallowed, S};
-		undefined ->
-		    {stop, no_attachment_exists, S};
-		{struct, [{Attachment, Props} | _]} ->
-		    MediaName = mochiweb_util:quote_plus(whapps_json:get_value(<<"display_name">>, Doc)),
-		    CT = whapps_json:get_value(<<"content-type">>, Doc, whapps_json:get_value(<<"content_type">>, Props)),
-		    {ok, Content} = couch_mgr:fetch_attachment(?MEDIA_DB, M, Attachment),
+        format_log(info, "SHOUT(~p): fetch attachment ~p ~p ~p", [self(), Db, Doc, Attachment]),
+        {ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
+        format_log(info, "~p", [Content]),
 
-		    {ok, PortNo} = inet:port(S#state.port),
-		    StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream"]),
-		    logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, S#state.send_to]),
-
-		    Media = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName},
-
-		    shout:start(S#state.port, Media, S#state.stream_type),
-
-		    lists:foreach(fun(To) -> send_media_resp(M, StreamUrl, To) end, S#state.send_to),
-
-		    logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
-		    {noreply, S#state{media_file=Media}};
-		{error, Err} ->
-		    logger:format_log(error, "SHOUT(~p): accept failed ~p~n", [self(), Err]),
-		    {stop, normal, S}
-	    end;
-	{error, E} ->
-	    logger:format_log(error, "Failed to find ~p:~p - ~p~n", [?MEDIA_DB, M, E]),
-	    {stop, doc_not_found, S}
-    end
-catch A:B ->
-	logger:format_log(info, "Exception Thrown: ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
-	{stop, normal, S}
-end;
-
-
-handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_id=M}=S) ->
+        {ok, PortNo} = inet:port(S#state.port),
+        StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream"]),
+        logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, S#state.send_to]),
+        
+        Media = #media_file{stream_url=StreamUrl, contents=Content, content_type = <<"audio/mpeg">>, media_name=MediaName},
+        
+        shout:start(S#state.port, Media, S#state.stream_type),
+        
+        lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, S#state.send_to),
+        
+        logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
+        {noreply, S#state{media_file=Media}}
+    catch A:B ->
+            logger:format_log(info, "Exception Thrown: ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+            {stop, normal, S}
+    end;
+handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=MediaName, db=Db, doc=Doc, attachment=Attachment}=S) ->
     spawn(fun() ->
-		  {ok, ShoutSrv} = media_shout_sup:start_shout(M, ListenerQ, continuous, media_srv:next_port()),
-		  media_srv:add_stream(M, ShoutSrv)
+                  Media = {MediaName, Db, Doc, Attachment},
+		  {ok, ShoutSrv} = media_shout_sup:start_shout(Media, ListenerQ, continuous, media_srv:next_port()),
+		  media_srv:add_stream(MediaName, ShoutSrv)
 	  end),
     {noreply, S};
 
-handle_info({add_listener, ListenerQ}, #state{media_id=M, media_file=Media}=S) ->
-    send_media_resp(M, Media#media_file.stream_url, ListenerQ),
+handle_info({add_listener, ListenerQ}, #state{media_name=MediaName, media_file=Media}=S) ->
+    send_media_resp(MediaName, Media#media_file.stream_url, ListenerQ),
     {noreply, S#state{send_to=[ListenerQ | S#state.send_to]}};
 
 handle_info(_Info, State) ->
