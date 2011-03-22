@@ -230,7 +230,7 @@ inbound_route(Flags) ->
 						    {<<"Auth-User">>, Flags#route_flags.auth_user}
 						    ,{<<"Auth-Realm">>, Flags#route_flags.auth_realm}
 						    ,{<<"Direction">>, <<"inbound">>}
-						    | whistle_util:get_base_channel_vars(Flags)
+						    | ts_util:get_base_channel_vars(Flags)
 						   ]}
 	      }
 	     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
