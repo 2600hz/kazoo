@@ -124,13 +124,19 @@ api(Node, AppName, Args) ->
     freeswitch:api(Node, App, Arg, 5000).
       
 members_response(Members, ConfName, CallId, ServerId, AmqpHost) ->
+    MemberList = try
+                     parse_members(Members)
+                 catch
+                     _:_ ->
+                         []
+                 end,
     Response = [
               {<<"Application-Name">>, <<"members">>}
-             ,{<<"Members">>, parse_members(Members)}
+             ,{<<"Members">>, MemberList}
              ,{<<"Conference-ID">>, ConfName}
              ,{<<"Call-ID">>, CallId}
              | whistle_api:default_headers("", <<"conference">>, <<"response">>, ?APP_NAME, ?APP_VERSION)
-            ],    
+            ],
     {ok, Json} = whistle_api:conference_members_resp(Response),
     amqp_util:targeted_publish(AmqpHost, ServerId, Json, <<"application/json">>).    
 
