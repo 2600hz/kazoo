@@ -138,8 +138,8 @@ handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
 
 handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false}=State) ->
     format_log(error, "EVT(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
-    case net_adm:ping(Node) of
-	pong ->
+    case ecallmgr_fs_handler:is_node_up(Node) of
+	true ->
 	    erlang:monitor_node(Node, true),
 	    case freeswitch:handlecall(Node, UUID) of
 		ok ->
@@ -147,7 +147,7 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 		    {noreply, State#state{is_node_up=true, failed_node_checks=0}};
 		_ -> {stop, normal, State}
 	    end;
-	pang ->
+	false ->
 	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
 		true ->
 		    case State#state.failed_node_checks > ?MAX_FAILED_NODE_CHECKS of

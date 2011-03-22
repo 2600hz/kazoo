@@ -97,6 +97,7 @@
 
 %% API
 -export([start_link/0, add_fs_node/1, add_fs_node/2, rm_fs_node/1, diagnostics/0, set_amqp_host/1]).
+-export([is_node_up/1]).
 
 %% Resource allotment
 -export([request_resource/2]).
@@ -151,6 +152,9 @@ diagnostics() ->
 set_amqp_host(Host) ->
     gen_server:call(?MODULE, {set_amqp_host, Host}, infinity).
 
+is_node_up(Node) ->
+    gen_server:call(?MODULE, {is_node_up, Node}, infinity).
+
 %% Type - audio | video
 %% Options - Proplist
 %%   {min_channels_requested, 1}
@@ -202,6 +206,15 @@ init([]) ->
 %% @end
 %% #state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+handle_call({is_node_up, Node}, From, #state{fs_nodes=Nodes}=State) ->
+    spawn(fun() ->
+		  IsUp = lists:foldl(fun(#node_handler{node=FSNode, node_watch_pid=NWP}, _) when FSNode =:= Node ->
+					     not (erlang:is_pid(NWP) andalso erlang:is_process_alive(NWP));
+					(_, A) -> A
+				     end, true, Nodes),
+		  gen_server:reply(From, IsUp)
+	  end),
+    {noreply, State};
 handle_call({set_amqp_host, Host}, _From, #state{amqp_host=H}=State) ->
     format_log(info, "FS_HANDLER(~p): Switching AMQP hosts from ~p to ~p~n", [self(), H, Host]),
     start_amqp(Host),
