@@ -12,7 +12,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, register_name/2, is_registered/2]).
+-export([start_link/0, lookup_media/3, lookup_media/4,
+         register_local_media/2, is_local/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -20,7 +21,12 @@
 
 -import(logger, [log/2, format_log/3]).
 
+-include("ecallmgr.hrl").
+
 -define(SERVER, ?MODULE).
+-define(APP_NAME, <<"ecallmgr_media_registry">>).
+-define(APP_VERSION, <<"1.2">>).
+-define(LOCAL_MEDIA_PATH, "/tmp/").
 
 %%%===================================================================
 %%% API
@@ -36,14 +42,17 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-%% Name is the value passed from the CallControl queue in the Record
-%% message. Creates a new entry or returns the generated name if
-%% {CallID,Name} exists.
-register_name(CallID, Name) ->
-    gen_server:call(?MODULE, {register_name, CallID, Name}).
+register_local_media(MediaName, CallId) ->
+    gen_server:call(?MODULE, {register_local_media, MediaName, CallId}).
 
-is_registered(CallID, Name) ->
-    gen_server:call(?MODULE, {is_registered, CallID, Name}).
+lookup_media(MediaName, CallId, AmqpHost) ->
+    request_media(MediaName, CallId, AmqpHost).
+
+lookup_media(MediaName, Type, CallId, AmqpHost) ->
+    request_media(MediaName, Type, CallId, AmqpHost).
+                       
+is_local(MediaName, CallId) ->
+    gen_server:call(?MODULE, {is_local, MediaName, CallId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -78,32 +87,40 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({register_name, CallID, Name}, {Pid, _Ref}, Dict) ->
-    case dict:find({Pid, CallID, Name}, Dict) of
+handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+    case dict:find({Pid, CallId, MediaName}, Dict) of
 	error ->
 	    link(Pid),
-	    GenName = generate_name(CallID, Name),
-	    {reply, GenName, dict:store({Pid, CallID, Name}, GenName, Dict)};
-	{ok, GenName} ->
-	    {reply, GenName, Dict}
+	    Path = generate_local_path(MediaName),
+	    {reply, Path, dict:store({Pid, CallId, MediaName}, Path, Dict)};
+	{ok, Path} ->
+	    {reply, Path, Dict}
     end;
-handle_call({is_registered, CallID, Name}, {Pid, _Ref}, Dict) ->
-    Reply = case dict:find({Pid, CallID, Name}, Dict) of
-		error ->
-		    false;
-		{ok, GenName} ->
-		    {true, GenName}
-	    end,
-    {reply, Reply, Dict};
+
+handle_call({lookup_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+    case dict:find({Pid, CallId, MediaName}, Dict) of
+        error ->
+            {reply, {error, not_local}, Dict};        
+        {ok, Path} ->
+            {reply, {ok, Path}, Dict}
+    end;
+
+handle_call({is_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+    case dict:find({Pid, CallId, MediaName}, Dict) of
+        error ->
+            {reply, false, Dict};
+        {ok, Path} ->
+            {reply, Path, Dict}
+    end;
+
 handle_call(_Request, _From, Dict) ->
-    Reply = ok,
-    {reply, Reply, Dict}.
+    {reply, {error, bad_request}, Dict}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling cast messages
-%%
+%% 
 %% @spec handle_cast(Msg, State) -> {noreply, State} |
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
@@ -124,13 +141,15 @@ handle_cast(_Msg, Dict) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, Dict) ->
     format_log(info, "MEDIA_REG(~p): Pid ~p down, Reason: ~p, cleaning up...~n", [self(), Pid, _Reason]),
-    {noreply, dict:filter(fun({Pid1, _CallID, _Name}, _Value) -> Pid =/= Pid1 end, Dict)};
+    {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) -> Pid =/= Pid1 end, Dict)};
+
 handle_info({'EXIT', Pid, _Reason}, Dict) ->
     format_log(info, "MEDIA_REG(~p): Pid ~p exited, Reason ~p, cleaning up...~n", [self(), Pid, _Reason]),
-    {noreply, dict:filter(fun({Pid1, _CallID, _Name}, _Value) ->
+    {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) ->
 				  format_log(info, "MEDIA_REG.filter P: ~p P1: ~p~n", [Pid, Pid1]),
 				  Pid =/= Pid1
 			  end, Dict)};
+
 handle_info(_Info, Dict) ->
     format_log(info, "MEDIA_REG(~p): Info Msg: ~p~n", [self(), _Info]),
     {noreply, Dict}.
@@ -163,5 +182,50 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-generate_name(CallID, Name) ->
-    whistle_util:to_hex(erlang:md5(list_to_binary([CallID,Name,"shh"]))).
+generate_local_path(MediaName) ->
+    M = whistle_util:to_binary(MediaName),
+    <<?LOCAL_MEDIA_PATH, M/binary>>.
+
+request_media(MediaName, CallId, AmqpHost) ->
+    request_media(MediaName, <<"new">>, CallId, AmqpHost).
+
+request_media(MediaName, Type, CallId, AmqpHost) ->
+    case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}) of
+        {ok, Path} ->
+            Path;
+        {error, _} ->
+            lookup_remote(MediaName, Type, AmqpHost)
+    end.
+
+lookup_remote(MediaName, StreamType, AmqpHost) ->
+    Q = amqp_util:new_queue(AmqpHost, <<>>),
+    amqp_util:bind_q_to_targeted(AmqpHost, Q, Q),
+    amqp_util:basic_consume(AmqpHost, Q),
+    Request = [
+                {<<"Media-Name">>, MediaName}
+               ,{<<"Stream-Type">>, StreamType}
+               | whistle_api:default_headers(Q, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = whistle_api:media_req(Request),
+    amqp_util:callevt_publish(AmqpHost, Payload, media),
+    wait_for_response(MediaName).
+
+wait_for_response(MediaName) ->
+    receive       
+       {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
+            try
+                Msg = mochijson2:decode(binary_to_list(Payload)),
+                <<"media_resp">> = whapps_json:get_value(<<"Event-Name">>, Msg),
+                <<"media">> = whapps_json:get_value(<<"Event-Category">>, Msg),
+                MediaName = whapps_json:get_value(<<"Media-Name">>, Msg),
+                whapps_json:get_value(<<"Stream-URL">>, Msg, <<>>)
+            catch
+                _:_ ->
+                    wait_for_response(MediaName)
+            end
+    after
+        2500 ->
+            {error, timeout}
+    end.
+
+                           
