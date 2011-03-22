@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%% Created:       21 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
-%%% Last Modified: 23 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
+%%% Last Modified: 19 Mar 2011 by Karl Anderson <karl@2600hz.org>
 %%%============================================================================
 
 -module ( cf_exe ).
@@ -17,6 +17,8 @@
 
 -import ( logger, [format_log/3] ).
 -import ( props, [get_value/2, get_value/3] ).
+
+-import(cf_call_command, [hangup/1]).
 
 -include ( "callflow.hrl" ).
 
@@ -143,23 +145,6 @@ init_amqp(#cf_call{amqp_h=AHost, call_id=CallId}) ->
     amqp_util:bind_q_to_targeted(AHost, AmqpQ),
     amqp_util:basic_consume(AHost, AmqpQ),
     AmqpQ.    
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Produces the low level whistle_api request to hangup the channel 
-%% @end
-%%--------------------------------------------------------------------
--spec(hangup/1 :: (Call :: #cf_call{}) -> no_return()).
-hangup(#cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ}) ->
-    Command = [
-                {<<"Application-Name">>, <<"hangup">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, <<"cf_exe">>, <<"1.0">>)
-              ],    
-    {ok, Json} = whistle_api:hangup_req(Command),
-    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
 
 %%%============================================================================
 %%%== END =====
