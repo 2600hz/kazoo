@@ -20,6 +20,8 @@
          play_and_collect_digits/7, play_and_collect_digits/8, play_and_collect_digits/9]).
 -export([say/3, say/4, say/5]).
 -export([conference/2, conference/3, conference/4, conference/5]).
+-export([noop/1]).
+-export([flush/1]).
 
 -export([b_answer/1, b_hangup/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8]).
@@ -28,10 +30,12 @@
 -export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6, 
          b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9]).
 -export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
+-export([b_noop/1]).
 
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_bridge/1, wait_for_unbridge/0]).
 -export([wait_for_dtmf/1]).
+-export([wait_for_application_or_dtmf/2]).
 -export([wait_for_hangup/0]).
 -export([send_callctrl/2]).
 
@@ -40,6 +44,12 @@
 
 -define(APP_NAME, <<"cf_call_command">>).
 -define(APP_VERSION, <<"0.5">>).
+-define(ANY_DIGIT, [
+                     <<"1">>, <<"2">>, <<"3">>
+                    ,<<"4">>, <<"5">>, <<"6">>    
+                    ,<<"7">>, <<"8">>, <<"9">>    
+                    ,<<"*">>, <<"0">>, <<"#">>
+                   ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -56,8 +66,8 @@ answer(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Json} = whistle_api:answer_req(Command),
-    send_callctrl(Json, Call).       
+    {ok, Payload} = whistle_api:answer_req(Command),
+    send_callctrl(Payload, Call).       
 
 b_answer(Call) ->
     answer(Call),
@@ -80,8 +90,8 @@ hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    {ok, Json} = whistle_api:hangup_req(Command),
-    send_callctrl(Json, Call).
+    {ok, Payload} = whistle_api:hangup_req(Command),
+    send_callctrl(Payload, Call).
 
 b_hangup(Call) ->
     hangup(Call),
@@ -134,8 +144,8 @@ bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, 
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Json} = whistle_api:bridge_req(Command),
-    send_callctrl(Json, Call).
+    {ok, Payload} = whistle_api:bridge_req(Command),
+    send_callctrl(Payload, Call).
 
 b_bridge(Endpoints, Call) ->
     b_bridge(Endpoints, <<"26">>, Call).
@@ -176,8 +186,8 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Json} = whistle_api:play_req(Command),
-    send_callctrl(Json, Call).
+    {ok, Payload} = whistle_api:play_req(Command),
+    send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
     b_play(Media, [<<"#">>], Call).    
@@ -199,9 +209,9 @@ b_play(Media, Terminators, Call) ->
 -spec(record/6 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 
 record(MediaName, Call) ->
-    record(MediaName, ["#","1","2","3","4","5","6","7","8","9","0","*"], Call).
+    record(MediaName, ?ANY_DIGIT, Call).
 record(MediaName, Terminators, Call) ->
-    record(MediaName, Terminators, <<"20">>, Call).
+    record(MediaName, Terminators, <<"120">>, Call).
 record(MediaName, Terminators, TimeLimit, Call) ->
     record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
@@ -217,8 +227,8 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    {ok, Json} = whistle_api:record_req(Command),
-    send_callctrl(Json, Call).
+    {ok, Payload} = whistle_api:record_req(Command),
+    send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -236,8 +246,8 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    {ok, Json} = whistle_api:tones_req(Command),
-    send_callctrl(Json, Call).
+    {ok, Payload} = whistle_api:tones_req(Command),
+    send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -287,8 +297,8 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    {ok, Json} = whistle_api:play_collect_digits_req(Command),
-    send_callctrl(Json, Call).
+    {ok, Payload} = whistle_api:play_collect_digits_req(Command),
+    send_callctrl(Payload, Call).
 
 b_play_and_collect_digit(Media, Call) ->
     b_play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
@@ -336,8 +346,8 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) 
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Json} = whistle_api:say_req(Command),
-    send_callctrl(Json, Call).       
+    {ok, Payload} = whistle_api:say_req(Command),
+    send_callctrl(Payload, Call).       
 
 %%--------------------------------------------------------------------
 %% @private
@@ -371,8 +381,8 @@ conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Json} = whistle_api:conference_req(Command),
-    send_callctrl(Json, Call).
+    {ok, Payload} = whistle_api:conference_req(Command),
+    send_callctrl(Payload, Call).
 
 b_conference(ConfId, Call) ->
     b_conference(ConfId, <<"false">>, Call).
@@ -383,6 +393,47 @@ b_conference(ConfId, Mute, Deaf, Call) ->
 b_conference(ConfId, Mute, Deaf, Moderator, Call) ->    
     conference(ConfId, Mute, Deaf, Moderator, Call),
     wait_for_message(<<"conference">>, <<"CHANNEL_EXECUTE">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to preform a noop
+%% @end
+%%--------------------------------------------------------------------
+-spec(noop/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
+-spec(b_noop/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
+
+noop(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"noop">>}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = whistle_api:noop_req(Command),
+    send_callctrl(Payload, Call).       
+
+b_noop(Call) ->
+    noop(Call),
+    wait_for_message(<<"noop">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to flush the command 
+%% queue
+%% @end
+%%--------------------------------------------------------------------
+-spec(flush/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
+
+flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"noop">>}
+               ,{<<"Insert-At">>, <<"flush">>}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],   
+    {ok, Payload} = whistle_api:noop_req(Command),
+    send_callctrl(Payload, Call).       
 
 %%--------------------------------------------------------------------
 %% @private
@@ -469,6 +520,32 @@ wait_for_bridge(Timeout) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Waits for and determines the status of the bridge command
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_application_or_dtmf/2 :: (Application :: binary(), Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).    
+wait_for_application_or_dtmf(Application, Timeout) -> 
+    receive
+        {amqp_msg, {struct, Msg}} ->
+            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
+                { Application, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+                    {ok, Msg};
+                { _, <<"DTMF">>, <<"call_event">> } ->
+                    {dtmf, get_value(<<"DTMF-Digit">>, Msg)};
+                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                    {error, channel_hungup};
+                _ ->
+                    wait_for_application_or_dtmf(Application, Timeout)
+            end
+    after
+        Timeout ->
+            {error, timeout}
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
@@ -511,5 +588,5 @@ wait_for_hangup() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(send_callctrl/2 :: (JSON :: json_object(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
-send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
-    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
+send_callctrl(Payload, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
+    amqp_util:callctl_publish(AHost, CtrlQ, Payload, <<"application/json">>).
