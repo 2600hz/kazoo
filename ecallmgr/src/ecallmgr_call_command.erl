@@ -13,8 +13,6 @@
 
 -import(logger, [log/2, format_log/3]).
 
--define(LOCAL_MEDIA_PATH, "/tmp/").
-
 -include("ecallmgr.hrl").
 
 -type fd() :: tuple().
@@ -38,17 +36,17 @@ exec_cmd(Node, UUID, JObj, AmqpHost) ->
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
 -spec(get_fs_app/5 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), AmqpHost :: string(), Application :: binary()) -> tuple(binary(), binary() | noop) | tuple(error, string())).
-get_fs_app(Node, UUID, JObj, _AmqpHost, <<"play">>) ->
+get_fs_app(Node, UUID, JObj, AmqpHost, <<"play">>) ->
     case whistle_api:play_req_v(JObj) of
 	false -> {error, "play failed to execute as JObj did not validate."};
 	true ->
-	    F = media_path(UUID, whapps_json:get_value(<<"Media-Name">>, JObj)),
+	    F = media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID, AmqpHost),
 	    ok = set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"playback">>, F}
     end;
 get_fs_app(_Node, _UUID, _JObj, _AmqpHost, <<"hangup">>=App) ->
     {App, <<>>};
-get_fs_app(_Node, UUID, JObj, _AmqpHost, <<"play_and_collect_digits">>) ->
+get_fs_app(_Node, UUID, JObj, AmqpHost, <<"play_and_collect_digits">>) ->
     case whistle_api:play_collect_digits_req_v(JObj) of
 	false -> {error, "play_and_collect_digits failed to execute as JObj did not validate."};
 	true ->
@@ -56,8 +54,8 @@ get_fs_app(_Node, UUID, JObj, _AmqpHost, <<"play_and_collect_digits">>) ->
 	    Max = whapps_json:get_value(<<"Maximum-Digits">>, JObj),
 	    Timeout = whapps_json:get_value(<<"Timeout">>, JObj),
 	    Terminators = whapps_json:get_value(<<"Terminators">>, JObj),
-	    Media = media_path(UUID, whapps_json:get_value(<<"Media-Name">>, JObj)),
-	    InvalidMedia = media_path(UUID, whapps_json:get_value(<<"Failed-Media-Name">>, JObj)),
+	    Media = media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID, AmqpHost),
+	    InvalidMedia = media_path(whapps_json:get_value(<<"Failed-Media-Name">>, JObj), UUID, AmqpHost),
 	    Tries = whapps_json:get_value(<<"Media-Tries">>, JObj),
 	    Regex = whapps_json:get_value(<<"Digits-Regex">>, JObj),
 	    Storage = <<"collected_digits">>,
@@ -69,9 +67,9 @@ get_fs_app(Node, UUID, JObj, _AmqpHost, <<"record">>) ->
     case whistle_api:record_req_v(JObj) of
 	false -> {error, "record failed to execute as JObj did not validate."};
 	true ->
-	    Name = whapps_json:get_value(<<"Media-Name">>, JObj),
-	    Path = get_media_path(ecallmgr_media_registry:register_name(UUID, Name)),
-	    RecArg = binary_to_list(list_to_binary([Path, " "
+	    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
+            Media = ecallmgr_media_register:register_local_media(MediaName, UUID),
+	    RecArg = binary_to_list(list_to_binary([Media, " "
 						    ,whapps_json:get_value(<<"Time-Limit">>, JObj, "20"), " "
 						    ,whapps_json:get_value(<<"Silence-Threshold">>, JObj, "200"), " "
 						    ,whapps_json:get_value(<<"Silence-Hits">>, JObj, "3")
@@ -83,32 +81,31 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
     case whistle_api:store_req_v(JObj) of
 	false -> {error, "store failed to execute as JObj did not validate."};
 	true ->
-	    Name = whapps_json:get_value(<<"Media-Name">>, JObj),
-	    case ecallmgr_media_registry:is_registered(UUID, Name) of
-		{true, GenName} ->
-		    File = get_media_path(GenName),
-		    case filelib:is_regular(File) andalso whapps_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+	    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
+	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
+		false ->
+		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
+		Media ->
+		    case filelib:is_regular(Media) andalso whapps_json:get_value(<<"Media-Transfer-Method">>, JObj) of
 			<<"stream">> ->
 			    %% stream file over AMQP
 			    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
-				       ,{<<"Media-Name">>, Name}
+				       ,{<<"Media-Name">>, MediaName}
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
-			    spawn(fun() -> stream_over_amqp(File, JObj, Headers, AmqpHost) end);
+			    spawn(fun() -> stream_over_amqp(Media, JObj, Headers, AmqpHost) end);
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
-			    spawn(fun() -> stream_over_http(File, Verb, JObj, AmqpHost) end);
+			    spawn(fun() -> stream_over_http(Media, Verb, JObj, AmqpHost) end);
 			<<"post">>=Verb ->
 			    %% stream file over HTTP PUSH
-			    spawn(fun() -> stream_over_http(File, Verb, JObj, AmqpHost) end);
+			    spawn(fun() -> stream_over_http(Media, Verb, JObj, AmqpHost) end);
 			false ->
-			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), File]);
+			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]);
 			_Method ->
 			    %% unhandled method
 			    format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
-		    end;
-		false ->
-		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), Name, JObj])
+		    end
 	    end
     end;
 get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tones">>) ->
@@ -245,18 +242,25 @@ get_bridge_endpoint(JObj, AmqpHost) ->
 	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))
     end.
 
--spec(media_path/2 :: (UUID :: binary(), Name :: binary()) -> list()).
-media_path(UUID, Name) ->
-    case ecallmgr_media_registry:is_registered(UUID, Name) of
-	{true, GenName} -> get_media_path(GenName);
-        false -> whistle_util:to_binary(Name)
-%%        false when is_binary(Name) -> binary_to_list(Name);
-%%        false when is_list(Name) -> Name
+-spec(media_path/3 :: (MediaName :: binary(), UUID :: binary(), AmqpHost :: binary()) -> list()).
+media_path(MediaName, UUID, AmqpHost) ->
+    case ecallmgr_media_registry:lookup_media(MediaName, UUID, AmqpHost) of
+        {error, _} -> 
+            MediaName;
+        Url ->
+            get_fs_playback(Url)
     end.
 
--spec(get_media_path/1 :: (Name :: binary() | string()) -> list()).
-get_media_path(Name) ->
-    binary_to_list(list_to_binary([?LOCAL_MEDIA_PATH, Name, ".wav"])).
+-spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).                                 
+get_fs_playback(Url) when byte_size(Url) >= 4 ->
+    case binary:part(Url, 0, 4) of 
+        <<"http">> ->
+            <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
+        _Else ->
+            Url
+    end;
+get_fs_playback(Url) ->
+    Url.
 
 -spec(stream_over_amqp/4 :: (File :: list(), JObj :: proplist(), Headers :: proplist(), AmqpHost :: string()) -> no_return()).
 stream_over_amqp(File, JObj, Headers, AmqpHost) ->
