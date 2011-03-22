@@ -269,10 +269,11 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
     spawn( fun() -> lists:foreach(fun(Acct) ->
 					  transfer_acct(Acct, RDB, WDB),
 					  transfer_active_calls(Acct, RDB, WDB)
-				  end, get_accts(RDB)) end),
-    couch_mgr:db_compact(RDB),
-    stop_replication(RDB, nodes()),
-    setup_replication(WDB, nodes()),
+				  end, get_accts(RDB)),
+		    couch_mgr:db_compact(RDB),
+		    stop_replication(RDB, nodes()),
+		    setup_replication(WDB, nodes())
+	   end),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
