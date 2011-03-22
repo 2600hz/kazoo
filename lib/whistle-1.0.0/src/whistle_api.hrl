@@ -492,7 +492,9 @@
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
 			   ,{<<"Event-Name">>, <<"media_resp">>}
 			  ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; (_) -> false end}]).
+-define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; 
+                                                 (<<"http://", _/binary>>) -> true; 
+                                                 (_) -> false end}]).
 
 %% Media Error
 -define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
