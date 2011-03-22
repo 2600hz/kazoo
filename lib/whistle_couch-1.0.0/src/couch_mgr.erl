@@ -41,12 +41,11 @@
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
-%% ChangeHandlers :: [Pid, DBName], Pid :: gen_change process
--type change_handler_entry() :: tuple(pid(), string()) | [].
+%% Change handler {DBName :: string(), {Srv :: pid(), SrvRef :: reference()}
 -record(state, {
 	  connection = {} :: tuple(string(), #server{}) | {}
 	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
-	  ,change_handlers = [] :: list(change_handler_entry()) | []
+	  ,change_handlers = dict:new() :: dict()
 	 }).
 
 %%%===================================================================
@@ -463,7 +462,7 @@ handle_call({set_host, Host, User, Pass}, _From, #state{connection={OldHost, _}}
 	{error, _Error}=E ->
 	    {reply, E, State};
 	HC ->
-	    {reply, ok, State#state{connection=HC, change_handlers=[], creds={User,Pass}}}
+	    {reply, ok, State#state{connection=HC, change_handlers=dict:new(), creds={User,Pass}}}
     end;
 handle_call({set_host, Host, User, Pass}, _From, State) ->
     format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
@@ -471,27 +470,27 @@ handle_call({set_host, Host, User, Pass}, _From, State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    {reply, ok, State#state{connection=HC, change_handlers=[], creds={User,Pass}}}
+	    {reply, ok, State#state{connection=HC, change_handlers=dict:new(), creds={User,Pass}}}
     end;
 handle_call({get_conn}, _, #state{connection={_Host, Conn}}=State) ->
     {reply, Conn, State};
 handle_call({get_creds}, _, #state{creds=Cred}=State) ->
     {reply, Cred, State};
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH, connection={_,Conn}}=State) ->
-    case lists:keyfind(DBName, 2, CH) of
+    case dict:find(DBName, CH) of
 	{Srv, _} ->
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {reply, ok, State};
-	false ->
+	error ->
 	    {ok, Srv} = change_mgr_sup:start_handler(open_db(whistle_util:to_list(DBName), Conn), []),
-	    erlang:monitor(process, Srv),
+	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
-	    {reply, ok, State#state{change_handlers=[{Srv, DBName} | CH]}}
+	    {reply, ok, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
     end;
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
-    case lists:keyfind(DBName, 2, CH) of
+    case dict:find(DBName, CH) of
 	{Srv, _} -> change_handler:rm_listener(Srv, Pid, DocID);
-	false -> ok
+	error -> ok
     end,
     {reply, ok, State};
 handle_call(Req, From, #state{connection={}}=State) ->
@@ -500,7 +499,7 @@ handle_call(Req, From, #state{connection={}}=State) ->
 	{error, _Error}=E ->
 	    {reply, E, State};
 	{_Host, _Conn}=HC ->
-	    handle_call(Req, From, State#state{connection=HC, change_handlers=[]})
+	    handle_call(Req, From, State#state{connection=HC, change_handlers=dict:new()})
     end;
 handle_call(_Request, _From, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
@@ -532,11 +531,11 @@ handle_cast(_Msg, State) ->
 handle_info({'DOWN', Ref, process, Srv, complete}, #state{change_handlers=CH}=State) ->
     format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after complete~n", [self(), Srv]),
     erlang:demonitor(Ref, [flush]),
-    {noreply, State#state{change_handlers=lists:keydelete(Srv, 1, CH)}};
+    {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{change_handlers=CH}=State) ->
     format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after conn closed~n", [self(), Srv]),
     erlang:demonitor(Ref, [flush]),
-    {noreply, State#state{change_handlers=lists:keydelete(Srv, 1, CH)}};
+    {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info(_Info, State) ->
     format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -679,6 +678,8 @@ save_config(H, U, P) ->
 				 , "", [{couch_host, H, U, P} | lists:keydelete(couch_host, 1, Config)])
 		   ).
 
+prepare_doc_for_save([{struct, _}|_]=Doc) ->
+    lists:map(fun(D) -> prepare_doc_for_save(D) end, Doc);
 prepare_doc_for_save({struct, _}=Doc) ->
     couchbeam_util:json_decode(mochijson2:encode(Doc));
 prepare_doc_for_save(BinDoc) when is_binary(BinDoc) ->
@@ -697,3 +698,8 @@ prepare_doc_for_load(BinDoc) when is_binary(BinDoc) ->
     mochijson2:decode(BinDoc);
 prepare_doc_for_load({_}=Doc) ->
     mochijson2:decode(couchbeam_util:json_encode(Doc)).
+
+-spec(remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict()).
+remove_ref(Ref, CH) ->
+    dict:filter(fun(_, {_, Ref1}) when Ref1 =:= Ref -> false;
+		   (_, _) -> true end, CH).
