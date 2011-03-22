@@ -129,12 +129,10 @@ lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
 			format_log(info, "L/U.user(~p): Sending JSON to Host(~p)~n~s~n", [self(), AmqpHost, JSON]),
 			send_request(AmqpHost, JSON),
 			Result = handle_response(ID, Data, FetchPid),
-			amqp_util_old:unbind_q_from_targeted(AmqpHost, Q),
 			amqp_util_old:queue_delete(AmqpHost, Q),
 			Result;
 		    {error, _Msg} ->
 			format_log(error, "L/U.user(~p): Auth_Req API error ~s~n", [self(), _Msg]),
-			amqp_util_old:unbind_q_from_targeted(AmqpHost, Q),
 			amqp_util_old:queue_delete(AmqpHost, Q),
 			failed
 		end,
@@ -143,6 +141,7 @@ lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
 recv_response(ID) ->
     receive
 	#'basic.consume_ok'{} ->
+	    format_log(info, "L/U.user(~p): Basic consume recv~n", [self()]),
 	    recv_response(ID);
 	{_, #amqp_msg{props = Props, payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),

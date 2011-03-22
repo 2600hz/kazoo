@@ -105,17 +105,11 @@ init([]) ->
 %%
 %%--------------------------------------------------------------------
 handle_call({set_host, Host}, _, State) ->
-    logger:format_log(info, "AMQP_MGR(~p): Host being changed from ~p to ~p: all channels going down~n", [State#state.host, Host]),
-    try
-	stop_amqp_host(State),
-	case start_amqp_host(Host, State) of
-	    {ok, State1} -> {reply, ok, State1};
-	    {error, _}=E -> {reply, E, State}
-	end
-    catch
-	_A:_B ->
-	    logger:format_log(error, "AMQP_MGR(~p): Failed to change host: ~p ~p~n~p~n", [self(), _A, _B, erlang:get_stacktrace()]),
-	    {reply, {error, failed_to_change_host}, State}
+    logger:format_log(info, "AMQP_MGR(~p): Host being changed from ~p to ~p: all channels going down~n", [self(), State#state.host, Host]),
+    stop_amqp_host(State),
+    case start_amqp_host(Host, State) of
+	{ok, State1} -> {reply, ok, State1};
+	{error, _}=E -> {reply, E, State, 0}
     end;
 
 handle_call(_, _, #state{handler_pid = undefined}=State) ->
@@ -129,7 +123,6 @@ handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
 
 handle_call({publish, _, BP, AM}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:publish(HPid, From, BP, AM) end),
-    logger:format_log(info, "Sent publish to amqp_h(~p)~n", [HPid]),
     {noreply, State};
 
 handle_call({consume, Host, Msg}, From, #state{handler_pid=HPid}=State) ->
@@ -247,7 +240,7 @@ get_new_connection({Type, #'amqp_params'{}=P}) ->
     end.
 
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
-    %% erlang:demonitor(HRef, [flush]),
+    erlang:demonitor(HRef, [flush]),
     net_kernel:monitor_nodes(false),
     amqp_host:stop(HPid).
 
