@@ -198,16 +198,16 @@ request_media(MediaName, Type, CallId, AmqpHost) ->
     end.
 
 lookup_remote(MediaName, StreamType, AmqpHost) ->
-    Q = amqp_util:new_queue(AmqpHost, <<>>),
-    amqp_util:bind_q_to_targeted(AmqpHost, Q, Q),
-    amqp_util:basic_consume(AmqpHost, Q),
+    Q = amqp_util_old:new_queue(AmqpHost, <<>>),
+    amqp_util_old:bind_q_to_targeted(AmqpHost, Q, Q),
+    amqp_util_old:basic_consume(AmqpHost, Q),
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, StreamType}
                | whistle_api:default_headers(Q, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Payload} = whistle_api:media_req(Request),
-    amqp_util:callevt_publish(AmqpHost, Payload, media),
+    amqp_util_old:callevt_publish(AmqpHost, Payload, media),
     wait_for_response(MediaName).
 
 wait_for_response(MediaName) ->

@@ -161,8 +161,8 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 
 -spec(start_call_handling/3 :: (Node :: atom(), Host :: string(), UUID :: binary()) -> CtlQueue :: binary()).
 start_call_handling(Node, Host, UUID) ->
-    CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
-    amqp_util:bind_q_to_callctl(Host, CtlQueue),
+    CtlQueue = amqp_util_old:new_callctl_queue(Host, <<>>),
+    amqp_util_old:bind_q_to_callctl(Host, CtlQueue),
 
     {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
     {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
@@ -227,7 +227,7 @@ publish_register_event(Data, Host, AppVsn) ->
 	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~p~n", [E]);
 	{ok, JSON} ->
 	    format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
-	    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>)
+	    amqp_util_old:broadcast_publish(Host, JSON, <<"application/json">>)
     end.
 
 -spec(binary_to_lower/1 :: (B :: binary()) -> binary()).

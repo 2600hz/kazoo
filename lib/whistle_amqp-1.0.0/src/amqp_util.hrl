@@ -1,5 +1,6 @@
 -include_lib("whistle/include/whistle_amqp.hrl").
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("whistle/include/whistle_types.hrl").
 
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange

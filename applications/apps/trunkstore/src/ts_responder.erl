@@ -126,7 +126,7 @@ handle_info(Req, #state{callmgr_q={error, _}}=S) ->
     handle_info(Req, S#state{amqp_host=AHost, callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
 
 handle_info(Req, #state{is_amqp_up=false, callmgr_q=Q, amqp_host=OldH}=S) ->
-    amqp_util:queue_delete(OldH, Q),
+    amqp_util_old:queue_delete(OldH, Q),
     AHost = whapps_controller:get_amqp_host(),
     format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host, will retry in a bit if doesn't work~n", [self(), AHost]),
     {ok, CQ} = start_amqp(AHost),
@@ -159,7 +159,7 @@ handle_info(_Unhandled, State) ->
 terminate(_Reason, #state{amqp_host=""}) ->
     ok;
 terminate(_Reason, #state{amqp_host=AHost, callmgr_q=CQ}) ->
-    amqp_util:queue_delete(AHost, CQ),
+    amqp_util_old:queue_delete(AHost, CQ),
     format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
@@ -220,23 +220,23 @@ process_req(_MsgType, _Prop, _State) ->
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
     format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
-    amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
+    amqp_util_old:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
 
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).
 start_amqp(AHost) ->
-    amqp_util:callmgr_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
-    amqp_util:callevt_exchange(AHost),
+    amqp_util_old:callmgr_exchange(AHost),
+    amqp_util_old:targeted_exchange(AHost),
+    amqp_util_old:callevt_exchange(AHost),
 
-    CallmgrQueue = amqp_util:new_callmgr_queue(AHost, <<>>),
+    CallmgrQueue = amqp_util_old:new_callmgr_queue(AHost, <<>>),
 
     %% Bind the queue to an exchange
-    amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
-    amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
-    amqp_util:bind_q_to_targeted(AHost, CallmgrQueue, CallmgrQueue),
+    amqp_util_old:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
+    amqp_util_old:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
+    amqp_util_old:bind_q_to_targeted(AHost, CallmgrQueue, CallmgrQueue),
 
     %% Register a consumer to listen to the queue
-    amqp_util:basic_consume(AHost, CallmgrQueue),
+    amqp_util_old:basic_consume(AHost, CallmgrQueue),
 
     format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p)~n", [self(), CallmgrQueue]),
     {ok, CallmgrQueue}.

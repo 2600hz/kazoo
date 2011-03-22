@@ -252,15 +252,15 @@ start_amqp ( AHost ) ->
       [self(), AHost]
    ),
 
-   amqp_util:callmgr_exchange(AHost),
-   amqp_util:targeted_exchange(AHost),
-   amqp_util:callevt_exchange(AHost),
-   CallmgrQueue = amqp_util:new_callmgr_queue(AHost, <<>>),
+   amqp_util_old:callmgr_exchange(AHost),
+   amqp_util_old:targeted_exchange(AHost),
+   amqp_util_old:callevt_exchange(AHost),
+   CallmgrQueue = amqp_util_old:new_callmgr_queue(AHost, <<>>),
 
-   amqp_util:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
-   amqp_util:bind_q_to_targeted(AHost, CallmgrQueue, CallmgrQueue),
+   amqp_util_old:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
+   amqp_util_old:bind_q_to_targeted(AHost, CallmgrQueue, CallmgrQueue),
 
-   amqp_util:basic_consume(AHost, CallmgrQueue),
+   amqp_util_old:basic_consume(AHost, CallmgrQueue),
 
    format_log(
       info,
@@ -361,7 +361,7 @@ respond ( RespQ, #state{amqp_host=AHost}=State, ReqProp, Flow ) ->
       | whistle_api:default_headers(State#state.callmgr_q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
    ],
    {ok, JSON} = whistle_api:route_resp(Prop),
-   amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>)
+   amqp_util_old:targeted_publish(AHost, RespQ, JSON, <<"application/json">>)
 .
 
 

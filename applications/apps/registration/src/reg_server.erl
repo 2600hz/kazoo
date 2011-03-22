@@ -185,15 +185,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(start_amqp/1 :: (Host :: string()) -> binary() | tuple(error, term())).
 start_amqp(Host) ->
-    Q = amqp_util:new_queue(Host, <<>>),
-    amqp_util:bind_q_to_broadcast(Host, Q),
-    amqp_util:basic_consume(Host, Q),
+    Q = amqp_util_old:new_queue(Host, <<>>),
+    amqp_util_old:bind_q_to_broadcast(Host, Q),
+    amqp_util_old:basic_consume(Host, Q),
     Q.
 
 -spec(stop_amqp/2 :: (Host :: string(), Q :: binary()) -> no_return()).
 stop_amqp(Host, Q) ->
-    amqp_util:unbind_q_from_broadcast(Host, Q),
-    amqp_util:queue_delete(Host, Q).
+    amqp_util_old:unbind_q_from_broadcast(Host, Q),
+    amqp_util_old:queue_delete(Host, Q).
 
 -spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
 handle_req(<<"application/json">>, Payload, State) ->
@@ -272,7 +272,7 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 											,whistle_util:to_binary(?MODULE)
 										    ,?APP_VSN)
 						    ]),
-	    amqp_util:targeted_publish(State#state.amqp_host, RespServer, JSON, <<"application/json">>)
+	    amqp_util_old:targeted_publish(State#state.amqp_host, RespServer, JSON, <<"application/json">>)
     end,
     ok;
 process_req(_,_,_) ->
@@ -325,4 +325,4 @@ auth_specific_response(403) ->
 
 send_resp(JSON, RespQ, Host) ->
     format_log(info, "REG_SERVE(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
-    amqp_util:targeted_publish(Host, RespQ, JSON, <<"application/json">>).
+    amqp_util_old:targeted_publish(Host, RespQ, JSON, <<"application/json">>).

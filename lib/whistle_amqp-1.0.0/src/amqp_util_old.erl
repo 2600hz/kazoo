@@ -1,4 +1,4 @@
--module(amqp_util).
+-module(amqp_util_old).
 
 -include("amqp_util.hrl").
 

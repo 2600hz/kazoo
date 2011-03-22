@@ -130,11 +130,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    case amqp_util:is_json(Props) of
+    case amqp_util_old:is_json(Props) of
         true ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
             format_log(info, "CF_TEST(~p): Received message~nPayload: ~p~n", [self(), Msg]),
-            spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
+            spawn(fun() -> process_req(amqp_util_old:get_msg_type(Msg), Msg, State) end);
         _ ->
             format_log(info, "CF_TEST(~p): Recieved non JSON AMQP msg content type~n", [self()])
     end,
@@ -180,14 +180,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).
 start_amqp(AHost) ->
-    amqp_util:callmgr_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
-    amqp_util:callevt_exchange(AHost),
-    Cmgr_Q = amqp_util:new_callmgr_queue(AHost, <<>>),
-    amqp_util:bind_q_to_callmgr(AHost, Cmgr_Q, ?KEY_AUTH_REQ),
-    amqp_util:bind_q_to_callmgr(AHost, Cmgr_Q, ?KEY_ROUTE_REQ),
-    amqp_util:bind_q_to_targeted(AHost, Cmgr_Q, Cmgr_Q),
-    amqp_util:basic_consume(AHost, Cmgr_Q),
+    amqp_util_old:callmgr_exchange(AHost),
+    amqp_util_old:targeted_exchange(AHost),
+    amqp_util_old:callevt_exchange(AHost),
+    Cmgr_Q = amqp_util_old:new_callmgr_queue(AHost, <<>>),
+    amqp_util_old:bind_q_to_callmgr(AHost, Cmgr_Q, ?KEY_AUTH_REQ),
+    amqp_util_old:bind_q_to_callmgr(AHost, Cmgr_Q, ?KEY_ROUTE_REQ),
+    amqp_util_old:bind_q_to_targeted(AHost, Cmgr_Q, Cmgr_Q),
+    amqp_util_old:basic_consume(AHost, Cmgr_Q),
     {ok, Cmgr_Q}.
 
 %%--------------------------------------------------------------------
@@ -263,8 +263,8 @@ hangup_call(#cf_call{call_id=CallId} = Call) ->
 
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(Json, RespQ, #state{amqp_host=AHost}) ->
-    amqp_util:targeted_publish(AHost, RespQ, Json, <<"application/json">>).
+    amqp_util_old:targeted_publish(AHost, RespQ, Json, <<"application/json">>).
 
 send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
     format_log(info, "CF_DEVICES(~p): Sent to ~p~n", [self(), CtrlQ]),
-    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
+    amqp_util_old:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).

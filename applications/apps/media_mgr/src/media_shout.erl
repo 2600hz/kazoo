@@ -244,7 +244,7 @@ send_media_resp(MediaName, Url, To) ->
 
     {ok, JSON} = whistle_api:media_resp(Prop),
     logger:format_log(info, "SHOUT(~p): Sending ~p to ~p~n", [self(), JSON, To]),
-    amqp_util:targeted_publish(whapps_controller:get_amqp_host(), To, JSON).
+    amqp_util_old:targeted_publish(whapps_controller:get_amqp_host(), To, JSON).
 
 start_acceptor(Parent, LSock) ->
     logger:format_log(info, "SHOUT.accept(~p): Acceptor started~n", [self()]),
