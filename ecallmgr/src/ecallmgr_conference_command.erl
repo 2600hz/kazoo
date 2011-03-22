@@ -63,7 +63,7 @@ get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"play">>) ->
                 MemberId when is_binary(MemberId) ->
                     <<"play ", Media/binary, " ", MemberId/binary>>;
                 _ ->
-                    <<"play", Media/binary>>                                      
+                    <<"play ", Media/binary>>                                      
             end
     end;
 get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"deaf">>) ->
@@ -124,13 +124,19 @@ api(Node, AppName, Args) ->
     freeswitch:api(Node, App, Arg, 5000).
       
 members_response(Members, ConfName, CallId, ServerId, AmqpHost) ->
+    MemberList = try
+                     parse_members(Members)
+                 catch
+                     _:_ ->
+                         []
+                 end,
     Response = [
               {<<"Application-Name">>, <<"members">>}
-             ,{<<"Members">>, parse_members(Members)}
+             ,{<<"Members">>, MemberList}
              ,{<<"Conference-ID">>, ConfName}
              ,{<<"Call-ID">>, CallId}
              | whistle_api:default_headers("", <<"conference">>, <<"response">>, ?APP_NAME, ?APP_VERSION)
-            ],    
+            ],
     {ok, Json} = whistle_api:conference_members_resp(Response),
     amqp_util:targeted_publish(AmqpHost, ServerId, Json, <<"application/json">>).    
 
