@@ -6,5 +6,6 @@
     },
     "DIDsByAcct": {
       "map": "function(doc) { if ( doc.type != 'sys_info' ) return; for ( i in doc.servers ) { var srvname = doc.servers[i].server_name || +srv-' + i; var keys = []; for ( d in doc.servers[i]['DIDs'] ) { keys.push(d); } emit([doc._id, srvname], keys); } }"
+    }
   }
 }
