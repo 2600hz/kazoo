@@ -33,7 +33,9 @@
 start ( Call, Flow ) ->
     process_flag(trap_exit, true),
     AmqpQ = init_amqp(Call),
-    next ( Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow ).
+    C1 = parse_from(Call),
+    C2 = parse_to(C1),
+    next ( C2#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -145,6 +147,22 @@ init_amqp(#cf_call{amqp_h=AHost, call_id=CallId}) ->
     amqp_util_old:bind_q_to_targeted(AHost, AmqpQ),
     amqp_util_old:basic_consume(AHost, AmqpQ),
     AmqpQ.    
+
+parse_from(#cf_call{route_request=RR}=Call) ->
+    case binary:split(get_value(<<"From">>, RR), <<"@">>) of
+        [Number|_] ->
+            Call#cf_call{from_number = Number, from_domain = <<>>};
+        _ ->
+            Call
+    end.    
+
+parse_to(#cf_call{route_request=RR}=Call) ->
+    case binary:split(get_value(<<"To">>, RR), <<"@">>) of
+        [Number|_] ->
+            Call#cf_call{to_number = Number, to_domain = <<>>};
+        _ ->
+            Call
+    end.    
 
 %%%============================================================================
 %%%== END =====

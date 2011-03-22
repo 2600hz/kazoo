@@ -17,5 +17,9 @@
             ,bdst_q = <<>> :: binary()                            %% The broadcast queue the request was recieved on
             ,call_id = <<>> :: binary()                           %% The call-id of this request
             ,cf_pid = undefined :: pid() | undefined              %% PID of the callflow tree processor, who we should pass control back to
+            ,from_number = <<>>
+            ,from_domain = <<>>
+            ,to_number = <<>>
+            ,to_domain = <<>>
             ,route_request = undefined :: proplist() | undefined  %% The initial route request that spawned this call flow
            }).
