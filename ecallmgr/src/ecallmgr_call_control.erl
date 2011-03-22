@@ -146,7 +146,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{node=N, amqp_h=H, amqp_q=Q}=State) ->
     erlang:monitor_node(N, true),
-    amqp_util:basic_consume(H, Q),
+    amqp_util_old:basic_consume(H, Q),
     {noreply, State};
 
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
@@ -219,8 +219,8 @@ handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_
                           ok = execute_control_request(Cmd, State)
 		  end, post_hangup_commands(State#state.command_q)),
 
-    amqp_util:unbind_q_from_callctl(H, Q),
-    amqp_util:queue_delete(H, Q), %% stop receiving messages
+    amqp_util_old:unbind_q_from_callctl(H, Q),
+    amqp_util_old:queue_delete(H, Q), %% stop receiving messages
     format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
 	       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
     EvtPid ! {ctl_down, self()},
@@ -270,10 +270,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec(restart_amqp_queue/2 :: (Host :: string(), Queue :: binary()) -> 'ok' | tuple('error', term())).
 restart_amqp_queue(Host, Queue) ->
-    case amqp_util:new_callctl_queue(Host, Queue) of
+    case amqp_util_old:new_callctl_queue(Host, Queue) of
 	Q when Q =:= Queue ->
-	    amqp_util:bind_q_to_callctl(Host, Queue),
-	    amqp_util:basic_consume(Host, Queue),
+	    amqp_util_old:bind_q_to_callctl(Host, Queue),
+	    amqp_util_old:basic_consume(Host, Queue),
 	    ok;
 	{error, _}=E ->
 	    E

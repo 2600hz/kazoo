@@ -284,14 +284,14 @@ stream_over_amqp(DestQ, F, State, Headers, Seq, AmqpHost) ->
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    amqp_util:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
+	    amqp_util_old:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
 	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1, AmqpHost);
 	eof ->
 	    Msg = [{<<"Media-Content">>, <<"eof">>}
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    amqp_util:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
+	    amqp_util_old:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
 	    eof
     end.
 
@@ -314,7 +314,7 @@ stream_over_http(File, Verb, JObj, AmqpHost) ->
 								   ,JObj)) of
 		{ok, JSON} ->
 		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
-		    amqp_util:targeted_publish(AmqpHost, AppQ, JSON, <<"application/json">>);
+		    amqp_util_old:targeted_publish(AmqpHost, AppQ, JSON, <<"application/json">>);
 		{error, Msg} ->
 		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
 	    end;

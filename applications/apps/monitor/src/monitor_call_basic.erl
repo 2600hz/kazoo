@@ -37,7 +37,7 @@ start(AHost, Msg, Route) ->
         {ok, Resource} ->
             CtrlQ = get_value(<<"Control-Queue">>, Resource),
             CallId = get_value(<<"Call-ID">>, Resource),
-            amqp_util:bind_q_to_callevt(AHost, TaskQ, CallId),
+            amqp_util_old:bind_q_to_callevt(AHost, TaskQ, CallId),
             try 
                 {ok, _} = wait_for_answer(20000),
                 arm_tone_detector(AHost, CtrlQ, CallId),
@@ -60,9 +60,9 @@ start(AHost, Msg, Route) ->
 %% @end
 %%--------------------------------------------------------------------
 create_task_q(AHost) ->
-    Q = amqp_util:new_monitor_queue(AHost),
-    amqp_util:bind_q_to_targeted(AHost, Q),
-    amqp_util:basic_consume(AHost, Q),
+    Q = amqp_util_old:new_monitor_queue(AHost),
+    amqp_util_old:bind_q_to_targeted(AHost, Q),
+    amqp_util_old:basic_consume(AHost, Q),
     {ok, Q}.
 
 %%--------------------------------------------------------------------
@@ -83,7 +83,7 @@ originate_call(AHost, ServerID, Route, MsgId) ->
                | whistle_api:default_headers(ServerID, <<"originate">>, <<"resource_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Json} = whistle_api:resource_req(Command),
-    amqp_util:callmgr_publish(AHost, Json, <<"application/json">>, ?KEY_RESOURCE_REQ).
+    amqp_util_old:callmgr_publish(AHost, Json, <<"application/json">>, ?KEY_RESOURCE_REQ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -239,4 +239,4 @@ wait_for_call_event(Name, Application, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 send_callctrl(Json, AHost, CtrlQ) ->
-    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
+    amqp_util_old:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).

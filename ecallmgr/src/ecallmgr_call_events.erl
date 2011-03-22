@@ -334,7 +334,7 @@ publish_msg(Host, UUID, Prop) ->
 		       end,
 
 	    {ok, JSON} = whistle_api:call_event(EvtProp2),
-	    amqp_util:callevt_publish(Host, UUID, JSON, event);
+	    amqp_util_old:callevt_publish(Host, UUID, JSON, event);
 	false ->
 	    format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName])
     end.
@@ -342,11 +342,11 @@ publish_msg(Host, UUID, Prop) ->
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
 -spec(add_amqp_listener/2 :: (Host :: string(), CallID :: binary()) -> binary() | tuple(error, term())).
 add_amqp_listener(Host, CallID) ->
-    case amqp_util:new_queue(Host, <<>>) of
+    case amqp_util_old:new_queue(Host, <<>>) of
 	{error, _} = E -> E;
 	Q ->
-	    amqp_util:bind_q_to_callevt(Host, Q, CallID, status_req),
-	    amqp_util:basic_consume(Host, Q),
+	    amqp_util_old:bind_q_to_callevt(Host, Q, CallID, status_req),
+	    amqp_util_old:basic_consume(Host, Q),
 	    Q
     end.
 
@@ -438,7 +438,7 @@ handle_amqp_prop(<<"status_req">>, JObj, AmqpHost, IsNodeUp) ->
 	SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
 	format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
 
-	amqp_util:targeted_publish(AmqpHost, SrvID, JSON)
+	amqp_util_old:targeted_publish(AmqpHost, SrvID, JSON)
     catch
 	E:R ->
 	    format_log(error, "EVT.call_status err ~p: ~p", [E, R])
@@ -456,13 +456,13 @@ send_queued(_, _, _, 10) ->
 send_queued(_, _, [], _) ->
     format_log(info, "EVT.send_queued(~p): No queued events.~n", [self()]);
 send_queued(H, UUID, Evts, Tries) ->
-    case amqp_util:is_host_available(H) of
+    case amqp_util_old:is_host_available(H) of
 	{error, _} ->
 	    ok = timer:sleep(1000),
 	    send_queued(H, UUID, Evts, Tries+1);
 	Q ->
 	    format_log(info, "EVT.send_queued(~p): Sending queued events on try ~p~n", [self(), Tries]),
-	    amqp_util:queue_delete(H, Q),
+	    amqp_util_old:queue_delete(H, Q),
 	    lists:foreach(fun(E) -> publish_msg(H, UUID, E) end, lists:reverse(Evts)),
 	    ok
     end.

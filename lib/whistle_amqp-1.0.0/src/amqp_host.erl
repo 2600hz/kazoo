@@ -353,7 +353,7 @@ start_channel(Connection) when is_pid(Connection) ->
     %% Open an AMQP channel to access our realm
     case amqp_connection:open_channel(Connection) of
 	{ok, Channel} ->
-	    #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
+	    #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util_old:access_request()),
 
 	    ChanMRef = erlang:monitor(process, Channel),
 	    {Channel, ChanMRef, Ticket};
@@ -365,7 +365,7 @@ start_channel(Connection, Pid) ->
     case start_channel(Connection) of
 	{C, _, T} = Channel ->
 	    amqp_channel:register_return_handler(C, Pid),
-	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util:access_request()),
+	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util_old:access_request()),
 	    Channel;
 	E -> E
     end.
