@@ -15,6 +15,9 @@
 
 -include("ecallmgr.hrl").
 
+-define(APP_NAME, <<"ecallmgr_call_command">>).
+-define(APP_VERSION, <<"1.0">>).
+
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
@@ -26,8 +29,30 @@ exec_cmd(Node, UUID, JObj, AmqpHost) ->
 	    AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
 	    case get_fs_app(Node, UUID, JObj, AmqpHost, AppName) of
 		{error, _Msg}=Err -> Err;
-		{_, noop} -> format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]), ok;
-		{App, AppData} -> send_cmd(Node, UUID, App, AppData)
+		{_, noop} -> 
+                    format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]),
+                    {CCS, ETS} = try
+                                     {ok, CS} = 
+                                         freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${channel-call-state}">>)),
+                                     {ok, TS} = 
+                                         freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${Event-Date-Timestamp}">>)),
+                                     {CS, TS}
+                                 catch
+                                     _:_ ->
+                                         {<<>>, <<>>}
+                                 end,                       
+                    Event = [
+                              {<<"Timestamp">>, ETS}
+                             ,{<<"Application-Name">>, <<"noop">>}
+                             ,{<<"Application-Response">>, whapps_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                             ,{<<"Channel-Call-State">>, CCS}
+                             ,{<<"Call-ID">>, UUID}
+                             | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                            ],
+                    {ok, Payload} = whistle_api:call_event(Event),
+                    amqp_util:callevt_publish(AmqpHost, UUID, Payload, event);
+		{App, AppData} -> 
+                    send_cmd(Node, UUID, App, AppData)
 	    end;
 	false ->
 	    format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
@@ -36,6 +61,8 @@ exec_cmd(Node, UUID, JObj, AmqpHost) ->
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
 -spec(get_fs_app/5 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), AmqpHost :: string(), Application :: binary()) -> tuple(binary(), binary() | noop) | tuple(error, string())).
+get_fs_app(_Node, _UUID, _JObj, _AmqpHost, <<"noop">>) ->
+    {ok, noop};
 get_fs_app(Node, UUID, JObj, AmqpHost, <<"play">>) ->
     case whistle_api:play_req_v(JObj) of
 	false -> {error, "play failed to execute as JObj did not validate."};
@@ -68,7 +95,7 @@ get_fs_app(Node, UUID, JObj, _AmqpHost, <<"record">>) ->
 	false -> {error, "record failed to execute as JObj did not validate."};
 	true ->
 	    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
-            Media = ecallmgr_media_register:register_local_media(MediaName, UUID),
+            Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 	    RecArg = binary_to_list(list_to_binary([Media, " "
 						    ,whapps_json:get_value(<<"Time-Limit">>, JObj, "20"), " "
 						    ,whapps_json:get_value(<<"Silence-Threshold">>, JObj, "200"), " "
@@ -86,20 +113,22 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
 		false ->
 		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
 		Media ->
-		    case filelib:is_regular(Media) andalso whapps_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                    M = whistle_util:to_list(Media),
+		    case filelib:is_regular(M)
+                        andalso whapps_json:get_value(<<"Media-Transfer-Method">>, JObj) of
 			<<"stream">> ->
 			    %% stream file over AMQP
 			    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
 				       ,{<<"Media-Name">>, MediaName}
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
-			    spawn(fun() -> stream_over_amqp(Media, JObj, Headers, AmqpHost) end);
+			    spawn(fun() -> stream_over_amqp(M, JObj, Headers, AmqpHost) end);
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
-			    spawn(fun() -> stream_over_http(Media, Verb, JObj, AmqpHost) end);
+			    spawn(fun() -> stream_over_http(M, Verb, JObj, AmqpHost) end);
 			<<"post">>=Verb ->
 			    %% stream file over HTTP PUSH
-			    spawn(fun() -> stream_over_http(Media, Verb, JObj, AmqpHost) end);
+			    spawn(fun() -> stream_over_http(M, Verb, JObj, AmqpHost) end);
 			false ->
 			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]);
 			_Method ->
@@ -313,7 +342,6 @@ stream_over_http(File, Verb, JObj, AmqpHost) ->
 										 ]}
 								   ,JObj)) of
 		{ok, JSON} ->
-		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
 		    amqp_util:targeted_publish(AmqpHost, AppQ, JSON, <<"application/json">>);
 		{error, Msg} ->
 		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
