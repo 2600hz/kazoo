@@ -224,7 +224,7 @@ wait_for_response(MediaName) ->
                     wait_for_response(MediaName)
             end
     after
-        2500 ->
+        1000 ->
             {error, timeout}
     end.
 
