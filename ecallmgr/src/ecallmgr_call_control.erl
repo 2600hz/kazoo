@@ -157,12 +157,12 @@ handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
 
 handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
     format_log(error, "CONTROL(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
-    case net_adm:ping(Node) of
-	pong ->
+    case ecallmgr_fs_handler:is_node_up(Node) of
+	true ->
 	    erlang:monitor_node(Node, true),
 	    format_log(info, "CONTROL(~p): node_is_up ~p~n", [self(), Node]),
 	    {noreply, State#state{is_node_up=true}};
-	pang ->
+	false ->
 	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
 			  true ->
 			      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
