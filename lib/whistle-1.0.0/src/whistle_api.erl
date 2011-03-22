@@ -35,7 +35,7 @@
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
 	 ,sleep_req/1, tone_detect_req/1, set_req/1, media_req/1, media_resp/1, media_error/1
-         ,conference_req/1
+         ,conference_req/1, noop_req/1
         ]).
 
 % Conference Members
@@ -55,6 +55,7 @@
 	 ,media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1, conference_members_req_v/1
          ,conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1, conference_undeaf_req_v/1
          ,conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1, conference_move_req_v/1
+         ,noop_req_v/1
 	]).
 
 %% FS-specific routines
@@ -895,7 +896,25 @@ sleep_req_v({struct, Prop}) ->
 sleep_req_v(Prop) ->
     validate(Prop, ?SLEEP_REQ_HEADERS, ?SLEEP_REQ_VALUES, ?SLEEP_REQ_TYPES).
 
+%%--------------------------------------------------------------------
+%% @doc Format a Dialplan:noop API call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(noop_req/1 :: ( Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+noop_req({struct, Prop}) ->
+    noop_req(Prop);
+noop_req(Prop) ->
+    case noop_req_v(Prop) of
+	true -> build_message(Prop, ?NOOP_REQ_HEADERS, ?OPTIONAL_NOOP_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for noop_req"}
+    end.
 
+-spec(noop_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+noop_req_v({struct, Prop}) ->
+    noop_req_v(Prop);
+noop_req_v(Prop) ->
+    validate(Prop, ?NOOP_REQ_HEADERS, ?NOOP_REQ_VALUES, ?NOOP_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference - Sends caller to a conference - see wiki

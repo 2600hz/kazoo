@@ -351,6 +351,9 @@ post_hangup_commands(CmdQ) ->
 
 
 execute_control_request(Cmd, #state{node=Node, uuid=UUID, amqp_h=H}) ->
+    %% hmm any other ideas regarding noop? -Karl
+    AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),    
+    if AppName == <<"noop">> -> self() ! {execute_complete, UUID, AppName}; true -> ok end,
     Mod = erlang:binary_to_existing_atom(<<"ecallmgr_"
                                            ,(whapps_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                            ,"_"
@@ -358,3 +361,4 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID, amqp_h=H}) ->
                                          >>, latin1),
     format_log(info, "RUNNING ~p", [Mod]),
     Mod:exec_cmd(Node, UUID, Cmd, H).
+    
