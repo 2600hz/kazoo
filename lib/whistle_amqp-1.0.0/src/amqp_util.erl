@@ -24,7 +24,7 @@
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
 	 ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2]).
 
--export([access_request/0, access_request/1]).
+-export([access_request/0, access_request/1, basic_ack/0, basic_nack/0]).
 
 -export([is_json/1]).
 
@@ -339,3 +339,9 @@ access_request(Options) ->
 
 is_json(Props) ->
     Props#'P_basic'.content_type == <<"application/json">>.
+
+basic_ack() ->
+    amqp_manager:consume(#'basic.ack'{}).
+
+basic_nack() ->
+    amqp_manager:consume(#'basic.nack'{}).
