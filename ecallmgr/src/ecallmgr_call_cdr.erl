@@ -49,7 +49,7 @@
 new_cdr(UUID, AmqpHost, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
     format_log(info, "CALL_CDR(~p): ~s~n", [UUID, CDRJson]),
-    amqp_util:callevt_publish(AmqpHost, UUID, CDRJson, cdr).
+    amqp_util_old:callevt_publish(AmqpHost, UUID, CDRJson, cdr).
 
 -spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).
 create_cdr(EvtProp) ->

@@ -242,8 +242,6 @@ handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) 
 	    ,{amqp_host, Host}
 	   ],
     {reply, Resp, State};
-handle_call({add_fs_node, _Node, _Options}, _From, #state{amqp_host=""}=State) ->
-    {reply, {error, no_amqp_host_defined}, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
     {Resp, State1} = add_fs_node(Node, check_options(Options), State),
     {reply, Resp, State1};
@@ -311,11 +309,10 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{fs_nodes=Nodes, amqp_host=H}) ->
+terminate(_Reason, #state{fs_nodes=Nodes}) ->
     Self = self(),
     format_log(error, "FS_HANDLER(~p): terminating: ~p~n", [Self, _Reason]),
     lists:foreach(fun close_node/1, Nodes),
-    amqp_util:channel_close(H),
     ok.
 
 %%--------------------------------------------------------------------
@@ -550,7 +547,4 @@ process_resource_request(Type, _Nodes, _Options) ->
 
 -spec(start_amqp/1 :: (Host :: string()) -> no_return()).
 start_amqp(Host) ->
-    amqp_util:targeted_exchange(Host),
-    amqp_util:callmgr_exchange(Host),
-    amqp_util:callevt_exchange(Host),
-    amqp_util:callctl_exchange(Host).
+    amqp_manager:set_host(Host).

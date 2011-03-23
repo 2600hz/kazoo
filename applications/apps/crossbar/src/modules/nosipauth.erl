@@ -136,10 +136,10 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    case amqp_util:is_json(Props) of
+    case amqp_util_old:is_json(Props) of
         true ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
+            spawn(fun() -> process_req(amqp_util_old:get_msg_type(Msg), Msg, State) end);
         _ ->
             format_log(info, "NO_SIP_AUTH(~p): Recieved non JSON AMQP msg content type~n", [self()])
     end,
@@ -185,11 +185,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).
 start_amqp(AHost) ->
-    amqp_util:callmgr_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
-    Auth_Q = amqp_util:new_callmgr_queue(AHost, <<>>),
-    amqp_util:bind_q_to_callmgr(AHost, Auth_Q, ?KEY_AUTH_REQ),
-    amqp_util:basic_consume(AHost, Auth_Q),
+    amqp_util_old:callmgr_exchange(AHost),
+    amqp_util_old:targeted_exchange(AHost),
+    Auth_Q = amqp_util_old:new_callmgr_queue(AHost, <<>>),
+    amqp_util_old:bind_q_to_callmgr(AHost, Auth_Q, ?KEY_AUTH_REQ),
+    amqp_util_old:basic_consume(AHost, Auth_Q),
     {ok, Auth_Q}.
 
 %%--------------------------------------------------------------------
@@ -219,4 +219,4 @@ process_req(_MsgType, _Msg, _State) ->
 
 -spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
 send_resp(Json, RespQ, #state{amqp_host=AHost}) ->
-    amqp_util:targeted_publish(AHost, RespQ, Json, <<"application/json">>).
+    amqp_util_old:targeted_publish(AHost, RespQ, Json, <<"application/json">>).

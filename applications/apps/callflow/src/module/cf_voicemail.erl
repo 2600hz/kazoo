@@ -215,6 +215,6 @@ store(#mailbox{database=Db, mailbox_id=Id, file_id=FileId}, #cf_call{call_id=Cal
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
+              ],
     {ok, Payload} = whistle_api:store_req(Command),
     cf_call_command:send_callctrl(Payload, Call).

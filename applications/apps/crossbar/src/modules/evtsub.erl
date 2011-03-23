@@ -578,7 +578,7 @@ try
 	    stream_loop(StreamState#stream_state{max_events=MaxEvt});
 	shutdown ->
 	    stop_consuming(H, Q),
-	    amqp_util:delete_queue(H, Q),
+	    amqp_util_old:delete_queue(H, Q),
 	    ok;
 	_Other ->
 	    format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
@@ -601,27 +601,27 @@ stream_amqp_loop(#stream_state{amqp_queue=Q}=StreamState, _) when is_binary(Q) -
 
 -spec(start_amqp/1 :: (StreamState :: #stream_state{}) -> #stream_state{}).
 start_amqp(#stream_state{stream=Stream, amqp_queue=OldQ, amqp_host=OldH}=StreamState) ->
-    spawn(fun() -> amqp_util:delete_queue(OldH, OldQ) end),
+    spawn(fun() -> amqp_util_old:delete_queue(OldH, OldQ) end),
     H = whapps_controller:get_amqp_host(),
-    Q = amqp_util:new_queue(H, <<>>, [{auto_delete, false}]),
+    Q = amqp_util_old:new_queue(H, <<>>, [{auto_delete, false}]),
     bind_to_exchange(Stream, H, Q),
-    amqp_util:basic_consume(H, Q),
+    amqp_util_old:basic_consume(H, Q),
     StreamState#stream_state{amqp_queue=Q, amqp_host=H, is_consuming=true}.
 
 start_consuming(H, Q) ->
-    amqp_util:basic_consume(H, Q).
+    amqp_util_old:basic_consume(H, Q).
 
 stop_consuming(H, Q) ->
-    amqp_util:basic_cancel(H, Q).
+    amqp_util_old:basic_cancel(H, Q).
 
 bind_to_exchange(<<"directory.auth_req">>, H, Q) ->
-    amqp_util:bind_q_to_callmgr(H, Q, ?KEY_AUTH_REQ);
+    amqp_util_old:bind_q_to_callmgr(H, Q, ?KEY_AUTH_REQ);
 bind_to_exchange(<<"dialplan.route_req">>, H, Q) ->
-    amqp_util:bind_q_to_callmgr(H, Q, ?KEY_ROUTE_REQ);
+    amqp_util_old:bind_q_to_callmgr(H, Q, ?KEY_ROUTE_REQ);
 bind_to_exchange(<<"events.", CallID/binary>>, H, Q) ->
-    amqp_util:bind_q_to_callevt(H, Q, CallID, events);
+    amqp_util_old:bind_q_to_callevt(H, Q, CallID, events);
 bind_to_exchange(<<"cdr.", CallID/binary>>, H, Q) ->
-    amqp_util:bind_q_to_callevt(H, Q, CallID, cdr).
+    amqp_util_old:bind_q_to_callevt(H, Q, CallID, cdr).
 
 -spec(validate_amqp/3 :: (Category :: binary(), Name :: binary(), Prop :: json_object()) -> boolean()).
 validate_amqp(<<"directory">>, <<"auth_req">>, Prop) ->

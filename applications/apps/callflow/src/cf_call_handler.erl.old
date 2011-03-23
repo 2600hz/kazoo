@@ -265,12 +265,12 @@ get_amqp_queue ( AHost, CallId ) ->
       [self(), AHost, CallId]
    ),
 
-   AmqpQ = amqp_util:new_callevt_queue(AHost, <<>>),
+   AmqpQ = amqp_util_old:new_callevt_queue(AHost, <<>>),
 
-   amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId, events),
-   amqp_util:bind_q_to_targeted(AHost, AmqpQ),
+   amqp_util_old:bind_q_to_callevt(AHost, AmqpQ, CallId, events),
+   amqp_util_old:bind_q_to_targeted(AHost, AmqpQ),
 
-   amqp_util:basic_consume(AHost, AmqpQ),
+   amqp_util_old:basic_consume(AHost, AmqpQ),
 
    format_log(
       info,
@@ -309,7 +309,7 @@ execute ( #state{flow=Flow}=State ) ->
    case validate(Header, Module, Data) of
       {ok, JSON}      ->
          format_log(info, "CF CALL HANDLER (~p): Executing ~p...~n", [self(), Module]),
-         amqp_util:callctl_publish(State#state.amqp_h, State#state.ctrl_q, JSON, <<"application/json">>),
+         amqp_util_old:callctl_publish(State#state.amqp_h, State#state.ctrl_q, JSON, <<"application/json">>),
          State#state{cur=Module};
       {error, Reason} ->
          format_log(

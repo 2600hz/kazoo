@@ -184,7 +184,7 @@ handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref,
     Prop = [{<<"Call-ID">>, CallID} | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_call_handler">>, <<"0.5.3">>)],
     case whistle_api:call_status_req(Prop) of
 	{ok, JSON} ->
-	    amqp_util:callevt_publish(H, CallID, JSON, status_req);
+	    amqp_util_old:callevt_publish(H, CallID, JSON, status_req);
 	{error, E} ->
 	    format_log(error, "TS_CALL(~p): sending status_req failed: ~p~n", [self(), E])
     end,
@@ -261,19 +261,19 @@ terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=Sta
     format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk and billing for ~p seconds"
 	       ,[self(), Duration]),
     update_account(Duration, Flags), % charge for minimmum seconds since we apparently messed up
-    amqp_util:delete_queue(H, Q),
+    amqp_util_old:delete_queue(H, Q),
     ok;
 terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
-    amqp_util:delete_queue(H, Q),
+    amqp_util_old:delete_queue(H, Q),
     ok;
 terminate(_Unexpected, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
     DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating unexpectedly: took ~p~n~p~n", [self(), DeltaTime, _Unexpected]),
-    amqp_util:delete_queue(H, Q),
+    amqp_util_old:delete_queue(H, Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -295,15 +295,15 @@ get_amqp_queue(AmqpHost, CallID) ->
     get_amqp_queue(AmqpHost, CallID, <<>>).
 
 get_amqp_queue(AmqpHost, CallID, Q) ->
-    EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
+    EvtQ = amqp_util_old:new_callevt_queue(AmqpHost, <<>>),
     format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
 
-    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
-    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
-    amqp_util:bind_q_to_targeted(AmqpHost, EvtQ),
+    amqp_util_old:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
+    amqp_util_old:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
+    amqp_util_old:bind_q_to_targeted(AmqpHost, EvtQ),
 
-    amqp_util:basic_consume(AmqpHost, EvtQ),
-    amqp_util:delete_queue(AmqpHost, Q),
+    amqp_util_old:basic_consume(AmqpHost, EvtQ),
+    amqp_util_old:delete_queue(AmqpHost, Q),
     EvtQ.
 
 %% Duration - billable seconds
