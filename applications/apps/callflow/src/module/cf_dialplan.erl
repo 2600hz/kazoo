@@ -24,9 +24,9 @@
 
 handle ( {struct, Data}, #cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ, cf_pid=Pid} ) ->
    format_log(info, "CF DIALPLAN (~p): Handling...~n", [self()]),
-   AmqpQ = amqp_util:new_queue(AHost),
-   amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
-   amqp_util:basic_consume(AHost, AmqpQ),
+   AmqpQ = amqp_util_old:new_queue(AHost),
+   amqp_util_old:bind_q_to_callevt(AHost, AmqpQ, CallId),
+   amqp_util_old:basic_consume(AHost, AmqpQ),
 
    Action = proplists:get_value(<<"action">>, Data),
    {struct, AData} = proplists:get_value(<<"data">>, Data),
@@ -43,7 +43,7 @@ handle ( {struct, Data}, #cf_call{amqp_h=AHost, call_id=CallId, ctrl_q=CtrlQ, cf
       Request ->
          case whistle_api:Request(Command++AData) of
             {ok, Json} ->
-               amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>),
+               amqp_util_old:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>),
                wait(<<"CHANNEL_EXECUTE_COMPLETE">>, Action, Pid);
             _          ->
                Pid ! { continue }
