@@ -136,17 +136,11 @@ handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
-handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false}=State) ->
+handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
     format_log(error, "EVT(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
     case ecallmgr_fs_handler:is_node_up(Node) of
 	true ->
-	    erlang:monitor_node(Node, true),
-	    case freeswitch:handlecall(Node, UUID) of
-		ok ->
-		    format_log(info, "EVT(~p): node_is_up ~p~n", [self(), Node]),
-		    {noreply, State#state{is_node_up=true, failed_node_checks=0}};
-		_ -> {stop, normal, State}
-	    end;
+	    {noreply, State#state{is_node_up=true, failed_node_checks=0}, 0};
 	false ->
 	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
 		true ->
