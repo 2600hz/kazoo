@@ -342,10 +342,8 @@ stream_over_http(File, Verb, JObj, AmqpHost) ->
 										 ]}
 								   ,JObj)) of
 		{ok, JSON} ->
-
 		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
 		    amqp_util_old:targeted_publish(AmqpHost, AppQ, JSON, <<"application/json">>);
-
 		{error, Msg} ->
 		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
 	    end;

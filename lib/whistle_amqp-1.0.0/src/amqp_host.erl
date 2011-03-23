@@ -110,7 +110,7 @@ init([_Host, Conn]) when is_pid(Conn) ->
 %%--------------------------------------------------------------------				   
 handle_call(stop, {From, _}, State) ->
     case whereis(amqp_manager) =:= From of
-	true -> {stop, normal, State};
+	true -> {stop, normal, ok, State};
 	false -> {reply, {error, you_are_not_my_boss}, State}
     end.
 
@@ -128,7 +128,7 @@ handle_cast({get_misc_channel, From}, #state{misc_channel={C,_,T}}=State) ->
     gen_server:reply(From, {ok, C, T}),
     {noreply, State};
 
-handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}=State}) ->
+handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=State) ->
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
     {noreply, State};
 
@@ -137,19 +137,15 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 	error ->
 	    case start_channel(State#state.connection, FromPid) of
 		{C,R,T} ->
-		    logger:format_log(info, "AMQP_HOST(~p): consume for ~p on new chan ~p~n", [self(), FromPid, C]),
-
 		    FromRef = erlang:monitor(process, FromPid),
 
 		    gen_server:reply(From, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		{error, _}=E ->
-		    logger:format_log(info, "AMQP_HOST(~p): Err on consume: ~p~n", [self(), E]),
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    logger:format_log(info, "AMQP_HOST(~p): consume for ~p on chan ~p~n", [self(), FromPid, C]),
 	    gen_server:reply(From, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)),
 	    {noreply, State}
     end;
@@ -159,19 +155,15 @@ handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{
 	error ->
 	    case start_channel(State#state.connection, FromPid) of
 		{C,R,T} ->
-		    logger:format_log(info, "AMQP_HOST(~p): cancel for ~p on new chan ~p~n", [self(), FromPid, C]),
-
 		    FromRef = erlang:monitor(process, FromPid),
 
 		    gen_server:reply(From, amqp_channel:cast(C, BasicCancel, FromPid)),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		{error, _}=E ->
-		    logger:format_log(info, "AMQP_HOST(~p): Err on cancel: ~p~n", [self(), E]),
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
 	{ok, {C,_,_,_}} ->
-	    logger:format_log(info, "AMQP_HOST(~p): cancel for ~p on chan ~p~n", [self(), FromPid, C]),
 	    gen_server:reply(From, amqp_channel:cast(C, BasicCancel, FromPid)),
 	    {noreply, State}
     end;
@@ -181,19 +173,15 @@ handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{cons
 	error ->
 	    case start_channel(State#state.connection, FromPid) of
 		{C,R,T} ->
-		    logger:format_log(info, "AMQP_HOST(~p): queue.bind for ~p on new chan ~p~n", [self(), FromPid, C]),
-
 		    FromRef = erlang:monitor(process, FromPid),
 
 		    gen_server:reply(From, amqp_channel:call(C, QueueBind#'queue.bind'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		{error, _}=E ->
-		    logger:format_log(info, "AMQP_HOST(~p): Err on queue.bind: ~p~n", [self(), E]),
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    logger:format_log(info, "AMQP_HOST(~p): queue.bind for ~p on chan ~p~n", [self(), FromPid, C]),
 	    gen_server:reply(From, amqp_channel:call(C, QueueBind#'queue.bind'{ticket=T})),
 	    {noreply, State}
     end;
@@ -203,20 +191,16 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
 	error ->
 	    case start_channel(State#state.connection, FromPid) of
 		{C,R,T} ->
-		    logger:format_log(info, "AMQP_HOST(~p): queue.unbind for ~p on new chan ~p~n", [self(), FromPid, C]),
-
 		    FromRef = erlang:monitor(process, FromPid),
 
-		    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
+		    gen_server:reply(From, amqp_channel:cast(C, QueueUnbind#'queue.unbind'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		{error, _}=E ->
-		    logger:format_log(info, "AMQP_HOST(~p): Err on queue.bind: ~p~n", [self(), E]),
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    logger:format_log(info, "AMQP_HOST(~p): queue.unbind for ~p on chan ~p~n", [self(), FromPid, C]),
-	    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
+	    gen_server:reply(From, amqp_channel:cast(C, QueueUnbind#'queue.unbind'{ticket=T})),
 	    {noreply, State}
     end;
 
@@ -225,19 +209,15 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
 	error ->
 	    case start_channel(State#state.connection, FromPid) of
 		{C,R,T} ->
-		    logger:format_log(info, "AMQP_HOST(~p): queue.declare for ~p on new chan ~p~n", [self(), FromPid, C]),
-
 		    FromRef = erlang:monitor(process, FromPid),
 
 		    gen_server:reply(From, amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		{error, _}=E ->
-		    logger:format_log(info, "AMQP_HOST(~p): Err on consume: ~p~n", [self(), E]),
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    logger:format_log(info, "AMQP_HOST(~p): queue.declare for ~p on chan ~p~n", [self(), FromPid, C]),
 	    gen_server:reply(From, amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T})),
 	    {noreply, State}
     end;
@@ -247,20 +227,16 @@ handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{
 	error ->
 	    case start_channel(State#state.connection, FromPid) of
 		{C,R,T} ->
-		    logger:format_log(info, "AMQP_HOST(~p): queue.delete for ~p on new chan ~p~n", [self(), FromPid, C]),
-
 		    FromRef = erlang:monitor(process, FromPid),
 
-		    gen_server:reply(From, amqp_channel:call(C, QueueDelete#'queue.delete'{ticket=T})),
+		    gen_server:reply(From, amqp_channel:cast(C, QueueDelete#'queue.delete'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		{error, _}=E ->
-		    logger:format_log(info, "AMQP_HOST(~p): Err on consume: ~p~n", [self(), E]),
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    logger:format_log(info, "AMQP_HOST(~p): queue.declare for ~p on chan ~p~n", [self(), FromPid, C]),
-	    gen_server:reply(From, amqp_channel:call(C, QueueDelete#'queue.delete'{ticket=T})),
+	    gen_server:reply(From, amqp_channel:cast(C, QueueDelete#'queue.delete'{ticket=T})),
 	    {noreply, State}
     end;
 
@@ -277,6 +253,7 @@ handle_cast({misc_req, From, Req1, Req2}, #state{misc_channel={C,_,_}}=State) ->
     {noreply, State};
 
 handle_cast(_Msg, State) ->
+    logger:format_log(info, "AMQP_HOST(~p): Unmatched cast: ~p~nState: ~p~n", [self(), _Msg, State]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -302,12 +279,12 @@ handle_info(timeout, Conn) ->
 	      }
 	    };
 	{error, E} ->
-	    logger:format_log(error, "AMQP_HOST(~p): Error starting channel: ~p~n", [self(), E]),
+	    logger:format_log(error, "AMQP_HOST(~p): Error starting pub channel: ~p~n", [self(), E]),
 	    erlang:demonitor(Ref, [flush]),
-	    {stop, E, #state{}}
+	    {stop, E, Conn}
     end;
 
-handle_info({'DOWN', Ref, process, _Pid, _Reason}, State) ->
+handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{}=State) ->
     logger:format_log(error, "AMQP_HOST(~p): Pid ~p down: ~p~n", [self(), _Pid, _Reason]),
     erlang:demonitor(Ref, [flush]),
     {noreply, remove_ref(Ref, State)};
@@ -390,6 +367,7 @@ remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref1,_}}=State) whe
     State#state{misc_channel=start_channel(Conn)};
 
 remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
+    logger:format_log(info, "AMQP_HOST(~p): consumer went down, searching~n", [self()]),
     State#state{consumers =
 		    dict:fold(fun(FromPid, {C,Ref1,_,FromRef}, AccDict) when Ref =:= Ref1 ->
 				      logger:format_log(info, "AMQP_HOST(~p): consumer_channel(~p) went down for ~p~n", [self(), C, FromPid]),
