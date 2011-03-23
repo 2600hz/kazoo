@@ -13,9 +13,9 @@
 %% API
 -export([set_host/1, get_host/0]).
 
--export([start_link/0, publish/3, consume/2, misc_req/2, misc_req/3]).
+-export([start_link/0, publish/2, consume/1, misc_req/1, misc_req/2]).
 
--export([open_channel/1, open_channel/2, is_available/0, is_available/1]).
+-export([is_available/0]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -23,9 +23,9 @@
 -include("amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_AMQP_HOST, net_adm:localhost()).
 -define(START_TIMEOUT, 500).
 -define(MAX_TIMEOUT, 5000).
+-define(STARTUP_FILE, code:lib_dir(whistle_amqp, priv)).
 
 -record(state, {
 	  host = "" :: string()
@@ -52,27 +52,18 @@ set_host(H) ->
 get_host() ->
     gen_server:call(?SERVER, get_host).
 
-publish(Host, BP, AM) ->
-    gen_server:call(?SERVER, {publish, Host, BP, AM}).
 
-consume(Host, BC) ->
-    gen_server:call(?SERVER, {consume, Host, BC}).
+publish(BP, AM) ->
+    gen_server:call(?SERVER, {publish, BP, AM}).
 
-misc_req(Host, Req) ->
-    gen_server:call(?SERVER, {misc_req, Host, Req}).
+consume(BC) ->
+    gen_server:call(?SERVER, {consume, BC}).
 
-misc_req(Host, Req1, Req2) ->
-    gen_server:call(?SERVER, {misc_req, Host, Req1, Req2}).
+misc_req(Req) ->
+    gen_server:call(?SERVER, {misc_req, Req}).
 
-%% for backwards-compat
-open_channel(Host) ->
-    gen_server:call(?SERVER, {open_channel, Host}).
-
-open_channel(_, Host) ->
-    gen_server:call(?SERVER, {open_channel, Host}).
-
-is_available(Host) ->
-    is_available().
+misc_req(Req1, Req2) ->
+    gen_server:call(?SERVER, {misc_req, Req1, Req2}).
 
 is_available() ->
     gen_server:call(?SERVER, is_available).
@@ -92,7 +83,8 @@ is_available() ->
 init([]) ->
     %% Start a connection to the AMQP broker server
     process_flag(trap_exit, true),
-    {ok, #state{host=?DEFAULT_AMQP_HOST}, 0}.
+    Init = get_config(),
+    {ok, #state{host=props:get_value(default_host, Init, net_adm:localhost())}, 0}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -121,24 +113,20 @@ handle_call(get_host, _, State) ->
 handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
     {reply, erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid), State};
 
-handle_call({publish, _, BP, AM}, From, #state{handler_pid=HPid}=State) ->
+handle_call({publish, BP, AM}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:publish(HPid, From, BP, AM) end),
     {noreply, State};
 
-handle_call({consume, Host, Msg}, From, #state{handler_pid=HPid}=State) ->
+handle_call({consume, Msg}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:consume(HPid, From, Msg) end),
     {noreply, State};
 
-handle_call({misc_req, Host, Req}, From, #state{handler_pid=HPid}=State) ->
+handle_call({misc_req, Req}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:misc_req(HPid, From, Req) end),
     {noreply, State};
 
-handle_call({misc_req, Host, Req1, Req2}, From, #state{handler_pid=HPid}=State) ->
+handle_call({misc_req, Req1, Req2}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:misc_req(HPid, From, Req1, Req2) end),
-    {noreply, State};
-
-handle_call({open_channel, Host}, From, #state{handler_pid=HPid}=State) ->
-    spawn(fun() -> amqp_host:get_misc_channel(HPid, From) end),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -179,7 +167,7 @@ handle_info({nodeup, RabbitNode}, #state{host=Host, conn_params=#'amqp_params'{n
     case start_amqp_host(Host, State, {ConnType, ConnParams}) of
 	{error, E} ->
 	    logger:format_log(error, "AMQP_MGR(~p): unable to bring host ~p back up: ~p~n", [self(), Host, E]),
-	    {noreply, #state{host=?DEFAULT_AMQP_HOST}};
+	    {noreply, #state{host="localhost"}};
 	{ok, State1} ->
 	    {noreply, State1}
     end;
@@ -195,8 +183,11 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
--spec(terminate/2 :: (Reason :: term(), State :: dict()) -> no_return()).
-terminate(Reason, _State) ->
+-spec(terminate/2 :: (Reason :: term(), State :: #state{}) -> no_return()).
+terminate(Reason, #state{host=H}) when is_list(H) ->
+    save_config([{default_host, H}]),
+    terminate(Reason, ok);
+terminate(Reason, _) ->
     logger:format_log(info, "AMQP_MGR(~p): Going down(~p)~n", [self(), Reason]),
     ok.
 
@@ -219,7 +210,7 @@ create_amqp_params(Host, Port) ->
     case net_adm:ping(Node) of
 	pong ->
 	    %% erlang:monitor_node(Node, true),
-	    net_kernel:monitor_nodes(true),
+	    _ = net_kernel:monitor_nodes(true),
 	    {direct, #'amqp_params'{ port = Port, host = Host, node = Node }};
 	pang ->
 	    {network, #'amqp_params'{ port = Port, host = Host }}
@@ -241,7 +232,7 @@ get_new_connection({Type, #'amqp_params'{}=P}) ->
 
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     erlang:demonitor(HRef, [flush]),
-    net_kernel:monitor_nodes(false),
+    _ = net_kernel:monitor_nodes(false),
     amqp_host:stop(HPid).
 
 start_amqp_host("localhost", State) ->
@@ -259,3 +250,16 @@ start_amqp_host(Host, State, {ConnType, ConnParams} = ConnInfo) ->
 	    Ref = erlang:monitor(process, HPid),
 	    {ok, State#state{handler_pid = HPid, handler_ref = Ref, conn_type = ConnType, conn_params = ConnParams, timeout=?START_TIMEOUT}}
     end.
+
+-spec(get_config/0 :: () -> proplist()).
+get_config() ->
+    case file:consult(?STARTUP_FILE) of
+	{ok, Prop} -> Prop;
+	_ -> []
+    end.
+
+-spec(save_config/1 :: (Prop :: proplist()) -> no_return()).
+save_config(Prop) ->
+    file:write_file(?STARTUP_FILE
+		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end, "", Prop)
+		   ).
