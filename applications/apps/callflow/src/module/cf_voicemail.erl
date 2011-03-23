@@ -42,13 +42,13 @@
          }).
 
 -record(prompts, {
-           person_at_exten = <<"/system_media/the-person-at-exten">>
-          ,not_available = <<"/system_media/is-not-available">>
-          ,record_instructions = <<"/system_media/record-message-instructions">>
-          ,press = <<"/system_media/press">>
-          ,to_listen = <<"/system_media/listen-to-recording">>
-          ,to_save = <<"/system_media/save-recording">>
-          ,to_rerecord = <<"/system_media/rerecord">>
+           person_at_exten = <<"/system_media/vm-person">>
+          ,not_available = <<"/system_media/vm-not_available">>
+          ,record_instructions = <<"/system_media/vm-record_greeting">>
+          ,press = <<"/system_media/vm-press">>
+          ,to_listen = <<"/system_media/vm-listen_to_recording">>
+          ,to_save = <<"/system_media/vm-save_recording">>
+          ,to_rerecord = <<"/system_media/vm-rerecord">>
           ,tone_spec = [{struct, [{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}]}]          
          }).
 
@@ -162,12 +162,12 @@ review_recording(#mailbox{prompts=Prompts, file_id=FileId, keys=Keys}=Box, Call)
     say(Keys#keys.listen, <<"name_spelled">>, Call),
     play(Prompts#prompts.to_listen, ?ANY_DIGIT, Call),
     play(Prompts#prompts.press, ?ANY_DIGIT, Call),
-    say(Keys#keys.record, <<"name_spelled">>, Call),
+    say(Keys#keys.save, <<"name_spelled">>, Call),
     play(Prompts#prompts.to_save, ?ANY_DIGIT, Call),
     play(Prompts#prompts.press, ?ANY_DIGIT, Call),
-    say(Keys#keys.save, <<"name_spelled">>, Call),
+    say(Keys#keys.record, <<"name_spelled">>, Call),
     play(Prompts#prompts.to_rerecord, ?ANY_DIGIT, Call),    
-    case cf_call_command:wait_for_dtmf(10000) of
+    case cf_call_command:wait_for_dtmf(60000) of
         {error, _} ->
             store(Box, Call),
             {stop};
@@ -177,13 +177,20 @@ review_recording(#mailbox{prompts=Prompts, file_id=FileId, keys=Keys}=Box, Call)
                 Digit == Keys#keys.listen ->
                     cf_call_command:b_play(FileId, ?ANY_DIGIT, Call),
                     review_recording(Box, Call);
-                Digit == Keys#keys.save ->                   
+                Digit == Keys#keys.record ->                   
                     record_voicemail(Box, Call);
-                true ->
+                Digit == Keys#keys.save ->                   
                     store(Box, Call),
-                    {stop}
+                    {stop};
+                true ->
+                    review_recording(Box, Call)
             end
     end.
+
+
+change_pin(#mailbox{prompts=Prompts, file_id=FileId, keys=Keys}=Box, Call) ->
+    ok.
+
 
 %%--------------------------------------------------------------------
 %% @private
