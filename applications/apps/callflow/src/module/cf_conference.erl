@@ -28,17 +28,17 @@
                               ]).
 
 -record(prompts, {
-           greeting = <<"shout://translate.google.com/translate_tts?tl=en&q=Welcome+to+the+conference!">> 
-          ,request_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Please+enter+the+conference+pin+number+followed+by+the+pound+key.">>
-          ,incorrect_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Invalid+pin+number.">>
+           greeting = <<"/system_media/conf-welcome">> 
+          ,request_pin = <<"/system_media/conf-pin">>
+          ,incorrect_pin = <<"/system_media/conf-bad-pin">>
           ,max_pin_tries = <<"shout://translate.google.com/translate_tts?tl=en&q=You+have+reached+the+maximum+number+of+entry+attempts!+Goodbye.">>
-          ,alone_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=You+are+currently+the+only+participant.">>
+          ,alone_enter = <<"/system_media/conf-alone">>
           ,single_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+is+only+one+other+participant.">>
           ,multiple_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+are+~p+other+participants.">>
           ,announce_join = <<"tone_stream://%(200,0,500,600,700)">>
           ,announce_leave = <<"tone_stream://%(500,0,300,200,100,50,25)">>
-          ,muted = <<"shout://translate.google.com/translate_tts?tl=en&q=Muted.">>
-          ,unmuted = <<"shout://translate.google.com/translate_tts?tl=en&q=Unmuted.">>          
+          ,muted = <<"/system_media/conf-muted">>
+          ,unmuted = <<"/system_media/conf-unmuted">>          
           ,deaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Silenced.">>
           ,undeaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Audiable.">>          
          }).
