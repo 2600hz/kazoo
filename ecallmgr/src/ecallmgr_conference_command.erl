@@ -53,12 +53,12 @@ get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"members">>) ->
 	true ->
             <<"list">>
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"play">>) ->
+get_fs_app(_Node, ConfName, JObj, AmqpHost, <<"play">>) ->
     case whistle_api:conference_play_req_v(JObj) of
 	false -> 
             {error, "conference play failed to execute as JObj did not validate."};
 	true ->
-	    Media = whapps_json:get_value(<<"Media-Name">>, JObj),
+            Media = <<$', (media_path(whapps_json:get_value(<<"Media-Name">>, JObj), ConfName, AmqpHost))/binary, $'>>,
             case whapps_json:get_value(<<"Member-ID">>, JObj) of
                 MemberId when is_binary(MemberId) ->
                     <<"play ", Media/binary, " ", MemberId/binary>>;
@@ -122,6 +122,26 @@ api(Node, AppName, Args) ->
     Arg = whistle_util:to_list(Args),
     format_log(info, "CONFERENCE_COMMAND(~p): FS-API -> Node: ~p Api: ~p ~p~n", [self(), Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
+
+-spec(media_path/3 :: (MediaName :: binary(), UUID :: binary(), AmqpHost :: binary()) -> list()).
+media_path(MediaName, UUID, AmqpHost) ->
+    case ecallmgr_media_registry:lookup_media(MediaName, UUID, AmqpHost) of
+        {error, _} -> 
+            MediaName;
+        Url ->
+            get_fs_playback(Url)
+    end.
+
+-spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).                                 
+get_fs_playback(Url) when byte_size(Url) >= 4 ->
+    case binary:part(Url, 0, 4) of 
+        <<"http">> ->
+            <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
+        _Else ->
+            Url
+    end;
+get_fs_playback(Url) ->
+    Url.
       
 members_response(Members, ConfName, CallId, ServerId, AmqpHost) ->
     MemberList = try
