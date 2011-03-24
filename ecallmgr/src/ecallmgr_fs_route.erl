@@ -20,7 +20,6 @@
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
 
--include("freeswitch_xml.hrl").
 -include("ecallmgr.hrl").
 
 %% lookups [ {LPid, FS_ReqID, erlang:now()} ]
