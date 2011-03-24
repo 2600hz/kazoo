@@ -16,7 +16,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [log/2, format_log/3]).
 
--include("freeswitch_xml.hrl").
 -include("ecallmgr.hrl").
 
 -record(handler_state, {fs_node :: atom()

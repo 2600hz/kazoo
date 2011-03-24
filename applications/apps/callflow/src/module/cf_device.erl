@@ -60,7 +60,7 @@ get_endpoint({struct, Props}) ->
                         ,{<<"To-User">>, whapps_json:get_value(["sip", "username"], Doc)}
                         ,{<<"To-Realm">>, whapps_json:get_value(["sip", "realm"], Doc)}
                         ,{<<"To-DID">>, whapps_json:get_value(["sip", "number"], Doc)}
-                        ,{<<"Route">>, whapps_json:get_value(["sip", "url"], Doc)}
+                        ,{<<"Route">>, whapps_json:get_value(["sip", "route"], Doc)}
                         ,{<<"Ignore-Early-Media">>, whapps_json:get_value(["media", "ignore-early-media"], Doc)}
                         ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], Doc)}
                         ,{<<"Endpoint-Progress-Timeout">>, get_value(<<"progress-timeout">>, Props, <<"6">>)}
