@@ -398,9 +398,9 @@ fill_ports(Ps, Len, {Curr, End}) ->
                                   MediaName :: binary(), To :: binary) -> ok | tuple(error, atom())).
 send_couch_stream_resp(Db, Doc, Attachment, MediaName, To) ->    
     Url = <<(couch_mgr:get_url())/binary, Db/binary, $/, Doc/binary, $/, Attachment/binary>>,
-    Prop = [{<<"Media-Name">>, MediaName}
+    Resp = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Stream-URL">>, Url}
 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?SERVER, ?APP_VSN)],
-    {ok, JSON} = whistle_api:media_resp(Prop),
-    logger:format_log(info, "MEDIA_SRV(~p): Sending ~p to ~p~n", [self(), JSON, To]),
-    amqp_util:targeted_publish(whapps_controller:get_amqp_host(), To, JSON).
+    logger:format_log(info, "MEDIA_SRV(~p): Sending ~p to ~p~n", [self(), Resp, To]),    
+    {ok, Payload} = whistle_api:media_resp(Resp),
+    amqp_util:targeted_publish(whapps_controller:get_amqp_host(), To, Payload).
