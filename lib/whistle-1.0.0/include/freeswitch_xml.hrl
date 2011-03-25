@@ -45,7 +45,7 @@
     ~s
       <extension name=\"failed_bridge\" continue=\"false\">
         <condition>
-          <action application=\"respond\" data=\"${bridge_hangup_cause}\">
+          <action application=\"respond\" data=\"${bridge_hangup_cause}\" />
         </condition>
       </extension>
     </context>
