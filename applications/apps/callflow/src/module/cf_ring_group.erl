@@ -14,11 +14,11 @@
 
 -define(APP_NAME, <<"cf_ring_group">>).
 -define(APP_VERSION, <<"0.5">>).
+-define(DEFAULT_TIMEOUT, 30).
 
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
-
--define(DEFAULT_TIMEOUT, 30).
+-import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,42 +28,23 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
+-spec(handle/2 :: (JObj :: json_object(), Call :: #cf_call{}) -> stop | continue).
+handle(JObj, #cf_call{cf_pid=CFPid}=Call) ->    
     Endpoints = lists:foldr(fun(Endpoint, Acc) ->
                                     case get_endpoint(Endpoint) of
                                         {ok, E} -> [E|Acc];
                                         _ -> Acc
                                     end
-                            end, [], whapps_json:get_value([<<"endpoints">>], Data, [])),
-    bridge_endpoints(Endpoints, Data, Call),
-    case wait_for_bridge() of
-        {_, channel_hungup} ->
+                            end, [], whapps_json:get_value([<<"endpoints">>], JObj, [])),
+    Timeout = whapps_json:get_value(<<"timeout">>, JObj, ?DEFAULT_TIMEOUT),
+    Strategy = whapps_json:get_value(<<"strategy">>, JObj, <<"simultaneous">>),
+    case b_bridge(Endpoints, Timeout, Strategy, Call) of
+        {ok, _} ->
+            wait_for_unbridge(),
             CFPid ! { stop };
         {error, _} ->
             CFPid ! { continue }
     end.   
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the bridge call command
-%% @end
-%%--------------------------------------------------------------------
--spec(bridge_endpoints/3 :: (Endpoints :: list(json_object()), Data :: json_object(), Call :: #cf_call{}) -> ok).
-bridge_endpoints(Endpoints, {struct, Props}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, Endpoints}
-               ,{<<"Continue-On-Fail">>, <<"true">>}
-               ,{<<"Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Dial-Endpoint-Method">>, get_value(<<"strategy">>, Props, <<"simultaneous">>)}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-            ],
-            format_log(info, "SENT!~n~p~n", [Command]),
-    {ok, Json} = whistle_api:bridge_req(Command),
-    send_callctrl(Json, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -77,73 +58,22 @@ get_endpoint({struct, Props}) ->
     Db = get_value(<<"database">>, Props),
     Id = get_value(<<"id">>, Props),
     case couch_mgr:open_doc(Db, Id) of
-        {ok, Doc} ->
+        {ok, JObj} ->
             Endpoint = [
-                         {<<"Invite-Format">>, whapps_json:get_value(["sip", "invite-format"], Doc)}
-                        ,{<<"To-User">>, whapps_json:get_value(["sip", "username"], Doc)}
-                        ,{<<"To-Realm">>, whapps_json:get_value(["sip", "realm"], Doc)}
-                        ,{<<"To-DID">>, whapps_json:get_value(["sip", "number"], Doc)}
-                        ,{<<"Route">>, whapps_json:get_value(["sip", "url"], Doc)}
-                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value(["media", "ignore-early-media"], Doc)}
-                        ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], Doc)}
+                         {<<"Invite-Format">>, whapps_json:get_value(["sip", "invite-format"], JObj)}
+                        ,{<<"To-User">>, whapps_json:get_value(["sip", "username"], JObj)}
+                        ,{<<"To-Realm">>, whapps_json:get_value(["sip", "realm"], JObj)}
+                        ,{<<"To-DID">>, whapps_json:get_value(["sip", "number"], JObj)}
+                        ,{<<"Route">>, whapps_json:get_value(["sip", "url"], JObj)}
+                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value(["media", "ignore-early-media"], JObj)}
+                        ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], JObj)}
                         ,{<<"Endpoint-Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
                         ,{<<"Endpoint-Progress-Timeout">>, get_value(<<"progress-timeout">>, Props, <<"6">>)}
                         ,{<<"Endpoint-Delay">>, get_value(<<"delay">>, Props)}
-                        ,{<<"Codecs">>, whapps_json:get_value(["media", "codecs"], Doc)}
+                        ,{<<"Codecs">>, whapps_json:get_value(["media", "codecs"], JObj)}
                     ],
             {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
         {error, _}=E ->
             format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Id, Db, E]),
             E
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Waits for and determines the status of the bridge command
-%% @end
-%%--------------------------------------------------------------------
--spec(wait_for_bridge/0 :: () -> {ok|error, channel_hangup}|{error, bridge_failed|timeout}).    
-wait_for_bridge() -> 
-    receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
-                    wait_for_hangup();
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    {error, channel_hungup};
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
-                    {error, bridge_failed};
-                _ ->
-                    wait_for_bridge()
-            end
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% When the bridge command is successfull this waits for the call to
-%% hangup
-%% @end
-%%--------------------------------------------------------------------
--spec(wait_for_hangup/0 :: () -> {ok, channel_hangup}).    
-wait_for_hangup() -> 
-    receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    {ok, channel_hungup};
-                _ ->
-                    wait_for_hangup()
-            end
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Sends call commands to the appropriate call control process
-%% @end
-%%--------------------------------------------------------------------
--spec(send_callctrl/2 :: (JSON :: json_object(), Call :: #cf_call{}) -> no_return()).
-send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
-    amqp_util_old:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
