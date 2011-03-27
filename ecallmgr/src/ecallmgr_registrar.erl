@@ -165,4 +165,3 @@ remove_regs(Regs) ->
 			    whistle_util:to_integer(props:get_value(<<"Expires">>, RegData)),
 			RegTstamp > TStamp
 		end, Regs).
-			       
