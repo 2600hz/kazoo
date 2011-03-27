@@ -263,11 +263,11 @@ send_cmd(Node, UUID, AppName, Args) ->
 %% take an endpoint (/sofia/foo/bar), and optionally a caller id name and number
 %% and create the dial string ([origination_caller_id_name=Name,origination_caller_id_number=Num]Endpoint)
 -spec(get_bridge_endpoint/2 :: (JObj :: json_object(), AmqpHost :: string()) -> string()).
-get_bridge_endpoint(JObj, AmqpHost) ->
-    case ecallmgr_fs_route:build_route(AmqpHost, JObj, whapps_json:get_value(<<"Invite-Format">>, JObj)) of
+get_bridge_endpoint(JObj, _AmqpHost) ->
+    case ecallmgr_fs_xml:build_route(JObj, whapps_json:get_value(<<"Invite-Format">>, JObj)) of
 	{error, Code} -> whistle_util:to_list(list_to_binary(["error/", Code]));
 	EndPoint ->
-	    CVs = ecallmgr_fs_route:get_leg_vars(JObj),
+	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
 	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))
     end.
 

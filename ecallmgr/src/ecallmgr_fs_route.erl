@@ -126,19 +126,18 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
     freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
-handle_info({fetch, dialplan, _Tag, _Key, _Value, ID, [UUID | Data]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
-    case props:get_value(<<"Event-Name">>, Data) of
+handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs, app_vsn=Vsn}=State) ->
+    case props:get_value(<<"Event-Name">>, FSData) of
 	<<"REQUEST_PARAMS">> ->
-	    Self = self(),
-	    LookupPid = spawn_link(?MODULE, lookup_route, [Node, State, ID, UUID, Self, Data]),
+	    LookupPid = spawn_link(fun() -> handle_route_req(Node, FSID, CallID, FSData, Vsn) end),
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 	    logger:format_log(info, "FS_ROUTE(~p): fetch: Id: ~p UUID: ~p Lookup: ~p Req#: ~p~n"
-		       ,[self(), ID, UUID, LookupPid, LookupsReq]),
-	    {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs]
+		       ,[self(), FSID, CallID, LookupPid, LookupsReq]),
+	    {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
 				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
 	_Other ->
 	    logger:format_log(info, "FS_ROUTE(~p): Ignoring event ~p~n", [self(), _Other]),
-	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+	    freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
 	    {noreply, State}
     end;
 
@@ -160,11 +159,6 @@ handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
 	    {ok, _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
 	    {noreply, State}
     end;
-
-handle_info({xml_response, ID, XML}, #state{node=Node}=State) ->
-    logger:format_log(info, "FS_ROUTE(~p): Received XML for ID ~p~n", [self(), ID]),
-    freeswitch:fetch_reply(Node, ID, XML),
-    {noreply, State};
 
 handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
     lists:foreach(fun({Pid, _CallID, _StartTime}) ->
@@ -222,3 +216,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(handle_route_req/5 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist(), Vsn :: binary()) -> no_return()).
+handle_route_req(Node, FSID, CallID, FSData, Vsn) ->
+    DefProp = [{<<"Msg-ID">>, FSID}
+	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
+	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
+	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
+	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+	       ,{<<"Call-ID">>, CallID}
+	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, Vsn)],
+    %% Server-ID will be over-written by the pool worker
+    RespProp = ecallmgr_amqp_pool:route_req(DefProp),
+
+    true = whistle_api:route_resp_v(RespProp),
+    {ok, Xml} = ecallmgr_fs_xml:route_resp_xml(RespProp),
+    freeswitch:fetch_reply(Node, FSID, Xml).
