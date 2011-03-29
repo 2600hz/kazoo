@@ -43,6 +43,11 @@
   <section name=\"dialplan\" description=\"Route Bridge Response\">
     <context name=\"context_2\">
     ~s
+      <extension name=\"failed_bridge\" continue=\"false\">
+        <condition>
+          <action application=\"respond\" data=\"${bridge_hangup_cause}\" />
+        </condition>
+      </extension>
     </context>
   </section>
 </document>").
