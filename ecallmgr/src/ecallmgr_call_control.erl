@@ -323,7 +323,14 @@ insert_command(State, <<"head">>, JObj) ->
 	    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj)
     end;
 insert_command(State, <<"tail">>, JObj) ->
-    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj).
+    case whapps_json:get_value(<<"Application-Name">>, JObj) of
+	<<"queue">> ->
+	    Commands = whapps_json:get_value(<<"Commands">>, JObj),
+	    JObj2 = whapps_json:set_value(<<"Commands">>, lists:reverse(Commands), JObj),
+	    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj2);
+	_ ->
+	    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj)
+    end.
 
 -spec(insert_command_into_queue/3 :: (Q :: queue(), InsertFun :: fun(), JObj :: json_object()) -> queue()).
 insert_command_into_queue(Q, InsertFun, JObj) ->
@@ -336,7 +343,7 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 				AppCmd = {struct, DefProp ++ Cmd},
 				true = whistle_api:dialplan_req_v(AppCmd),
 				format_log(info, "CONTROL.queue: insert Cmd: ~p~n", [whapps_json:get_value(<<"Application-Name">>, AppCmd)]),
-				InsertFun({struct, AppCmd}, TmpQ)
+				InsertFun(AppCmd, TmpQ)
 			end, Q, whapps_json:get_value(<<"Commands">>, JObj));
 	_AppName ->
 	    true = whistle_api:dialplan_req_v(JObj),
