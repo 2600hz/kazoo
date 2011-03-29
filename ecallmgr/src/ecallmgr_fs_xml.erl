@@ -12,6 +12,8 @@
 
 -include("ecallmgr.hrl").
 
+route_resp_xml({struct, RespProp}) ->
+    route_resp_xml(RespProp);
 route_resp_xml(RespProp) ->
     route_resp_xml(props:get_value(<<"Method">>, RespProp), props:get_value(<<"Routes">>, RespProp), RespProp).
 

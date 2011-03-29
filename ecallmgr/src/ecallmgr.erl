@@ -34,7 +34,9 @@ ensure_started(App) ->
 	ok ->
 	    ok;
 	{error, {already_started, App}} ->
-	    ok
+	    ok;
+	E -> io:format("ERROR: ~p~n", [E]),
+	     ok
     end.
 
 add_fs_node(Node) ->

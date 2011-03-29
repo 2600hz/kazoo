@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/3]).
+-export([start_link/1, start_link/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -19,13 +19,13 @@
 
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
+-define(VSN, <<"0.5.0">>).
 
 -include("ecallmgr.hrl").
 
 %% lookups [ {LPid, FS_ReqID, erlang:now()} ]
 -record(state, {
 	  node = undefined :: atom()
-	  ,app_vsn = <<"0.5.0">> :: binary()
 	  ,stats = #handler_stats{} :: tuple()
 	  ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 	 }).
@@ -44,7 +44,7 @@
 start_link(Node) ->
     gen_server:start_link(?MODULE, [Node], []).
 
-start_link(Node, _Options, _Host) ->
+start_link(Node, _Options) ->
     gen_server:start_link(?MODULE, [Node], []).
 
 %%%===================================================================
@@ -63,6 +63,7 @@ start_link(Node, _Options, _Host) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node]) ->
+    process_flag(trap_exit, true),
     Stats = #handler_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats}, 0}.
 
@@ -113,23 +114,25 @@ handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! Type,
     receive
 	ok ->
+	    logger:format_log(info, "FS_ROUTE(~p): Bound ~p to ~p~n", [self(), Type, Node]),
 	    {noreply, State};
 	{error, Reason} ->
 	    logger:format_log(info, "FS_ROUTE(~p): Failed to bind: ~p~n", [self(), Reason]),
 	    {stop, Reason, State}
     after ?FS_TIMEOUT ->
+	    logger:format_log(info, "FS_ROUTE(~p): Failed to bind: TIMEOUT~n", [self()]),
 	    {stop, timeout, State}
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     logger:format_log(info, "FS_ROUTE(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~nD: ~p~n", [self(), _Section, _Something, _Key, _Value, ID, _Data]),
-    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
-handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs, app_vsn=Vsn}=State) ->
+handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     case props:get_value(<<"Event-Name">>, FSData) of
 	<<"REQUEST_PARAMS">> ->
-	    LookupPid = spawn_link(fun() -> handle_route_req(Node, FSID, CallID, FSData, Vsn) end),
+	    LookupPid = spawn_link(fun() -> handle_route_req(Node, FSID, CallID, FSData) end),
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 	    logger:format_log(info, "FS_ROUTE(~p): fetch: Id: ~p UUID: ~p Lookup: ~p Req#: ~p~n"
 		       ,[self(), FSID, CallID, LookupPid, LookupsReq]),
@@ -137,7 +140,7 @@ handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #sta
 				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
 	_Other ->
 	    logger:format_log(info, "FS_ROUTE(~p): Ignoring event ~p~n", [self(), _Other]),
-	    freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
+	    _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
 	    {noreply, State}
     end;
 
@@ -216,8 +219,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(handle_route_req/5 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist(), Vsn :: binary()) -> no_return()).
-handle_route_req(Node, FSID, CallID, FSData, Vsn) ->
+-spec(handle_route_req/4 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist()) -> no_return()).
+handle_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
 	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
 	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
@@ -225,10 +228,33 @@ handle_route_req(Node, FSID, CallID, FSData, Vsn) ->
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, Vsn)],
+	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, ?VSN)],
     %% Server-ID will be over-written by the pool worker
-    RespProp = ecallmgr_amqp_pool:route_req(DefProp),
+    {ok, RespProp} = ecallmgr_amqp_pool:route_req(DefProp),
 
     true = whistle_api:route_resp_v(RespProp),
+
+    spawn(fun() -> start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp)) end),
+
     {ok, Xml} = ecallmgr_fs_xml:route_resp_xml(RespProp),
     freeswitch:fetch_reply(Node, FSID, Xml).
+
+start_control_and_events(Node, CallID, SendTo) ->
+    CtlQ = amqp_util:new_callctl_queue(<<>>),
+    amqp_util:bind_q_to_callctl(CtlQ),
+    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, CtlQ),
+    {ok, _} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
+
+    CtlProp = [{<<"Msg-ID">>, CallID}
+	       ,{<<"Call-ID">>, CallID}
+	       ,{<<"Control-Queue">>, CtlQ}
+	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, <<"ecallmgr.route">>, ?VSN)],
+    send_control_queue(SendTo, CtlProp).
+
+send_control_queue(SendTo, CtlProp) ->
+    case whistle_api:route_win(CtlProp) of
+	{ok, JSON} ->
+	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
+	{error, _Msg} ->
+	    logger:format_log(error, "L/U.route(~p): Sending Ctl to AppQ(~p) failed: ~p~n", [self(), SendTo, _Msg])
+    end.

@@ -142,24 +142,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(lookup_reg/4 :: (Realm :: binary(), User :: binary(), Fields :: list(binary()), State :: #state{}) -> proplist()).
 lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
+    FilterFun = fun({K, _}=V, Acc) ->
+			case lists:member(K, Fields) of
+			    true -> [V | Acc];
+			    false -> Acc
+			end
+		end,
     case dict:find({Realm, User}, CRegs) of
 	error ->
 	    RegProp = [{<<"Username">>, User}
 		       ,{<<"Realm">>, Realm}
 		       ,{<<"Fields">>, []}
 		       | whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
-	    {struct, RegResp} = ecallmgr_amqp_pool:reg_query(RegProp, 1500),
+	    {ok, {struct, RegResp}} = ecallmgr_amqp_pool:reg_query(RegProp, 2500),
 	    true = whistle_api:reg_query_resp_v(RegResp),
-	    
+
 	    ?SERVER ! {cache_registrations, Realm, User, RegResp},
-	    lists:foldr(fun({K, _}=V, Acc) -> case lists:member(K, Fields) of true -> [V | Acc]; false -> Acc end end, [], props:get_value(<<"Fields">>, RegResp, []));
+	    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
+
+	    logger:format_log(info, "ECALL_REG(~p): Fields: ~p~n", [self(), RegFields]),
+	    lists:foldr(FilterFun, [], RegFields);
 	{ok, RegResp} ->
-	    lists:foldr(fun({K, _}=V, Acc) -> case lists:member(K, Fields) of true -> [V | Acc]; false -> Acc end end, [], props:get_value(<<"Fields">>, RegResp, []))
+	    logger:format_log(info, "ECALL_REG(~p): Has fields cached~n", [self()]),
+	    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
+	    lists:foldr(FilterFun, [], RegFields)
     end.
 
 -spec(remove_regs/1 :: (Regs :: dict()) -> dict()).
 remove_regs(Regs) ->
-    TStamp = calendar:datetime_to_gregorian_seconds(erlang:datetime()),
+    TStamp = whistle_util:current_tstamp(),
     dict:filter(fun(_, RegData) ->
 			RegTstamp = whistle_util:to_integer(props:get_value(<<"Timestamp">>, RegData)) +
 			    whistle_util:to_integer(props:get_value(<<"Expires">>, RegData)),

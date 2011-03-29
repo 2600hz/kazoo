@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_media/3, lookup_media/4,
+-export([start_link/0, lookup_media/2, lookup_media/3,
          register_local_media/2, is_local/2]).
 
 %% gen_server callbacks
@@ -45,12 +45,12 @@ start_link() ->
 register_local_media(MediaName, CallId) ->
     gen_server:call(?MODULE, {register_local_media, MediaName, CallId}).
 
-lookup_media(MediaName, CallId, AmqpHost) ->
-    request_media(MediaName, CallId, AmqpHost).
+lookup_media(MediaName, CallId) ->
+    request_media(MediaName, CallId).
 
-lookup_media(MediaName, Type, CallId, AmqpHost) ->
-    request_media(MediaName, Type, CallId, AmqpHost).
-                       
+lookup_media(MediaName, Type, CallId) ->
+    request_media(MediaName, Type, CallId).
+
 is_local(MediaName, CallId) ->
     gen_server:call(?MODULE, {is_local, MediaName, CallId}).
 
@@ -186,46 +186,31 @@ generate_local_path(MediaName) ->
     M = whistle_util:to_binary(MediaName),
     <<?LOCAL_MEDIA_PATH, M/binary>>.
 
-request_media(MediaName, CallId, AmqpHost) ->
-    request_media(MediaName, <<"new">>, CallId, AmqpHost).
+request_media(MediaName, CallId) ->
+    request_media(MediaName, <<"new">>, CallId).
 
-request_media(MediaName, Type, CallId, AmqpHost) ->
+request_media(MediaName, Type, CallId) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}) of
         {ok, Path} ->
             Path;
         {error, _} ->
-            lookup_remote(MediaName, Type, AmqpHost)
+            lookup_remote(MediaName, Type)
     end.
 
-lookup_remote(MediaName, StreamType, AmqpHost) ->
-    Q = amqp_util_old:new_queue(AmqpHost, <<>>),
-    amqp_util_old:bind_q_to_targeted(AmqpHost, Q, Q),
-    amqp_util_old:basic_consume(AmqpHost, Q),
+lookup_remote(MediaName, StreamType) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, StreamType}
-               | whistle_api:default_headers(Q, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:media_req(Request),
-    amqp_util_old:callevt_publish(AmqpHost, Payload, media),
-    wait_for_response(MediaName).
 
-wait_for_response(MediaName) ->
-    receive       
-       {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->            
-            try
-                Msg = mochijson2:decode(binary_to_list(Payload)),
-                <<"media_resp">> = whapps_json:get_value(<<"Event-Name">>, Msg),
-                <<"media">> = whapps_json:get_value(<<"Event-Category">>, Msg),
-                MediaName = whapps_json:get_value(<<"Media-Name">>, Msg),
-                whapps_json:get_value(<<"Stream-URL">>, Msg, <<>>)
-            catch
-                _:_ ->
-                    wait_for_response(MediaName)
-            end
-    after
-        1000 ->
-            {error, timeout}
+    try
+	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
+	true = whistle_api:media_resp_v(MediaResp),
+	MediaName = whapps_json:get_value(<<"Media-Name">>, MediaResp),
+
+	whapps_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)
+    catch
+	_:B ->
+	    {error, B}
     end.
-
-                           

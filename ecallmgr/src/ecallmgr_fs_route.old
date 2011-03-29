@@ -140,7 +140,7 @@ lookup_route(Node, #handler_state{amqp_host=Host, app_vsn=Vsn}=HState, ID, UUID,
     FetchPid ! {lookup_finished, self(), EndResult}.
 
 send_request(Host, JSON) ->
-    amqp_util_old:callmgr_publish(Host, JSON, <<"application/json">>, ?KEY_ROUTE_REQ).
+    amqp_util:callmgr_publish(Host, JSON, <<"application/json">>, ?KEY_ROUTE_REQ).
 
 recv_response(ID) ->
     receive
@@ -167,16 +167,16 @@ recv_response(ID) ->
 
 -spec(bind_q/1 :: (AmqpHost :: string()) -> Queue :: binary()).
 bind_q(AmqpHost) ->
-    Queue = amqp_util_old:new_targeted_queue(AmqpHost, <<>>),
-    amqp_util_old:bind_q_to_targeted(AmqpHost, Queue),
-    amqp_util_old:basic_consume(AmqpHost, Queue),
+    Queue = amqp_util:new_targeted_queue(AmqpHost, <<>>),
+    amqp_util:bind_q_to_targeted(AmqpHost, Queue),
+    amqp_util:basic_consume(AmqpHost, Queue),
     Queue.
 
 %% creates the event and control queues for the call, spins up the event handler
 %% to pump messages to the queue, and returns the control queue
 bind_channel_qs(Host, UUID, Node) ->
-    CtlQueue = amqp_util_old:new_callctl_queue(Host, <<>>),
-    amqp_util_old:bind_q_to_callctl(Host, CtlQueue),
+    CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
+    amqp_util:bind_q_to_callctl(Host, CtlQueue),
 
     {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
     {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
@@ -188,7 +188,7 @@ send_control_queue(_Host, _Q, undefined) ->
 send_control_queue(Host, CtlProp, AppQ) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->
-	    amqp_util_old:targeted_publish(Host, AppQ, JSON, <<"application/json">>),
+	    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>),
 	    %% execute the publish command
 	    format_log(info, "L/U.route(~p): Sending AppQ(~p) the control Q~n", [self(), AppQ]),
 	    success;
@@ -276,14 +276,14 @@ format_did(DID, <<"1npan">>) ->
 lookup_reg(AmqpHost, Domain, User) ->
     Self = self(),
     spawn(fun() ->
-		  Q = amqp_util_old:new_targeted_queue(AmqpHost, <<>>),
-		  amqp_util_old:bind_q_to_targeted(AmqpHost, Q),
-		  amqp_util_old:basic_consume(AmqpHost, Q),
+		  Q = amqp_util:new_targeted_queue(AmqpHost, <<>>),
+		  amqp_util:bind_q_to_targeted(AmqpHost, Q),
+		  amqp_util:basic_consume(AmqpHost, Q),
 		  ReqProp = [{<<"Username">>, User}, {<<"Realm">>, Domain}, {<<"Fields">>, [<<"Contact">>]}
 			     | whistle_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
 		  {ok, JSON} = whistle_api:reg_query(ReqProp),
 		  format_log(info, "REG_QUERY: ~s~n", [JSON]),
-		  amqp_util_old:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
+		  amqp_util:broadcast_publish(AmqpHost, JSON, <<"application/json">>),
 		  C = receive_reg_query_resp(User),
 		  Self ! {contact, C}
 	  end),

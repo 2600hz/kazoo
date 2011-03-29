@@ -9,27 +9,26 @@
 -module(ecallmgr_fs_auth).
 
 %% API
--export([start_handler/3]).
--export([fetch_init/2, fetch_user/2, lookup_user/5]).
+-export([start_link/2]).
+-export([fetch_init/2, fetch_user/2, lookup_user/4]).
 
 -import(props, [get_value/2, get_value/3]).
--import(logger, [log/2, format_log/3]).
+-import(logger, [format_log/3]).
 
 -include("ecallmgr.hrl").
 
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
-		       ,amqp_host = "" :: string()
 		       ,app_vsn = [] :: binary()
 		       ,stats = #handler_stats{} :: tuple()
 		       ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
 		       }).
 
--spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
-start_handler(Node, _Options, AmqpHost) ->
+-spec(start_link/2 :: (Node :: atom(), Options :: proplist()) -> pid() | {error, term()}).
+start_link(Node, _Options) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     Stats = #handler_stats{started = erlang:now()},
-    HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn), stats=Stats},
+    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), stats=Stats},
     case freeswitch:start_fetch_handler(Node, directory, ?MODULE, fetch_init, HState) of
 	timeout -> {error, timeout};
 	{error, _Err}=E -> E;
@@ -43,13 +42,13 @@ fetch_init(Node, State) ->
     fetch_user(Node, State).
 
 -spec(fetch_user/2 :: (Node :: atom(), State :: tuple()) -> no_return()).
-fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State) ->
+fetch_user(Node, #handler_state{lookups=LUs, stats=Stats}=State) ->
     receive
 	{fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]} ->
 	    case get_value(<<"Event-Name">>, Data) of
 		<<"REQUEST_PARAMS">> ->
 		    Self = self(),
-		    LookupPid = spawn_link(?MODULE, lookup_user, [State, ID, Self, Host, Data]),
+		    LookupPid = spawn_link(?MODULE, lookup_user, [State, ID, Self, Data]),
 		    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 		    format_log(info, "FETCH_USER(~p): fetch directory: Id: ~p Lookup ~p (Number ~p)~n", [self(), ID, LookupPid, LookupsReq]),
 		    ?MODULE:fetch_user(Node, State#handler_state{lookups=[{LookupPid, ID, erlang:now()} | LUs]
@@ -85,7 +84,6 @@ fetch_user(Node, #handler_state{lookups=LUs, stats=Stats, amqp_host=Host}=State)
 	{diagnostics, Pid} ->
 	    ActiveLUs = lists:map(fun({_LuPid, ID, Started}) -> [{fs_auth_id, ID}, {started, Started}] end, LUs),
 	    Resp = [{active_lookups, ActiveLUs}
-		    ,{amqp_host, Host}
 		    | ecallmgr_diagnostics:get_diagnostics(Stats)
 		   ],
 	    Pid ! Resp,
@@ -112,8 +110,8 @@ close_lookup(LookupPid, Node, #handler_state{lookups=LUs, stats=Stats}=State, En
 	    ?MODULE:fetch_user(Node, State)
     end.
 
-lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
-    Q = bind_q(AmqpHost),
+lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, Data) ->
+    Q = bind_q(),
 
     %% build req for rabbit
     Prop = [{<<"Msg-ID">>, ID}
@@ -125,14 +123,14 @@ lookup_user(#handler_state{app_vsn=Vsn}, ID, FetchPid, AmqpHost, Data) ->
 	    | whistle_api:default_headers(Q, <<"directory">>, <<"auth_req">>, <<"ecallmgr.auth">>, Vsn)],
     EndResult = case whistle_api:auth_req(Prop) of
 		    {ok, JSON} ->
-			format_log(info, "L/U.user(~p): Sending JSON to Host(~p)~n~s~n", [self(), AmqpHost, JSON]),
-			send_request(AmqpHost, JSON),
+			format_log(info, "L/U.user(~p): Sending JSON: ~s~n", [self(), JSON]),
+			send_request(JSON),
 			Result = handle_response(ID, Data, FetchPid),
-			amqp_util_old:queue_delete(AmqpHost, Q),
+			amqp_util:queue_delete(Q),
 			Result;
 		    {error, _Msg} ->
 			format_log(error, "L/U.user(~p): Auth_Req API error ~s~n", [self(), _Msg]),
-			amqp_util_old:queue_delete(AmqpHost, Q),
+			amqp_util:queue_delete(Q),
 			failed
 		end,
     FetchPid ! {lookup_finished, self(), EndResult}.
@@ -167,15 +165,15 @@ recv_response(ID) ->
 	    timeout
     end.
 
--spec(bind_q/1 :: (AmqpHost :: binary()) -> Queue :: binary()).
-bind_q(AmqpHost) ->
-    Queue = amqp_util_old:new_targeted_queue(AmqpHost, <<>>),
-    amqp_util_old:bind_q_to_targeted(AmqpHost, Queue),
-    amqp_util_old:basic_consume(AmqpHost, Queue),
+-spec(bind_q/0 :: () -> Queue :: binary()).
+bind_q() ->
+    Queue = amqp_util:new_targeted_queue(<<>>),
+    amqp_util:bind_q_to_targeted(Queue),
+    amqp_util:basic_consume(Queue),
     Queue.
 
-send_request(Host, JSON) ->
-    amqp_util_old:callmgr_publish(Host, JSON, <<"application/json">>, ?KEY_AUTH_REQ).
+send_request(JSON) ->
+    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTH_REQ).
 
 handle_response(ID, Data, FetchPid) ->
     T1 = erlang:now(),
