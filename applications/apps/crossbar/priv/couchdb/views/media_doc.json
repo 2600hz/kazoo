@@ -1,7 +1,7 @@
 {
-     "_id":"_design/media_doc"
+    "_id":"_design/media_doc"
     ,"language":"javascript"
-    ,"views":{
+    ,"views": {
         "listing_by_id":{
 	    "map":"function(doc) { if ( doc.pvt_type != 'media' ) return; emit(doc._id, {'id': doc._id, 'display_name': doc.display_name, 'media_type': doc.media_type}); }"
         }
@@ -9,7 +9,7 @@
 	    "map":"function(doc) { if ( doc.pvt_type != 'media' ) return; emit(doc.display_name, {'id': doc._id, 'display_name': doc.display_name, 'media_type': doc.media_type}); }"
  	}
     }
-    ,"filters":{
-       "export":"function(doc, req) { return ( doc.pvt_type == 'media' ); }"
+    ,"filters": {
+        "export":"function(doc, req) { return ( doc.pvt_type == 'media' ); }"
     }
 }

@@ -178,7 +178,7 @@ handle_info ( {_, #amqp_msg{props=Proplist, payload=Payload}}, #state{flows=Flow
             amqp_h=State#state.amqp_host,
             bdst_q=State#state.callmgr_q,
             ctrl_q=CtrlQ,
-            route_request=ReqProp
+            route_request={struct, ReqProp}
          },
          spawn(fun() -> cf_exe:start(Call, Flow) end);
       <<"route_req">> ->

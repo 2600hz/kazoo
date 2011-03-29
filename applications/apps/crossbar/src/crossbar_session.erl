@@ -24,6 +24,7 @@
 
 -define(SERVER, ?MODULE).
 -define(MAX_AGE, 1800). % 30 minutes
+-define(VIEW_FILE, "views/sessions.json").
 -define(COOKIE_NAME, "crossbar-session").
 -define(SESSION_DB, "crossbar%2Fsessions").
 -define(SESSION_EXPIRED, {"session", "expired_time"}).
@@ -117,7 +118,7 @@ delete(#session{}=S, K) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    couch_mgr:load_doc_from_file(?SESSION_DB, crossbar, "sessions.json"),
+    couch_mgr:load_doc_from_file(?SESSION_DB, crossbar, ?VIEW_FILE),
     timer:send_interval(60000, ?MODULE, clean_expired),
     {ok, #state{}}.
 

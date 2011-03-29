@@ -49,22 +49,22 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %% whistle_api endpoint json
 %% @end
 %%--------------------------------------------------------------------
--spec(get_endpoint/1 :: (Data :: json_object()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(get_endpoint/1 :: (JObj :: json_object()) -> tuple(ok, json_object()) | tuple(error, atom())).
 get_endpoint({struct, Props}) ->
     Db = get_value(<<"database">>, Props),
     Id = get_value(<<"id">>, Props),
     case couch_mgr:open_doc(Db, Id) of
-        {ok, Doc} ->
+        {ok, JObj} ->
             Endpoint = [
-                         {<<"Invite-Format">>, whapps_json:get_value(["sip", "invite-format"], Doc)}
-                        ,{<<"To-User">>, whapps_json:get_value(["sip", "username"], Doc)}
-                        ,{<<"To-Realm">>, whapps_json:get_value(["sip", "realm"], Doc)}
-                        ,{<<"To-DID">>, whapps_json:get_value(["sip", "number"], Doc)}
-                        ,{<<"Route">>, whapps_json:get_value(["sip", "route"], Doc)}
-                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value(["media", "ignore-early-media"], Doc)}
-                        ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], Doc)}
+                         {<<"Invite-Format">>, whapps_json:get_value(["sip", "invite-format"], JObj)}
+                        ,{<<"To-User">>, whapps_json:get_value(["sip", "username"], JObj)}
+                        ,{<<"To-Realm">>, whapps_json:get_value(["sip", "realm"], JObj)}
+                        ,{<<"To-DID">>, whapps_json:get_value(["sip", "number"], JObj)}
+                        ,{<<"Route">>, whapps_json:get_value(["sip", "route"], JObj)}
+                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value(["media", "ignore-early-media"], JObj)}
+                        ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], JObj)}
                         ,{<<"Endpoint-Progress-Timeout">>, get_value(<<"progress-timeout">>, Props, <<"6">>)}
-                        ,{<<"Codecs">>, whapps_json:get_value(["media", "codecs"], Doc)}
+                        ,{<<"Codecs">>, whapps_json:get_value(["media", "codecs"], JObj)}
                     ],
             {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
         {error, _}=E ->

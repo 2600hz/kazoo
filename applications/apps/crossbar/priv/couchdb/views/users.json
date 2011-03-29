@@ -1,0 +1,14 @@
+{
+    "_id": "_design/users"
+    ,"views": {
+        "listing_by_id": {
+            "map": "function(doc) { if ( doc.pvt_type != 'user') return; emit(doc._id, {'id': doc._id, 'first_name': doc.base.first_name, 'last_name': doc.base.last_name}); }"
+        }
+        ,"listing_by_name": {
+            "map": "function(doc) { if ( doc.pvt_type != 'user') return; emit([doc.base.first_name, doc.base.last_name],  {'id': doc._id, 'first_name': doc.base.first_name, 'last_name': doc.base.last_name}); }"
+        }       
+    }
+    ,"filters": {
+        "export":"function(doc, req) { return ( doc.pvt_type == 'user' ); }"
+    }
+}
