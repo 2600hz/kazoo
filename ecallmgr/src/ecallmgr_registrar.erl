@@ -62,7 +62,7 @@ lookup(Realm, User, Fields) ->
 %%--------------------------------------------------------------------
 init([]) ->
     Ref = ?NEW_REF,
-    {ok, #state{timer_ref=Ref}}.
+    {ok, #state{timer_ref=Ref, cached_registrations=dict:new()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,8 +109,12 @@ handle_info({timeout, Ref, _}, #state{cached_registrations=Regs, timer_ref=Ref}=
     NewRef = ?NEW_REF, % clean out every 60 seconds
     {noreply, State#state{cached_registrations=remove_regs(Regs), timer_ref=NewRef}};
 
-handle_info({cache_registrations, Realm, User, RegResp}, #state{cached_registrations=Regs}=State) ->
-    {noreply, State#state{cached_registrations=dict:store({Realm, User}, RegResp, Regs)}};
+handle_info({cache_registrations, Realm, User, RegFields}, #state{cached_registrations=Regs}=State) ->
+    Regs1 = dict:store({Realm, User}
+		       ,[ {<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
+			 | lists:keydelete(<<"Reg-Server-Timestamp">>, 1, RegFields)]
+		       ,Regs),
+    {noreply, State#state{cached_registrations=Regs1}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -163,11 +167,8 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 	    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
 	    ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
-	    logger:format_log(info, "ECALL_REG(~p): Fields: ~p~n", [self(), RegFields]),
 	    lists:foldr(FilterFun, [], RegFields);
-	{ok, RegResp} ->
-	    logger:format_log(info, "ECALL_REG(~p): Has fields cached~n", [self()]),
-	    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
+	{ok, RegFields} ->
 	    lists:foldr(FilterFun, [], RegFields)
     end.
 
@@ -175,8 +176,7 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 remove_regs(Regs) ->
     TStamp = whistle_util:current_tstamp(),
     dict:filter(fun(_, RegData) ->
-			logger:format_log(info, "~p~n", [RegData]),
-			RegTstamp = whistle_util:to_integer(props:get_value(<<"Event-Timestamp">>, RegData)) +
+			RegTstamp = whistle_util:to_integer(props:get_value(<<"Reg-Server-Timestamp">>, RegData)) +
 			    whistle_util:to_integer(props:get_value(<<"Expires">>, RegData)),
 			RegTstamp > TStamp
 		end, Regs).
