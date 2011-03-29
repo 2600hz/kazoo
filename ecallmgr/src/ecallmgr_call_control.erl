@@ -81,8 +81,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Node, UUID, Amqp) ->
-    gen_server:start_link(?MODULE, [Node, UUID, Amqp], []).
+start_link(Node, UUID, CtlQ) ->
+    gen_server:start_link(?MODULE, [Node, UUID, CtlQ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -356,7 +356,6 @@ post_hangup_commands(CmdQ) ->
 			 lists:member(whapps_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
 		 end, queue:to_list(CmdQ)).
 
-
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     %% hmm any other ideas regarding noop? -Karl
     AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),    
@@ -368,4 +367,3 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
                                          >>, latin1),
     format_log(info, "RUNNING ~p", [Mod]),
     Mod:exec_cmd(Node, UUID, Cmd).
-    

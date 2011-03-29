@@ -109,6 +109,9 @@ handle_info({timeout, Ref, _}, #state{cached_registrations=Regs, timer_ref=Ref}=
     NewRef = ?NEW_REF, % clean out every 60 seconds
     {noreply, State#state{cached_registrations=remove_regs(Regs), timer_ref=NewRef}};
 
+handle_info({cache_registrations, Realm, User, RegResp}, #state{cached_registrations=Regs}=State) ->
+    {noreply, State#state{cached_registrations=dict:store({Realm, User}, RegResp, Regs)}};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -157,8 +160,8 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 	    {ok, {struct, RegResp}} = ecallmgr_amqp_pool:reg_query(RegProp, 2500),
 	    true = whistle_api:reg_query_resp_v(RegResp),
 
-	    ?SERVER ! {cache_registrations, Realm, User, RegResp},
 	    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
+	    ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
 	    logger:format_log(info, "ECALL_REG(~p): Fields: ~p~n", [self(), RegFields]),
 	    lists:foldr(FilterFun, [], RegFields);
@@ -172,7 +175,8 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 remove_regs(Regs) ->
     TStamp = whistle_util:current_tstamp(),
     dict:filter(fun(_, RegData) ->
-			RegTstamp = whistle_util:to_integer(props:get_value(<<"Timestamp">>, RegData)) +
+			logger:format_log(info, "~p~n", [RegData]),
+			RegTstamp = whistle_util:to_integer(props:get_value(<<"Event-Timestamp">>, RegData)) +
 			    whistle_util:to_integer(props:get_value(<<"Expires">>, RegData)),
 			RegTstamp > TStamp
 		end, Regs).

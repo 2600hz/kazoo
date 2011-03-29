@@ -8,9 +8,31 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, auth_resp_xml/1]).
 
 -include("ecallmgr.hrl").
+
+auth_resp_xml({struct, RespProp}) ->
+    auth_resp_xml(RespProp);
+auth_resp_xml(RespProp) ->
+    auth_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), RespProp).
+
+auth_resp_xml(<<"password">>, Prop) ->
+    User = props:get_value(<<"Auth-User">>, Prop),
+    Domain = props:get_value(<<"Auth-Domain">>, Prop),
+    Pass = props:get_value(<<"Auth-Password">>, Prop),
+    ChannelParams = get_channel_params(Prop),
+    {ok, lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Domain, User, Pass, ChannelParams]))};
+auth_resp_xml(<<"a1-hash">>, Prop) ->
+    User = props:get_value(<<"Auth-User">>, Prop),
+    Domain = props:get_value(<<"Auth-Domain">>, Prop),
+    Hash = props:get_value(<<"Auth-Password">>, Prop),
+    ChannelParams = get_channel_params(Prop),
+    {ok, lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams]))};
+auth_resp_xml(<<"ip">>, _Prop) ->
+    {ok, ?EMPTYRESPONSE};
+auth_resp_xml(_, _) ->
+    {ok, ?EMPTYRESPONSE}.
 
 route_resp_xml({struct, RespProp}) ->
     route_resp_xml(RespProp);
@@ -154,3 +176,20 @@ get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
 get_channel_vars({_K, _V}, Vars) ->
     %logger:format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
+
+get_channel_params(Prop) ->
+    CV0 = case props:get_value(<<"Tenant-ID">>, Prop) of
+	      undefined -> [];
+	      TID -> [io_lib:format(?REGISTER_CHANNEL_PARAM
+				    ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID])]
+	  end,
+    CV1 = case props:get_value(<<"Access-Group">>, Prop) of
+    	      undefined -> CV0;
+	      AG -> [io_lib:format(?REGISTER_CHANNEL_PARAM
+				   ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG]) | CV0]
+	  end,
+    {struct, Custom} = props:get_value(<<"Custom-Channel-Vars">>, Prop, {struct, []}),
+    lists:foldl(fun({K,V}, CV) ->
+			[io_lib:format(?REGISTER_CHANNEL_PARAM
+				       ,[list_to_binary([?CHANNEL_VAR_PREFIX, K]), V]) | CV]
+		end, CV1, Custom).
