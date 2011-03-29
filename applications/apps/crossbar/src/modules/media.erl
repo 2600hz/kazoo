@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
--define(VIEW_FILE, <<"media_doc.json">>).
+-define(VIEW_FILE, <<"views/media_doc.json">>).
 -define(AGG_DB, <<"media_files">>).
 -define(AGG_FILTER, <<"media_doc/export">>).
 
