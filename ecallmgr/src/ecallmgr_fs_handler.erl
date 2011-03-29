@@ -232,7 +232,7 @@ handle_call({diagnostics}, _From, #state{fs_nodes=Nodes}=State) ->
 	    ,{known_fs_nodes, KnownNodes}
 	    ,{handler_diagnostics, HandlerD}
 	    ,{recorded, erlang:now()}
-	    ,{amqp_host, ampq_manager:get_host()}
+	    ,{amqp_host, amqp_manager:get_host()}
 	   ],
     {reply, Resp, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
