@@ -18,7 +18,7 @@
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 
--export([new_targeted_queue/1, new_callevt_queue/1, new_callctl_queue/1, new_broadcast_queue/1, new_callmgr_queue/1]).
+-export([new_targeted_queue/0, new_targeted_queue/1, new_callevt_queue/1, new_callctl_queue/1, new_broadcast_queue/1, new_callmgr_queue/1]).
 -export([delete_callevt_queue/1, delete_callctl_queue/1, delete_callmgr_queue/1]).
 
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
@@ -126,6 +126,9 @@ new_exchange(Exchange, Type, _Options) ->
      },
     #'exchange.declare_ok'{} = amqp_manager:misc_req(ED).
 
+new_targeted_queue() ->
+    new_queue(<<>>, [{nowait, false}]).
+
 new_targeted_queue(<<>>) ->
     new_queue(<<>>, [{nowait, false}]);
 new_targeted_queue(QueueName) ->
@@ -163,7 +166,7 @@ new_queue(Queue, Options) ->
       queue = Queue
       ,passive = get_value(passive, Options, false)
       ,durable = get_value(durable, Options, false)
-      ,exclusive = get_value(exclusive, Options, true)
+      ,exclusive = get_value(exclusive, Options, false)
       ,auto_delete = get_value(auto_delete, Options, true)
       ,nowait = get_value(nowait, Options, false)
       ,arguments = get_value(arguments, Options, [])
