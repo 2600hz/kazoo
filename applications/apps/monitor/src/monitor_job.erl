@@ -238,12 +238,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 create_job_q(AHost) ->
-    amqp_util_old:targeted_exchange(AHost),
-    Q = amqp_util_old:new_monitor_queue(AHost),
+    amqp_util:targeted_exchange(AHost),
+    Q = amqp_util:new_monitor_queue(AHost),
     %% Bind the queue to the targeted exchange
-    amqp_util_old:bind_q_to_targeted(AHost, Q),
+    amqp_util:bind_q_to_targeted(AHost, Q),
     %% Register a consumer to listen to the queue
-    amqp_util_old:basic_consume(AHost, Q),
+    amqp_util:basic_consume(AHost, Q),
     {ok, Q}.
 
 %%--------------------------------------------------------------------
@@ -279,7 +279,7 @@ run_job(#state{amqp_host = AHost, tasks = Tasks, job_id = Job_ID, iteration = It
     Resp        = wait_for_tasks(Started, Headers),
     %% Convert Resp to JSON
     %% Send JSON
-    amqp_util_old:queue_delete(AHost, Job_Q),
+    amqp_util:queue_delete(AHost, Job_Q),
     {ok, FileId} = file:open("/tmp/" ++ "monitor_task_" ++ binary_to_list(Job_ID) ++ ".txt", [append]),
     io:fwrite(FileId, "~s~n", [mochijson2:encode({struct, Resp})]),
     file:close(FileId).
@@ -363,4 +363,4 @@ create_req(Task, Job_Q, Task_ID, Job_ID, Iteration) ->
 %% @end
 %%--------------------------------------------------------------------
 send_req(AHost, JSON, RoutingKey) ->
-    amqp_util_old:monitor_publish(AHost, JSON, <<"application/json">>, RoutingKey).
+    amqp_util:monitor_publish(AHost, JSON, <<"application/json">>, RoutingKey).

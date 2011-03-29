@@ -141,13 +141,13 @@ get_amqp_queue(AmqpHost, CallID) ->
     get_amqp_queue(AmqpHost, CallID, <<>>).
 
 get_amqp_queue(AmqpHost, CallID, Q) ->
-    EvtQ = amqp_util_old:new_callevt_queue(AmqpHost, <<>>),
+    EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
     format_log(info, "TS_CLEANUP(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
 
-    amqp_util_old:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
-    amqp_util_old:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
-    amqp_util_old:bind_q_to_targeted(AmqpHost, EvtQ),
+    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
+    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
+    amqp_util:bind_q_to_targeted(AmqpHost, EvtQ),
 
-    amqp_util_old:basic_consume(AmqpHost, EvtQ),
-    amqp_util_old:delete_queue(AmqpHost, Q),
+    amqp_util:basic_consume(AmqpHost, EvtQ),
+    amqp_util:delete_queue(AmqpHost, Q),
     EvtQ.

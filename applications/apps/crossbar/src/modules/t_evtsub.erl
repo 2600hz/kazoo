@@ -107,4 +107,4 @@ publish_auth_req() ->
 	    ,44,[34,<<"Msg-ID">>,34],58,[34,<<"id">>,34],44,[34,<<"App-Version">>,34],58,[34,<<"vsn">>,34],44,[34,<<"App-Name">>,34],58,[34,<<"app">>,34]
 	    ,44,[34,<<"Event-Name">>,34],58,[34,<<"auth_req">>,34],44,[34,<<"Event-Category">>,34],58,[34,<<"directory">>,34],44,[34,<<"Server-ID">>,34]
 	    ,58,[34,<<"srv">>,34],125],
-    amqp_util_old:callmgr_publish(whapps_controller:get_amqp_host(), JSON, <<"application/json">>, <<"auth.req">>).
+    amqp_util:callmgr_publish(whapps_controller:get_amqp_host(), JSON, <<"application/json">>, <<"auth.req">>).

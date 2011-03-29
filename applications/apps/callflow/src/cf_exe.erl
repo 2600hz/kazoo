@@ -142,10 +142,10 @@ wait ( Call, Flow, Pid ) ->
 %%--------------------------------------------------------------------
 -spec(init_amqp/1 :: (Call :: #cf_call{}) -> binary()).                          
 init_amqp(#cf_call{amqp_h=AHost, call_id=CallId}) ->
-    AmqpQ = amqp_util_old:new_queue(AHost),
-    amqp_util_old:bind_q_to_callevt(AHost, AmqpQ, CallId),
-    amqp_util_old:bind_q_to_targeted(AHost, AmqpQ),
-    amqp_util_old:basic_consume(AHost, AmqpQ),
+    AmqpQ = amqp_util:new_queue(AHost),
+    amqp_util:bind_q_to_callevt(AHost, AmqpQ, CallId),
+    amqp_util:bind_q_to_targeted(AHost, AmqpQ),
+    amqp_util:basic_consume(AHost, AmqpQ),
     AmqpQ.    
 
 parse_from(#cf_call{route_request=RR}=Call) ->

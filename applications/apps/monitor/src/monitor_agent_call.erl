@@ -118,10 +118,10 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
     {stop, Reason, State};
 
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    case amqp_util_old:is_json(Props) of
+    case amqp_util:is_json(Props) of
         true ->
             {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            spawn(fun() -> process_req(amqp_util_old:get_msg_type(Msg), Msg, State) end);
+            spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
         _ ->
             format_log(info, "MONITOR_AGENT_CALL(~p): Recieved non JSON AMQP msg content type", [self()])
     end,
@@ -170,10 +170,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 start_amqp(AHost) ->
-    amqp_util_old:monitor_exchange(AHost),
-    Agent_Q = amqp_util_old:new_monitor_queue(AHost, ?SERVER),
-    amqp_util_old:bind_q_to_monitor(AHost, Agent_Q, ?KEY_AGENT_CALL_REQ),
-    amqp_util_old:basic_consume(AHost, Agent_Q, [{exclusive, false}]),
+    amqp_util:monitor_exchange(AHost),
+    Agent_Q = amqp_util:new_monitor_queue(AHost, ?SERVER),
+    amqp_util:bind_q_to_monitor(AHost, Agent_Q, ?KEY_AGENT_CALL_REQ),
+    amqp_util:basic_consume(AHost, Agent_Q, [{exclusive, false}]),
     {ok, Agent_Q}.
 
 %%--------------------------------------------------------------------
@@ -213,4 +213,4 @@ process_req(_MsgType, _Msg, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 send_resp(JSON, RespQ, AHost) ->
-    amqp_util_old:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).

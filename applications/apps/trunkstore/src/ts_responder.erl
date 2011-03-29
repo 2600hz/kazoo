@@ -29,8 +29,8 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {amqp_host = "" :: string()
-		,callmgr_q = <<>> :: binary() | tuple(error, term())
+-record(state, {
+		callmgr_q = <<>> :: binary() | tuple(error, term())
 		,is_amqp_up = true :: boolean()
 	       }).
 
@@ -108,29 +108,25 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, S) ->
-    AHost = whapps_controller:get_amqp_host(),
-    format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host, will retry in a bit if doesn't work~n", [self(), AHost]),
-    {ok, CQ} = start_amqp(AHost),
-    {noreply, S#state{amqp_host=AHost, callmgr_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
+    format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
+    {ok, CQ} = start_amqp(),
+    {noreply, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
 
 handle_info({amqp_host_down, H}, S) ->
     format_log(info, "TS_RESPONDER(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
-    AHost = whapps_controller:get_amqp_host(),
-    {ok, CQ} = start_amqp(AHost),
-    {noreply, S#state{amqp_host=AHost, callmgr_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
+    {ok, CQ} = start_amqp(),
+    {noreply, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
 
 handle_info(Req, #state{callmgr_q={error, _}}=S) ->
-    AHost = whapps_controller:get_amqp_host(),
-    format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host, will retry in a bit if doesn't work~n", [self(), AHost]),
-    {ok, CQ} = start_amqp(AHost),
-    handle_info(Req, S#state{amqp_host=AHost, callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
+    format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
+    {ok, CQ} = start_amqp(),
+    handle_info(Req, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
 
-handle_info(Req, #state{is_amqp_up=false, callmgr_q=Q, amqp_host=OldH}=S) ->
-    amqp_util_old:queue_delete(OldH, Q),
-    AHost = whapps_controller:get_amqp_host(),
-    format_log(info, "TS_RESPONDER(~p): starting up amqp with ~p as host, will retry in a bit if doesn't work~n", [self(), AHost]),
-    {ok, CQ} = start_amqp(AHost),
-    handle_info(Req, S#state{amqp_host=AHost, callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
+handle_info(Req, #state{is_amqp_up=false, callmgr_q=Q}=S) ->
+    amqp_util:queue_delete(Q),
+    format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
+    {ok, CQ} = start_amqp(),
+    handle_info(Req, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
 
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
@@ -156,10 +152,8 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_host=""}) ->
-    ok;
-terminate(_Reason, #state{amqp_host=AHost, callmgr_q=CQ}) ->
-    amqp_util_old:queue_delete(AHost, CQ),
+terminate(_Reason, #state{callmgr_q=CQ}) ->
+    amqp_util:queue_delete(CQ),
     format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]),
     ok.
 
@@ -199,7 +193,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 	    case ts_auth:handle_req(Prop) of
 		{ok, JSON} ->
 		    RespQ = get_value(<<"Server-ID">>, Prop),
-		    send_resp(JSON, RespQ, State);
+		    send_resp(JSON, RespQ);
 		{error, _Msg} ->
 		    format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
 	    end
@@ -210,33 +204,29 @@ process_req({<<"dialplan">>,<<"route_req">>}, Prop, State) ->
 	    format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
 	{ok, JSON} ->
 	    RespQ = get_value(<<"Server-ID">>, Prop),
-	    send_resp(JSON, RespQ, State);
+	    send_resp(JSON, RespQ);
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
     end;
 process_req(_MsgType, _Prop, _State) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
--spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
-send_resp(JSON, RespQ, #state{amqp_host=AHost}) ->
+-spec(send_resp/2 :: (JSON :: iolist(), RespQ :: binary()) -> no_return()).
+send_resp(JSON, RespQ) ->
     format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
-    amqp_util_old:targeted_publish(AHost, RespQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
 
--spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).
-start_amqp(AHost) ->
-    amqp_util_old:callmgr_exchange(AHost),
-    amqp_util_old:targeted_exchange(AHost),
-    amqp_util_old:callevt_exchange(AHost),
-
-    CallmgrQueue = amqp_util_old:new_callmgr_queue(AHost, <<>>),
+-spec(start_amqp/0 :: () -> tuple(ok, binary())).
+start_amqp() ->
+    CallmgrQueue = amqp_util:new_callmgr_queue(<<>>),
 
     %% Bind the queue to an exchange
-    amqp_util_old:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_AUTH_REQ),
-    amqp_util_old:bind_q_to_callmgr(AHost, CallmgrQueue, ?KEY_ROUTE_REQ),
-    amqp_util_old:bind_q_to_targeted(AHost, CallmgrQueue, CallmgrQueue),
+    amqp_util:bind_q_to_callmgr(CallmgrQueue, ?KEY_AUTH_REQ),
+    amqp_util:bind_q_to_callmgr(CallmgrQueue, ?KEY_ROUTE_REQ),
+    amqp_util:bind_q_to_targeted(CallmgrQueue, CallmgrQueue),
 
     %% Register a consumer to listen to the queue
-    amqp_util_old:basic_consume(AHost, CallmgrQueue),
+    amqp_util:basic_consume(CallmgrQueue),
 
     format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p)~n", [self(), CallmgrQueue]),
     {ok, CallmgrQueue}.

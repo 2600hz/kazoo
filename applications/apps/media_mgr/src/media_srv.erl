@@ -49,8 +49,8 @@
 start_link() ->
     H = whapps_controller:get_amqp_host(),
 
-    amqp_util_old:callmgr_exchange(H),
-    amqp_util_old:targeted_exchange(H),
+    amqp_util:callmgr_exchange(H),
+    amqp_util:targeted_exchange(H),
 
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
@@ -144,7 +144,7 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps}=S) ->
 handle_info(timeout, #state{amqp_q={error, _}=QE}=S) ->
     H = whapps_controller:get_amqp_host(),
     format_log(info, "MEDIA_SRV(~p): Failed to start q (~p), trying again on ~p~n", [self(), QE, H]),
-    case amqp_util_old:is_host_available(H) of
+    case amqp_util:is_host_available(H) of
 	true ->
 	    Q = start_amqp(H),
 	    {noreply, S#state{is_amqp_up=is_binary(Q), amqp_q=Q}};
@@ -153,7 +153,7 @@ handle_info(timeout, #state{amqp_q={error, _}=QE}=S) ->
     end;
 handle_info(timeout, #state{amqp_q=Q, is_amqp_up=false}=S) ->
     H = whapps_controller:get_amqp_host(),
-    amqp_util_old:delete_queue(H, Q),
+    amqp_util:delete_queue(H, Q),
     NewQ = start_amqp(H),
     format_log(info, "MEDIA_SRV(~p): Stopping ~p, listening on ~p @ ~p~n", [self(), Q, NewQ, H]),
     {noreply, S#state{amqp_q=NewQ, is_amqp_up=is_binary(NewQ)}};
@@ -226,12 +226,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 start_amqp(H) ->
-    Q = amqp_util_old:new_queue(H, <<>>),
+    Q = amqp_util:new_queue(H, <<>>),
 
-    format_log(info, "Bind to callevt: ~p~n", [amqp_util_old:bind_q_to_callevt(H, Q, media_req)]),
-    format_log(info, "Bind to targeted: ~p~n", [amqp_util_old:bind_q_to_targeted(H, Q, Q)]),
+    format_log(info, "Bind to callevt: ~p~n", [amqp_util:bind_q_to_callevt(H, Q, media_req)]),
+    format_log(info, "Bind to targeted: ~p~n", [amqp_util:bind_q_to_targeted(H, Q, Q)]),
 
-    format_log(info, "Consume: ~p~n", [amqp_util_old:basic_consume(H, Q)]),
+    format_log(info, "Consume: ~p~n", [amqp_util:basic_consume(H, Q)]),
     Q.
 
 send_error_resp(JObj, H, ErrCode, <<>>) ->
@@ -241,7 +241,7 @@ send_error_resp(JObj, H, ErrCode, <<>>) ->
     To = whapps_json:get_value(<<"Server-ID">>, JObj),
 
     {ok, JSON} = whistle_api:media_error(Prop),
-    amqp_util_old:targeted_publish(H, To, JSON);
+    amqp_util:targeted_publish(H, To, JSON);
 send_error_resp(JObj, H, _ErrCode, ErrMsg) ->
     Prop = [{<<"Media-Name">>, whapps_json:get_value(<<"Media-Name">>, JObj)}
 	    ,{<<"Error-Code">>, <<"other">>}
@@ -250,7 +250,7 @@ send_error_resp(JObj, H, _ErrCode, ErrMsg) ->
     To = whapps_json:get_value(<<"Server-ID">>, JObj),
 
     {ok, JSON} = whistle_api:media_error(Prop),
-    amqp_util_old:targeted_publish(H, To, JSON).
+    amqp_util:targeted_publish(H, To, JSON).
 
 -spec(handle_req/2 :: (JObj :: json_object(), State :: #state{}) -> #state{}).
 handle_req(JObj, #state{ports=Ports}=State) ->

@@ -178,14 +178,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(start_amqp/0 :: () -> binary() | tuple(error, term())).
 start_amqp() ->
     Q = amqp_util:new_queue(<<>>),
-    amqp_util:bind_q_to_broadcast(Q),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
     amqp_util:basic_consume(Q),
     Q.
 
 -spec(stop_amqp/1 :: (Q :: binary()) -> no_return()).
 stop_amqp(Q) ->
-    amqp_util:unbind_q_from_broadcast(Q),
-    amqp_util:queue_delete(Q).
+    amqp_util:unbind_q_from_callmgr(Q).
 
 -spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
 handle_req(<<"application/json">>, Payload, State) ->
@@ -228,7 +228,7 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
 
     AfterUnquoted = whistle_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
-    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()}
+    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
 			 ,{<<"Contact">>, Contact1}
 			 | lists:keydelete(<<"Contact">>, 1, Prop)]
 	       },
@@ -251,12 +251,15 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 	    DocId = props:get_value(<<"id">>, Value),
 	    {ok, {struct, RegDoc}} = couch_mgr:open_doc(?REG_DB, DocId),
 
-	    Fields = props:get_value(<<"Fields">>, Prop),
-	    RespServer = props:get_value(<<"Server-ID">>, Prop),
+	    RespFields = case props:get_value(<<"Fields">>, Prop) of
+			     [] ->
+				 lists:keydelete(<<"_rev">>, 1, lists:keydelete(<<"_id">>, 1, RegDoc));
+			     Fields ->
+				 lists:foldl(fun(F, Acc) ->
+						     [ {F, props:get_value(F, RegDoc)} | Acc]
+					     end, [], Fields)
+			 end,
 
-	    RespFields = lists:foldl(fun(F, Acc) ->
-					     [ {F, props:get_value(F, RegDoc)} | Acc]
-				     end, [], Fields),
 	    {ok, JSON} = whistle_api:reg_query_resp([ {<<"Fields">>, {struct, RespFields}}
 						      | whistle_api:default_headers(State#state.my_q
 										    ,<<"directory">>
@@ -264,19 +267,17 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 											,whistle_util:to_binary(?MODULE)
 										    ,?APP_VSN)
 						    ]),
+
+	    RespServer = props:get_value(<<"Server-ID">>, Prop),
 	    amqp_util:targeted_publish(RespServer, JSON, <<"application/json">>)
     end,
     ok;
 process_req(_,_,_) ->
     not_handled.
 
--spec(current_tstamp/0 :: () -> integer()).
-current_tstamp() ->
-    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
-
 cleanup_registrations() ->
     %% get all documents with one or more tstamps < Now
-    {ok, Expired} = couch_mgr:get_results("registrations", {"registrations", "expirations"}, [{<<"endkey">>, current_tstamp()}]),
+    {ok, Expired} = couch_mgr:get_results("registrations", {"registrations", "expirations"}, [{<<"endkey">>, whistle_util:current_tstamp()}]),
     lists:foreach(fun({struct, Doc}) ->
 			  {ok, D} = couch_mgr:open_doc(?REG_DB, props:get_value(<<"id">>, Doc)),
 			  couch_mgr:del_doc(?REG_DB, D)

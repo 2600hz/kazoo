@@ -108,7 +108,7 @@ handle_cast({set_amqp_host, H}, #state{q = <<>>}=State) ->
 handle_cast({set_amqp_host, H}, #state{amqp_host=OldH, q=OldQ}=State) ->
     try
 	Q = start_amqp(H),
-	amqp_util_old:delete_queue(OldH, OldQ),
+	amqp_util:delete_queue(OldH, OldQ),
 	{noreply, State#state{amqp_host=H, q=Q}}
     catch
 	_:_ -> {noreply, State}
@@ -151,7 +151,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{q=Q}) ->
-    amqp_util_old:delete_queue(Q),
+    amqp_util:delete_queue(Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -170,11 +170,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(start_amqp/1 :: (Host :: string()) -> binary()).
 start_amqp(Host) ->
-    amqp_util_old:callevt_exchange(Host),
-    Q = amqp_util_old:new_callevt_queue(Host, <<>>),
-    amqp_util_old:bind_q_to_callevt(Host, Q, <<"*">>, cdr), % bind to all CDR events
-    amqp_util_old:bind_q_to_callevt(Host, Q, <<"*">>, events), % bind to all Call events
-    amqp_util_old:basic_consume(Host, Q),
+    amqp_util:callevt_exchange(Host),
+    Q = amqp_util:new_callevt_queue(Host, <<>>),
+    amqp_util:bind_q_to_callevt(Host, Q, <<"*">>, cdr), % bind to all CDR events
+    amqp_util:bind_q_to_callevt(Host, Q, <<"*">>, events), % bind to all Call events
+    amqp_util:basic_consume(Host, Q),
     Q.
 
 handle_hangup(<<"application/json">>, JSON) ->
