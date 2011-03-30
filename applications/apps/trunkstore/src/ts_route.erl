@@ -24,7 +24,7 @@
 %%%===================================================================
 -spec(handle_req/1 :: (ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(ApiProp) ->
-    format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
+    %% format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
 	    {error, "No Custom Vars"};
@@ -44,7 +44,7 @@ handle_req(ApiProp) ->
 %%%===================================================================
 -spec(inbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
 inbound_handler(ApiProp) ->
-    format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
+    %% format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
     Flags = create_flags(whistle_util:to_e164(ToUser), ApiProp),
     case Flags#route_flags.account_doc_id of
@@ -54,7 +54,7 @@ inbound_handler(ApiProp) ->
 
 -spec(outbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
 outbound_handler(ApiProp) ->
-    format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
+    %% format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
     Did = whistle_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
     Flags = create_flags(Did, ApiProp),
     process_routing(outbound_features(Flags), ApiProp).
@@ -79,11 +79,11 @@ lookup_did(Did) ->
 		       ,[self(), ?TS_VIEW_DIDLOOKUP, Did]),
 	    {error, "No DIDLOOKUP view"};
 	{ok, []} ->
-	    format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
+	    %% format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
 	    {error, "No matching DID"};
 	{ok, [{struct, ViewProp} | _Rest]} ->
-	    OurDid = get_value(<<"key">>, ViewProp),
-	    format_log(info, "TS_ROUTE(~p): DID doc found for ~p~n", [self(), OurDid]),
+	    %% OurDid = get_value(<<"key">>, ViewProp),
+	    %% format_log(info, "TS_ROUTE(~p): DID doc found for ~p~n", [self(), OurDid]),
 	    {struct, Value} = get_value(<<"value">>, ViewProp),
 	    {ok, [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value]};
 	_Else ->
@@ -143,8 +143,7 @@ find_outbound_route(Flags, ApiProp) ->
 			route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
 		    {ok, FlagsIn} ->
 			%% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
-			format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n"
-				   , [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
+			%% format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n", [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
 			case inbound_route(FlagsIn) of
 			    {ok, Routes, FlagsIn2} ->
 				case FlagsIn1#route_flags.scenario of
@@ -272,7 +271,7 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 	{ok, OutBFlags1} ->
 	    case ts_carrier:route(OutBFlags1) of
 		{ok, Routes} ->
-		    %%format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
+		    %%%% format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
 		    { [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
 		{error, Error} ->
 		    format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), Error]),
