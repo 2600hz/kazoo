@@ -2,14 +2,14 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%% Users module
+%%% Conferences module
 %%%
-%%% Handle client requests for user documents
+%%% Handle client requests for conference documents
 %%%
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(users).
+-module(conferences).
 
 -behaviour(gen_server).
 
@@ -26,9 +26,9 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/users.json">>).
+-define(VIEW_FILE, <<"views/conferences.json">>).
 
--define(USERS_LIST, {"users","listing_by_id"}).
+-define(CONFERENCES_LIST, {"conferences", "listing_by_id"}).
 
 -record(state, {}).
 
@@ -108,21 +108,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.users">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.conferences">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.conferences">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
                 Context1 = validate(Params, Context),
@@ -130,21 +130,21 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context 
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -199,10 +199,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.users">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.conferences">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.conferences">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.conferences">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.conferences">>),
     _ = crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
@@ -249,15 +249,15 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_user_summary([], Context);
+    load_conference_summary([], Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_user(Context);
+    create_conference(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_user(DocId, Context);
+    load_conference(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_user(DocId, Context);
+    update_conference(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_user(DocId, Context);
+    load_conference(DocId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -268,11 +268,11 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_user_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
-load_user_summary([], Context) ->
-    crossbar_doc:load_view(?USERS_LIST, [], Context, fun normalize_view_results/2);
-load_user_summary(DocId, Context) ->
-    crossbar_doc:load_view(?USERS_LIST, [
+-spec(load_conference_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
+load_conference_summary([], Context) ->
+    crossbar_doc:load_view(?CONFERENCES_LIST, [], Context, fun normalize_view_results/2);
+load_conference_summary(DocId, Context) ->
+    crossbar_doc:load_view(?CONFERENCES_LIST, [
          {<<"startkey">>, [DocId]}
         ,{<<"endkey">>, [DocId, {struct, []}]}
     ], Context, fun normalize_view_results/2).
@@ -280,17 +280,17 @@ load_user_summary(DocId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new user document with the data provided, if it is valid
+%% Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_user/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_user(#cb_context{req_data=JObj}=Context) ->
+-spec(create_conference/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_conference(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
-                 doc=whapps_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
+                 doc=whapps_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
                 ,resp_status=success
             }
     end.
@@ -298,22 +298,22 @@ create_user(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a user document from the database
+%% Load a conference document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_user/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_user(DocId, Context) ->
+-spec(load_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_conference(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing user document with the data provided, if it is
+%% Update an existing conference document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_user/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_user(DocId, #cb_context{req_data=JObj}=Context) ->
+-spec(update_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
@@ -327,22 +327,20 @@ update_user(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].
+    [whapps_json:get_value(<<"value">>, JObj)|Acc].    
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
 is_valid_doc({struct, Data}) ->
     Schema = [
-               {["base", "first_name"], [{not_empty, []}, {is_format, [phrase]}]}
-              ,{["base", "last_name"], [{not_empty, []}, {is_format, [phrase]}]}
+               {["base", "name"], [{not_empty, []}]}
              ],
     Failed = crossbar_validator:validate(Schema, Data),
     {Failed =:= [], Failed}.

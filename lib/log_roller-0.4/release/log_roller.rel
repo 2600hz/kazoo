@@ -1,3 +1,0 @@
-{release,{"log_roller","0.4"},
-         {erts,"5.8.2"},
-         [{kernel,"2.14.2"},{stdlib,"1.17.2"},{dynamic_compile,"0.1"}]}.

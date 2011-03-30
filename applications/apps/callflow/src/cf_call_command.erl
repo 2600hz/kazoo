@@ -10,15 +10,17 @@
 
 -include("callflow.hrl").
 
+-export([audio_macro/2]).
 -export([answer/1, hangup/1]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
+-export([store/3, store/4, store/5]).
 -export([tones/2]).
 -export([play_and_collect_digit/2]).
 -export([play_and_collect_digits/4, play_and_collect_digits/5, play_and_collect_digits/6, 
          play_and_collect_digits/7, play_and_collect_digits/8, play_and_collect_digits/9]).
--export([say/3, say/4, say/5]).
+-export([say/2, say/3, say/4, say/5]).
 -export([conference/2, conference/3, conference/4, conference/5]).
 -export([noop/1]).
 -export([flush/1]).
@@ -26,6 +28,7 @@
 -export([b_answer/1, b_hangup/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8]).
 -export([b_play/2, b_play/3]).
+-export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_play_and_collect_digit/2]).
 -export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6, 
          b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9]).
@@ -50,6 +53,38 @@
                     ,<<"7">>, <<"8">>, <<"9">>    
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to say text to a caller
+%% @end
+%%--------------------------------------------------------------------
+audio_macro(Commands, Call) ->
+    audio_macro(Commands, Call, []).
+audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
+    Command = [
+                {<<"Application-Name">>, <<"queue">>}
+               ,{<<"Commands">>, Queue}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],    
+    {ok, Payload} = whistle_api:queue_req(Command),
+    send_callctrl(Payload, Call);
+audio_macro([{play, MediaName}|T], Call, Queue) ->    
+    audio_macro(T, Call, [{struct, play_command(MediaName, ?ANY_DIGIT, Call)}|Queue]);
+audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->    
+    audio_macro(T, Call, [{struct, play_command(MediaName, Terminators, Call)}|Queue]);
+audio_macro([{say, Say}|T], Call, Queue) ->    
+    audio_macro(T, Call, [{struct, say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call)}|Queue]);
+audio_macro([{say, Say, Type}|T], Call, Queue) ->    
+    audio_macro(T, Call, [{struct, say_command(Say, Type, <<"pronounced">>, <<"en">>, Call)}|Queue]);
+audio_macro([{say, Say, Type, Method}|T], Call, Queue) ->    
+    audio_macro(T, Call, [{struct, say_command(Say, Type, Method, <<"en">>, Call)}|Queue]);
+audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->    
+    audio_macro(T, Call, [{struct, say_command(Say, Type, Method, Language, Call)}|Queue]);
+audio_macro([{tones, Tones}|T], Call, Queue) ->    
+    audio_macro(T, Call, [{struct, tones_command(Tones, Call)}|Queue]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -177,8 +212,8 @@ b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback
 -spec(b_play/3 :: (Media :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 
 play(Media, Call) ->
-    play(Media, [<<"#">>], Call).
-play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    play(Media, ?ANY_DIGIT, Call).
+play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"play">>}
                ,{<<"Media-Name">>, Media}
@@ -190,10 +225,18 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
-    b_play(Media, [<<"#">>], Call).    
+    b_play(Media, ?ANY_DIGIT, Call).    
 b_play(Media, Terminators, Call) ->
     play(Media, Terminators, Call),
-    wait_for_message(<<"play">>).
+    wait_for_message(<<"play">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, false).
+
+play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
+    [
+      {<<"Application-Name">>, <<"play">>}
+     ,{<<"Media-Name">>, Media}
+     ,{<<"Terminators">>, Terminators}
+     ,{<<"Call-ID">>, CallId}
+    ].    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -207,6 +250,11 @@ b_play(Media, Terminators, Call) ->
 -spec(record/4 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 -spec(record/5 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 -spec(record/6 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(b_record/2 :: (MediaName :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(b_record/3 :: (MediaName :: binary(), Terminators :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(b_record/4 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(b_record/5 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(b_record/6 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
@@ -230,6 +278,47 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
     {ok, Payload} = whistle_api:record_req(Command),
     send_callctrl(Payload, Call).
 
+b_record(MediaName, Call) ->
+    b_record(MediaName, ?ANY_DIGIT, Call).
+b_record(MediaName, Terminators, Call) ->
+    b_record(MediaName, Terminators, <<"120">>, Call).
+b_record(MediaName, Terminators, TimeLimit, Call) ->
+    b_record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
+b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
+    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
+b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
+    record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),  
+    wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to store the file
+%% @end
+%%--------------------------------------------------------------------
+-spec(store/3 :: (MediaName :: binary(), Transfer :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(store/4 :: (MediaName :: binary(), Transfer :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(store/5 :: (MediaName :: binary(), Transfer :: binary(), Method :: binary(), Headers :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+
+store(MediaName, Transfer, Call) -> 
+    store(MediaName, Transfer, <<"put">>, Call).
+store(MediaName, Transfer, Method, Call) -> 
+    store(MediaName, Transfer, Method, [{struct, []}], Call).
+store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"store">>}
+               ,{<<"Media-Name">>, MediaName}
+               ,{<<"Media-Transfer-Method">>, Method}
+               ,{<<"Media-Transfer-Destination">>, Transfer}
+               ,{<<"Additional-Headers">>, Headers}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],    
+    {ok, Payload} = whistle_api:store_req(Command),
+    send_callctrl(Payload, Call).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -248,6 +337,13 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
               ],    
     {ok, Payload} = whistle_api:tones_req(Command),
     send_callctrl(Payload, Call).
+
+tones_command(Tones, #cf_call{call_id=CallId}) ->
+    [
+      {<<"Application-Name">>, <<"tones">>}
+     ,{<<"Tones">>, Tones}
+     ,{<<"Call-ID">>, CallId}
+    ].    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -328,15 +424,18 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %% Produces the low level whistle_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
+-spec(say/2 :: (Say :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 -spec(say/3 :: (Say :: binary(), Type :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 -spec(say/4 :: (Say :: binary(), Type :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 -spec(say/5 :: (Say :: binary(), Type :: binary(), Method :: binary(), Language :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 
+say(Say, Call) -> 
+    say(Say, <<"name_spelled">>, Call).
 say(Say, Type, Call) -> 
-    say(Say, Type, <<"pronounced">>, <<"en">>, Call).
+    say(Say, Type, <<"pronounced">>, Call).
 say(Say, Type, Method, Call) -> 
     say(Say, Type, Method, <<"en">>, Call).
-say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) -> 
+say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) -> 
     Command = [
                 {<<"Application-Name">>, <<"say">>}
                ,{<<"Say-Text">>, Say}
@@ -348,6 +447,16 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) 
               ],
     {ok, Payload} = whistle_api:say_req(Command),
     send_callctrl(Payload, Call).       
+
+say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
+    [
+      {<<"Application-Name">>, <<"say">>}
+     ,{<<"Say-Text">>, Say}
+     ,{<<"Type">>, Type}
+     ,{<<"Method">>, Method}
+     ,{<<"Language">>, Language}
+     ,{<<"Call-ID">>, CallId}
+    ].    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -433,7 +542,8 @@ flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],   
     {ok, Payload} = whistle_api:noop_req(Command),
-    send_callctrl(Payload, Call).       
+    send_callctrl(Payload, Call),
+    wait_for_message(<<"noop">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -454,6 +564,18 @@ wait_for_message(Application, Event) ->
     wait_for_message(Application, Event, <<"call_event">>).    
 wait_for_message(Application, Event, Type) ->
     wait_for_message(Application, Event, Type, 5000).    
+wait_for_message(Application, Event, Type, false) ->
+    receive
+        {amqp_msg, {struct, Msg}} ->
+            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
+                { Application, Event, Type } ->
+                    {ok, Msg};
+                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                    {error, channel_hungup};
+                _ ->
+                    wait_for_message(Application, Event, Type, false)
+            end
+    end;
 wait_for_message(Application, Event, Type, Timeout) ->
     receive
         {amqp_msg, {struct, Msg}} ->
@@ -469,6 +591,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
         Timeout ->
             {error, timeout}
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -589,4 +712,5 @@ wait_for_hangup() ->
 %%--------------------------------------------------------------------
 -spec(send_callctrl/2 :: (JSON :: json_object(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
 send_callctrl(Payload, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
+    timer:sleep(50),
     amqp_util:callctl_publish(AHost, CtrlQ, Payload, <<"application/json">>).
