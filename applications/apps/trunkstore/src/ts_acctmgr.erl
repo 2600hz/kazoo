@@ -600,7 +600,7 @@ is_call_active_loop() ->
     end.
 
 release_trunk_error(AcctId, CallID, DB) ->
-    format_log(info, "TS_ACCTMGR.release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
+    format_log(info, "TS_ACCTMGR(~p).release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
 
     case trunk_type(DB, AcctId, CallID) of
 	non_existant -> format_log(info, "TS_ACCTMGR.release_error: Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
