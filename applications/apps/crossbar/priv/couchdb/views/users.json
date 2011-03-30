@@ -1,5 +1,6 @@
 {
     "_id": "_design/users"
+    ,"language": "javascript"
     ,"views": {
         "listing_by_id": {
             "map": "function(doc) { if ( doc.pvt_type != 'user') return; emit(doc._id, {'id': doc._id, 'first_name': doc.base.first_name, 'last_name': doc.base.last_name}); }"
