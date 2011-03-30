@@ -1,32 +1,32 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, James Aimonetti
 %%% @doc
-%%% Handle registrations of Name/CallID combos for media, creating
-%%% temp names to store on the local box.
+%%% Serve up registration information
 %%% @end
-%%% Created : 27 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 25 Mar 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ecallmgr_media_registry).
+-module(ecallmgr_registrar).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_media/2, lookup_media/3,
-         register_local_media/2, is_local/2]).
+-export([start_link/0, lookup/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [log/2, format_log/3]).
+-define(SERVER, ?MODULE). 
+-define(CLEANUP_RATE, 1000).
+-define(NEW_REF, erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok)).
 
 -include("ecallmgr.hrl").
 
--define(SERVER, ?MODULE).
--define(APP_NAME, <<"ecallmgr_media_registry">>).
--define(APP_VERSION, <<"1.2">>).
--define(LOCAL_MEDIA_PATH, "/tmp/").
+-record(state, {
+	  cached_registrations = dict:new() :: dict() % { {Realm, User}, Fields }
+	  ,timer_ref = undefined :: undefined | reference()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -42,17 +42,8 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-register_local_media(MediaName, CallId) ->
-    gen_server:call(?MODULE, {register_local_media, MediaName, CallId}).
-
-lookup_media(MediaName, CallId) ->
-    request_media(MediaName, CallId).
-
-lookup_media(MediaName, Type, CallId) ->
-    request_media(MediaName, Type, CallId).
-
-is_local(MediaName, CallId) ->
-    gen_server:call(?MODULE, {is_local, MediaName, CallId}).
+lookup(Realm, User, Fields) ->
+    gen_server:call(?SERVER, {lookup, Realm, User, Fields}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -70,8 +61,8 @@ is_local(MediaName, CallId) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
-    {ok, dict:new()}.
+    Ref = ?NEW_REF,
+    {ok, #state{timer_ref=Ref, cached_registrations=dict:new()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -87,47 +78,22 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
-    case dict:find({Pid, CallId, MediaName}, Dict) of
-	error ->
-	    link(Pid),
-	    Path = generate_local_path(MediaName),
-	    {reply, Path, dict:store({Pid, CallId, MediaName}, Path, Dict)};
-	{ok, Path} ->
-	    {reply, Path, Dict}
-    end;
-
-handle_call({lookup_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
-    case dict:find({Pid, CallId, MediaName}, Dict) of
-        error ->
-            {reply, {error, not_local}, Dict};        
-        {ok, Path} ->
-            {reply, {ok, Path}, Dict}
-    end;
-
-handle_call({is_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
-    case dict:find({Pid, CallId, MediaName}, Dict) of
-        error ->
-            {reply, false, Dict};
-        {ok, Path} ->
-            {reply, Path, Dict}
-    end;
-
-handle_call(_Request, _From, Dict) ->
-    {reply, {error, bad_request}, Dict}.
+handle_call({lookup, Realm, User, Fields}, From, State) ->
+    spawn(fun() -> gen_server:reply(From, lookup_reg(Realm, User, Fields, State)) end),
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling cast messages
-%% 
+%%
 %% @spec handle_cast(Msg, State) -> {noreply, State} |
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, Dict) ->
-    {noreply, Dict}.
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -139,20 +105,19 @@ handle_cast(_Msg, Dict) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _Ref, process, Pid, _Reason}, Dict) ->
-    format_log(info, "MEDIA_REG(~p): Pid ~p down, Reason: ~p, cleaning up...~n", [self(), Pid, _Reason]),
-    {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) -> Pid =/= Pid1 end, Dict)};
+handle_info({timeout, Ref, _}, #state{cached_registrations=Regs, timer_ref=Ref}=State) ->
+    NewRef = ?NEW_REF, % clean out every 60 seconds
+    {noreply, State#state{cached_registrations=remove_regs(Regs), timer_ref=NewRef}};
 
-handle_info({'EXIT', Pid, _Reason}, Dict) ->
-    format_log(info, "MEDIA_REG(~p): Pid ~p exited, Reason ~p, cleaning up...~n", [self(), Pid, _Reason]),
-    {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) ->
-				  format_log(info, "MEDIA_REG.filter P: ~p P1: ~p~n", [Pid, Pid1]),
-				  Pid =/= Pid1
-			  end, Dict)};
+handle_info({cache_registrations, Realm, User, RegFields}, #state{cached_registrations=Regs}=State) ->
+    Regs1 = dict:store({Realm, User}
+		       ,[ {<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
+			 | lists:keydelete(<<"Reg-Server-Timestamp">>, 1, RegFields)]
+		       ,Regs),
+    {noreply, State#state{cached_registrations=Regs1}};
 
-handle_info(_Info, Dict) ->
-    format_log(info, "MEDIA_REG(~p): Info Msg: ~p~n", [self(), _Info]),
-    {noreply, Dict}.
+handle_info(_Info, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -182,35 +147,36 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-generate_local_path(MediaName) ->
-    M = whistle_util:to_binary(MediaName),
-    <<?LOCAL_MEDIA_PATH, M/binary>>.
+-spec(lookup_reg/4 :: (Realm :: binary(), User :: binary(), Fields :: list(binary()), State :: #state{}) -> proplist()).
+lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
+    FilterFun = fun({K, _}=V, Acc) ->
+			case lists:member(K, Fields) of
+			    true -> [V | Acc];
+			    false -> Acc
+			end
+		end,
+    case dict:find({Realm, User}, CRegs) of
+	error ->
+	    RegProp = [{<<"Username">>, User}
+		       ,{<<"Realm">>, Realm}
+		       ,{<<"Fields">>, []}
+		       | whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+	    {ok, {struct, RegResp}} = ecallmgr_amqp_pool:reg_query(RegProp, 2500),
+	    true = whistle_api:reg_query_resp_v(RegResp),
 
-request_media(MediaName, CallId) ->
-    request_media(MediaName, <<"new">>, CallId).
+	    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
+	    ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
-request_media(MediaName, Type, CallId) ->
-    case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}) of
-        {ok, Path} ->
-            Path;
-        {error, _} ->
-            lookup_remote(MediaName, Type)
+	    lists:foldr(FilterFun, [], RegFields);
+	{ok, RegFields} ->
+	    lists:foldr(FilterFun, [], RegFields)
     end.
 
-lookup_remote(MediaName, StreamType) ->
-    Request = [
-                {<<"Media-Name">>, MediaName}
-               ,{<<"Stream-Type">>, StreamType}
-               | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
-
-    try
-	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
-	true = whistle_api:media_resp_v(MediaResp),
-	MediaName = whapps_json:get_value(<<"Media-Name">>, MediaResp),
-
-	whapps_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)
-    catch
-	_:B ->
-	    {error, B}
-    end.
+-spec(remove_regs/1 :: (Regs :: dict()) -> dict()).
+remove_regs(Regs) ->
+    TStamp = whistle_util:current_tstamp(),
+    dict:filter(fun(_, RegData) ->
+			RegTstamp = whistle_util:to_integer(props:get_value(<<"Reg-Server-Timestamp">>, RegData)) +
+			    whistle_util:to_integer(props:get_value(<<"Expires">>, RegData)),
+			RegTstamp > TStamp
+		end, Regs).

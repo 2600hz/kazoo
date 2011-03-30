@@ -403,4 +403,4 @@ send_couch_stream_resp(Db, Doc, Attachment, MediaName, To) ->
 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?SERVER, ?APP_VSN)],
     logger:format_log(info, "MEDIA_SRV(~p): Sending ~p to ~p~n", [self(), Resp, To]),    
     {ok, Payload} = whistle_api:media_resp(Resp),
-    amqp_util:targeted_publish(whapps_controller:get_amqp_host(), To, Payload).
+    amqp_util:targeted_publish(To, Payload).

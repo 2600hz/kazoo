@@ -124,9 +124,7 @@
                        ,node_watch_pid = undefined :: pid() | undefined % If a node goes down, this pid is responsible for watching for the node to restart
 		      }).
 
--record(state, {fs_nodes = [] :: list(#node_handler{})
-		,amqp_host = "" :: string()
-	       }).
+-record(state, {fs_nodes = [] :: list(#node_handler{}) }).
 
 %%%===================================================================
 %%% API
@@ -149,7 +147,8 @@ diagnostics() ->
     gen_server:call(?MODULE, {diagnostics}, infinity).
 
 set_amqp_host(Host) ->
-    gen_server:call(?MODULE, {set_amqp_host, Host}, infinity).
+    amqp_manager:set_host(Host),
+    ok.
 
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}, infinity).
@@ -183,9 +182,7 @@ request_resource(Type, Options) ->
 init([]) ->
     process_flag(trap_exit, true),
     try
-	H = net_adm:localhost(),
-	start_amqp(H),
-	{ok, #state{amqp_host=H}}
+	{ok, #state{}}
     catch
 	_:_ -> {ok, #state{}}
     end.
@@ -214,11 +211,8 @@ handle_call({is_node_up, Node}, From, #state{fs_nodes=Nodes}=State) ->
 		  gen_server:reply(From, IsUp)
 	  end),
     {noreply, State};
-handle_call({set_amqp_host, Host}, _From, #state{amqp_host=H}=State) ->
-    format_log(info, "FS_HANDLER(~p): Switching AMQP hosts from ~p to ~p~n", [self(), H, Host]),
-    start_amqp(Host),
-    {reply, ok, State#state{amqp_host=Host}};
-handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
+
+handle_call({diagnostics}, _From, #state{fs_nodes=Nodes}=State) ->
     {ok, Vsn} = application:get_key(ecallmgr, vsn),
     {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}
 					     ,{KN, HD}) ->
@@ -238,11 +232,9 @@ handle_call({diagnostics}, _From, #state{fs_nodes=Nodes, amqp_host=Host}=State) 
 	    ,{known_fs_nodes, KnownNodes}
 	    ,{handler_diagnostics, HandlerD}
 	    ,{recorded, erlang:now()}
-	    ,{amqp_host, Host}
+	    ,{amqp_host, amqp_manager:get_host()}
 	   ],
     {reply, Resp, State};
-handle_call({add_fs_node, _Node, _Options}, _From, #state{amqp_host=""}=State) ->
-    {reply, {error, no_amqp_host_defined}, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
     {Resp, State1} = add_fs_node(Node, check_options(Options), State),
     {reply, Resp, State1};
@@ -280,9 +272,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
+handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes}=State) ->
     format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n~p~n", [self(), HPid, Reason, Nodes]),
-    NewNodes = check_down_pid(Nodes, HPid, Host),
+    NewNodes = check_down_pid(Nodes, HPid),
     {noreply, State#state{fs_nodes=NewNodes}};
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
     case lists:filter(fun(#node_handler{node=Node1}) when Node =:= Node1 -> true; (_) -> false end, Nodes) of
@@ -310,11 +302,10 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{fs_nodes=Nodes, amqp_host=H}) ->
+terminate(_Reason, #state{fs_nodes=Nodes}) ->
     Self = self(),
     format_log(error, "FS_HANDLER(~p): terminating: ~p~n", [Self, _Reason]),
     lists:foreach(fun close_node/1, Nodes),
-    amqp_util:channel_close(H),
     ok.
 
 %%--------------------------------------------------------------------
@@ -371,8 +362,8 @@ check_options(Opts) ->
 	_ -> Opts0
     end.
 
--spec(check_down_pid/3 :: (Nodes :: list(#node_handler{}), HPid :: pid(), Host :: string()) -> list(#node_handler{})).
-check_down_pid(Nodes, HPid, Host) ->
+-spec(check_down_pid/2 :: (Nodes :: list(#node_handler{}), HPid :: pid()) -> list(#node_handler{})).
+check_down_pid(Nodes, HPid) ->
     lists:foldl(fun(#node_handler{auth_handler_pid=AHP
 				  ,route_handler_pid=RHP
 				  ,node_handler_pid=NHP
@@ -380,10 +371,10 @@ check_down_pid(Nodes, HPid, Host) ->
 				  ,options=Options
 				  ,node=Node
 				 }=N, Nodes0) ->
-			Restart = fun(CurrHPid, StartFun) -> restart_handler(Node, Options, Host, HPid, CurrHPid, StartFun) end,
-			NewAHP = Restart(AHP, fun start_auth_handler/3),
-			NewRHP = Restart(RHP, fun start_route_handler/3),
-			NewNHP = Restart(NHP, fun start_node_handler/3),
+			Restart = fun(CurrHPid, StartFun) -> restart_handler(Node, Options, HPid, CurrHPid, StartFun) end,
+			NewAHP = Restart(AHP, fun start_auth_handler/2),
+			NewRHP = Restart(RHP, fun start_route_handler/1),
+			NewNHP = Restart(NHP, fun start_node_handler/2),
 			[N#node_handler{auth_handler_pid=NewAHP
 					,route_handler_pid=NewRHP
 					,node_handler_pid=NewNHP}
@@ -394,17 +385,30 @@ check_down_pid(Nodes, HPid, Host) ->
 			Nodes0
 		end, [], Nodes).
 
--spec(restart_handler/6 :: (Node :: atom(), Options :: proplist(), Host :: string(), DownPid :: pid() | undefined, CurrPid :: pid() | undefined, StartFun :: fun()) ->
+-spec(restart_handler/5 :: (Node :: atom(), Options :: proplist(), DownPid :: pid() | undefined, CurrPid :: pid() | undefined, StartFun :: fun()) ->
 				pid() | undefined).
-restart_handler(Node, Options, Host, _, undefined, StartFun) ->
-    case StartFun(Node, Options, Host) of
+restart_handler(Node, Options, _, undefined, StartFun) when is_function(StartFun, 2) ->
+    format_log(info, "FS_HANDLER.rstrt_h(~p): Restart ~p handler~n", [self(), Node]),
+    case StartFun(Node, Options) of
 	{error, Err} ->
 	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
 	    undefined;
-	Pid when is_pid(Pid) -> Pid
+	Pid when is_pid(Pid) ->
+	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p~n", [self(), Pid]),
+	    Pid
     end;
-restart_handler(Node, Options, Host, HPid, HPid, StartFun) ->
-    case StartFun(Node, Options, Host) of
+restart_handler(Node, Options, _, undefined, StartFun) when is_function(StartFun, 1) ->
+    format_log(info, "FS_HANDLER.rstrt_h(~p): Restart ~p handler~n", [self(), Node]),
+    case StartFun(Node) of
+	{error, Err} ->
+	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
+	    undefined;
+	Pid when is_pid(Pid) ->
+	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p~n", [self(), Pid]),
+	    Pid
+    end;
+restart_handler(Node, Options, HPid, HPid, StartFun) when is_function(StartFun, 2)->
+    case StartFun(Node, Options) of
 	{error, Err} ->
 	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
 	    undefined;
@@ -412,7 +416,16 @@ restart_handler(Node, Options, Host, HPid, HPid, StartFun) ->
 	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
 	    Pid
     end;
-restart_handler(_, _, _, _, Pid, _) -> Pid.
+restart_handler(Node, Options, HPid, HPid, StartFun) when is_function(StartFun, 1)->
+    case StartFun(Node) of
+	{error, Err} ->
+	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
+	    undefined;
+	Pid when is_pid(Pid) ->
+	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
+	    Pid
+    end;
+restart_handler(_, _, _, Pid, _) -> Pid.
 
 %% query a pid for its diagnostics info
 -spec(diagnostics_query/1 :: (Pid :: pid()) -> tuple(ok, proplist()) | tuple(error, atom(), term())).
@@ -432,17 +445,17 @@ diagnostics_query(X) ->
     {error, handler_down, X}.
 
 -spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: tuple()) -> tuple(ok, tuple()) | tuple(tuple(error, atom()), tuple())).
-add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
+add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
     case lists:filter(fun(#node_handler{node=Node1}) when Node =:= Node1 -> true; (_) -> false end, Nodes) of
 	[] ->
 	    case net_adm:ping(Node) of
 		pong ->
 		    erlang:monitor_node(Node, true),
-		    Restart = fun(StartFun) -> restart_handler(Node, Options, Host, undefined, undefined, StartFun) end,
-
-		    AHP = Restart(fun start_auth_handler/3),
-		    RHP = Restart(fun start_route_handler/3),
-		    NHP = Restart(fun start_node_handler/3),
+		    Restart = fun(StartFun) -> restart_handler(Node, Options, undefined, undefined, StartFun) end,
+		    
+		    AHP = Restart(fun start_auth_handler/2),
+		    RHP = Restart(fun start_route_handler/1),
+		    NHP = Restart(fun start_node_handler/2),
 
 		    {ok, State#state{fs_nodes=[#node_handler{node=Node
 							     ,options=Options
@@ -461,16 +474,16 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes, amqp_host=Host}=State) ->
 			      Pid ! {update_options, Options},
 			      Pid;
 			 (_, StartFun) ->
-			      case StartFun(Node, Options, Host) of
+			      case StartFun(Node, Options) of
 				  {error, E} ->
 				      format_log(error, "FS_HANDLER.add(~p): Handler start on ~p failed because ~p~n", [self(), Node, E]),
 				      undefined;
 				  Pid -> Pid
 			      end
 		      end,
-	    {ok, State#state{fs_nodes=[N#node_handler{auth_handler_pid=Restart(AHP, fun start_auth_handler/3)
-						      ,route_handler_pid=Restart(RHP, fun start_route_handler/3)
-						      ,node_handler_pid=Restart(NHP, fun start_route_handler/3)
+	    {ok, State#state{fs_nodes=[N#node_handler{auth_handler_pid=Restart(AHP, fun start_auth_handler/2)
+						      ,route_handler_pid=Restart(RHP, fun start_route_handler/1)
+						      ,node_handler_pid=Restart(NHP, fun start_node_handler/2)
 						      ,options=Options}
 				       | lists:keydelete(Node, 2, Nodes)]}}
     end.
@@ -501,32 +514,38 @@ close_handler(Pid) ->
 	false -> {error, handler_down}
     end.
 
--spec(start_auth_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid() | tuple(error, term())).
-start_auth_handler(Node, Options, Host) ->
-    start_handler(Node, Options, Host, ?AUTH_MOD).
+-spec(start_auth_handler/2 :: (Node :: atom(), Options :: proplist()) -> pid() | tuple(error, term())).
+start_auth_handler(Node, Options) ->
+    start_handler(Node, Options, ?AUTH_MOD).
 
--spec(start_route_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid() | tuple(error, term())).
-start_route_handler(Node, Options, Host) ->
-    start_handler(Node, Options, Host, ?ROUTE_MOD).
+-spec(start_route_handler/1 :: (Node :: atom()) -> pid() | tuple(error, term())).
+start_route_handler(Node) ->
+    start_handler(Node, [], ?ROUTE_MOD).
 
--spec(start_node_handler/3 :: (Node :: atom(), Options :: proplist(), Host :: string()) -> pid() | tuple(error, term())).
-start_node_handler(Node, Options, Host) ->
-    start_handler(Node, Options, Host, ?NODE_MOD).
+-spec(start_node_handler/2 :: (Node :: atom(), Options :: proplist()) -> pid() | tuple(error, term())).
+start_node_handler(Node, Options) ->
+    start_handler(Node, Options, ?NODE_MOD).
 
--spec(start_handler/4 :: (Node :: atom(), Options :: proplist(), Host :: string(), Mod :: atom()) -> pid() | tuple(error, term())).
-start_handler(Node, Options, Host, Mod) ->
+-spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), Mod :: atom()) -> pid() | tuple(error, term())).
+start_handler(Node, Options, Mod) ->
+    format_log(info, "Starting ~p on ~p~n", [Mod, Node]),
     try
-	case Mod:start_handler(Node, Options, Host) of
+	case Mod:start_link(Node, Options) of
 	    Pid when is_pid(Pid) ->
 		link(Pid),
+		format_log(info, "FS_HANDLER(~p): Started handler ~p(~p)~n", [self(), Mod, Pid]),
 		Pid;
+	    {ok, Pid} ->
+		format_log(info, "FS_HANDLER(~p): Started link ~p(~p)~n", [self(), Mod, Pid]),
+		Pid;
+	    false -> {error, start_functions_missing};
 	    {error, _Other}=E ->
-		format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p~n", [self(), Mod, Node, Host, _Other]),
+		format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p~n", [self(), Mod, Node, _Other]),
 		E
 	end
     catch
 	What:Why ->
-	    format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p:~p~n", [self(), Mod, Node, Host, What, Why]),
+	    format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p: got ~p:~p~n", [self(), Mod, Node, What, Why]),
 	    {error, Why}
     end.
 
@@ -546,10 +565,3 @@ process_resource_request(<<"audio">>=Type, Nodes, Options) ->
 process_resource_request(Type, _Nodes, _Options) ->
     format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),
     [].
-
--spec(start_amqp/1 :: (Host :: string()) -> no_return()).
-start_amqp(Host) ->
-    amqp_util:targeted_exchange(Host),
-    amqp_util:callmgr_exchange(Host),
-    amqp_util:callevt_exchange(Host),
-    amqp_util:callctl_exchange(Host).

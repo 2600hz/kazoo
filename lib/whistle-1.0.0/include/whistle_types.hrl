@@ -2,6 +2,9 @@
 
 -type proplist() :: list(tuple(binary() | atom(), term())) | [].
 
+%% for setting types on dicts
+-type dict(K,V) :: [{K, V}].
+
 %% -type iolist() :: [char() | binary() | iolist()].
 %% -type iodata() :: iolist() | binary().
 -type json_string() :: atom() | binary().

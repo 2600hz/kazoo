@@ -403,6 +403,7 @@ get_attachment_path(MediaName, #mailbox{database=Db, mailbox_id=Id}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_unavailable_greeting/1 :: (JObj :: json_object()) -> undefined | binary()).

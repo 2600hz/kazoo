@@ -402,7 +402,7 @@ get_db(DbName) ->
     Conn = gen_server:call(?MODULE, {get_conn}),
     open_db(whistle_util:to_list(DbName), Conn).
 
-get_url() ->    
+get_url() ->
     case {whistle_util:to_binary(get_host()), get_creds()} of 
         {<<"">>, _} -> 
             undefined;

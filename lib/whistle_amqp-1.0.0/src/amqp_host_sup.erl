@@ -1,25 +1,22 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2011, James Aimonetti
 %%% @doc
-%%% Manage call-specific processes (events and control)
+%%%
 %%% @end
-%%% Created : 24 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% Created : 18 Mar 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ecallmgr_call_sup).
+-module(amqp_host_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_control_process/3, start_event_process/3]).
+-export([start_link/0, start_host/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
-
-%% supervisors should never die for good
--define(CHILD(Mod, Type), {Mod, {Mod, start_link, []}, permanent, 5000, Type, [Mod]}).
 
 %%%===================================================================
 %%% API functions
@@ -35,11 +32,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_event_process(Node, UUID, CtlPid) ->
-    ecallmgr_call_event_sup:start_proc([Node, UUID, CtlPid]).
-
-start_control_process(Node, UUID, Amqp) ->
-    ecallmgr_call_control_sup:start_proc([Node, UUID, Amqp]).
+start_host(Host, Conn) ->
+    supervisor:start_child(?SERVER, [Host, Conn]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -59,14 +53,20 @@ start_control_process(Node, UUID, Amqp) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok
-     ,{
-       {one_for_one, 5, 10}
-       ,[?CHILD(ecallmgr_call_event_sup, supervisor)
-	 ,?CHILD(ecallmgr_call_control_sup, supervisor)
-	]
-      }
-    }.
+    RestartStrategy = simple_one_for_one,
+    MaxRestarts = 2,
+    MaxSecondsBetweenRestarts = 5,
+
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
+    Restart = temporary,
+    Shutdown = 2000,
+    Type = worker,
+
+    AChild = {amqp_host, {amqp_host, start_link, []},
+	      Restart, Shutdown, Type, [amqp_host]},
+
+    {ok, {SupFlags, [AChild]}}.
 
 %%%===================================================================
 %%% Internal functions

@@ -15,6 +15,9 @@
 -define(KEY_CALL_STATUS_REQ, <<"call.status.">>). % corresponds to the call_status_req/1 api call
 -define(KEY_CALL_CDR, <<"call.cdr.">>). %% corresponds to the call_cdr/1 api call
 
+-define(KEY_REG_SUCCESS, <<"registration.success">>).
+-define(KEY_REG_QUERY, <<"registration.query">>).
+
 %% To listen for auth requests, bind your queue in the CallMgr Exchange with the <<"auth.req">> routing key.
 %% To listen for route requests, bind your queue in the CallMgr Exchange with the <<"route.req">> routing key.
 

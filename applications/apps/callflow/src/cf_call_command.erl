@@ -711,6 +711,7 @@ wait_for_hangup() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(send_callctrl/2 :: (JSON :: json_object(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+
 send_callctrl(Payload, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
     timer:sleep(50),
     amqp_util:callctl_publish(AHost, CtrlQ, Payload, <<"application/json">>).

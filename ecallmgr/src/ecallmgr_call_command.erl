@@ -9,7 +9,7 @@
 
 -module(ecallmgr_call_command).
 
--export([exec_cmd/4]).
+-export([exec_cmd/3]).
 
 -import(logger, [log/2, format_log/3]).
 
@@ -21,13 +21,13 @@
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
--spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), AmqpHost :: string()) -> ok | timeout | {error, string()}).
-exec_cmd(Node, UUID, JObj, AmqpHost) ->
+-spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | {error, string()}).
+exec_cmd(Node, UUID, JObj) ->
     DestID = whapps_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
 	true ->
 	    AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
-	    case get_fs_app(Node, UUID, JObj, AmqpHost, AppName) of
+	    case get_fs_app(Node, UUID, JObj, AppName) of
 		{error, _Msg}=Err -> Err;
 		{_, noop} -> 
                     format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]),
@@ -50,7 +50,7 @@ exec_cmd(Node, UUID, JObj, AmqpHost) ->
                              | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
                             ],
                     {ok, Payload} = whistle_api:call_event(Event),
-                    amqp_util:callevt_publish(AmqpHost, UUID, Payload, event);
+                    amqp_util:callevt_publish(UUID, Payload, event);
 		{App, AppData} -> 
                     send_cmd(Node, UUID, App, AppData)
 	    end;
@@ -60,20 +60,20 @@ exec_cmd(Node, UUID, JObj, AmqpHost) ->
     end.
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec(get_fs_app/5 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), AmqpHost :: string(), Application :: binary()) -> tuple(binary(), binary() | noop) | tuple(error, string())).
-get_fs_app(_Node, _UUID, _JObj, _AmqpHost, <<"noop">>) ->
+-spec(get_fs_app/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), Application :: binary()) -> tuple(binary(), binary() | noop) | tuple(error, string())).
+get_fs_app(_Node, _UUID, _JObj, <<"noop">>) ->
     {ok, noop};
-get_fs_app(Node, UUID, JObj, AmqpHost, <<"play">>) ->
+get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case whistle_api:play_req_v(JObj) of
 	false -> {error, "play failed to execute as JObj did not validate."};
 	true ->
-	    F = media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID, AmqpHost),
+	    F = media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID),
 	    ok = set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"playback">>, F}
     end;
-get_fs_app(_Node, _UUID, _JObj, _AmqpHost, <<"hangup">>=App) ->
+get_fs_app(_Node, _UUID, _JObj, <<"hangup">>=App) ->
     {App, <<>>};
-get_fs_app(_Node, UUID, JObj, AmqpHost, <<"play_and_collect_digits">>) ->
+get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case whistle_api:play_collect_digits_req_v(JObj) of
 	false -> {error, "play_and_collect_digits failed to execute as JObj did not validate."};
 	true ->
@@ -81,8 +81,8 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"play_and_collect_digits">>) ->
 	    Max = whapps_json:get_value(<<"Maximum-Digits">>, JObj),
 	    Timeout = whapps_json:get_value(<<"Timeout">>, JObj),
 	    Terminators = whapps_json:get_value(<<"Terminators">>, JObj),
-	    Media = <<$', (media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID, AmqpHost))/binary, $'>>,
-	    InvalidMedia = <<$', (media_path(whapps_json:get_value(<<"Failed-Media-Name">>, JObj), UUID, AmqpHost))/binary, $'>>,
+	    Media = <<$', (media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
+	    InvalidMedia = <<$', (media_path(whapps_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
 	    Tries = whapps_json:get_value(<<"Media-Tries">>, JObj),
 	    Regex = whapps_json:get_value(<<"Digits-Regex">>, JObj),
 	    Storage = <<"collected_digits">>,
@@ -90,7 +90,7 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"play_and_collect_digits">>) ->
 				   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
 	    {<<"play_and_get_digits">>, Data}
     end;
-get_fs_app(Node, UUID, JObj, _AmqpHost, <<"record">>) ->
+get_fs_app(Node, UUID, JObj, <<"record">>) ->
     case whistle_api:record_req_v(JObj) of
 	false -> {error, "record failed to execute as JObj did not validate."};
 	true ->
@@ -104,7 +104,7 @@ get_fs_app(Node, UUID, JObj, _AmqpHost, <<"record">>) ->
 	    ok = set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"record">>, RecArg}
     end;
-get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
+get_fs_app(_Node, UUID, JObj, <<"store">>) ->
     case whistle_api:store_req_v(JObj) of
 	false -> {error, "store failed to execute as JObj did not validate."};
 	true ->
@@ -122,13 +122,13 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
 				       ,{<<"Media-Name">>, MediaName}
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
-			    spawn(fun() -> stream_over_amqp(M, JObj, Headers, AmqpHost) end);
+			    spawn(fun() -> stream_over_amqp(M, JObj, Headers) end);
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
-			    spawn(fun() -> stream_over_http(M, Verb, JObj, AmqpHost) end);
+			    spawn(fun() -> stream_over_http(M, Verb, JObj) end);
 			<<"post">>=Verb ->
 			    %% stream file over HTTP PUSH
-			    spawn(fun() -> stream_over_http(M, Verb, JObj, AmqpHost) end);
+			    spawn(fun() -> stream_over_http(M, Verb, JObj) end);
 			false ->
 			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]);
 			_Method ->
@@ -137,7 +137,7 @@ get_fs_app(_Node, UUID, JObj, AmqpHost, <<"store">>) ->
 		    end
 	    end
     end;
-get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tones">>) ->
+get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
 	false -> {error, "tones failed to execute as JObj did not validate."};
 	true ->
@@ -160,16 +160,16 @@ get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"tones">>) ->
 	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
 	    {<<"playback">>, Arg}
     end;
-get_fs_app(_Node, _UUID, _JObj, _AmqpHost, <<"answer">>=App) ->
+get_fs_app(_Node, _UUID, _JObj, <<"answer">>=App) ->
     {App, <<>>};
-get_fs_app(_Node, _UUID, _JObj, _AmqpHost, <<"park">>=App) ->
+get_fs_app(_Node, _UUID, _JObj, <<"park">>=App) ->
     {App, <<>>};
-get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"sleep">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"sleep">>=App) ->
     case whistle_api:sleep_req_v(JObj) of
 	false -> {error, "sleep failed to execute as JObj did not validate."};
 	true -> {App, whistle_util:to_binary(whapps_json:get_value(<<"Time">>, JObj))}
     end;
-get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"say">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
     case whistle_api:say_req_v(JObj) of
 	false -> {error, "say failed to execute as JObj did not validate."};
 	true ->
@@ -181,7 +181,7 @@ get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"say">>=App) ->
             format_log(info, "BUILT COMMAND: conference ~p", [Arg]),
 	    {App, Arg}
     end;
-get_fs_app(Node, UUID, JObj, AmqpHost, <<"bridge">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(JObj) of
 	false -> {error, "bridge failed to execute as JObj did not validate."};
 	true ->
@@ -197,12 +197,12 @@ get_fs_app(Node, UUID, JObj, AmqpHost, <<"bridge">>=App) ->
 				_ -> "|"
 			    end,
 
-	    DialStrings = [get_bridge_endpoint(EP, AmqpHost) || EP <- whapps_json:get_value(<<"Endpoints">>, JObj, [])],
+	    DialStrings = [get_bridge_endpoint(EP) || EP <- whapps_json:get_value(<<"Endpoints">>, JObj, [])],
 
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
 	    {App, BridgeCmd}
     end;
-get_fs_app(Node, UUID, JObj, AmqpHost, <<"tone_detect">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
     case whistle_api:tone_detect_req_v(JObj) of
 	false -> {error, "tone detect failed to execute as JObj did not validate"};
 	true ->
@@ -220,21 +220,21 @@ get_fs_app(Node, UUID, JObj, AmqpHost, <<"tone_detect">>=App) ->
 			      [] -> [{<<"Application-Name">>, <<"park">>} | whistle_api:extract_defaults(JObj)]; % default to parking the call
 			      AppJObj -> {struct, AppJObj ++ whistle_api:extract_defaults(JObj)}
 			  end,
-	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, AmqpHost, whapps_json:get_value(<<"Application-Name">>, SuccessJObj)) of
+	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, whapps_json:get_value(<<"Application-Name">>, SuccessJObj)) of
 					       {error, _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
 					       {_, _}=Success -> Success
 					   end,
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
 	    {App, Data}
     end;
-get_fs_app(Node, UUID, JObj, _AmqpHost, <<"set">>=AppName) ->
+get_fs_app(Node, UUID, JObj, <<"set">>=AppName) ->
     {struct, Custom} = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj, {struct, []}),
     lists:foreach(fun({K,V}) ->
 			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
 			  set(Node, UUID, Arg)
 		  end, Custom),
     {AppName, noop};
-get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"conference">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
 	false -> {error, "conference failed to execute as JObj did not validate."};
 	true ->
@@ -243,7 +243,7 @@ get_fs_app(_Node, _UUID, JObj, _AmqpHost, <<"conference">>=App) ->
 	    Arg = list_to_binary([ConfName, "@default", Flags]),
 	    {App, Arg}
     end;
-get_fs_app(_Node, _UUID, _JObj, _AmqpHost, _App) ->
+get_fs_app(_Node, _UUID, _JObj, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
     {error, "Application unknown"}.
           
@@ -262,18 +262,18 @@ send_cmd(Node, UUID, AppName, Args) ->
 
 %% take an endpoint (/sofia/foo/bar), and optionally a caller id name and number
 %% and create the dial string ([origination_caller_id_name=Name,origination_caller_id_number=Num]Endpoint)
--spec(get_bridge_endpoint/2 :: (JObj :: json_object(), AmqpHost :: string()) -> string()).
-get_bridge_endpoint(JObj, AmqpHost) ->
-    case ecallmgr_fs_route:build_route(AmqpHost, JObj, whapps_json:get_value(<<"Invite-Format">>, JObj)) of
+-spec(get_bridge_endpoint/1 :: (JObj :: json_object()) -> string()).
+get_bridge_endpoint(JObj) ->
+    case ecallmgr_fs_xml:build_route(JObj, whapps_json:get_value(<<"Invite-Format">>, JObj)) of
 	{error, Code} -> whistle_util:to_list(list_to_binary(["error/", Code]));
 	EndPoint ->
-	    CVs = ecallmgr_fs_route:get_leg_vars(JObj),
+	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
 	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))
     end.
 
--spec(media_path/3 :: (MediaName :: binary(), UUID :: binary(), AmqpHost :: binary()) -> list()).
-media_path(MediaName, UUID, AmqpHost) ->
-    case ecallmgr_media_registry:lookup_media(MediaName, UUID, AmqpHost) of
+-spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
+media_path(MediaName, UUID) ->
+    case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} -> 
             MediaName;
         Url ->
@@ -291,8 +291,8 @@ get_fs_playback(Url) when byte_size(Url) >= 4 ->
 get_fs_playback(Url) ->
     Url.
 
--spec(stream_over_amqp/4 :: (File :: list(), JObj :: proplist(), Headers :: proplist(), AmqpHost :: string()) -> no_return()).
-stream_over_amqp(File, JObj, Headers, AmqpHost) ->
+-spec(stream_over_amqp/3 :: (File :: list(), JObj :: proplist(), Headers :: proplist()) -> no_return()).
+stream_over_amqp(File, JObj, Headers) ->
     DestQ = case whapps_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
 		undefined ->
 		    whapps_json:get_value(<<"Server-ID">>, JObj);
@@ -301,11 +301,11 @@ stream_over_amqp(File, JObj, Headers, AmqpHost) ->
 		Q ->
 		    Q
 	    end,
-    stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1, AmqpHost).
+    stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1).
 
 %% get a chunk of the file and send it in an AMQP message to the DestQ
--spec(stream_over_amqp/6 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer(), AmqpHost :: string()) -> no_return()).
-stream_over_amqp(DestQ, F, State, Headers, Seq, AmqpHost) ->
+-spec(stream_over_amqp/5 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer()) -> no_return()).
+stream_over_amqp(DestQ, F, State, Headers, Seq) ->
     case F(State) of
 	{ok, Data, State1} ->
 	    %% send msg
@@ -313,19 +313,19 @@ stream_over_amqp(DestQ, F, State, Headers, Seq, AmqpHost) ->
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    amqp_util:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
-	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1, AmqpHost);
+	    amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
+	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1);
 	eof ->
 	    Msg = [{<<"Media-Content">>, <<"eof">>}
 		   ,{<<"Media-Sequence-ID">>, Seq}
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
-	    amqp_util:targeted_publish(AmqpHost, DestQ, JSON, <<"application/json">>),
+	    amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
 	    eof
     end.
 
--spec(stream_over_http/4 :: (File :: list(), Verb :: binary(), JObj :: proplist(), AmqpHost :: string()) -> no_return()).
-stream_over_http(File, Verb, JObj, AmqpHost) ->
+-spec(stream_over_http/3 :: (File :: list(), Verb :: binary(), JObj :: proplist()) -> no_return()).
+stream_over_http(File, Verb, JObj) ->
     Url = whistle_util:to_list(whapps_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     {struct, AddHeaders} = whapps_json:get_value(<<"Additional-Headers">>, JObj, {struct, []}),
     Headers = [{"Content-Length", filelib:file_size(File)}
@@ -342,7 +342,8 @@ stream_over_http(File, Verb, JObj, AmqpHost) ->
 										 ]}
 								   ,JObj)) of
 		{ok, JSON} ->
-		    amqp_util:targeted_publish(AmqpHost, AppQ, JSON, <<"application/json">>);
+		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
+		    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>);
 		{error, Msg} ->
 		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
 	    end;

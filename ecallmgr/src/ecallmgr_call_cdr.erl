@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_cdr).
 
--export([new_cdr/3]).
+-export([new_cdr/2]).
 
 -import(logger, [log/2, format_log/3]).
 -import(props, [get_value/2, get_value/3]).
@@ -45,11 +45,11 @@
 			   ]).
 -define(FS_TO_WHISTLE_OUTBOUND_MAP, [{<<"variable_sip_cid_type">>, <<"Caller-ID-Type">>}]).
 
--spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: string(), EvtProp :: proplist()) -> no_return()).
-new_cdr(UUID, AmqpHost, EvtProp) ->
+-spec(new_cdr/2 :: (UUID :: binary(), EvtProp :: proplist()) -> no_return()).
+new_cdr(UUID, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
     format_log(info, "CALL_CDR(~p): ~s~n", [UUID, CDRJson]),
-    amqp_util:callevt_publish(AmqpHost, UUID, CDRJson, cdr).
+    amqp_util:callevt_publish(UUID, CDRJson, cdr).
 
 -spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).
 create_cdr(EvtProp) ->

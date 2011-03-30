@@ -469,7 +469,7 @@ lookup_server(AuthUser, Doc) ->
 response(Routes, Prop, Flags) ->
     ServerID = case is_list(Routes) of
 		   true ->
-		       {ok, Pid} = ts_call_sup:start_proc([Flags#route_flags.callid, whapps_controller:get_amqp_host(), Flags]),
+		       {ok, Pid} = ts_call_sup:start_proc([Flags#route_flags.callid, Flags]),
 		       {ok, Q} = ts_call_handler:get_queue(Pid),
 		       Q;
 		   false -> <<>>
