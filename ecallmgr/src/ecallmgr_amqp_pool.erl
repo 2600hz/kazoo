@@ -117,8 +117,10 @@ handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W}=State) ->
 	{{value, Worker}, W1} ->
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
 	    {noreply, State#state{workers=W1}};
-	{empty, W1} ->
-	    {reply, no_workers_available, State#state{workers=W1}}
+	{empty, _} ->
+	    Worker = start_worker(),
+	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
+	    {noreply, State#state{worker_count=State#state.worker_count + 1}}
     end.
 
 %%--------------------------------------------------------------------
@@ -219,9 +221,10 @@ worker_free(Q) ->
     end.
 
 worker_busy(Q, From, Ref, Parent) ->
+    Start = erlang:now(),
     receive
 	{_, #amqp_msg{payload = Payload}} ->
-	    logger:format_log(info, "WORKER(~p): Recv payload response~n", [self()]),
+	    logger:format_log(info, "WORKER(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
 	{'DOWN', Ref, process, Pid, Info} ->
 	    logger:format_log(error, "WORKER(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
