@@ -1,6 +1,7 @@
 {
-    "_id": "_design/session",
-    "views": {
+    "_id": "_design/session"
+    ,"language": "javascript"
+    ,"views": {
         "expired_time": {
             "map": "function(doc) { if ( doc.session) emit(parseInt(doc.session[4])+parseInt(doc.session[5]), null); }"
         }
