@@ -8,12 +8,6 @@
         ,"listing_by_number": {
             "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; for (var i in doc.numbers) emit(doc.numbers[i], {'id': doc._id}); }"
         }
-        ,"list": {           
-            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; emit(doc._id, doc.numbers); }"
-        }
-        ,"flow": {           
-            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; for (var i in doc.numbers) emit(doc.numbers[i], doc.flow); }"
-        }       
     }
     ,"filters": {
         "export":"function(doc, req) { return ( doc.pvt_type == 'callflow' ); }"

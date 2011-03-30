@@ -23,7 +23,7 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_FILE, "views/callflows.json").
--define(AGG_DB, <<"callflow_test">>).
+-define(AGG_DB, <<"callflow">>).
 -define(AGG_FILTER, <<"callflows/export">>).
 -define(CALLFLOWS_LIST, {"callflows", "listing_by_id"}).
 
@@ -59,7 +59,7 @@ start_link ( ) ->
 %------------------------------------------------------------------------------
 init ([]) -> 
     accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
+    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),    
     bind_to_crossbar(),     
     { ok, #state{} }.
 
