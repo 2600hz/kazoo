@@ -172,14 +172,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.accounts">>, Pay
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
     spawn(fun() ->
 		  crossbar_util:binding_heartbeat(Pid),
@@ -187,14 +185,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_c
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 Context1 = load_account_db(Params, Context),
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [_, <<"parent">>]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
@@ -206,14 +202,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
                   end
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   case crossbar_doc:save(Context) of
@@ -225,7 +219,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
                                   crossbar_doc:delete(Context1),
                                   Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
                               true ->
-                                  format_log(info, "!!!!!!!!!! ~p", [Context1]),
                                   Pid ! {binding_result, true, [RD, Context1, Params]},
                                   Responses = crossbar_bindings:map(<<"account.created">>, Context1),                                  
                                   lists:foreach(fun({true, File}) ->                                         
@@ -237,7 +230,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
                   end
 	  end),
     {noreply, State};
-
 %handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
 %    %%spawn(fun() ->
 %                  Doc1 = crossbar_util:set_json_values(<<"pvt_tree">>, [], Doc),
@@ -245,19 +237,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
 %                  Pid ! {binding_result, true, [RD, Context1, Params]},
 %	%%  end),
 %    {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    %%format_log(info, "ACCOUNTS(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
-
 handle_info(_Info, State) ->
     format_log(info, "ACCOUNTS(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -684,10 +672,12 @@ load_account_db(DocId, Context)->
     case couch_mgr:db_exists(DbName) of
         false ->
             Context#cb_context{
-                db_name = undefined
+                 db_name = undefined
+                ,account_id = undefined
             };
         true ->
             Context#cb_context{
                 db_name = DbName
+               ,account_id = DocId
             }
     end.
