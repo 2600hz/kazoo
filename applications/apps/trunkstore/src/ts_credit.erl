@@ -19,6 +19,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-compile(export_all).
+
 -define(SERVER, ?MODULE).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
 
@@ -82,8 +84,13 @@ init([]) ->
 handle_call(Req, _From, []=R) ->
     format_log(info, "TS_CREDIT(~p): No rate information for Req ~p~n", [self(), Req]),
     {reply, no_rate_information, R};
-handle_call({check, Flags}, _From, Rates) ->
-    {reply, set_rate_flags(Flags, Rates), Rates}.
+handle_call({check, Flags}, From, Rates) ->
+    spawn(fun() ->
+		  ts_timer:start("ts_credit"),
+		  gen_server:reply(From, set_rate_flags(Flags, Rates)),
+		  ts_timer:stop("ts_Credit")
+	  end),
+    {noreply, Rates}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,17 +207,20 @@ set_rate_flags(Flags, Rates) ->
 							re:run(User, Regex) =/= nomatch
 						end, get_value(<<"routes">>, RateData))
 			  end, Rates0),
+    ts_timer:tick("post first filter"),
     %% Filter on Options - All flag options must be in Rate options
     Rates2 = lists:filter(fun({_RateName, RateData}) ->
-				  format_log(info, "TS_CREDIT.options_match: Filter ~p~n", [_RateName]),
 				  options_match(Flags#route_flags.route_options, get_value(<<"options">>, RateData, []))
 			  end, Rates1),
+    ts_timer:tick("post second filter"),
 
     case lists:usort(fun sort_rates/2, Rates2) of
 	[] ->
+	    ts_timer:tick("post usort empty"),
 	    format_log(error, "TS_CREDIT(~p): No Rate found for ~p~n", [self(), User]),
 	    {error, no_route_found};
 	[{RateName, RateData} | _] ->
+	    ts_timer:tick("post usort data found"),
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    case ts_acctmgr:reserve_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid

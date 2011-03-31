@@ -129,8 +129,8 @@ handle_info(Req, #state{is_amqp_up=false, callmgr_q=Q}=S) ->
     handle_info(Req, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
 
 %% receive resource requests from Apps
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
-    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload, State) end),
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
     {noreply, State};
 
 handle_info(#'basic.consume_ok'{}, S) ->
@@ -172,20 +172,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
-handle_req(<<"application/json">>, Payload, State) ->
+-spec(handle_req/2 :: (ContentType :: binary(), Payload :: binary()) -> no_return()).
+handle_req(<<"application/json">>, Payload) ->
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "TS_RESPONDER(~p): Recv JSON~nPayload: ~p~n", [self(), Prop]),
-    process_req(get_msg_type(Prop), Prop, State);
-handle_req(_ContentType, _Payload, _State) ->
+    %% format_log(info, "TS_RESPONDER(~p): Recv JSON~nPayload: ~p~n", [self(), Prop]),
+    process_req(get_msg_type(Prop), Prop);
+handle_req(_ContentType, _Payload) ->
     format_log(info, "TS_RESPONDER(~p): recieved unknown msg type: ~p~n", [self(), _ContentType]).
 
 -spec(get_msg_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary())).
 get_msg_type(Prop) ->
     { get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop) }.
 
--spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
+-spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist()) -> no_return()).
+process_req({<<"directory">>, <<"auth_req">>}, Prop) ->
     case whistle_api:auth_req_v(Prop) of
 	false ->
 	    format_log(error, "TS_RESPONDER.auth(~p): Failed to validate auth_req~n", [self()]);
@@ -198,17 +198,20 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 		    format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
 	    end
     end;
-process_req({<<"dialplan">>,<<"route_req">>}, Prop, State) ->
+process_req({<<"dialplan">>,<<"route_req">>}, Prop) ->
+    format_log(info, "TS_RESPONDER.route(~p): Looking up route req~n", [self()]),
+    Start = erlang:now(),
     case whistle_api:route_req_v(Prop) andalso ts_route:handle_req(Prop) of
 	false ->
 	    format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
 	{ok, JSON} ->
+	    format_log(info, "TS_RESPONDER.route(~p): Took ~p micro to find route~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    RespQ = get_value(<<"Server-ID">>, Prop),
 	    send_resp(JSON, RespQ);
 	{error, _Msg} ->
 	    format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
     end;
-process_req(_MsgType, _Prop, _State) ->
+process_req(_MsgType, _Prop) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
 -spec(send_resp/2 :: (JSON :: iolist(), RespQ :: binary()) -> no_return()).

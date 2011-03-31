@@ -165,50 +165,62 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     load_account(AcctId, WDB),
-    couch_mgr:add_change_handler(?TS_DB, AcctId),
     {reply, has_credit(RDB, AcctId, Amt), S};
 handle_call({has_flatrates, AcctId}, _, #state{current_read_db=RDB}=S) ->
     {reply, has_flatrates(RDB, AcctId), S};
-handle_call({reserve_trunk, AcctId, [CallID, Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    load_account(AcctId, WDB),
-    couch_mgr:add_change_handler(?TS_DB, AcctId),
-    {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
-			   {ok, []} ->
-			       case has_credit(RDB, AcctId, Amt) of
-				   true -> {reserve_doc(AcctId, CallID, per_min), per_min};
-				   false -> {[], no_funds}
-			       end;
-			   {ok, [{struct, [{<<"key">>, _}, {<<"value">>, 0}] }] } ->
-			       case has_credit(RDB, AcctId, Amt) of
-				   true -> {reserve_doc(AcctId, CallID, per_min), per_min};
-				   false -> {[], no_funds}
-			       end;
-			   {ok, [{struct, [{<<"key">>, _}, {<<"value">>, _}] }] } ->
-			       {reserve_doc(AcctId, CallID, flat_rate), flat_rate}
-		       end,
-    format_log(info, "TS_ACCTMGR(~p): Reserve trunk for acct ~p:~p ($~p): ~p~n", [self(), AcctId, CallID, Amt, Type]),
-    case Type of
-	no_funds -> {reply, {error, no_funds}, S};
-	_ ->
-	    case couch_mgr:save_doc(WDB, DebitDoc) of
-		{ok, _} -> {reply, {ok, Type}, S};
-		{error, conflict} -> {reply, {error, entry_exists}, S}
-	    end
-    end;
-handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, _, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    case trunk_type(RDB, AcctID, ACallID) of
-	non_existant ->
-	    case trunk_type(WDB, AcctID, ACallID) of
-		non_existant -> format_log(error, "TS_ACCTMGR(~p): Can't copy data from ~p to ~p for acct ~p, non_existant~n"
-					   ,[self(), ACallID, BCallID, AcctID]);
-		per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
-		flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
-	    end;
-	per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
-	flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
-    end,
-    {reply, ok, S}.
+handle_call({reserve_trunk, AcctId, [CallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    spawn(fun() ->
+		  ts_timer:start("ts_acctmgr"),
+		  
+		  load_account(AcctId, WDB),
+		  ts_timer:tick("loaded acct"),
 
+		  {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
+					 {ok, []} ->
+					     ts_timer:tick("no flats"),
+					     case has_credit(RDB, AcctId, Amt) of
+						 true -> {reserve_doc(AcctId, CallID, per_min), per_min};
+						 false -> {[], no_funds}
+					     end;
+					 {ok, [{struct, [{<<"key">>, _}, {<<"value">>, 0}] }] } ->
+					     ts_timer:tick("has 0 flats avail"),
+					     case has_credit(RDB, AcctId, Amt) of
+						 true -> {reserve_doc(AcctId, CallID, per_min), per_min};
+						 false -> {[], no_funds}
+					     end;
+					 {ok, [{struct, [{<<"key">>, _}, {<<"value">>, _}] }] } ->
+					     ts_timer:tick("has flats"),
+					     {reserve_doc(AcctId, CallID, flat_rate), flat_rate}
+				     end,
+
+		  format_log(info, "TS_ACCTMGR(~p): Reserve trunk for acct ~p:~p ($~p): ~p~n", [self(), AcctId, CallID, Amt, Type]),
+
+		  case Type of
+		      no_funds -> gen_server:reply(From, {error, no_funds});
+		      _ ->
+			  ts_timer:tick("pre save reserve"),
+			  couch_mgr:save_doc(WDB, DebitDoc),
+			  gen_server:reply(From, {ok, Type}),
+			  ts_timer:tick("reserve done")
+		  end
+	  end),
+    {noreply, S};
+handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    spawn(fun() ->
+		  case trunk_type(RDB, AcctID, ACallID) of
+		      non_existant ->
+			  case trunk_type(WDB, AcctID, ACallID) of
+			      non_existant -> format_log(error, "TS_ACCTMGR(~p): Can't copy data from ~p to ~p for acct ~p, non_existant~n"
+							 ,[self(), ACallID, BCallID, AcctID]);
+			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
+			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
+			  end;
+		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
+		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
+		  end,
+		  gen_server:reply(From, ok)
+	  end),
+    {noreply, S}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -224,19 +236,22 @@ handle_cast(update_views, #state{current_read_db=RDB}=S) ->
     spawn(fun() -> update_views(RDB) end),
     {noreply, S};
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
-    load_account(AcctId, WDB),
-    couch_mgr:add_change_handler(?TS_DB, AcctId),
-    case trunk_type(RDB, AcctId, CallID) of
-	non_existant ->
-	    case trunk_type(WDB, AcctId, CallID) of
-		non_existant -> format_log(info, "TS_ACCTMGR(~p): Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
-		per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-		flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
-	    end;
-	per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-	flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
-    end,
+    spawn(fun() ->
+		  format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+
+		  load_account(AcctId, WDB),
+		  couch_mgr:add_change_handler(?TS_DB, AcctId),
+		  case trunk_type(RDB, AcctId, CallID) of
+		      non_existant ->
+			  case trunk_type(WDB, AcctId, CallID) of
+			      non_existant -> format_log(info, "TS_ACCTMGR(~p): Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
+			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
+			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+			  end;
+		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
+		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+		  end
+	  end),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -250,8 +265,7 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
-    load_views(WDB),
-    load_accounts_from_ts(WDB),
+    spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB) end),
     {noreply, S};
 handle_info(?EOD, S) ->
     DB = todays_db_name(),
@@ -260,7 +274,7 @@ handle_info(?EOD, S) ->
 
     self() ! reconcile_accounts,
 
-    load_views(DB),
+    spawn(fun() -> load_views(DB) end),
 
     {noreply, S#state{
 		current_write_db = DB % all new writes should go in new DB, but old DB is needed still
@@ -277,7 +291,7 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
-    update_from_couch(DocID, WDB, RDB),
+    spawn(fun() -> update_from_couch(DocID, WDB, RDB) end),
     {noreply, S};
 handle_info({document_deleted, AcctId}, S) ->
     format_log(info, "TS_ACCTMGR(~p): Account Doc ~p deleted~n", [self(), AcctId]),
@@ -517,16 +531,21 @@ update_account(AcctId, Bal) ->
     couch_mgr:save_doc(?TS_DB, {struct, Doc1}).
 
 load_account(AcctId, DB) ->
-    case couch_mgr:open_doc(?TS_DB, AcctId) of
-	{error, not_found} -> ok;
-	{ok, {struct, Doc}} -> 
-	    couch_mgr:add_change_handler(?TS_DB, AcctId),
-
-	    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
-	    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
-	    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
-	    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
-	    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)})
+    case ts_cache:fetch({ts_acctmgr, AcctId}) of
+	{ok, _} -> ok;
+	{error, not_found} ->
+	    case couch_mgr:open_doc(?TS_DB, AcctId) of
+		{error, not_found} -> ok;
+		{ok, {struct, Doc}} -> 
+		    couch_mgr:add_change_handler(?TS_DB, AcctId),
+		    
+		    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
+		    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
+		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
+		    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
+		    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)}),
+		    ts_cache:store({ts_acctmgr, AcctId}, true)
+	    end
     end.
 
 load_views(DB) ->

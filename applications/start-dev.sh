@@ -19,5 +19,5 @@ exec erl \
     -pa $PWD/ebin -pa $PWD/apps/*/ebin \
     -riak_err term_max_size 8192 fmt_max_bytes 9000 \
     -sasl errlog_type all \
-    -sasl sasl_error_logger tty \
+    -sasl sasl_error_logger '{file, "log/error_log.sasl"}' \
     -boot start_sasl -name ${SHELL_NAME} -s reloader -s whistle_apps

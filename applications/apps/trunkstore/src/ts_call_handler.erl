@@ -50,6 +50,7 @@
 -include("ts.hrl").
 
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
+-define(BILLING_TIMEOUT, 2 * ?CALL_ACTIVITY_TIMEOUT div 1000).
 
 -record(state, {callid = <<>> :: binary()
 		,amqp_q = {error, undefined} :: binary() | tuple(error, term())
@@ -103,11 +104,10 @@ init([CallID, RouteFlags, LegNumber]) ->
     process_flag(trap_exit, true),
 
     {ok, #state{callid = CallID
-		,amqp_q = get_amqp_queue(CallID)
 		,route_flags = RouteFlags
 		,start_time = whistle_util:current_tstamp()
 		,leg_number = LegNumber
-	       }}.
+	       }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -417,7 +417,7 @@ get_call_duration(JObj, #route_flags{rate_minimum=RM}, StartTime) ->
     Guess = case StartTime > 0 andalso (Now - StartTime) of
 		false -> RM;
 		%% if no duration from JObj, and elapsed time is > twice the timeout
-		X when X >= (2 * ?CALL_ACTIVITY_TIMEOUT) -> X - (2 * ?CALL_ACTIVITY_TIMEOUT);
+		X when X >= ?BILLING_TIMEOUT -> X - ?BILLING_TIMEOUT;
 		Y when Y < RM -> RM;
 		Z -> Z
 	    end,
