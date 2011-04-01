@@ -27,7 +27,8 @@
 
 -include("ts.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
+-define(QUEUE_NAME, <<"ts_responder.queue">>).
 
 -record(state, {
 		callmgr_q = <<>> :: binary() | tuple(error, term())
@@ -46,7 +47,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link(?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -118,18 +119,18 @@ handle_info({amqp_host_down, H}, S) ->
     {noreply, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
 
 handle_info(Req, #state{callmgr_q={error, _}}=S) ->
-    format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
+    format_log(info, "TS_RESPONDER(~p): restarting amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
     handle_info(Req, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
 
 handle_info(Req, #state{is_amqp_up=false, callmgr_q=Q}=S) ->
-    amqp_util:queue_delete(Q),
-    format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
+    format_log(info, "TS_RESPONDER(~p): restarting up amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
     handle_info(Req, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
 
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    format_log(info, "TS_RESPONDER(~p): Amqp Request recv~n", [self()]),
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
     {noreply, State};
 
@@ -221,7 +222,7 @@ send_resp(JSON, RespQ) ->
 
 -spec(start_amqp/0 :: () -> tuple(ok, binary())).
 start_amqp() ->
-    CallmgrQueue = amqp_util:new_callmgr_queue(<<>>),
+    CallmgrQueue = amqp_util:new_callmgr_queue(?QUEUE_NAME, [{exclusive, false}]),
 
     %% Bind the queue to an exchange
     amqp_util:bind_q_to_callmgr(CallmgrQueue, ?KEY_AUTH_REQ),
@@ -229,7 +230,7 @@ start_amqp() ->
     amqp_util:bind_q_to_targeted(CallmgrQueue, CallmgrQueue),
 
     %% Register a consumer to listen to the queue
-    amqp_util:basic_consume(CallmgrQueue),
+    amqp_util:basic_consume(CallmgrQueue, [{exclusive, false}]),
 
     format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p)~n", [self(), CallmgrQueue]),
     {ok, CallmgrQueue}.

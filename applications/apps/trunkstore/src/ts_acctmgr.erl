@@ -164,45 +164,45 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    load_account(AcctId, WDB),
+    spawn(fun() -> load_account(AcctId, WDB) end),
     {reply, has_credit(RDB, AcctId, Amt), S};
 handle_call({has_flatrates, AcctId}, _, #state{current_read_db=RDB}=S) ->
     {reply, has_flatrates(RDB, AcctId), S};
 handle_call({reserve_trunk, AcctId, [CallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     spawn(fun() ->
 		  ts_timer:start("ts_acctmgr"),
-		  
-		  load_account(AcctId, WDB),
+		  spawn(fun() -> load_account(AcctId, WDB) end),
 		  ts_timer:tick("loaded acct"),
 
-		  {DebitDoc, Type} = case couch_mgr:get_results(RDB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
-					 {ok, []} ->
-					     ts_timer:tick("no flats"),
-					     case has_credit(RDB, AcctId, Amt) of
-						 true -> {reserve_doc(AcctId, CallID, per_min), per_min};
-						 false -> {[], no_funds}
-					     end;
-					 {ok, [{struct, [{<<"key">>, _}, {<<"value">>, 0}] }] } ->
-					     ts_timer:tick("has 0 flats avail"),
-					     case has_credit(RDB, AcctId, Amt) of
-						 true -> {reserve_doc(AcctId, CallID, per_min), per_min};
-						 false -> {[], no_funds}
-					     end;
-					 {ok, [{struct, [{<<"key">>, _}, {<<"value">>, _}] }] } ->
-					     ts_timer:tick("has flats"),
-					     {reserve_doc(AcctId, CallID, flat_rate), flat_rate}
-				     end,
-
-		  format_log(info, "TS_ACCTMGR(~p): Reserve trunk for acct ~p:~p ($~p): ~p~n", [self(), AcctId, CallID, Amt, Type]),
-
-		  case Type of
-		      no_funds -> gen_server:reply(From, {error, no_funds});
-		      _ ->
-			  ts_timer:tick("pre save reserve"),
-			  couch_mgr:save_doc(WDB, DebitDoc),
-			  gen_server:reply(From, {ok, Type}),
-			  ts_timer:tick("reserve done")
-		  end
+		  case couch_mgr:get_results(RDB, {"accounts", "balance"}, [{<<"key">>, AcctId}, {<<"reduce">>, <<"false">>}, {<<"stale">>, <<"ok">>}]) of
+		      {error, E} ->
+			  ts_timer:tick("error getting balance"),
+			  gen_server:reply(From, {error, E});
+		      {ok, []} ->
+			  ts_timer:tick("no anything"),
+			  gen_server:reply(From, {error, no_funds});
+		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
+			  ts_timer:tick(list_to_binary(["funds of some kind: "
+							,integer_to_list(whapps_json:get_value(<<"trunks">>, Funds))
+							, "::", integer_to_list(whapps_json:get_value(<<"credit">>, Funds))])),
+			  case whapps_json:get_value(<<"trunks">>, Funds, 0) > 0 of
+			      true ->
+				  ts_timer:tick("reserve flat_rate"),
+				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
+				  gen_server:reply(From, {ok, flat_rate});
+			      false ->
+				  case whapps_json:get_value(<<"credit">>, Funds, 0) > Amt of
+				      true ->
+					  ts_timer:tick("reserve per_min"),
+					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
+					  gen_server:reply(From, {ok, per_min});
+				      false ->
+					  ts_timer:tick("not enough funds"),
+					  gen_server:reply(From, {error, no_funds})
+				  end
+			  end
+		  end,
+		  ts_timer:stop("ts_acctmgr")
 	  end),
     {noreply, S};
 handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
@@ -531,7 +531,7 @@ update_account(AcctId, Bal) ->
     couch_mgr:save_doc(?TS_DB, {struct, Doc1}).
 
 load_account(AcctId, DB) ->
-    case ts_cache:fetch({ts_acctmgr, AcctId}) of
+    case ts_cache:fetch({ts_acctmgr, AcctId, DB}) of
 	{ok, _} -> ok;
 	{error, not_found} ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
@@ -544,13 +544,17 @@ load_account(AcctId, DB) ->
 		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
 		    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
 		    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)}),
-		    ts_cache:store({ts_acctmgr, AcctId}, true)
+		    ts_cache:store({ts_acctmgr, AcctId, DB}, true)
 	    end
     end.
 
 load_views(DB) ->
+    couch_mgr:db_create(DB),
     lists:foreach(fun(Name) ->
-			  couch_mgr:load_doc_from_file(DB, trunkstore, Name)
+			  case couch_mgr:load_doc_from_file(DB, trunkstore, Name) of
+			      {ok, _} -> ok;
+			      {error, _} -> couch_mgr:update_doc_from_file(DB, trunkstore, Name)
+			  end
 		  end, ?TS_ACCTMGR_VIEWS).
 
 update_views(DB) ->

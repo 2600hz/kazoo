@@ -29,7 +29,7 @@ init([]) ->
 	      ?CHILD(ts_call_sup, supervisor)
 	      ,?CHILD(ts_cache, worker)
 	      ,?CHILD(ts_timer, worker)
-	      ,?CHILD(ts_responder, worker)
+	      ,?CHILD(ts_responder_sup, supervisor)
 	      ,?CHILD(ts_acctmgr, worker)
 	      ,?CHILD(ts_credit, worker)
 	      ,?CHILD(ts_carrier, worker)
