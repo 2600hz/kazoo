@@ -1,21 +1,15 @@
 {
     "_id": "_design/callflows"
     ,"language": "javascript"
-    ,"views": {
-        "listing_by_id": {
-            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; emit(doc._id, {'id': doc._id, 'numbers': doc.numbers}); }"
-        }
+    ,"views": {       
+        "listing_by_uri": {
+            "map": "function(doc) { if (doc.pvt_type != 'callflow') return; for (var n in doc.numbers) { for (var r in doc.realms) { emit(doc.numbers[n] + '@' + doc.realms[r], {'id': doc._id, 'flow': doc.flow, 'account': doc.account});}}}"
+        }        
         ,"listing_by_number": {
-            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; for (var i in doc.numbers) emit(doc.numbers[i], {'id': doc._id}); }"
+            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; for (var i in doc.numbers) emit(doc.numbers[i], {'id': doc._id, 'realms': doc.realms, 'account': doc.account}); }"
         }
-        ,"list": {           
-            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; emit(doc._id, doc.numbers); }"
+        ,"listing_by_realm": {
+            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; for (var i in doc.realms) emit(doc.realms[i], {'id': doc._id, 'numbers': doc.numbers, 'account': doc.account}); }"
         }
-        ,"flow": {           
-            "map": "function(doc) { if ( doc.pvt_type != 'callflow' ) return; for (var i in doc.numbers) emit(doc.numbers[i], doc.flow); }"
-        }       
-    }
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'callflow' ); }"
     }
 }
