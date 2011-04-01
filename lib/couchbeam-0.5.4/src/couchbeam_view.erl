@@ -19,7 +19,7 @@ count(#view{db=Db,url=Url, options=Options, method=Method, body=Body,
     case couchbeam:db_request(Method, Url, ["200"], IbrowseOpts, Headers, 
             Body) of
         {ok, _, _, RespBody} ->
-            {Props} = couchbeam_util:json_decode(RespBody),
+            {struct, Props} = couchbeam_util:json_decode(RespBody),
             case proplists:get_value("limit", Options) of
             0 ->
                 {ok, proplists:get_value(<<"total_rows">>, Props)};
@@ -70,7 +70,7 @@ first(View) ->
     case couchbeam:db_request(Method, Url, ["200"], IbrowseOpts, 
             Headers, Body) of
         {ok, _, _, RespBody} ->
-            {Props} = couchbeam_util:json_decode(RespBody),
+            {struct, Props} = couchbeam_util:json_decode(RespBody),
             case proplists:get_value(<<"rows">>, Props) of
                 [] ->
                     {ok, []};
@@ -101,7 +101,7 @@ fold(View, Fun) ->
     case couchbeam:db_request(Method, Url, ["200"], IbrowseOpts, Headers, 
             Body) of
         {ok, _, _, RespBody} ->
-            {Props} = couchbeam_util:json_decode(RespBody),
+            {struct, Props} = couchbeam_util:json_decode(RespBody),
             Rows = proplists:get_value(<<"rows">>, Props),
             fold_fun(Rows, Fun, []);
         Error ->
@@ -127,7 +127,7 @@ foreach(View, Fun) ->
     case couchbeam:db_request(Method, Url, ["200"], IbrowseOpts, 
             Headers, Body) of
         {ok, _, _, RespBody} ->
-            {Props} = couchbeam_util:json_decode(RespBody),
+            {struct, Props} = couchbeam_util:json_decode(RespBody),
             Rows = proplists:get_value(<<"rows">>, Props),
             do_foreach(Rows, Fun);
         Error ->

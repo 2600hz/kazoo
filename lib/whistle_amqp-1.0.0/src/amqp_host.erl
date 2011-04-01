@@ -40,6 +40,7 @@
           ,publish_channel = undefined :: undefined | channel_data()
           ,misc_channel = undefined :: undefined | channel_data()
           ,consumers = dict:new() :: amqp_host:dict(pid(), consumer_data())
+          ,manager = undefined :: undefined | pid()
 	 }).
 
 %%%===================================================================
@@ -108,8 +109,8 @@ init([_Host, Conn]) when is_pid(Conn) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------				   
-handle_call(stop, {From, _}, State) ->
-    case whereis(amqp_manager) =:= From of
+handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
+    case Mgr =:= From of
 	true -> {stop, normal, ok, State};
 	false -> {reply, {error, you_are_not_my_boss}, State}
     end.
@@ -210,15 +211,19 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
 	    case start_channel(State#state.connection, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
-		    gen_server:reply(From, amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T})),
+		    Call = amqp_channel:cast(C, QueueDeclare#'queue.declare'{ticket=T}),
+		    io:format("AMQP_HOST(~p): Started C(~p), QueueDeclare: ~p: ~p~n", [self(), C, QueueDeclare, Call]),
+		    gen_server:reply(From, Call),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		{error, _}=E ->
+		    io:format("AMQP_HOST(~p): Tried to start channel but failed: ~p~n", [self(), E]),
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    gen_server:reply(From, amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T})),
+	    Call = amqp_channel:cast(C, QueueDeclare#'queue.declare'{ticket=T}),
+	    io:format("AMQP_HOST(~p): Started C(~p), QueueDeclare: ~p~n", [self(), C, Call]),
+	    gen_server:reply(From, Call),
 	    {noreply, State}
     end;
 
@@ -276,6 +281,7 @@ handle_info(timeout, Conn) ->
 	       ,publish_channel = PubChan
 	       ,misc_channel = start_channel(Conn)
 	       ,consumers = dict:new()
+	       ,manager = whereis(amqp_manager)
 	      }
 	    };
 	{error, E} ->
@@ -290,7 +296,7 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{}=State) ->
     {noreply, remove_ref(Ref, State)};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "AMQP_HOST(~p): unhandled info: ~p"),
+    logger:format_log(info, "AMQP_HOST(~p): unhandled info: ~p", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
