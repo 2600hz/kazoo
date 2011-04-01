@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 -define(START_TIMEOUT, 500).
 -define(MAX_TIMEOUT, 5000).
--define(STARTUP_FILE, code:lib_dir(whistle_amqp, priv)).
+-define(STARTUP_FILE, [code:lib_dir(whistle_amqp, priv), "/startup.config"]).
 
 -record(state, {
 	  host = "" :: string()
@@ -148,6 +148,7 @@ handle_info(timeout, #state{handler_pid = undefined, timeout=T}=State) when T > 
     handle_info(timeout, State#state{timeout=?MAX_TIMEOUT});
 
 handle_info(timeout, #state{host=Host, handler_pid = undefined, timeout=T}=State) ->
+    logger:format_log(info, "AMQP_MGR(~p): Starting with host ~p~n", [self(), Host]),
     case start_amqp_host(Host, State) of
 	{ok, State1} -> {noreply, State1#state{timeout=?START_TIMEOUT}};
 	{error, _} -> {noreply, State#state{timeout=T*2}, T}
@@ -220,7 +221,7 @@ create_amqp_params(Host, Port) ->
 get_new_connection({Type, #'amqp_params'{}=P}) ->
     case amqp_connection:start(Type, P) of
 	{ok, Connection} ->
-	    logger:format_log(info, "AMQP_MGR(~p): Conn ~p started.~n", [self(), Connection]),
+	    logger:format_log(info, "AMQP_MGR(~p): Conn ~p(~p) started with ~p.~n", [self(), Connection, Type, P#'amqp_params'.host]),
 	    Connection;
 	{error, econnrefused}=E ->
 	    logger:format_log(error, "AMQP_MGR(~p): Refusing to connect to ~p~n", [self(), P#'amqp_params'.host]),
