@@ -26,7 +26,9 @@
 
 -define(SERVER, ?MODULE).
 
--define(USERS_LIST, {"users","listing"}).
+-define(VIEW_FILE, <<"views/users.json">>).
+
+-define(USERS_LIST, {"users","listing_by_id"}).
 
 -record(state, {}).
 
@@ -62,7 +64,7 @@ start_link() ->
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
     bind_to_crossbar(),
-    accounts:update_all_accounts("users.json"),
+    accounts:update_all_accounts(?VIEW_FILE),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -94,7 +96,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -150,17 +151,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Co
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, Payload}, State) ->    
-    Pid ! {binding_result, true, "users.json"},
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    %%format_log(info, "USERS(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "USERS(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -200,11 +199,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
-    crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
-    crossbar_bindings:bind(<<"v1_resource.validate.users">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.users">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.users">>),
+    _ = crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -285,13 +284,13 @@ load_user_summary(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_user/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_user(#cb_context{req_data=Data}=Context) ->
-    case is_valid_doc(Data) of
+create_user(#cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
-                 doc=whapps_json:set_value(["pvt_identifier", "type"], <<"user">>, Data)
+                 doc=whapps_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
                 ,resp_status=success
             }
     end.
@@ -314,12 +313,12 @@ load_user(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(update_user/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_user(DocId, #cb_context{req_data=Data}=Context) ->
-    case is_valid_doc(Data) of
+update_user(DocId, #cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            crossbar_doc:load_merge(DocId, Data, Context)
+            crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -329,29 +328,21 @@ update_user(DocId, #cb_context{req_data=Data}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
-normalize_view_results({struct, Prop}, Acc) ->
-    Id = props:get_value(<<"id">>, Prop),
-    Name = props:get_value(<<"value">>, Prop),
-    Level = length(lists:nth(2, props:get_value(<<"key">>, Prop))),
-    [{struct,[
-        {<<"id">>, Id}
-       ,{<<"level">>, Level}
-       ,{<<"name">>, Name}
-    ]} | Acc].
+normalize_view_results(JObj, Acc) ->
+    [whapps_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% NOTICE: This is very temporary, placeholder until the schema work is
+%% complete!
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
 is_valid_doc({struct, Data}) ->
     Schema = [
-	   { ["base", "name"]
-	    ,[ {not_empty, []}
-              ,{is_format, [phrase]}
-	     ]}
-	  ],
+               {["base", "first_name"], [{not_empty, []}, {is_format, [phrase]}]}
+              ,{["base", "last_name"], [{not_empty, []}, {is_format, [phrase]}]}
+             ],
     Failed = crossbar_validator:validate(Schema, Data),
     {Failed =:= [], Failed}.

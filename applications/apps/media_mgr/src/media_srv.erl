@@ -26,6 +26,7 @@
 -define(PORT_RANGE, 0). % use 0 to have OS assign port #, {Low, Hi} for range of ports to try
 -define(PORT_OPTIONS, [binary, {packet,0}, {active,false}, {reuseaddr, true}]).
 -define(MAX_RESERVED_PORTS, 10).
+-define(MEDIA_DB, <<"media_files">>).
 
 -record(state, {
 	  streams = [] :: list(tuple(binary(), pid(), reference())) | [] % MediaID, StreamPid, Ref
@@ -163,22 +164,17 @@ handle_info({amqp_host_down, H}, S) ->
     format_log(info, "MEDIA_SRV(~p): AMQP Host(~p) down~n", [self(), H]),
     {noreply, S#state{amqp_q={error, amqp_down}, is_amqp_up=false}, 0};
 
-handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports}=S) ->
+handle_info({_, #amqp_msg{payload = Payload}}, State) ->
     format_log(info, "MEDIA_SRV(~p): Recv JSON: ~p~n", [self(), Payload]),
     JObj = try mochijson2:decode(Payload) catch _:Err1 -> format_log(info, "Err decoding ~p~n", [Err1]), {error, Err1} end,
 
     S1 = try
-	     Ports1 = case queue:is_empty(Ports) of
-			  true -> updated_reserved_ports(Ports);
-			  false -> Ports
-		      end,
-	     false = queue:is_empty(Ports1),
-	     handle_req(JObj, S#state{ports=Ports1})
+	     handle_req(JObj, State)
 	 catch
 	     _:Err ->
-		 format_log(info, "Err handling req: ~p~n", [Err]),
+		 format_log(info, "Err handling req: ~p~n~p~n", [Err, erlang:get_stacktrace()]),
 		 send_error_resp(JObj, whapps_controller:get_amqp_host(), <<"other">>, Err),
-		 S
+		 State
 	 end,
     format_log(info, "MEDIA_SRV(~p): Req handled~n", [self()]),
     {noreply, S1};
@@ -232,7 +228,7 @@ code_change(_OldVsn, State, _Extra) ->
 start_amqp(H) ->
     Q = amqp_util:new_queue(H, <<>>),
 
-    format_log(info, "Bind to callevt: ~p~n", [amqp_util:bind_q_to_callevt(H, Q, ?KEY_CALL_MEDIA_REQ)]),
+    format_log(info, "Bind to callevt: ~p~n", [amqp_util:bind_q_to_callevt(H, Q, media_req)]),
     format_log(info, "Bind to targeted: ~p~n", [amqp_util:bind_q_to_targeted(H, Q, Q)]),
 
     format_log(info, "Consume: ~p~n", [amqp_util:basic_consume(H, Q)]),
@@ -256,31 +252,110 @@ send_error_resp(JObj, H, _ErrCode, ErrMsg) ->
     {ok, JSON} = whistle_api:media_error(Prop),
     amqp_util:targeted_publish(H, To, JSON).
 
--spec(handle_req/2 :: (JObj :: json_object(), S :: #state{}) -> #state{}).
-handle_req(JObj, State) ->
+-spec(handle_req/2 :: (JObj :: json_object(), State :: #state{}) -> #state{}).
+handle_req(JObj, #state{ports=Ports}=State) ->
     true = whistle_api:media_req_v(JObj),
-
-    case whapps_json:get_value(<<"Stream-Type">>, JObj, <<"new">>) of
-	<<"new">> -> start_stream(JObj, State);
-	<<"extant">> -> join_stream(JObj, State)
+    case find_attachment(binary:split(whapps_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
+        {not_found} ->
+            send_error_resp(JObj, whapps_controller:get_amqp_host(), <<"not_found">>, <<>>),
+            State;
+        {no_data} ->
+            send_error_resp(JObj, whapps_controller:get_amqp_host(), <<"no_data">>, <<>>),
+            State;
+        {Db, Doc, Attachment, MetaData} ->
+            case is_mp3(Attachment, MetaData) of
+                true ->
+                    Ports1 = case queue:is_empty(Ports) of
+                                 true -> updated_reserved_ports(Ports);
+                                 false -> Ports
+                             end,
+                    false = queue:is_empty(Ports1),
+                    case whapps_json:get_value(<<"Stream-Type">>, JObj, <<"new">>) of
+                        <<"new">> -> 
+                            start_stream(JObj, Db, Doc, Attachment, State#state{ports=Ports1});
+                        <<"extant">> -> 
+                            join_stream(JObj, Db, Doc, Attachment, State#state{ports=Ports1})
+                    end;
+                false ->
+                    send_couch_stream_resp(Db, Doc, Attachment, 
+                                           whapps_json:get_value(<<"Media-Name">>, JObj), 
+                                           whapps_json:get_value(<<"Server-ID">>, JObj)),
+                    State
+            end
     end.
 
--spec(start_stream/2 :: (JObj :: json_object(), S :: #state{}) -> #state{}).
-start_stream(JObj, #state{ports=Ports}=S) ->
-    MediaID = whapps_json:get_value(<<"Media-Name">>, JObj),
+find_attachment([<<>>, Doc]) ->
+    find_attachment([Doc]);
+find_attachment([Doc]) ->
+    find_attachment([?MEDIA_DB, Doc]);
+find_attachment([<<>>, Db, Doc]) ->
+    find_attachment([Db, Doc, first]);
+find_attachment([Db, Doc]) ->
+    find_attachment([Db, Doc, first]);
+find_attachment([<<>>, Db, Doc, Attachment]) ->
+    find_attachment([Db, Doc, Attachment]);
+find_attachment([Db, Doc, first]) ->
+    case couch_mgr:open_doc(Db, Doc) of
+	{ok, JObj} ->
+	    case is_streamable(JObj)
+		andalso whapps_json:get_value(<<"_attachments">>, JObj, false) of
+		false ->
+		    {no_data};
+		{struct, [{Attachment, MetaData} | _]} ->
+                    {whistle_util:to_binary(Db), Doc, Attachment, MetaData}
+            end;
+        _->
+            {not_found}
+    end;
+find_attachment([Db, Doc, Attachment]) ->
+    case couch_mgr:open_doc(Db, Doc) of
+        {ok, JObj} ->    
+	    case is_streamable(JObj)
+                andalso whapps_json:get_value([<<"_attachments">>, Attachment], JObj, false) of
+		false ->
+		    {no_data};
+		MetaData ->
+                    {Db, Doc, Attachment, MetaData}
+            end;
+        _ ->
+            {not_found}
+    end.
+
+-spec(is_streamable/1 :: (JObj :: json_object()) -> boolean()).                              
+is_streamable(JObj) ->
+    whistle_util:is_true(whapps_json:get_value(<<"streamable">>, JObj, true)).
+
+-spec(is_mp3/2 :: (Attachment :: binary(), MetaData :: json_object()) -> boolean()).
+is_mp3(Attachment, MetaData) ->
+    case whapps_json:get_value([<<"content_type">>], MetaData, <<"application/octet-stream">>) of
+        <<"audio/mpeg">> ->        
+            true;
+        <<"application/octet-stream">> ->
+	    binary:match(Attachment, <<"mp3">>) =/= nomatch;
+        _ ->
+            false
+    end.
+    
+-spec(start_stream/5 :: (JObj :: json_object(), Db :: binary(), Doc :: binary(), 
+                         Attachment :: binary(), S :: #state{}) -> #state{}).
+start_stream(JObj, Db, Doc, Attachment, #state{ports=Ports}=S) ->
+    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
     To = whapps_json:get_value(<<"Server-ID">>, JObj),
+    Media = {MediaName, Db, Doc, Attachment},
     {{value, Port}, Ps1} = queue:out(Ports),
 
     format_log(info, "MEDIA_SRV(~p): Starting stream~n", [self()]),
-    {ok, _} = media_shout_sup:start_shout(MediaID, To, single, Port),
+    {ok, _} = media_shout_sup:start_shout(Media, To, single, Port),
     S#state{ports=Ps1}.
 
--spec(join_stream/2 :: (JObj :: json_object(), S :: #state{}) -> #state{}).
-join_stream(JObj, #state{streams=Streams, ports=Ports}=S) ->
-    MediaID = whapps_json:get_value(<<"Media-Name">>, JObj),
+-spec(join_stream/5 :: (JObj :: json_object(), Db :: binary(), Doc :: binary(), 
+                         Attachment :: binary(), S :: #state{}) -> #state{}).
+join_stream(JObj, Db, Doc, Attachment, #state{streams=Streams, ports=Ports}=S) ->
+    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
     To = whapps_json:get_value(<<"Server-ID">>, JObj),
+    Media = {MediaName, Db, Doc, Attachment},
 
-    case lists:keyfind(MediaID, 1, Streams) of
+    case lists:keyfind(MediaName, 1, Streams) of
 	{_, ShoutSrv, _} ->
 	    format_log(info, "MEDIA_SRV(~p): Joining stream~n", [self()]),
 	    ShoutSrv ! {add_listener, To},
@@ -288,8 +363,8 @@ join_stream(JObj, #state{streams=Streams, ports=Ports}=S) ->
 	false ->
 	    {{value, Port}, Ps1} = queue:out(Ports),
 	    format_log(info, "MEDIA_SRV(~p): Starting stream instead of joining~n", [self()]),
-	    {ok, ShoutSrv} = media_shout_sup:start_shout(MediaID, To, continuous, Port),
-	    ?SERVER:add_stream(MediaID, ShoutSrv),
+	    {ok, ShoutSrv} = media_shout_sup:start_shout(Media, To, continuous, Port),
+	    ?SERVER:add_stream(MediaName, ShoutSrv),
 	    S#state{ports=Ps1}
     end.
 
@@ -319,4 +394,13 @@ fill_ports(Ps, Len, {Curr, End}) ->
 	    fill_ports(Ps, Len, {Curr+1, End})
     end.
 
-
+-spec(send_couch_stream_resp/5 :: (Db :: binary(), Doc :: binary(), Attachment :: binary(), 
+                                  MediaName :: binary(), To :: binary) -> ok | tuple(error, atom())).
+send_couch_stream_resp(Db, Doc, Attachment, MediaName, To) ->    
+    Url = <<(couch_mgr:get_url())/binary, Db/binary, $/, Doc/binary, $/, Attachment/binary>>,
+    Resp = [{<<"Media-Name">>, MediaName}
+	    ,{<<"Stream-URL">>, Url}
+	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?SERVER, ?APP_VSN)],
+    logger:format_log(info, "MEDIA_SRV(~p): Sending ~p to ~p~n", [self(), Resp, To]),    
+    {ok, Payload} = whistle_api:media_resp(Resp),
+    amqp_util:targeted_publish(To, Payload).

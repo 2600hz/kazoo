@@ -26,8 +26,7 @@
 -define(CLEANUP_RATE, 60000).
 
 -record(state, {
-	  amqp_host = "localhost" :: string()
-	  ,is_amqp_up = true :: boolean()
+	  is_amqp_up = true :: boolean()
 	  ,my_q = {error, undefined} :: binary() | tuple(error, term())
 	  ,cleanup_ref = undefined :: undefined | reference()
 	 }).
@@ -106,29 +105,22 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
-    H = whapps_controller:get_amqp_host(),
-    Q = start_amqp(H),
-    format_log(info, "REG_SRV(~p): Q: ~s on H: ~s~n", [self(), Q, H]),
-
+    Q = start_amqp(),
     Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     format_log(info, "REG_SRV(~p): Starting timer for ~p msec: ~p~n", [self(), ?CLEANUP_RATE, Ref]),
 
-    {noreply, State#state{cleanup_ref=Ref, amqp_host=H, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
+    {noreply, State#state{cleanup_ref=Ref, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
 
 handle_info(Req, #state{my_q={error, _}}=State) ->
-    H = whapps_controller:get_amqp_host(),
-    Q = start_amqp(H),
-    format_log(info, "REG_SRV(~p): restarting amqp with H: ~s; will retry in a bit if failed~n", [self(), H]),
-    handle_info(Req, State#state{amqp_host=H, my_q=Q, is_amqp_up=is_binary(Q)});
+    Q = start_amqp(),
+    handle_info(Req, State#state{my_q=Q, is_amqp_up=is_binary(Q)});
 
 handle_info({timeout, _, _}, #state{is_amqp_up=false}=S) ->
     handle_info(timeout, S);
 
-handle_info({amqp_host_down, H}, S) ->
-    format_log(info, "REG_SRV(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
-    AHost = whapps_controller:get_amqp_host(),
-    Q = start_amqp(AHost),
-    {noreply, S#state{amqp_host=AHost, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
+handle_info({amqp_host_down, _H}, S) ->
+    Q = start_amqp(),
+    {noreply, S#state{my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
 
 handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref}=S) ->
     format_log(info, "REG_SRV(~p): Time to clean old registrations~n", [self()]),
@@ -165,8 +157,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(terminate/2 :: (_, #state{}) -> no_return()).
-terminate(_Reason, #state{amqp_host=Host, my_q=Q}) ->
-    stop_amqp(Host, Q),
+terminate(_Reason, #state{my_q=Q}) ->
+    stop_amqp(Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -183,17 +175,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/1 :: (Host :: string()) -> binary() | tuple(error, term())).
-start_amqp(Host) ->
-    Q = amqp_util:new_queue(Host, <<>>),
-    amqp_util:bind_q_to_broadcast(Host, Q),
-    amqp_util:basic_consume(Host, Q),
+-spec(start_amqp/0 :: () -> binary() | tuple(error, term())).
+start_amqp() ->
+    Q = amqp_util:new_queue(<<>>),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
+    amqp_util:basic_consume(Q),
     Q.
 
--spec(stop_amqp/2 :: (Host :: string(), Q :: binary()) -> no_return()).
-stop_amqp(Host, Q) ->
-    amqp_util:unbind_q_from_broadcast(Host, Q),
-    amqp_util:queue_delete(Host, Q).
+-spec(stop_amqp/1 :: (Q :: binary()) -> no_return()).
+stop_amqp(Q) ->
+    amqp_util:unbind_q_from_callmgr(Q).
 
 -spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
 handle_req(<<"application/json">>, Payload, State) ->
@@ -228,7 +220,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 					      ,?APP_VSN)],
     {ok, JSON} = auth_response(AuthProp, Defaults),
     RespQ = props:get_value(<<"Server-ID">>, Prop),
-    send_resp(JSON, RespQ, State#state.amqp_host);
+    send_resp(JSON, RespQ);
 process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
     true = whistle_api:reg_success_v(Prop),
 
@@ -236,7 +228,7 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, _State) ->
 
     AfterUnquoted = whistle_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
-    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, current_tstamp()}
+    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
 			 ,{<<"Contact">>, Contact1}
 			 | lists:keydelete(<<"Contact">>, 1, Prop)]
 	       },
@@ -259,12 +251,15 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 	    DocId = props:get_value(<<"id">>, Value),
 	    {ok, {struct, RegDoc}} = couch_mgr:open_doc(?REG_DB, DocId),
 
-	    Fields = props:get_value(<<"Fields">>, Prop),
-	    RespServer = props:get_value(<<"Server-ID">>, Prop),
+	    RespFields = case props:get_value(<<"Fields">>, Prop) of
+			     [] ->
+				 lists:keydelete(<<"_rev">>, 1, lists:keydelete(<<"_id">>, 1, RegDoc));
+			     Fields ->
+				 lists:foldl(fun(F, Acc) ->
+						     [ {F, props:get_value(F, RegDoc)} | Acc]
+					     end, [], Fields)
+			 end,
 
-	    RespFields = lists:foldl(fun(F, Acc) ->
-					     [ {F, props:get_value(F, RegDoc)} | Acc]
-				     end, [], Fields),
 	    {ok, JSON} = whistle_api:reg_query_resp([ {<<"Fields">>, {struct, RespFields}}
 						      | whistle_api:default_headers(State#state.my_q
 										    ,<<"directory">>
@@ -272,19 +267,17 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 											,whistle_util:to_binary(?MODULE)
 										    ,?APP_VSN)
 						    ]),
-	    amqp_util:targeted_publish(State#state.amqp_host, RespServer, JSON, <<"application/json">>)
+
+	    RespServer = props:get_value(<<"Server-ID">>, Prop),
+	    amqp_util:targeted_publish(RespServer, JSON, <<"application/json">>)
     end,
     ok;
 process_req(_,_,_) ->
     not_handled.
 
--spec(current_tstamp/0 :: () -> integer()).
-current_tstamp() ->
-    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
-
 cleanup_registrations() ->
     %% get all documents with one or more tstamps < Now
-    {ok, Expired} = couch_mgr:get_results("registrations", {"registrations", "expirations"}, [{<<"endkey">>, current_tstamp()}]),
+    {ok, Expired} = couch_mgr:get_results("registrations", {"registrations", "expirations"}, [{<<"endkey">>, whistle_util:current_tstamp()}]),
     lists:foreach(fun({struct, Doc}) ->
 			  {ok, D} = couch_mgr:open_doc(?REG_DB, props:get_value(<<"id">>, Doc)),
 			  couch_mgr:del_doc(?REG_DB, D)
@@ -323,6 +316,6 @@ auth_specific_response(403) ->
      ,{<<"Access-Group">>, <<"ignore">>}
      ,{<<"Tenant-ID">>, <<"ignore">>}].
 
-send_resp(JSON, RespQ, Host) ->
+send_resp(JSON, RespQ) ->
     format_log(info, "REG_SERVE(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
-    amqp_util:targeted_publish(Host, RespQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).

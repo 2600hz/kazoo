@@ -162,8 +162,7 @@ start_amqp(Host, "", <<>>) ->
     amqp_util:basic_consume(Host, Q),
     Q;
 start_amqp(Host, OldHost, OldQ) ->
-    amqp_util:delete_callmgr_queue(OldHost, OldQ),
-    amqp_util:channel_close(OldHost),
+    amqp_util:delete_callmgr_queue(OldQ),
     start_amqp(Host, "", <<>>).
 
 -spec(handle_resource_req/2 :: (Payload :: binary(), AmqpHost :: string()) -> no_return()).
@@ -177,7 +176,7 @@ handle_resource_req(Payload, AmqpHost) ->
 
 	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
 	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
-	    Route = ecallmgr_fs_route:build_route(AmqpHost, [{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], get_value(<<"Invite-Format">>, Prop)),
+	    Route = ecallmgr_fs_xml:build_route([{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], get_value(<<"Invite-Format">>, Prop)),
 	    case start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min) of
 		{error, failed_starting, Failed} ->
 		    send_failed_req(Prop, AmqpHost, Failed),

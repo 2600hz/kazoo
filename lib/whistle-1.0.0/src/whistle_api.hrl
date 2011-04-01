@@ -325,11 +325,10 @@
 -define(STORE_HTTP_RESP_VALUES, [{<<"Application-Name">>, <<"store">>}
 				 ,{<<"Media-Transfer-Method">>, [<<"put">>, <<"post">>]}
 				]).
--define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun({ok, _S, _H, _B}) -> true;
-								  ({error, _E}) -> true;
-								  (_) -> false
-							       end}
-			       ]).
+-define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun({struct, L}) when is_list(L) ->
+                                                                       true;
+                                                                  (_) -> false
+                                                               end}]).
 
 %% Tones Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Generate_Tone
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
@@ -492,7 +491,9 @@
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
 			   ,{<<"Event-Name">>, <<"media_resp">>}
 			  ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; (_) -> false end}]).
+-define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; 
+                                                 (<<"http://", _/binary>>) -> true; 
+                                                 (_) -> false end}]).
 
 %% Media Error
 -define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
@@ -572,14 +573,21 @@
 
 %% Conference::Members - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_MEMBERS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>, <<"Restrict-To">>]).
+-define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_MEMBERS_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"members">>}
                               ]).
--define(CONF_MEMBERS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                              ,{<<"Restrict-To">>, fun is_list/1}
-                             ]).
+-define(CONF_MEMBERS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
+-define(CONF_MEMBERS_RESP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONF_MEMBERS_RESP_HEADERS, [<<"Insert-At">>, <<"Members">>, <<"Error">>]).
+-define(CONF_MEMBERS_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                               ,{<<"Event-Name">>, <<"response">>}
+                               ,{<<"Application-Name">>, <<"members">>}
+                              ]).
+-define(CONF_MEMBERS_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
 
 %% Conference::Play - http://wiki.2600hz.org/display/whistle/Conferences
 -define(CONF_PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
@@ -673,6 +681,16 @@
                                 ,{<<"Correlate-ID">>, fun is_binary/1}
                                ]).
 
+%% NoOp Request
+-define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>]).
+-define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"noop">>}
+                          ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+                         ]).
+-define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
+
 %% [{FreeSWITCH-Flage-Name, Whistle-Flag-Name}]
 %% Conference-related entry flags
 %% convert from FS conference flags to Whistle conference flags
@@ -699,6 +717,7 @@
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				 ,{<<"respond">>, <<"respond">>}
 				 ,{<<"conference">>, <<"conference">>}
+				 ,{<<"noop">>, <<"noop">>}
 				]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
@@ -725,4 +744,5 @@
 				,{<<"sleep">>, fun whistle_api:sleep_req_v/1}
 				,{<<"set">>, fun whistle_api:set_req_v/1}
 				,{<<"conference">>, fun whistle_api:conference_req_v/1}
+				,{<<"noop">>, fun whistle_api:noop_req_v/1}
 			       ]).

@@ -12,8 +12,8 @@
 %%%-------------------------------------------------------------------
 -module(ts_util).
 
--export([find_ip/1, filter_active_calls/2, get_media_handling/1, current_tstamp/0]).
--export([constrain_weight/1, is_ipv4/1, is_ipv6/1]).
+-export([find_ip/1, filter_active_calls/2, get_media_handling/1]).
+-export([constrain_weight/1, is_ipv4/1, is_ipv6/1, get_base_channel_vars/1]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
@@ -68,14 +68,22 @@ filter_active_calls(CallID, ActiveCalls) ->
 get_media_handling(<<"process">>) -> <<"process">>;
 get_media_handling(_) -> <<"bypass">>.
 
-%% returns, in seconds, the current timestamp
--spec(current_tstamp/0 :: () -> integer()).
-current_tstamp() ->
-    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
-
 -spec(constrain_weight/1 :: (W :: binary() | integer()) -> integer()).
 constrain_weight(W) when not is_integer(W) ->
     constrain_weight(whistle_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
+
+%% return rate information as channel vars
+get_base_channel_vars(Flags) ->
+    ChannelVars0 = [{<<"Rate">>, whistle_util:to_binary(Flags#route_flags.rate)}
+		    ,{<<"Rate-Increment">>, whistle_util:to_binary(Flags#route_flags.rate_increment)}
+		    ,{<<"Rate-Minimum">>, whistle_util:to_binary(Flags#route_flags.rate_minimum)}
+		    ,{<<"Surcharge">>, whistle_util:to_binary(Flags#route_flags.surcharge)}
+		   ],
+
+    case binary:longest_common_suffix([Flags#route_flags.callid, <<"-failover">>]) of
+	0 -> ChannelVars0;
+	_ -> [{<<"Failover-Route">>, <<"true">>} | ChannelVars0]
+    end.

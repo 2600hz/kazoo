@@ -5,6 +5,7 @@
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
+-export([current_tstamp/0]).
 
 reload_changed() ->
     reloader:reload_modules(reloader:all_changed()).
@@ -162,6 +163,9 @@ ceiling(X) ->
         true -> T;
         false -> T + 1
     end.
+
+current_tstamp() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 %% EUNIT TESTING
 

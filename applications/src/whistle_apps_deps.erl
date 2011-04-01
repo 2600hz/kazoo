@@ -51,7 +51,7 @@ new_siblings(Module) ->
 %%      of the application for Module are on the code path.
 ensure(Module) ->
     code:add_paths(new_siblings(Module)),
-    code:clash(),
+    %% %%code:clash(),
     ok.
 
 %% @spec ensure() -> ok

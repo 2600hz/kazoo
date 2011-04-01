@@ -7,7 +7,9 @@
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
     start_deps(),
-    trunkstore_sup:start_link().
+    Res = trunkstore_sup:start_link(),
+    [ ts_responder_sup:start_handler() || _ <- [1,2,3] ],
+    Res.
 
 %% @spec start() -> ok
 %% @doc Start the callmgr server.
