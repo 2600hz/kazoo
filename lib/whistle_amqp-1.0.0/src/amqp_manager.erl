@@ -230,6 +230,8 @@ get_new_connection({Type, #'amqp_params'{}=P}) ->
 	    E
     end.
 
+stop_amqp_host(#state{handler_pid=undefined}) ->
+    ok;
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     erlang:demonitor(HRef, [flush]),
     _ = net_kernel:monitor_nodes(false),

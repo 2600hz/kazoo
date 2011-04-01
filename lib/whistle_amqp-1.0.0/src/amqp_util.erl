@@ -18,7 +18,7 @@
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 
--export([new_targeted_queue/0, new_targeted_queue/1, new_callevt_queue/1, new_callctl_queue/1, new_broadcast_queue/1, new_callmgr_queue/1]).
+-export([new_targeted_queue/0, new_targeted_queue/1, new_callevt_queue/1, new_callctl_queue/1, new_broadcast_queue/1, new_callmgr_queue/1, new_callmgr_queue/2]).
 -export([delete_callevt_queue/1, delete_callctl_queue/1, delete_callmgr_queue/1]).
 
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
@@ -153,6 +153,8 @@ new_callctl_queue(CallId) ->
 
 new_callmgr_queue(Queue) ->
     new_queue(Queue, []).
+new_callmgr_queue(Queue, Opts) ->
+    new_queue(Queue, Opts).
 
 %% Declare a queue and returns the queue Name
 new_queue() ->
@@ -171,8 +173,13 @@ new_queue(Queue, Options) ->
       ,nowait = get_value(nowait, Options, false)
       ,arguments = get_value(arguments, Options, [])
      },
-    #'queue.declare_ok'{queue=Q} = amqp_manager:consume(QD),
-    Q.
+    case amqp_manager:consume(QD) of
+	ok -> Queue;
+	#'queue.declare_ok'{queue=Q} -> Q;
+	_Other ->
+	    io:format("AMQP_UTIL: Other: ~p~n", [_Other]),
+	    {error, amqp_error}
+    end.
 
 delete_callevt_queue(CallId) ->
     delete_callevt_queue(CallId, []).
