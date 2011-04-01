@@ -334,7 +334,7 @@ update_members(#conf{id=ConfId} = Conf, Call) ->
 %%-------------------------------------------------------------------
 -spec(find_call_member/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 find_call_member(Conf, #cf_call{route_request=RR}) ->
-    CallId = get_value(<<"Call-ID">>, RR),
+    CallId = whapps_json:get_value(<<"Call-ID">>, RR),
     Member = lists:foldr(fun (Member, Acc) ->
                                  case whapps_json:get_value(<<"Call-ID">>, Member) of
                                      CallId ->

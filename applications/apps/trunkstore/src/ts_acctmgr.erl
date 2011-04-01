@@ -577,15 +577,14 @@ stop_replication(LocalDB, [N | Ns]) ->
     setup_replication(LocalDB, Ns).
 
 is_call_active(CallID) ->
-    H = whapps_controller:get_amqp_host(),
-    Q = amqp_util_old:new_targeted_queue(H),
-    amqp_util_old:bind_q_to_targeted(H, Q),
+    Q = amqp_util:new_targeted_queue(),
+    amqp_util:bind_q_to_targeted(Q),
 
     Req = [{<<"Call-ID">>, CallID}
 	   | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
 
     {ok, JSON} = whistle_api:call_status_req(Req),
-    amqp_util_old:callevt_publish(H, CallID, JSON, status_req),
+    amqp_util:callevt_publish(CallID, JSON, status_req),
 
     is_call_active_loop().
 
@@ -601,7 +600,7 @@ is_call_active_loop() ->
     end.
 
 release_trunk_error(AcctId, CallID, DB) ->
-    format_log(info, "TS_ACCTMGR.release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
+    format_log(info, "TS_ACCTMGR(~p).release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
 
     case trunk_type(DB, AcctId, CallID) of
 	non_existant -> format_log(info, "TS_ACCTMGR.release_error: Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);

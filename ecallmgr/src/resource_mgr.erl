@@ -136,7 +136,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{amqp_host=Host, callmgr_q=Q}) ->
     format_log(info, "RSCMGR(~p): Going down(~p). H: ~p Q: ~p~n", [self(), _Reason, Host, Q]),
-    amqp_util_old:delete_callmgr_queue(Host, Q),
+    amqp_util:delete_callmgr_queue(Host, Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -155,15 +155,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(start_amqp/3 :: (Host :: string(), OldHost :: string(), OldQ :: binary()) -> binary()).
 start_amqp(Host, "", <<>>) ->
-    amqp_util_old:callmgr_exchange(Host),
-    amqp_util_old:targeted_exchange(Host),
-    Q = amqp_util_old:new_callmgr_queue(Host, <<>>),
-    amqp_util_old:bind_q_to_callmgr(Host, Q, ?KEY_RESOURCE_REQ),
-    amqp_util_old:basic_consume(Host, Q),
+    amqp_util:callmgr_exchange(Host),
+    amqp_util:targeted_exchange(Host),
+    Q = amqp_util:new_callmgr_queue(Host, <<>>),
+    amqp_util:bind_q_to_callmgr(Host, Q, ?KEY_RESOURCE_REQ),
+    amqp_util:basic_consume(Host, Q),
     Q;
 start_amqp(Host, OldHost, OldQ) ->
-    amqp_util_old:delete_callmgr_queue(OldHost, OldQ),
-    amqp_util_old:channel_close(OldHost),
+    amqp_util:delete_callmgr_queue(OldQ),
     start_amqp(Host, "", <<>>).
 
 -spec(handle_resource_req/2 :: (Payload :: binary(), AmqpHost :: string()) -> no_return()).
@@ -177,7 +176,7 @@ handle_resource_req(Payload, AmqpHost) ->
 
 	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
 	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
-	    Route = ecallmgr_fs_route:build_route(AmqpHost, [{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], get_value(<<"Invite-Format">>, Prop)),
+	    Route = ecallmgr_fs_xml:build_route([{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], get_value(<<"Invite-Format">>, Prop)),
 	    case start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min) of
 		{error, failed_starting, Failed} ->
 		    send_failed_req(Prop, AmqpHost, Failed),
@@ -250,7 +249,7 @@ send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
 		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, whistle_util:to_binary(Vsn))],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
     format_log(info, "RSC_MGR: Sending resp to ~p: ~s~n", [AppQ, JSON]),
-    amqp_util_old:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 -spec(send_failed_req/3 :: (Prop :: proplist(), Host :: string(), Failed :: integer()) -> no_return()).
 send_failed_req(Prop, Host, Failed) ->
@@ -263,7 +262,7 @@ send_failed_req(Prop, Host, Failed) ->
 		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
-    amqp_util_old:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 -spec(send_failed_consume/3 :: (Route :: binary() | list(), Amqp :: tuple(Host :: string(), Prop :: proplist()), E :: binary()) -> no_return()).
 send_failed_consume(Route, {Host, Prop}, E) ->
@@ -277,7 +276,7 @@ send_failed_consume(Route, {Host, Prop}, E) ->
 		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, <<"resource_mgr">>, Vsn)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
-    amqp_util_old:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
 
 %% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first) 
 %% [

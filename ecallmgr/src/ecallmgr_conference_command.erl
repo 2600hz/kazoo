@@ -158,7 +158,7 @@ members_response(Members, ConfName, CallId, ServerId, AmqpHost) ->
              | whistle_api:default_headers("", <<"conference">>, <<"response">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Json} = whistle_api:conference_members_resp(Response),
-    amqp_util_old:targeted_publish(AmqpHost, ServerId, Json, <<"application/json">>).    
+    amqp_util:targeted_publish(AmqpHost, ServerId, Json, <<"application/json">>).    
 
 parse_members(Members) ->
     CSV = whistle_util:to_list(Members),

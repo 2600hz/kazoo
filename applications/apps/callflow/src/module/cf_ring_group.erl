@@ -28,16 +28,16 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (JObj :: json_object(), Call :: #cf_call{}) -> stop | continue).
-handle(JObj, #cf_call{cf_pid=CFPid}=Call) ->    
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
+handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
     Endpoints = lists:foldr(fun(Endpoint, Acc) ->
                                     case get_endpoint(Endpoint) of
                                         {ok, E} -> [E|Acc];
                                         _ -> Acc
                                     end
-                            end, [], whapps_json:get_value([<<"endpoints">>], JObj, [])),
-    Timeout = whapps_json:get_value(<<"timeout">>, JObj, ?DEFAULT_TIMEOUT),
-    Strategy = whapps_json:get_value(<<"strategy">>, JObj, <<"simultaneous">>),
+                            end, [], whapps_json:get_value([<<"endpoints">>], Data, [])),
+    Timeout = whapps_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+    Strategy = whapps_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
     case b_bridge(Endpoints, Timeout, Strategy, Call) of
         {ok, _} ->
             wait_for_unbridge(),

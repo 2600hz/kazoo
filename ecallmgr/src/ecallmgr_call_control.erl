@@ -65,7 +65,6 @@
 	 ,uuid = <<>> :: binary()
          ,command_q = queue:new() :: queue()
          ,current_app = <<>> :: binary()
-         ,amqp_h = <<>> :: string()
          ,amqp_q = <<>> :: binary()
 	 ,start_time = erlang:now() :: tuple()
 	 ,is_node_up = true :: boolean()
@@ -82,8 +81,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Node, UUID, Amqp) ->
-    gen_server:start_link(?MODULE, [Node, UUID, Amqp], []).
+start_link(Node, UUID, CtlQ) ->
+    gen_server:start_link(?MODULE, [Node, UUID, CtlQ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -100,8 +99,9 @@ start_link(Node, UUID, Amqp) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, UUID, {AmqpHost, CtlQueue}]) ->
-    {ok, #state{node=Node, uuid=UUID, command_q = queue:new(), current_app = <<>>, amqp_h = AmqpHost, amqp_q = CtlQueue, start_time = erlang:now()}, 0}.
+init([Node, UUID, CtlQueue]) ->
+    {ok, #state{node=Node, uuid=UUID, command_q = queue:new()
+		,current_app = <<>>, amqp_q = CtlQueue, start_time = erlang:now()}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,9 +144,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{node=N, amqp_h=H, amqp_q=Q}=State) ->
+handle_info(timeout, #state{node=N, amqp_q=Q}=State) ->
     erlang:monitor_node(N, true),
-    amqp_util_old:basic_consume(H, Q),
+    amqp_util:basic_consume(Q),
     {noreply, State};
 
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
@@ -214,20 +214,20 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 	    {noreply, State}
     end;
 
-handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_h=H, amqp_q=Q, start_time=StartT}=State) ->
+handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_q=Q, start_time=StartT}=State) ->
     lists:foreach(fun(Cmd) ->
                           ok = execute_control_request(Cmd, State)
 		  end, post_hangup_commands(State#state.command_q)),
 
-    amqp_util_old:unbind_q_from_callctl(H, Q),
-    amqp_util_old:queue_delete(H, Q), %% stop receiving messages
+    amqp_util:unbind_q_from_callctl(Q),
+    amqp_util:queue_delete(Q), %% stop receiving messages
     format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
 	       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
     EvtPid ! {ctl_down, self()},
     {stop, normal, State};
 
-handle_info(is_amqp_up, #state{amqp_h=H, amqp_q=Q}=State) ->
-    case restart_amqp_queue(H, Q) of
+handle_info(is_amqp_up, #state{amqp_q=Q}=State) ->
+    case restart_amqp_queue(Q) of
 	ok -> {noreply, State};
 	{error, _} ->
 	    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
@@ -268,12 +268,12 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec(restart_amqp_queue/2 :: (Host :: string(), Queue :: binary()) -> 'ok' | tuple('error', term())).
-restart_amqp_queue(Host, Queue) ->
-    case amqp_util_old:new_callctl_queue(Host, Queue) of
+-spec(restart_amqp_queue/1 :: (Queue :: binary()) -> 'ok' | tuple('error', term())).
+restart_amqp_queue(Queue) ->
+    case amqp_util:new_callctl_queue(Queue) of
 	Q when Q =:= Queue ->
-	    amqp_util_old:bind_q_to_callctl(Host, Queue),
-	    amqp_util_old:basic_consume(Host, Queue),
+	    amqp_util:bind_q_to_callctl(Queue),
+	    amqp_util:basic_consume(Queue),
 	    ok;
 	{error, _}=E ->
 	    E
@@ -291,7 +291,7 @@ insert_command(State, <<"now">>, JObj) ->
 		     ,{<<"Channel-Call-State">>, <<"ERROR">>}
 		     ,{<<"Custom-Channel-Vars">>, JObj}
 		   ],
-	    ecallmgr_call_events:publish_msg(State#state.amqp_h, State#state.uuid, Prop),
+	    ecallmgr_call_events:publish_msg(State#state.uuid, Prop),
 	    State#state.command_q;
 	<<"queue">> ->
 	    true = whistle_api:queue_req_v(JObj),
@@ -323,7 +323,14 @@ insert_command(State, <<"head">>, JObj) ->
 	    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj)
     end;
 insert_command(State, <<"tail">>, JObj) ->
-    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj).
+    case whapps_json:get_value(<<"Application-Name">>, JObj) of
+	<<"queue">> ->
+	    Commands = whapps_json:get_value(<<"Commands">>, JObj),
+	    JObj2 = whapps_json:set_value(<<"Commands">>, lists:reverse(Commands), JObj),
+	    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj2);
+	_ ->
+	    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj)
+    end.
 
 -spec(insert_command_into_queue/3 :: (Q :: queue(), InsertFun :: fun(), JObj :: json_object()) -> queue()).
 insert_command_into_queue(Q, InsertFun, JObj) ->
@@ -336,7 +343,7 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 				AppCmd = {struct, DefProp ++ Cmd},
 				true = whistle_api:dialplan_req_v(AppCmd),
 				format_log(info, "CONTROL.queue: insert Cmd: ~p~n", [whapps_json:get_value(<<"Application-Name">>, AppCmd)]),
-				InsertFun({struct, AppCmd}, TmpQ)
+				InsertFun(AppCmd, TmpQ)
 			end, Q, whapps_json:get_value(<<"Commands">>, JObj));
 	_AppName ->
 	    true = whistle_api:dialplan_req_v(JObj),
@@ -349,8 +356,7 @@ post_hangup_commands(CmdQ) ->
 			 lists:member(whapps_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
 		 end, queue:to_list(CmdQ)).
 
-
-execute_control_request(Cmd, #state{node=Node, uuid=UUID, amqp_h=H}) ->
+execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     %% hmm any other ideas regarding noop? -Karl
     AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),    
     if AppName == <<"noop">> -> self() ! {execute_complete, UUID, AppName}; true -> ok end,
@@ -360,5 +366,4 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID, amqp_h=H}) ->
                                            ,(whapps_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
                                          >>, latin1),
     format_log(info, "RUNNING ~p", [Mod]),
-    Mod:exec_cmd(Node, UUID, Cmd, H).
-    
+    Mod:exec_cmd(Node, UUID, Cmd).

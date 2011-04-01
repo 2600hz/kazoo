@@ -1,0 +1,9 @@
+This library contains four exported methods:
+
+* utc_to_local(DateTime, Timezone)
+* local_to_utc(DateTime, Timezone)
+* local_to_local(DateTime, TimezoneFrom, TimezoneTo)
+* tz_name(DateTime, Timezone)
+Where
+DateTime = {date(), time()}
+TimeZone(To, From) = String(). E.g. “Europe/Moscow”, “America/NewYork”
