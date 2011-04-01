@@ -168,6 +168,9 @@ server_connection(Host, Port, Prefix, Options) when is_list(Port) ->
 server_connection(Host, Port, Prefix, Options) when is_integer(Port), Port =:=443 ->
     Options1 = [{is_ssl, true}|Options],
     #server{host=Host, port=Port, prefix=Prefix, options=Options1};
+server_connection([$h,$t,$t,$p,$s,$:,$/,$/ | Host], Port, Prefix, Options) ->
+    Options1 = [{is_ssl, true}|Options],
+    #server{host=Host, port=Port, prefix=Prefix, options=Options1};
 server_connection(Host, Port, Prefix, Options) ->
     #server{host=Host, port=Port, prefix=Prefix, options=Options}.
 
