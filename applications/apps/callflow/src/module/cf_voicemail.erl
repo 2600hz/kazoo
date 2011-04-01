@@ -35,6 +35,12 @@
           ,save = <<"2">>
           ,record = <<"3">>
 
+          %% Main Menu
+          ,hear_new = <<"1">>
+          ,hear_saved = <<"2">>
+          ,configure = <<"5">>
+          ,exit = <<"#">>
+
           %% Config Menu
           ,rec_unavailable  = <<"1">>
           ,rec_name = <<"2">>
@@ -45,20 +51,38 @@
 -record(prompts, {
            person_at_exten = <<"/system_media/vm-person">>
           ,not_available = <<"/system_media/vm-not_available">>
+
           ,record_instructions = <<"/system_media/vm-record_greeting">>
+
           ,press = <<"/system_media/vm-press">>
+
           ,to_listen = <<"/system_media/vm-listen_to_recording">>
           ,to_save = <<"/system_media/vm-save_recording">>
           ,to_rerecord = <<"/system_media/vm-rerecord">>
+
           ,enter_password = <<"/system_media/vm-enter_pass">>
           ,invalid_login = <<"/system_media/vm-fail_auth">>
+          ,abort_login = <<"/system_media/vm-abort">>
+
+          ,you_have = <<"/system_media/vm-you_have">>
+          ,new = <<"/system_media/vm-new">>
+          ,messages = <<"/system_media/vm-messages">>
+          ,saved = <<"/system_media/vm-saved">>
+          ,to_hear_new = <<"/system_media/vm-listen_new">>
+          ,to_hear_saved = <<"/system_media/vm-listen_saved">>
+          ,to_configure = <<"/system_media/vm-advanced">>
+          ,to_exit = <<"/system_media/vm-to_exit3">>
+
           ,to_change_pin = <<"/system_media/vm-change_password">>
           ,to_rec_name = <<"/system_media/vm-record_name2">>
           ,to_rec_unavailable = <<"/system_media/vm-to_record_greeting">>
           ,to_return_main = <<"/system_media/vm-main_menu">>
+
           ,record_name = <<"/system_media/vm-record_name1">>
+
           ,enter_new_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Enter+your+new+password+followed+by+the+pound+key.">>
           ,reenter_new_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Re-enter+your+new+password+followed+by+the+pound+key+to+confirm.">>
+
           ,tone_spec = [{struct, [{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}]}]
          }).
 
@@ -139,7 +163,7 @@ compose_voicemail(#mailbox{prompts=Prompts}=Box, Call) ->
 play_greeting(#mailbox{prompts=Prompts, unavailable_greeting=undefined}, #cf_call{to_number=Exten} = Call) ->
     audio_macro([
                   {play, Prompts#prompts.person_at_exten}
-                 ,{say, Exten}
+                 ,{say,  Exten}
                  ,{play, Prompts#prompts.not_available}
                 ], Call);
 play_greeting(#mailbox{database=Db, mailbox_id=Id, unavailable_greeting=Greeting}, Call) ->
@@ -178,13 +202,12 @@ new_message(MediaName, #mailbox{database=Db, mailbox_id=Id}=Box, #cf_call{route_
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             NewMessages=[{struct, [
-                                    {<<"Timestamp">>, <<>>}
+                                    {<<"Timestamp">>, new_timestamp()}
                                    ,{<<"From">>, whapps_json:get_value(<<"From">>, RR)}
                                    ,{<<"To">>, whapps_json:get_value(<<"To">>, RR)}
                                    ,{<<"Caller-ID-Number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
                                    ,{<<"Caller-ID-Name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
                                    ,{<<"Call-ID">>, whapps_json:get_value(<<"Call-ID">>, RR)}
-                                   ,{<<"Folder">>, <<"new">>}
                                    ,{<<"Attachment">>, MediaName}
                                   ]}] ++ whapps_json:get_value([<<"messages">>, <<"new">>], JObj, []),            
             couch_mgr:save_doc(Db, whapps_json:set_value([<<"messages">>, <<"new">>], NewMessages, JObj));
@@ -204,7 +227,7 @@ check_voicemail(Box, Call) ->
         invalid ->
             {error, invalid_pin};
         ok ->
-            config_menu(Box, Call)
+            main_menu(Box, Call)
     end.    
 
 %%--------------------------------------------------------------------
@@ -214,7 +237,8 @@ check_voicemail(Box, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(check_pin/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> invalid | ok).                           
-check_pin(#mailbox{max_login_attempts=MaxLoginAttempts}, _Call, Loop) when Loop > MaxLoginAttempts ->
+check_pin(#mailbox{prompts=Prompts, max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
+    play(Prompts#prompts.abort_login, Call),
     invalid;                                                                         
 check_pin(#mailbox{prompts=Prompts, pin=Pin}=Box, Call, Loop) ->
     try
@@ -224,6 +248,62 @@ check_pin(#mailbox{prompts=Prompts, pin=Pin}=Box, Call, Loop) ->
         _:_ ->
             play(Prompts#prompts.invalid_login, Call),
             check_pin(Box, Call, Loop+1)
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(main_menu/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> stop | continue).
+main_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
+    New = <<"0">>, Saved = <<"0">>,
+    audio_macro([
+                  {play, Prompts#prompts.you_have}
+                 ,{say,  New}
+                 ,{play, Prompts#prompts.new}
+                 ,{play, Prompts#prompts.messages}
+
+                 ,{play, Prompts#prompts.you_have}
+                 ,{say,  Saved}
+                 ,{play, Prompts#prompts.saved}
+                 ,{play, Prompts#prompts.messages}
+
+                 ,{play, Prompts#prompts.to_hear_new}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.hear_new}
+
+                 ,{play, Prompts#prompts.to_hear_saved}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.hear_saved}
+
+                 ,{play, Prompts#prompts.to_configure}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.configure}
+
+                 ,{play, Prompts#prompts.to_exit}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.exit}
+                ], Call),
+    case wait_for_dtmf(30000) of
+        {error, _}=E ->
+            E;
+        {ok, Digit} ->
+            flush(Call),
+            if 
+                Digit == Keys#keys.hear_new ->
+                    main_menu(Box, Call);
+                Digit == Keys#keys.hear_saved -> 
+                    main_menu(Box, Call);
+                Digit == Keys#keys.configure -> 
+                    config_menu(Box, Call);
+                Digit == Keys#keys.exit -> 
+                    ok;
+                true ->
+                    main_menu(Box, Call)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -238,12 +318,15 @@ config_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
                   {play, Prompts#prompts.to_rec_unavailable}
                  ,{play, Prompts#prompts.press}
                  ,{say,  Keys#keys.rec_unavailable}
+
                  ,{play, Prompts#prompts.to_rec_name}
                  ,{play, Prompts#prompts.press}
                  ,{say,  Keys#keys.rec_name}
+
                  ,{play, Prompts#prompts.to_change_pin}
                  ,{play, Prompts#prompts.press}
                  ,{say,  Keys#keys.set_pin}
+
                  ,{play, Prompts#prompts.to_return_main}
                  ,{play, Prompts#prompts.press}
                  ,{say,  Keys#keys.return_main}
@@ -255,15 +338,18 @@ config_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
             flush(Call),
             if 
                 Digit == Keys#keys.rec_unavailable ->
-                    record_name(tmp_file(), Box, Call);
+                    config_menu(Box, Call);
                 Digit == Keys#keys.rec_name -> 
-                    record_name(tmp_file(), Box, Call);
+                    record_name(tmp_file(), Box, Call),
+                    config_menu(Box, Call);
                 Digit == Keys#keys.set_pin ->                   
-                    change_pin(Box, Call);
+                    change_pin(Box, Call),
+                    config_menu(Box, Call);
+                Digit == Keys#keys.return_main ->                   
+                    main_menu(Box, Call);
                 true ->
-                    ok
-            end,
-            config_menu(Box, Call)
+                    config_menu(Box, Call)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -275,7 +361,7 @@ config_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
 -spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
 record_name(MediaName, #mailbox{prompts=Prompts}=Box, Call) -> 
     audio_macro([
-                  {play, Prompts#prompts.record_name}
+                  {play,  Prompts#prompts.record_name}
                  ,{tones, Prompts#prompts.tone_spec}
                 ], Call),
     case b_record(MediaName, Call) of
@@ -305,12 +391,11 @@ change_pin(#mailbox{prompts=Prompts, database=Db, mailbox_id=Id}=Box, Call) ->
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.reenter_new_pin, <<"1">>, <<"8000">>, Call),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        couch_mgr:save_doc(Db, whapps_json:set_value([<<"base">>, <<"pin-number">>], Pin, JObj))
+        couch_mgr:save_doc(Db, whapps_json:set_value([<<"base">>, <<"pin">>], Pin, JObj))
     catch
         _:_ ->
             change_pin(Box, Call)
     end.    
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -319,10 +404,10 @@ change_pin(#mailbox{prompts=Prompts, database=Db, mailbox_id=Id}=Box, Call) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec(get_mailbox_profile/1 :: (JOBj :: json_object()) -> #mailbox{} | tuple(stop)).
-get_mailbox_profile({struct, Props}) ->
-    Db = get_value(<<"database">>, Props),
-    Id = get_value(<<"id">>, Props),
+-spec(get_mailbox_profile/1 :: (Data :: json_object()) -> #mailbox{} | tuple(stop)).
+get_mailbox_profile(Data) ->
+    Db = whapps_json:get_value(<<"database">>, Data),
+    Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             #mailbox{          
@@ -330,9 +415,9 @@ get_mailbox_profile({struct, Props}) ->
                       ,mailbox_id = Id
                       ,skip_instructions = whapps_json:get_value(["base", "skip-instructions"], JObj, #mailbox.skip_instructions)
                       ,skip_greeting = whapps_json:get_value(["base", "skip-greeting"], JObj, #mailbox.skip_greeting)
-                      ,action = get_value(<<"action">>, Props)
+                      ,action = whapps_json:get_value(<<"action">>, Data)
                       ,unavailable_greeting = whapps_json:get_value(["base", "unavailable-greeting"], JObj)
-                      ,pin = whapps_json:get_value(["base", "pin-number"], JObj, <<"1010">>)
+                      ,pin = whapps_json:get_value(["base", "pin"], JObj, <<"1010">>)
                     };
         _ -> 
             #mailbox{}
@@ -350,9 +435,11 @@ review_recording(MediaName, #mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
                   {play, Prompts#prompts.press}
                  ,{say,  Keys#keys.listen}
                  ,{play, Prompts#prompts.to_listen}
+
                  ,{play, Prompts#prompts.press}
                  ,{say,  Keys#keys.save}
                  ,{play, Prompts#prompts.to_save}
+
                  ,{play, Prompts#prompts.press}
                  ,{say,  Keys#keys.record}
                  ,{play, Prompts#prompts.to_rerecord}
@@ -427,3 +514,16 @@ get_unavailable_greeting(JObj) ->
 -spec(tmp_file/0 :: () -> binary()).
 tmp_file() ->
      <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".wav">>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns the Universal Coordinated Time (UTC) reported by the 
+%% underlying operating system (local time is used if universal 
+%% time is not available) as number of gregorian seconds starting 
+%% with year 0.
+%% @end
+%%--------------------------------------------------------------------
+-spec(new_timestamp/0 :: () -> binary()).
+new_timestamp() ->
+    whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(calendar:universal_time())).    
