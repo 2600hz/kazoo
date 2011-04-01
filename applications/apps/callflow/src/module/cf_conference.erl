@@ -80,7 +80,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
+handle(_Data, #cf_call{cf_pid=CFPid}=Call) ->
     Conf = update_members(#conf{}, Call),
     answer(Call),
     play_conference_name(Conf, Call),
