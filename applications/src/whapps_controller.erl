@@ -22,6 +22,7 @@
 
 -define(SERVER, ?MODULE). 
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
+-define(STARTUP_FILE, [code:lib_dir(whistle_apps, priv), "/startup.config"]).
 
 -record(state, {
 	  amqp_host = "" :: string()
@@ -157,8 +158,7 @@ handle_info({add_successful_app, A}, State) ->
     format_log(info, "WHAPPS(~p): Adding app to ~p~n", [self(), A]),
     {noreply, State#state{apps=[A | State#state.apps]}};
 handle_info(start_apps, #state{apps=As}=State) ->
-    Config = lists:concat([filename:dirname(filename:dirname(code:which(whistle_apps))), "/priv/startup.config"]),
-    State1 = case file:consult(Config) of
+    State1 = case file:consult(?STARTUP_FILE) of
 		 {ok, Ts} ->
 		     CouchH = couch_mgr:get_host(),
 		     case lists:keyfind(default_couch_host, 1, Ts) of
