@@ -37,8 +37,8 @@
 -include_lib("couchbeam/include/couchbeam.hrl").
 
 -define(SERVER, ?MODULE). 
--define(STARTUP_FILE, lists:concat([filename:dirname(filename:dirname(code:which(?MODULE))), "/priv/startup.config"])).
--define(ACTIVE_CONNECTIONS, 50).
+-define(STARTUP_FILE, [code:lib_dir(whistle_couch, priv), "/startup.config"]).
+-define(DEFAULT_PORT, 5984).
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
@@ -573,7 +573,7 @@ get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, 
 
 -spec(get_new_conn/2 :: (Host :: string(), Opts :: proplist()) -> #server{}).
 get_new_conn(Host, Opts) ->
-    Conn = couchbeam:server_connection(Host, 5984, "", Opts),
+    Conn = couchbeam:server_connection(Host, ?DEFAULT_PORT, "", Opts),
     format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
     {ok, _Version} = couchbeam:server_info(Conn),
     format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
