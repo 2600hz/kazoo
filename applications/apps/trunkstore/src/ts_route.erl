@@ -134,8 +134,8 @@ find_route(Flags, ApiProp) ->
 	    case inbound_route(Flags) of
 		{ok, Routes, InboundFlags} ->
 		    response(Routes, ApiProp, InboundFlags#route_flags{routes_generated=Routes});
-		{error, Error}=E ->
-		    %% format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), Error]),
+		{error, _Error}=E ->
+		    %% format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), _Error]),
 		    E
 	    end;
 	true ->
@@ -204,8 +204,8 @@ find_outbound_route(Flags, ApiProp) ->
 		end
 	end
     catch
-	A:B ->
-	    %% format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), A, B]),
+	_A:_B ->
+	    %% format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), _A, _B]),
 	    %% format_log(error, "TS_ROUTE(~p): Stacktrace: ~p~n", [self(), erlang:get_stacktrace()]),
 	    ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid),
 	    response(503, ApiProp, Flags)
@@ -217,8 +217,8 @@ route_over_carriers(Flags, ApiProp) ->
     case ts_carrier:route(Flags) of
 	{ok, Routes} ->
 	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
-	{error, Error} ->
-	    %% format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), Error]),
+	{error, _Error} ->
+	    %% format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), _Error]),
 	    {error, "We don't handle this route"}
     end.
 
@@ -300,13 +300,13 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 		{ok, Routes} ->
 		    %% format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
 		    { [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
-		{error, Error} ->
-		    %% format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), Error]),
+		{error, _Error} ->
+		    %% format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), _Error]),
 		    ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
 		    { [InboundRoute], Flags#route_flags{scenario=inbound}}
 	    end;
-	{error, Error} ->
-	    %% format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, Error]),
+	{error, _Error} ->
+	    %% format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, _Error]),
 	    {[InboundRoute], Flags#route_flags{scenario=inbound}}
     end.
 
