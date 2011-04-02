@@ -43,11 +43,13 @@ start_link(Type, InfraArgs, ChNumber) ->
 %% Internal plumbing
 %%---------------------------------------------------------------------------
 
-start_writer_fun(_Sup, direct, [Node, User, VHost, Collector], ChNumber) ->
+start_writer_fun(_Sup, direct, [ConnectionPid, Node, User, VHost, Collector],
+                 ChNumber) ->
     fun () ->
             {ok, RabbitCh} =
                 rpc:call(Node, rabbit_direct, start_channel,
-                         [ChNumber, self(), User, VHost, Collector]),
+                         [ChNumber, self(), ConnectionPid, ?PROTOCOL, User,
+                          VHost, ?CLIENT_CAPABILITIES, Collector]),
             link(RabbitCh),
             {ok, RabbitCh}
     end;

@@ -199,7 +199,7 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 		   ,{<<"options">>, lists:map(fun({struct, Gateway}) -> Gateway end, Gateways)}
 		   | proplists:delete(<<"routes">>, COs1)]}.
 
--spec(get_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
+-spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
 get_routes(Flags, Carriers) ->
     User = Flags#route_flags.to_user,
     format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
@@ -225,7 +225,7 @@ sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
 
 %% transform Carriers proplist() into a list of Routes for the API
 -type routes() :: list(tuple(struct, proplist())).
--spec(create_routes/2 :: (Flags :: tuple(), Carriers :: proplist()) -> tuple(ok, routes()) | tuple(error, string())).
+-spec(create_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> tuple(ok, routes()) | tuple(error, string())).
 create_routes(Flags, Carriers) ->
     CallerID = case Flags#route_flags.caller_id of
 		   {} -> [];

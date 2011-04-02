@@ -1,5 +1,6 @@
 {
     "_id": "_design/conferences"
+    ,"language": "javascript"
     ,"views": {
         "listing_by_id": {
             "map": "function(doc) { if ( doc.pvt_type != 'conference') return; emit(doc._id, {'id': doc._id, 'name': doc.base.name}); }"

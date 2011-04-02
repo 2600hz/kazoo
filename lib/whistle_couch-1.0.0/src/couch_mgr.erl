@@ -353,21 +353,17 @@ get_all_results(DbName, DesignDoc) ->
 
 -spec(get_results/3 :: (DbName :: list(), DesignDoc :: tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_results(DbName, DesignDoc, ViewOptions) ->
-    ts_timer:tick("couch_mgr get_results"),
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
 	Db ->
-	    ts_timer:tick("couch_mgr get_res got db"),
 	    case get_view(Db, DesignDoc, ViewOptions) of
 		{error, _Error}=E -> E;
 		View ->
-		    ts_timer:tick("couch_mgr get_res got view"),
 		    case couchbeam_view:fetch(View) of
 			{ok, {struct, Prop}} ->
-			    ts_timer:tick("couch_mgr get_res fetched view"),
 			    Rows = get_value(<<"rows">>, Prop, []),
                             {ok, Rows};
-			{error, _Error}=E -> ts_timer:tick(_Error), E
+			{error, _Error}=E -> E
 		    end
 	    end
     end.
@@ -405,9 +401,7 @@ get_conn() ->
     gen_server:call(?MODULE, {get_conn}).
 
 get_db(DbName) ->
-    ts_timer:tick("couch_mgr getting_db"),
     Conn = gen_server:call(?MODULE, {get_conn}),
-    ts_timer:tick("couch_mgr got_conn"),
     open_db(whistle_util:to_list(DbName), Conn).
 
 get_url() ->
@@ -600,10 +594,9 @@ get_new_conn(Host, Opts) ->
 %%--------------------------------------------------------------------
 -spec(open_db/2 :: (DbName :: string(), Conn :: #server{}) -> tuple(error, db_not_reachable) | #db{}).
 open_db(DbName, Conn) ->
-    ts_timer:tick("couch_mgr open_db"),
     case couchbeam:open_db(Conn, DbName) of
         {error, _Error}=E -> E;
-        {ok, Db} -> ts_timer:tick("couch_mgr opened db"), Db
+        {ok, Db} -> Db
     end.
     
 %%--------------------------------------------------------------------

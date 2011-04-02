@@ -3,8 +3,6 @@
   {vsn, "0.0.0"},
   {modules, [
              gen_server2,
-             delegate,
-             priority_queue,
              rabbit_backing_queue,
              rabbit_basic,
              rabbit_binary_generator,

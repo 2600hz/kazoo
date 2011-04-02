@@ -177,7 +177,6 @@ new_queue(Queue, Options) ->
 	ok -> Queue;
 	#'queue.declare_ok'{queue=Q} -> Q;
 	_Other ->
-	    io:format("AMQP_UTIL: Other: ~p~n", [_Other]),
 	    {error, amqp_error}
     end.
 
