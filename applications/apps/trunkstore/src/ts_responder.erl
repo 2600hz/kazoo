@@ -123,7 +123,7 @@ handle_info(Req, #state{callmgr_q={error, _}}=S) ->
     {ok, CQ} = start_amqp(),
     handle_info(Req, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)});
 
-handle_info(Req, #state{is_amqp_up=false, callmgr_q=Q}=S) ->
+handle_info(Req, #state{is_amqp_up=false}=S) ->
     format_log(info, "TS_RESPONDER(~p): restarting up amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
     handle_info(Req, S#state{callmgr_q=CQ, is_amqp_up=is_binary(CQ)});

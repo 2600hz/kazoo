@@ -1,5 +1,6 @@
 {
     "_id": "_design/vmboxes"
+    ,"language": "javascript"
     ,"views": {
         "listing_by_id": {
             "map": "function(doc) { if ( doc.pvt_type != 'vmbox') return; emit(doc._id, {'id': doc._id, 'mailbox': doc.base.mailbox}); }"
