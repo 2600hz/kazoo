@@ -1,0 +1,45 @@
+
+=INFO REPORT==== 1-Apr-2011::17:37:04 ===
+Limiting to approx 924 file handles (829 sockets)
+
+=INFO REPORT==== 1-Apr-2011::17:37:04 ===
+Memory limit set to 1503MB.
+
+=INFO REPORT==== 1-Apr-2011::17:37:04 ===
+msg_store_transient: using rabbit_msg_store_ets_index to provide index
+
+=INFO REPORT==== 1-Apr-2011::17:37:04 ===
+msg_store_persistent: using rabbit_msg_store_ets_index to provide index
+
+=WARNING REPORT==== 1-Apr-2011::17:37:04 ===
+msg_store_persistent: rebuilding indices from scratch
+
+=INFO REPORT==== 1-Apr-2011::17:37:04 ===
+started TCP Listener on [::]:5672
+
+=ERROR REPORT==== 1-Apr-2011::17:37:11 ===
+** Connection attempt from disallowed node 'whistle_apps@thinky64.d-man.org' ** 
+
+=INFO REPORT==== 1-Apr-2011::17:37:11 ===
+accepted TCP connection on [::]:5672 from 127.0.0.1:38011
+
+=INFO REPORT==== 1-Apr-2011::17:37:11 ===
+starting TCP connection <0.195.0> from 127.0.0.1:38011
+
+=ERROR REPORT==== 1-Apr-2011::17:44:52 ===
+** Connection attempt from disallowed node 'whistle_apps@thinky64.d-man.org' ** 
+
+=INFO REPORT==== 1-Apr-2011::17:44:52 ===
+accepted TCP connection on [::]:5672 from 127.0.0.1:55587
+
+=INFO REPORT==== 1-Apr-2011::17:44:52 ===
+starting TCP connection <0.856.0> from 127.0.0.1:55587
+
+=ERROR REPORT==== 1-Apr-2011::17:45:21 ===
+** Connection attempt from disallowed node 'ecallmgr@thinky64.d-man.org' ** 
+
+=INFO REPORT==== 1-Apr-2011::17:45:21 ===
+accepted TCP connection on [::]:5672 from 127.0.0.1:38619
+
+=INFO REPORT==== 1-Apr-2011::17:45:21 ===
+starting TCP connection <0.909.0> from 127.0.0.1:38619

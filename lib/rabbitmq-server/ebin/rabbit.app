@@ -1,7 +1,7 @@
 {application,rabbit,
     [{description,"RabbitMQ"},
      {id,"RabbitMQ"},
-     {vsn,"%%VSN%%"},
+     {vsn,"v2.4.0"},
      {modules,
          [bpqueue,delegate,delegate_sup,file_handle_cache,gatherer,
           gen_server2,gm,gm_soak_test,gm_tests,pg_local,priority_queue,rabbit,

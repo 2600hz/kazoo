@@ -14,12 +14,12 @@
 ##  The Initial Developer of the Original Code is VMware, Inc.
 ##  Copyright (c) 2007-2011 VMware, Inc.  All rights reserved.
 ##
-
+PARENT=`dirname $0`/..
 SERVER_ERL_ARGS="+K true +A30 +P 1048576 \
 -kernel inet_default_connect_options [{nodelay,true}]"
 CONFIG_FILE=/etc/rabbitmq/rabbitmq
-LOG_BASE=/var/log/rabbitmq
-MNESIA_BASE=/var/lib/rabbitmq/mnesia
+LOG_BASE=$PARENT/log
+MNESIA_BASE=$PARENT/mnesia
 SERVER_START_ARGS=
 
 . `dirname $0`/rabbitmq-env
@@ -74,7 +74,7 @@ if [ "x" = "x$RABBITMQ_NODE_ONLY" ]; then
 	-noinput \
 	-hidden \
 	-s rabbit_prelaunch \
-	-sname rabbitmqprelaunch$$ \
+	-name rabbitmqprelaunch$$ \
 	-extra "$RABBITMQ_PLUGINS_DIR" "${RABBITMQ_PLUGINS_EXPAND_DIR}" "${RABBITMQ_NODENAME}"
     then
 	RABBITMQ_BOOT_FILE="${RABBITMQ_PLUGINS_EXPAND_DIR}/rabbit"
@@ -100,7 +100,7 @@ set -f
 exec erl \
     ${RABBITMQ_EBIN_PATH} \
     ${RABBITMQ_START_RABBIT} \
-    -sname ${RABBITMQ_NODENAME} \
+    -name ${RABBITMQ_NODENAME} \
     -boot ${RABBITMQ_BOOT_FILE} \
     ${RABBITMQ_CONFIG_ARG} \
     +W w \
