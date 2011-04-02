@@ -168,6 +168,7 @@ find_outbound_route(Flags, ApiProp) ->
 			%% format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n", [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
 			case inbound_route(FlagsIn) of
 			    {ok, Routes, FlagsIn2} ->
+				ts_timer:tick("found inbound route to route over instead"),
 				case FlagsIn1#route_flags.scenario of
 				    inbound ->
 					response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
@@ -183,6 +184,7 @@ find_outbound_route(Flags, ApiProp) ->
 										      })
 				end;
 			    {error, _} ->
+				ts_timer:tick("routing over carrier anyway"),
 				route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
 			end;
 

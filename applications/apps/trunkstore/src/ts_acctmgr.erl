@@ -174,7 +174,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt]}, From, #state{current_write_d
 		  spawn(fun() -> load_account(AcctId, WDB) end),
 		  ts_timer:tick("loaded acct"),
 
-		  case couch_mgr:get_results(RDB, {"accounts", "balance"}, [{<<"key">>, AcctId}, {<<"reduce">>, <<"false">>}, {<<"stale">>, <<"ok">>}]) of
+		  case couch_mgr:get_results(RDB, {"accounts", "balance"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
 		      {error, E} ->
 			  ts_timer:tick("error getting balance"),
 			  gen_server:reply(From, {error, E});
