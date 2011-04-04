@@ -17,18 +17,22 @@ start_server(Port, Sock_type) ->
     Fun = fun() ->
                   register(server_proc_name(Port), self()),
                   case do_listen(Sock_type, Port, [{active, false},
+                                                   {reuseaddr, true},
                                                    {nodelay, true},
                                                    {packet, http}]) of
                       {ok, Sock} ->
                           do_trace("Server listening on port: ~p~n", [Port]),
                           accept_loop(Sock, Sock_type);
                       Err ->
-                          do_trace("Failed to start server on port ~p. ~p~n",
-                                   [Port, Err]),
-                          Err
+                          erlang:error(
+                            lists:flatten(
+                              io_lib:format(
+                                "Failed to start server on port ~p. ~p~n",
+                                [Port, Err]))),
+                          exit({listen_error, Err})
                   end
           end,
-    spawn(Fun).
+    spawn_link(Fun).
 
 stop_server(Port) ->
     exit(whereis(server_proc_name(Port)), kill).
