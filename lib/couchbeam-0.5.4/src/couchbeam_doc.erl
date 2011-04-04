@@ -41,10 +41,11 @@ is_saved(Doc) ->
 %% @doc set a value for a key in jsonobj. If key exists it will be updated.
 set_value(Key, Value, JsonObj) when is_list(Key)->
     set_value(list_to_binary(Key), Value, JsonObj);
-set_value(Key, Value, {struct, Props}) when is_binary(Key) ->
+set_value(Key, Value, JsonObj) when is_binary(Key) ->
+    {Props} = JsonObj,
     case proplists:is_defined(Key, Props) of
         true -> set_value1(Props, Key, Value, []);
-        false-> {struct, lists:reverse([{Key, Value}|lists:reverse(Props)])}
+        false-> {lists:reverse([{Key, Value}|lists:reverse(Props)])}
     end.
     
 %% @spec get_value(Key::key_val(), JsonObj::json_obj()) -> term()
@@ -61,18 +62,20 @@ get_value(Key, JsonObj) ->
 %% function from erlang_couchdb
 get_value(Key, JsonObj, Default) when is_list(Key) ->
     get_value(list_to_binary(Key), JsonObj, Default);
-get_value(Key, {struct, Props}, Default) when is_binary(Key) ->
-    couchbeam_util:get_value(Key, Props, Default).
+get_value(Key, JsonObj, Default) when is_binary(Key) ->
+    {Props} = JsonObj,
+    proplists:get_value(Key, Props, Default).
 
 %% @spec delete_value(Key::key_val(), JsonObj::json_obj()) -> json_obj()
 %% @type key_val() = list() | binary()
 %% @doc Deletes all entries associated with Key in json object.  
 delete_value(Key, JsonObj) when is_list(Key) ->
     delete_value(list_to_binary(Key), JsonObj);
-delete_value(Key, {struct, Props}) when is_binary(Key) ->
+delete_value(Key, JsonObj) when is_binary(Key) ->
+    {Props} = JsonObj,
     Props1 = proplists:delete(Key, Props),
-    {struct, Props1}.
-
+    {Props1}.
+       
 %% @spec extend(Key::binary(), Value::json_term(), JsonObj::json_obj()) -> json_obj()
 %% @doc extend a jsonobject by key, value 
 extend(Key, Value, JsonObj) ->
@@ -91,7 +94,7 @@ extend({Key, Value}, JsonObj) ->
 
 %% @private
 set_value1([], _Key, _Value, Acc) ->
-    {struct, lists:reverse(Acc)};
+    {lists:reverse(Acc)};
 set_value1([{K, V}|T], Key, Value, Acc) ->
     Acc1 = if
         K =:= Key ->

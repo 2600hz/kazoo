@@ -28,7 +28,7 @@
     host :: string(),
     port :: integer(),
     prefix :: string(),
-    options = [{max_sessions, 2040}] :: list()
+    options = [] :: list()
 }).
 
 -type server() :: #server{}.
@@ -37,7 +37,7 @@
 -record(db, {
     server :: server(),
     name :: string(),
-    options = [{max_sessions, 2040}] :: list()
+    options = [] :: list()
 }).
 
 -type db() :: #db{}.
