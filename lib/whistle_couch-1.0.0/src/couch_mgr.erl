@@ -253,7 +253,7 @@ lookup_doc_rev(DbName, DocId) ->
 	    case couchbeam:lookup_doc_rev(Db, DocId) of
 		{error, _}=E -> E;
 		Rev ->
-		    binary:replace(whistle_util:to_binary(Rev), <<"\"">>, <<>>, [global])
+		    Rev
 	    end
     end.
 
