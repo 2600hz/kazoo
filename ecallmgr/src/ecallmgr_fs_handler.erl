@@ -397,7 +397,7 @@ restart_handler(Node, Options, _, undefined, StartFun) when is_function(StartFun
 	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p~n", [self(), Pid]),
 	    Pid
     end;
-restart_handler(Node, Options, _, undefined, StartFun) when is_function(StartFun, 1) ->
+restart_handler(Node, _, _, undefined, StartFun) when is_function(StartFun, 1) ->
     format_log(info, "FS_HANDLER.rstrt_h(~p): Restart ~p handler~n", [self(), Node]),
     case StartFun(Node) of
 	{error, Err} ->
@@ -416,7 +416,7 @@ restart_handler(Node, Options, HPid, HPid, StartFun) when is_function(StartFun, 
 	    format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
 	    Pid
     end;
-restart_handler(Node, Options, HPid, HPid, StartFun) when is_function(StartFun, 1)->
+restart_handler(Node, _, HPid, HPid, StartFun) when is_function(StartFun, 1)->
     case StartFun(Node) of
 	{error, Err} ->
 	    format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),

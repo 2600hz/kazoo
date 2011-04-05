@@ -15,10 +15,6 @@
 
 -include("ecallmgr.hrl").
 
--define(APP_NAME, <<"conference_command">>).
--define(APP_VERSION, <<"1.0">>).
-
-
 -spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), AmqpHost :: string()) -> ok | timeout | {error, string()}).
 exec_cmd(Node, CallId, JObj, AmqpHost) ->
     AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
