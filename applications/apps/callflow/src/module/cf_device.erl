@@ -12,15 +12,10 @@
 
 -export([handle/2]).
 
--define(APP_NAME, <<"cf_devices">>).
--define(APP_VERSION, <<"0.5">>).
-
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
 -import(cf_call_command, [b_bridge/3, wait_for_bridge/1, wait_for_unbridge/0]).
-
--define(DEFAULT_TIMEOUT, <<"26">>).
 
 %%--------------------------------------------------------------------
 %% @public

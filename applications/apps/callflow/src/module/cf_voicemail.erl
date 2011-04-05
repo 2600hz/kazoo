@@ -12,9 +12,6 @@
 
 -export([handle/2]).
 
--define(APP_NAME, <<"cf_voicemail">>).
--define(APP_VERSION, <<"0.5">>).
-
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 -import(cf_call_command, [
@@ -22,8 +19,6 @@
                           ,store/3, b_play_and_collect_digits/6, noop/1, flush/1
                           ,wait_for_dtmf/1, wait_for_application_or_dtmf/2, audio_macro/2
                          ]).
-
--define(DEFAULT_TIMEOUT, 30).
 
 -record(keys, {
           %% Compose Voicemail
@@ -71,7 +66,7 @@
           ,to_hear_new = <<"/system_media/vm-listen_new">>
           ,to_hear_saved = <<"/system_media/vm-listen_saved">>
           ,to_configure = <<"/system_media/vm-advanced">>
-          ,to_exit = <<"/system_media/vm-to_exit3">>
+          ,to_exit = <<"/system_media/vm-to_exit">>
 
           ,to_change_pin = <<"/system_media/vm-change_password">>
           ,to_rec_name = <<"/system_media/vm-record_name2">>
