@@ -455,9 +455,9 @@ delete_docs(Db, Docs) ->
 %% @doc delete a list of documents
 %% @spec delete_docs(Db::db(), Docs::list(),Options::list()) -> {ok, Result}|{error, Error}
 delete_docs(Db, Docs, Options) ->
-    Docs1 = lists:map(fun({DocProps})->
-        {[{<<"_deleted">>, true}|DocProps]}
-        end, Docs),
+    Docs1 = lists:map(fun({struct, DocProps})->
+			      {struct, [{<<"_deleted">>, true}|DocProps]}
+		      end, Docs),
     save_docs(Db, Docs1, Options).
 
 %% @doc save a list of documents
@@ -858,13 +858,13 @@ changes_wait(#db{server=Server, options=IbrowseOpts}=Db, ClientPid, Options) ->
 %% --------------------------------------------------------------------
 
 %% add missing docid to a list of documents if needed
-maybe_docid(Server, {DocProps}) ->
+maybe_docid(Server, {struct, DocProps}) ->
     case couchbeam_util:get_value(<<"_id">>, DocProps) of
         undefined ->
             DocId = [get_uuid(Server)],
-            {[{<<"_id">>, list_to_binary(DocId)}|DocProps]};
+            {struct, [{<<"_id">>, list_to_binary(DocId)}|DocProps]};
         _DocId ->
-            {DocProps}
+            {struct, DocProps}
     end.
 
 %% @doc Assemble the server URL for the given client
