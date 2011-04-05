@@ -17,8 +17,6 @@
 
 -include("ecallmgr.hrl").
 
--define(APPNAME, <<"ecallmgr.call.cdr">>).
--define(APPVER, <<"0.3.1">>).
 -define(EVENT_CAT, <<"call_detail">>).
 -define(EVENT_NAME, <<"cdr">>).
 
@@ -53,7 +51,7 @@ new_cdr(UUID, EvtProp) ->
 
 -spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).
 create_cdr(EvtProp) ->
-    DefProp = whistle_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APPNAME, ?APPVER),
+    DefProp = whistle_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APP_NAME, ?APP_VERSION),
     ApiProp0 = add_values(?FS_TO_WHISTLE_MAP, DefProp, EvtProp),
     ApiProp1 = case get_value(<<"direction">>, ApiProp0) of
 		   <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);

@@ -14,8 +14,6 @@
 
 -import(logger, [log/2, format_log/3]).
 
--define(APPNAME, <<"ecallmgr.call.event">>).
--define(APPVER, <<"0.7.3">>).
 -define(EVENT_CAT, <<"call_event">>).
 -define(MAX_FAILED_NODE_CHECKS, 5).
 
@@ -323,7 +321,7 @@ publish_msg(UUID, Prop) ->
 		       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
 		       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
 		       | event_specific(EvtName, Prop) ],
-	    EvtProp1 = EvtProp0 ++ whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APPNAME, ?APPVER),
+	    EvtProp1 = EvtProp0 ++ whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
 			   [] -> EvtProp1;
 			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
@@ -429,7 +427,7 @@ handle_amqp_prop(<<"status_req">>, JObj, IsNodeUp) ->
 
 	RespJObj = [{<<"Call-ID">>, CallID}
 		    ,{<<"Status">>, Status}
-		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, <<?APPNAME/binary, ".status">>, ?APPVER) ],
+		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
 	{ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
 	SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
 	format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),

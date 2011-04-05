@@ -161,7 +161,7 @@ start_amqp(Host, "", <<>>) ->
     amqp_util:bind_q_to_callmgr(Host, Q, ?KEY_RESOURCE_REQ),
     amqp_util:basic_consume(Host, Q),
     Q;
-start_amqp(Host, OldHost, OldQ) ->
+start_amqp(Host, _, OldQ) ->
     amqp_util:delete_callmgr_queue(OldQ),
     start_amqp(Host, "", <<>>).
 

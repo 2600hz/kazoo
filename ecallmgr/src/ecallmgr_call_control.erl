@@ -214,6 +214,19 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 	    {noreply, State}
     end;
 
+handle_info({force_queue_advance, UUID}, State) when UUID =:= State#state.uuid ->
+    format_log(error, "CONTROL(~p): Forced queue advance for call-id ~p", [self(), UUID]),
+    case State#state.is_node_up andalso queue:out(State#state.command_q) of
+        false ->
+            %% if the node is down, don't inject the next FS event
+            {noreply, State#state{current_app = <<>>}};
+        {empty, _} ->
+            {noreply, State#state{current_app = <<>>}};
+        {{value, Cmd}, CmdQ1} ->
+            ok = execute_control_request(Cmd, State),
+            {noreply, State#state{command_q = CmdQ1, current_app = whapps_json:get_value(<<"Application-Name">>, Cmd)}}
+    end;
+
 handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_q=Q, start_time=StartT}=State) ->
     lists:foreach(fun(Cmd) ->
                           ok = execute_control_request(Cmd, State)
@@ -357,13 +370,27 @@ post_hangup_commands(CmdQ) ->
 		 end, queue:to_list(CmdQ)).
 
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
-    %% hmm any other ideas regarding noop? -Karl
-    AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),    
-    if AppName == <<"noop">> -> self() ! {execute_complete, UUID, AppName}; true -> ok end,
-    Mod = erlang:binary_to_existing_atom(<<"ecallmgr_"
-                                           ,(whapps_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
-                                           ,"_"
-                                           ,(whapps_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
-                                         >>, latin1),
-    format_log(info, "RUNNING ~p", [Mod]),
-    Mod:exec_cmd(Node, UUID, Cmd).
+    try
+        case whapps_json:get_value(<<"Application-Name">>, Cmd) of
+            <<"noop">> -> self() ! {execute_complete, UUID, <<"noop">>}; 
+            _ -> ok 
+        end,
+        Mod = whistle_util:to_atom(<<"ecallmgr_"
+                                     ,(whapps_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
+                                     ,"_"
+                                     ,(whapps_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
+                                   >>),
+        Mod:exec_cmd(Node, UUID, Cmd)
+    catch
+        _:_=E ->
+            format_log(error, "CONTROL.exe (~p): Error ~p executing request for call ~p", [self(), E, UUID]),
+            Resp = [
+                      {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
+                     ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (whapps_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
+                     | whistle_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+                    ],
+            {ok, Payload} = whistle_api:error_resp(Resp),
+            amqp_util:callevt_publish(UUID, Payload, event),
+            self() ! {force_queue_advance, UUID},
+            ok
+    end.
