@@ -237,7 +237,7 @@ get_session(AuthToken) ->
 
 -spec(save_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
 save_session(S, RD) ->
-    DateTime = calendar:local_time(),
+    DateTime = calendar:universal_time(),
     Now = calendar:datetime_to_gregorian_seconds(DateTime),
     case has_expired(S#session.created + S#session.expires) of
         true ->

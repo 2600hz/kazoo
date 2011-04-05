@@ -473,7 +473,7 @@ save_docs(#db{server=Server, options=IbrowseOpts}=Db, Docs, Options) ->
     {Options2, Body} = case couchbeam_util:get_value("all_or_nothing", 
             Options1, false) of
         true ->
-            Body1 = couchbeam_util:json_encode({[
+            Body1 = couchbeam_util:json_encode({struct, [
                 {<<"all_or_nothing">>, true},
                 {<<"docs">>, Docs1}
             ]}),
