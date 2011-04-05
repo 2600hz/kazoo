@@ -67,6 +67,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, ok)).
 init([]) ->
+    couch_mgr:db_create(?AGG_DB),
     accounts:update_all_accounts(?VIEW_FILE),
     accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     bind_to_crossbar(),
