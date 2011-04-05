@@ -22,8 +22,6 @@
 -include("../callflow.hrl").
 
 -define(SERVER, ?MODULE).
--define(APP_NAME, <<"cf_test">>).
--define(APP_VERSION, <<"1.0">>).
 
 -record(state, {
         cmgr_q = undefined  :: binary() | undefined

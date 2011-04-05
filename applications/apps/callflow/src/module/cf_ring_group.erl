@@ -12,10 +12,6 @@
 
 -export([handle/2]).
 
--define(APP_NAME, <<"cf_ring_group">>).
--define(APP_VERSION, <<"0.5">>).
--define(DEFAULT_TIMEOUT, 30).
-
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 -import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0]).

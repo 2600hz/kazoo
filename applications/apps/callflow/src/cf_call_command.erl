@@ -45,15 +45,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--define(APP_NAME, <<"cf_call_command">>).
--define(APP_VERSION, <<"0.5">>).
--define(ANY_DIGIT, [
-                     <<"1">>, <<"2">>, <<"3">>
-                    ,<<"4">>, <<"5">>, <<"6">>    
-                    ,<<"7">>, <<"8">>, <<"9">>    
-                    ,<<"*">>, <<"0">>, <<"#">>
-                   ]).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -570,8 +561,10 @@ wait_for_message(Application, Event, Type, false) ->
             case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
                 { Application, Event, Type } ->
                     {ok, Msg};
-                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                { _, _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_message(Application, Event, Type, false)
             end
@@ -582,8 +575,10 @@ wait_for_message(Application, Event, Type, Timeout) ->
             case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
                 { Application, Event, Type } ->
                     {ok, Msg};
-                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                { _, _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_message(Application, Event, Type, Timeout)
             end
@@ -607,6 +602,8 @@ wait_for_dtmf(Timeout) ->
                     {ok, get_value(<<"DTMF-Digit">>, Msg)};
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                {  _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_dtmf(Timeout)
             end
@@ -632,6 +629,8 @@ wait_for_bridge(Timeout) ->
                     {error, channel_hungup};
                 { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
                     {error, bridge_failed};
+                { _, _, <<"error">> } ->
+                    {error, execution_failed};
                 _ ->
                     wait_for_bridge(Timeout)
             end
@@ -655,8 +654,10 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                     {ok, Msg};
                 { _, <<"DTMF">>, <<"call_event">> } ->
                     {dtmf, get_value(<<"DTMF-Digit">>, Msg)};
-                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                { _, _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_application_or_dtmf(Application, Timeout)
             end
@@ -681,6 +682,8 @@ wait_for_unbridge() ->
                     {ok, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
+                { <<"error">>, _ } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_unbridge()
             end
@@ -699,6 +702,8 @@ wait_for_hangup() ->
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
+                { <<"error">>, _ } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_hangup()
             end

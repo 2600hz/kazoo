@@ -24,14 +24,8 @@
 -include("callflow.hrl").
 
 -define(SERVER, ?MODULE).
--define(APP_NAME, <<"callflow">>).
--define(APP_VERSION, <<"0.2">> ).
--define(CACHE_SIZE, 100).
--define(MAINTANCE_CYCLE, 60000).
 
--define(CALLFLOW_DB, "callflow").
--define(VIEW_FILE, <<"views/callflows.json">>).
--define(VIEW_BY_URI, {?CALLFLOW_DB, <<"listing_by_uri">>}).
+-define(MAINTANCE_CYCLE, 60000).
 
 -record(state, {
            callmgr_q = <<>> :: binary()          
@@ -68,6 +62,8 @@ start_link() ->
 %------------------------------------------------------------------------------
 init([]) -> 
     {ok, CQ} = start_amqp(),
+    couch_mgr:db_create(?CALLFLOW_DB),
+    couch_mgr:load_doc_from_file(?CALLFLOW_DB, callflow, ?VIEW_FILE),
     timer:send_after(?MAINTANCE_CYCLE, self(), {maintain_dicts}),
     {ok, #state{callmgr_q=CQ, flows=dict:new(), calls=dict:new()}}.
 
