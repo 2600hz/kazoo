@@ -170,39 +170,39 @@ handle_call({has_flatrates, AcctId}, _, #state{current_read_db=RDB}=S) ->
     {reply, has_flatrates(RDB, AcctId), S};
 handle_call({reserve_trunk, AcctId, [CallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     spawn(fun() ->
-		  ts_timer:start("ts_acctmgr"),
+		  wh_timer:start("ts_acctmgr"),
 		  spawn(fun() -> load_account(AcctId, WDB) end),
-		  ts_timer:tick("loaded acct"),
+		  wh_timer:tick("loaded acct"),
 
 		  case couch_mgr:get_results(RDB, {"accounts", "balance"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
 		      {error, E} ->
-			  ts_timer:tick("error getting balance"),
+			  wh_timer:tick("error getting balance"),
 			  gen_server:reply(From, {error, E});
 		      {ok, []} ->
-			  ts_timer:tick("no anything"),
+			  wh_timer:tick("no anything"),
 			  gen_server:reply(From, {error, no_funds});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
-			  ts_timer:tick(list_to_binary(["funds of some kind: "
+			  wh_timer:tick(list_to_binary(["funds of some kind: "
 							,integer_to_list(whapps_json:get_value(<<"trunks">>, Funds))
 							, "::", integer_to_list(whapps_json:get_value(<<"credit">>, Funds))])),
 			  case whapps_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
-				  ts_timer:tick("reserve flat_rate"),
+				  wh_timer:tick("reserve flat_rate"),
 				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
 				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
 				  case whapps_json:get_value(<<"credit">>, Funds, 0) > Amt of
 				      true ->
-					  ts_timer:tick("reserve per_min"),
+					  wh_timer:tick("reserve per_min"),
 					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
 					  gen_server:reply(From, {ok, per_min});
 				      false ->
-					  ts_timer:tick("not enough funds"),
+					  wh_timer:tick("not enough funds"),
 					  gen_server:reply(From, {error, no_funds})
 				  end
 			  end
 		  end,
-		  ts_timer:stop("ts_acctmgr")
+		  wh_timer:stop("ts_acctmgr")
 	  end),
     {noreply, S};
 handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
@@ -531,7 +531,7 @@ update_account(AcctId, Bal) ->
     couch_mgr:save_doc(?TS_DB, {struct, Doc1}).
 
 load_account(AcctId, DB) ->
-    case ts_cache:fetch({ts_acctmgr, AcctId, DB}) of
+    case wh_cache:fetch({ts_acctmgr, AcctId, DB}) of
 	{ok, _} -> ok;
 	{error, not_found} ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
@@ -544,7 +544,7 @@ load_account(AcctId, DB) ->
 		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
 		    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
 		    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)}),
-		    ts_cache:store({ts_acctmgr, AcctId, DB}, true)
+		    wh_cache:store({ts_acctmgr, AcctId, DB}, true)
 	    end
     end.
 

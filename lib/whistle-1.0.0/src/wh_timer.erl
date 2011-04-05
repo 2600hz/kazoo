@@ -3,10 +3,11 @@
 %%% @copyright (C) 2011, James Aimonetti
 %%% @doc
 %%% running timer
+%%% 
 %%% @end
 %%% Created : 30 Mar 2011 by James Aimonetti <>
 %%%-------------------------------------------------------------------
--module(ts_timer).
+-module(wh_timer).
 
 -behaviour(gen_server).
 
@@ -33,19 +34,24 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+-spec(start/0 :: () -> ok).
+-spec(start/1 :: (Msg :: string() | binary()) -> ok).
 start() ->
-    start("Start").
+    start("Starting").
 start(Msg) ->
     gen_server:call(?SERVER, {start, Msg}).
 
+-spec(tick/0 :: () -> ok | tuple(error, not_started)).
+-spec(tick/1 :: (Msg :: string() | binary()) -> ok | tuple(error, not_started)).
 tick() ->
-    tick("Tick").
+    tick("tock").
 tick(Msg) ->
     gen_server:call(?SERVER, {tick, Msg}).
 
+-spec(stop/0 :: () -> ok | tuple(error, not_started)).
+-spec(stop/1 :: (Msg :: string() | binary()) -> ok | tuple(error, not_started)).
 stop() ->
-    stop("Stop").
-
+    stop("").
 stop(Msg) ->
     gen_server:call(?SERVER, {stop, Msg}).
 
@@ -88,21 +94,18 @@ handle_call({start, Msg}, {Pid, _}, S) ->
 handle_call({tick, Msg}, {Pid, _}, S) ->
     case dict:find(Pid, S) of
 	{ok, {Start, L}} ->
-	    {reply, ok, dict:store(Pid, {Start, [io_lib:format("TS_TIMER(~p): At ~10.w micros: ~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg])
+	    {reply, ok, dict:store(Pid, {Start, [io_lib:format("TS_TIMER(~p): ~10.w micros: Tick-~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg])
 						 | L]}, S)};
-	error -> {reply, ok, S}
+	error -> {reply, {error, not_started}, S}
     end;
 handle_call({stop, Msg}, {Pid, _}, S) ->
     case dict:find(Pid, S) of
 	{ok, {Start, L}} ->
-	    [ io:format(D, []) || D <- lists:reverse(L) ],
-	    io:format("TS_TIMER(~p): Stopping ~10.w micros: ~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg]);
-	error -> ok
-    end,
-    {reply, ok, dict:erase(Pid, S)};
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+	    lists:foreach(fun(D) -> io:format(D, []) end, lists:reverse(L)),
+	    io:format("TS_TIMER(~p): ~10.w micros: End: ~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg]),
+	    {reply, ok, dict:erase(Pid, S)};
+	error -> {reply, {error, not_started}, S}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,9 +131,10 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _, process, Pid, _}, State) ->
-    handle_call({stop, "Stop"}, {Pid, ok}, State),
+    _ = handle_call({stop, "Stop"}, {Pid, ok}, State),
     {noreply, dict:erase(Pid, State)};
 handle_info(_Info, State) ->
+    logger:format_log(info, "WH_TIMER(~p): unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

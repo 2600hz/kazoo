@@ -6,12 +6,12 @@
 %%% @end
 %%% Created : 30 Mar 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ts_cache).
+-module(wh_cache).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, store/2, fetch/1, erase/1]).
+-export([start_link/0, store/2, store/3, fetch/1, erase/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -34,12 +34,18 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+-spec(store/2 :: (K :: term(), V :: term()) -> no_return()).
+-spec(store/3 :: (K :: term(), V :: term(), T :: integer()) -> no_return()).
 store(K, V) ->
-    gen_server:cast(?SERVER, {store, K, V}).
+    store(K, V, ?EXPIRES).
+store(K, V, T) ->
+    gen_server:cast(?SERVER, {store, K, V, T}).
 
+-spec(fetch/1 :: (K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
 fetch(K) ->
     gen_server:call(?SERVER, {fetch, K}).
 
+-spec(erase/1 :: (K :: term()) -> no_return()).
 erase(K) ->
     gen_server:cast(?SERVER, {erase, K}).
 
@@ -59,7 +65,7 @@ erase(K) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    timer:send_interval(1000, flush),
+    {ok, _} = timer:send_interval(1000, flush),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -78,7 +84,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {_, V}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {whistle_util:current_tstamp()*?EXPIRES, V} end, Dict)};
+	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {whistle_util:current_tstamp()*T, V, T} end, Dict)};
 	error -> {reply, {error, not_found}, Dict}
     end.
 
@@ -92,8 +98,8 @@ handle_call({fetch, K}, _, Dict) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({store, K, V}, Dict) ->
-    {noreply, dict:store(K, {whistle_util:current_tstamp()*?EXPIRES, V}, Dict)};
+handle_cast({store, K, V, T}, Dict) ->
+    {noreply, dict:store(K, {whistle_util:current_tstamp()*T, V, T}, Dict)};
 handle_cast({erase, K}, Dict) ->
     {noreply, dict:erase(K, Dict)}.
 
@@ -109,7 +115,7 @@ handle_cast({erase, K}, Dict) ->
 %%--------------------------------------------------------------------
 handle_info(flush, Dict) ->
     Now = whistle_util:current_tstamp(),
-    {noreply, dict:filter(fun(_, {T, _}) -> Now < T end, Dict)};
+    {noreply, dict:filter(fun(_, {T, _, _}) -> Now < T end, Dict)};
 handle_info(_Info, State) ->
     {noreply, State}.
 
