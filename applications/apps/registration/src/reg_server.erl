@@ -22,8 +22,6 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
--define(APP_VSN, <<"0.4.2">>).
--define(CLEANUP_RATE, 60000).
 
 -record(state, {
 	  is_amqp_up = true :: boolean()
@@ -61,6 +59,11 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    couch_mgr:db_create(?REG_DB),
+    couch_mgr:db_create(?AUTH_DB),
+    lists:foreach(fun({DB, File}) ->
+			  couch_mgr:load_doc_from_file(DB, registration, File)
+		  end, ?JSON_FILES),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -216,8 +219,8 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 		| whistle_api:default_headers(State#state.my_q % serverID is not important, though we may want to define it eventually
 					      ,props:get_value(<<"Event-Category">>, Prop)
 					      ,<<"auth_resp">>
-					      ,?MODULE
-					      ,?APP_VSN)],
+					      ,?APP_NAME
+					      ,?APP_VERSION)],
     {ok, JSON} = auth_response(AuthProp, Defaults),
     RespQ = props:get_value(<<"Server-ID">>, Prop),
     send_resp(JSON, RespQ);
@@ -264,8 +267,8 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 						      | whistle_api:default_headers(State#state.my_q
 										    ,<<"directory">>
 											,<<"reg_query_resp">>
-											,whistle_util:to_binary(?MODULE)
-										    ,?APP_VSN)
+											,?APP_NAME
+										    ,?APP_VERSION)
 						    ]),
 
 	    RespServer = props:get_value(<<"Server-ID">>, Prop),
@@ -316,6 +319,6 @@ auth_specific_response(403) ->
      ,{<<"Access-Group">>, <<"ignore">>}
      ,{<<"Tenant-ID">>, <<"ignore">>}].
 
-send_resp(JSON, RespQ) ->
-    format_log(info, "REG_SERVE(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
+send_resp(Payload, RespQ) ->
+    format_log(info, "REG_SERVE(~p): Paylowd to ~s: ~s~n", [self(), RespQ, Payload]),
+    amqp_util:targeted_publish(RespQ, Payload, <<"application/json">>).

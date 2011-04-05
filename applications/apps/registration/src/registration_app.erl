@@ -8,10 +8,8 @@
 
 -behaviour(application).
 
--include("reg.hrl").
-
 %% Application callbacks
--export([start/2, stop/1, setup_views/0, update_views/0]).
+-export([start/2, stop/1]).
 
 %% ===================================================================
 %% Application callbacks
@@ -19,7 +17,6 @@
 
 -spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
 start(_StartType, _StartArgs) ->
-    setup_views(),
     case registration:start_link() of
 	{ok, P} -> {ok, P};
 	{error, {already_started, P} } -> {ok, P};
@@ -28,13 +25,3 @@ start(_StartType, _StartArgs) ->
 
 stop(_State) ->
     ok.
-
-setup_views() ->
-    lists:foreach(fun({DB, File}) ->
-			  couch_mgr:load_doc_from_file(DB, registration, File)
-		  end, ?JSON_FILES).
-
-update_views() ->
-    lists:foreach(fun({DB, File}) ->
-			  couch_mgr:update_doc_from_file(DB, registration, File)
-		  end, ?JSON_FILES).
