@@ -18,9 +18,13 @@ fWelcome() {
 }
 
 fStash() {
-    echo "# git stash"
-    git stash || fStashFail
-    return $?
+    if [ ! -z "$(git diff-files)" ]; then
+        echo "# git stash"
+        git stash || fStashFail
+        trap "fCleanup $CURRENT_BRANCH TRUE" 0 1 2 5 15
+    else
+        trap "fCleanup $CURRENT_BRANCH FALSE" 0 1 2 5 15
+    fi
 }
 
 fStashFail() {
@@ -52,6 +56,7 @@ fFetchFail() {
 }
 
 fCheckout() {
+    [ "$1" == "`git status | grep 'On branch' | cut -d ' ' -f 4`" ] && return 0
     echo "# git checkout $1"
     git checkout $1 || fCheckoutFail
     return $?
@@ -147,6 +152,15 @@ fMergeAllBranches() {
     done < <(git for-each-ref --format='%(refname:short)' refs/heads/*)
 }
 
+fMergeCurrentBranch() {
+        b="${CURRENT_BRANCH}"
+
+        if r=$(git config --get branch.$b.remote); then
+            m=$(git config --get branch.$b.merge)
+            fMerge $r/${m##*/} #&& fSubModule
+        fi
+}
+
 fCleanup() {
     if [ "$2" == "TRUE" ]; then
         fCheckout $1 && fStashPop
@@ -157,17 +171,22 @@ fCleanup() {
 
 cd `dirname $0`
 
+while [ -n "$*" ]; do
+    case "x$1" in
+        x--all)
+            all_branches="true"
+        ;;
+    esac
+    shift
+done
+
 fGetCurrentBranch
-
-clear
-
-if [ ! -z "$(git diff-files)" ]; then
-    fStash
-    trap "fCleanup $CURRENT_BRANCH TRUE" 0 1 2 5 15
-else
-    trap "fCleanup $CURRENT_BRANCH FALSE" 0 1 2 5 15
-fi
-
 fWelcome
+fStash
 fFetch 
-fMergeAllBranches
+
+([ -z "${all_branches}" ] && fMergeCurrentBranch) || fMergeAllBranches
+
+echo "Whistle updated, enjoy!"
+
+exit 0
