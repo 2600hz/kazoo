@@ -239,7 +239,7 @@ replicate(Server, Source, Target, {struct, Prop}) ->
         {<<"target">>, couchbeam_util:to_binary(Target)} |Prop
     ],
 
-    replicate(Server, {RepProp}).
+    replicate(Server, {struct, RepProp}).
 
              
  
