@@ -271,7 +271,10 @@ save_doc(DbName, [{struct, [_|_]}=Doc]) ->
 save_doc(DbName, [{struct, _}|_]=Docs) ->
     save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) when is_list(Doc) ->
-    save_doc(DbName, {struct, Doc}, []).
+    save_doc(DbName, {struct, Doc}, []);
+save_doc(DbName, Doc) ->
+    save_doc(DbName, Doc, []).
+
 
 -spec(save_doc/3 :: (DbName :: string(), Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(error, atom())).
 save_doc(DbName, {struct, _}=Doc, Opts) ->
