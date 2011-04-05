@@ -23,7 +23,7 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_FILE, "views/callflows.json").
--define(AGG_DB, <<"callflow">>).
+-define(AGG_DB, <<"callflows">>).
 -define(AGG_FILTER, <<"callflows/export">>).
 -define(CALLFLOWS_LIST, {"callflows", "listing_by_id"}).
 

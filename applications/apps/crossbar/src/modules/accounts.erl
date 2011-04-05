@@ -79,6 +79,7 @@ update_all_accounts(File) ->
 
 -spec(replicate_from_accounts/2 :: (TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
 replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
+    couch_mgr:db_create(TargetDB),
     case crossbar_doc:load_view(?VIEW_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
 	    BaseReplicate = [{<<"target">>, TargetDB}
@@ -102,6 +103,7 @@ replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) 
 		     ,{<<"filter">>, FilterDoc}
 		     ,{<<"create_target">>, true}
 		    ],
+    couch_mgr:db_create(TargetDB),
     couch_mgr:db_replicate(BaseReplicate).
 
 %%%===================================================================
