@@ -90,3 +90,7 @@ fGetEmail
 
 fSetupUser
 fEnableRerere
+
+echo "Git configuration complete."
+
+exit 0
