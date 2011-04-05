@@ -17,7 +17,7 @@
 -export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
 
 %% Document manipulation
--export([save_doc/2, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
+-export([save_doc/2, save_doc/3, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% attachments
@@ -39,6 +39,7 @@
 -define(SERVER, ?MODULE). 
 -define(STARTUP_FILE, [code:lib_dir(whistle_couch, priv), "/startup.config"]).
 -define(DEFAULT_PORT, 5984).
+-define(IBROWSE_OPTS, [{max_sessions, 1024}, {max_pipeline_size, 10}]).
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
@@ -73,15 +74,16 @@ load_doc_from_file(DB, App, File) ->
             {error, Reason}
     end.
 
--spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_term()) | tuple(error, term())).
+-spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 update_doc_from_file(DB, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
-	{ok, {struct, ExistingDoc}} = ?MODULE:open_doc(DB, props:get_value(<<"_id">>, Prop)),
-	?MODULE:save_doc(DB, {struct, [{<<"_rev">>, props:get_value(<<"_rev">>, ExistingDoc)} | Prop]})
+	DocId = props:get_value(<<"_id">>, Prop),
+	Rev = couchbeam:lookup_doc_rev(DB, DocId),
+	?MODULE:save_doc(DB, {struct, [{<<"_rev">>, Rev} | Prop]})
     catch        
         _Type:{badmatch,{error,Reason}} ->
             {error, Reason};
@@ -265,25 +267,34 @@ lookup_doc_rev(DbName, DocId) ->
 %%--------------------------------------------------------------------
 -spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 save_doc(DbName, [{struct, [_|_]}=Doc]) ->
-    save_doc(DbName, Doc);
-save_doc(DbName, [{struct, _}|_]=Doc) ->
-    case get_db(DbName) of
-	{error, _Error} -> {error, db_not_reachable};
-	Db ->
-            case couchbeam:save_docs(Db, Doc) of
-                {error, _Error}=E -> E;
-                {ok, Doc1} ->{ok, Doc1}
-            end
-    end;
+    save_doc(DbName, Doc, []);
+save_doc(DbName, [{struct, _}|_]=Docs) ->
+    save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) when is_list(Doc) ->
-    save_doc(DbName, {struct, Doc});
-save_doc(DbName, {struct, _}=Doc) ->
+    save_doc(DbName, {struct, Doc}, []);
+save_doc(DbName, Doc) ->
+    save_doc(DbName, Doc, []).
+
+
+-spec(save_doc/3 :: (DbName :: string(), Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(error, atom())).
+save_doc(DbName, {struct, _}=Doc, Opts) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
 	Db ->
-            case couchbeam:save_doc(Db, Doc) of
+            case couchbeam:save_doc(Db, Doc, Opts) of
                 {error, _Error}=E -> E;
                 {ok, Doc1} -> {ok, Doc1}
+            end
+    end.
+
+-spec(save_docs/3 :: (DbName :: string(), Docs :: json_objects(), Opts :: proplist()) -> tuple(ok, json_objects()) | tuple(error, atom())).
+save_docs(DbName, Docs, Opts) ->
+    case get_db(DbName) of
+	{error, _Error} -> {error, db_not_reachable};
+	Db ->
+            case couchbeam:save_docs(Db, Docs, Opts) of
+                {error, _Error}=E -> E;
+                {ok, Docs1} ->{ok, Docs1}
             end
     end.
 
@@ -568,8 +579,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_new_connection/3 :: (Host :: string(), User :: string(), Pass :: string()) -> #server{}).
-get_new_connection(Host, "", "") -> get_new_conn(Host, []);
-get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, Pass}}]).
+get_new_connection(Host, "", "") -> get_new_conn(Host, ?IBROWSE_OPTS);
+get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, Pass}} | ?IBROWSE_OPTS]).
 
 -spec(get_new_conn/2 :: (Host :: string(), Opts :: proplist()) -> #server{}).
 get_new_conn(Host, Opts) ->
