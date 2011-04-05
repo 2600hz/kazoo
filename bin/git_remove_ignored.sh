@@ -17,7 +17,7 @@ fWelcome() {
 fFindIgnoredFiles() {
     while read file; do
         fGitRm ${file}
-    done < <(find ../ -name "$1")
+    done < <(find ../$1)
 }
 
 fGitRm() {
