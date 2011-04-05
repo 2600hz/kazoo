@@ -118,6 +118,7 @@ delete(#session{}=S, K) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    couch_mgr:db_create(?SESSION_DB),
     couch_mgr:load_doc_from_file(?SESSION_DB, crossbar, ?VIEW_FILE),
     timer:send_interval(60000, ?MODULE, clean_expired),
     {ok, #state{}}.

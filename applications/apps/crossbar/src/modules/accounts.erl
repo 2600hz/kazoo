@@ -121,6 +121,7 @@ replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) 
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
+    couch_mgr:db_create(?ACCOUNTS_DB),
     bind_to_crossbar(),
     crossbar_doc:load_from_file(?ACCOUNTS_DB, ?VIEW_FILE),
     {ok, #state{}}.
