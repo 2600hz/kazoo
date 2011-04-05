@@ -32,9 +32,6 @@
 -include_lib("webmachine/include/webmachine.hrl").
 -include("../include/crossbar.hrl").
 
--record(state, {
-	 }).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -121,7 +118,7 @@ init([]) ->
     couch_mgr:db_create(?SESSION_DB),
     couch_mgr:load_doc_from_file(?SESSION_DB, crossbar, ?VIEW_FILE),
     timer:send_interval(60000, ?MODULE, clean_expired),
-    {ok, #state{}}.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -137,18 +134,18 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({start_session, AuthToken}, _, #state{}=State) ->
+handle_call({start_session, AuthToken}, _, State) ->
     {reply, get_session(AuthToken), State};
 
 %% return the modified request datastructure with the updated session
-handle_call({finish_session, #session{}=S, #wm_reqdata{}=RD}, _, #state{}=State) ->
+handle_call({finish_session, #session{}=S, #wm_reqdata{}=RD}, _, State) ->
     {reply, save_session(S, RD), State};
 
 %% close the session and delete the cookie from the request datastructure
-handle_call({stop_session, #session{}=S, #wm_reqdata{}=RD}, _, #state{}=State) ->
+handle_call({stop_session, #session{}=S, #wm_reqdata{}=RD}, _, State) ->
     {reply, delete_session(S, RD), State};
 
-handle_call({is_authorized, #session{}=S}, _, #state{}=State) ->
+handle_call({is_authorized, #session{}=S}, _, State) ->
     Valid = S#session.account_id =/= undefined andalso
         not has_expired(S#session.created + S#session.expires),
     {reply, Valid, State};
@@ -181,7 +178,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(clean_expired, State) ->
-    clean_expired(),
+    spawn(fun() -> clean_expired() end),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -214,8 +211,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-    
+
 %% get_session_doc(request()) -> not_found | json_object()
+-spec(get_session_doc/1 :: (AuthToken :: binary()) -> not_found | json_object()).
 get_session_doc(AuthToken) ->
     case AuthToken of
         undefined -> {error, not_found};
@@ -223,6 +221,7 @@ get_session_doc(AuthToken) ->
     end.
 
 %% get_session_rec(request()) -> session_rec()
+-spec(get_session/1 :: (AuthToken :: binary()) -> undefined | #session{}).
 get_session(<<"">>) ->
     undefined;
 get_session(AuthToken) ->
@@ -312,8 +311,8 @@ set_cookie_header(RD, Session, DateTime, MaxAge) ->
 -spec(clean_expired/0 :: () -> no_return()).
 clean_expired() ->
     case couch_mgr:get_results(?SESSION_DB, ?SESSION_EXPIRED, [{"startkey", 0},
-									  {"endkey", current_seconds()}
-									 ]) of
+							       {"endkey", current_seconds()}
+							      ]) of
 	{error, _} -> ok;
 	{ok, Sessions} ->
 	    Docs = lists:filter(fun({error, _}) -> false; (_) -> true end
@@ -323,7 +322,7 @@ clean_expired() ->
                                                        Else -> Else
                                                    end
 					   end, Sessions)),
-						%format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
+	    format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
 	    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs)
     end.
 
@@ -334,5 +333,6 @@ has_expired(#session{created=C, expires=E}) ->
 has_expired(S) when is_integer(S) ->
     S < current_seconds().
 
+-spec(current_seconds/0 :: () -> integer()).
 current_seconds() ->
-    calendar:datetime_to_gregorian_seconds(calendar:local_time()).
+    whistle_util:current_tstamp().
