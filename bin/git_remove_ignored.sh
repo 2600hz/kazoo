@@ -17,10 +17,12 @@ fWelcome() {
 fFindIgnoredFiles() {
     while read file; do
         fGitRm ${file}
-    done < <(find ../$1)
+    done < <(find ../$1 2> /dev/null)
 }
 
 fGitRm() {
+    git ls-files --error-unmatch "$1" 2> /dev/null || return 0
+
     echo "# git rm --cached $1"
     git rm --cached $1
 }
