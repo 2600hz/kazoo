@@ -5,4 +5,4 @@
               {applications,[kernel,stdlib,crypto,sasl]},
               {mod,{whistle_app,[]}},
               {env,[]},
-              {modules,[logger,props,whistle_api,whistle_util]}]}.
+              {modules,[logger,props,wh_timer,whistle_api,whistle_util]}]}.
