@@ -1,24 +1,24 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, James Aimonetti
 %%% @doc
-%%% running timer
-%%% 
+%%% Simple cache server
 %%% @end
-%%% Created : 30 Mar 2011 by James Aimonetti <>
+%%% Created : 30 Mar 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(wh_timer).
+-module(wh_cache).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start/0, start/1, tick/0, tick/1, stop/0, stop/1]).
+-export([start_link/0, store/2, store/3, fetch/1, erase/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE).
+-define(SERVER, ?MODULE). 
+-define(EXPIRES, 3600000).
 
 %%%===================================================================
 %%% API
@@ -34,26 +34,20 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec(start/0 :: () -> ok).
--spec(start/1 :: (Msg :: string() | binary()) -> ok).
-start() ->
-    start("Starting").
-start(Msg) ->
-    gen_server:call(?SERVER, {start, Msg}).
+-spec(store/2 :: (K :: term(), V :: term()) -> no_return()).
+-spec(store/3 :: (K :: term(), V :: term(), T :: integer()) -> no_return()).
+store(K, V) ->
+    store(K, V, ?EXPIRES).
+store(K, V, T) ->
+    gen_server:cast(?SERVER, {store, K, V, T}).
 
--spec(tick/0 :: () -> ok | tuple(error, not_started)).
--spec(tick/1 :: (Msg :: string() | binary()) -> ok | tuple(error, not_started)).
-tick() ->
-    tick("tock").
-tick(Msg) ->
-    gen_server:call(?SERVER, {tick, Msg}).
+-spec(fetch/1 :: (K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+fetch(K) ->
+    gen_server:call(?SERVER, {fetch, K}).
 
--spec(stop/0 :: () -> ok | tuple(error, not_started)).
--spec(stop/1 :: (Msg :: string() | binary()) -> ok | tuple(error, not_started)).
-stop() ->
-    stop("").
-stop(Msg) ->
-    gen_server:call(?SERVER, {stop, Msg}).
+-spec(erase/1 :: (K :: term()) -> no_return()).
+erase(K) ->
+    gen_server:cast(?SERVER, {erase, K}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -71,7 +65,8 @@ stop(Msg) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok,dict:new()}.
+    {ok, _} = timer:send_interval(1000, flush),
+    {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -87,24 +82,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({start, Msg}, {Pid, _}, S) ->
-    D = io_lib:format("TS_TIMER(~p): ~p~n", [Pid, Msg]),
-    erlang:monitor(process, Pid),
-    {reply, ok, dict:store(Pid, {erlang:now(), [D]}, S)};
-handle_call({tick, Msg}, {Pid, _}, S) ->
-    case dict:find(Pid, S) of
-	{ok, {Start, L}} ->
-	    {reply, ok, dict:store(Pid, {Start, [io_lib:format("TS_TIMER(~p): ~10.w micros: Tick-~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg])
-						 | L]}, S)};
-	error -> {reply, {error, not_started}, S}
-    end;
-handle_call({stop, Msg}, {Pid, _}, S) ->
-    case dict:find(Pid, S) of
-	{ok, {Start, L}} ->
-	    lists:foreach(fun(D) -> io:format(D, []) end, lists:reverse(L)),
-	    io:format("TS_TIMER(~p): ~10.w micros: End: ~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg]),
-	    {reply, ok, dict:erase(Pid, S)};
-	error -> {reply, {error, not_started}, S}
+handle_call({fetch, K}, _, Dict) ->
+    case dict:find(K, Dict) of
+	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {whistle_util:current_tstamp()*T, V, T} end, Dict)};
+	error -> {reply, {error, not_found}, Dict}
     end.
 
 %%--------------------------------------------------------------------
@@ -117,8 +98,10 @@ handle_call({stop, Msg}, {Pid, _}, S) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({store, K, V, T}, Dict) ->
+    {noreply, dict:store(K, {whistle_util:current_tstamp()*T, V, T}, Dict)};
+handle_cast({erase, K}, Dict) ->
+    {noreply, dict:erase(K, Dict)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -130,11 +113,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _, process, Pid, _}, State) ->
-    _ = handle_call({stop, "Stop"}, {Pid, ok}, State),
-    {noreply, dict:erase(Pid, State)};
+handle_info(flush, Dict) ->
+    Now = whistle_util:current_tstamp(),
+    {noreply, dict:filter(fun(_, {T, _, _}) -> Now < T end, Dict)};
 handle_info(_Info, State) ->
-    logger:format_log(info, "WH_TIMER(~p): unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
