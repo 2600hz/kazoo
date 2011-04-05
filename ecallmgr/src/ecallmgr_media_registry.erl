@@ -24,8 +24,6 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
--define(APP_NAME, <<"ecallmgr_media_registry">>).
--define(APP_VERSION, <<"1.2">>).
 -define(LOCAL_MEDIA_PATH, "/tmp/").
 
 %%%===================================================================

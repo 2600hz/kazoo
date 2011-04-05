@@ -15,9 +15,6 @@
 
 -include("ecallmgr.hrl").
 
--define(APP_NAME, <<"ecallmgr_call_command">>).
--define(APP_VERSION, <<"1.0">>).
-
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
