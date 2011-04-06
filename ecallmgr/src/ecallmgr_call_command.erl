@@ -26,6 +26,7 @@ exec_cmd(Node, UUID, JObj) ->
 	    AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
 	    case get_fs_app(Node, UUID, JObj, AppName) of
 		{error, _Msg}=Err -> Err;
+                {return, Result} -> Result;
 		{_, noop} -> 
                     format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]),
                     {CCS, ETS} = try
@@ -132,7 +133,8 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 			    %% unhandled method
 			    format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
 		    end
-	    end
+	    end,
+            {return, ok}                
     end;
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
@@ -338,9 +340,8 @@ stream_over_http(File, Verb, JObj) ->
 										  ,{<<"Body">>, whistle_util:to_binary(RespBody)}
 										 ]}
 								   ,JObj)) of
-		{ok, JSON} ->
-		    format_log(info, "CONTROL(~p): Ibrowse recv back ~p~n", [self(), JSON]),
-		    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>);
+		{ok, Payload} ->
+		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
 		{error, Msg} ->
 		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
 	    end;
