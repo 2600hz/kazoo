@@ -58,15 +58,20 @@
 -record(prompts, {
            person_at_exten = <<"/system_media/vm-person">>
           ,not_available = <<"/system_media/vm-not_available">>
+          ,no_mailbox = <<"/system_media/vm-not_available_no_voicemail">>
+          ,mailbox_full = <<"/system_media/vm-mailbox_full">>
 
           ,record_instructions = <<"/system_media/vm-record_message">>
 
+          ,goodbye = <<"/system_media/vm-goodbye">>
+          ,received = <<"/system_media/vm-received">>
           ,press = <<"/system_media/vm-press">>
 
           ,to_listen = <<"/system_media/vm-listen_to_recording">>
           ,to_save = <<"/system_media/vm-save_recording">>
           ,to_rerecord = <<"/system_media/vm-rerecord">>
 
+          ,enter_mailbox = <<"/system_media/vm-enter_id">>
           ,enter_password = <<"/system_media/vm-enter_pass">>
           ,invalid_login = <<"/system_media/vm-fail_auth">>
           ,abort_login = <<"/system_media/vm-abort">>
@@ -105,10 +110,11 @@
            unavailable_greeting = undefined
           ,database = undefined
           ,mailbox_id = undefined
-          ,action = undefined
+          ,exists = false
           ,skip_instructions = <<"false">>
           ,skip_greeting = <<"false">>
           ,pin = <<>>
+          ,timezone = <<"America/Los_Angeles">>
           ,max_login_attempts = 3
           ,keys = #keys{}
           ,prompts = #prompts{}
@@ -123,17 +129,21 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    Box = get_mailbox_profile(Data),
-    if
-        Box#mailbox.action == <<"compose">> ->
+    case whapps_json:get_value(<<"action">>, Data) of 
+        <<"compose">> ->
             answer(Call),
-            compose_voicemail(Box, Call),
+            compose_voicemail(get_mailbox_profile(Data), Call),
             CFPid ! {stop};
-        Box#mailbox.action == <<"check">> ->
+        <<"check">> ->
             answer(Call),
-            check_voicemail(Box, Call),
+            case whapps_json:get_value(<<"id">>, Data) of
+                undefined ->                    
+                    find_mailbox(whapps_json:get_value(<<"database">>, Data), Call);
+                _ ->
+                    check_mailbox(get_mailbox_profile(Data), Call)
+            end,
             CFPid ! {stop};
-        true ->
+        _ ->
             CFPid ! {continue}
     end.
 
@@ -143,8 +153,73 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
+-spec(check_mailbox/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> invalid | ok).
+-spec(check_mailbox/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> invalid | ok).
+
+check_mailbox(#mailbox{prompts=Prompts, pin = <<>>}, Call) ->
+    b_play(Prompts#prompts.goodbye, Call);
+check_mailbox(Box, Call) ->
+    check_mailbox(Box, Call, 1).
+
+check_mailbox(#mailbox{prompts=Prompts, pin=Pin}=Box, Call, Loop) ->
+    try
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_password, <<"1">>, <<"8000">>, Call),
+        main_menu(Box, Call)
+    catch
+        _:_ ->
+            b_play(Prompts#prompts.invalid_login, Call),
+            if 
+                Loop < Box#mailbox.max_login_attempts ->
+                    check_mailbox(Box, Call, Loop+1);
+                true ->
+                    b_play(Prompts#prompts.abort_login, Call)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(find_mailbox/2 :: (Db :: binary(), Call :: #cf_call{}) -> invalid | ok).
+-spec(find_mailbox/3 :: (Db :: binary(), Call :: #cf_call{}, Loop :: non_neg_integer()) -> invalid | ok).
+
+find_mailbox(Db, Call) ->
+    find_mailbox(Db, Call, 1).
+
+find_mailbox(Db, Call, Loop) ->    
+    Prompts = #prompts{},
+    try
+        {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_mailbox, <<"1">>, <<"8000">>, Call),
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_password, <<"1">>, <<"8000">>, Call),
+        {ok, [JObj]} = couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, Mailbox}]),
+        Box = get_mailbox_profile({struct, [{<<"database">>, Db}, {<<"id">>, whapps_json:get_value(<<"id">>, JObj)}]}),
+        Pin = Box#mailbox.pin,
+        main_menu(Box, Call)        
+    catch
+        _:_ ->
+            B = #mailbox{},
+            b_play(Prompts#prompts.invalid_login, Call),
+            if 
+                Loop < B#mailbox.max_login_attempts ->
+                    find_mailbox(Db, Call, Loop+1);
+                true ->
+                    b_play(Prompts#prompts.abort_login, Call)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec(compose_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(stop)).
-compose_voicemail(#mailbox{prompts=Prompts}=Box, Call) ->
+compose_voicemail(#mailbox{exists=false, prompts=Prompts}, Call) ->
+    b_play(Prompts#prompts.no_mailbox, Call),
+    ok;
+compose_voicemail(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
     case whistle_util:is_true(Box#mailbox.skip_greeting) of
         false ->
             play_greeting(Box, Call);
@@ -161,9 +236,14 @@ compose_voicemail(#mailbox{prompts=Prompts}=Box, Call) ->
     case wait_for_application_or_dtmf(<<"noop">>, 25000) of
         {ok, _} ->
             record_voicemail(tmp_file(), Box, Call);
-        {dtmf, _} ->
+        {dtmf, Digit} ->            
             flush(Call),
-            record_voicemail(tmp_file(), Box, Call);
+            if 
+                Digit == Keys#keys.login ->
+                    find_mailbox(Box#mailbox.database, Call);
+                true ->
+                    record_voicemail(tmp_file(), Box, Call)
+            end;
         {error, _} ->
             ok
     end.
@@ -203,70 +283,6 @@ record_voicemail(MediaName, #mailbox{prompts=Prompts}=Box, Call) ->
             end;                
         _Else ->                
             new_message(MediaName, Box, Call)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
-new_message(MediaName, #mailbox{database=Db, mailbox_id=Id}=Box, #cf_call{route_request=RR}=Call) ->
-    store_recording(MediaName, Box, Call),
-    receive after 5000 -> ok end,
-    case couch_mgr:open_doc(Db, Id) of
-        {ok, JObj} ->
-            NewMessages=[{struct, [
-                                    {<<"timestamp">>, new_timestamp()}
-                                   ,{<<"from">>, whapps_json:get_value(<<"From">>, RR)}
-                                   ,{<<"to">>, whapps_json:get_value(<<"To">>, RR)}
-                                   ,{<<"caller-id-number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
-                                   ,{<<"caller-id-name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
-                                   ,{<<"call-iD">>, whapps_json:get_value(<<"Call-ID">>, RR)}
-                                   ,{<<"folder">>, ?FOLDER_NEW}
-                                   ,{<<"attachment">>, MediaName}
-                                  ]}] ++ whapps_json:get_value([<<"messages">>], JObj, []),            
-            couch_mgr:save_doc(Db, whapps_json:set_value([<<"messages">>], NewMessages, JObj));
-        {error, _}=E ->
-            E
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec(check_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(stop)).
-check_voicemail(Box, Call) ->
-    case check_pin(Box, Call, 1) of
-        invalid ->
-            {error, invalid_pin};
-        ok ->
-            main_menu(Box, Call)
-    end.    
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec(check_pin/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> invalid | ok).                           
-check_pin(#mailbox{prompts=Prompts, pin = <<>>}, Call, _) ->
-    b_play(Prompts#prompts.abort_login, Call),
-    invalid;                                                                         
-check_pin(#mailbox{prompts=Prompts, max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
-    b_play(Prompts#prompts.abort_login, Call),
-    invalid;                                                                         
-check_pin(#mailbox{prompts=Prompts, pin=Pin}=Box, Call, Loop) ->
-    try
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_password, <<"1">>, <<"8000">>, Call),
-        ok
-    catch
-        _:_ ->
-            play(Prompts#prompts.invalid_login, Call),
-            check_pin(Box, Call, Loop+1)
     end.
 
 %%--------------------------------------------------------------------
@@ -338,7 +354,8 @@ play_messages([], _, _) ->
 play_messages([H|T], #mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
     Message = get_message(H, Box),
     audio_macro([
-                  {say, get_unix_epoch(whapps_json:get_value(<<"timestamp">>, H)), <<"current_date_time">>}
+                  {play, Prompts#prompts.received}
+                 ,{say,  get_unix_epoch(whapps_json:get_value(<<"timestamp">>, H), Box#mailbox.timezone), <<"current_date_time">>}
                  ,{play, Message}
 
                  ,{play, Prompts#prompts.to_replay}
@@ -458,6 +475,33 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=Prompts}=Box, Call) ->
             ok
     end.
 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
+new_message(MediaName, #mailbox{database=Db, mailbox_id=Id}=Box, #cf_call{route_request=RR}=Call) ->
+    store_recording(MediaName, Box, Call),
+    receive after 5000 -> ok end,
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            NewMessages=[{struct, [
+                                    {<<"timestamp">>, new_timestamp()}
+                                   ,{<<"from">>, whapps_json:get_value(<<"From">>, RR)}
+                                   ,{<<"to">>, whapps_json:get_value(<<"To">>, RR)}
+                                   ,{<<"caller-id-number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
+                                   ,{<<"caller-id-name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
+                                   ,{<<"call-iD">>, whapps_json:get_value(<<"Call-ID">>, RR)}
+                                   ,{<<"folder">>, ?FOLDER_NEW}
+                                   ,{<<"attachment">>, MediaName}
+                                  ]}] ++ whapps_json:get_value([<<"messages">>], JObj, []),            
+            couch_mgr:save_doc(Db, whapps_json:set_value([<<"messages">>], NewMessages, JObj));
+        {error, _}=E ->
+            E
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -516,14 +560,15 @@ get_mailbox_profile(Data) ->
     Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-            #mailbox{          
+            #mailbox{         
                        database = Db
                       ,mailbox_id = Id
                       ,skip_instructions = whapps_json:get_value(["base", "skip-instructions"], JObj, #mailbox.skip_instructions)
                       ,skip_greeting = whapps_json:get_value(["base", "skip-greeting"], JObj, #mailbox.skip_greeting)
-                      ,action = whapps_json:get_value(<<"action">>, Data)
                       ,unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
-                      ,pin = whapps_json:get_value(["base", "pin"], JObj, <<>>)
+                      ,pin = whapps_json:get_value([<<"base">>, <<"pin">>], JObj, <<>>)
+                      ,timezone = whapps_json:get_value([<<"base">>, <<"timezone">>], JObj, #mailbox.timezone)
+                      ,exists=true
                     };
         _ -> 
             #mailbox{}
@@ -606,7 +651,6 @@ get_messages(#mailbox{database=Db, mailbox_id=Id}) ->
         _ ->
             []
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -721,12 +765,8 @@ new_timestamp() ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%--------------------------------------------------------------------
--spec(get_unix_epoch/1 :: (Epoch :: binary()) -> binary()).
 -spec(get_unix_epoch/2 :: (Epoch :: binary(), Timezone :: binary()) -> binary()).
-
-get_unix_epoch(Epoch) ->
-    get_unix_epoch(Epoch, "America/Los_Angeles").
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(whistle_util:to_integer(Epoch)),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
+    LocalDateTime = localtime:utc_to_local(UtcDateTime, whistle_util:to_list(Timezone)),
     whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
