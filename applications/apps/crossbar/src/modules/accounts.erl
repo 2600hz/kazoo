@@ -68,8 +68,7 @@ update_all_accounts(File) ->
                                   case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
                                       {error, not_found} ->
                                           couch_mgr:load_doc_from_file(DbName, crossbar, File);
-                                      Else ->
-                                          Else
+				      {ok, _} -> ok
                                   end
                           end, Doc),
                 ok;
