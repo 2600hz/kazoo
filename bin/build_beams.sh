@@ -2,8 +2,7 @@
 
 WDIR="$PWD/`dirname $0`/.."
 REBAR=$WDIR/bin/rebar
-<<<<<<< HEAD
-=======
+
 
 fWelcome() {                                                                                                                                                                                                                                                                                                                              [0/1842]
     clear
@@ -34,14 +33,10 @@ fCompileUtils() {
     echo
 }
 
->>>>>>> master
-
 fCompileWhistleLibs() {
     echo "======================================================="
     echo "  Compiling Whistle Libraries"
     echo "======================================================="
-
-<<<<<<< HEAD
 
 echo "Compiling utils"
 cd $WDIR/utils/diagnostics
@@ -61,7 +56,7 @@ $REBAR clean compile
 echo "Compiling Apps container and Apps"
 cd $WDIR/applications
 $REBAR clean compile
-=======
+
     for WLIB in ${WDIR}/lib/whistle*
     do
         echo "# cd ${WLIB}; ${REBAR} clean compile"
@@ -98,7 +93,6 @@ fCompileUtils
 fCompileWhistleLibs
 fCompileEcallmgr
 fCompileWhApps
->>>>>>> master
 
 cd `readlink -f $0` # realpath
 
