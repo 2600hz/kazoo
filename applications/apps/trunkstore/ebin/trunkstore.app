@@ -9,4 +9,4 @@
                         trunkstore_sup,ts_acctmgr,ts_auth,ts_call_cleanup,
                         ts_call_handler,ts_call_sup,ts_carrier,ts_cdr,
                         ts_credit,ts_e911,ts_responder,ts_responder_sup,
-                        ts_route,ts_t38,ts_util]}]}.
+                        ts_route,ts_t38,ts_tollfree,ts_util]}]}.
