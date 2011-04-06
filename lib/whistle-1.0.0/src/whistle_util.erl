@@ -1,38 +1,20 @@
 -module(whistle_util).
 
--export([reload_changed/0, reload_all_apps/0, reload_app/1]).
 -export([to_e164/1, to_npanxxxxxx/1, to_1npanxxxxxx/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0]).
 
-reload_changed() ->
-    reloader:reload_modules(reloader:all_changed()).
+-include_lib("proper/include/proper.hrl").
 
-reload_all_apps() ->
-    Apps = application:which_applications(),
-    lists:foreach(fun({App, _Desc, _Vsn}) -> reload_app(App) end, Apps).
-
-reload_app(stdlib) -> ok;
-reload_app(kernel) -> ok;
-reload_app(App) ->
-    io:format("Reloading App ~p~n", [App]),
-    {ok, Prop} = application:get_all_key(App),
-    case props:get_value(modules, Prop, []) of
-	[] ->
-	    io:format("No Mods to reload~n", []);
-	Mods ->
-	    reloader:reload_modules(Mods)
-    end,
-    io:format("Reloading ~p Done...~n", [App]).
-
-
+%% must be a term that can be changed to a list
 -spec(to_hex/1 :: (S :: term()) -> string()).
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 
 %% +18001234567 -> +18001234567
+-spec(to_e164/1 :: (DID :: binary()) -> binary()).
 to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) == 80 -> % 8bits/ch * 10ch
     E164;
 %% 18001234567 -> +18001234567
@@ -43,6 +25,18 @@ to_e164(NPAN) when erlang:bit_size(NPAN) == 80 ->
     <<$+, $1, NPAN/bitstring>>;
 to_e164(Other) ->
     Other.
+
+prop_to_e164() ->
+    ?FORALL(Number, list(range(0,9)),
+	    begin
+		BinNum = list_to_binary(Number),
+		E164 = to_e164(BinNum),
+		case {length(Number), BinNum} of
+		    {11, <<$1, _/binary>>} -> E164 =:= <<$+, BinNum/binary>>;
+		    {10, _} -> E164 =:= <<$+, $1, BinNum/binary>>;
+		    _ -> E164 =:= BinNum
+		end
+	    end).
 
 to_npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) == 80 ->
     N;
