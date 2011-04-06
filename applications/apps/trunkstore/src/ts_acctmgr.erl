@@ -17,8 +17,8 @@
 %% Data Access API
 -export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
 	 ,has_flatrates/1 %% has_flatrates(AcctId) - check if account has a free flatrate trunk
-	 ,reserve_trunk/2, reserve_trunk/3 %% reserve_trunk(AcctId, CallID[, Amount]) - only reserve if avail_credit > Amt (0 if unspecified)
-	 ,release_trunk/2, release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
+	 ,reserve_trunk/4 %% reserve_trunk(AcctId, CallID, Amount, FlatRateEnabled) - only reserve if avail_credit > Amt (0 if unspecified)
+	 ,release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
 	 ,copy_reserve_trunk/4 %% when a failover trunk gets the b-leg callid resolved, copy its reserve doc to the b-leg callid
 	]).
 
@@ -84,19 +84,14 @@ has_flatrates(Acct) ->
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
--spec(reserve_trunk/2 :: (Acct :: binary(), CallID :: binary()) ->
+-spec(reserve_trunk/4 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer(), FRE :: boolean()) ->
 			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds)).
-reserve_trunk(Acct, CallID) ->
-    reserve_trunk(Acct, CallID, 0).
-
--spec(reserve_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) ->
-			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds)).
-reserve_trunk(<<>>, _, _) ->
+reserve_trunk(<<>>, _, _, _) ->
     {error, no_account};
-reserve_trunk(_, <<>>, _) ->
+reserve_trunk(_, <<>>, _, _) ->
     {error, no_callid};
-reserve_trunk(Acct, CallID, Amt) ->
-    gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt]}, infinity).
+reserve_trunk(Acct, CallID, Amt, FRE) ->
+    gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt, FRE]}, infinity).
 
 %% when an a-leg CALLID-failover is resolved into a B-leg CallID, transfer the type of trunk to the B-leg CallID
 -spec(copy_reserve_trunk/4 :: (AcctID :: binary(), ACallID :: binary(), BCallID :: binary(), Amt :: float() | integer()) -> ok).
@@ -105,10 +100,6 @@ copy_reserve_trunk(AcctID, ACallID, BCallID, Amt) ->
 
 %% release a reserved trunk
 %% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
--spec(release_trunk/2 :: (Acct :: binary(), CallID :: binary()) -> ok | tuple(error, no_account | no_callid)).
-release_trunk(Acct, CallID) ->
-    release_trunk(Acct, CallID, 0).
-
 -spec(release_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> ok | tuple(error, no_account | no_callid)).
 release_trunk(<<>>, _, _) ->
     {error, no_account};
@@ -163,12 +154,28 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({has_credit, AcctId, [Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    spawn(fun() -> load_account(AcctId, WDB) end),
-    {reply, has_credit(RDB, AcctId, Amt), S};
-handle_call({has_flatrates, AcctId}, _, #state{current_read_db=RDB}=S) ->
-    {reply, has_flatrates(RDB, AcctId), S};
-handle_call({reserve_trunk, AcctId, [CallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+handle_call({has_credit, AcctId, [Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    spawn(fun() -> load_account(AcctId, WDB), gen_server:reply(From, has_credit(RDB, AcctId, Amt)) end),
+    {noreply, S};
+
+handle_call({has_flatrates, AcctId}, From, #state{current_read_db=RDB}=S) ->
+    spawn(fun() -> gen_server:reply(From, has_flatrates(RDB, AcctId)) end),
+    {noreply, S};
+
+handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    spawn(fun() ->
+		  spawn(fun() -> load_account(AcctId, WDB) end),
+		  case has_credit(RDB, AcctId, Amt) of
+		      true ->
+			  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
+			  gen_server:reply(From, {ok, per_min});
+		      false ->
+			  gen_server:reply(From, {error, no_funds})
+		  end
+	  end),
+    {noreply, S};
+			  
+handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     spawn(fun() ->
 		  wh_timer:start("ts_acctmgr"),
 		  spawn(fun() -> load_account(AcctId, WDB) end),
