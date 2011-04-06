@@ -12,6 +12,13 @@
 
 -export([handle/2]).
 
+-define(FOLDER_NEW, <<"new">>).
+-define(FOLDER_SAVED, <<"saved">>).
+-define(FOLDER_DELETED, <<"deleted">>).
+
+-define(UNAVAILABLE_GREETING, <<"unavailable_greeting.wav">>).
+-define(NAME_RECORDING, <<"name_recording.wav">>).
+
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 -import(cf_call_command, [
@@ -41,13 +48,18 @@
           ,rec_name = <<"2">>
           ,set_pin = <<"3">>
           ,return_main = <<"0">>             
+
+          %% Post playbak
+          ,replay = <<"1">>
+          ,keep = <<"2">>
+          ,delete = <<"3">>         
          }).
 
 -record(prompts, {
            person_at_exten = <<"/system_media/vm-person">>
           ,not_available = <<"/system_media/vm-not_available">>
 
-          ,record_instructions = <<"/system_media/vm-record_greeting">>
+          ,record_instructions = <<"/system_media/vm-record_message">>
 
           ,press = <<"/system_media/vm-press">>
 
@@ -73,7 +85,15 @@
           ,to_rec_unavailable = <<"/system_media/vm-to_record_greeting">>
           ,to_return_main = <<"/system_media/vm-main_menu">>
 
+          ,to_replay = <<"/system_media/vm-listen_to_recording">>
+          ,to_keep = <<"/system_media/vm-save_recording">>
+          ,to_delete = <<"/system_media/vm-delete_recording">>
+
+          ,message_saved = <<"/system_media/vm-saved">>
+          ,message_deleted = <<"/system_media/vm-deleted">>
+
           ,record_name = <<"/system_media/vm-record_name1">>
+          ,record_unavail_greeting = <<"/system_media/vm-record_greeting">>
 
           ,enter_new_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Enter+your+new+password+followed+by+the+pound+key.">>
           ,reenter_new_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Re-enter+your+new+password+followed+by+the+pound+key+to+confirm.">>
@@ -155,14 +175,14 @@ compose_voicemail(#mailbox{prompts=Prompts}=Box, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(play_greeting/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
-play_greeting(#mailbox{prompts=Prompts, unavailable_greeting=undefined}, #cf_call{to_number=Exten} = Call) ->
+play_greeting(#mailbox{prompts=Prompts, unavailable_greeting=false}, #cf_call{to_number=Exten} = Call) ->
     audio_macro([
                   {play, Prompts#prompts.person_at_exten}
                  ,{say,  Exten}
                  ,{play, Prompts#prompts.not_available}
                 ], Call);
-play_greeting(#mailbox{database=Db, mailbox_id=Id, unavailable_greeting=Greeting}, Call) ->
-    play(<<$/, Db/binary, $/, Id/binary, $/, Greeting/binary>>, Call).
+play_greeting(#mailbox{database=Db, mailbox_id=Id, unavailable_greeting=true}, Call) ->
+    play(<<$/, Db/binary, $/, Id/binary, $/, "unavailable_greeting.wav">>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -197,15 +217,16 @@ new_message(MediaName, #mailbox{database=Db, mailbox_id=Id}=Box, #cf_call{route_
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             NewMessages=[{struct, [
-                                    {<<"Timestamp">>, new_timestamp()}
-                                   ,{<<"From">>, whapps_json:get_value(<<"From">>, RR)}
-                                   ,{<<"To">>, whapps_json:get_value(<<"To">>, RR)}
-                                   ,{<<"Caller-ID-Number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
-                                   ,{<<"Caller-ID-Name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
-                                   ,{<<"Call-ID">>, whapps_json:get_value(<<"Call-ID">>, RR)}
-                                   ,{<<"Attachment">>, MediaName}
-                                  ]}] ++ whapps_json:get_value([<<"messages">>, <<"new">>], JObj, []),            
-            couch_mgr:save_doc(Db, whapps_json:set_value([<<"messages">>, <<"new">>], NewMessages, JObj));
+                                    {<<"timestamp">>, new_timestamp()}
+                                   ,{<<"from">>, whapps_json:get_value(<<"From">>, RR)}
+                                   ,{<<"to">>, whapps_json:get_value(<<"To">>, RR)}
+                                   ,{<<"caller-id-number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
+                                   ,{<<"caller-id-name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
+                                   ,{<<"call-iD">>, whapps_json:get_value(<<"Call-ID">>, RR)}
+                                   ,{<<"folder">>, ?FOLDER_NEW}
+                                   ,{<<"attachment">>, MediaName}
+                                  ]}] ++ whapps_json:get_value([<<"messages">>], JObj, []),            
+            couch_mgr:save_doc(Db, whapps_json:set_value([<<"messages">>], NewMessages, JObj));
         {error, _}=E ->
             E
     end.
@@ -232,8 +253,11 @@ check_voicemail(Box, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(check_pin/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> invalid | ok).                           
+check_pin(#mailbox{prompts=Prompts, pin = <<>>}, Call, _) ->
+    b_play(Prompts#prompts.abort_login, Call),
+    invalid;                                                                         
 check_pin(#mailbox{prompts=Prompts, max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
-    play(Prompts#prompts.abort_login, Call),
+    b_play(Prompts#prompts.abort_login, Call),
     invalid;                                                                         
 check_pin(#mailbox{prompts=Prompts, pin=Pin}=Box, Call, Loop) ->
     try
@@ -245,7 +269,6 @@ check_pin(#mailbox{prompts=Prompts, pin=Pin}=Box, Call, Loop) ->
             check_pin(Box, Call, Loop+1)
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -254,15 +277,15 @@ check_pin(#mailbox{prompts=Prompts, pin=Pin}=Box, Call, Loop) ->
 %%--------------------------------------------------------------------
 -spec(main_menu/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> stop | continue).
 main_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
-    New = <<"0">>, Saved = <<"0">>,
+    Messages = get_messages(Box),
     audio_macro([
                   {play, Prompts#prompts.you_have}
-                 ,{say,  New}
+                 ,{say,  whistle_util:to_binary(count_messages(Messages, ?FOLDER_NEW))}
                  ,{play, Prompts#prompts.new}
                  ,{play, Prompts#prompts.messages}
 
                  ,{play, Prompts#prompts.you_have}
-                 ,{say,  Saved}
+                 ,{say,  whistle_util:to_binary(count_messages(Messages, ?FOLDER_SAVED))}
                  ,{play, Prompts#prompts.saved}
                  ,{play, Prompts#prompts.messages}
 
@@ -289,8 +312,10 @@ main_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
             flush(Call),
             if 
                 Digit == Keys#keys.hear_new ->
+                    play_messages(get_folder(Messages, ?FOLDER_NEW), Box, Call),
                     main_menu(Box, Call);
                 Digit == Keys#keys.hear_saved -> 
+                    play_messages(get_folder(Messages, ?FOLDER_SAVED), Box, Call),
                     main_menu(Box, Call);
                 Digit == Keys#keys.configure -> 
                     config_menu(Box, Call);
@@ -298,6 +323,63 @@ main_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
                     ok;
                 true ->
                     main_menu(Box, Call)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(play_messages/3 :: (Messages :: json_objects(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
+play_messages([], _, _) ->    
+    ok;
+play_messages([H|T], #mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
+    Message = get_message(H, Box),
+    audio_macro([
+                  {say, get_unix_epoch(whapps_json:get_value(<<"timestamp">>, H)), <<"current_date_time">>}
+                 ,{play, Message}
+
+                 ,{play, Prompts#prompts.to_replay}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.replay}
+
+                 ,{play, Prompts#prompts.to_keep}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.keep}
+
+                 ,{play, Prompts#prompts.to_delete}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.delete}
+
+                 ,{play, Prompts#prompts.to_return_main}
+                 ,{play, Prompts#prompts.press}
+                 ,{say,  Keys#keys.return_main}
+                ], Call),
+    case wait_for_dtmf(30000) of
+        {error, _}=E ->
+            E;
+        {ok, Digit} ->
+            flush(Call),
+            if 
+                Digit == Keys#keys.replay ->
+                    play_messages([H|T], Box, Call);
+                Digit == Keys#keys.keep -> 
+                    play(Prompts#prompts.message_saved, Call),
+                    set_folder(?FOLDER_SAVED, H, Box),
+                    play_messages(T, Box, Call);
+                Digit == Keys#keys.delete -> 
+                    play(Prompts#prompts.message_deleted, Call),
+                    set_folder(?FOLDER_DELETED, H, Box),
+                    play_messages(T, Box, Call);
+                Digit == Keys#keys.return_main -> 
+                    play(Prompts#prompts.message_saved, Call),
+                    set_folder(?FOLDER_SAVED, H, Box);
+                true ->
+                    play(Prompts#prompts.message_saved, Call),
+                    set_folder(?FOLDER_SAVED, H, Box),
+                    play_messages(T, Box, Call)
             end
     end.
 
@@ -333,6 +415,7 @@ config_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
             flush(Call),
             if 
                 Digit == Keys#keys.rec_unavailable ->
+                    record_unavailable_greeting(tmp_file(), Box, Call),
                     config_menu(Box, Call);
                 Digit == Keys#keys.rec_name -> 
                     record_name(tmp_file(), Box, Call),
@@ -342,9 +425,37 @@ config_menu(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
                     config_menu(Box, Call);
                 Digit == Keys#keys.return_main ->                   
                     main_menu(Box, Call);
+                %% Bulk delete -> delete all voicemails
+                %% Reset -> delete all voicemails, greetings, name, and reset pin
                 true ->
                     config_menu(Box, Call)
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
+record_unavailable_greeting(MediaName, #mailbox{prompts=Prompts}=Box, Call) -> 
+    audio_macro([
+                  {play,  Prompts#prompts.record_unavail_greeting}
+                 ,{tones, Prompts#prompts.tone_spec}
+                ], Call),
+    case b_record(MediaName, Call) of
+        {ok, _Msg} ->
+            case review_recording(MediaName, Box, Call) of
+                {ok, record} ->
+                    record_unavailable_greeting(MediaName, Box, Call);
+                {ok, save} ->
+                    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call);
+                _Else ->
+                    ok
+            end;                
+        _Else ->                
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -365,7 +476,7 @@ record_name(MediaName, #mailbox{prompts=Prompts}=Box, Call) ->
                 {ok, record} ->
                     record_name(MediaName, Box, Call);
                 {ok, save} ->
-                    store_recording(MediaName, <<"name_recording.wav">>, Box, Call);                    
+                    store_recording(MediaName, ?NAME_RECORDING, Box, Call);                    
                 _Else ->
                     ok
             end;                
@@ -411,8 +522,8 @@ get_mailbox_profile(Data) ->
                       ,skip_instructions = whapps_json:get_value(["base", "skip-instructions"], JObj, #mailbox.skip_instructions)
                       ,skip_greeting = whapps_json:get_value(["base", "skip-greeting"], JObj, #mailbox.skip_greeting)
                       ,action = whapps_json:get_value(<<"action">>, Data)
-                      ,unavailable_greeting = whapps_json:get_value(["base", "unavailable-greeting"], JObj)
-                      ,pin = whapps_json:get_value(["base", "pin"], JObj, <<"1010">>)
+                      ,unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
+                      ,pin = whapps_json:get_value(["base", "pin"], JObj, <<>>)
                     };
         _ -> 
             #mailbox{}
@@ -485,23 +596,102 @@ get_attachment_path(MediaName, #mailbox{database=Db, mailbox_id=Id}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_unavailable_greeting/1 :: (JObj :: json_object()) -> undefined | binary()).
-get_unavailable_greeting(JObj) ->
-    case whapps_json:get_value(["base", "unavailable-greeting"], JObj) of
-        undefined ->
-            undefined;
-        MediaName ->
-            case whapps_json:get_value([<<"_attachments">>, MediaName], JObj) of
-                undefined ->
-                    undefined;
-                _ ->
-                    MediaName
-            end
+-spec(get_messages/1 :: (Mailbox :: #mailbox{}) -> json_object()).
+get_messages(#mailbox{database=Db, mailbox_id=Id}) ->
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            whapps_json:get_value(<<"messages">>, JObj, []);
+        _ ->
+            []
     end.
-   
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_message/2 :: (Message :: binary(), Mailbox :: #mailbox{}) -> binary()).
+get_message(Message, #mailbox{database=Db, mailbox_id=Id}) ->
+    <<$/, Db/binary, $/, Id/binary, $/, (whapps_json:get_value(<<"attachment">>, Message))/binary>>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(count_messages/2 :: (Message :: json_object(), Folder :: binary()) -> integer()).
+count_messages(Messages, Folder) ->
+    lists:foldr(fun(Message, Count) ->
+                       case whapps_json:get_value(<<"folder">>, Message) of
+                           Folder ->
+                               Count + 1;
+                           _ ->
+                               Count
+                       end
+               end, 0, Messages).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_folder/2 :: (Message :: json_object(), Folder :: binary()) -> list()).
+get_folder(Messages, Folder) ->
+    lists:foldr(fun(Message, Acc) ->
+                       case whapps_json:get_value(<<"folder">>, Message) of
+                           Folder ->
+                               [Message|Acc];
+                           _ ->
+                               Acc
+                       end
+               end, [], Messages).    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(set_folder/3 :: (Folder :: binary(), Message :: json_object(), Box :: #mailbox{}) -> ok | tuple(error, atom())).
+set_folder(Folder, Message, Box) ->
+    case whapps_json:get_value(<<"folder">>, Message) of 
+        Folder ->
+            ok;
+        _ ->
+            update_folder(Folder, whapps_json:get_value(<<"attachment">>, Message), Box)             
+    end.
+       
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_folder/3 :: (Folder :: binary(), Attachment :: binary(), Box :: #mailbox{}) -> ok | tuple(error, atom())).
+update_folder(_, undefined, _) ->     
+    {error, attachment_undefined};
+update_folder(Folder, Attachment, #mailbox{database=Db, mailbox_id=Id}) -> 
+    case couch_mgr:open_doc(Db, Id) of 
+        {ok, JObj} ->
+            Messages = lists:map(fun(Message) ->
+                                         case whapps_json:get_value(<<"attachment">>, Message) of
+                                             Attachment ->
+                                                 whapps_json:set_value(<<"folder">>, Folder, Message);
+                                             _ ->
+                                                 Message
+                                         end
+                                 end, whapps_json:get_value(<<"messages">>, JObj, [])),
+            couch_mgr:save_doc(Db, whapps_json:set_value(<<"messages">>, Messages, JObj));
+        {error, _}=E ->
+            E
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -523,3 +713,20 @@ tmp_file() ->
 -spec(new_timestamp/0 :: () -> binary()).
 new_timestamp() ->
     whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(calendar:universal_time())).    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Accepts Universal Coordinated Time (UTC) and convert it to binary
+%% encoded Unix epoch in the provided timezone
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_unix_epoch/1 :: (Epoch :: binary()) -> binary()).
+-spec(get_unix_epoch/2 :: (Epoch :: binary(), Timezone :: binary()) -> binary()).
+
+get_unix_epoch(Epoch) ->
+    get_unix_epoch(Epoch, "America/Los_Angeles").
+get_unix_epoch(Epoch, Timezone) ->
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(whistle_util:to_integer(Epoch)),
+    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
+    whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
