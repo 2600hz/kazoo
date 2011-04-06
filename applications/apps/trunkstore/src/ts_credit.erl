@@ -214,7 +214,8 @@ set_rate_flags(Flags, Rates) ->
 	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    case ts_acctmgr:reserve_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid
-					  ,(Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)) of
+					  ,(Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)
+					  ,Flags#route_flags.flat_rate_enabled) of
 		{ok, flat_rate} ->
 		    {ok, set_flat_flags(Flags, Dir)};
 		{ok, per_min} ->

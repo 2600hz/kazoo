@@ -175,15 +175,16 @@ find_outbound_route(Flags, ApiProp) ->
 			end;
 		    
 		    {error, _}  ->
-			format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
-			ts_acctmgr:release_trunk(FlagsIn1#route_flags.account_doc_id, FlagsIn1#route_flags.callid),
+			%% format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
+			ts_acctmgr:release_trunk(FlagsIn1#route_flags.account_doc_id, FlagsIn1#route_flags.callid, 0),
 			response(503, ApiProp, Flags)
 		end
 	end
     catch
-	A:B ->
-	    format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
-	    ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid),
+	_A:_B ->
+	    %% format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), _A, _B]),
+	    %% format_log(error, "TS_ROUTE(~p): Stacktrace: ~p~n", [self(), erlang:get_stacktrace()]),
+	    ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid, 0),
 	    response(503, ApiProp, Flags)
     end.
 
@@ -286,7 +287,7 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 
 -spec(inbound_features/1 :: (Flags :: #route_flags{}) -> #route_flags{}).
 inbound_features(Flags) ->
-    Features = [],
+    Features = [ts_tollfree],
     fold_features(Features, Flags).
 
 -spec(outbound_features/1 :: (Flags :: #route_flags{}) -> #route_flags{}).
