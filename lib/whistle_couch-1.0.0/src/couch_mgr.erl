@@ -60,13 +60,13 @@
 %% Load a file into couch as a document (not an attachement)
 %% @end
 %%--------------------------------------------------------------------
--spec(load_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
-load_doc_from_file(DB, App, File) ->
+-spec(load_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+load_doc_from_file(DbName, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
-	?MODULE:save_doc(DB, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
+	?MODULE:save_doc(DbName, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
         _Type:{badmatch,{error,Reason}} ->
             {error, Reason};
@@ -74,20 +74,22 @@ load_doc_from_file(DB, App, File) ->
             {error, Reason}
     end.
 
--spec(update_doc_from_file/3 :: (DB :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
-update_doc_from_file(DB, App, File) ->
+-spec(update_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+update_doc_from_file(DbName, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DB, Path]),
+    logger:format_log(info, "Update into ~p from CouchDB dir: ~p~n", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
 	DocId = props:get_value(<<"_id">>, Prop),
-	Rev = couchbeam:lookup_doc_rev(DB, DocId),
-	?MODULE:save_doc(DB, {struct, [{<<"_rev">>, Rev} | Prop]})
+	Rev = couchbeam:lookup_doc_rev(get_db(DbName), DocId),
+	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
     catch        
         _Type:{badmatch,{error,Reason}} ->
+	    io:format("badmatch ~p~n", [erlang:get_stacktrace()]),
             {error, Reason};
- 	_Type:Reason -> 
+ 	_Type:Reason ->
+	    io:format("excep ~p~n", [erlang:get_stacktrace()]),
             {error, Reason}
     end.
 
@@ -158,11 +160,7 @@ db_info(DbName) ->
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate({struct, Prop});
 db_replicate({struct, _}=MochiJson) ->
-    case get_conn() of
-	{} -> {error, server_not_reachable};
-	Conn ->
-	    couchbeam:replicate(Conn, MochiJson)
-    end.
+    couchbeam:replicate(get_conn(), MochiJson).
 
 %%--------------------------------------------------------------------
 %% @public
