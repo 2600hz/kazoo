@@ -644,18 +644,16 @@ get_db_name({struct, _}=Doc, Encoded) ->
 get_db_name([DocId], Encoded) when is_binary(DocId) ->
     get_db_name(DocId, Encoded);
 get_db_name(DocId, encoded) when is_binary(DocId) ->
-    Id = whistle_util:to_list(DocId),
-    Db = ["crossbar%2Fclients%2F", string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
+    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
+    Db = ["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest],
     whistle_util:to_binary(Db);
 get_db_name(DocId, unencoded) when is_binary(DocId) ->
     case binary:longest_common_prefix([<<"crossbar%2Fclients%2F">>, DocId]) of
 	0 ->
-	    format_log(info, "DocID unenc: ~p~n", [DocId]),
 	    Id = whistle_util:to_list(DocId),
 	    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
 	    whistle_util:to_binary(Db);
 	_ ->
-	    %% already encoded, convert %2F to /
 	    whistle_util:to_binary(mochiweb_util:unquote(DocId))
     end;
 get_db_name(_, _) ->
