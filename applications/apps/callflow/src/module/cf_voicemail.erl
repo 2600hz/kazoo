@@ -563,8 +563,8 @@ get_mailbox_profile(Data) ->
             #mailbox{         
                        database = Db
                       ,mailbox_id = Id
-                      ,skip_instructions = whapps_json:get_value(["base", "skip-instructions"], JObj, #mailbox.skip_instructions)
-                      ,skip_greeting = whapps_json:get_value(["base", "skip-greeting"], JObj, #mailbox.skip_greeting)
+                      ,skip_instructions = whapps_json:get_value([<<"base">>, <<"skip-instructions">>], JObj, #mailbox.skip_instructions)
+                      ,skip_greeting = whapps_json:get_value([<<"base">>, <<"skip-greeting">>], JObj, #mailbox.skip_greeting)
                       ,unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                       ,pin = whapps_json:get_value([<<"base">>, <<"pin">>], JObj, <<>>)
                       ,timezone = whapps_json:get_value([<<"base">>, <<"timezone">>], JObj, #mailbox.timezone)
