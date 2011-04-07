@@ -288,10 +288,6 @@ shutdown(CtlPid, UUID) ->
 	    CtlPid ! {hangup, self(), UUID},
 	    ok
     end,
-
-    receive {ctl_down, CtlPid} -> ok
-    after 500 -> ok end,
-
     format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]).
 
 %% let the ctl process know a command finished executing
