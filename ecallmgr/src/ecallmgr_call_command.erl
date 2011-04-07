@@ -27,18 +27,18 @@ exec_cmd(Node, UUID, JObj) ->
 	    case get_fs_app(Node, UUID, JObj, AppName) of
 		{error, _Msg}=Err -> Err;
                 {return, Result} -> Result;
-		{_, noop} -> 
+		{_, noop} ->
                     format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]),
                     {CCS, ETS} = try
-                                     {ok, CS} = 
+                                     {ok, CS} =
                                          freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${channel-call-state}">>)),
-                                     {ok, TS} = 
+                                     {ok, TS} =
                                          freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${Event-Date-Timestamp}">>)),
                                      {CS, TS}
                                  catch
                                      _:_ ->
                                          {<<>>, <<>>}
-                                 end,                       
+                                 end,
                     Event = [
                               {<<"Timestamp">>, ETS}
                              ,{<<"Application-Name">>, <<"noop">>}
@@ -49,7 +49,7 @@ exec_cmd(Node, UUID, JObj) ->
                             ],
                     {ok, Payload} = whistle_api:call_event(Event),
                     amqp_util:callevt_publish(UUID, Payload, event);
-		{App, AppData} -> 
+		{App, AppData} ->
                     send_cmd(Node, UUID, App, AppData)
 	    end;
 	false ->
@@ -134,7 +134,7 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 			    format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
 		    end
 	    end,
-            {return, ok}                
+            {return, ok}
     end;
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
@@ -245,7 +245,7 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
     {error, "Application unknown"}.
-          
+
 %%%===================================================================
 %%% Internal helper functions
 %%%===================================================================
@@ -273,20 +273,15 @@ get_bridge_endpoint(JObj) ->
 -spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
-        {error, _} -> 
+        {error, _} ->
             MediaName;
         Url ->
             get_fs_playback(Url)
     end.
 
--spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).                                 
-get_fs_playback(Url) when byte_size(Url) >= 4 ->
-    case binary:part(Url, 0, 4) of 
-        <<"http">> ->
-            <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
-        _Else ->
-            Url
-    end;
+-spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
+get_fs_playback(<<"http://", _/binary>>=Url) ->
+    <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
 
@@ -423,7 +418,7 @@ set_ringback(_Node, _UUID, undefined) ->
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=${", RingBack, "}"]),
     set(Node, UUID, RB).
- 
+
 -spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_continue_on_fail(_Node, _UUID, undefined) ->
     ok;
@@ -437,12 +432,12 @@ set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
 
 %% builds a FS specific flag string for the conference command
--spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).                                     
-get_conference_flags(JObj) ->    
+-spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).
+get_conference_flags(JObj) ->
     Flags = [
              <<Flag/binary, Delim/binary>>
                  || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
-                    ,whistle_util:to_boolean(whapps_json:get_value(Parameter, JObj, false))
+			,whistle_util:to_boolean(whapps_json:get_value(Parameter, JObj, false))
             ],
     case list_to_binary(Flags) of
         <<>> ->
