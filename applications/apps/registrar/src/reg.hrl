@@ -2,7 +2,7 @@
 -include_lib("whistle/include/whistle_amqp.hrl").
 -include_lib("whistle/include/whistle_types.hrl").
 
--define(APP_NAME, <<"registration">>).
+-define(APP_NAME, <<"registrar">>).
 -define(APP_VERSION, <<"0.4.2">>).
 
 -define(REG_DB, <<"registrations">>).

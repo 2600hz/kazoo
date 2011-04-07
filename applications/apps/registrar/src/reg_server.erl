@@ -62,9 +62,11 @@ init([]) ->
     couch_mgr:db_create(?REG_DB),
     couch_mgr:db_create(?AUTH_DB),
     lists:foreach(fun({DB, File}) ->
-			  case couch_mgr:update_doc_from_file(DB, registrar, File) of
-			      {ok, _} -> ok;
-			      {error, _} -> couch_mgr:load_doc_from_file(DB, registrar, File)
+                          try                              
+                              {ok, _} = couch_mgr:update_doc_from_file(DB, registrar, File)
+                          catch
+                              _:_ -> 
+                                  couch_mgr:load_doc_from_file(DB, registrar, File)
 			  end
 		  end, ?JSON_FILES),
     {ok, #state{}, 0}.
