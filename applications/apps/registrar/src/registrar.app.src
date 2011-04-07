@@ -1,12 +1,12 @@
-{application, registration,
+{application, registrar,
  [
-  {description, "Your App Description"},
-  {vsn, "0.0.1"},
+  {description, "Registrar For the Stars"},
+  {vsn, "0.0.3"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { registration_app, []} },
+  {mod, { registrar_app, []} },
   {env, []}
  ]}.

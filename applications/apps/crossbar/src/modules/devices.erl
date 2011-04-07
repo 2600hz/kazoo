@@ -28,6 +28,9 @@
 -define(VIEW_FILE, <<"views/devices.json">>).
 -define(DEVICES_LIST, {"devices", "listing_by_id"}).
 
+-define(SIP_CREDS_DB, <<"sip_auth">>).
+-define(SIP_FILTER, <<"devices/export_sip">>).
+
 -record(state, {}).
 
 %%%===================================================================
@@ -62,7 +65,9 @@ start_link() ->
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
     bind_to_crossbar(),
+    couch_mgr:db_create(?SIP_CREDS_DB),
     accounts:update_all_accounts(?VIEW_FILE),
+    accounts:replicate_from_accounts(?SIP_CREDS_DB, ?SIP_FILTER),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -128,6 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
+		  spawn(fun() -> accounts:replicate_from_account(Context1#cb_context.db_name, ?SIP_CREDS_DB, ?SIP_FILTER) end),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};

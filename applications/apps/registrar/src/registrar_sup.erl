@@ -4,7 +4,7 @@
 %%% 
 %%% @end
 %%% Created :  Thu, 13 Jan 2011 22:12:40 GMT: James Aimonetti <james@2600hz.org>
--module(registration_sup).
+-module(registrar_sup).
 
 -behaviour(supervisor).
 

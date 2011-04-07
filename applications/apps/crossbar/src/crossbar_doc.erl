@@ -174,7 +174,9 @@ save_attachment(_, _, _, #cb_context{db_name=undefined}=Context, _) ->
     crossbar_util:response_db_missing(Context);
 save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
     Opts1 = case props:get_value(rev, Options) of
-		undefined -> [{rev, couch_mgr:lookup_doc_rev(DB, DocId)} | Options];
+		undefined ->
+		    {ok, Rev} = couch_mgr:lookup_doc_rev(DB, DocId),
+		    [{rev, Rev} | Options];
 		O -> O
 	    end,
     case couch_mgr:put_attachment(DB, DocId, AName, Contents, Opts1) of
@@ -184,10 +186,11 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 	    crossbar_util:response_conflicting_docs(Context);
 	{ok, _Res} ->
 	    format_log(info, "CB_DOC.save_attach Res: ~p~n", [_Res]),
+	    {ok, Rev1} = couch_mgr:lookup_doc_rev(DB, DocId),
             Context#cb_context{
 	      resp_status=success
 	      ,resp_data=[]
-	      ,resp_etag=rev_to_etag(couch_mgr:lookup_doc_rev(DB, DocId))
+	      ,resp_etag=rev_to_etag(Rev1)
             };
         _Else ->
             format_log(error, "CB_DOC.save_attach: Unexpected return from datastore: ~p~n", [_Else]),
@@ -232,10 +235,11 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 	    crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, _Res} ->
 	    format_log(info, "CB_DOC.del_attach Res: ~p~n", [_Res]),
+	    {ok, Rev} = couch_mgr:lookup_doc_rev(DB, DocId),
             Context#cb_context{
 	      resp_status=success
 	      ,resp_data=[]
-	      ,resp_etag=rev_to_etag(couch_mgr:lookup_doc_rev(DB, DocId))
+	      ,resp_etag=rev_to_etag(Rev)
             };
         _Else ->
             format_log(error, "CB_DOC.del_attach: Unexpected return from datastore: ~p~n", [_Else]),
