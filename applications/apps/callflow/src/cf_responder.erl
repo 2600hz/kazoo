@@ -74,6 +74,11 @@ init([]) ->
 %
 % @end
 %------------------------------------------------------------------------------
+handle_call({find_flow, To}, From, #state{flows=Flows}=State) ->
+    spawn(fun() ->
+                  spawn(fun() -> gen_server:reply(From, find_callflow(To, Flows)) end)                  
+          end),
+    {noreply, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -137,9 +142,9 @@ handle_info({maintain_dicts}, #state{flows=Flows, calls=Calls}=State) ->
                  Flows;
              _ ->
                  E2 = calendar:datetime_to_gregorian_seconds({date(), time()}) - 3600,
-                 dict:filter(fun(_, {_, _, _, TS}) when TS < E2 -> false;
+                 dict:filter(fun(_, {_, _, TS}) when TS < E2 -> false;
                                 (_, _) -> true
-                             end, Calls)
+                             end, Flows)
          end,
     timer:send_after(?MAINTANCE_CYCLE, self(), {maintain_dicts}),
     {noreply, State#state{calls=C1, flows=F1}};
@@ -221,7 +226,7 @@ handle_req(<<"route_req">>, JObj, Parent, #state{callmgr_q=CQ, flows=Flows}) ->
            ],
     {ok, Payload} = whistle_api:route_resp(Resp),
     amqp_util:targeted_publish(whapps_json:get_value(<<"Server-ID">>, JObj), Payload);
-handle_req(<<"route_win">>, JObj, _Parent, #state{callmgr_q=CQ, flows=Flows, calls=Calls}) ->
+handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ, flows=Flows, calls=Calls}) ->
     CallId = whapps_json:get_value(<<"Call-ID">>, JObj),
     {To, RouteReq, _, _} = dict:fetch(CallId, Calls),
     {_, Flow, _} = dict:fetch(To, Flows),
@@ -229,6 +234,7 @@ handle_req(<<"route_win">>, JObj, _Parent, #state{callmgr_q=CQ, flows=Flows, cal
     [FromNumber, FromRealm] = binary:split(whapps_json:get_value(<<"From">>, RouteReq), <<"@">>),
     Call = #cf_call {
        call_id = CallId
+      ,cf_responder=Parent
       ,bdst_q=CQ
       ,ctrl_q=whapps_json:get_value(<<"Control-Queue">>, JObj)
       ,to_number=ToNumber

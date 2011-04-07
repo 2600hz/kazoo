@@ -65,9 +65,7 @@ next(Call, Flow) ->
 -spec(wait/3 :: (Call :: #cf_call{}, Flow :: json_object(), Pid :: pid() | undefined) -> ok).
 wait(Call, Flow, Pid) ->
    receive
-       {'EXIT', _Pid, normal} ->
-           wait(Call, Flow, Pid);
-       {'EXIT', _Pid, Reason} ->
+       {'EXIT', Pid, Reason} when Reason =/= normal ->
            format_log(info, "CF EXECUTIONER (~p): Module died unexpectedly (~p)", [self(), Reason]),
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
@@ -86,14 +84,35 @@ wait(Call, Flow, Pid) ->
                NewFlow ->
                    next(Call, NewFlow)
            end;
+       {attempt} when not is_pid(Pid) -> 
+           self() ! {continue, <<"_">>}, 
+           wait(Call, Flow, Pid);
+       {attempt, Key} when not is_pid(Pid) -> 
+           self() ! {continue, Key}, 
+           wait(Call, Flow, Pid);
+       {attempt} -> 
+           self() ! {attempt, <<"_">>}, 
+           wait(Call, Flow, Pid);
+       {attempt, Key} ->
+           case whapps_json:get_value([<<"children">>, Key], Flow) of
+               undefined -> 
+                   Pid ! {attempt_resp, {error, undefined}},
+                   wait(Call, Flow, Pid);
+               {struct, []} -> 
+                   Pid ! {attempt_resp, {error, empty}},
+                   wait(Call, Flow, Pid);
+               NewFlow ->
+                   Pid ! {attempt_resp, ok},
+                   next(Call, NewFlow)
+           end;
+       {branch, NewFlow} ->
+           format_log(info, "NEW BRANCH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ~p", [NewFlow]),
+           next(Call, NewFlow);
+       {heartbeat} ->
+           wait(Call, Flow, Pid); 
        {stop} ->
            format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]),
            hangup(Call);
-       {heartbeat} ->
-           wait(Call, Flow, Pid);
-       {branch, NewFlow} ->
-           self() ! {continue, <<"_">>}, 
-           wait(Call, NewFlow, Pid);           
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
            if 
@@ -115,7 +134,10 @@ wait(Call, Flow, Pid) ->
                    end;
                _Else ->
                    wait(Call, Flow, Pid)
-           end
+           end;
+       Unknown ->
+           format_log(info, "CF EXECUTIONER (~p): !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Unknown message ~p", [self(), Unknown]),
+           wait(Call, Flow, Pid)
    after
        120000 -> 
            format_log(info, "CF EXECUTIONER (~p): Callflow timeout!", [self()]),
