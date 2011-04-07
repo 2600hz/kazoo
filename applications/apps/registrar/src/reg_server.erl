@@ -62,7 +62,10 @@ init([]) ->
     couch_mgr:db_create(?REG_DB),
     couch_mgr:db_create(?AUTH_DB),
     lists:foreach(fun({DB, File}) ->
-			  couch_mgr:load_doc_from_file(DB, registration, File)
+			  case couch_mgr:update_doc_from_file(DB, registrar, File) of
+			      {ok, _} -> ok;
+			      {error, _} -> couch_mgr:load_doc_from_file(DB, registrar, File)
+			  end
 		  end, ?JSON_FILES),
     {ok, #state{}, 0}.
 
@@ -181,8 +184,11 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(start_amqp/0 :: () -> binary() | tuple(error, term())).
 start_amqp() ->
     Q = amqp_util:new_queue(<<>>),
+
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ),
+
     amqp_util:basic_consume(Q),
     Q.
 
@@ -207,7 +213,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 
     Direction = <<"outbound">>, %% if we're authing, it's an outbound call or a registration; inbound from carriers is ACLed auth
 
-    {ok, AuthProp} = lookup_auth_user(AuthU, AuthR),
+    {ok, AuthProp} = lookup_auth_user(AuthU, AuthR), %% crashes if not found, no return necessary
 
     Defaults = [{<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Prop)}
 		,{<<"Custom-Channel-Vars">>, {struct, [
@@ -288,12 +294,12 @@ cleanup_registrations() ->
 
 -spec(lookup_auth_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
 lookup_auth_user(Name, Realm) ->
-    case couch_mgr:get_results(?AUTH_DB, ?AUTH_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
+    logger:format_log(info, "REG.auth: Looking up ~p @ ~p~n", [Name, Realm]),
+    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
 	{ok, []} -> {error, "No user/realm found"};
 	{ok, [{struct, User}|_]} ->
-	    {struct, Auth} = props:get_value(<<"value">>, User),
-	    {ok, Auth}
+	    {ok, props:get_value(<<"value">>, User)}
     end.
 
 -spec(auth_response/2 :: (AuthInfo :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
@@ -305,19 +311,20 @@ auth_response(AuthInfo, Prop) ->
     whistle_api:auth_resp(Data).
 
 -spec(auth_specific_response/1 :: (AuthInfo :: proplist() | integer()) -> proplist()).
-auth_specific_response(AuthInfo) when is_list(AuthInfo) ->
-    Method = list_to_binary(string:to_lower(binary_to_list(props:get_value(<<"auth_method">>, AuthInfo)))),
-    [{<<"Auth-Password">>, props:get_value(<<"auth_password">>, AuthInfo)}
-     ,{<<"Auth-Method">>, Method}
-     ,{<<"Event-Name">>, <<"auth_resp">>}
-     ,{<<"Access-Group">>, props:get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, props:get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
-    ];
 auth_specific_response(403) ->
     [{<<"Auth-Method">>, <<"error">>}
      ,{<<"Auth-Password">>, <<"403 Forbidden">>}
      ,{<<"Access-Group">>, <<"ignore">>}
-     ,{<<"Tenant-ID">>, <<"ignore">>}].
+     ,{<<"Tenant-ID">>, <<"ignore">>}];
+auth_specific_response(AuthInfo) ->
+    logger:format_log(info, "AuthInfo: ~p~n", [AuthInfo]),
+    Method = list_to_binary(string:to_lower(binary_to_list(whapps_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
+    [{<<"Auth-Password">>, whapps_json:get_value(<<"password">>, AuthInfo)}
+     ,{<<"Auth-Method">>, Method}
+     ,{<<"Event-Name">>, <<"auth_resp">>}
+     ,{<<"Access-Group">>, whapps_json:get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Tenant-ID">>, whapps_json:get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
+    ].
 
 send_resp(Payload, RespQ) ->
     format_log(info, "REG_SERVE(~p): Paylowd to ~s: ~s~n", [self(), RespQ, Payload]),

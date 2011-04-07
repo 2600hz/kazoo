@@ -5,13 +5,12 @@
 -define(APP_NAME, <<"registration">>).
 -define(APP_VERSION, <<"0.4.2">>).
 
--define(REG_DB, "registrations").
--define(AUTH_DB, "sip_auth").
+-define(REG_DB, <<"registrations">>).
+-define(AUTH_DB, <<"sip_auth">>).
 -define(AUTH_VIEW_USERAUTHREALM, {"auth", "userrealm"}).
 
 -define(CLEANUP_RATE, 60000).
 
-
--define(JSON_FILES, [{?REG_DB, "registrations.json"}
-		     ,{?AUTH_DB, "auth.json"}
+-define(JSON_FILES, [{?REG_DB, <<"registrations.json">>}
+		     ,{?AUTH_DB, <<"auth.json">>}
 		    ]).
