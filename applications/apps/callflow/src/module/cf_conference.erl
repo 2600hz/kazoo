@@ -206,17 +206,18 @@ get_conference_profile(Data) ->
     Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
+            Default=#conf{},
             #conf{         
                  id = Id
                 ,member_pins = whapps_json:get_value([<<"base">>, <<"member-pins">>], JObj, [])
                 ,moderator_pins = whapps_json:get_value([<<"base">>, <<"moderator-pins">>], JObj, [])
-                ,member_join_muted = whapps_json:get_value([<<"base">>, <<"member-join-muted">>], JObj, #conf.member_join_muted)
-                ,member_join_deaf = whapps_json:get_value([<<"base">>, <<"member-join-deaf">>], JObj, #conf.member_join_deaf)
-                ,moderator_join_muted = whapps_json:get_value([<<"base">>, <<"moderator-join-muted">>], JObj, #conf.moderator_join_muted)
-                ,moderator_join_deaf = whapps_json:get_value([<<"base">>, <<"moderator-join-deaf">>], JObj, #conf.moderator_join_deaf)
-                ,max_members = whapps_json:get_value([<<"base">>, <<"max-members">>], JObj, #conf.max_members)
-                ,require_moderator = whapps_json:get_value([<<"base">>, <<"require-moderator">>], JObj, #conf.require_moderator)
-                ,wait_for_moderator = whapps_json:get_value([<<"base">>, <<"wait-for-moderator">>], JObj, #conf.wait_for_moderator)
+                ,member_join_muted = whapps_json:get_value([<<"base">>, <<"member-join-muted">>], JObj, Default#conf.member_join_muted)
+                ,member_join_deaf = whapps_json:get_value([<<"base">>, <<"member-join-deaf">>], JObj, Default#conf.member_join_deaf)
+                ,moderator_join_muted = whapps_json:get_value([<<"base">>, <<"moderator-join-muted">>], JObj, Default#conf.moderator_join_muted)
+                ,moderator_join_deaf = whapps_json:get_value([<<"base">>, <<"moderator-join-deaf">>], JObj, Default#conf.moderator_join_deaf)
+                ,max_members = whapps_json:get_value([<<"base">>, <<"max-members">>], JObj, Default#conf.max_members)
+                ,require_moderator = whapps_json:get_value([<<"base">>, <<"require-moderator">>], JObj, Default#conf.require_moderator)
+                ,wait_for_moderator = whapps_json:get_value([<<"base">>, <<"wait-for-moderator">>], JObj, Default#conf.wait_for_moderator)
          };
         _ -> 
             #conf{}

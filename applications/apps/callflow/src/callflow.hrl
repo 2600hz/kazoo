@@ -29,6 +29,7 @@
             ,bdst_q = <<>> :: binary()                            %% The broadcast queue the request was recieved on
             ,call_id = <<>> :: binary()                           %% The call-id of this request
             ,cf_pid = undefined :: pid() | undefined              %% PID of the callflow tree processor, who we should pass control back to
+            ,cf_responder = undefined :: pid() | undefined        %% PID of the callflow responder that won this route_request
             ,from_number = <<>>
             ,from_realm = <<>>
             ,to_number = <<>>
