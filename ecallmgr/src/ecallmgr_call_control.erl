@@ -69,7 +69,7 @@
          ,amqp_q = <<>> :: binary()
 	 ,start_time = erlang:now() :: tuple()
 	 ,is_node_up = true :: boolean()
-         ,keep_alive_ref = undefined :: undefined | reference()
+         ,keep_alive_ref = undefined :: undefined | timer:tref()
 	 }).
 
 %%%===================================================================
@@ -373,10 +373,10 @@ post_hangup_commands(CmdQ) ->
 
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     try
-        case whapps_json:get_value(<<"Application-Name">>, Cmd) of
-            <<"noop">> -> self() ! {execute_complete, UUID, <<"noop">>}; 
-            _ -> ok 
-        end,
+        _ = case whapps_json:get_value(<<"Application-Name">>, Cmd) of
+		<<"noop">> -> self() ! {execute_complete, UUID, <<"noop">>}; 
+		_ -> ok 
+	    end,
         Mod = whistle_util:to_atom(<<"ecallmgr_"
                                      ,(whapps_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                      ,"_"
@@ -397,14 +397,14 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
             ok
     end.
 
--spec(get_keep_alive_ref/1 :: (TRef :: undefined | reference()) -> undefined | reference()).
+-spec(get_keep_alive_ref/1 :: (TRef :: undefined | timer:tref()) -> undefined | timer:tref()).
 get_keep_alive_ref(undefined) -> undefined;
 get_keep_alive_ref(TRef) -> 
-    case erlang:cancel_timer(TRef) of
-	false -> %% flush the receive buffer of expiration messages
-	    receive keep_alive_expired -> ok
-	    after 0 -> ok end;
-	_ -> ok
-    end,
+    _ = case timer:cancel(TRef) of
+	    {ok, cancel} -> %% flush the receive buffer of expiration messages
+		receive keep_alive_expired -> ok
+		after 0 -> ok end;
+	    _ -> ok
+	end,
     {ok, NewTRef} = timer:send_after(?KEEP_ALIVE, keep_alive_expired),
     NewTRef.
