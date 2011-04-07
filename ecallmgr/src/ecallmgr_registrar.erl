@@ -42,6 +42,7 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+-spec(lookup/3 :: (Realm :: binary(), User :: binary(), Fields :: list(binary())) -> proplist() | tuple(error, timeout)).
 lookup(Realm, User, Fields) ->
     gen_server:call(?SERVER, {lookup, Realm, User, Fields}).
 
@@ -147,7 +148,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(lookup_reg/4 :: (Realm :: binary(), User :: binary(), Fields :: list(binary()), State :: #state{}) -> proplist()).
+%% Returns a proplist with the keys corresponding to the elements of Fields
+-spec(lookup_reg/4 :: (Realm :: binary(), User :: binary(), Fields :: list(binary()), State :: #state{}) -> proplist() | tuple(error, timeout)).
 lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
     FilterFun = fun({K, _}=V, Acc) ->
 			case lists:member(K, Fields) of
@@ -161,13 +163,17 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 		       ,{<<"Realm">>, Realm}
 		       ,{<<"Fields">>, []}
 		       | whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
-	    {ok, {struct, RegResp}} = ecallmgr_amqp_pool:reg_query(RegProp, 2500),
-	    true = whistle_api:reg_query_resp_v(RegResp),
+	    case ecallmgr_amqp_pool:reg_query(RegProp, 2500) of
+		{ok, {struct, RegResp}} ->
+		    true = whistle_api:reg_query_resp_v(RegResp),
 
-	    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
-	    ?SERVER ! {cache_registrations, Realm, User, RegFields},
+		    {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
+		    ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
-	    lists:foldr(FilterFun, [], RegFields);
+		    lists:foldr(FilterFun, [], RegFields);
+		timeout ->
+		    {error, timeout}
+	    end;
 	{ok, RegFields} ->
 	    lists:foldr(FilterFun, [], RegFields)
     end.
