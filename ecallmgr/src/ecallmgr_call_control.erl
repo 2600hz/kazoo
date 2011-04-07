@@ -59,6 +59,7 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE). 
+-define(KEEP_ALIVE, 5000). %% after hangup, keep alive for 5 seconds
 
 -record(state, {
 	  node = undefined :: atom()
@@ -68,6 +69,7 @@
          ,amqp_q = <<>> :: binary()
 	 ,start_time = erlang:now() :: tuple()
 	 ,is_node_up = true :: boolean()
+         ,keep_alive_ref = undefined :: undefined | reference()
 	 }).
 
 %%%===================================================================
@@ -175,7 +177,7 @@ handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 
-handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, State) ->
+handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, #state{keep_alive_ref=Ref}=State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
     format_log(info, "CONTROL(~p): Recv App ~s, insert-at: ~s~n", [self(), whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Insert-At">>, JObj, tail)]),
 
@@ -190,9 +192,9 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
 	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
 	    execute_control_request(Cmd, State),
 	    AppName = whapps_json:get_value(<<"Application-Name">>, Cmd),
-	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName}};
+	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName, keep_alive_ref=get_keep_alive_ref(Ref)}};
 	false ->
-	    {noreply, State#state{command_q = NewCmdQ}}
+	    {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}}
     end;
 
 handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.uuid ->
@@ -227,16 +229,16 @@ handle_info({force_queue_advance, UUID}, State) when UUID =:= State#state.uuid -
             {noreply, State#state{command_q = CmdQ1, current_app = whapps_json:get_value(<<"Application-Name">>, Cmd)}}
     end;
 
-handle_info({hangup, EvtPid, UUID}, #state{uuid=UUID, amqp_q=Q, start_time=StartT}=State) ->
+handle_info({hangup, _EvtPid, UUID}, #state{uuid=UUID}=State) ->
     lists:foreach(fun(Cmd) ->
                           execute_control_request(Cmd, State)
 		  end, post_hangup_commands(State#state.command_q)),
 
-    amqp_util:unbind_q_from_callctl(Q),
-    amqp_util:queue_delete(Q), %% stop receiving messages
-    format_log(info, "CONTROL(~p): Received hangup, exiting (Time since process started: ~pms)~n"
-	       ,[self(), timer:now_diff(erlang:now(), StartT) div 1000]),
-    EvtPid ! {ctl_down, self()},
+    {ok, TRef} = timer:send_after(?KEEP_ALIVE, keep_alive_expired),
+    {noreply, State#state{keep_alive_ref=TRef}};
+
+handle_info(keep_alive_expired, #state{start_time=StartTime}=State) ->
+    logger:format_log(info, "CONTROL(~p): KeepAlive expired. Proc up for ~p micro~n", [self(), timer:now_diff(erlang:now(), StartTime)]),
     {stop, normal, State};
 
 handle_info(is_amqp_up, #state{amqp_q=Q}=State) ->
@@ -394,3 +396,15 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
             self() ! {force_queue_advance, UUID},
             ok
     end.
+
+-spec(get_keep_alive_ref/1 :: (TRef :: undefined | reference()) -> undefined | reference()).
+get_keep_alive_ref(undefined) -> undefined;
+get_keep_alive_ref(TRef) -> 
+    case erlang:cancel_timer(TRef) of
+	false -> %% flush the receive buffer of expiration messages
+	    receive keep_alive_expired -> ok
+	    after 0 -> ok end;
+	_ -> ok
+    end,
+    {ok, NewTRef} = timer:send_after(?KEEP_ALIVE, keep_alive_expired),
+    NewTRef.
