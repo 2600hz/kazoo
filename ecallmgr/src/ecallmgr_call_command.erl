@@ -58,7 +58,8 @@ exec_cmd(Node, UUID, JObj) ->
     end.
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec(get_fs_app/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), Application :: binary()) -> tuple(binary(), binary() | noop) | tuple(error, string())).
+-spec(get_fs_app/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), Application :: binary()) ->
+			   tuple(binary(), binary() | noop) | tuple(return, ok) | tuple(error, string())).
 get_fs_app(_Node, _UUID, _JObj, <<"noop">>) ->
     {ok, noop};
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
@@ -192,11 +193,10 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
 
 	    DialSeparator = case whapps_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
 				<<"simultaneous">> -> ",";
-				<<"single">> -> "|";
-				_ -> "|"
+				<<"single">> -> "|"
 			    end,
 
-	    DialStrings = [get_bridge_endpoint(EP) || EP <- whapps_json:get_value(<<"Endpoints">>, JObj, [])],
+	    DialStrings = [ DS || DS <- [get_bridge_endpoint(EP) || EP <- whapps_json:get_value(<<"Endpoints">>, JObj, [])], DS =/= "" ],
 
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
 	    {App, BridgeCmd}
@@ -264,7 +264,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 -spec(get_bridge_endpoint/1 :: (JObj :: json_object()) -> string()).
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, whapps_json:get_value(<<"Invite-Format">>, JObj)) of
-	{error, Code} -> whistle_util:to_list(list_to_binary(["error/", Code]));
+	{error, timeout} -> "";
 	EndPoint ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
 	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))

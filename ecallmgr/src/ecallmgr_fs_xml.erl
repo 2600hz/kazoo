@@ -45,8 +45,8 @@ route_resp_xml(<<"bridge">>, Routes, _Prop) ->
     %% format the Route based on protocol
     {_Idx, Extensions, Errors} = lists:foldr(fun({struct, RouteProp}, {Idx, Acc, ErrAcc}) ->
 						     case build_route(RouteProp, props:get_value(<<"Invite-Format">>, RouteProp)) of
-							 {error, ErrorCode} ->
-							     {Idx+1, Acc, [io_lib:format(?ROUTE_BRIDGE_ERROR, [Idx, ErrorCode]) | ErrAcc]};
+							 {error, timeout} ->
+							     {Idx+1, Acc, ErrAcc};
 							 Route ->
 							     BypassMedia = case props:get_value(<<"Media">>, RouteProp) of
 									       <<"bypass">> -> "true";
@@ -82,7 +82,7 @@ route_resp_xml(<<"error">>, _Routes, Prop) ->
     logger:format_log(info, "R_R_XML(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
     {ok, lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg]))}.
 
--spec(build_route/2 :: (RouteProp :: proplist() | json_object(), DIDFormat :: binary()) -> binary() | tuple(error, integer())).
+-spec(build_route/2 :: (RouteProp :: proplist() | json_object(), DIDFormat :: binary()) -> binary() | tuple(error, timeout)).
 build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->
@@ -90,15 +90,22 @@ build_route(RouteProp, <<"route">>) ->
 build_route(RouteProp, <<"username">>) ->
     User = props:get_value(<<"To-User">>, RouteProp),
     Realm = props:get_value(<<"To-Realm">>, RouteProp),
-    [{<<"Contact">>, Contact}] = ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]),
-    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>);
-
+    case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
+	[{<<"Contact">>, Contact}] ->
+	    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>);
+	{error, timeout}=E ->
+	    E
+    end;
 build_route(RouteProp, DIDFormat) ->
     User = props:get_value(<<"To-User">>, RouteProp),
     Realm = props:get_value(<<"To-Realm">>, RouteProp),
     DID = format_did(props:get_value(<<"To-DID">>, RouteProp), DIDFormat),
-    [{<<"Contact">>, Contact}] = ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]),
-    binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>).
+    case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
+	[{<<"Contact">>, Contact}] ->
+	    binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>);
+	{error, timeout}=E ->
+	    E
+    end.
 
 -spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
 format_did(DID, <<"e164">>) ->
