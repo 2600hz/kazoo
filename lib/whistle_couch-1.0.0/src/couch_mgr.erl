@@ -76,13 +76,13 @@ load_doc_from_file(DbName, App, File) ->
 
 -spec(update_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 update_doc_from_file(DbName, App, File) ->
-    Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     logger:format_log(info, "Update into ~p from CouchDB dir: ~p~n", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
 	DocId = props:get_value(<<"_id">>, Prop),
-	Rev = couchbeam:lookup_doc_rev(get_db(DbName), DocId),
+	{ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
 	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
     catch        
         _Type:{badmatch,{error,Reason}} ->
@@ -245,7 +245,7 @@ open_doc(DbName, DocId, Options) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec(lookup_doc_rev/2 :: (DbName :: string(), DocId :: binary()) -> tuple(error, term()) | binary()).
+-spec(lookup_doc_rev/2 :: (DbName :: string(), DocId :: binary()) -> tuple(error, term()) | tuple(ok, binary())).
 lookup_doc_rev(DbName, DocId) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
@@ -327,7 +327,8 @@ fetch_attachment(DbName, DocId, AName) ->
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec(put_attachment/4 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
 put_attachment(DbName, DocId, AName, Contents) ->
-    put_attachment(DbName, DocId, AName, Contents, [{rev, ?MODULE:lookup_doc_rev(DbName, DocId)}]).
+    {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
+    put_attachment(DbName, DocId, AName, Contents, [{rev, Rev}]).
 
 -spec(put_attachment/5 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary(), Options :: proplist()) -> tuple(ok, binary()) | tuple(error, term())).
 put_attachment(DbName, DocId, AName, Contents, Options) ->
@@ -338,7 +339,8 @@ put_attachment(DbName, DocId, AName, Contents, Options) ->
     end.
 
 delete_attachment(DbName, DocId, AName) ->
-    delete_attachment(DbName, DocId, AName, [{rev, ?MODULE:lookup_doc_rev(DbName, DocId)}]).
+    {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
+    delete_attachment(DbName, DocId, AName, [{rev, Rev}]).
 delete_attachment(DbName, DocId, AName, Options) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
