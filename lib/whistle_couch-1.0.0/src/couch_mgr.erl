@@ -86,10 +86,10 @@ update_doc_from_file(DbName, App, File) ->
 	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
     catch        
         _Type:{badmatch,{error,Reason}} ->
-	    io:format("badmatch ~p~n", [erlang:get_stacktrace()]),
+	    io:format("badmatch ~p:~p: ~p~n", [_Type, Reason, erlang:get_stacktrace()]),
             {error, Reason};
  	_Type:Reason ->
-	    io:format("excep ~p~n", [erlang:get_stacktrace()]),
+	    io:format("excep ~p:~p: ~p~n", [_Type, Reason, erlang:get_stacktrace()]),
             {error, Reason}
     end.
 
@@ -252,8 +252,8 @@ lookup_doc_rev(DbName, DocId) ->
 	Db ->
 	    case couchbeam:lookup_doc_rev(Db, DocId) of
 		{error, _}=E -> E;
-		Rev ->
-		    Rev
+		{ok, Rev} ->
+		    {ok, Rev}
 	    end
     end.
 
