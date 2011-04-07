@@ -119,13 +119,13 @@ format_did(DID, <<"1npan">>) ->
 get_leg_vars({struct, Prop}) -> get_leg_vars(Prop);
 get_leg_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
-    lists:flatten(["[", string:join(lists:map(fun binary_to_list/1, Vars), ","), "]"]).
+    lists:flatten(["[", string:join([binary_to_list(V) || V <- Vars], ","), "]"]).
 
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
     Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
-    lists:flatten(["{", string:join(lists:map(fun binary_to_list/1, Vars), ","), "}"]).
+    lists:flatten(["{", string:join([binary_to_list(V) || V <- Vars], ","), "}"]).
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
 get_channel_vars({<<"Auth-User">>, V}, Vars) ->
@@ -147,7 +147,7 @@ get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
 get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
-    Codecs = lists:map(fun binary_to_list/1, Cs),
+    Codecs = [ binary_to_list(C) || C <- Cs ],
     CodecStr = string:join(Codecs, ","),
     [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
 get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->

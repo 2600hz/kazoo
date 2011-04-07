@@ -173,7 +173,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
     {stop, normal, State};
 
 handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
-    ActiveLUs = lists:map(fun({_LuPid, ID, Started}) -> [{fs_auth_id, ID}, {started, Started}] end, LUs),
+    ActiveLUs = [ [{fs_auth_id, ID}, {started, Started}] || {_, ID, Started} <- LUs ],
     Resp = [{active_lookups, ActiveLUs}
 	    | ecallmgr_diagnostics:get_diagnostics(Stats)
 	   ],

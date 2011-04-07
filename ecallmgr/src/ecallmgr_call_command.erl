@@ -11,14 +11,12 @@
 
 -export([exec_cmd/3]).
 
--import(logger, [log/2, format_log/3]).
-
 -include("ecallmgr.hrl").
 
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
--spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | {error, string()}).
+-spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | tuple(error, string())).
 exec_cmd(Node, UUID, JObj) ->
     DestID = whapps_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
@@ -27,18 +25,18 @@ exec_cmd(Node, UUID, JObj) ->
 	    case get_fs_app(Node, UUID, JObj, AppName) of
 		{error, _Msg}=Err -> Err;
                 {return, Result} -> Result;
-		{_, noop} -> 
-                    format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]),
+		{_, noop} ->
+                    logger:format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]),
                     {CCS, ETS} = try
-                                     {ok, CS} = 
+                                     {ok, CS} =
                                          freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${channel-call-state}">>)),
-                                     {ok, TS} = 
+                                     {ok, TS} =
                                          freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${Event-Date-Timestamp}">>)),
                                      {CS, TS}
                                  catch
                                      _:_ ->
                                          {<<>>, <<>>}
-                                 end,                       
+                                 end,
                     Event = [
                               {<<"Timestamp">>, ETS}
                              ,{<<"Application-Name">>, <<"noop">>}
@@ -49,11 +47,11 @@ exec_cmd(Node, UUID, JObj) ->
                             ],
                     {ok, Payload} = whistle_api:call_event(Event),
                     amqp_util:callevt_publish(UUID, Payload, event);
-		{App, AppData} -> 
+		{App, AppData} ->
                     send_cmd(Node, UUID, App, AppData)
 	    end;
 	false ->
-	    format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
+	    logger:format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
 	    {error, "Command not for this node"}
     end.
 
@@ -110,7 +108,7 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 	    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
 	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
 		false ->
-		    format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
+		    logger:format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
 		Media ->
                     M = whistle_util:to_list(Media),
 		    case filelib:is_regular(M)
@@ -129,34 +127,34 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 			    %% stream file over HTTP PUSH
 			    spawn(fun() -> stream_over_http(M, Verb, JObj) end);
 			false ->
-			    format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]);
+			    logger:format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]);
 			_Method ->
 			    %% unhandled method
-			    format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
+			    logger:format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
 		    end
 	    end,
-            {return, ok}                
+            {return, ok}
     end;
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
 	false -> {error, "tones failed to execute as JObj did not validate."};
 	true ->
 	    Tones = whapps_json:get_value(<<"Tones">>, JObj, []),
-	    FSTones = lists:map(fun(Tone) ->
-					Vol = case whapps_json:get_value(<<"Volume">>, Tone) of
-						  undefined -> [];
-						  %% need to map V (0-100) to FS values
-						  V -> list_to_binary(["v=", whistle_util:to_list(V), ";"])
-					      end,
-					Repeat = case whapps_json:get_value(<<"Repeat">>, Tone) of
-						     undefined -> [];
-						     R -> list_to_binary(["l=", whistle_util:to_list(R), ";"])
-						 end,
-					Freqs = string:join(lists:map(fun whistle_util:to_list/1, whapps_json:get_value(<<"Frequencies">>, Tone)), ","),
-					On = whistle_util:to_list(whapps_json:get_value(<<"Duration-ON">>, Tone)),
-					Off = whistle_util:to_list(whapps_json:get_value(<<"Duration-OFF">>, Tone)),
-					whistle_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
-				end, Tones),
+	    FSTones = [begin
+			   Vol = case whapps_json:get_value(<<"Volume">>, Tone) of
+				     undefined -> [];
+				     %% need to map V (0-100) to FS values
+				     V -> list_to_binary(["v=", whistle_util:to_list(V), ";"])
+				 end,
+			   Repeat = case whapps_json:get_value(<<"Repeat">>, Tone) of
+					undefined -> [];
+					R -> list_to_binary(["l=", whistle_util:to_list(R), ";"])
+				    end,
+			   Freqs = string:join([ whistle_util:to_list(V) || V <- whapps_json:get_value(<<"Frequencies">>, Tone) ], ","),
+			   On = whistle_util:to_list(whapps_json:get_value(<<"Duration-ON">>, Tone)),
+			   Off = whistle_util:to_list(whapps_json:get_value(<<"Duration-OFF">>, Tone)),
+			   whistle_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+		       end || Tone <- Tones],
 	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
 	    {<<"playback">>, Arg}
     end;
@@ -178,7 +176,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
 	    Method = whapps_json:get_value(<<"Method">>, JObj),
 	    Txt = whapps_json:get_value(<<"Say-Text">>, JObj),
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
-            format_log(info, "BUILT COMMAND: conference ~p", [Arg]),
+            logger:format_log(info, "BUILT COMMAND: conference ~p", [Arg]),
 	    {App, Arg}
     end;
 get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
@@ -206,7 +204,7 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 	false -> {error, "tone detect failed to execute as JObj did not validate"};
 	true ->
 	    Key = whapps_json:get_value(<<"Tone-Detect-Name">>, JObj),
-	    Freqs = lists:map(fun whistle_util:to_list/1, whapps_json:get_value(<<"Frequencies">>, JObj)),
+	    Freqs = [ whistle_util:to_list(V) || V <- whapps_json:get_value(<<"Frequencies">>, JObj) ],
 	    FreqsStr = string:join(Freqs, ","),
 	    Flags = case whapps_json:get_value(<<"Sniff-Direction">>, JObj, <<"read">>) of
 			<<"read">> -> <<"r">>;
@@ -243,16 +241,16 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
 	    {App, Arg}
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
-    format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
+    logger:format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
     {error, "Application unknown"}.
-          
+
 %%%===================================================================
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
 -spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) ->
-    format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, whistle_util:to_list(AppName), whistle_util:to_list(Args)]),
+    logger:format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, whistle_util:to_list(AppName), whistle_util:to_list(Args)]),
     freeswitch:sendmsg(Node, UUID, [
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", whistle_util:to_list(AppName)}
@@ -273,20 +271,15 @@ get_bridge_endpoint(JObj) ->
 -spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
-        {error, _} -> 
+        {error, _} ->
             MediaName;
         Url ->
             get_fs_playback(Url)
     end.
 
--spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).                                 
-get_fs_playback(Url) when byte_size(Url) >= 4 ->
-    case binary:part(Url, 0, 4) of 
-        <<"http">> ->
-            <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
-        _Else ->
-            Url
-    end;
+-spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
+get_fs_playback(<<"http://", _/binary>>=Url) ->
+    <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
 
@@ -328,7 +321,7 @@ stream_over_http(File, Verb, JObj) ->
     Url = whistle_util:to_list(whapps_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     {struct, AddHeaders} = whapps_json:get_value(<<"Additional-Headers">>, JObj, {struct, []}),
     Headers = [{"Content-Length", filelib:file_size(File)}
-	       | lists:map(fun({K, V}) -> {whistle_util:to_list(K), V} end, AddHeaders)],
+	       | [ {whistle_util:to_list(K), V} || {K,V} <- AddHeaders] ],
     Method = whistle_util:to_atom(Verb, true),
     Body = {fun stream_file/1, {undefined, File}},
     AppQ = whapps_json:get_value(<<"Server-ID">>, JObj),
@@ -343,12 +336,12 @@ stream_over_http(File, Verb, JObj) ->
 		{ok, Payload} ->
 		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
 		{error, Msg} ->
-		    format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
+		    logger:format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
 	    end;
 	{error, Error} ->
-	    format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error]);
+	    logger:format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error]);
 	{ibrowse_req_id, ReqId} ->
-	    format_log(error, "CONTROL(~p): Ibrowse_req_id: ~p~n", [self(), ReqId])
+	    logger:format_log(error, "CONTROL(~p): Ibrowse_req_id: ~p~n", [self(), ReqId])
     end.
 
 -spec(stream_file/1 :: ({undefined | io_device(), string()}) -> {ok, list(), tuple()} | eof).
@@ -423,7 +416,7 @@ set_ringback(_Node, _UUID, undefined) ->
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=${", RingBack, "}"]),
     set(Node, UUID, RB).
- 
+
 -spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_continue_on_fail(_Node, _UUID, undefined) ->
     ok;
@@ -437,12 +430,12 @@ set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
 
 %% builds a FS specific flag string for the conference command
--spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).                                     
-get_conference_flags(JObj) ->    
+-spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).
+get_conference_flags(JObj) ->
     Flags = [
              <<Flag/binary, Delim/binary>>
                  || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
-                    ,whistle_util:to_boolean(whapps_json:get_value(Parameter, JObj, false))
+			,whistle_util:to_boolean(whapps_json:get_value(Parameter, JObj, false))
             ],
     case list_to_binary(Flags) of
         <<>> ->
