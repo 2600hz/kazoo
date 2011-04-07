@@ -37,6 +37,7 @@
           ,save = <<"2">>
           ,record = <<"3">>
 
+
           %% Main Menu
           ,hear_new = <<"1">>
           ,hear_saved = <<"2">>
@@ -107,7 +108,7 @@
          }).
 
 -record(mailbox, {
-           unavailable_greeting = undefined
+           has_unavailable_greeting = false
           ,database = undefined
           ,mailbox_id = undefined
           ,exists = false
@@ -198,7 +199,8 @@ find_mailbox(Db, Call, Loop) ->
         Pin = Box#mailbox.pin,
         main_menu(Box, Call)        
     catch
-        _:_ ->
+        _:_=E ->
+            format_log(info, "ERROR: ~p", [E]),
             B = #mailbox{},
             b_play(Prompts#prompts.invalid_login, Call),
             if 
@@ -255,13 +257,13 @@ compose_voicemail(#mailbox{prompts=Prompts, keys=Keys}=Box, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(play_greeting/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
-play_greeting(#mailbox{prompts=Prompts, unavailable_greeting=false}, #cf_call{to_number=Exten} = Call) ->
+play_greeting(#mailbox{prompts=Prompts, has_unavailable_greeting=false}, #cf_call{to_number=Exten} = Call) ->
     audio_macro([
                   {play, Prompts#prompts.person_at_exten}
                  ,{say,  Exten}
                  ,{play, Prompts#prompts.not_available}
                 ], Call);
-play_greeting(#mailbox{database=Db, mailbox_id=Id, unavailable_greeting=true}, Call) ->
+play_greeting(#mailbox{database=Db, mailbox_id=Id, has_unavailable_greeting=true}, Call) ->
     play(<<$/, Db/binary, $/, Id/binary, $/, "unavailable_greeting.wav">>, Call).
 
 %%--------------------------------------------------------------------
@@ -560,14 +562,15 @@ get_mailbox_profile(Data) ->
     Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
+            Default=#mailbox{},
             #mailbox{         
                        database = Db
                       ,mailbox_id = Id
-                      ,skip_instructions = whapps_json:get_value([<<"base">>, <<"skip-instructions">>], JObj, #mailbox.skip_instructions)
-                      ,skip_greeting = whapps_json:get_value([<<"base">>, <<"skip-greeting">>], JObj, #mailbox.skip_greeting)
-                      ,unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
+                      ,skip_instructions = whapps_json:get_value([<<"base">>, <<"skip-instructions">>], JObj, Default#mailbox.skip_instructions)
+                      ,skip_greeting = whapps_json:get_value([<<"base">>, <<"skip-greeting">>], JObj, Default#mailbox.skip_greeting)
+                      ,has_unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                       ,pin = whapps_json:get_value([<<"base">>, <<"pin">>], JObj, <<>>)
-                      ,timezone = whapps_json:get_value([<<"base">>, <<"timezone">>], JObj, #mailbox.timezone)
+                      ,timezone = whapps_json:get_value([<<"base">>, <<"timezone">>], JObj, Default#mailbox.timezone)
                       ,exists=true
                     };
         _ -> 

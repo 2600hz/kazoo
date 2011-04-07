@@ -10,7 +10,7 @@
 
 -include("callflow.hrl").
 
--export([audio_macro/2]).
+-export([audio_macro/2, flush_dtmf/1]).
 -export([answer/1, hangup/1]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8]).
 -export([play/2, play/3]).
@@ -46,11 +46,13 @@
 -import(logger, [format_log/3]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @pubic
 %% @doc
-%% Produces the low level whistle_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
+-spec(audio_macro/2 :: (Commands :: proplist(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(audio_macro/3 :: (Commands :: proplist(), Call :: #cf_call{}, Queue :: json_objects()) -> ok | tuple(error, atom())).
+
 audio_macro(Commands, Call) ->
     audio_macro(Commands, Call, []).
 audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
@@ -76,6 +78,14 @@ audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, say_command(Say, Type, Method, Language, Call)}|Queue]);
 audio_macro([{tones, Tones}|T], Call, Queue) ->    
     audio_macro(T, Call, [{struct, tones_command(Tones, Call)}|Queue]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+flush_dtmf(Call) ->
+    b_play(<<"silence_stream://250">>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
