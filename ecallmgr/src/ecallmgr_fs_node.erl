@@ -21,7 +21,6 @@
 
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
-		       ,app_vsn = <<>> :: binary()
 		       ,stats = #node_stats{} :: #node_stats{}
 		       ,options = [] :: proplist()
 		       }).
@@ -50,12 +49,11 @@ start_link(Node, Options) ->
     {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
     Active = whistle_util:to_integer(lists:flatten(Match)),
 
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
     Stats = #node_stats{started = erlang:now()
 			,created_channels=Active
 			,fs_uptime=get_value(uptime, NodeData, 0)
 		       },
-    HState = #handler_state{fs_node=Node, app_vsn=list_to_binary(Vsn), stats=Stats, options=Options},
+    HState = #handler_state{fs_node=Node, stats=Stats, options=Options},
     case freeswitch:start_event_handler(Node, ?MODULE, monitor_node, HState) of
 	{ok, Pid} -> Pid;
 	timeout -> {error, timeout};
@@ -87,7 +85,7 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
 		<<"CUSTOM">> ->
 		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
-		    spawn(fun() -> process_custom_data(Data, S#handler_state.app_vsn) end),
+		    spawn(fun() -> process_custom_data(Data, ?APP_VERSION) end),
 		    ?MODULE:monitor_loop(Node, S);
 		_ ->
 		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
@@ -110,7 +108,7 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    ?MODULE:monitor_loop(Node, S);
 		<<"CUSTOM">> ->
-		    spawn(fun() -> process_custom_data(Data, S#handler_state.app_vsn) end),
+		    spawn(fun() -> process_custom_data(Data, ?APP_VERSION) end),
 		    ?MODULE:monitor_loop(Node, S);
 		_ ->
 		    ?MODULE:monitor_loop(Node, S)
@@ -188,7 +186,7 @@ extract_node_data(Node) ->
     process_status(Lines).
 
 -spec(process_status/1 :: (Lines :: list()) -> proplist()).
-process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
+process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
     {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
     UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
 	+ ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + whistle_util:to_integer(Micro),

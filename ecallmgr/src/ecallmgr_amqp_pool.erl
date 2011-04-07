@@ -112,7 +112,7 @@ init([Count]) ->
 %%--------------------------------------------------------------------
 handle_call({request, {struct, Prop}, ApiFun, PubFun}, From, State) ->
     handle_call({request, Prop, ApiFun, PubFun}, From, State);
-handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W}=State) ->
+handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_count=WC}=State) ->
     case queue:out(W) of
 	{{value, Worker}, W1} ->
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
@@ -120,7 +120,7 @@ handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W}=State) ->
 	{empty, _} ->
 	    Worker = start_worker(),
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
-	    {noreply, State#state{worker_count=State#state.worker_count + 1}}
+	    {noreply, State#state{worker_count=WC + 1}}
     end.
 
 %%--------------------------------------------------------------------

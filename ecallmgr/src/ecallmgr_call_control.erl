@@ -4,7 +4,7 @@
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
-%%% fetch_handler. On initialization, besides adding itself as the 
+%%% fetch_handler. On initialization, besides adding itself as the
 %%% consumer for the AMQP messages, Call Control creates an empty queue
 %%% object (not to be confused with AMQP queues), sets the current
 %%% application running on the switch to the empty binary, and records
@@ -38,7 +38,7 @@
 %%% application's execute (think set commands, like playback terminators);
 %%% we can note the event happened, and continue looping as we were.
 %%%
-%%% 
+%%%
 %%%
 %%% @end
 %%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.com>
@@ -54,11 +54,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("ecallmgr.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 -define(KEEP_ALIVE, 5000). %% after hangup, keep alive for 5 seconds
 
 -record(state, {
@@ -152,17 +150,17 @@ handle_info(timeout, #state{node=N, amqp_q=Q}=State) ->
     {noreply, State};
 
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
-    format_log(error, "CONTROL(~p): nodedown ~p~n", [self(), Node]),
+    logger:format_log(error, "CONTROL(~p): nodedown ~p~n", [self(), Node]),
     erlang:monitor_node(Node, false),
     {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
-    format_log(error, "CONTROL(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
+    logger:format_log(error, "CONTROL(~p): nodedown ~p, trying ping, then waiting ~p if it fails~n", [self(), Node, Timeout]),
     case ecallmgr_fs_handler:is_node_up(Node) of
 	true ->
 	    erlang:monitor_node(Node, true),
-	    format_log(info, "CONTROL(~p): node_is_up ~p~n", [self(), Node]),
+	    logger:format_log(info, "CONTROL(~p): node_is_up ~p~n", [self(), Node]),
 	    {noreply, State#state{is_node_up=true}};
 	false ->
 	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
@@ -177,17 +175,16 @@ handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 
-handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}, #state{keep_alive_ref=Ref}=State) ->
+handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}
+	    ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
-    format_log(info, "CONTROL(~p): Recv App ~s, insert-at: ~s~n", [self(), whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Insert-At">>, JObj, tail)]),
+    logger:format_log(info, "CONTROL(~p): Recv App ~s, insert-at: ~s~n"
+		      ,[self(), whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Insert-At">>, JObj, <<"tail">>)]),
 
-    NewCmdQ = try
-		  insert_command(State, whapps_json:get_value(<<"Insert-At">>, JObj, <<"tail">>), JObj)
-	      catch
-		  _:_ -> State#state.command_q
-	      end,
+    NewCmdQ = try insert_command(State, whapps_json:get_value(<<"Insert-At">>, JObj, <<"tail">>), JObj)
+	      catch _:_ -> CmdQ end,
 
-    case State#state.is_node_up andalso (not queue:is_empty(NewCmdQ)) andalso State#state.current_app =:= <<>> of
+    case INU andalso (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= <<>> of
 	true ->
 	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
 	    execute_control_request(Cmd, State),
@@ -197,12 +194,12 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
 	    {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}}
     end;
 
-handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.uuid ->
-    case whistle_api:convert_whistle_app_name(State#state.current_app) of
+handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
+    case whistle_api:convert_whistle_app_name(CurrApp) of
 	<<>> ->
 	    {noreply, State};
 	EvtName ->
-	    case State#state.is_node_up andalso queue:out(State#state.command_q) of
+	    case INU andalso queue:out(CmdQ) of
 		false ->
 		    %% if the node is down, don't inject the next FS event
 		    {noreply, State#state{current_app = <<>>}};
@@ -216,9 +213,9 @@ handle_info({execute_complete, UUID, EvtName}, State) when UUID =:= State#state.
 	    {noreply, State}
     end;
 
-handle_info({force_queue_advance, UUID}, State) when UUID =:= State#state.uuid ->
-    format_log(error, "CONTROL(~p): Forced queue advance for call-id ~p", [self(), UUID]),
-    case State#state.is_node_up andalso queue:out(State#state.command_q) of
+handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU}=State) ->
+    logger:format_log(error, "CONTROL(~p): Forced queue advance for call-id ~p", [self(), UUID]),
+    case INU andalso queue:out(CmdQ) of
         false ->
             %% if the node is down, don't inject the next FS event
             {noreply, State#state{current_app = <<>>}};
@@ -229,10 +226,10 @@ handle_info({force_queue_advance, UUID}, State) when UUID =:= State#state.uuid -
             {noreply, State#state{command_q = CmdQ1, current_app = whapps_json:get_value(<<"Application-Name">>, Cmd)}}
     end;
 
-handle_info({hangup, _EvtPid, UUID}, #state{uuid=UUID}=State) ->
+handle_info({hangup, _EvtPid, UUID}, #state{uuid=UUID, command_q=CmdQ}=State) ->
     lists:foreach(fun(Cmd) ->
                           execute_control_request(Cmd, State)
-		  end, post_hangup_commands(State#state.command_q)),
+		  end, post_hangup_commands(CmdQ)),
 
     {ok, TRef} = timer:send_after(?KEEP_ALIVE, keep_alive_expired),
     {noreply, State#state{keep_alive_ref=TRef}};
@@ -250,12 +247,12 @@ handle_info(is_amqp_up, #state{amqp_q=Q}=State) ->
     end;
 
 handle_info({amqp_host_down, H}, State) ->
-    format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
+    logger:format_log(info, "CONTROL(~p): AmqpHost ~s went down, so we are too~n", [self(), H]),
     {ok, _} = timer:send_after(1000, self(), is_amqp_up),
     {noreply, State};
 
 handle_info(_Msg, State) ->
-    format_log(info, "CONTROL(~p): Unhandled message: ~p~n", [self(), _Msg]),
+    logger:format_log(info, "CONTROL(~p): Unhandled message: ~p~n", [self(), _Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -316,13 +313,13 @@ insert_command(State, <<"now">>, JObj) ->
 				  AppCmd = {struct, DefProp ++ Cmd},
 				  true = whistle_api:dialplan_req_v(AppCmd),
 				  AppName = whapps_json:get_value(<<"Application-Name">>, AppCmd),
-				  format_log(info, "CONTROL.queue: Exec now Cmd: ~p~n", [AppName]),
+				  logger:format_log(info, "CONTROL.queue: Exec now Cmd: ~p~n", [AppName]),
                                   execute_control_request(Cmd, State)
 			  end, whapps_json:get_value(<<"Commands">>, JObj)),
 	    State#state.command_q;
 	AppName ->
 %	    true = whistle_api:dialplan_req_v(JObj),
-	    format_log(info, "CONTROL: Exec now Cmd: ~p~n", [AppName]),
+	    logger:format_log(info, "CONTROL: Exec now Cmd: ~p~n", [AppName]),
             execute_control_request(JObj, State),
 	    State#state.command_q
     end;
@@ -357,7 +354,7 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 			   ({struct, Cmd}, TmpQ) ->
 				AppCmd = {struct, DefProp ++ Cmd},
 				true = whistle_api:dialplan_req_v(AppCmd),
-				format_log(info, "CONTROL.queue: insert Cmd: ~p~n", [whapps_json:get_value(<<"Application-Name">>, AppCmd)]),
+				logger:format_log(info, "CONTROL.queue: insert Cmd: ~p~n", [whapps_json:get_value(<<"Application-Name">>, AppCmd)]),
 				InsertFun(AppCmd, TmpQ)
 			end, Q, whapps_json:get_value(<<"Commands">>, JObj));
 	_AppName ->
@@ -367,15 +364,15 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 
 -spec(post_hangup_commands/1 :: (CmdQ :: queue()) -> json_objects()).
 post_hangup_commands(CmdQ) ->
-    lists:filter(fun(JObj) ->
-			 lists:member(whapps_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
-		 end, queue:to_list(CmdQ)).
+    [ JObj || JObj = queue:to_list(CmdQ),
+	      lists:member(whapps_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
+    ].
 
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     try
         _ = case whapps_json:get_value(<<"Application-Name">>, Cmd) of
-		<<"noop">> -> self() ! {execute_complete, UUID, <<"noop">>}; 
-		_ -> ok 
+		<<"noop">> -> self() ! {execute_complete, UUID, <<"noop">>};
+		_ -> ok
 	    end,
         Mod = whistle_util:to_atom(<<"ecallmgr_"
                                      ,(whapps_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
@@ -385,7 +382,7 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
         Mod:exec_cmd(Node, UUID, Cmd)
     catch
         _:_=E ->
-            format_log(error, "CONTROL.exe (~p): Error ~p executing request for call ~p", [self(), E, UUID]),
+            logger:format_log(error, "CONTROL.exe (~p): Error ~p executing request for call ~p", [self(), E, UUID]),
             Resp = [
                       {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
                      ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (whapps_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
@@ -399,7 +396,7 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
 
 -spec(get_keep_alive_ref/1 :: (TRef :: undefined | timer:tref()) -> undefined | timer:tref()).
 get_keep_alive_ref(undefined) -> undefined;
-get_keep_alive_ref(TRef) -> 
+get_keep_alive_ref(TRef) ->
     _ = case timer:cancel(TRef) of
 	    {ok, cancel} -> %% flush the receive buffer of expiration messages
 		receive keep_alive_expired -> ok

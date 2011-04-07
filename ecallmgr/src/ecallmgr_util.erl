@@ -49,8 +49,8 @@ custom_channel_vars(Prop) ->
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
 -spec(eventstr_to_proplist/1 :: (EvtStr :: string()) -> proplist()).
 eventstr_to_proplist(EvtStr) when is_list(EvtStr) ->
-    lists:map(fun(X) ->
-		      [K, V] = string:tokens(X, ": "),
-		      [{V1,[]}] = mochiweb_util:parse_qs(V),
-		      {whistle_util:to_binary(K), whistle_util:to_binary(V1)}
-	      end, string:tokens(whistle_util:to_list(EvtStr), "\n")).
+    [begin
+	 [K, V] = string:tokens(X, ": "),
+	 [{V1,[]}] = mochiweb_util:parse_qs(V),
+	 {whistle_util:to_binary(K), whistle_util:to_binary(V1)}
+     end || X <- string:tokens(whistle_util:to_list(EvtStr), "\n")].
