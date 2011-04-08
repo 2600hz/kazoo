@@ -30,6 +30,8 @@
 -define(AGG_DB, <<"media_files">>).
 -define(AGG_FILTER, <<"media_doc/export">>).
 
+-define(MEDIA_MIME_TYPES, ["audio/x-wav", "audio/mpeg", "application/octet-stream"]).
+
 -define(METADATA_FIELDS, [<<"display_name">>, <<"description">>, <<"media_type">>
 			      ,<<"status">>, <<"content_size">>, <<"size">>
 			      ,<<"content-type">>, <<"content-length">>
@@ -67,6 +69,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, ok)).
 init([]) ->
+    couch_mgr:db_create(?AGG_DB),
     accounts:update_all_accounts(?VIEW_FILE),
     accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     bind_to_crossbar(),
@@ -296,12 +299,12 @@ bind_to_crossbar() ->
 %% @end
 %%--------------------------------------------------------------------
 content_types_provided([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
-    CTP = [{to_binary, ["audio/*"]}],
+    CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_provided=CTP};
 content_types_provided(_, Context) -> Context.
 
 content_types_accepted([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>}=Context) ->
-    CTA = [{from_binary, ["audio/*"]}],
+    CTA = [{from_binary, ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_accepted=CTA};
 content_types_accepted(_, Context) -> Context.
 

@@ -68,26 +68,25 @@ update_all_accounts(File) ->
                                   case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
                                       {error, not_found} ->
                                           couch_mgr:load_doc_from_file(DbName, crossbar, File);
-                                      Else ->
-                                          Else
+				      {ok, _} -> ok
                                   end
                           end, Doc),
-                ok;
+	    ok;
         _Else ->
             error
     end.
 
 -spec(replicate_from_accounts/2 :: (TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
 replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
+    couch_mgr:db_create(TargetDB),
     case crossbar_doc:load_view(?VIEW_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
 	    BaseReplicate = [{<<"target">>, TargetDB}
 			     ,{<<"filter">>, FilterDoc}
-			     ,{<<"create_target">>, true}
 			    ],
 
             lists:foreach(fun(Account) ->                                  
-                                  DbName = get_db_name(whapps_json:get_value(["id"], Account), unencoded),
+                                  DbName = get_db_name(whapps_json:get_value(["id"], Account)),
 				  couch_mgr:db_replicate([{<<"source">>, DbName} | BaseReplicate])
                           end, Doc),
 	    ok;
@@ -97,10 +96,9 @@ replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
 
 -spec(replicate_from_account/3 :: (SourceDB :: binary(), TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
 replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) ->
-    BaseReplicate = [{<<"source">>, get_db_name(SourceDB, unencoded)}
+    BaseReplicate = [{<<"source">>, get_db_name(SourceDB)}
 		     ,{<<"target">>, TargetDB}
 		     ,{<<"filter">>, FilterDoc}
-		     ,{<<"create_target">>, true}
 		    ],
     couch_mgr:db_replicate(BaseReplicate).
 
@@ -121,6 +119,7 @@ replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) 
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
+    couch_mgr:db_create(?ACCOUNTS_DB),
     bind_to_crossbar(),
     crossbar_doc:load_from_file(?ACCOUNTS_DB, ?VIEW_FILE),
     {ok, #state{}}.
@@ -641,19 +640,19 @@ get_db_name({struct, _}=Doc, Encoded) ->
     get_db_name([whapps_json:get_value(["_id"], Doc)], Encoded);
 get_db_name([DocId], Encoded) when is_binary(DocId) ->
     get_db_name(DocId, Encoded);
+get_db_name("crossbar%2fclients" ++ _ = DocId, encoded) ->
+    DocId;
 get_db_name(DocId, encoded) when is_binary(DocId) ->
-    Id = whistle_util:to_list(DocId),
-    Db = ["crossbar%2Fclients%2F", string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
+    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
+    Db = ["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest],
     whistle_util:to_binary(Db);
 get_db_name(DocId, unencoded) when is_binary(DocId) ->
     case binary:longest_common_prefix([<<"crossbar%2Fclients%2F">>, DocId]) of
 	0 ->
-	    format_log(info, "DocID unenc: ~p~n", [DocId]),
 	    Id = whistle_util:to_list(DocId),
 	    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
 	    whistle_util:to_binary(Db);
 	_ ->
-	    %% already encoded, convert %2F to /
 	    whistle_util:to_binary(mochiweb_util:unquote(DocId))
     end;
 get_db_name(_, _) ->

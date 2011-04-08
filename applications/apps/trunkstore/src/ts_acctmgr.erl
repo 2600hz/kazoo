@@ -243,19 +243,22 @@ handle_cast(update_views, #state{current_read_db=RDB}=S) ->
     spawn(fun() -> update_views(RDB) end),
     {noreply, S};
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
-    load_account(AcctId, WDB),
-    couch_mgr:add_change_handler(?TS_DB, AcctId),
-    case trunk_type(RDB, AcctId, CallID) of
-	non_existant ->
-	    case trunk_type(WDB, AcctId, CallID) of
-		non_existant -> format_log(info, "TS_ACCTMGR(~p): Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
-		per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-		flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
-	    end;
-	per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-	flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
-    end,
+    spawn(fun() ->
+		  format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+
+		  load_account(AcctId, WDB),
+		  couch_mgr:add_change_handler(?TS_DB, AcctId),
+		  case trunk_type(RDB, AcctId, CallID) of
+		      non_existant ->
+			  case trunk_type(WDB, AcctId, CallID) of
+			      non_existant -> format_log(info, "TS_ACCTMGR(~p): Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
+			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
+			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+			  end;
+		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
+		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+		  end
+	  end),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -269,8 +272,7 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
-    load_views(WDB),
-    load_accounts_from_ts(WDB),
+    spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB) end),
     {noreply, S};
 handle_info(?EOD, S) ->
     DB = todays_db_name(),
@@ -279,7 +281,7 @@ handle_info(?EOD, S) ->
 
     self() ! reconcile_accounts,
 
-    load_views(DB),
+    spawn(fun() -> load_views(DB) end),
 
     {noreply, S#state{
 		current_write_db = DB % all new writes should go in new DB, but old DB is needed still
@@ -296,7 +298,7 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
-    update_from_couch(DocID, WDB, RDB),
+    spawn(fun() -> update_from_couch(DocID, WDB, RDB) end),
     {noreply, S};
 handle_info({document_deleted, AcctId}, S) ->
     format_log(info, "TS_ACCTMGR(~p): Account Doc ~p deleted~n", [self(), AcctId]),
@@ -536,21 +538,30 @@ update_account(AcctId, Bal) ->
     couch_mgr:save_doc(?TS_DB, {struct, Doc1}).
 
 load_account(AcctId, DB) ->
-    case couch_mgr:open_doc(?TS_DB, AcctId) of
-	{error, not_found} -> ok;
-	{ok, {struct, Doc}} -> 
-	    couch_mgr:add_change_handler(?TS_DB, AcctId),
-
-	    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
-	    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
-	    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
-	    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
-	    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)})
+    case wh_cache:fetch({ts_acctmgr, AcctId, DB}) of
+	{ok, _} -> ok;
+	{error, not_found} ->
+	    case couch_mgr:open_doc(?TS_DB, AcctId) of
+		{error, not_found} -> ok;
+		{ok, {struct, Doc}} -> 
+		    couch_mgr:add_change_handler(?TS_DB, AcctId),
+		    
+		    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
+		    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
+		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
+		    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
+		    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)}),
+		    wh_cache:store({ts_acctmgr, AcctId, DB}, true)
+	    end
     end.
 
 load_views(DB) ->
+    couch_mgr:db_create(DB),
     lists:foreach(fun(Name) ->
-			  couch_mgr:load_doc_from_file(DB, trunkstore, Name)
+			  case couch_mgr:load_doc_from_file(DB, trunkstore, Name) of
+			      {ok, _} -> ok;
+			      {error, _} -> couch_mgr:update_doc_from_file(DB, trunkstore, Name)
+			  end
 		  end, ?TS_ACCTMGR_VIEWS).
 
 update_views(DB) ->
@@ -596,15 +607,14 @@ stop_replication(LocalDB, [N | Ns]) ->
     setup_replication(LocalDB, Ns).
 
 is_call_active(CallID) ->
-    H = whapps_controller:get_amqp_host(),
-    Q = amqp_util:new_targeted_queue(H),
-    amqp_util:bind_q_to_targeted(H, Q),
+    Q = amqp_util:new_targeted_queue(),
+    amqp_util:bind_q_to_targeted(Q),
 
     Req = [{<<"Call-ID">>, CallID}
 	   | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
 
     {ok, JSON} = whistle_api:call_status_req(Req),
-    amqp_util:callevt_publish(H, CallID, JSON, status_req),
+    amqp_util:callevt_publish(CallID, JSON, status_req),
 
     is_call_active_loop().
 
@@ -620,7 +630,7 @@ is_call_active_loop() ->
     end.
 
 release_trunk_error(AcctId, CallID, DB) ->
-    format_log(info, "TS_ACCTMGR.release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
+    format_log(info, "TS_ACCTMGR(~p).release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
 
     case trunk_type(DB, AcctId, CallID) of
 	non_existant -> format_log(info, "TS_ACCTMGR.release_error: Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);

@@ -12,9 +12,6 @@
 
 -export([handle/2]).
 
--define(APP_NAME, <<"cf_conference">>).
--define(APP_VERSION, <<"0.5">>).
-
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
@@ -81,7 +78,7 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    Conf = update_members(#conf{}, Call),
+    Conf = update_members(get_conference_profile(Data), Call),
     answer(Call),
     play_conference_name(Conf, Call),
     case check_pin(Conf, Call, 1) of
@@ -195,6 +192,36 @@ announce_join(#conf{prompts=Prompts, id=ConfId}, Call) ->
 -spec(announce_leave/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
 announce_leave(#conf{prompts=Prompts, id=ConfId}, Call) ->
     cf_conference_command:play(Prompts#prompts.announce_leave, ConfId, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Fetches the conference parameters from the datastore and loads the
+%% conference record
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_conference_profile/1 :: (Data :: json_object()) -> #conf{}).
+get_conference_profile(Data) ->
+    Db = whapps_json:get_value(<<"database">>, Data),
+    Id = whapps_json:get_value(<<"id">>, Data),
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            Default=#conf{},
+            #conf{         
+                 id = Id
+                ,member_pins = whapps_json:get_value([<<"base">>, <<"member-pins">>], JObj, [])
+                ,moderator_pins = whapps_json:get_value([<<"base">>, <<"moderator-pins">>], JObj, [])
+                ,member_join_muted = whapps_json:get_value([<<"base">>, <<"member-join-muted">>], JObj, Default#conf.member_join_muted)
+                ,member_join_deaf = whapps_json:get_value([<<"base">>, <<"member-join-deaf">>], JObj, Default#conf.member_join_deaf)
+                ,moderator_join_muted = whapps_json:get_value([<<"base">>, <<"moderator-join-muted">>], JObj, Default#conf.moderator_join_muted)
+                ,moderator_join_deaf = whapps_json:get_value([<<"base">>, <<"moderator-join-deaf">>], JObj, Default#conf.moderator_join_deaf)
+                ,max_members = whapps_json:get_value([<<"base">>, <<"max-members">>], JObj, Default#conf.max_members)
+                ,require_moderator = whapps_json:get_value([<<"base">>, <<"require-moderator">>], JObj, Default#conf.require_moderator)
+                ,wait_for_moderator = whapps_json:get_value([<<"base">>, <<"wait-for-moderator">>], JObj, Default#conf.wait_for_moderator)
+         };
+        _ -> 
+            #conf{}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

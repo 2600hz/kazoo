@@ -10,7 +10,7 @@
 
 -include("callflow.hrl").
 
--export([audio_macro/2]).
+-export([audio_macro/2, flush_dtmf/1]).
 -export([answer/1, hangup/1]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8]).
 -export([play/2, play/3]).
@@ -45,21 +45,14 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--define(APP_NAME, <<"cf_call_command">>).
--define(APP_VERSION, <<"0.5">>).
--define(ANY_DIGIT, [
-                     <<"1">>, <<"2">>, <<"3">>
-                    ,<<"4">>, <<"5">>, <<"6">>    
-                    ,<<"7">>, <<"8">>, <<"9">>    
-                    ,<<"*">>, <<"0">>, <<"#">>
-                   ]).
-
 %%--------------------------------------------------------------------
-%% @private
+%% @pubic
 %% @doc
-%% Produces the low level whistle_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
+-spec(audio_macro/2 :: (Commands :: proplist(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(audio_macro/3 :: (Commands :: proplist(), Call :: #cf_call{}, Queue :: json_objects()) -> ok | tuple(error, atom())).
+
 audio_macro(Commands, Call) ->
     audio_macro(Commands, Call, []).
 audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
@@ -85,6 +78,14 @@ audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, say_command(Say, Type, Method, Language, Call)}|Queue]);
 audio_macro([{tones, Tones}|T], Call, Queue) ->    
     audio_macro(T, Call, [{struct, tones_command(Tones, Call)}|Queue]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+flush_dtmf(Call) ->
+    b_play(<<"silence_stream://250">>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -570,8 +571,10 @@ wait_for_message(Application, Event, Type, false) ->
             case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
                 { Application, Event, Type } ->
                     {ok, Msg};
-                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                { _, _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_message(Application, Event, Type, false)
             end
@@ -582,8 +585,10 @@ wait_for_message(Application, Event, Type, Timeout) ->
             case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
                 { Application, Event, Type } ->
                     {ok, Msg};
-                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                { _, _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_message(Application, Event, Type, Timeout)
             end
@@ -607,6 +612,8 @@ wait_for_dtmf(Timeout) ->
                     {ok, get_value(<<"DTMF-Digit">>, Msg)};
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                {  _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_dtmf(Timeout)
             end
@@ -632,6 +639,8 @@ wait_for_bridge(Timeout) ->
                     {error, channel_hungup};
                 { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
                     {error, bridge_failed};
+                { _, _, <<"error">> } ->
+                    {error, execution_failed};
                 _ ->
                     wait_for_bridge(Timeout)
             end
@@ -655,8 +664,10 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                     {ok, Msg};
                 { _, <<"DTMF">>, <<"call_event">> } ->
                     {dtmf, get_value(<<"DTMF-Digit">>, Msg)};
-                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
+                { _, _, <<"error">> } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_application_or_dtmf(Application, Timeout)
             end
@@ -681,6 +692,8 @@ wait_for_unbridge() ->
                     {ok, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
+                { <<"error">>, _ } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_unbridge()
             end
@@ -699,6 +712,8 @@ wait_for_hangup() ->
             case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
+                { <<"error">>, _ } ->
+                    {error, execution_failure};
                 _ ->
                     wait_for_hangup()
             end
@@ -710,7 +725,6 @@ wait_for_hangup() ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec(send_callctrl/2 :: (JSON :: json_object(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
-send_callctrl(Payload, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
-    timer:sleep(50),
-    amqp_util:callctl_publish(AHost, CtrlQ, Payload, <<"application/json">>).
+-spec(send_callctrl/2 :: (Payload :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
+    amqp_util:callctl_publish(CtrlQ, Payload).

@@ -279,12 +279,12 @@ channel_multi_open_close_test(Connection) ->
                                           closing            -> ok
                                       catch
                                           exit:{noproc, _}             -> ok;
-                                          exit:{connection_closing, _} -> ok
+                                          exit:{normal, _} -> ok
                                       end;
                 closing            -> ok
             catch
                 exit:{noproc, _}             -> ok;
-                exit:{connection_closing, _} -> ok
+                exit:{normal, _} -> ok
             end
         end) || _ <- lists:seq(1, 50)],
     erlang:yield(),
@@ -339,6 +339,20 @@ consume_loop(Channel, X, RoutingKey, Parent, Tag) ->
         amqp_channel:call(Channel, #'basic.cancel'{consumer_tag = Tag}),
     receive #'basic.cancel_ok'{consumer_tag = Tag} -> ok end,
     Parent ! finished.
+
+consume_notification_test(Connection) ->
+    {ok, Channel} = amqp_connection:open_channel(Connection),
+    Q = uuid(),
+    #'queue.declare_ok'{} =
+        amqp_channel:call(Channel, #'queue.declare'{queue = Q}),
+    #'basic.consume_ok'{consumer_tag = CTag} = ConsumeOk =
+        amqp_channel:subscribe(Channel, #'basic.consume'{queue = Q}, self()),
+    receive ConsumeOk -> ok end,
+    #'queue.delete_ok'{} =
+        amqp_channel:call(Channel, #'queue.delete'{queue = Q}),
+    receive #'basic.cancel'{consumer_tag = CTag} -> ok end,
+    amqp_channel:close(Channel),
+    ok.
 
 basic_recover_test(Connection) ->
     {ok, Channel} = amqp_connection:open_channel(Connection),

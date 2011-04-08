@@ -60,5 +60,5 @@
 	 }).
 
 
--define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json"]).
+-define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json"]).
 -define(TS_COUCH_BASE_DOCS, ["carriers.json", "rates.json"]).

@@ -56,6 +56,7 @@
 -export([lock_file/1]).
 -export([const_ok/1, const/1]).
 -export([ntoa/1, ntoab/1]).
+-export([is_process_alive/1]).
 
 %%----------------------------------------------------------------------------
 
@@ -104,7 +105,7 @@
         ({atom(), any()}) -> rabbit_types:ok_or_error2(any(), 'not_found')).
 -spec(table_lookup/2 ::
         (rabbit_framing:amqp_table(), binary())
-         -> 'undefined' | {rabbit_framing:amqp_field_type(), any()}).
+        -> 'undefined' | {rabbit_framing:amqp_field_type(), any()}).
 -spec(r/2 :: (rabbit_types:vhost(), K)
              -> rabbit_types:r3(rabbit_types:vhost(), K, '_')
                     when is_subtype(K, atom())).
@@ -194,6 +195,7 @@
 -spec(const/1 :: (A) -> const(A)).
 -spec(ntoa/1 :: (inet:ip_address()) -> string()).
 -spec(ntoab/1 :: (inet:ip_address()) -> string()).
+-spec(is_process_alive/1 :: (pid()) -> boolean()).
 
 -endif.
 
@@ -350,8 +352,11 @@ throw_on_error(E, Thunk) ->
 with_exit_handler(Handler, Thunk) ->
     try
         Thunk()
-    catch exit:{R, _} when R =:= noproc; R =:= nodedown;
-                           R =:= normal; R =:= shutdown ->
+    catch
+        exit:{R, _} when R =:= noproc; R =:= nodedown;
+                         R =:= normal; R =:= shutdown ->
+            Handler();
+        exit:{{R, _}, _} when R =:= nodedown; R =:= shutdown ->
             Handler()
     end.
 
@@ -464,11 +469,11 @@ map_in_order(F, L) ->
 table_fold(F, Acc0, TableName) ->
     lists:foldl(
       fun (E, Acc) -> execute_mnesia_transaction(
-                   fun () -> case mnesia:match_object(TableName, E, read) of
-                                 [] -> Acc;
-                                 _  -> F(E, Acc)
-                             end
-                   end)
+                        fun () -> case mnesia:match_object(TableName, E, read) of
+                                      [] -> Acc;
+                                      _  -> F(E, Acc)
+                                  end
+                        end)
       end, Acc0, dirty_read_all(TableName)).
 
 dirty_read_all(TableName) ->
@@ -750,12 +755,12 @@ unlink_and_capture_exit(Pid) ->
     after 0 -> ok
     end.
 
-% Separate flags and options from arguments.
-% get_options([{flag, "-q"}, {option, "-p", "/"}],
-%             ["set_permissions","-p","/","guest",
-%              "-q",".*",".*",".*"])
-% == {["set_permissions","guest",".*",".*",".*"],
-%     [{"-q",true},{"-p","/"}]}
+%% Separate flags and options from arguments.
+%% get_options([{flag, "-q"}, {option, "-p", "/"}],
+%%             ["set_permissions","-p","/","guest",
+%%              "-q",".*",".*",".*"])
+%% == {["set_permissions","guest",".*",".*",".*"],
+%%     [{"-q",true},{"-p","/"}]}
 get_options(Defs, As) ->
     lists:foldl(fun(Def, {AsIn, RsIn}) ->
                         {AsOut, Value} = case Def of
@@ -858,3 +863,12 @@ ntoab(IP) ->
         0 -> Str;
         _ -> "[" ++ Str ++ "]"
     end.
+
+is_process_alive(Pid) when node(Pid) =:= node() ->
+    erlang:is_process_alive(Pid);
+is_process_alive(Pid) ->
+    case rpc:call(node(Pid), erlang, is_process_alive, [Pid]) of
+        true -> true;
+        _    -> false
+    end.
+

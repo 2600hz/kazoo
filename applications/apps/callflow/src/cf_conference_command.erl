@@ -22,9 +22,6 @@
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
--define(APP_NAME, <<"cf_conference_command">>).
--define(APP_VERSION, <<"0.5">>).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

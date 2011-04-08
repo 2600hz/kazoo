@@ -8,7 +8,7 @@
 -module(ecallmgr_fs_node).
 
 %% API
--export([start_handler/3]).
+-export([start_link/2]).
 -export([monitor_node/2, resource_consume/2]).
 
 %% Internal Exports - not meant for outside the module
@@ -21,8 +21,6 @@
 
 %% lookups = [{LookupPid, ID, erlang:now()}]
 -record(handler_state, {fs_node = undefined :: atom()
-		       ,amqp_host = "" :: string()
-		       ,app_vsn = <<>> :: binary()
 		       ,stats = #node_stats{} :: #node_stats{}
 		       ,options = [] :: proplist()
 		       }).
@@ -43,20 +41,19 @@ resource_consume(FsNodePid, Route) ->
     after   10000 -> {resource_error, timeout}
     end.
 
--spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), AmqpHost :: string()) -> pid() | {error, term()}).
-start_handler(Node, Options, AmqpHost) ->
+-spec(start_link/2 :: (Node :: atom(), Options :: proplist()) -> pid() | {error, term()}).
+start_link(Node, Options) ->
     NodeData = extract_node_data(Node),
     {ok, Chans} = freeswitch:api(Node, show, "channels"),
     {ok, R} = re:compile("([\\d+])"),
     {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
     Active = whistle_util:to_integer(lists:flatten(Match)),
 
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
     Stats = #node_stats{started = erlang:now()
 			,created_channels=Active
 			,fs_uptime=get_value(uptime, NodeData, 0)
 		       },
-    HState = #handler_state{fs_node=Node, amqp_host=AmqpHost, app_vsn=list_to_binary(Vsn), stats=Stats, options=Options},
+    HState = #handler_state{fs_node=Node, stats=Stats, options=Options},
     case freeswitch:start_event_handler(Node, ?MODULE, monitor_node, HState) of
 	{ok, Pid} -> Pid;
 	timeout -> {error, timeout};
@@ -88,7 +85,7 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		    ?MODULE:monitor_loop(Node, S#handler_state{stats=Stats#node_stats{last_heartbeat=erlang:now()}});
 		<<"CUSTOM">> ->
 		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
-		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
+		    spawn(fun() -> process_custom_data(Data, ?APP_VERSION) end),
 		    ?MODULE:monitor_loop(Node, S);
 		_ ->
 		    format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
@@ -111,7 +108,7 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 		<<"CHANNEL_HANGUP_COMPLETE">> ->
 		    ?MODULE:monitor_loop(Node, S);
 		<<"CUSTOM">> ->
-		    spawn(fun() -> process_custom_data(Data, S#handler_state.amqp_host, S#handler_state.app_vsn) end),
+		    spawn(fun() -> process_custom_data(Data, ?APP_VERSION) end),
 		    ?MODULE:monitor_loop(Node, S);
 		_ ->
 		    ?MODULE:monitor_loop(Node, S)
@@ -131,15 +128,15 @@ monitor_loop(Node, #handler_state{stats=#node_stats{created_channels=Cr, destroy
 	    MaxChan = get_value(max_channels, Opts, 1),
 	    AvailChan =  MaxChan - ActiveChan,
 
-	    spawn(fun() -> originate_channel(Node, S#handler_state.amqp_host, Pid, Route, AvailChan) end),
+	    spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan) end),
 	    ?MODULE:monitor_loop(Node, S);
 	Msg ->
 	    format_log(info, "FS_NODE(~p): Recv ~p~n", [self(), Msg]),
 	    ?MODULE:monitor_loop(Node, S)
     end.
 
--spec(originate_channel/5 :: (Node :: atom(), Host :: string(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
-originate_channel(Node, Host, Pid, Route, AvailChan) ->
+-spec(originate_channel/4 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
+originate_channel(Node, Pid, Route, AvailChan) ->
     format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
     OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
     format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
@@ -147,7 +144,7 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 	{ok, X} ->
 	    format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
 	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-	    CtlQ = start_call_handling(Node, Host, CallID),
+	    CtlQ = start_call_handling(Node, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
@@ -158,13 +155,13 @@ originate_channel(Node, Host, Pid, Route, AvailChan) ->
 	    Pid ! {resource_error, timeout}
     end.
 
--spec(start_call_handling/3 :: (Node :: atom(), Host :: string(), UUID :: binary()) -> CtlQueue :: binary()).
-start_call_handling(Node, Host, UUID) ->
-    CtlQueue = amqp_util:new_callctl_queue(Host, <<>>),
-    amqp_util:bind_q_to_callctl(Host, CtlQueue),
+-spec(start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary()).
+start_call_handling(Node, UUID) ->
+    CtlQueue = amqp_util:new_callctl_queue(<<>>),
+    amqp_util:bind_q_to_callctl(CtlQueue),
 
-    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, {Host, CtlQueue}),
-    {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, Host, CtlPid),
+    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
+    {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
     CtlQueue.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).
@@ -189,7 +186,7 @@ extract_node_data(Node) ->
     process_status(Lines).
 
 -spec(process_status/1 :: (Lines :: list()) -> proplist()).
-process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
+process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
     {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
     UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
 	+ ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + whistle_util:to_integer(Micro),
@@ -205,14 +202,14 @@ process_status([[$U,$P, $  | Uptime], SessSince, Sess30, SessMax, CPU]) ->
      ,{cpu, lists:flatten(CPUNum)}
     ].
 
-process_custom_data(Data, Host, AppVsn) ->
+process_custom_data(Data, AppVsn) ->
     case get_value(<<"Event-Subclass">>, Data) of
 	undefined -> ok;
-	<<"sofia::register">> -> publish_register_event(Data, Host, AppVsn);
+	<<"sofia::register">> -> publish_register_event(Data, AppVsn);
 	_ -> ok
     end.
 
-publish_register_event(Data, Host, AppVsn) ->
+publish_register_event(Data, AppVsn) ->
     Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
     DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, whistle_util:to_binary(?MODULE), AppVsn),
     ApiProp = lists:foldl(fun(K, Api) ->
@@ -223,10 +220,10 @@ publish_register_event(Data, Host, AppVsn) ->
 				  end
 			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
     case whistle_api:reg_success(ApiProp) of
-	{error, E} -> format_log(error, "FS_AUTH.custom_data: Failed API message creation: ~p~n", [E]);
+	{error, E} -> format_log(error, "FS_NODE.pub_reg_event: Failed API message creation: ~p~n", [E]);
 	{ok, JSON} ->
 	    format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
-	    amqp_util:broadcast_publish(Host, JSON, <<"application/json">>)
+	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
     end.
 
 -spec(binary_to_lower/1 :: (B :: binary()) -> binary()).

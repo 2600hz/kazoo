@@ -22,9 +22,6 @@
 -include("media.hrl").
 
 -define(SERVER, ?MODULE).
--define(APP_VSN, <<"0.3.0">>).
--define(MEDIA_DB, "media_files").
--define(MAX_WAIT_FOR_LISTENERS, 600000). %% 600 secs = 10 minutes
 
 -record(state, {
 	  media_file = #media_file{} :: #media_file{}
@@ -240,7 +237,7 @@ code_change(_OldVsn, State, _Extra) ->
 send_media_resp(MediaName, Url, To) ->
     Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Stream-URL">>, Url}
-	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?SERVER, ?APP_VSN)],
+	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
 
     {ok, JSON} = whistle_api:media_resp(Prop),
     logger:format_log(info, "SHOUT(~p): Sending ~p to ~p~n", [self(), JSON, To]),
