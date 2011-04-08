@@ -489,10 +489,12 @@ handle_call({get_creds}, _, #state{creds=Cred}=State) ->
 handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH, connection=S}=State) ->
     case dict:find(DBName, CH) of
 	{ok, {Srv, _}} ->
+	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {reply, ok, State};
 	error ->
 	    {ok, Srv} = change_mgr_sup:start_handler(open_db(whistle_util:to_list(DBName), S), []),
+	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
 	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {reply, ok, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}

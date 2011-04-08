@@ -43,10 +43,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Db, Options) ->
-    Opts1 = case props:get_value(heartbeat, Options) of
-		undefined -> [ {heartbeat, true} | Options];
+    Opts1 = case props:get_value(changes_timeout, Options) of
+		undefined -> [ {changes_timeout, infinity} | Options];
 		true -> Options;
-		_ -> [ {heartbeat, true} | Options]
+		_ ->  Options
 	    end,
     gen_changes:start_link(?MODULE, Db, Opts1, [Db]).
 
@@ -117,9 +117,7 @@ handle_cast({add_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
 	    {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}}
     end;
 handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
-    Ls1 = lists:filter(fun(#listener{pid=Pid1, doc=Doc1, monitor_ref=Ref}) when Pid =:= Pid1 andalso Doc =:= Doc1 ->
-			       erlang:demonitor(Ref, [flush]), false;
-			  (_) -> true end, Ls),
+    Ls1 = [ V || V <- Ls, rm_listener_(V, Doc, Pid)],
     {noreply, State#state{listeners=Ls1}}.
 
 %%--------------------------------------------------------------------
@@ -132,12 +130,9 @@ handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
+handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
     logger:format_log(info, "CH(~p): DOWN for ~p(~p)~n", [self(), Pid, Info]),
-    Ls1 = lists:filter(fun(#listener{pid=Pid1,monitor_ref=Ref1}) when Pid =:= Pid1 andalso Ref =:= Ref1 ->
-			       erlang:demonitor(Ref1, [flush]), false;
-			  (_) -> true
-		       end, Ls),
+    Ls1 = [ V || V <- Ls, rm_listener_(V, Pid)],
     {noreply, State#state{listeners=Ls1}};
 handle_info(_Info, State) ->
     logger:format_log(info, "CH(~p): Unhandled info ~p~n", [self(), _Info]),
@@ -208,3 +203,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+rm_listener_(#listener{pid=Pid, monitor_ref=Ref}, Pid) ->
+    erlang:demonitor(Ref, [flush]),
+    false;
+rm_listener_(_, _) -> true.
+
+rm_listener_(#listener{pid=Pid, doc=Doc, monitor_ref=Ref}, Doc, Pid) ->
+    erlang:demonitor(Ref, [flush]),
+    false;
+rm_listener_(_, _, _) -> true.
