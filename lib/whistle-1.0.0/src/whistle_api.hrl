@@ -691,6 +691,18 @@
                          ]).
 -define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
 
+
+%% The AMQP passthrough of FS commands
+-define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).
+
+-define(FS_REQ_HEADERS, [<<"Application-Name">>, <<"Args">>]).
+-define(OPTIONAL_FS_REQ_HEADERS, [<<"Insert-At">>]).
+-define(FS_REQ_VALUES, [{<<"Event-Category">>, <<"fs">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                              ]).
+-define(FS_REQ_TYPES, [{<<"Application-Name">>, fun(<<"uuid_", _/binary>>) -> true; (App) -> lists:member(App, ?FS_COMMAND_WHITELIST) end}]).
+
+
 %% [{FreeSWITCH-Flage-Name, Whistle-Flag-Name}]
 %% Conference-related entry flags
 %% convert from FS conference flags to Whistle conference flags
