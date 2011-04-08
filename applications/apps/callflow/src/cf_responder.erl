@@ -248,26 +248,50 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ, flows=Flows, call
 handle_req(_EventName, _JObj, _Parent, _State) ->
     {error, invalid_event}.
 
--spec(find_callflow/2 :: (To :: binary()|undefined, Flows :: dict()|undefined) -> tuple(ok, json_object())|tuple(error, atom())).
+-spec(find_callflow/2 :: (To :: binary(), Flows :: dict()) -> tuple(ok, json_object()) | tuple(error, atom())).
 find_callflow(To, Flows) ->
+    case hunt_to(To, Flows) of
+        {ok, _}=F ->
+            F;
+        _ ->
+            hunt_no_match(To, Flows)
+    end.
+
+-spec(hunt_to/2 :: (To :: binary(), Flows :: dict()) -> tuple(ok, json_object()) | tuple(error, atom())).
+hunt_to(To, Flows) ->
     case dict:find(To, Flows) of
         {ok, {I, F, _}} ->
             format_log(info, "CF_RESP(~p): Callflow for ~p exists in cache...", [self(), To]),
             {ok, {struct, [{<<"id">>, I}, {<<"flow">>, F}]}};
         error ->
-            case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, To}]) of
-                {ok, []} ->
-                    format_log(info, "CF_RESP(~p): Could not find callflow for ~p", [self(), To]),
-                    {error, not_found};
-                {ok, [JObj]} ->
-                    format_log(info, "CF_RESP(~p): Retreived callflow for ~p", [self(), To]),
-                    {ok, whapps_json:get_value(<<"value">>, JObj)};
-                {error, _}=E ->
-                    format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p", [self(), E, To]),
-                    E
-            end
+            lookup_flow(To)
     end.
 
+-spec(hunt_no_match/2 :: (To :: binary(), Flows :: dict()) -> tuple(ok, json_object()) | tuple(error, atom())).
+hunt_no_match(To, Flows) ->    
+    [_, ToRealm] = binary:split(To, <<"@">>),
+    NoMatch = <<"no_match@", ToRealm/binary>>,
+    case dict:find(NoMatch, Flows) of
+        {ok, {I, F, _}} ->
+            format_log(info, "CF_RESP(~p): Callflow for ~p exists in cache...", [self(), NoMatch]),
+            {ok, {struct, [{<<"id">>, I}, {<<"flow">>, F}]}};
+        error ->
+            lookup_flow(NoMatch)
+    end.    
+
+-spec(lookup_flow/1 :: (To :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+lookup_flow(To) ->
+    case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, To}]) of
+        {ok, []} ->
+            format_log(info, "CF_RESP(~p): Could not find callflow for ~p", [self(), To]),
+            {error, not_found};
+        {ok, [JObj]} ->
+            format_log(info, "CF_RESP(~p): Retreived callflow for ~p", [self(), To]),
+            {ok, whapps_json:get_value(<<"value">>, JObj)};
+        {error, _}=E ->
+            format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p", [self(), E, To]),
+            E
+    end.    
 %%%
 %%%============================================================================
 %%%== END =====
