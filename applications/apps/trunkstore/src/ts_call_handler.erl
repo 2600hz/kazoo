@@ -296,7 +296,7 @@ get_amqp_queue(CallID) ->
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> no_return()).
 update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}) ->
-    ts_acctmgr:release_trunk(DocID, CallID);
+    ts_acctmgr:release_trunk(DocID, CallID, 0);
 update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
 				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S
 				     }) ->
