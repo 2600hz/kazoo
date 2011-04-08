@@ -133,10 +133,10 @@ handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
     {noreply, State};
 
-handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #state{consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
 	error ->
-	    case start_channel(State#state.connection, FromPid) of
+	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 
@@ -151,10 +151,10 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 	    {noreply, State}
     end;
 
-handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
 	error ->
-	    case start_channel(State#state.connection, FromPid) of
+	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 
@@ -169,10 +169,10 @@ handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{
 	    {noreply, State}
     end;
 
-handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
 	error ->
-	    case start_channel(State#state.connection, FromPid) of
+	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 
@@ -187,10 +187,10 @@ handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{cons
 	    {noreply, State}
     end;
 
-handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
 	error ->
-	    case start_channel(State#state.connection, FromPid) of
+	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 
@@ -205,10 +205,10 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
 	    {noreply, State}
     end;
 
-handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #state{consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
 	error ->
-	    case start_channel(State#state.connection, FromPid) of
+	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    Call = amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T}),
@@ -224,10 +224,10 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
 	    {noreply, State}
     end;
 
-handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
 	error ->
-	    case start_channel(State#state.connection, FromPid) of
+	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 
@@ -361,11 +361,11 @@ load_exchanges(Channel, Ticket) ->
 		  end, ?KNOWN_EXCHANGES).
 
 -spec(remove_ref/2 :: (Ref :: reference(), State :: #state{}) -> #state{}).
-remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref1,_}}=State) when Ref =:= Ref1 ->
+remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref,_}}=State) ->
     logger:format_log(info, "AMQP_HOST(~p): publish_channel(~p) went down~n", [self(), C]),
     State#state{publish_channel=start_channel(Conn)};
 
-remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref1,_}}=State) when Ref =:= Ref1 ->
+remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref,_}}=State) ->
     logger:format_log(info, "AMQP_HOST(~p): misc_channel(~p) went down~n", [self(), C]),
     State#state{misc_channel=start_channel(Conn)};
 
