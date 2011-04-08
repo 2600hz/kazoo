@@ -42,6 +42,7 @@
           ,req_json = {struct, []} :: json_object() | tuple(malformed, binary())
 	  ,req_files = [] :: list(tuple(binary(), json_object())) | []
           ,req_data = [] :: mochijson()
+          ,account_id = undefined :: binary() | undefined
           ,db_name = undefined :: string() | undefined
           ,doc = undefined :: json_object() | json_objects() | undefined
           ,resp_expires = {{1999,1,1},{0,0,0}}

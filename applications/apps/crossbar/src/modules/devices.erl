@@ -25,9 +25,7 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
-
 -define(VIEW_FILE, <<"views/devices.json">>).
-
 -define(DEVICES_LIST, {"devices", "listing_by_id"}).
 
 -record(state, {}).
@@ -114,14 +112,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.devices">>, Payl
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
@@ -129,36 +125,30 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
-
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
