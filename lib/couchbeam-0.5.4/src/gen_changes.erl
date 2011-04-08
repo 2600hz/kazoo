@@ -76,9 +76,9 @@ init([Module, Db, Options, InitArgs]) ->
                                         modstate=ModState,
                                         db=Db,
                                         options=Options}};
-            {error, Error} ->
-                Module:terminate(Error, ModState),
-                {stop, Error} 
+		{error, Error} ->
+		    Module:terminate(Error, ModState),
+		    {stop, Error} 
             end;
         Error ->
             Error
@@ -125,14 +125,15 @@ handle_cast(Msg, State=#gen_changes_state{mod=Module, modstate=ModState}) ->
 
 handle_info({ibrowse_async_response_end, ReqId},
         State=#gen_changes_state{req_id=ReqId}) ->
-        {stop, connection_closed, State};
+    {stop, connection_closed, State};
 handle_info({ibrowse_async_response, ReqId, {error,Error}},
-        State=#gen_changes_state{req_id=ReqId}) ->
+	    State=#gen_changes_state{req_id=ReqId}) ->
+	    io:format("changes error in resp: ~p~n", [Error]),
         {stop, {error, Error}, State};
 handle_info({ibrowse_async_response, ReqId, Chunk},
         State=#gen_changes_state{mod=Module, modstate=ModState, req_id=ReqId}) ->
     Messages = [M || M <- re:split(Chunk, ",?\n", [trim]), M =/= <<>>],
-    
+
     case handle_messages(Messages, State) of
         {ok, #gen_changes_state{complete=true}=State1} ->
             {stop, complete, State1};
@@ -188,14 +189,24 @@ handle_messages([<<"{\"last_seq\":", _/binary>>], State) ->
     {ok, State#gen_changes_state{complete=true}};
 handle_messages([Chunk|Rest], State) ->
     #gen_changes_state{partial_chunk=Partial}=State,
+    Piece = <<Partial/binary, Chunk/binary>>,
     NewState = try
-        Row = couchbeam_changes:decode_row(<<Partial/binary, Chunk/binary>>),
-        Empty= <<"">>,
-        State#gen_changes_state{partial_chunk=Empty, row=Row}
+        Row = couchbeam_changes:decode_row(Piece),
+        State#gen_changes_state{partial_chunk = <<>>, row=Row}
     catch
     throw:{invalid_json, Bad} ->
-        State#gen_changes_state{partial_chunk = Bad}
+	    State#gen_changes_state{partial_chunk = Bad};
+	throw:invalid_utf8 ->
+	    State#gen_changes_state{partial_chunk = Piece};
+	error:{case_clause, Bad} ->
+	    State#gen_changes_state{partial_chunk = Bad};
+	error:{badmatch,comma} ->
+	    State#gen_changes_state{partial_chunk = Piece};
+	error:{badmatch,key} ->
+	    State#gen_changes_state{partial_chunk = Piece};
+	error:{badmatch,any} ->
+	    State#gen_changes_state{partial_chunk = Piece};
+	A:B -> io:format("Piece: ~p~nUnknown ~p:~p~n~p~n", [Piece, A, B, erlang:get_stacktrace()]),
+	       State
     end,
     handle_messages(Rest, NewState).
-
-
