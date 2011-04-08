@@ -26,7 +26,7 @@
 
 -export([access_request/0, access_request/1, basic_ack/0, basic_nack/0]).
 
--export([is_json/1]).
+-export([is_json/1, is_host_available/0]).
 
 -export([monitor_exchange/0, monitor_publish/3]).
 -export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
@@ -354,3 +354,7 @@ basic_ack() ->
 
 basic_nack() ->
     amqp_manager:consume(#'basic.nack'{}).
+
+-spec(is_host_available/0 :: () -> boolean()).
+is_host_available() ->
+    amqp_mgr:is_available().
