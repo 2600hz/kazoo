@@ -692,7 +692,7 @@
 -define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
 
 
-%% The AMQP passthrough of FS commands
+%% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
 -define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).
 
 -define(FS_REQ_HEADERS, [<<"Application-Name">>, <<"Args">>]).
