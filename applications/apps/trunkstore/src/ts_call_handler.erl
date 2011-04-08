@@ -215,7 +215,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
 	    %% try to reserve a trunk for this leg
-	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid),
+	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid, 0),
 	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
 	    ts_call_sup:start_proc([OtherCallID
 				    ,Flags#route_flags{account_doc_id=OtherAcctID
