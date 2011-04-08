@@ -154,7 +154,7 @@ handle_info(timeout, #state{host=Host, handler_pid = undefined, timeout=T}=State
 	{error, _} -> {noreply, State#state{timeout=T*2}, T}
     end;
     
-handle_info({'DOWN', Ref, process, HPid, _Reason}, #state{host=Host, handler_ref = Ref}=State) ->
+handle_info({'DOWN', Ref, process, HPid, _Reason}, #state{host=Host, handler_ref = Ref}) ->
     logger:format_log(error, "AMQP_MGR(~p): amqp_host(~p) went down: ~p~n", [self(), HPid, _Reason]),
     {noreply, #state{host = Host}, 0};
 
