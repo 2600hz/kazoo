@@ -318,7 +318,6 @@ insert_command(State, <<"now">>, JObj) ->
 			  end, whapps_json:get_value(<<"Commands">>, JObj)),
 	    State#state.command_q;
 	AppName ->
-%	    true = whistle_api:dialplan_req_v(JObj),
 	    logger:format_log(info, "CONTROL: Exec now Cmd: ~p~n", [AppName]),
             execute_control_request(JObj, State),
 	    State#state.command_q
@@ -384,10 +383,10 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
         _:_=E ->
             logger:format_log(error, "CONTROL.exe (~p): Error ~p executing request for call ~p", [self(), E, UUID]),
             Resp = [
-                      {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
-                     ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (whapps_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
-                     | whistle_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
-                    ],
+		    {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
+		    ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (whapps_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
+		    | whistle_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+		   ],
             {ok, Payload} = whistle_api:error_resp(Resp),
             amqp_util:callevt_publish(UUID, Payload, event),
             self() ! {force_queue_advance, UUID},

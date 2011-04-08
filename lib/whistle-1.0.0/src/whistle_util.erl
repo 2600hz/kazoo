@@ -15,13 +15,13 @@ to_hex(S) ->
 
 %% +18001234567 -> +18001234567
 -spec(to_e164/1 :: (DID :: binary()) -> binary()).
-to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) == 80 -> % 8bits/ch * 10ch
+to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) =:= 80 -> % 8bits/ch * 10ch
     E164;
 %% 18001234567 -> +18001234567
-to_e164(<<$1, N/binary>>=NPAN1) when erlang:bit_size(N) == 80 ->
+to_e164(<<$1, N/binary>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
     << $+, NPAN1/bitstring >>;
 %% 8001234567 -> +18001234567
-to_e164(NPAN) when erlang:bit_size(NPAN) == 80 ->
+to_e164(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
     <<$+, $1, NPAN/bitstring>>;
 to_e164(Other) ->
     Other.
@@ -38,20 +38,20 @@ prop_to_e164() ->
 		end
 	    end).
 
-to_npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) == 80 ->
+to_npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
-to_npanxxxxxx(<<$1, N/bitstring>>) when erlang:bit_size(N) == 80 ->
+to_npanxxxxxx(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
-to_npanxxxxxx(NPAN) when erlang:bit_size(NPAN) == 80 ->
+to_npanxxxxxx(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
     NPAN;
 to_npanxxxxxx(Other) ->
     Other.
 
-to_1npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) == 80 ->
+to_1npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     <<$1, N/bitstring>>;
-to_1npanxxxxxx(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) == 80 ->
+to_1npanxxxxxx(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
     NPAN1;
-to_1npanxxxxxx(NPAN) when erlang:bit_size(NPAN) == 80 ->
+to_1npanxxxxxx(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
     <<$1, NPAN/bitstring>>;
 to_1npanxxxxxx(Other) ->
     Other.
@@ -140,7 +140,7 @@ a1hash(User, Realm, Password) ->
 -spec(floor/1 :: (X :: integer() | float()) -> integer()).
 floor(X) when X < 0 ->
     T = trunc(X),
-    case X - T == 0 of
+    case X - T =:= 0 of
         true -> T;
         false -> T - 1
     end;
@@ -153,7 +153,7 @@ ceiling(X) when X < 0 ->
     trunc(X);
 ceiling(X) ->
     T = trunc(X),
-    case X - T == 0 of
+    case X - T =:= 0 of
         true -> T;
         false -> T + 1
     end.
