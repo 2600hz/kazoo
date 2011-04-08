@@ -20,8 +20,8 @@
 -define(SERVER, ?MODULE). 
 -define(HANGUP_DB, "hangups").
 
--include("../include/amqp_client/include/amqp_client.hrl").
--include("../../../utils/src/whistle_amqp.hrl").
+-include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("whistle/include/whistle_amqp.hrl").
 
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).

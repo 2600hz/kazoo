@@ -22,6 +22,7 @@ Commands:
     stop
     stop_app
     start_app
+    wait
     status
     reset
     force_reset

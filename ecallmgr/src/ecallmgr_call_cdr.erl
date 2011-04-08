@@ -10,15 +10,13 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_cdr).
 
--export([new_cdr/3]).
+-export([new_cdr/2]).
 
 -import(logger, [log/2, format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
 -include("ecallmgr.hrl").
 
--define(APPNAME, <<"ecallmgr.call.cdr">>).
--define(APPVER, <<"0.3.1">>).
 -define(EVENT_CAT, <<"call_detail">>).
 -define(EVENT_NAME, <<"cdr">>).
 
@@ -45,15 +43,15 @@
 			   ]).
 -define(FS_TO_WHISTLE_OUTBOUND_MAP, [{<<"variable_sip_cid_type">>, <<"Caller-ID-Type">>}]).
 
--spec(new_cdr/3 :: (UUID :: binary(), AmqpHost :: string(), EvtProp :: proplist()) -> no_return()).
-new_cdr(UUID, AmqpHost, EvtProp) ->
+-spec(new_cdr/2 :: (UUID :: binary(), EvtProp :: proplist()) -> no_return()).
+new_cdr(UUID, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
     format_log(info, "CALL_CDR(~p): ~s~n", [UUID, CDRJson]),
-    amqp_util:callevt_publish(AmqpHost, UUID, CDRJson, cdr).
+    amqp_util:callevt_publish(UUID, CDRJson, cdr).
 
 -spec(create_cdr/1 :: (EvtProp :: proplist()) -> iolist()).
 create_cdr(EvtProp) ->
-    DefProp = whistle_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APPNAME, ?APPVER),
+    DefProp = whistle_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APP_NAME, ?APP_VERSION),
     ApiProp0 = add_values(?FS_TO_WHISTLE_MAP, DefProp, EvtProp),
     ApiProp1 = case get_value(<<"direction">>, ApiProp0) of
 		   <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);

@@ -17,9 +17,6 @@
 
 -include("../callflow.hrl").
 
--define(APP_NAME, <<"cf_dialplan">>).
--define(APP_VERSION, <<"0.1">>).
-
 handle (_Data, _Call) ->
     {continue}.
 

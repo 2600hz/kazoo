@@ -17,6 +17,8 @@ get_value(Key, Prop) ->
 
 -spec(get_value/3 :: (Key :: term(), Prop :: [term()], Default :: term() ) -> term()).
 get_value(_Key, [], Def) -> Def;
+get_value(Key, {struct, Prop}, Def) ->
+    get_value(Key, Prop, Def);
 get_value(Key, Prop, Default) ->
     case lists:keyfind(Key, 1, Prop) of
 	false ->

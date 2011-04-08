@@ -16,23 +16,11 @@
 
 -define(ENCODE_DOCID, true).
 
-
 json_encode(V) ->
-    Handler =
-    fun({L}) when is_list(L) ->
-        {struct,L};
-    (Bad) ->
-        exit({json_encode, {bad_term, Bad}})
-    end,
-    (mochijson2:encoder([{handler, Handler}]))(V).
+    mochijson2:encode(V).
 
 json_decode(V) ->
-    try (mochijson2:decoder([{object_hook, fun({struct,L}) -> {L} end}]))(V)
-    catch
-        _Type:_Error ->
-            throw({invalid_json,V})
-    end.
-
+    mochijson2:decode(V).
 
 encode_docid(DocId) when is_binary(DocId) ->
     encode_docid(binary_to_list(DocId));
@@ -41,7 +29,7 @@ encode_docid(DocId)->
         true -> encode_docid1(DocId);
         false -> DocId
     end.
-    
+
 encode_docid1(DocId) ->
     case DocId of
         "_design/" ++ Rest ->
@@ -122,9 +110,10 @@ propmerge(F, L1, L2) ->
 
 %% @doc Update a proplist with values of the second. In case the same
 %% key is in 2 proplists, the value from the first are kept.
+propmerge1([], L2) -> L2;
+propmerge1(L1, []) -> L1;
 propmerge1(L1, L2) ->
     propmerge(fun(_, V1, _) -> V1 end, L1, L2).
-
 
 %% @doc emulate proplists:get_value/2,3 but use faster lists:keyfind/3
 -spec(get_value/2 :: (Key :: term(), Prop :: [term()] ) -> term()).

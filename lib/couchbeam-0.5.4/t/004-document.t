@@ -7,7 +7,7 @@
 
 
 main(_) ->
-    etap:plan(27),
+    etap:plan(28),
     start_app(),
     case (catch test()) of
         ok ->
@@ -54,7 +54,11 @@ test() ->
     {error, Error} = couchbeam:save_doc(Db, 
             {[{<<"_id">>,<<"test">>}, {<<"test">>,<<"blah">>}]}),
     etap:is(Error, conflict, "conflict raised"),
+
+    Rev = couchbeam:lookup_doc_rev(Db, "test"),
+
     {ok, {Doc1}} = couchbeam:open_doc(Db, "test"),
+    etap:is(proplists:get_value(<<"_rev">>, Doc1), Rev, "fetch rev ok"),
     etap:is(proplists:get_value(<<"test">>, Doc1), <<"blah">>, "fetch doc ok"),
     couchbeam:save_doc(Db, 
         {[{<<"_id">>,<<"test2">>}, {<<"test">>,<<"blah">>}]}),

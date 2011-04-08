@@ -11,7 +11,7 @@
        }
      ,"flat_rates_available":{
 	"map": "function(doc) { var trunks = doc.trunks || 0; if ( doc.type == 'debit' ) { emit(doc.acct_id, trunks * -1); } else { emit(doc.acct_id, trunks); } }"
-	,"reduce": "function(k, vs) { return sum(vs); }"
+	,"reduce": "_sum"
        }
      ,"release_errors":{
         "map": "function(doc) { if ( ! doc.release_error ) return; emit([doc.acct_id, doc.call_id], doc.amount); }"
