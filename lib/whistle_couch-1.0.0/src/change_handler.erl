@@ -43,10 +43,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Db, Options) ->
-    Opts1 = case props:get_value(heartbeat, Options) of
-		undefined -> [ {heartbeat, true}, {changes_timeout, infinity} | Options];
+    Opts1 = case props:get_value(changes_timeout, Options) of
+		undefined -> [ {changes_timeout, infinity} | Options];
 		true -> Options;
-		_ -> [ {heartbeat, true} | Options]
+		_ ->  Options
 	    end,
     gen_changes:start_link(?MODULE, Db, Opts1, [Db]).
 
