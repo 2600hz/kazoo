@@ -216,7 +216,8 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 
 	    %% try to reserve a trunk for this leg
 	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid, 0),
-	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
+	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID, (Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)
+				     ,Flags#route_flags.flat_rate_enabled),
 	    ts_call_sup:start_proc([OtherCallID
 				    ,Flags#route_flags{account_doc_id=OtherAcctID
 						       ,callid = OtherCallID
