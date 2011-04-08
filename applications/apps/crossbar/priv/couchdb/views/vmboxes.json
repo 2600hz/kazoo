@@ -1,0 +1,15 @@
+{
+    "_id": "_design/vmboxes"
+    ,"language": "javascript"
+    ,"views": {
+        "listing_by_id": {
+            "map": "function(doc) { if ( doc.pvt_type != 'vmbox') return; emit(doc._id, {'id': doc._id, 'mailbox': doc.base.mailbox}); }"
+        }
+        ,"listing_by_mailbox": {
+            "map": "function(doc) { if ( doc.pvt_type != 'vmbox') return; emit(doc.base.mailbox,  {'id': doc._id, 'mailbox': doc.base.mailbox}); }"
+        }       
+    }
+    ,"filters": {
+        "export":"function(doc, req) { return ( doc.pvt_type == 'vmbox' ); }"
+    }
+}

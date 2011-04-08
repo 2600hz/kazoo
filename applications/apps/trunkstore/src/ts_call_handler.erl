@@ -38,7 +38,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3, start_link/4, get_queue/1]).
+-export([start_link/2, start_link/3, get_queue/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -50,10 +50,10 @@
 -include("ts.hrl").
 
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
+-define(BILLING_TIMEOUT, 2 * ?CALL_ACTIVITY_TIMEOUT div 1000).
 
 -record(state, {callid = <<>> :: binary()
 		,amqp_q = {error, undefined} :: binary() | tuple(error, term())
-		,amqp_h = "" :: string()
 		,is_amqp_up = true :: boolean()
 		,ctl_q = <<>> :: binary() %% the control queue for the call, if we won the route_resp race
 		,start_time = 0 :: integer() %% the timestamp of when this process started
@@ -74,11 +74,11 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(CallID, AmqpHost, RouteFlags) ->
-    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags, 1], []).
+start_link(CallID, RouteFlags) ->
+    gen_server:start_link(?MODULE, [CallID, RouteFlags, 1], []).
 
-start_link(CallID, AmqpHost, RouteFlags, LegNumber) ->
-    gen_server:start_link(?MODULE, [CallID, AmqpHost, RouteFlags, LegNumber+1], []).
+start_link(CallID, RouteFlags, LegNumber) ->
+    gen_server:start_link(?MODULE, [CallID, RouteFlags, LegNumber+1], []).
 
 %% get_queue() -> Queue Name
 -spec(get_queue/1 :: (Pid :: pid()) -> tuple(ok, binary())).
@@ -100,16 +100,14 @@ get_queue(Pid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([CallID, AmqpHost, RouteFlags, LegNumber]) ->
+init([CallID, RouteFlags, LegNumber]) ->
     process_flag(trap_exit, true),
 
     {ok, #state{callid = CallID
-		,amqp_q = get_amqp_queue(AmqpHost, CallID)
-		,amqp_h = AmqpHost
 		,route_flags = RouteFlags
-		,start_time = ts_util:current_tstamp()
+		,start_time = whistle_util:current_tstamp()
 		,leg_number = LegNumber
-	       }}.
+	       }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,10 +150,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) when not is_binary(Q) ->
-    H = whapps_controller:get_amqp_host(),
-    NewQ = get_amqp_queue(H, CallID, Q),
-
-    {noreply, S#state{amqp_h=H, amqp_q=NewQ}, 1000};
+    NewQ = get_amqp_queue(CallID),
+    {noreply, S#state{amqp_q=NewQ}, 1000};
 
 handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
     format_log(info, "TS_CALL(~p): AmqpHost ~s went down~n", [self(), H]),
@@ -163,8 +159,7 @@ handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
 handle_info(is_amqp_up, #state{callid=CallID, amqp_q={error, _}, is_amqp_up=false}=State) ->
-    H = whapps_controller:get_amqp_host(),
-    NewQ = get_amqp_queue(H, CallID),
+    NewQ = get_amqp_queue(CallID),
     case is_binary(NewQ) of
 	true ->
 	    {noreply, State#state{amqp_q = NewQ, is_amqp_up = true}};
@@ -177,14 +172,14 @@ handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call
     stop_call_activity_ref(Ref),
     format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
     {stop, shutdown, S};
-handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, amqp_h=H, callid=CallID}=S) when is_binary(Q) ->
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, callid=CallID}=S) when is_binary(Q) ->
     format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
     stop_call_activity_ref(Ref),
 
     Prop = [{<<"Call-ID">>, CallID} | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_call_handler">>, <<"0.5.3">>)],
     case whistle_api:call_status_req(Prop) of
 	{ok, JSON} ->
-	    amqp_util:callevt_publish(H, CallID, JSON, status_req);
+	    amqp_util:callevt_publish(CallID, JSON, status_req);
 	{error, E} ->
 	    format_log(error, "TS_CALL(~p): sending status_req failed: ~p~n", [self(), E])
     end,
@@ -220,10 +215,10 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
 	    %% try to reserve a trunk for this leg
-	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid),
-	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID),
+	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid, 0),
+	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID, (Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)
+				     ,Flags#route_flags.flat_rate_enabled),
 	    ts_call_sup:start_proc([OtherCallID
-				    ,whapps_controller:get_amqp_host()
 				    ,Flags#route_flags{account_doc_id=OtherAcctID
 						       ,callid = OtherCallID
 						       ,diverted_account_doc_id=AcctID
@@ -255,25 +250,22 @@ handle_info(_Info, S) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(shutdown, #state{route_flags=Flags, amqp_h=H, amqp_q=Q, start_time=StartT, call_activity_ref=Ref}) ->
+terminate(shutdown, #state{route_flags=Flags, start_time=StartT, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
     Duration = get_call_duration([], Flags, StartT),
     format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk and billing for ~p seconds"
 	       ,[self(), Duration]),
     update_account(Duration, Flags), % charge for minimmum seconds since we apparently messed up
-    amqp_util:delete_queue(H, Q),
     ok;
-terminate(normal, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
+terminate(normal, #state{start_time=StartTime, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
-    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
+    DeltaTime = whistle_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
-    amqp_util:delete_queue(H, Q),
     ok;
-terminate(_Unexpected, #state{amqp_h=H, amqp_q=Q, start_time=StartTime, call_activity_ref=Ref}) ->
+terminate(_Unexpected, #state{start_time=StartTime, call_activity_ref=Ref}) ->
     stop_call_activity_ref(Ref),
-    DeltaTime = ts_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
+    DeltaTime = whistle_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
     format_log(error, "TS_CALL(~p): terminating unexpectedly: took ~p~n~p~n", [self(), DeltaTime, _Unexpected]),
-    amqp_util:delete_queue(H, Q),
     ok.
 
 %%--------------------------------------------------------------------
@@ -290,26 +282,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(get_amqp_queue/2 :: (AmqpHost :: string(), CallID :: binary()) -> binary()).
-get_amqp_queue(AmqpHost, CallID) ->
-    get_amqp_queue(AmqpHost, CallID, <<>>).
-
-get_amqp_queue(AmqpHost, CallID, Q) ->
-    EvtQ = amqp_util:new_callevt_queue(AmqpHost, <<>>),
+-spec(get_amqp_queue/1 :: (CallID :: binary()) -> binary()).
+get_amqp_queue(CallID) ->
+    EvtQ = amqp_util:new_callevt_queue(<<>>),
     format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
 
-    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, events),
-    amqp_util:bind_q_to_callevt(AmqpHost, EvtQ, CallID, cdr),
-    amqp_util:bind_q_to_targeted(AmqpHost, EvtQ),
+    amqp_util:bind_q_to_callevt(EvtQ, CallID, events),
+    amqp_util:bind_q_to_callevt(EvtQ, CallID, cdr),
+    amqp_util:bind_q_to_targeted(EvtQ),
 
-    amqp_util:basic_consume(AmqpHost, EvtQ),
-    amqp_util:delete_queue(AmqpHost, Q),
+    amqp_util:basic_consume(EvtQ),
     EvtQ.
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> no_return()).
 update_account(_, #route_flags{callid=CallID, flat_rate_enabled=true, account_doc_id=DocID}) ->
-    ts_acctmgr:release_trunk(DocID, CallID);
+    ts_acctmgr:release_trunk(DocID, CallID, 0);
 update_account(Duration, #route_flags{flat_rate_enabled=false, account_doc_id=DocID, callid=CallID
 				      ,rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S
 				     }) ->
@@ -426,12 +414,14 @@ get_call_duration(JObj, Flags) ->
 
 -spec(get_call_duration/3 :: (JObj :: json_object(), Flags :: #route_flags{}, StartTime :: integer()) -> integer()).
 get_call_duration(JObj, #route_flags{rate_minimum=RM}, StartTime) ->
-    Guess = case StartTime > 0 andalso (ts_util:current_tstamp() - StartTime) of
+    Now = whistle_util:current_tstamp(),
+    Guess = case StartTime > 0 andalso (Now - StartTime) of
 		false -> RM;
 		%% if no duration from JObj, and elapsed time is > twice the timeout
-		X when X >= (2 * ?CALL_ACTIVITY_TIMEOUT) -> X - (2 * ?CALL_ACTIVITY_TIMEOUT);
+		X when X >= ?BILLING_TIMEOUT -> X - ?BILLING_TIMEOUT;
 		Y when Y < RM -> RM;
 		Z -> Z
 	    end,
-    format_log(info, "TS_CALL(~p): get_call_d: BillSecs: ~p, StartTime: ~p, Guess: ~p~n", [self(), whapps_json:get_value(<<"Billing-Seconds">>, JObj), StartTime, Guess]),
+    format_log(info, "TS_CALL(~p): get_call_d: BillSecs: ~p, StartTime: ~p, Now: ~p, Guess: ~p~n"
+	       ,[self(), whapps_json:get_value(<<"Billing-Seconds">>, JObj), StartTime, Now, Guess]),
     whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj, Guess)).

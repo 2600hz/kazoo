@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, update_all_accounts/1, replicate_from_accounts/2]).
+-export([start_link/0, update_all_accounts/1, replicate_from_accounts/2, replicate_from_account/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,10 +27,13 @@
 -define(SERVER, ?MODULE).
 
 -define(ACCOUNTS_DB, "crossbar%2Faccounts").
--define(ACCOUNTS_LIST, {"accounts","listing"}).
--define(ACCOUNTS_PARENT, {"accounts","parent"}).
--define(ACCOUNTS_CHILDREN, {"accounts","children"}).
--define(ACCOUNTS_DESCENDANTS, {"accounts","descendants"}).
+
+-define(VIEW_FILE, <<"views/accounts.json">>).
+
+-define(VIEW_LIST, {"accounts", "listing"}).
+-define(VIEW_PARENT, {"accounts", "parent"}).
+-define(VIEW_CHILDREN, {"accounts", "children"}).
+-define(VIEW_DESCENDANTS, {"accounts", "descendants"}).
 
 -record(state, {}).
 
@@ -58,39 +61,46 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec(update_all_accounts/1 :: (File :: list() | binary()) -> ok | error).
 update_all_accounts(File) ->
-    case crossbar_doc:load_view(?ACCOUNTS_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
+    case crossbar_doc:load_view(?VIEW_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
             lists:foreach(fun(Account) ->                                  
                                   DbName = get_db_name(whapps_json:get_value(["id"], Account)),
                                   case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
                                       {error, not_found} ->
                                           couch_mgr:load_doc_from_file(DbName, crossbar, File);
-                                      Else ->
-                                          Else
+				      {ok, _} -> ok
                                   end
                           end, Doc),
-                ok;
+	    ok;
         _Else ->
             error
     end.
 
 -spec(replicate_from_accounts/2 :: (TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
 replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
-    case crossbar_doc:load_view(?ACCOUNTS_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
+    couch_mgr:db_create(TargetDB),
+    case crossbar_doc:load_view(?VIEW_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
 	    BaseReplicate = [{<<"target">>, TargetDB}
 			     ,{<<"filter">>, FilterDoc}
-			     ,{<<"create_target">>, true}
 			    ],
 
             lists:foreach(fun(Account) ->                                  
-                                  DbName = get_db_name(whapps_json:get_value(["id"], Account), unencoded),
+                                  DbName = get_db_name(whapps_json:get_value(["id"], Account)),
 				  couch_mgr:db_replicate([{<<"source">>, DbName} | BaseReplicate])
                           end, Doc),
 	    ok;
         _Else ->
             error
     end.
+
+-spec(replicate_from_account/3 :: (SourceDB :: binary(), TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
+replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) ->
+    BaseReplicate = [{<<"source">>, get_db_name(SourceDB)}
+		     ,{<<"target">>, TargetDB}
+		     ,{<<"filter">>, FilterDoc}
+		    ],
+    couch_mgr:db_replicate(BaseReplicate).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -109,8 +119,9 @@ replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
 %%--------------------------------------------------------------------
 -spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
+    couch_mgr:db_create(?ACCOUNTS_DB),
     bind_to_crossbar(),
-    crossbar_doc:load_from_file(?ACCOUNTS_DB, "accounts.json"),
+    crossbar_doc:load_from_file(?ACCOUNTS_DB, ?VIEW_FILE),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -142,7 +153,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -161,14 +171,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.accounts">>, Pay
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
     spawn(fun() ->
 		  crossbar_util:binding_heartbeat(Pid),
@@ -176,14 +184,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_c
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 Context1 = load_account_db(Params, Context),
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [_, <<"parent">>]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
@@ -195,14 +201,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
                   end
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   case crossbar_doc:save(Context) of
@@ -214,38 +218,33 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
                                   crossbar_doc:delete(Context1),
                                   Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
                               true ->
+                                  Pid ! {binding_result, true, [RD, Context1, Params]},
                                   Responses = crossbar_bindings:map(<<"account.created">>, Context1),                                  
                                   lists:foreach(fun({true, File}) ->                                         
                                                         couch_mgr:load_doc_from_file(DbName, crossbar, File)
-                                                end, crossbar_bindings:succeeded(Responses)),
-                                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                                                end, crossbar_bindings:succeeded(Responses))
                           end;
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
 	  end),
     {noreply, State};
-
 %handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
 %    %%spawn(fun() ->
-%                  Doc1 = crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], [], Doc),
+%                  Doc1 = crossbar_util:set_json_values(<<"pvt_tree">>, [], Doc),
 %                  Context1 = crossbar_doc:save(Context#cb_context{db_name=?ACCOUNTS_DB, doc=Doc1}),
 %                  Pid ! {binding_result, true, [RD, Context1, Params]},
 %	%%  end),
 %    {noreply, State};
-
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    %%format_log(info, "ACCOUNTS(~p): unhandled binding: ~p~n", [self(), Route]),
     Pid ! {binding_result, true, Payload},
     {noreply, State};
-
 handle_info(_Info, State) ->
     format_log(info, "ACCOUNTS(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -287,10 +286,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
-    crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
-    crossbar_bindings:bind(<<"v1_resource.validate.accounts">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.accounts">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.accounts">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.accounts">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -377,9 +376,9 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_account_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
 load_account_summary([], Context) ->
-    crossbar_doc:load_view(?ACCOUNTS_LIST, [], Context, fun normalize_view_results/2);
+    crossbar_doc:load_view(?VIEW_LIST, [], Context, fun normalize_view_results/2);
 load_account_summary(DocId, Context) ->
-    crossbar_doc:load_view(?ACCOUNTS_LIST, [
+    crossbar_doc:load_view(?VIEW_LIST, [
          {<<"startkey">>, [DocId]}
         ,{<<"endkey">>, [DocId, {struct, []}]}
     ], Context, fun normalize_view_results/2).
@@ -437,13 +436,13 @@ update_account(DocId, #cb_context{req_data=Data}=Context) ->
 -spec(load_parent/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_parent(DocId, Context) ->
     View =
-        crossbar_doc:load_view(?ACCOUNTS_PARENT, [
+        crossbar_doc:load_view(?VIEW_PARENT, [
              {<<"startkey">>, DocId}
             ,{<<"endkey">>, DocId}
         ], Context),
     case View#cb_context.doc of
-        [{struct, Props}|_] ->
-            Parent = props:get_value(<<"value">>, Props),
+        [JObj|_] ->
+            Parent = whapps_json:get_value([<<"value">>, <<"id">>], JObj),
             load_account_summary(Parent, Context);
         _Else ->
             crossbar_util:response_bad_identifier(DocId, Context)
@@ -475,7 +474,7 @@ update_parent(DocId, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec(load_children/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_children(DocId, Context) ->
-    crossbar_doc:load_view(?ACCOUNTS_CHILDREN, [
+    crossbar_doc:load_view(?VIEW_CHILDREN, [
          {<<"startkey">>, [DocId]}
         ,{<<"endkey">>, [DocId, {struct, []}]}
     ], Context, fun normalize_view_results/2).
@@ -488,7 +487,7 @@ load_children(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_descendants/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_descendants(DocId, Context) ->
-    crossbar_doc:load_view(?ACCOUNTS_DESCENDANTS, [
+    crossbar_doc:load_view(?VIEW_DESCENDANTS, [
          {<<"startkey">>, [DocId]}
         ,{<<"endkey">>, [DocId, {struct, []}]}
     ], Context, fun normalize_view_results/2).
@@ -502,13 +501,13 @@ load_descendants(DocId, Context) ->
 -spec(load_siblings/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_siblings(DocId, Context) ->
     View =
-        crossbar_doc:load_view(?ACCOUNTS_PARENT, [
+        crossbar_doc:load_view(?VIEW_PARENT, [
              {<<"startkey">>, DocId}
             ,{<<"endkey">>, DocId}
         ], Context),
     case View#cb_context.doc of
-        [{struct, Props}|_] ->
-            Parent = props:get_value(<<"value">>, Props),
+        [JObj|_] ->
+            Parent = whapps_json:get_value([<<"value">>, <<"id">>], JObj),
             load_children(Parent, Context);
         _Else ->
             crossbar_util:response_bad_identifier(DocId, Context)
@@ -520,16 +519,9 @@ load_siblings(DocId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
-normalize_view_results({struct, Prop}, Acc) ->
-    Id = props:get_value(<<"id">>, Prop),
-    Name = props:get_value(<<"value">>, Prop),
-    Level = length(lists:nth(2, props:get_value(<<"key">>, Prop))),
-    [{struct,[
-        {<<"id">>, Id}
-       ,{<<"level">>, Level}
-       ,{<<"name">>, Name}
-    ]} | Acc].
+-spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+normalize_view_results(JObj, Acc) ->
+    [whapps_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -537,10 +529,10 @@ normalize_view_results({struct, Prop}, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_parent/1 :: (Doc :: json_object()) -> tuple(true, [])). %tuple(boolean(), list())).
+-spec(is_valid_parent/1 :: (JObj :: json_object()) -> tuple(true, [])). %tuple(boolean(), list())).
 is_valid_parent({struct, [_]}) ->
     {true, []};
-is_valid_parent(_Doc) ->
+is_valid_parent(_JObj) ->
     {true, []}.
 
 %%--------------------------------------------------------------------
@@ -578,7 +570,7 @@ update_tree(DocId, ParentId, Context) ->
     case crossbar_doc:load(ParentId, Context) of
         #cb_context{resp_status=success, doc=Parent} ->
             Descendants =
-                crossbar_doc:load_view(?ACCOUNTS_DESCENDANTS, [
+                crossbar_doc:load_view(?VIEW_DESCENDANTS, [
                      {<<"startkey">>, [DocId]}
                     ,{<<"endkey">>, [DocId, {struct, []}]}
                 ], Context),
@@ -586,9 +578,8 @@ update_tree(DocId, ParentId, Context) ->
                 #cb_context{resp_status=success, doc=[]} ->
                     crossbar_util:response_bad_identifier(DocId, Context);
                 #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                    Tree = whapps_json:get_value([<<"pvt_identifier">>, <<"tree">>], Parent) ++ [ParentId, DocId],
+                    Tree = whapps_json:get_value(<<"pvt_tree">>, Parent) ++ [ParentId, DocId],
                     Updater = fun(Update, Acc) -> update_doc_tree(Tree, Update, Acc) end,
-                    %%Updates = plists:fold(Updater, {recursive, fun(R1, R2) -> R1 ++ R2 end}, [], Doc, 1),
                     Updates = lists:foldr(Updater, [], Doc),
                     Context1#cb_context{doc=Updates}
             end;
@@ -608,15 +599,14 @@ update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
     ParentId = lists:last(ParentTree),
     case crossbar_doc:load(DocId, #cb_context{db_name=?ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
-            Tree = whapps_json:get_value([<<"pvt_identifier">>, <<"tree">>], Doc),
+            Tree = whapps_json:get_value(<<"pvt_tree">>, Doc),
             SubTree =
                 case lists:dropwhile(fun(E)-> E =/= ParentId end, Tree) of
                     [] -> [];
                     List -> lists:nthtail(1,List)
                 end,
             NewTree = lists:filter(fun(E) -> E =/= DocId end, ParentTree ++ SubTree),
-            %%io:format("Tree:~p~nSubTree: ~p~nNewTree:~p~n:Doc:~p~n", [Tree, SubTree, NewTree, crossbar_util:set_json_values([<<"pvt_identifier">>, <<"tree">>], NewTree, Doc)]),
-            [whapps_json:set_value([<<"pvt_identifier">>, <<"tree">>], NewTree, Doc) | Acc];
+            [whapps_json:set_value(<<"pvt_tree">>, NewTree, Doc) | Acc];
         _Else ->
             Acc
     end;
@@ -630,10 +620,10 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 %% document
 %% @end
 %%--------------------------------------------------------------------
--spec(set_private_fields/1 :: (Doc :: json_object()) -> json_object()).
-set_private_fields(Doc) ->
-    Doc1 = whapps_json:set_value(["pvt_identifier", "type"], <<"account">>, Doc),
-    whapps_json:set_value(["pvt_identifier", "tree"], [], Doc1).
+-spec(set_private_fields/1 :: (JObj :: json_object()) -> json_object()).
+set_private_fields(JObj) ->
+    JObj1 = whapps_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
+    whapps_json:set_value(<<"pvt_tree">>, [], JObj1).
     
 %%--------------------------------------------------------------------
 %% @private
@@ -650,14 +640,21 @@ get_db_name({struct, _}=Doc, Encoded) ->
     get_db_name([whapps_json:get_value(["_id"], Doc)], Encoded);
 get_db_name([DocId], Encoded) when is_binary(DocId) ->
     get_db_name(DocId, Encoded);
+get_db_name("crossbar%2fclients" ++ _ = DocId, encoded) ->
+    DocId;
 get_db_name(DocId, encoded) when is_binary(DocId) ->
-    Id = whistle_util:to_list(DocId),
-    Db = ["crossbar%2Fclients%2F", string:sub_string(Id, 1, 2), "%2F", string:sub_string(Id, 3, 4), "%2F", string:sub_string(Id, 5)],
+    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
+    Db = ["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest],
     whistle_util:to_binary(Db);
 get_db_name(DocId, unencoded) when is_binary(DocId) ->
-    Id = whistle_util:to_list(DocId),
-    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
-    whistle_util:to_binary(Db);
+    case binary:longest_common_prefix([<<"crossbar%2Fclients%2F">>, DocId]) of
+	0 ->
+	    Id = whistle_util:to_list(DocId),
+	    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
+	    whistle_util:to_binary(Db);
+	_ ->
+	    whistle_util:to_binary(mochiweb_util:unquote(DocId))
+    end;
 get_db_name(_, _) ->
     undefined.
 
@@ -674,10 +671,12 @@ load_account_db(DocId, Context)->
     case couch_mgr:db_exists(DbName) of
         false ->
             Context#cb_context{
-                db_name = undefined
+                 db_name = undefined
+                ,account_id = undefined
             };
         true ->
             Context#cb_context{
                 db_name = DbName
+               ,account_id = DocId
             }
     end.

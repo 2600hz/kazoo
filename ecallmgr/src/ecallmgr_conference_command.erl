@@ -9,109 +9,103 @@
 
 -module(ecallmgr_conference_command).
 
--export([exec_cmd/4]).
+-export([exec_cmd/3]).
 
 -import(logger, [log/2, format_log/3]).
 
 -include("ecallmgr.hrl").
 
--define(APP_NAME, <<"conference_command">>).
--define(APP_VERSION, <<"1.0">>).
-
-
--spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), AmqpHost :: string()) -> ok | timeout | {error, string()}).
-exec_cmd(Node, CallId, JObj, AmqpHost) ->
+-spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | tuple(error, bad_reply | string())).
+exec_cmd(Node, CallId, JObj) ->
     AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
     ConfName = whapps_json:get_value(<<"Conference-ID">>, JObj),
-    case get_fs_app(Node, ConfName, JObj, AmqpHost, AppName) of
-        {error, _Msg}=Err -> 
-            Err;
-        {_, noop} -> 
+    case get_fs_app(Node, ConfName, JObj, AppName) of
+        {_, noop} ->
             ok;
-        Args -> 
+        {error, _Msg}=Err ->
+            Err;
+        Args ->
             case api(Node, <<"conference">>, <<ConfName/binary, " ", Args/binary>>) of
                 {ok, Reply} when AppName =:= <<"members">> ->
-                    members_response(Reply, ConfName, CallId, whapps_json:get_value(<<"Server-ID">>, JObj), AmqpHost);
-                {ok, _} ->
-                    ok;
-                _ -> 
-                    {error, bad_reply}
+                    spawn(fun() -> members_response(Reply, ConfName, CallId, whapps_json:get_value(<<"Server-ID">>, JObj)) end), ok;
+                {ok, _} -> ok;
+		timeout -> timeout;
+                {error, _} -> {error, bad_reply}
             end
     end.
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec(get_fs_app/5 :: 
-        (Node :: atom(), ConfName :: binary(), JObj :: json_object(), AmqpHost
- :: string(), Application :: binary()) -> 
+-spec(get_fs_app/4 ::
+        (Node :: atom(), ConfName :: binary(), JObj :: json_object(), Application :: binary()) ->
                            tuple(binary(), binary() | noop) | tuple(error, string())).
-get_fs_app(_Node, ConfName, _JObj, _AmqpHost, _Application) when not is_binary(ConfName) ->
+get_fs_app(_Node, ConfName, _JObj, _Application) when not is_binary(ConfName) ->
     {error, "invalid conference id"};
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"members">>) ->
+get_fs_app(_Node, _ConfName, JObj, <<"members">>) ->
     case whistle_api:conference_members_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference members failed to execute as JObj did not validate."};
 	true ->
             <<"list">>
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"play">>) ->
+get_fs_app(_Node, ConfName, JObj, <<"play">>) ->
     case whistle_api:conference_play_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference play failed to execute as JObj did not validate."};
 	true ->
-	    Media = whapps_json:get_value(<<"Media-Name">>, JObj),
+            Media = <<$', (media_path(whapps_json:get_value(<<"Media-Name">>, JObj), ConfName))/binary, $'>>,
             case whapps_json:get_value(<<"Member-ID">>, JObj) of
                 MemberId when is_binary(MemberId) ->
                     <<"play ", Media/binary, " ", MemberId/binary>>;
                 _ ->
-                    <<"play ", Media/binary>>                                      
+                    <<"play ", Media/binary>>
             end
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"deaf">>) ->
+get_fs_app(_Node, _ConfName, JObj, <<"deaf">>) ->
     case whistle_api:conference_deaf_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference deaf failed to execute as JObj did not validate."};
 	true ->
             <<"deaf ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"undeaf">>) ->
+get_fs_app(_Node, _ConfName, JObj, <<"undeaf">>) ->
     case whistle_api:conference_undeaf_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference undeaf failed to execute as JObj did not validate."};
 	true ->
             <<"undeaf ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"mute">>) ->
+get_fs_app(_Node, _ConfName, JObj, <<"mute">>) ->
     case whistle_api:conference_mute_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference mute failed to execute as JObj did not validate."};
 	true ->
             <<"mute ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"unmute">>) ->
+get_fs_app(_Node, _ConfName, JObj, <<"unmute">>) ->
     case whistle_api:conference_unmute_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
 	true ->
             <<"unmute ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"kick">>) ->
+get_fs_app(_Node, _ConfName, JObj, <<"kick">>) ->
     case whistle_api:conference_kick_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference kick failed to execute as JObj did not validate."};
 	true ->
             <<"kick ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
-get_fs_app(_Node, _ConfName, JObj, _AmqpHost, <<"move">>) ->
+get_fs_app(_Node, _ConfName, JObj, <<"move">>) ->
     case whistle_api:conference_move_req_v(JObj) of
-	false -> 
+	false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
 	true ->
             <<"transfer ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
-get_fs_app(_Node, _UUID, _JObj, _AmqpHost, _App) ->
+get_fs_app(_Node, _UUID, _JObj, _App) ->
     format_log(error, "CONFERENCE_COMMAND(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
     {error, "Application unknown"}.
-          
+
 %%%===================================================================
 %%% Internal helper functions
 %%%===================================================================
@@ -122,17 +116,46 @@ api(Node, AppName, Args) ->
     Arg = whistle_util:to_list(Args),
     format_log(info, "CONFERENCE_COMMAND(~p): FS-API -> Node: ~p Api: ~p ~p~n", [self(), Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
-      
-members_response(Members, ConfName, CallId, ServerId, AmqpHost) ->
+
+-spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
+media_path(MediaName, UUID) ->
+    case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
+        {error, _} ->
+            MediaName;
+        Url ->
+            get_fs_playback(Url)
+    end.
+
+-spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
+get_fs_playback(Url) when byte_size(Url) >= 4 ->
+    case binary:part(Url, 0, 4) of
+        <<"http">> ->
+            <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
+        _Else ->
+            Url
+    end;
+get_fs_playback(Url) ->
+    Url.
+
+-spec(members_response/4 :: (Members :: binary(), ConfName :: binary(), CallId :: binary(), ServerId :: binary()) -> no_return()).
+members_response(Members, ConfName, CallId, ServerId) ->
+    format_log(info, "parse ~p", [Members]),
+    MemberList = try
+                     parse_members(Members)
+                 catch
+                     _:_ ->
+                         []
+                 end,
     Response = [
               {<<"Application-Name">>, <<"members">>}
-             ,{<<"Members">>, parse_members(Members)}
+             ,{<<"Members">>, MemberList}
              ,{<<"Conference-ID">>, ConfName}
              ,{<<"Call-ID">>, CallId}
              | whistle_api:default_headers("", <<"conference">>, <<"response">>, ?APP_NAME, ?APP_VERSION)
-            ],    
-    {ok, Json} = whistle_api:conference_members_resp(Response),
-    amqp_util:targeted_publish(AmqpHost, ServerId, Json, <<"application/json">>).    
+            ],
+    format_log(info, "MEMBERS RESPONSE: ~p", [Response]),
+    {ok, Payload} = whistle_api:conference_members_resp(Response),
+    amqp_util:targeted_publish(ServerId, Payload, <<"application/json">>).
 
 parse_members(Members) ->
     CSV = whistle_util:to_list(Members),
@@ -141,7 +164,7 @@ parse_members(Members) ->
                 end, [], string:tokens(CSV, "\n")).
 
 parse_member(Line) ->
-    [Id, _, CallId, CidName, CidNum, Status, VolIn, VolOut, Energy] =
+    [Id, _, CallId, CidName, CidNum, Status, VolIn, _, VolOut, Energy] =
         string:tokens(Line, ";"),
     [
       {<<"Member-ID">>, whistle_util:to_binary(Id)}

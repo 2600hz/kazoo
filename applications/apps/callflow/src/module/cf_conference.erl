@@ -12,28 +12,60 @@
 
 -export([handle/2]).
 
--define(APP_NAME, <<"cf_conference">>).
--define(APP_VERSION, <<"0.5">>).
-
 -import(props, [get_value/2, get_value/3]).
 -import(logger, [format_log/3]).
 
+-import(cf_call_command, [
+                          answer/1, b_conference/5, b_play/2, hangup/1, 
+                          b_play_and_collect_digits/6, wait_for_dtmf/1
+                         ]).
+
+-import(cf_conference_command, [
+                               b_members/2
+                              ]).
+
 -record(prompts, {
-           greeting = <<"shout://translate.google.com/translate_tts?tl=en&q=Welcome+to+the+conference!">> 
-          ,request_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Please+enter+the+conference+pin+number.">>         
-          ,alone_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=You+are+currently+the+only+participant.">>
+           greeting = <<"/system_media/conf-welcome">> 
+          ,request_pin = <<"/system_media/conf-pin">>
+          ,incorrect_pin = <<"/system_media/conf-bad-pin">>
+          ,max_pin_tries = <<"shout://translate.google.com/translate_tts?tl=en&q=You+have+reached+the+maximum+number+of+entry+attempts!+Goodbye.">>
+          ,alone_enter = <<"/system_media/conf-alone">>
           ,single_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+is+only+one+other+participant.">>
           ,multiple_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+are+~p+other+participants.">>
           ,announce_join = <<"tone_stream://%(200,0,500,600,700)">>
           ,announce_leave = <<"tone_stream://%(500,0,300,200,100,50,25)">>
+          ,muted = <<"/system_media/conf-muted">>
+          ,unmuted = <<"/system_media/conf-unmuted">>          
+          ,deaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Silenced.">>
+          ,undeaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Audiable.">>          
+         }).
+
+-record(control, {
+           mute = <<>>
+          ,unmute = <<>>     
+          ,deaf = <<>>
+          ,undeaf = <<>>
+          ,toggle_mute = <<"0">>
+          ,toggle_deaf = <<"*">>
+          ,hangup = <<"#">>
          }).
 
 -record(conf, {
            id = <<"fe306820-51c4-11e0-b8af-0800200c9a66">>
           ,members = []
-          ,member_pins=[<<"1234">>]
-          ,moderator_pins=[]
-          ,prompts=#prompts{}
+          ,member = undefined
+          ,member_pins = [<<"1234">>]
+          ,moderator_pins = [<<"9876">>]
+          ,max_pin_tries = 3
+          ,member_join_muted = <<"true">>
+          ,member_join_deaf = <<"false">>
+          ,moderator_join_muted = <<"false">>
+          ,moderator_join_deaf = <<"false">>
+          ,max_members = 0
+          ,require_moderator = <<"false">>
+          ,wait_for_moderator = <<"false">>    
+          ,prompts = #prompts{}
+          ,control = #control{} 
          }).
 
 %%--------------------------------------------------------------------
@@ -46,357 +78,296 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    Conf = members(#conf{}, Call),
+    Conf = update_members(get_conference_profile(Data), Call),
     answer(Call),
     play_conference_name(Conf, Call),
-    grant_access(Conf, Call),
-    play_conference_count(Conf, Call),
-    conference(Conf, Call),
-    wait_for_message(<<"CHANNEL_EXECUTE">>, <<"conference">>),
-    announce_join(Conf, Call),
-    wait_for_hangup(),
-    announce_leave(Conf, Call),
-    stop.
-
-play_conference_name(#conf{prompts=Prompts}, Call) ->
-    play(Prompts#prompts.greeting, Call).
-
-grant_access(#conf{prompts=Prompts} = Conf, Call) ->
-    case play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.request_pin, Call) of
-        {ok, Pin} ->
-            format_log(info, "member(~p, ~p) = ~p", [Pin, Conf#conf.member_pins, lists:member(Pin, Conf#conf.member_pins)]),
-            case lists:member(Pin, Conf#conf.member_pins) of
-                true -> ok;
-                false -> grant_access(Conf, Call)
-            end;
-        _ ->
-            grant_access(Conf, Call)
+    case check_pin(Conf, Call, 1) of
+        member ->
+            join_conference(Conf, Call, member),
+            caller_controls(Conf, Call),
+            announce_leave(Conf, Call),
+            CFPid ! {continue};
+        moderator ->
+            join_conference(Conf, Call, moderator),
+            caller_controls(Conf, Call),
+            announce_leave(Conf, Call),                
+            CFPid ! {continue};
+        stop ->
+            CFPid ! {stop}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Bridges the caller in to the conference with the intial flags
+%% defined by this conference profile
+%% @end
+%%--------------------------------------------------------------------
+-spec(join_conference/3 :: (Conf :: #conf{}, Call :: #cf_call{}, Type :: member|moderator) -> ok).
+join_conference(Conf, Call, Type) ->
+    play_conference_count(Conf, Call),
+    case Type of 
+        member ->
+            b_conference(Conf#conf.id, Conf#conf.member_join_muted, Conf#conf.member_join_deaf, <<"false">>, Call);
+        moderator ->
+            b_conference(Conf#conf.id, Conf#conf.moderator_join_muted, Conf#conf.moderator_join_deaf, <<"true">>, Call)
+    end,
+    announce_join(Conf, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Plays the conference greeting to the caller
+%% @end
+%%--------------------------------------------------------------------
+-spec(play_conference_name/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+play_conference_name(#conf{prompts=Prompts}, Call) ->
+    b_play(Prompts#prompts.greeting, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Request the conference pin number from the caller, and determines
+%% if the pin is for a member or moderator.  If the caller fails to 
+%% provide a valid pin within max_pin_tries the call is hungup
+%% @end
+%%--------------------------------------------------------------------
+-spec(check_pin/3 :: (Conf :: #conf{}, Call :: #cf_call{}, LoopCount :: integer()) -> member | moderator | stop).
+check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) when LoopCount > Conf#conf.max_pin_tries ->
+    b_play(Prompts#prompts.max_pin_tries, Call),
+    stop;
+check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) ->
+    case b_play_and_collect_digits(<<"4">>, <<"6">>, Prompts#prompts.request_pin, <<"1">>, <<"5000">>, Call) of
+        {ok, Pin} ->
+            case lists:member(Pin, Conf#conf.member_pins) of
+                true ->
+                    member;
+                false ->
+                    case lists:member(Pin, Conf#conf.moderator_pins) of
+                        true ->
+                            moderator;
+                        false -> 
+                            b_play(Prompts#prompts.incorrect_pin, Call),
+                            check_pin(Conf, Call, LoopCount+1)
+                    end
+            end;
+        {error, _} ->
+            check_pin(Conf, Call, LoopCount+1)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Plays the current conference member count prompt to the caller
+%% @end
+%%-------------------------------------------------------------------
+-spec(play_conference_count/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 play_conference_count(#conf{prompts=Prompts, members=Members}, Call) ->
     case length(Members) of 
         0 ->
-            play(Prompts#prompts.alone_enter, Call);
+            b_play(Prompts#prompts.alone_enter, Call);
         1 ->
-            play(Prompts#prompts.single_enter, Call);
+            b_play(Prompts#prompts.single_enter, Call);
         Count ->            
             Prompt = io_lib:format(whistle_util:to_list(Prompts#prompts.multiple_enter), [Count]),
-            play(whistle_util:to_binary(Prompt), Call)
-    end.
-
-announce_join(#conf{prompts=Prompts} = Conf, Call) ->
-    conference_play(Prompts#prompts.announce_join, Conf, Call).
-
-announce_leave(#conf{prompts=Prompts} = Conf, Call) ->
-    conference_play(Prompts#prompts.announce_leave, Conf, Call).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to connect to a conference
-%% @end
-%%--------------------------------------------------------------------
--spec(conference/2 :: (Conference :: #conf{}, Call :: #cf_call{}) -> ok).
-conference(#conf{id=ConfId}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
-    Command = [
-                {<<"Application-Name">>, <<"conference">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:conference_req(Command),
-    send_callctrl(Json, Call).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to mute a memeber
-%% @end
-%%--------------------------------------------------------------------
--spec(members/2 :: (Conference :: #conf{}, Call :: #cf_call{}) -> ok).
-members(#conf{id=ConfId} = Conf, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->        
-    Command = [
-                {<<"Application-Name">>, <<"members">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:conference_members_req(Command),
-    send_callctrl(Json, Call),
-    Members = case wait_for_message(<<"members">>, <<"response">>, <<"conference">>) of
-                  {ok, Response} ->
-                      get_value(<<"Members">>, Response, []);
-                  {error, _} -> 
-                      []
-              end,                               
-    Conf#conf{members=Members}.
-    
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to mute a memeber
-%% @end
-%%--------------------------------------------------------------------
--spec(conference_play/3 :: (Media :: binary(), Conference :: #conf{}, Call :: #cf_call{}) -> ok).
-conference_play(Media, #conf{id=ConfId}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
-    Command = [
-                {<<"Application-Name">>, <<"play">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Media-Name">>, Media}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:conference_play_req(Command),
-    send_callctrl(Json, Call).
-        
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to mute a memeber
-%% @end
-%%--------------------------------------------------------------------
--spec(mute_member/3 :: (MemberID :: binary(), Conference :: #conf{}, Call :: #cf_call{}) -> ok).
-mute_member(MemberId, #conf{id=ConfId}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
-    Command = [
-                {<<"Application-Name">>, <<"mute">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Member-ID">>, MemberId}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:conference_mute_req(Command),
-    send_callctrl(Json, Call).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to unmute a memeber
-%% @end
-%%--------------------------------------------------------------------
--spec(unmute_member/3 :: (MemberID :: binary(), Conference :: #conf{}, Call :: #cf_call{}) -> ok).
-unmute_member(MemberId, #conf{id=ConfId}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
-    Command = [
-                {<<"Application-Name">>, <<"unmute">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Member-ID">>, MemberId}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:conference_unmute_req(Command),
-    send_callctrl(Json, Call).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to deaf a memeber
-%% @end
-%%--------------------------------------------------------------------
--spec(deaf_member/3 :: (MemberID :: binary(), Conference :: #conf{}, Call :: #cf_call{}) -> ok).
-deaf_member(MemberId, #conf{id=ConfId}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
-    Command = [
-                {<<"Application-Name">>, <<"deaf">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Member-ID">>, MemberId}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:conference_deaf_req(Command),
-    send_callctrl(Json, Call).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to undeaf a memeber
-%% @end
-%%--------------------------------------------------------------------
--spec(undeaf_member/3 :: (MemberID :: binary(), Conference :: #conf{}, Call :: #cf_call{}) -> ok).
-undeaf_member(MemberId, #conf{id=ConfId}, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
-    Command = [
-                {<<"Application-Name">>, <<"undeaf">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Member-ID">>, MemberId}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:conference_undeaf_req(Command),
-    send_callctrl(Json, Call).
-
-
-
-
-
-
-
-
-
-
-
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to answer a call
-%% @end
-%%--------------------------------------------------------------------
-answer(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"answer">>}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:answer_req(Command),
-    send_callctrl(Json, Call).       
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generates and sends the dialplan API to answer a call
-%% @end
-%%--------------------------------------------------------------------
-play(Media, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"play">>}
-               ,{<<"Media-Name">>, Media}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:play_req(Command),
-    send_callctrl(Json, Call).
-
-play_and_collect_digit(Media, Call) ->
-    play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
-
-play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, <<"3">>, <<"3000">>, <<"silence_stream://250">>, <<"\\d+">>, [<<"#">>], Call).
-
-play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, <<"3000">>, <<"silence_stream://250">>, <<"\\d+">>, [<<"#">>], Call).
-
-play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, <<"silence_stream://250">>, <<"\\d+">>, [<<"#">>], Call).
-
-play_and_collect_digits(MinDigits, MaxDigits, Media, Restries, Timeout, MediaInvalid, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, Restries, Timeout, MediaInvalid, <<"\\d+">>, [<<"#">>], Call).
-
-play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInvalid, Regex, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInvalid, Regex, [<<"#">>], Call).
-
-play_and_collect_digits(MinDigits, MaxDigits, Media, Retries, Timeout, MediaInvalid, Regex, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"play_and_collect_digits">>}
-               ,{<<"Minimum-Digits">>, MinDigits}
-               ,{<<"Maximum-Digits">>, MaxDigits}
-               ,{<<"Timeout">>, Timeout}
-               ,{<<"Terminators">>, Terminators}
-               ,{<<"Media-Name">>, Media}
-               ,{<<"Media-Tries">>, Retries}
-               ,{<<"Failed-Media-Name">>, MediaInvalid}
-               ,{<<"Digits-Regex">>, Regex}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
-    {ok, Json} = whistle_api:play_collect_digits_req(Command),
-    send_callctrl(Json, Call),
-    case wait_for_message(<<"play_and_collect_digits">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, whistle_util:to_integer(Timeout) + 1000) of
-        {ok, Msg} ->
-            {ok, get_value(<<"Application-Response">>, Msg)};
-        _Else ->
-            {stop}
+            b_play(whistle_util:to_binary(Prompt), Call)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Generates and sends the dialplan API to answer a call
+%% Plays the conference announce_join media to the conference
 %% @end
 %%--------------------------------------------------------------------
-say(Say, Type, Call) -> 
-    say(Say, Type, <<"pronounced">>, <<"en">>, Call).
-
-say(Say, Type, Method, Call) -> 
-    say(Say, Type, Method, <<"en">>, Call).
-
-say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) -> 
-    Command = [
-                {<<"Application-Name">>, <<"say">>}
-               ,{<<"Say-Text">>, Say}
-               ,{<<"Type">>, Type}
-               ,{<<"Method">>, Method}
-               ,{<<"Language">>, Language}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Json} = whistle_api:say_req(Command),
-    send_callctrl(Json, Call).       
+-spec(announce_join/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
+announce_join(#conf{prompts=Prompts, id=ConfId}, Call) ->
+    cf_conference_command:play(Prompts#prompts.announce_join, ConfId, Call).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Low level function to consume call events, looping until a specific
-%% one occurs.  If the channel is hungup or no call events are recieved
-%% for the optional timeout period then errors are returned.
+%% Plays the conference announce_leave media to the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_message/2 :: (Name :: binary(), Application :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).            
-wait_for_message(Application) ->
-    wait_for_message(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).    
+-spec(announce_leave/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
+announce_leave(#conf{prompts=Prompts, id=ConfId}, Call) ->
+    cf_conference_command:play(Prompts#prompts.announce_leave, ConfId, Call).
 
-wait_for_message(Application, Event) ->
-    wait_for_message(Application, Event, <<"call_event">>).    
-
-wait_for_message(Application, Event, Type) ->
-    wait_for_message(Application, Event, Type, 5000).    
-
-wait_for_message(Application, Event, Type, Timeout) ->    
-    receive
-        {amqp_msg, {struct, Msg}} ->
-            format_log(info, "CF_CONFERENCE Rx ~p", [Msg]),
-            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
-                { Application, Event, Type } ->                                
-                    format_log(info, "CF_CONFERENCE FOUND ~p", [Msg]),
-                    {ok, Msg};
-                { _Name, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
-                    {error, channel_hungup};
-                _ ->
-                    wait_for_message(Application, Event, Type, Timeout)
-            end
-    after
-        Timeout ->
-            {error, timeout}
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Fetches the conference parameters from the datastore and loads the
+%% conference record
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_conference_profile/1 :: (Data :: json_object()) -> #conf{}).
+get_conference_profile(Data) ->
+    Db = whapps_json:get_value(<<"database">>, Data),
+    Id = whapps_json:get_value(<<"id">>, Data),
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            Default=#conf{},
+            #conf{         
+                 id = Id
+                ,member_pins = whapps_json:get_value([<<"base">>, <<"member-pins">>], JObj, [])
+                ,moderator_pins = whapps_json:get_value([<<"base">>, <<"moderator-pins">>], JObj, [])
+                ,member_join_muted = whapps_json:get_value([<<"base">>, <<"member-join-muted">>], JObj, Default#conf.member_join_muted)
+                ,member_join_deaf = whapps_json:get_value([<<"base">>, <<"member-join-deaf">>], JObj, Default#conf.member_join_deaf)
+                ,moderator_join_muted = whapps_json:get_value([<<"base">>, <<"moderator-join-muted">>], JObj, Default#conf.moderator_join_muted)
+                ,moderator_join_deaf = whapps_json:get_value([<<"base">>, <<"moderator-join-deaf">>], JObj, Default#conf.moderator_join_deaf)
+                ,max_members = whapps_json:get_value([<<"base">>, <<"max-members">>], JObj, Default#conf.max_members)
+                ,require_moderator = whapps_json:get_value([<<"base">>, <<"require-moderator">>], JObj, Default#conf.require_moderator)
+                ,wait_for_moderator = whapps_json:get_value([<<"base">>, <<"wait-for-moderator">>], JObj, Default#conf.wait_for_moderator)
+         };
+        _ -> 
+            #conf{}
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% When the bridge command is successfull this waits for the call to
-%% hangup
+%% Loops waiting for DTMF events and responds appropraitely to provide
+%% an individual member with conference controls
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_hangup/0 :: () -> tuple(ok, channel_hangup)).    
-wait_for_hangup() -> 
-    receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Application-Name">>, Msg) } of
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    {ok, channel_hungup};
-                _ ->
-                    wait_for_hangup()
-            end
+-spec(caller_controls/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+caller_controls(#conf{control=Control} = Conf, Call) ->
+    case wait_for_dtmf(200000) of
+        {ok, Digit} ->
+            if
+                Digit == Control#control.mute ->
+                    mute_caller(Conf, Call);
+                Digit == Control#control.unmute ->
+                    unmute_caller(Conf, Call);
+                Digit == Control#control.deaf ->
+                    deaf_caller(Conf, Call);
+                Digit == Control#control.undeaf ->
+                    undeaf_caller(Conf, Call);
+                Digit == Control#control.toggle_mute ->
+                    toggle_mute(Conf, Call);
+                Digit == Control#control.toggle_deaf ->
+                    toggle_deaf(Conf, Call);
+                Digit == Control#control.hangup ->
+                    cf_call_command:hangup(Call);
+                true -> 
+                    ok
+            end,
+            caller_controls(Conf, Call);
+        {error, timeout} ->
+            caller_controls(Conf, Call);
+        {error, channel_hungup} ->
+            ok
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Sends call commands to the appropriate call control process
+%% Mutes or unmutes the conference member belonging to Call, 
+%% depending on the current 'speak' state
 %% @end
 %%--------------------------------------------------------------------
--spec(send_callctrl/2 :: (JSON :: json_object(), Call :: #cf_call{}) -> no_return()).
-send_callctrl(Json, #cf_call{amqp_h=AHost, ctrl_q=CtrlQ}) ->
-    amqp_util:callctl_publish(AHost, CtrlQ, Json, <<"application/json">>).
+-spec(toggle_mute/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+toggle_mute(Conf, Call) ->
+    C1 = update_members(Conf, Call),
+    case binary:match(whapps_json:get_value(<<"Status">>, C1#conf.member), <<"speak">>) of
+        nomatch ->                     
+            unmute_caller(C1, Call);
+        _ ->
+            mute_caller(C1, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Deaf or undeaf the conference member belonging to Call, depending
+%% on the current 'hear' state
+%% @end
+%%--------------------------------------------------------------------
+-spec(toggle_deaf/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+toggle_deaf(Conf, Call) ->
+    C1 = update_members(Conf, Call),
+    case binary:match(whapps_json:get_value(<<"Status">>, C1#conf.member), <<"hear">>) of
+        nomatch ->                     
+            undeaf_caller(C1, Call);
+        _ ->
+            deaf_caller(C1, Call)
+    end.    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Mutes the conference member belonging to Call
+%% @end
+%%--------------------------------------------------------------------
+-spec(mute_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+mute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
+    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    cf_conference_command:mute(MemberId, ConfId, Call),
+    cf_conference_command:play(Prompts#prompts.muted, MemberId, ConfId, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Unmutes the conference member belonging to Call
+%% @end
+%%--------------------------------------------------------------------
+-spec(unmute_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+unmute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
+    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    cf_conference_command:unmute(MemberId, ConfId, Call),
+    cf_conference_command:play(Prompts#prompts.unmuted, MemberId, ConfId, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Makes the conference member belonging to Call deaf
+%% @end
+%%--------------------------------------------------------------------
+-spec(deaf_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+deaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
+    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    cf_conference_command:deaf(MemberId, ConfId, Call),
+    cf_conference_command:play(Prompts#prompts.deaf, MemberId, ConfId, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Makes the conference member belonging to Call undeaf
+%% @end
+%%--------------------------------------------------------------------
+-spec(undeaf_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+undeaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
+    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    cf_conference_command:undeaf(MemberId, ConfId, Call),
+    cf_conference_command:play(Prompts#prompts.undeaf, MemberId, ConfId, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Fetches a list of members in the conference and updates the record
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_members/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+update_members(#conf{id=ConfId} = Conf, Call) ->
+    C1 = Conf#conf{members = b_members(ConfId, Call)},
+    find_call_member(C1, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determines which conference member belongs to Call and updates
+%% the record
+%% @end
+%%-------------------------------------------------------------------
+-spec(find_call_member/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+find_call_member(Conf, #cf_call{route_request=RR}) ->
+    CallId = whapps_json:get_value(<<"Call-ID">>, RR),
+    Member = lists:foldr(fun (Member, Acc) ->
+                                 case whapps_json:get_value(<<"Call-ID">>, Member) of
+                                     CallId ->
+                                         Member;
+                                     _ ->
+                                         Acc
+                                 end
+                         end, undefined, Conf#conf.members),
+    Conf#conf{member = Member}.
