@@ -24,10 +24,15 @@
 -define(WORKER_COUNT, 10).
 -define(DEFAULT_TIMEOUT, 5000).
 
+%% every X ms, compare RequestsPer to WorkerCount
+%% If RP < WC, reduce Ws by max(WC-RP, OrigWC)
+-define(BACKOFF_PERIOD, 2500). % arbitrary at this point
+
 -record(state, {
 	  worker_count = ?WORKER_COUNT :: integer()
           ,orig_worker_count = ?WORKER_COUNT :: integer() % scale back workers after a period of time
           ,workers = queue:new() :: queue()
+          ,requests_per = 0 :: non_neg_integer()
 	 }).
 
 %%%===================================================================
@@ -112,15 +117,15 @@ init([Count]) ->
 %%--------------------------------------------------------------------
 handle_call({request, {struct, Prop}, ApiFun, PubFun}, From, State) ->
     handle_call({request, Prop, ApiFun, PubFun}, From, State);
-handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_count=WC}=State) ->
+handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_count=WC, requests_per=RP}=State) ->
     case queue:out(W) of
 	{{value, Worker}, W1} ->
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
-	    {noreply, State#state{workers=W1}};
+	    {noreply, State#state{workers=W1, requests_per=RP+1}};
 	{empty, _} ->
 	    Worker = start_worker(),
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
-	    {noreply, State#state{worker_count=WC + 1}}
+	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}}
     end.
 
 %%--------------------------------------------------------------------
@@ -149,13 +154,33 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
     Count = case WC-queue:len(Ws) of X when X < 0 -> 0; Y -> Y end,
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
+    {ok, _} = timer:send_interval(?BACKOFF_PERIOD, reduce_labor_force),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+
 handle_info({worker_free, W}, #state{workers=Ws}=State) ->
     {noreply, State#state{workers=queue:in(W, Ws)}};
+
 handle_info({'EXIT', W, Reason}, #state{workers=Ws}=State) ->
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
     logger:format_log(info, "CALL_POOL(~p): Worker ~p down: ~p~n", [self(), W, Reason]),
     {noreply, State#state{workers=queue:in(start_worker(), Ws1)}};
+
+handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC ->
+    Reduct = erlang:max(OWC, WC-RP),
+    Ws1 = lists:foldl(fun(_, Q0) ->
+			      case queue:len(Q0) =< OWC of
+				  true -> Q0;
+				  false ->
+				      {{value, W}, Q1} = queue:out(Q0),
+				      W ! shutdown,
+				      Q1
+			      end
+		      end, Ws, lists:seq(1,Reduct)),
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
+
+handle_info(reduce_labor_force, State) ->
+    {noreply, State#state{requests_per=0}};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
