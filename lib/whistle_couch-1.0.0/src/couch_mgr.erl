@@ -222,11 +222,11 @@ db_delete(DbName) ->
 %% open a document given a docid returns not_found or the Document
 %% @end
 %%--------------------------------------------------------------------
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
 open_doc(DbName, DocId, Options) ->    

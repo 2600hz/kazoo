@@ -45,7 +45,7 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
 		   "application/x-json" ++ _ ->
 		       Context#cb_context{req_json=get_json_body(RD)};
 		   _ ->
-		       extract_file(RD, Context)
+		       extract_file(RD, Context#cb_context{req_json=get_json_body(RD)})
 	       end,
 
     Verb = get_http_verb(RD, Context1#cb_context.req_json),
@@ -169,11 +169,11 @@ delete_resource(RD, Context) ->
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
-finish_request(RD, #cb_context{start=T1}=Context) ->
+finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
 
-    case Context1#cb_context.session of
+    case S of
         undefined ->
             format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
             {true, RD1, Context1};
@@ -293,12 +293,13 @@ override_verb(_, _, _) -> false.
 -spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | tuple(malformed, binary())).
 get_json_body(RD) ->
     try
+	QS = [ {whistle_util:to_binary(K), whistle_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)],
 	case wrq:req_body(RD) of
-	    <<>> -> {struct, []};
+	    <<>> -> {struct, QS};
 	    ReqBody ->
-		JSON = mochijson2:decode(ReqBody),
+		{struct, Prop} = JSON = mochijson2:decode(ReqBody),
 		case crossbar_util:is_valid_request_envelope(JSON) of
-		    true -> JSON;
+		    true -> {struct, Prop ++ QS};
 		    false -> {malformed, <<"Invalid request envelope">>}
 		end
 	end
@@ -314,6 +315,7 @@ get_json_body(RD) ->
 extract_files_and_params(RD, Context) ->
     try
 	Boundry = webmachine_multipart:find_boundary(RD),
+	logger:format_log(info, "v1: extracting files with boundry: ~p~n", [Boundry]),
 	{ReqProp, FilesProp} = get_streamed_body(
 				 webmachine_multipart:stream_parts(
 				   wrq:stream_req_body(RD, 1024), Boundry), [], []),
@@ -326,6 +328,7 @@ extract_files_and_params(RD, Context) ->
 
 -spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
 extract_file(RD, Context) ->
+    logger:format_log(info, "v1: extracting files (if any)~n", []),
     FileContents = whistle_util:to_binary(wrq:req_body(RD)),
     ContentType = wrq:get_req_header("Content-Type", RD),
     ContentSize = wrq:get_req_header("Content-Length", RD),
@@ -515,14 +518,19 @@ execute_request(RD, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_resp_content/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> iolist()).
-create_resp_content(RD, Context) ->
+create_resp_content(RD, #cb_context{req_json=ReqJson}=Context) ->
     case get_resp_type(RD) of
 	xml ->
 	    Prop = create_resp_envelope(Context),
             io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), [])]);
         json ->
 	    Prop = create_resp_envelope(Context),
-            mochijson2:encode({struct, Prop});
+            JSON = mochijson2:encode({struct, Prop}),
+	    case whapps_json:get_value(<<"jsonp">>, ReqJson) of
+		undefined -> Prop;
+		JsonFun when is_binary(JsonFun) ->
+		    [JsonFun, "(", JSON, ");"]
+	    end;
 	binary ->
 	    Context#cb_context.resp_data
     end.
