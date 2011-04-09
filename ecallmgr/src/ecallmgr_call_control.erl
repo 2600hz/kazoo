@@ -363,7 +363,7 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 
 -spec(post_hangup_commands/1 :: (CmdQ :: queue()) -> json_objects()).
 post_hangup_commands(CmdQ) ->
-    [ JObj || JObj = queue:to_list(CmdQ),
+    [ JObj || JObj <- queue:to_list(CmdQ),
 	      lists:member(whapps_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
     ].
 

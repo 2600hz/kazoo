@@ -182,6 +182,7 @@ handle_info(reduce_labor_force, State) ->
     {noreply, State#state{requests_per=0}};
 
 handle_info(_Info, State) ->
+    logger:format_log(info, "CALL_POOL(~p): Unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -196,6 +197,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    logger:format_log(error, "CALL_POOL(~p): Terminating: ~p~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -230,7 +232,7 @@ worker_free(Q) ->
 		{ok, JSON} ->
 		    Ref = erlang:monitor(process, Pid),
 		    PubFun(JSON),
-		    logger:format_log(info, "WORKER(~p): Working for ~p~n", [self(), Pid]),
+		    logger:format_log(info, "WORKER-F(~p): Working for ~p~n", [self(), Pid]),
 		    worker_busy(Q, From, Ref, Parent);
 		{error, _}=E ->
 		    gen_server:reply(From, E),
@@ -239,9 +241,9 @@ worker_free(Q) ->
 	#'basic.consume_ok'{} ->
 	    worker_free(Q);
 	shutdown ->
-	    logger:format_log(info, "WORKER(~p): Going on permanent leave~n", [self()]);
+	    logger:format_log(info, "WORKER-F(~p): Going on permanent leave~n", [self()]);
 	_Other ->
-	    logger:format_log(info, "WORKER(~p): Recv other ~p~n", [self(), _Other]),
+	    logger:format_log(info, "WORKER-F(~p): Recv other ~p~n", [self(), _Other]),
 	    worker_free(Q)
     end.
 
@@ -249,10 +251,10 @@ worker_busy(Q, From, Ref, Parent) ->
     Start = erlang:now(),
     receive
 	{_, #amqp_msg{payload = Payload}} ->
-	    logger:format_log(info, "WORKER(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
+	    logger:format_log(info, "WORKER-B(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
 	{'DOWN', Ref, process, Pid, Info} ->
-	    logger:format_log(error, "WORKER(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
+	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},
