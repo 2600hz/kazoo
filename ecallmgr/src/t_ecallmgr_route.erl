@@ -13,7 +13,7 @@
 test(Msgs) ->
     process_flag(trap_exit, true),
     {A, B, C} = erlang:now(),
-    random:seed(A, B, C),
+    _ = random:seed(A, B, C),
     Prop = [{<<"Custom-Channel-Vars">>, {struct,[{<<"Tenant-ID">>,<<"ignore">>}, {<<"Access-Group">>,<<"ignore">>}, {<<"Direction">>,<<"outbound">>}, {<<"Username">>,<<"2600pbx">>}, {<<"Realm">>,<<"2600pbx.thinky64.d-man.org">>}]}}, {<<"Caller-ID-Number">>,<<"2600pbx">>}, {<<"Caller-ID-Name">>,<<"2600pbx">>}, {<<"From">>,<<"2600pbx@2600pbx.thinky64.d-man.org">>}, {<<"To">>,<<"4158867905@2600pbx.thinky64.d-man.org">>}, {<<"Msg-ID">>,<<"7fb4977e-5af1-11e0-8f0e-ffaa63003a4e">>}, {<<"App-Version">>,<<"0.5.0">>}, {<<"App-Name">>,<<"ecallmgr.route">>}, {<<"Event-Name">>,<<"route_req">>}, {<<"Event-Category">>,<<"dialplan">>}],
     Self = self(),
     Pids = [spawn_link(fun() -> send_prop(Prop, Self) end) || _ <- lists:seq(1,Msgs)],
@@ -35,6 +35,6 @@ wait(Msgs, Left, Failed, Micro) ->
 send_prop(Prop, Parent) ->
     Start = erlang:now(),
     CallID = list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))),
-    {ok, Resp} = ecallmgr_amqp_pool:route_req([{<<"Call-ID">>,CallID} | Prop]),
+    {ok, _Resp} = ecallmgr_amqp_pool:route_req([{<<"Call-ID">>,CallID} | Prop]),
     Parent ! {done, self(), timer:now_diff(erlang:now(), Start)}.
 

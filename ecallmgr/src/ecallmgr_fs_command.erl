@@ -12,7 +12,7 @@
 
 -include("ecallmgr.hrl").
 
--spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | tuple(error, string())).
+-spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | tuple(error, string())).
 exec_cmd(Node, UUID, JObj) ->
     DestID = whapps_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of

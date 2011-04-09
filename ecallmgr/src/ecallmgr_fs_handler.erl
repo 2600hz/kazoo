@@ -270,7 +270,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes}=State) ->
-    logger:format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n~p~n", [self(), HPid, Reason, Nodes]),
+    logger:format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n", [self(), HPid, Reason]),
     NewNodes = check_down_pid(Nodes, HPid),
     {noreply, State#state{fs_nodes=NewNodes}};
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
@@ -391,7 +391,7 @@ restart_handler(Node, Options, _, undefined, StartFun) when is_function(StartFun
 	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
 	    undefined;
 	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p~n", [self(), Pid]),
+	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p for ~p~n", [self(), Pid, Node]),
 	    Pid
     end;
 restart_handler(Node, _, _, undefined, StartFun) when is_function(StartFun, 1) ->
@@ -401,7 +401,7 @@ restart_handler(Node, _, _, undefined, StartFun) when is_function(StartFun, 1) -
 	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
 	    undefined;
 	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p~n", [self(), Pid]),
+	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p for ~p~n", [self(), Pid, Node]),
 	    Pid
     end;
 restart_handler(Node, Options, HPid, HPid, StartFun) when is_function(StartFun, 2)->
@@ -410,7 +410,7 @@ restart_handler(Node, Options, HPid, HPid, StartFun) when is_function(StartFun, 
 	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
 	    undefined;
 	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
+	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p for ~p~n", [self(), HPid, Pid, Node]),
 	    Pid
     end;
 restart_handler(Node, _, HPid, HPid, StartFun) when is_function(StartFun, 1)->
@@ -419,7 +419,7 @@ restart_handler(Node, _, HPid, HPid, StartFun) when is_function(StartFun, 1)->
 	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
 	    undefined;
 	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p~n", [self(), HPid, Pid]),
+	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p for ~p~n", [self(), HPid, Pid, Node]),
 	    Pid
     end;
 restart_handler(_, _, _, Pid, _) -> Pid.

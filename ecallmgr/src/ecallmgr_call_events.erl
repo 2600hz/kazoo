@@ -302,7 +302,7 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
     end;
 send_ctl_event(_, _, _, _) -> ok.
 
--spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist()) -> no_return()).
+-spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist()) -> ok).
 publish_msg(UUID, Prop) ->
     EvtName = props:get_value(<<"Event-Name">>, Prop),
 
@@ -326,7 +326,8 @@ publish_msg(UUID, Prop) ->
 	    amqp_util:callevt_publish(UUID, JSON, event);
 	false ->
 	    logger:format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName])
-    end.
+    end,
+    ok.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
 -spec(add_amqp_listener/1 :: (CallID :: binary()) -> binary() | tuple(error, term())).
