@@ -291,9 +291,7 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
 					  transfer_acct(Acct, RDB, WDB),
 					  transfer_active_calls(Acct, RDB, WDB)
 				  end, get_accts(RDB)),
-		    couch_mgr:db_compact(RDB),
-		    stop_replication(RDB, nodes()),
-		    setup_replication(WDB, nodes())
+		    couch_mgr:db_compact(RDB)
 	   end),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
@@ -573,38 +571,6 @@ update_views(DB) ->
 		  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
-setup_replication(_, []) -> ok;
-setup_replication(LocalDB, [N | Ns]) ->
-    [_, H] = binary:split(whistle_util:to_binary(N), <<"@">>),
-    UserPass = case couch_mgr:get_creds() of
-		   {"", ""} -> "";
-		   {U, P} -> list_to_binary([U, ":", P, "@"])
-	       end,
-    Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
-
-    Res = couch_mgr:db_replicate([{<<"source">>, Source}
-				  ,{<<"target">>, whistle_util:to_binary(LocalDB)}
-				  ,{<<"continuous">>, true}
-				 ]),
-    format_log(info, "TS_ACCTMGR.setup_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
-    setup_replication(LocalDB, Ns).
-
-stop_replication(_, []) -> ok;
-stop_replication(LocalDB, [N | Ns]) ->
-    [_, H] = binary:split(whistle_util:to_binary(N), <<"@">>),
-    UserPass = case couch_mgr:get_creds() of
-		   {"", ""} -> "";
-		   {U, P} -> list_to_binary([U, ":", P, "@"])
-	       end,
-    Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
-
-    Res = couch_mgr:db_replicate([{<<"source">>, Source}
-				  ,{<<"target">>, whistle_util:to_binary(LocalDB)}
-				  ,{<<"continuous">>, true}
-				  ,{<<"cancel">>, true}
-				 ]),
-    format_log(info, "TS_ACCTMGR.stop_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
-    setup_replication(LocalDB, Ns).
 
 is_call_active(CallID) ->
     Q = amqp_util:new_targeted_queue(),
