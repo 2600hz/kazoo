@@ -47,8 +47,8 @@ set_value([Key|T], Value, [{struct, _}|_]=Doc) ->
             catch
                 %% There are no more keys in the list, add it unless not an object
                 error:badarg ->
-                    try {struct, _} = Value catch _:_ -> error(badarg) end,
-                    Doc ++ [Value]
+                    V = try {struct, _} = Value catch _:_ -> error(badarg) end,
+                    Doc ++ [V]
             end;
         %% The object index exists so iterate into the object and updat it
         false ->
@@ -69,8 +69,7 @@ set_value([Key|T], Value, {struct, Props}) ->
             %% Replace or add a member in an array in the object at this key
             {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(T, Value, V1)})};
         {Key1, _} when T == [] ->
-            %% This is the final key and the objects property should just be
-            %% replaced
+            %% This is the final key and the objects property should just be replaced
             {struct, lists:keyreplace(Key1, 1, Props, {Key1, Value})};
         {Key1, _} ->
             %% This is not the final key and the objects property should just be
@@ -98,6 +97,7 @@ set_value([], Value, _Doc) -> Value.
 -define(D3, {struct, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2]}]}).
 -define(D4, [?D1, ?D2, ?D3]).
 
+-spec(get_value_test/0 :: () -> no_return()).
 get_value_test() ->
     %% Basic first level key
     ?assertEqual(undefined, get_value(["d1k1"], [])),
