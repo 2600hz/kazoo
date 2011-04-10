@@ -20,13 +20,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
-
--record(state, {}).
 
 %%%===================================================================
 %%% API
@@ -57,10 +53,8 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (_) -> tuple(ok, #state{})).
-init([]) ->
-    bind_to_crossbar(),
-    {ok, #state{}}.
+init(_) ->
+    {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -91,7 +85,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -113,12 +106,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, Payload}, State) -
     {noreply, State};
 
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    format_log(info, "NOAUTHZ(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
+    logger:format_log(info, "NOAUTHZ(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
     Pid ! {binding_result, false, []},
     {noreply, State};
 
+handle_info(timeout, State) ->
+    bind_to_crossbar(),
+    {noreply, State};
+
 handle_info(_Info, State) ->
-    format_log(info, "NOAUTHZ(~p): unhandled info ~p~n", [self(), _Info]),
+    logger:format_log(info, "NOAUTHZ(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -149,7 +146,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
+-spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"v1_resource.start_session">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.start_session">>),
     crossbar_bindings:bind(<<"v1_resource.authorize">>).

@@ -358,11 +358,13 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec(get_all_results/2 :: (DbName :: list(), DesignDoc :: tuple(string(), string())) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(get_all_results/2 :: (DbName :: list(), DesignDoc :: binary()) ->
+				tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
--spec(get_results/3 :: (DbName :: list(), DesignDoc :: tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(get_results/3 :: (DbName :: list(), DesignDoc :: binary(), ViewOptions :: proplist()) ->
+			    tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_results(DbName, DesignDoc, ViewOptions) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
@@ -619,7 +621,7 @@ open_db(DbName, Conn) ->
 %% else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
 %% @end
 %%--------------------------------------------------------------------    
--spec(get_view/3 :: (Db :: #db{}, DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list()) -> #view{} | tuple(error, view_not_found)).
+-spec(get_view/3 :: (Db :: #db{}, DesignDoc :: binary(), ViewOptions :: list()) -> #view{} | tuple(error, view_not_found)).
 get_view(Db, DesignDoc, ViewOptions) ->
     case couchbeam:view(Db, DesignDoc, ViewOptions) of
 	{error, _Error}=E -> E;

@@ -11,9 +11,13 @@
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
 
+-include_lib("whistle/include/whistle_types.hrl").
+
+-spec(get_value/2 :: (Key :: term(), Doc :: json_object()) -> undefined | term()).
 get_value(Key, Doc) ->
     get_value(Key, Doc, undefined).
 
+-spec(get_value/3 :: (Key :: term(), Doc :: json_object(), Default :: term()) -> term()).
 get_value([], Doc, _Default) -> Doc;
 get_value(Key, Doc, Default) when not is_list(Key)->
     get_value([Key], Doc, Default);
@@ -26,8 +30,9 @@ get_value([K|Ks], Doc, Default) when is_list(Doc) ->
     end;
 get_value(_, _, Default) -> Default.
 
-
 %% Figure out how to set the current key among a list of objects
+
+-spec(set_value/3 :: (Key :: term(), Value :: term(), Doc :: json_object()) -> json_object()).
 set_value(Key, Value, Doc) when not is_list(Key) ->
     set_value([Key], Value, Doc);
 set_value([Key|T], Value, [{struct, _}|_]=Doc) ->

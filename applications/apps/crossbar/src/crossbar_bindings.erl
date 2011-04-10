@@ -76,7 +76,7 @@ map(Routing, Payload) ->
 %%--------------------------------------------------------------------
 -spec(fold/2 :: (Routing :: binary(), Payload :: term()) -> term()).
 fold(Routing, Payload) ->
-    format_log(info, "Running fold: ~p~n", [Routing]),
+    format_log(info, "Running fold: ~p~n~p~n", [Routing, Payload]),
     lists:foldl(fun({B, Ps}, Acc) ->
                        case binding_matches(B, Routing) of
                            true -> fold_bind_results(Ps, Acc, Routing);
@@ -159,6 +159,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
+    link(From),
     {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
     format_log(info, "CB_BINDING(~p): ~p binding ~p~n", [self(), From, Binding]),
@@ -214,7 +215,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
-    format_log(info, "BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
+    format_log(info, "CB_BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, remove_subscriber(Pid, Subs)} | Acc]
 		      end, [], Bs),
@@ -234,6 +235,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{bindings=Bs}) ->
+    logger:format_log(info, "CB_BINDINGS(~p): Terminating: ~p~n", [self(), _Reason]),
     lists:foreach(fun flush_binding/1, Bs),
     ok.
 

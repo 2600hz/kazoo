@@ -17,6 +17,8 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 -define(CHILD(I, Type, Args), {I, {I, start, [Args]}, permanent, 5000, Type, dynamic}).
+-define(DISPATCH_FILE, [code:lib_dir(crossbar, priv), "/dispatch.conf"]).
+-define(LOG_DIR, code:lib_dir(crossbar, log)).
 
 %% ===================================================================
 %% API functions
@@ -30,20 +32,16 @@ start_link() ->
 upgrade() ->
     {ok, {_, Specs}} = init([]),
 
-    Old = sets:from_list(
-            [Name || {Name, _, _, _} <- supervisor:which_children(?MODULE)]),
+    Old = sets:from_list([Name || {Name, _, _, _} <- supervisor:which_children(?MODULE)]),
     New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
     Kill = sets:subtract(Old, New),
 
-    sets:fold(fun (Id, ok) ->
-                      supervisor:terminate_child(?MODULE, Id),
-                      supervisor:delete_child(?MODULE, Id),
-                      ok
-              end, ok, Kill),
-
-    [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
+    lists:foreach(fun (Id) ->
+			  _ = supervisor:terminate_child(?MODULE, Id),
+			  supervisor:delete_child(?MODULE, Id)
+		  end, sets:to_list(Kill)),
+    lists:foreach(fun(Spec) -> supervisor:start_child(?MODULE, Spec) end, Specs),
     ok.
-
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -51,14 +49,11 @@ upgrade() ->
 
 init([]) ->
     Ip = case os:getenv("WEBMACHINE_IP") of false -> "0.0.0.0"; Any -> Any end,
-    {ok, Dispatch} = file:consult(filename:join(
-                         [filename:dirname(code:which(?MODULE)),
-                          "..", "priv", "dispatch.conf"])),
-    LogDir = filename:join([filename:dirname(code:which(?MODULE)), "..", "log"]),
+    {ok, Dispatch} = file:consult(?DISPATCH_FILE),
     WebConfig = [
                  {ip, Ip},
                  {port, 8000},
-                 {log_dir, LogDir},
+                 {log_dir, ?LOG_DIR},
                  {dispatch, Dispatch}],
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
     ModuleSup = ?CHILD(crossbar_module_sup, supervisor),

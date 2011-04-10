@@ -38,6 +38,8 @@ prop_to_e164() ->
 		end
 	    end).
 
+%% end up with 8001234567 from 1NPAN and E.164
+-spec(to_npannxxxxxx/1 :: (NPAN :: binary()) -> binary()).
 to_npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
 to_npanxxxxxx(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
@@ -46,6 +48,18 @@ to_npanxxxxxx(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
     NPAN;
 to_npanxxxxxx(Other) ->
     Other.
+
+prop_to_npanxxxxxx() ->
+    ?FORALL(Number, list(range(0,9)),
+	    begin
+		BinNum = list_to_binary(Number),
+		NPAN = to_npanxxxxxx(BinNum),
+		case {length(Number), BinNum} of
+		    {11, <<_, N/binary>>} -> N =:= NPAN;
+		    {10, _} -> NPAN =:= BinNum;
+		    _ -> NPAN =:= BinNum
+		end
+	    end).
 
 to_1npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     <<$1, N/bitstring>>;

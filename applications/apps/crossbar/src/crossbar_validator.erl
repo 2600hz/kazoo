@@ -25,10 +25,10 @@
 %% data
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Schema :: couch_schema(), Data :: proplist()) -> [] | list(json_object())).
-validate(Schema, Data) ->
+-spec(validate/2 :: (Schema :: couch_schema(), JObj :: mochijson()) -> json_objects()).
+validate(Schema, JObj) ->
     lists:foldl(fun({Path, Rules}, Results) ->
-			check(Rules, Path, Data, Results)
+			check(Rules, Path, JObj, Results)
 		end, [], Schema).
 
 %%--------------------------------------------------------------------
@@ -39,9 +39,9 @@ validate(Schema, Data) ->
 %% the parameters provided to each
 %% @end
 %%--------------------------------------------------------------------
--spec(check/4 :: (Rules :: validator_rules(), Path :: [binary()] | binary(), Data :: proplist(), Acc0 :: list(json_object())) -> [] | list(json_object())).
-check(Rules, Path, Data, Acc0) ->
-    Value = whapps_json:get_value(Path, {struct, Data}),
+-spec(check/4 :: (Rules :: validator_rules(), Path :: [binary()] | binary(), JObj :: mochijson(), Acc0 :: json_objects()) -> json_objects()).
+check(Rules, Path, JObj, Acc0) ->
+    Value = whapps_json:get_value(Path, JObj),
     lists:foldl(fun({Validator, Params}, Results) ->
 			case apply(?MODULE, Validator, [Value] ++ Params) of
 			    true ->

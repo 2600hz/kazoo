@@ -797,7 +797,7 @@ handle_error(BadPid, Reason, Pids) ->
     lists:foreach(fun (Pid) ->
 			  error_cleanup(Pid, BadPid)
 		  end, Pids),
-    exit(Reason).
+    Reason.
 
 error_cleanup(BadPid, BadPid) ->
     ok;
