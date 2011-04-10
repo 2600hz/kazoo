@@ -39,7 +39,7 @@ prop_to_e164() ->
 	    end).
 
 %% end up with 8001234567 from 1NPAN and E.164
--spec(to_npannxxxxxx/1 :: (NPAN :: binary()) -> binary()).
+-spec(to_npanxxxxxx/1 :: (NPAN :: binary()) -> binary()).
 to_npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
 to_npanxxxxxx(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
