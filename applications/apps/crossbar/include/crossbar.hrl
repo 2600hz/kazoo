@@ -43,7 +43,7 @@
 	  ,req_files = [] :: list(tuple(binary(), json_object())) | []
           ,req_data = [] :: mochijson()
           ,account_id = undefined :: binary() | undefined
-          ,db_name = undefined :: string() | undefined
+          ,db_name = undefined :: binary() | string() | undefined
           ,doc = undefined :: json_object() | json_objects() | undefined
           ,resp_expires = {{1999,1,1},{0,0,0}}
           ,resp_etag = undefined :: undefined | automatic | string()

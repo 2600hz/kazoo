@@ -20,17 +20,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/users.json">>).
-
--define(USERS_LIST, {"users","listing_by_id"}).
-
--record(state, {}).
+-define(USERS_LIST, <<"users/listing_by_id">>).
 
 %%%===================================================================
 %%% API
@@ -61,11 +56,8 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (_) -> tuple(ok, #state{})).
-init([]) ->
-    bind_to_crossbar(),
-    accounts:update_all_accounts(?VIEW_FILE),
-    {ok, #state{}}.
+init(_) ->
+    {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,6 +151,11 @@ handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
+handle_info(timeout, State) ->
+    bind_to_crossbar(),
+    accounts:update_all_accounts(?VIEW_FILE),
+    {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -197,13 +194,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
+-spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.#.users">>),
-    _ = crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -249,7 +246,7 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_user_summary([], Context);
+    load_user_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_user(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
@@ -268,14 +265,9 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_user_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
-load_user_summary([], Context) ->
-    crossbar_doc:load_view(?USERS_LIST, [], Context, fun normalize_view_results/2);
-load_user_summary(DocId, Context) ->
-    crossbar_doc:load_view(?USERS_LIST, [
-         {<<"startkey">>, [DocId]}
-        ,{<<"endkey">>, [DocId, {struct, []}]}
-    ], Context, fun normalize_view_results/2).
+-spec(load_user_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_user_summary(Context) ->
+    crossbar_doc:load_view(?USERS_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -338,11 +330,11 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc({struct, Data}) ->
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
+is_valid_doc(JObj) ->
     Schema = [
-               {["base", "first_name"], [{not_empty, []}, {is_format, [phrase]}]}
-              ,{["base", "last_name"], [{not_empty, []}, {is_format, [phrase]}]}
+               {[<<"base">>, <<"first_name">>], [{not_empty, []}, {is_format, [phrase]}]}
+              ,{[<<"base">>, <<"last_name">>], [{not_empty, []}, {is_format, [phrase]}]}
              ],
-    Failed = crossbar_validator:validate(Schema, Data),
+    Failed = crossbar_validator:validate(Schema, JObj),
     {Failed =:= [], Failed}.

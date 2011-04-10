@@ -20,22 +20,18 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(ACCOUNTS_DB, "crossbar%2Faccounts").
+-define(ACCOUNTS_DB, <<"crossbar%2Faccounts">>).
 
 -define(VIEW_FILE, <<"views/accounts.json">>).
 
--define(VIEW_LIST, {"accounts", "listing"}).
--define(VIEW_PARENT, {"accounts", "parent"}).
--define(VIEW_CHILDREN, {"accounts", "children"}).
--define(VIEW_DESCENDANTS, {"accounts", "descendants"}).
-
--record(state, {}).
+-define(VIEW_LIST, <<"accounts/listing">>).
+-define(VIEW_PARENT, <<"accounts/parent">>).
+-define(VIEW_CHILDREN, <<"accounts/children">>).
+-define(VIEW_DESCENDANTS, <<"accounts/descendants">>).
 
 %%%===================================================================
 %%% API
@@ -59,19 +55,18 @@ start_link() ->
 %% @spec update_all_accounts() -> ok | error
 %% @end
 %%--------------------------------------------------------------------
--spec(update_all_accounts/1 :: (File :: list() | binary()) -> ok | error).
+-spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
 update_all_accounts(File) ->
     case crossbar_doc:load_view(?VIEW_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
-            lists:foreach(fun(Account) ->                                  
-                                  DbName = get_db_name(whapps_json:get_value(["id"], Account)),
-                                  case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
-                                      {error, not_found} ->
-                                          couch_mgr:load_doc_from_file(DbName, crossbar, File);
+	    lists:foreach(fun(Account) ->
+				  DbName = get_db_name(whapps_json:get_value(["id"], Account)),
+				  case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
+				      {error, _} ->
+					  couch_mgr:load_doc_from_file(DbName, crossbar, File);
 				      {ok, _} -> ok
-                                  end
-                          end, Doc),
-	    ok;
+				  end
+			  end, Doc);
         _Else ->
             error
     end.
@@ -85,7 +80,7 @@ replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
 			     ,{<<"filter">>, FilterDoc}
 			    ],
 
-            lists:foreach(fun(Account) ->                                  
+            lists:foreach(fun(Account) ->
                                   DbName = get_db_name(whapps_json:get_value(["id"], Account)),
 				  couch_mgr:db_replicate([{<<"source">>, DbName} | BaseReplicate])
                           end, Doc),
@@ -94,8 +89,8 @@ replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
             error
     end.
 
--spec(replicate_from_account/3 :: (SourceDB :: binary(), TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
-replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) ->
+-spec(replicate_from_account/3 :: (SourceDB :: binary(), TargetDB :: binary(), FilterDoc :: binary()) -> no_return()).
+replicate_from_account(SourceDB, TargetDB, FilterDoc) ->
     BaseReplicate = [{<<"source">>, get_db_name(SourceDB)}
 		     ,{<<"target">>, TargetDB}
 		     ,{<<"filter">>, FilterDoc}
@@ -117,12 +112,8 @@ replicate_from_account(SourceDB, TargetDB, FilterDoc) when is_binary(FilterDoc) 
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (_) -> tuple(ok, #state{})).
-init([]) ->
-    couch_mgr:db_create(?ACCOUNTS_DB),
-    bind_to_crossbar(),
-    crossbar_doc:load_from_file(?ACCOUNTS_DB, ?VIEW_FILE),
-    {ok, #state{}}.
+init(_) ->
+    {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -139,8 +130,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -161,7 +151,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %%
 %% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} | 
+%%                                   {noreply, State, Timeout} |
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
@@ -186,8 +176,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_c
     {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                Context1 = load_account_db(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+		      Context1 = load_account_db(Params, Context),
+		      Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [_, <<"parent">>]=Params]}, State) ->
@@ -210,21 +200,24 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   case crossbar_doc:save(Context) of
-                      #cb_context{resp_status=success, doc=Doc}=Context1 ->
+                      #cb_context{resp_status=success, doc=Doc, resp_headers=RHs}=Context1 ->
                           DbName = get_db_name(Doc),
                           case couch_mgr:db_create(DbName) of
                               false ->
-                                  format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), get_db_name(Doc)]),
-                                  crossbar_doc:delete(Context1),
-                                  Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
+                                  logger:format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), DbName]),
+                                  Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(crossbar_doc:delete(Context1)), Params]};
                               true ->
-                                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                                  Responses = crossbar_bindings:map(<<"account.created">>, Context1),                                  
-                                  lists:foreach(fun({true, File}) ->                                         
+				  logger:format_log(info, "ACCOUNTS(~p): Created DB ~p~n", [self(), get_db_name(DbName, raw)]),
+                                  Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]
+											,resp_headers=[{"Location", get_db_name(DbName, raw)} | RHs]
+										       }, Params]},
+                                  Responses = crossbar_bindings:map(<<"account.created">>, Context1),
+                                  lists:foreach(fun({true, File}) ->
                                                         couch_mgr:load_doc_from_file(DbName, crossbar, File)
                                                 end, crossbar_bindings:succeeded(Responses))
                           end;
                       Else ->
+			  logger:format_log(info, "ACCTS(~p): Other PUT resp: ~p: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
 	  end),
@@ -245,8 +238,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
+
+handle_info(timeout, State) ->
+    couch_mgr:db_create(?ACCOUNTS_DB),
+    bind_to_crossbar(),
+    crossbar_doc:load_from_file(?ACCOUNTS_DB, ?VIEW_FILE),
+    {noreply, State};
+
 handle_info(_Info, State) ->
-    format_log(info, "ACCOUNTS(~p): unhandled info ~p~n", [self(), _Info]),
+    logger:format_log(info, "ACCOUNTS(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -284,12 +284,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
+-spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.accounts">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.accounts">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.accounts">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -400,6 +400,7 @@ create_account(#cb_context{req_data=Data}=Context) ->
 	      ,resp_status=success
 	     }
     end.
+		
 
 %%--------------------------------------------------------------------
 %% @private
@@ -458,8 +459,8 @@ load_parent(DocId, Context) ->
 -spec(update_parent/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_parent(DocId, #cb_context{req_data=Data}=Context) ->
     case is_valid_parent(Data) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             %% OMGBBQ! NO CHECKS FOR CYCLIC REFERENCES WATCH OUT!
             ParentId = props:get_value(<<"parent">>, element(2, Data)),
@@ -541,10 +542,8 @@ is_valid_parent(_JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(undefined) ->
-    {false, []};
-is_valid_doc({struct, Data}) ->
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
+is_valid_doc(JObj) ->
     Schema = [
 	   { [<<"base">>, <<"name">>]
 	    ,[ {not_empty, []}
@@ -555,7 +554,7 @@ is_valid_doc({struct, Data}) ->
 		%,{in_list, [{<<"enabled">>, <<"disabled">>}]}
 	       ]}
 	  ],
-    Failed = crossbar_validator:validate(Schema, Data),
+    Failed = crossbar_validator:validate(Schema, JObj),
     {Failed =:= [], Failed}.
 
 
@@ -605,8 +604,7 @@ update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
                     [] -> [];
                     List -> lists:nthtail(1,List)
                 end,
-            NewTree = lists:filter(fun(E) -> E =/= DocId end, ParentTree ++ SubTree),
-            [whapps_json:set_value(<<"pvt_tree">>, NewTree, Doc) | Acc];
+            [whapps_json:set_value(<<"pvt_tree">>, [E || E <- ParentTree ++ SubTree, E =/= DocId], Doc) | Acc];
         _Else ->
             Acc
     end;
@@ -624,7 +622,7 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 set_private_fields(JObj) ->
     JObj1 = whapps_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
     whapps_json:set_value(<<"pvt_tree">>, [], JObj1).
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -632,31 +630,33 @@ set_private_fields(JObj) ->
 %% the name of the account database
 %% @end
 %%--------------------------------------------------------------------
--spec(get_db_name/1 :: (DocId :: list(binary()) | json_object()) -> undefined | binary()).
+-spec(get_db_name/1 :: (DocId :: list(binary()) | json_object() | binary()) -> binary()).
 get_db_name(Doc) -> get_db_name(Doc, encoded).
 
--spec(get_db_name/2 :: (DocId :: list(binary()) | json_object(), Encoded :: unencoded | encoded) -> undefined | binary()).
+-spec(get_db_name/2 :: (DocId :: list(binary()) | binary() | json_object(), Encoded :: unencoded | encoded | raw) -> binary()).
 get_db_name({struct, _}=Doc, Encoded) ->
     get_db_name([whapps_json:get_value(["_id"], Doc)], Encoded);
 get_db_name([DocId], Encoded) when is_binary(DocId) ->
     get_db_name(DocId, Encoded);
-get_db_name("crossbar%2fclients" ++ _ = DocId, encoded) ->
+get_db_name("crossbar%2Fclients" ++ _ = DocId, encoded) ->
     DocId;
 get_db_name(DocId, encoded) when is_binary(DocId) ->
     [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
-    Db = ["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest],
-    whistle_util:to_binary(Db);
-get_db_name(DocId, unencoded) when is_binary(DocId) ->
-    case binary:longest_common_prefix([<<"crossbar%2Fclients%2F">>, DocId]) of
-	0 ->
-	    Id = whistle_util:to_list(DocId),
-	    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
-	    whistle_util:to_binary(Db);
-	_ ->
-	    whistle_util:to_binary(mochiweb_util:unquote(DocId))
-    end;
-get_db_name(_, _) ->
-    undefined.
+    whistle_util:to_binary(["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
+%% get_db_name(DocId, unencoded) when is_binary(DocId) ->
+%%     case binary:longest_common_prefix([<<"crossbar%2Fclients%2F">>, DocId]) of
+%% 	0 ->
+%% 	    Id = whistle_util:to_list(DocId),
+%% 	    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
+%% 	    whistle_util:to_binary(Db);
+%% 	_ ->
+%% 	    whistle_util:to_binary(mochiweb_util:unquote(DocId))
+%%     end;
+get_db_name(<<"crossbar%2Fclients%2F", DocId/binary>>, raw) ->
+    binary:replace(DocId, <<"%2F">>, <<>>, [global]);
+get_db_name(<<"crossbar/clients/", DocId/binary>>, raw) ->
+    binary:replace(DocId, <<"/">>, <<>>, [global]).
+
 
 %%--------------------------------------------------------------------
 %% @private

@@ -9,13 +9,14 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, upgrade/0, start_mod/2, stop_mod/1]).
+-export([start_link/0, upgrade/0, start_mod/1, start_mod/2, stop_mod/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type, Args), {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
+-define(CONF_FILE, [code:lib_dir(crossbar, priv), "/crossbar.conf"]).
 
 %% ===================================================================
 %% API functions
@@ -24,17 +25,16 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec(start_mod/2 :: (Mod :: atom, Args :: list(term())) -> no_return()).
+-spec(start_mod/1 :: (Mod :: atom()) -> no_return()).
+start_mod(Mod) -> start_mod(Mod, []).
+
+-spec(start_mod/2 :: (Mod :: atom(), Args :: list(term())) -> no_return()).
 start_mod(Mod, Args) ->
-    supervisor:start_child(?MODULE, ?CHILD(Mod, worker, Args)),
-    case erlang:function_exported(Mod, dispatch_config, 0) of
-	true -> webmachine_router:add_route(Mod:dispatch_config());
-	_ -> ok
-    end.
+    supervisor:start_child(?MODULE, ?CHILD(Mod, worker, Args)).
 
 -spec(stop_mod/1 :: (Mod :: atom()) -> no_return()).
 stop_mod(Mod) ->
-    supervisor:terminate_child(?MODULE, Mod),
+    _ = supervisor:terminate_child(?MODULE, Mod),
     supervisor:delete_child(?MODULE, Mod).
 
 %% @spec upgrade() -> ok
@@ -47,13 +47,12 @@ upgrade() ->
     New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
     Kill = sets:subtract(Old, New),
 
-    sets:fold(fun (Id, ok) ->
-                      supervisor:terminate_child(?MODULE, Id),
-                      supervisor:delete_child(?MODULE, Id),
-                      ok
-              end, ok, Kill),
+    lists:foreach(fun(Id) ->
+			  _ = supervisor:terminate_child(?MODULE, Id),
+			  supervisor:delete_child(?MODULE, Id)
+		  end, sets:to_list(Kill)),
 
-    [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
+    lists:foreach(fun(Spec) -> supervisor:start_child(?MODULE, Spec) end, Specs),
     ok.
 
 
@@ -62,9 +61,7 @@ upgrade() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, Startup} = file:consult(filename:join(
-				    [filename:dirname(code:which(?MODULE)),
-				     "..", "priv", "crossbar.conf"])),
+    {ok, Startup} = file:consult(?CONF_FILE),
     {ok, { {one_for_one, 10, 10}
-	   , lists:map(fun(M) -> ?CHILD(M, worker, []) end, props:get_value(autoload_modules, Startup, []))
+	   ,[ ?CHILD(M, worker, []) || M <- props:get_value(autoload_modules, Startup, []) ]
 	 } }.

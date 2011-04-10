@@ -17,17 +17,13 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(VIEW_FILE, "views/callflows.json").
+-define(VIEW_FILE, <<"views/callflows.json">>).
 -define(AGG_DB, <<"callflows">>).
 -define(AGG_FILTER, <<"callflows/export">>).
--define(CALLFLOWS_LIST, {"callflows", "listing_by_id"}).
-
--record (state, { }).
+-define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
 
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
@@ -42,7 +38,7 @@
 % @end
 %------------------------------------------------------------------------------
 -spec ( start_link/0 :: ( ) -> tuple(ok, Pid :: pid()) | ignore | tuple(error, Error :: term()) ).
-start_link ( ) -> 
+start_link ( ) ->
     gen_server:start_link( {local, ?SERVER}, ?MODULE, [], [] ).
 
 %%-----------------------------------------------------------------------------
@@ -57,11 +53,8 @@ start_link ( ) ->
 %
 % @end
 %------------------------------------------------------------------------------
-init ([]) -> 
-    accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),    
-    bind_to_crossbar(),     
-    { ok, #state{} }.
+init(_) ->
+    {ok, ok, 0}.
 
 %------------------------------------------------------------------------------
 % @private
@@ -130,8 +123,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD
                   aggregate_changes(Context1)
 	  end),
     {noreply, State};
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
+    {noreply, State};
+handle_info(timeout, State) ->
+    accounts:update_all_accounts(?VIEW_FILE),
+    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
+    bind_to_crossbar(),
     {noreply, State};
 handle_info (_Info, State) ->
    {noreply, State}.
@@ -145,7 +143,7 @@ handle_info (_Info, State) ->
 %
 % @end
 %------------------------------------------------------------------------------
-terminate(_Reason, _State) -> 
+terminate(_Reason, _State) ->
     ok.
 
 %------------------------------------------------------------------------------
@@ -155,7 +153,7 @@ terminate(_Reason, _State) ->
 %
 % @end
 %------------------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) -> 
+code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%-----------------------------------------------------------------------------
@@ -171,13 +169,13 @@ code_change(_OldVsn, State, _Extra) ->
 %
 % @end
 %------------------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> none()).
+-spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.callflows">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.callflows">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.callflows">>),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.#.callflows">>),
-    _ = crossbar_bindings:bind(<<"account.created">>).    
+    crossbar_bindings:bind(<<"account.created">>).
 
 %------------------------------------------------------------------------------
 % @private
@@ -186,7 +184,7 @@ bind_to_crossbar() ->
 %
 % @end
 %------------------------------------------------------------------------------
--spec (allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec (allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), list(atom()) | [])).
 allowed_methods([]) ->
    { true, ['PUT', 'GET'] };                    % PUT - create new callflow
                                                 % GET - call flow collection
@@ -194,7 +192,7 @@ allowed_methods([_]) ->
    { true, ['GET', 'POST', 'DELETE'] };         % GET    - retrieve callflow
                                                 % POST   - update callflow
                                                 % DELETE - delete callflow
-allowed_methods(_) -> 
+allowed_methods(_) ->
     { false, [] }.
 
 %%--------------------------------------------------------------------
@@ -224,7 +222,7 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_callflow_summary([], Context);
+    load_callflow_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_callflow(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
@@ -243,14 +241,9 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_callflow_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
-load_callflow_summary([], Context) ->
-    crossbar_doc:load_view(?CALLFLOWS_LIST, [], Context, fun normalize_view_results/2);
-load_callflow_summary(DocId, Context) ->
-    crossbar_doc:load_view(?CALLFLOWS_LIST, [
-         {<<"startkey">>, [DocId]}
-        ,{<<"endkey">>, [DocId, {struct, []}]}
-    ], Context, fun normalize_view_results/2).
+-spec(load_callflow_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_callflow_summary(Context) ->
+    crossbar_doc:load_view(?CALLFLOWS_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,8 +254,8 @@ load_callflow_summary(DocId, Context) ->
 -spec(create_callflow/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_callflow(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             JObj1 = whapps_json:set_value(<<"account">>, whistle_util:to_binary(AccountId), JObj),
             Context#cb_context{
@@ -291,8 +284,8 @@ load_callflow(DocId, Context) ->
 -spec(update_callflow/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_callflow(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -305,7 +298,7 @@ update_callflow(DocId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].    
+    [whapps_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,7 +306,7 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, [])). %% tuple(boolean(), json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
 
@@ -323,7 +316,7 @@ is_valid_doc(_JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(aggregate_changes/1 :: (Context :: #cb_context{}) -> pid()).                                   
+-spec(aggregate_changes/1 :: (Context :: #cb_context{}) -> pid()).
 aggregate_changes(#cb_context{db_name=Db}) ->
     spawn(fun() ->
                   accounts:replicate_from_account(Db, ?AGG_DB, ?AGG_FILTER)

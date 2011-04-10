@@ -27,10 +27,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/conferences.json">>).
-
--define(CONFERENCES_LIST, {"conferences", "listing_by_id"}).
-
--record(state, {}).
+-define(CONFERENCES_LIST, <<"conferences/listing_by_id">>).
 
 %%%===================================================================
 %%% API
@@ -61,11 +58,8 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (_) -> tuple(ok, #state{})).
-init([]) ->
-    bind_to_crossbar(),
-    accounts:update_all_accounts(?VIEW_FILE),
-    {ok, #state{}}.
+init(_) ->
+    {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,6 +153,11 @@ handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
+handle_info(timeout, State) ->
+    bind_to_crossbar(),
+    accounts:update_all_accounts(?VIEW_FILE),
+    {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -197,13 +196,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
+-spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.conferences">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.conferences">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.conferences">>),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.#.conferences">>),
-    _ = crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -249,7 +248,7 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_conference_summary([], Context);
+    load_conference_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_conference(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
@@ -268,15 +267,9 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_conference_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
-load_conference_summary([], Context) ->
-    crossbar_doc:load_view(?CONFERENCES_LIST, [], Context, fun normalize_view_results/2);
-load_conference_summary(DocId, Context) ->
-    crossbar_doc:load_view(?CONFERENCES_LIST, [
-         {<<"startkey">>, [DocId]}
-        ,{<<"endkey">>, [DocId, {struct, []}]}
-    ], Context, fun normalize_view_results/2).
-
+-spec(load_conference_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_conference_summary(Context) ->
+    crossbar_doc:load_view(?CONFERENCES_LIST, [], Context, fun normalize_view_results/2).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -286,13 +279,13 @@ load_conference_summary(DocId, Context) ->
 -spec(create_conference/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_conference(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
+        {true, _} ->
             Context#cb_context{
-                 doc=whapps_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
-                ,resp_status=success
-            }
+	      doc=whapps_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
+	      ,resp_status=success
+	     }
     end.
 
 %%--------------------------------------------------------------------
@@ -315,8 +308,8 @@ load_conference(DocId, Context) ->
 -spec(update_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -337,10 +330,6 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc({struct, Data}) ->
-    Schema = [
-               {["base", "name"], [{not_empty, []}]}
-             ],
-    Failed = crossbar_validator:validate(Schema, Data),
-    {Failed =:= [], Failed}.
+-spec(is_valid_doc/1 :: (Data :: mochijson()) -> tuple(true, [])).
+is_valid_doc(Data) ->
+    {true, []}.

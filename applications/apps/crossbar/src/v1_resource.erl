@@ -18,8 +18,6 @@
 -export([expires/2, generate_etag/2]).
 -export([process_post/2, delete_resource/2]).
 
--import(logger, [format_log/3]).
-
 -include("crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
 
@@ -80,7 +78,7 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
     Event = <<"v1_resource.start_session">>,
     S = crossbar_bindings:fold(Event, S0),
     {true, RD, Context#cb_context{session=S}}.
-    
+
 forbidden(RD, Context) ->
     case is_authentic(RD, Context) of
         true ->
@@ -116,7 +114,7 @@ content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
 				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
 				   Context01
 			   end, Context, Nouns),
-    format_log(info, "v1: ctp: req: ~p Pro: ~p~n", [wrq:get_req_header("Accept", RD), Context1#cb_context.content_types_provided]),
+    logger:format_log(info, "v1: ctp: req: ~p Pro: ~p~n", [wrq:get_req_header("Accept", RD), Context1#cb_context.content_types_provided]),
     CTP = lists:foldr(fun({Fun, L}, Acc) ->
 			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
 		      end, [], Context1#cb_context.content_types_provided),
@@ -129,7 +127,7 @@ content_types_accepted(RD, #cb_context{req_nouns=Nouns}=Context) ->
 				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
 				   Context01
 			   end, Context, Nouns),
-    format_log(info, "v1: cta: req: ~p Acc: ~p~n", [wrq:get_req_header("Content-Type", RD), Context1#cb_context.content_types_accepted]),
+    logger:format_log(info, "v1: cta: req: ~p Acc: ~p~n", [wrq:get_req_header("Content-Type", RD), Context1#cb_context.content_types_accepted]),
     CTA = lists:foldr(fun({Fun, L}, Acc) ->
 			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
 		      end, [], Context1#cb_context.content_types_accepted),
@@ -137,9 +135,9 @@ content_types_accepted(RD, #cb_context{req_nouns=Nouns}=Context) ->
 
 generate_etag(RD, Context) ->
     Event = <<"v1_resource.etag">>,
-    format_log(info, "~p: ~p~n", [Event, Context#cb_context.resp_etag]),
+    logger:format_log(info, "~p: ~p~n", [Event, Context#cb_context.resp_etag]),
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
-    format_log(info, "~p: after: ~p~n", [Event, Context1#cb_context.resp_etag]),
+    logger:format_log(info, "~p: after: ~p~n", [Event, Context1#cb_context.resp_etag]),
     case Context1#cb_context.resp_etag of
         automatic ->
             RespContent = create_resp_content(RD, Context1),
@@ -152,7 +150,7 @@ generate_etag(RD, Context) ->
 
 encodings_provided(RD, Context) ->
     { [ {"identity", fun(X) -> X end} ]
-      %%,{"gzip", fun(X) -> zlib:gzip(X) end}] % 
+      %%,{"gzip", fun(X) -> zlib:gzip(X) end}] %
       ,RD, Context}.
 
 expires(RD, #cb_context{resp_expires=Expires}=Context) ->
@@ -175,10 +173,10 @@ finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
 
     case S of
         undefined ->
-            format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+            logger:format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
             {true, RD1, Context1};
         #session{}=S ->
-            format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
+            logger:format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
             {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}
     end.
 
@@ -211,21 +209,21 @@ from_binary(RD, Context) ->
 -spec(to_json/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_json(RD, Context) ->
     Event = <<"v1_resource.to_json">>,
-    format_log(info, "~p~n", [Event]),
+    logger:format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 -spec(to_xml/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_xml(RD, Context) ->
     Event = <<"v1_resource.to_xml">>,
-    format_log(info, "~p~n", [Event]),
+    logger:format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 -spec(to_binary/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_binary(RD, Context) ->
     Event = <<"v1_resource.to_binary">>,
-    format_log(info, "~p~n", [Event]),
+    logger:format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
 
     {Context#cb_context.resp_data, set_resp_headers(RD, Context), Context}.
@@ -307,7 +305,7 @@ get_json_body(RD) ->
 	_:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
 	    {malformed, list_to_binary(["Failed to decode: comma error around char ", whistle_util:to_list(S)])};
 	_:E ->
-	    format_log(error, "v1_resource: failed to convert to json(~p)~n", [E]),
+	    logger:format_log(error, "v1_resource: failed to convert to json(~p)~n", [E]),
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
 
@@ -322,7 +320,7 @@ extract_files_and_params(RD, Context) ->
 	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
     catch
 	A:B ->
-	    format_log(error, "v1.extract_files_and_params: exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+	    logger:format_log(error, "v1.extract_files_and_params: exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
 	    Context
     end.
 
@@ -494,19 +492,14 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
-	    format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+	    logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             Content = create_resp_content(RD1, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
-	    format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
-            case Verb of
-                <<"put">> ->
-                    {false, RD1, Context1};
-                _ ->
-                    {true, RD1, Context1}
-            end
+	    logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+	    {Verb =/= <<"put">>, RD1, Context1}
     end;
 execute_request(RD, Context) ->
     {false, RD, Context}.
@@ -527,7 +520,7 @@ create_resp_content(RD, #cb_context{req_json=ReqJson}=Context) ->
 	    Prop = create_resp_envelope(Context),
             JSON = mochijson2:encode({struct, Prop}),
 	    case whapps_json:get_value(<<"jsonp">>, ReqJson) of
-		undefined -> Prop;
+		undefined -> JSON;
 		JsonFun when is_binary(JsonFun) ->
 		    [JsonFun, "(", JSON, ");"]
 	    end;
@@ -585,8 +578,9 @@ succeeded(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(set_resp_headers/2 :: (RD0 :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
+set_resp_headers(RD0, #cb_context{resp_headers=[]}) -> RD0;
 set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
-    format_log(info, "v1.set_resp_headers: ~p~n", [Headers]),
+    logger:format_log(info, "v1.set_resp_headers: ~p~n", [Headers]),
     lists:foldl(fun({Header, Value}, RD) ->
 			{H, V} = fix_header(RD, Header, Value),
 			wrq:set_resp_header(H, V, wrq:remove_resp_header(H, RD))
@@ -605,7 +599,7 @@ fix_header(RD, "Location"=H, Url) ->
     PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
     UrlTokens = string:tokens(whistle_util:to_list(Url), "/"),
 
-    Url1 = 
+    Url1 =
 	string:join(
 	  lists:reverse(
 	    lists:foldl(fun("..", []) -> [];
@@ -618,8 +612,6 @@ fix_header(RD, "Location"=H, Url) ->
     {H, lists:concat([Host | [Url1]])};
 fix_header(_, H, V) ->
     {whistle_util:to_list(H), whistle_util:to_list(V)}.
-
-    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -672,7 +664,6 @@ create_resp_envelope(C) ->
 %%--------------------------------------------------------------------
 -spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml|binary).
 get_resp_type(RD) ->
-    format_log(info, "Resp Header: ~p~n", [wrq:get_resp_header("Content-Type",RD)]),
     case wrq:get_resp_header("Content-Type", RD) of
         "application/xml" -> xml;
         "application/json" -> json;

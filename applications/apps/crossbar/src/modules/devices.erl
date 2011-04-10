@@ -26,12 +26,10 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_FILE, <<"views/devices.json">>).
--define(DEVICES_LIST, {"devices", "listing_by_id"}).
+-define(DEVICES_LIST, <<"devices/listing_by_id">>).
 
 -define(SIP_CREDS_DB, <<"sip_auth">>).
 -define(SIP_FILTER, <<"devices/export_sip">>).
-
--record(state, {}).
 
 %%%===================================================================
 %%% API
@@ -62,13 +60,8 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (_) -> tuple(ok, #state{})).
-init([]) ->
-    bind_to_crossbar(),
-    couch_mgr:db_create(?SIP_CREDS_DB),
-    accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?SIP_CREDS_DB, ?SIP_FILTER),
-    {ok, #state{}}.
+init(_) ->
+    {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -155,6 +148,14 @@ handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
+
+handle_info(timeout, State) ->
+    bind_to_crossbar(),
+    couch_mgr:db_create(?SIP_CREDS_DB),
+    accounts:update_all_accounts(?VIEW_FILE),
+    accounts:replicate_from_accounts(?SIP_CREDS_DB, ?SIP_FILTER),
+    {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -193,13 +194,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  ok | tuple(error, exists)).
+-spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.#.devices">>),
-    _ = crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -245,7 +246,7 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device_summary([], Context);
+    load_device_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
@@ -264,14 +265,9 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_device_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
-load_device_summary([], Context) ->
-    crossbar_doc:load_view(?DEVICES_LIST, [], Context, fun normalize_view_results/2);
-load_device_summary(DocId, Context) ->
-    crossbar_doc:load_view(?DEVICES_LIST, [
-         {<<"startkey">>, [DocId]}
-        ,{<<"endkey">>, [DocId, {struct, []}]}
-    ], Context, fun normalize_view_results/2).
+-spec(load_device_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_device_summary(Context) ->
+    crossbar_doc:load_view(?DEVICES_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -333,11 +329,11 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (Data :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc({struct, Data}) ->
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
+is_valid_doc(JObj) ->
     Schema = [
-               {["base", "name"], [{not_empty, []}]}
-              ,{["base", "status"], [{not_empty, []}]}
+               {[<<"base">>, <<"name">>], [{not_empty, []}]}
+              ,{[<<"base">>, <<"status">>], [{not_empty, []}]}
              ],
-    Failed = crossbar_validator:validate(Schema, Data),
+    Failed = crossbar_validator:validate(Schema, JObj),
     {Failed =:= [], Failed}.

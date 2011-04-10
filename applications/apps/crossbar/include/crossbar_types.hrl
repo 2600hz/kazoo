@@ -9,7 +9,7 @@
 -type http_methods() :: [http_method()].
 
 -type validator() :: required | not_empty | is_type | is_format | numeric_min | numeric_max | numeric_between | width | width.
--type validator_rule() :: tuple(validator(), list()).
+-type validator_rule() :: tuple(validator(), list() | []).
 -type validator_rules() :: list(validator_rule()).
 
 -type couch_doc_path() :: list(binary()).
