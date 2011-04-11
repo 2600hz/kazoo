@@ -495,7 +495,7 @@ handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_hand
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {reply, ok, State};
 	error ->
-	    {ok, Srv} = change_mgr_sup:start_handler(open_db(whistle_util:to_list(DBName), S), []),
+	    {ok, Srv} = change_handler:start_link(open_db(whistle_util:to_list(DBName), S), []),
 	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
 	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
@@ -507,11 +507,7 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 	{Srv, _} -> change_handler:rm_listener(Srv, Pid, DocID);
 	error -> ok
     end,
-    {reply, ok, State};
-
-handle_call(_Request, _From, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
-    {reply, {error, unavailable}, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private

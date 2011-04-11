@@ -235,7 +235,7 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 		  format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
 
 		  load_account(AcctId, WDB),
-		  couch_mgr:add_change_handler(?TS_DB, AcctId),
+
 		  case trunk_type(RDB, AcctId, CallID) of
 		      non_existant ->
 			  case trunk_type(WDB, AcctId, CallID) of
@@ -260,6 +260,8 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
+    logger:format_log(info, "TS_ACCTMGR(~p): Loading accounts~n", [self()]),
+    couch_mgr:add_change_handler(?TS_DB, <<>>),
     spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB) end),
     {noreply, S};
 handle_info(?EOD, S) ->
@@ -332,14 +334,8 @@ load_accounts_from_ts(DB) ->
 	{ok, []} -> ok;
 	{ok, Accts} when is_list(Accts) ->
 	    AcctIds = lists:map(fun({struct, A}) -> props:get_value(<<"id">>, A) end, Accts),
-	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds),
-	    start_change_handlers(AcctIds)
+	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds)
     end.
-
-start_change_handlers([]) -> ok;
-start_change_handlers([I | Ids]) ->
-    couch_mgr:add_change_handler(?TS_DB, I),
-    start_change_handlers(Ids).
 
 -spec(todays_db_name/0 :: () -> binary()).
 todays_db_name() ->
@@ -463,7 +459,7 @@ debit_doc(AcctId, Extra) ->
 get_accts(DB) ->
     case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
 	{ok, []} -> [];
-	{ok, AcctsDoc} -> lists:map(fun({struct, AcctDoc}) -> props:get_value(<<"key">>, AcctDoc) end, AcctsDoc)
+	{ok, AcctsDoc} -> lists:map(fun(AcctJObj) -> whapps_json:get_value(<<"key">>, AcctJObj) end, AcctsDoc)
     end.
 
 transfer_acct(AcctId, RDB, WDB) ->
@@ -500,7 +496,6 @@ transfer_active_calls(AcctId, RDB, WDB) ->
 %% When TS updates an account, find the diff and create the appropriate entry (debit or credit).
 update_from_couch(AcctId, WDB, RDB) ->
     {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
-    couch_mgr:add_change_handler(?TS_DB, AcctId),
 
     Acct = whapps_json:get_value(<<"account">>, JObj, {struct, []}),
     Credits = whapps_json:get_value(<<"credits">>, Acct, {struct, []}),
@@ -542,15 +537,13 @@ load_account(AcctId, DB) ->
 	{error, not_found} ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
 		{error, not_found} -> ok;
-		{ok, {struct, Doc}} -> 
-		    couch_mgr:add_change_handler(?TS_DB, AcctId),
-		    
-		    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
-		    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
-		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
-		    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
-		    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)}),
-		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5000)
+		{ok, JObj} -> 
+		    Acct = whapps_json:get_value(<<"account">>, JObj, {struct, []}),
+		    Credits = whapps_json:get_value(<<"credits">>, Acct, {struct, []}),
+		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(whapps_json:get_value(<<"prepay">>, Credits, 0.0))),
+		    Trunks = whistle_util:to_integer(whapps_json:get_value(<<"trunks">>, Acct, 0)),
+		    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
+		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5)
 	    end
     end.
 
