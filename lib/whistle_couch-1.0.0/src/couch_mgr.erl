@@ -18,7 +18,7 @@
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
--export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
+-export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3]).
@@ -427,7 +427,10 @@ get_url() ->
     end.
 
 add_change_handler(DBName, DocID) ->
-    gen_server:call(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
+    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
+
+add_change_handler(DBName, DocID, Pid) ->
+    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
     gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
@@ -485,20 +488,6 @@ handle_call({get_conn}, _, #state{connection=S}=State) ->
 handle_call({get_creds}, _, #state{creds=Cred}=State) ->
     {reply, Cred, State};
 
-handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH, connection=S}=State) ->
-    case dict:find(DBName, CH) of
-	{ok, {Srv, _}} ->
-	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {reply, ok, State};
-	error ->
-	    {ok, Srv} = change_handler:start_link(open_db(whistle_util:to_list(DBName), S), []),
-	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
-	    SrvRef = erlang:monitor(process, Srv),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {reply, ok, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
-    end;
-
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
     spawn(fun() ->
 		  {ok, {Srv, _}} = dict:find(DBName, CH),
@@ -517,9 +506,19 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
+handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
+    case dict:find(DBName, CH) of
+	{ok, {Srv, _}} ->
+	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {noreply, State};
+	error ->
+	    {ok, Srv} = change_handler:start_link(open_db(whistle_util:to_list(DBName), S), []),
+	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    SrvRef = erlang:monitor(process, Srv),
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
