@@ -2,12 +2,11 @@
              [{description,"A QuickCheck-inspired property-based testing tool for Erlang"},
               {vsn,"1.0"},
               {registered,[]},
-              {applications,[compiler,erts,kernel,stdlib,crypto]},
+              {applications,[compiler,kernel,stdlib,crypto]},
               {env,[]},
               {modules,[proper,proper_arith,proper_array,proper_dict,
-                        proper_funserver,proper_gb_sets,proper_gb_trees,
-                        proper_gen,proper_orddict,proper_ordsets,
-                        proper_prop_remover,proper_queue,proper_sets,
-                        proper_shrink,proper_statem,proper_symb,
-                        proper_transformer,proper_types,proper_typeserver,
-                        strip_types]}]}.
+                        proper_gb_sets,proper_gb_trees,proper_gen,
+                        proper_orddict,proper_ordsets,proper_prop_remover,
+                        proper_queue,proper_sets,proper_shrink,proper_statem,
+                        proper_symb,proper_transformer,proper_types,
+                        proper_typeserver,strip_types,vararg]}]}.

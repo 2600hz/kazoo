@@ -24,10 +24,15 @@
 -define(WORKER_COUNT, 10).
 -define(DEFAULT_TIMEOUT, 5000).
 
+%% every X ms, compare RequestsPer to WorkerCount
+%% If RP < WC, reduce Ws by max(WC-RP, OrigWC)
+-define(BACKOFF_PERIOD, 2500). % arbitrary at this point
+
 -record(state, {
 	  worker_count = ?WORKER_COUNT :: integer()
           ,orig_worker_count = ?WORKER_COUNT :: integer() % scale back workers after a period of time
           ,workers = queue:new() :: queue()
+          ,requests_per = 0 :: non_neg_integer()
 	 }).
 
 %%%===================================================================
@@ -112,15 +117,15 @@ init([Count]) ->
 %%--------------------------------------------------------------------
 handle_call({request, {struct, Prop}, ApiFun, PubFun}, From, State) ->
     handle_call({request, Prop, ApiFun, PubFun}, From, State);
-handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_count=WC}=State) ->
+handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_count=WC, requests_per=RP}=State) ->
     case queue:out(W) of
 	{{value, Worker}, W1} ->
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
-	    {noreply, State#state{workers=W1}};
+	    {noreply, State#state{workers=W1, requests_per=RP+1}};
 	{empty, _} ->
 	    Worker = start_worker(),
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
-	    {noreply, State#state{worker_count=WC + 1}}
+	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}}
     end.
 
 %%--------------------------------------------------------------------
@@ -149,14 +154,35 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
     Count = case WC-queue:len(Ws) of X when X < 0 -> 0; Y -> Y end,
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
+    {ok, _} = timer:send_interval(?BACKOFF_PERIOD, reduce_labor_force),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+
 handle_info({worker_free, W}, #state{workers=Ws}=State) ->
     {noreply, State#state{workers=queue:in(W, Ws)}};
+
 handle_info({'EXIT', W, Reason}, #state{workers=Ws}=State) ->
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
     logger:format_log(info, "CALL_POOL(~p): Worker ~p down: ~p~n", [self(), W, Reason]),
     {noreply, State#state{workers=queue:in(start_worker(), Ws1)}};
+
+handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC ->
+    Reduct = erlang:max(OWC, WC-RP),
+    Ws1 = lists:foldl(fun(_, Q0) ->
+			      case queue:len(Q0) =< OWC of
+				  true -> Q0;
+				  false ->
+				      {{value, W}, Q1} = queue:out(Q0),
+				      W ! shutdown,
+				      Q1
+			      end
+		      end, Ws, lists:seq(1,Reduct)),
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
+
+handle_info(reduce_labor_force, State) ->
+    {noreply, State#state{requests_per=0}};
+
 handle_info(_Info, State) ->
+    logger:format_log(info, "CALL_POOL(~p): Unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -171,6 +197,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    logger:format_log(error, "CALL_POOL(~p): Terminating: ~p~n", [self(), _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -205,7 +232,7 @@ worker_free(Q) ->
 		{ok, JSON} ->
 		    Ref = erlang:monitor(process, Pid),
 		    PubFun(JSON),
-		    logger:format_log(info, "WORKER(~p): Working for ~p~n", [self(), Pid]),
+		    logger:format_log(info, "WORKER-F(~p): Working for ~p~n", [self(), Pid]),
 		    worker_busy(Q, From, Ref, Parent);
 		{error, _}=E ->
 		    gen_server:reply(From, E),
@@ -214,9 +241,9 @@ worker_free(Q) ->
 	#'basic.consume_ok'{} ->
 	    worker_free(Q);
 	shutdown ->
-	    logger:format_log(info, "WORKER(~p): Going on permanent leave~n", [self()]);
+	    logger:format_log(info, "WORKER-F(~p): Going on permanent leave~n", [self()]);
 	_Other ->
-	    logger:format_log(info, "WORKER(~p): Recv other ~p~n", [self(), _Other]),
+	    logger:format_log(info, "WORKER-F(~p): Recv other ~p~n", [self(), _Other]),
 	    worker_free(Q)
     end.
 
@@ -224,10 +251,10 @@ worker_busy(Q, From, Ref, Parent) ->
     Start = erlang:now(),
     receive
 	{_, #amqp_msg{payload = Payload}} ->
-	    logger:format_log(info, "WORKER(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
+	    logger:format_log(info, "WORKER-B(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
 	{'DOWN', Ref, process, Pid, Info} ->
-	    logger:format_log(error, "WORKER(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
+	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},

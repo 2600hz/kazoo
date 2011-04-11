@@ -17,7 +17,7 @@
 
 -import(cf_call_command, [b_bridge/3, wait_for_bridge/1, wait_for_unbridge/0]).
 
--define(VIEW_BY_ROUTE, {<<"resources">>, <<"listing_by_route">>}).
+-define(VIEW_BY_ROUTE, <<"resources/listing_by_route">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,9 +54,9 @@ bridge_to_gateways([{To, Gateways}|T], Call) ->
 create_endpoint(To, JObj) ->  
     Route = <<"sip:"
               ,(whapps_json:get_value(<<"prefix">>, JObj, <<>>))/binary 
-              ,To/binary, $@
+              ,To/binary
               ,(whapps_json:get_value(<<"suffix">>, JObj, <<>>))/binary 
-              ,(whapps_json:get_value(<<"server">>, JObj))/binary>>,
+              ,$@ ,(whapps_json:get_value(<<"server">>, JObj))/binary>>,
     Endpoint = [
                  {<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Route}
@@ -79,7 +79,7 @@ find_gateways(Db, #cf_call{to_number=To}) ->
         {ok, Resources} ->
             {ok, [ {Number, whapps_json:get_value([<<"value">>, <<"gateways">>], Resource, [])} ||
                       Resource <- Resources
-                     ,Number <- test_number(whapps_json:get_value(<<"key">>, Resource), To)
+                     ,Number <- evaluate_route(whapps_json:get_value(<<"key">>, Resource), To)
                      ,Number =/= []
                  ]}; 
         {error, _}=E ->
@@ -91,8 +91,8 @@ find_gateways(Db, #cf_call{to_number=To}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(test_number/2 :: (Key :: list(), To :: binary()) -> list()).                             
-test_number([_, Regex], To) ->
+-spec(evaluate_route/2 :: (Key :: list(), To :: binary()) -> list()).                             
+evaluate_route([_, Regex], To) ->
     try
         {match, Number} = re:run(To, Regex, [{capture, [1], binary}]),
         case Number of [<<>>] -> [To]; Else -> Else end

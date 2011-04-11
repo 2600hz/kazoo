@@ -8,7 +8,7 @@
 -module(crossbar).
 
 -author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0, set_amqp_host/1, set_couch_host/1]).
+-export([start/0, start_link/0, stop/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
@@ -36,14 +36,7 @@ start_deps() ->
 %% @spec stop() -> ok
 %% @doc Stop the basicapp server.
 stop() ->
-    application:stop(crossbar),
-    ok.
-
-set_amqp_host(H) ->
-    H. % add any servers that need amqp hosts updated here
-
-set_couch_host(H) ->
-    H. % add any servers that need couch hosts updated here
+    ok = application:stop(crossbar).
 
 ensure_started(App) ->
     case application:start(App) of

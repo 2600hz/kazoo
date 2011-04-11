@@ -20,8 +20,6 @@ exec_cmd(Node, CallId, JObj) ->
     AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
     ConfName = whapps_json:get_value(<<"Conference-ID">>, JObj),
     case get_fs_app(Node, ConfName, JObj, AppName) of
-        {_, noop} ->
-            ok;
         {error, _Msg}=Err ->
             Err;
         Args ->
@@ -37,7 +35,7 @@ exec_cmd(Node, CallId, JObj) ->
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
 -spec(get_fs_app/4 ::
         (Node :: atom(), ConfName :: binary(), JObj :: json_object(), Application :: binary()) ->
-                           tuple(binary(), binary() | noop) | tuple(error, string())).
+                           binary() | tuple(error, string())).
 get_fs_app(_Node, ConfName, _JObj, _Application) when not is_binary(ConfName) ->
     {error, "invalid conference id"};
 get_fs_app(_Node, _ConfName, JObj, <<"members">>) ->
@@ -110,7 +108,7 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
--spec(api/3 :: (Node :: atom(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
+-spec(api/3 :: (Node :: atom(), AppName :: binary() | string(), Args :: binary() | string()) -> tuple(ok, binary()) | timeout | {error, string()}).
 api(Node, AppName, Args) ->
     App = whistle_util:to_atom(AppName, true),
     Arg = whistle_util:to_list(Args),

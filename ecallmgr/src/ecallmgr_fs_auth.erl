@@ -132,14 +132,14 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
 	    {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
 	_Other ->
 	    logger:format_log(info, "FETCH_USER(~p): Ignoring event ~p~n~p~n", [self(), _Other, Data]),
-	    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+	    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    {noreply, State}
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     logger:format_log(info, "FETCH_USER(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n~p~n"
 	       ,[self(), _Section, _Something, _Key, _Value, ID, _Data]),
-    freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->

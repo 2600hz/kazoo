@@ -47,6 +47,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             Context#cb_context{doc=[]}
     end.
 
+-spec(load_from_file/2 :: (Db :: binary(), File :: binary()) -> no_return()).
 load_from_file(Db, File) ->
     couch_mgr:load_doc_from_file(Db, crossbar, File).
 
@@ -86,7 +87,7 @@ load_merge(DocId, {struct, Data}, Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_view/3 :: (View :: tuple(string(), string()), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+-spec(load_view/3 :: (View :: binary(), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
 load_view(_View, _Options, #cb_context{db_name=undefined}=Context) ->
     crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB}=Context) ->
@@ -106,6 +107,7 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
             Context#cb_context{doc=[]}
     end.
 
+-spec(load_view/4 :: (View :: binary(), Options :: proplist(), Context :: #cb_context{}, Filter :: function()) -> #cb_context{}).
 load_view(View, Options, Context, Filter) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
@@ -114,6 +116,7 @@ load_view(View, Options, Context, Filter) ->
             Else
     end.
 
+-spec(load_attachment/3 :: (DocId :: binary(), AName :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_attachment(_, _, #cb_context{db_name=undefined}=Context) ->
     crossbar_util:response_db_missing(Context);
 load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
@@ -297,8 +300,9 @@ private_fields(Json) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_private_key/1 :: (Key :: binary()) -> boolean()).
-is_private_key(Key) ->
-    binary:first(Key) == 95 orelse byte_size(Key) < 4 orelse binary:bin_to_list(Key, 0, 4) == "pvt_".
+is_private_key(<<"_", _/binary>>) -> true;
+is_private_key(<<"pvt_", _/binary>>) -> true;
+is_private_key(_) -> false.
 
 %%--------------------------------------------------------------------
 %% @public

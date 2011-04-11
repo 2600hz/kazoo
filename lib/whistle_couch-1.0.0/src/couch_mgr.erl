@@ -222,11 +222,11 @@ db_delete(DbName) ->
 %% open a document given a docid returns not_found or the Document
 %% @end
 %%--------------------------------------------------------------------
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_term()) | tuple(error, not_found | db_not_reachable)).
+-spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
 open_doc(DbName, DocId, Options) ->    
@@ -358,11 +358,13 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec(get_all_results/2 :: (DbName :: list(), DesignDoc :: tuple(string(), string())) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(get_all_results/2 :: (DbName :: list(), DesignDoc :: binary()) ->
+				tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
--spec(get_results/3 :: (DbName :: list(), DesignDoc :: tuple(string(), string()), ViewOptions :: proplist()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(get_results/3 :: (DbName :: list(), DesignDoc :: binary(), ViewOptions :: proplist()) ->
+			    tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_results(DbName, DesignDoc, ViewOptions) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
@@ -493,7 +495,7 @@ handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_hand
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {reply, ok, State};
 	error ->
-	    {ok, Srv} = change_mgr_sup:start_handler(open_db(whistle_util:to_list(DBName), S), []),
+	    {ok, Srv} = change_handler:start_link(open_db(whistle_util:to_list(DBName), S), []),
 	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
 	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
@@ -505,11 +507,7 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 	{Srv, _} -> change_handler:rm_listener(Srv, Pid, DocID);
 	error -> ok
     end,
-    {reply, ok, State};
-
-handle_call(_Request, _From, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
-    {reply, {error, unavailable}, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -619,7 +617,7 @@ open_db(DbName, Conn) ->
 %% else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
 %% @end
 %%--------------------------------------------------------------------    
--spec(get_view/3 :: (Db :: #db{}, DesignDoc :: string() | tuple(string(), string()), ViewOptions :: list()) -> #view{} | tuple(error, view_not_found)).
+-spec(get_view/3 :: (Db :: #db{}, DesignDoc :: binary(), ViewOptions :: list()) -> #view{} | tuple(error, view_not_found)).
 get_view(Db, DesignDoc, ViewOptions) ->
     case couchbeam:view(Db, DesignDoc, ViewOptions) of
 	{error, _Error}=E -> E;

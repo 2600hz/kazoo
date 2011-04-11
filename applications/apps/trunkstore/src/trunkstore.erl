@@ -8,7 +8,7 @@
 start_link() ->
     start_deps(),
     Res = trunkstore_sup:start_link(),
-    [ ts_responder_sup:start_handler() || _ <- [1,2,3] ],
+    spawn(fun() -> [ ts_responder_sup:start_handler() || _ <- [1,2,3] ] end),
     Res.
 
 %% @spec start() -> ok

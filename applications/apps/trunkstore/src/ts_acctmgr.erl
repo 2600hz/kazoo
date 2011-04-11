@@ -133,7 +133,7 @@ init([]) ->
 
     MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
     format_log(info, "TS_ACCTMGR: ms till Midnight: ~p (~p:~p:~p)~n", [MillisecsToMidnight, H, Min, S]),
-    timer:send_after(MillisecsToMidnight, ?EOD),
+    {ok, _} = timer:send_after(MillisecsToMidnight, ?EOD),
 
     {ok, #state{
        current_write_db = DB
@@ -177,39 +177,27 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_
 			  
 handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     spawn(fun() ->
-		  wh_timer:start("ts_acctmgr"),
 		  spawn(fun() -> load_account(AcctId, WDB) end),
-		  wh_timer:tick("loaded acct"),
 
 		  case couch_mgr:get_results(RDB, {"accounts", "balance"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
 		      {error, E} ->
-			  wh_timer:tick("error getting balance"),
 			  gen_server:reply(From, {error, E});
 		      {ok, []} ->
-			  wh_timer:tick("no anything"),
 			  gen_server:reply(From, {error, no_funds});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
-			  wh_timer:tick(list_to_binary(["funds of some kind: "
-							,integer_to_list(whapps_json:get_value(<<"trunks">>, Funds))
-							, "::", integer_to_list(whapps_json:get_value(<<"credit">>, Funds))])),
 			  case whapps_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
-				  wh_timer:tick("reserve flat_rate"),
-				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
-				  gen_server:reply(From, {ok, flat_rate});
+				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end);
 			      false ->
 				  case whapps_json:get_value(<<"credit">>, Funds, 0) > Amt of
 				      true ->
-					  wh_timer:tick("reserve per_min"),
 					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
 					  gen_server:reply(From, {ok, per_min});
 				      false ->
-					  wh_timer:tick("not enough funds"),
 					  gen_server:reply(From, {error, no_funds})
 				  end
 			  end
-		  end,
-		  wh_timer:stop("ts_acctmgr")
+		  end
 	  end),
     {noreply, S};
 handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
@@ -247,7 +235,7 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 		  format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
 
 		  load_account(AcctId, WDB),
-		  couch_mgr:add_change_handler(?TS_DB, AcctId),
+
 		  case trunk_type(RDB, AcctId, CallID) of
 		      non_existant ->
 			  case trunk_type(WDB, AcctId, CallID) of
@@ -272,12 +260,14 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
+    logger:format_log(info, "TS_ACCTMGR(~p): Loading accounts~n", [self()]),
+    couch_mgr:add_change_handler(?TS_DB, <<>>),
     spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB) end),
     {noreply, S};
 handle_info(?EOD, S) ->
     DB = todays_db_name(),
 
-    timer:send_after(?MILLISECS_PER_DAY, ?EOD),
+    {ok, _} = timer:send_after(?MILLISECS_PER_DAY, ?EOD),
 
     self() ! reconcile_accounts,
 
@@ -291,9 +281,7 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
 					  transfer_acct(Acct, RDB, WDB),
 					  transfer_active_calls(Acct, RDB, WDB)
 				  end, get_accts(RDB)),
-		    couch_mgr:db_compact(RDB),
-		    stop_replication(RDB, nodes()),
-		    setup_replication(WDB, nodes())
+		    couch_mgr:db_compact(RDB)
 	   end),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
@@ -346,14 +334,8 @@ load_accounts_from_ts(DB) ->
 	{ok, []} -> ok;
 	{ok, Accts} when is_list(Accts) ->
 	    AcctIds = lists:map(fun({struct, A}) -> props:get_value(<<"id">>, A) end, Accts),
-	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds),
-	    start_change_handlers(AcctIds)
+	    lists:foreach(fun(Id) -> load_account(Id, DB) end, AcctIds)
     end.
-
-start_change_handlers([]) -> ok;
-start_change_handlers([I | Ids]) ->
-    couch_mgr:add_change_handler(?TS_DB, I),
-    start_change_handlers(Ids).
 
 -spec(todays_db_name/0 :: () -> binary()).
 todays_db_name() ->
@@ -390,20 +372,20 @@ trunk_type(DB, AcctId, CallID) ->
 	{ok, [{struct, [{<<"key">>,_}, {<<"value">>, <<"per_min">>}] }] } -> per_min
     end.
 
--spec(trunk_status/3 :: (DB :: binary(), AcctId :: binary(), CallID :: binary()) -> active | inactive).
-trunk_status(DB, AcctId, CallID) ->
-    case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group_level">>, <<"2">>}]) of
-	{ok, []} -> in_active;
-	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"active">>}] }] } -> active;
-	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"inactive">>}] }] } -> inactive
-    end.
+%% -spec(trunk_status/3 :: (DB :: binary(), AcctId :: binary(), CallID :: binary()) -> active | inactive).
+%% trunk_status(DB, AcctId, CallID) ->
+%%     case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group_level">>, <<"2">>}]) of
+%% 	{ok, []} -> in_active;
+%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"active">>}] }] } -> active;
+%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"inactive">>}] }] } -> inactive
+%%     end.
 
--spec(trunks_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
-trunks_available(DB, AcctId) ->
-    case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
-	{ok, []} -> 0;
-	{ok, [{struct, [{<<"key">>,_},{<<"value">>, Ts}] }] } -> whistle_util:to_integer(Ts)
-    end.
+%% -spec(trunks_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
+%% trunks_available(DB, AcctId) ->
+%%     case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
+%% 	{ok, []} -> 0;
+%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>, Ts}] }] } -> whistle_util:to_integer(Ts)
+%%     end.
 
 %% should be the diffs from the last account update to now
 account_doc(AcctId, Credit, Trunks) ->
@@ -477,7 +459,7 @@ debit_doc(AcctId, Extra) ->
 get_accts(DB) ->
     case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
 	{ok, []} -> [];
-	{ok, AcctsDoc} -> lists:map(fun({struct, AcctDoc}) -> props:get_value(<<"key">>, AcctDoc) end, AcctsDoc)
+	{ok, AcctsDoc} -> lists:map(fun(AcctJObj) -> whapps_json:get_value(<<"key">>, AcctJObj) end, AcctsDoc)
     end.
 
 transfer_acct(AcctId, RDB, WDB) ->
@@ -511,22 +493,34 @@ transfer_active_calls(AcctId, RDB, WDB) ->
 			  end, Calls)
     end.
 
+%% When TS updates an account, find the diff and create the appropriate entry (debit or credit).
 update_from_couch(AcctId, WDB, RDB) ->
-    {ok, {struct, Doc}} = couch_mgr:open_doc(?TS_DB, AcctId),
-    couch_mgr:add_change_handler(?TS_DB, AcctId),
+    {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
 
-    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
-    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
-    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
-    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
+    Acct = whapps_json:get_value(<<"account">>, JObj, {struct, []}),
+    Credits = whapps_json:get_value(<<"credits">>, Acct, {struct, []}),
+    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(whapps_json:get_value(<<"prepay">>, Credits, 0.0))),
+    Trunks = whistle_util:to_integer(whapps_json:get_value(<<"trunks">>, Acct, 0)),
 
-    {ok, {struct, UsageDoc}} = couch_mgr:open_doc(RDB, AcctId),
-    T0 = props:get_value(<<"trunks">>, UsageDoc),
-    C0 = props:get_value(<<"amount">>, UsageDoc),
+    {ok, UsageJObj} = couch_mgr:open_doc(RDB, AcctId),
+    T0 = whapps_json:get_value(<<"trunks">>, UsageJObj),
+    C0 = whapps_json:get_value(<<"amount">>, UsageJObj),
 
-    UD1 = [ {<<"trunks">>, T0 + (Trunks - T0)} | lists:keydelete(<<"trunks">>, 1, UsageDoc)],
-    UD2 = [ {<<"amount">>, C0 + (Balance - C0)} | lists:keydelete(<<"amount">>, 1, UD1)],
-    couch_mgr:save_doc(WDB, {struct, UD2}).
+    %% account trunks minus what the day started with to get diff
+    %% So 5->7 in account, started day with 5, credit 2 trunks
+    %%    7->5 in account, started day with 7, debit 2 trunks
+    %% same with credit
+    case (Trunks - T0) of
+	T when T < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, T + T0}]));
+	T when T =:= 0 -> ok;
+	T -> couch_mgr:save_doc(WDB, credit_doc(AcctId, 0, T + T0, []))
+    end,
+
+    case (Balance - C0) of
+	C when C < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, C0 + C}]));
+	C when C =:= 0 -> ok;
+	C -> couch_mgr:save_doc(WDB, credit_doc(AcctId, C0 + C, 0, []))
+    end.
 
 update_account(AcctId, Bal) ->
     {ok, {struct, Doc}} = couch_mgr:open_doc(?TS_DB, AcctId),
@@ -535,7 +529,7 @@ update_account(AcctId, Bal) ->
     Credits1 = [ {<<"prepay">>, ?UNITS_TO_DOLLARS(Bal)} | lists:keydelete(<<"prepay">>, 1, Credits)],
     Acct1 = [ {<<"credits">>, {struct, Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
     Doc1 = [ {<<"account">>, {struct, Acct1}} | lists:keydelete(<<"account">>, 1, Doc)],
-    couch_mgr:save_doc(?TS_DB, {struct, Doc1}).
+    couch_mgr:save_doc(?TS_DB, Doc1).
 
 load_account(AcctId, DB) ->
     case wh_cache:fetch({ts_acctmgr, AcctId, DB}) of
@@ -543,15 +537,13 @@ load_account(AcctId, DB) ->
 	{error, not_found} ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
 		{error, not_found} -> ok;
-		{ok, {struct, Doc}} -> 
-		    couch_mgr:add_change_handler(?TS_DB, AcctId),
-		    
-		    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
-		    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
-		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(props:get_value(<<"prepay">>, Credits, 0.0))),
-		    Trunks = whistle_util:to_integer(props:get_value(<<"trunks">>, Acct, 0)),
-		    couch_mgr:save_doc(DB, {struct, account_doc(AcctId, Balance, Trunks)}),
-		    wh_cache:store({ts_acctmgr, AcctId, DB}, true)
+		{ok, JObj} -> 
+		    Acct = whapps_json:get_value(<<"account">>, JObj, {struct, []}),
+		    Credits = whapps_json:get_value(<<"credits">>, Acct, {struct, []}),
+		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(whapps_json:get_value(<<"prepay">>, Credits, 0.0))),
+		    Trunks = whistle_util:to_integer(whapps_json:get_value(<<"trunks">>, Acct, 0)),
+		    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
+		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5)
 	    end
     end.
 
@@ -573,38 +565,6 @@ update_views(DB) ->
 		  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
-setup_replication(_, []) -> ok;
-setup_replication(LocalDB, [N | Ns]) ->
-    [_, H] = binary:split(whistle_util:to_binary(N), <<"@">>),
-    UserPass = case couch_mgr:get_creds() of
-		   {"", ""} -> "";
-		   {U, P} -> list_to_binary([U, ":", P, "@"])
-	       end,
-    Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
-
-    Res = couch_mgr:db_replicate([{<<"source">>, Source}
-				  ,{<<"target">>, whistle_util:to_binary(LocalDB)}
-				  ,{<<"continuous">>, true}
-				 ]),
-    format_log(info, "TS_ACCTMGR.setup_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
-    setup_replication(LocalDB, Ns).
-
-stop_replication(_, []) -> ok;
-stop_replication(LocalDB, [N | Ns]) ->
-    [_, H] = binary:split(whistle_util:to_binary(N), <<"@">>),
-    UserPass = case couch_mgr:get_creds() of
-		   {"", ""} -> "";
-		   {U, P} -> list_to_binary([U, ":", P, "@"])
-	       end,
-    Source = list_to_binary(["http://", UserPass, H, ":5984/", LocalDB]),
-
-    Res = couch_mgr:db_replicate([{<<"source">>, Source}
-				  ,{<<"target">>, whistle_util:to_binary(LocalDB)}
-				  ,{<<"continuous">>, true}
-				  ,{<<"cancel">>, true}
-				 ]),
-    format_log(info, "TS_ACCTMGR.stop_replication: From ~s to ~s: ~p~n", [Source, LocalDB, Res]),
-    setup_replication(LocalDB, Ns).
 
 is_call_active(CallID) ->
     Q = amqp_util:new_targeted_queue(),

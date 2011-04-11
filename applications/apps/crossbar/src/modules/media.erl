@@ -20,8 +20,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
@@ -67,13 +65,8 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (_) -> tuple(ok, ok)).
 init([]) ->
-    couch_mgr:db_create(?AGG_DB),
-    accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
-    bind_to_crossbar(),
-    {ok, ok}.
+    {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,7 +104,7 @@ handle_cast(_, S) ->
 %% Handling all non call/cast messages
 %%
 %% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} | 
+%%                                   {noreply, State, Timeout} |
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
@@ -202,11 +195,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.media">>, [RD, Conte
 		  case props:get_value(<<"Location">>, Context#cb_context.resp_headers) of
 		      undefined ->
 			  {Context1, Resp} = case create_media_meta(Context#cb_context.req_data, Context) of
-						 #cb_context{resp_status=success, resp_data=RespData}=Context2 ->
+						 #cb_context{resp_status=success, resp_data=RespData, resp_headers=RHs}=Context2 ->
 						     DocID = whapps_json:get_value(<<"id">>, RespData),
-						     {Context2#cb_context{resp_data=[], resp_headers=[{"Location", DocID} | Context2#cb_context.resp_headers]}, true};
+						     {Context2#cb_context{resp_data=[], resp_headers=[{"Location", DocID} | RHs]}, true};
 						 Context3 ->
-						     format_log(info, "MEDIA.v.PUT: ERROR~n", []),
+						     logger:format_log(info, "MEDIA.v.PUT: ERROR~n", []),
 						     {Context3, false}
 					     end,
 			  Pid ! {binding_result, Resp, [RD, Context1, Params]};
@@ -221,8 +214,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
 	[MediaID, ?BIN_DATA] ->
 	    spawn(fun() ->
 			  crossbar_util:binding_heartbeat(Pid),
-			  Context1 = delete_media_binary(MediaID, Context),
-			  Pid ! {binding_result, Context1#cb_context.resp_status =:= success, [RD, Context1, Params]}
+			  #cb_context{resp_status=RS}=Context1 = delete_media_binary(MediaID, Context),
+			  Pid ! {binding_result, RS =:= success, [RD, Context1, Params]}
 		  end);
 	[_] ->
 	    spawn(fun() ->
@@ -233,17 +226,20 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
     end,
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"accounts.created">>, _}, State) ->
+handle_info({binding_fired, Pid, <<"account.created">>, _}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     accounts:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
     {noreply, State};
 
-handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
+handle_info(timeout, State) ->
+    couch_mgr:db_create(?AGG_DB),
+    accounts:update_all_accounts(?VIEW_FILE),
+    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
+    bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    format_log(info, "MEDIA(~p): unhandled info ~p~n", [self(), _Info]),
+    logger:format_log(info, "MEDIA(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -289,7 +285,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.#.media">>),
-    _ = crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -369,9 +365,9 @@ validate([], #cb_context{req_verb = <<"put">>, req_data=Data}=Context) ->
     case Name =/= undefined andalso lookup_media_by_name(Name, Context) of
 	false ->
 	    crossbar_util:response_invalid_data([<<"display_name">>], Context);
-	#cb_context{resp_status=success, doc=[{struct, _}=Doc|_]}=Context1 ->
+	#cb_context{resp_status=success, doc=[{struct, _}=Doc|_], resp_headers=RHs}=Context1 ->
 	    DocID = whapps_json:get_value(<<"id">>, Doc),
-	    Context1#cb_context{resp_headers=[{"Location", DocID} | Context1#cb_context.resp_headers]};
+	    Context1#cb_context{resp_headers=[{"Location", DocID} | RHs]};
 	_ ->
 	    Context#cb_context{resp_status=success}
     end;
@@ -388,20 +384,10 @@ validate([MediaID], #cb_context{req_verb = <<"post">>, req_data=Data}=Context) -
     end;
 
 validate([MediaID], #cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) ->
-    case get_media_doc(MediaID, Context) of
-	{error, not_found} ->
-	    crossbar_util:response_bad_identifier(MediaID, Context);
-	Context1 ->
-	    Context1
-    end;
+    get_media_doc(MediaID, Context);
 
 validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
-    case get_media_binary(MediaID, Context) of
-	{error, not_found} ->
-	    crossbar_util:response_bad_identifier(MediaID, Context);
-	Context1 ->
-	    Context1
-    end;
+    get_media_binary(MediaID, Context);
 
 validate([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[]}=Context) ->
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
@@ -411,16 +397,11 @@ validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[{_,
 	<<>> ->
 	    crossbar_util:response_invalid_data([<<"empty_file">>], Context);
 	_ ->
-	    case lookup_media_by_id(MediaID, Context) of
-		{error, not_found} ->
-		    crossbar_util:response_bad_identifier(MediaID, Context);
-		Context1 ->
-		    Context1
-	    end
+	    lookup_media_by_id(MediaID, Context)
     end;
 
 validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
-    format_log(info, "Media.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
+    logger:format_log(info, "Media.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
 
 create_media_meta(Data, Context) ->
@@ -430,29 +411,26 @@ create_media_meta(Data, Context) ->
 				   V -> [{Meta, whistle_util:to_binary(V)} | DocAcc]
 			       end
 		       end, [], ?METADATA_FIELDS),
-    crossbar_doc:save(Context#cb_context{doc=[{<<"pvt_type">>, <<"media">>} | Doc1]}).
+    crossbar_doc:save(Context#cb_context{doc={struct, [{<<"pvt_type">>, <<"media">>} | Doc1]}}).
 
 update_media_binary(MediaID, Contents, Context, Options) ->
-    %% format_log(info, "media: save attachment: ~p: Opts: ~p~n", [MediaID, Options]),
+    %% logger:format_log(info, "media: save attachment: ~p: Opts: ~p~n", [MediaID, Options]),
     Opts = [{content_type, props:get_value(<<"content-type">>, Options, <<"application/octet-stream">>)}
 	    ,{content_length, props:get_value(<<"content-length">>, Options, binary:referenced_byte_size(Contents))}],
     case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Opts) of
 	#cb_context{resp_status=success}=Context1 ->
 	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
 	    Doc1 = lists:foldl(fun({K,V}, D0) -> whapps_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0) end, Doc, Options),
-	    crossbar_doc:save(Context#cb_context{doc=Doc1}),
-	    Context1;
+	    crossbar_doc:save(Context#cb_context{doc=Doc1});
 	C -> C
     end.
 
 %% GET /media
 -spec(lookup_media/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 lookup_media(Context) ->
-    case crossbar_doc:load_view({"media_doc", "listing_by_name"}, [], Context) of
-	#cb_context{resp_status=success}=Context1 ->
-	    Resp = lists:map(fun(ViewObj) ->
-				     whapps_json:get_value(<<"value">>, ViewObj)
-			     end, Context1#cb_context.doc),
+    case crossbar_doc:load_view(<<"media_doc/listing_by_name">>, [], Context) of
+	#cb_context{resp_status=success, doc=Doc}=Context1 ->
+	    Resp = [ whapps_json:get_value(<<"value">>, ViewObj) || ViewObj <- Doc ],
 	    crossbar_util:response(Resp, Context1);
 	C -> C
     end.
@@ -469,12 +447,12 @@ get_media_binary(MediaID, Context) ->
 %% check for existence of media by display_name
 -spec(lookup_media_by_name/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 lookup_media_by_name(MediaName, Context) ->
-    crossbar_doc:load_view({"media_doc", "listing_by_name"}, [{<<"key">>, MediaName}], Context).
+    crossbar_doc:load_view(<<"media_doc/listing_by_name">>, [{<<"key">>, MediaName}], Context).
 
 %% check for existence of media by display_name
 -spec(lookup_media_by_id/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 lookup_media_by_id(MediaID, Context) ->
-    crossbar_doc:load_view({"media_doc", "listing_by_id"}, [{<<"key">>, MediaID}], Context).
+    crossbar_doc:load_view(<<"media_doc/listing_by_id">>, [{<<"key">>, MediaID}], Context).
 
 delete_media(Context) ->
     crossbar_doc:delete(Context).

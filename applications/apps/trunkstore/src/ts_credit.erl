@@ -24,9 +24,6 @@
 -define(SERVER, ?MODULE).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
 
--import(logger, [format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -64,8 +61,7 @@ force_rate_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    timer:send_after(1000, ?MODULE, refresh),
-    {ok, []}.
+    {ok, [], 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -82,7 +78,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(Req, _From, []=R) ->
-    format_log(info, "TS_CREDIT(~p): No rate information for Req ~p~n", [self(), Req]),
+    logger:format_log(info, "TS_CREDIT(~p): No rate information for Req ~p, refreshing~n", [self(), Req]),
+    ?SERVER ! refresh,
     {reply, no_rate_information, R};
 handle_call({check, Flags}, From, Rates) ->
     spawn(fun() ->
@@ -115,19 +112,22 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, OldRates) ->
+    logger:format_log(info, "TS_CREDIT(~p): timeout~n", [self()]),
+    handle_info(refresh, OldRates);
 handle_info(refresh, OldRates) ->
     case get_current_rates() of
 	{ok, Rates} ->
 	    {noreply, Rates};
 	{error, _Err} ->
-	    format_log(error, "TS_CREDIT(~p): Error getting rates: ~p~n", [self(), _Err]),
+	    logger:format_log(error, "TS_CREDIT(~p): Error getting rates: ~p~n", [self(), _Err]),
 	    {noreply, OldRates}
     end;
 handle_info({document_changes, DocID, Changes}, Rates) ->
-    format_log(info, "TS_CREDIT(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
-    CurrRev = get_value(<<"_rev">>, Rates),
+    logger:format_log(info, "TS_CREDIT(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
+    CurrRev = props:get_value(<<"_rev">>, Rates),
     ChangedRates = lists:foldl(fun(ChangeProp, Rs) ->
-				       NewRev = get_value(<<"rev">>, ChangeProp),
+				       NewRev = props:get_value(<<"rev">>, ChangeProp),
 				       case NewRev of
 					   undefined -> Rs;
 					   CurrRev -> Rs;
@@ -136,7 +136,7 @@ handle_info({document_changes, DocID, Changes}, Rates) ->
 					       NewRates
 				       end
 			       end, Rates, Changes),
-    format_log(info, "TS_CREDIT(~p): Changed rates from ~p to ~p~n", [self(), CurrRev, get_value(<<"_rev">>, ChangedRates)]),
+    logger:format_log(info, "TS_CREDIT(~p): Changed rates from ~p to ~p~n", [self(), CurrRev, props:get_value(<<"_rev">>, ChangedRates)]),
     {noreply, ChangedRates};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -173,16 +173,16 @@ code_change(_OldVsn, State, _Extra) ->
 get_current_rates() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_RATES_DOC) of
 	{error, not_found} ->
-	    format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
+	    logger:format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
 	    {error, "No matching rates"};
 	{error, db_not_reachable} ->
-	    format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
+	    logger:format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
 	    {error, "No database host"};
 	{ok, []} ->
-	    format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
+	    logger:format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
 	    {error, "No matching rates"};
 	{ok, {struct, Rates}} when is_list(Rates) ->
-	    format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), get_value(<<"_rev">>, Rates)]),
+	    logger:format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), props:get_value(<<"_rev">>, Rates)]),
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_RATES_DOC),
 	    {ok, lists:map(fun process_rates/1, Rates)}
     end.
@@ -190,8 +190,8 @@ get_current_rates() ->
 process_rates({<<"_id">>, _}=ID) -> ID;
 process_rates({<<"_rev">>, _}=Rev) -> Rev;
 process_rates({RouteName, {struct, RouteOptions}}) ->
-    RoutesRegexStrs = get_value(<<"routes">>, RouteOptions, []),
-    {struct, Options} = get_value(<<"options">>, RouteOptions, {struct, []}),
+    RoutesRegexStrs = props:get_value(<<"routes">>, RouteOptions, []),
+    {struct, Options} = props:get_value(<<"options">>, RouteOptions, {struct, []}),
     ROs0 = proplists:delete(<<"routes">>, RouteOptions),
     {RouteName, [{<<"routes">>, lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs)}
 		 ,{<<"options">>, Options}
@@ -200,28 +200,28 @@ process_rates({RouteName, {struct, RouteOptions}}) ->
 set_rate_flags(Flags, Rates) ->
     Dir = Flags#route_flags.direction,
     User = Flags#route_flags.to_user,
-    Rates0 = proplists:delete(<<"_rev">>, proplists:delete(<<"_id">>, Rates)),
+    Rates0 = proplists:delete(<<"_rev">>, props:delete(<<"_id">>, Rates)),
     Rates1 = lists:filter(fun({_RateName, RateData}) ->
-				  lists:member(Dir, get_value(<<"direction">>, RateData)) andalso
+				  lists:member(Dir, props:get_value(<<"direction">>, RateData)) andalso
 				      lists:any(fun(Regex) ->
 							re:run(User, Regex) =/= nomatch
-						end, get_value(<<"routes">>, RateData))
+						end, props:get_value(<<"routes">>, RateData))
 			  end, Rates0),
     wh_timer:tick("post first filter"),
     %% Filter on Options - All flag options must be in Rate options
     Rates2 = lists:filter(fun({_RateName, RateData}) ->
-				  options_match(Flags#route_flags.route_options, get_value(<<"options">>, RateData, []))
+				  options_match(Flags#route_flags.route_options, props:get_value(<<"options">>, RateData, []))
 			  end, Rates1),
     wh_timer:tick("post second filter"),
 
     case lists:usort(fun sort_rates/2, Rates2) of
 	[] ->
 	    wh_timer:tick("post usort empty"),
-	    format_log(error, "TS_CREDIT(~p): No Rate found for ~p~n", [self(), User]),
+	    logger:format_log(error, "TS_CREDIT(~p): No Rate found for ~p~n", [self(), User]),
 	    {error, no_route_found};
 	[{RateName, RateData} | _] ->
 	    wh_timer:tick("post usort data found"),
-	    format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
+	    logger:format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    case ts_acctmgr:reserve_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid
 					  ,(Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)
@@ -231,47 +231,47 @@ set_rate_flags(Flags, Rates) ->
 		{ok, per_min} ->
 		    {ok, set_rate_flags(Flags, Dir, RateData, RateName)};
 		{error, entry_exists}=E ->
-		    format_log(error, "TS_CREDIT(~p): Failed to reserve trunk for already existing call-id~n", [self()]),
+		    logger:format_log(error, "TS_CREDIT(~p): Failed to reserve trunk for already existing call-id~n", [self()]),
 		    E;
 		{error, no_funds}=E1 ->
-		    format_log(error, "TS_CREDIT(~p): No funds/flat-rate trunks to route call over.~n", [self()]),
+		    logger:format_log(error, "TS_CREDIT(~p): No funds/flat-rate trunks to route call over.~n", [self()]),
 		    E1;
 		{error, no_account}=E2 ->
-		    format_log(error, "TS_CREDIT(~p): No account id passed.~n", [self()]),
+		    logger:format_log(error, "TS_CREDIT(~p): No account id passed.~n", [self()]),
 		    E2;
 		{error, no_callid}=E3 ->
-		    format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
+		    logger:format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
 		    E3
 	    end
     end.
 
 %% Return true of RateA has higher weight than RateB
 sort_rates({_RNameA, RateDataA}, {_RNameB, RateDataB}) ->
-    ts_util:constrain_weight(get_value(<<"weight">>, RateDataA, 1)) >= ts_util:constrain_weight(get_value(<<"weight">>, RateDataB, 1)).
+    ts_util:constrain_weight(props:get_value(<<"weight">>, RateDataA, 1)) >= ts_util:constrain_weight(props:get_value(<<"weight">>, RateDataB, 1)).
 
 set_rate_flags(Flags, <<"inbound">>=In, RateData, RateName) ->
-    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateName]),
+    logger:format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateName]),
     Flags#route_flags{
-      rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
-      ,rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
-      ,rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
-      ,surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
+      rate = whistle_util:to_float(props:get_value(<<"rate_cost">>, RateData))
+      ,rate_increment = whistle_util:to_integer(props:get_value(<<"rate_increment">>, RateData))
+      ,rate_minimum = whistle_util:to_integer(props:get_value(<<"rate_minimum">>, RateData))
+      ,surcharge = whistle_util:to_float(props:get_value(<<"rate_surcharge">>, RateData, 0))
       ,rate_name = RateName
       ,flat_rate_enabled = false
      };
 set_rate_flags(Flags, <<"outbound">>=Out, RateData, RateName) ->
-    format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateName]),
+    logger:format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateName]),
     Flags#route_flags{
-      rate = whistle_util:to_float(get_value(<<"rate_cost">>, RateData))
-      ,rate_increment = whistle_util:to_integer(get_value(<<"rate_increment">>, RateData))
-      ,rate_minimum = whistle_util:to_integer(get_value(<<"rate_minimum">>, RateData))
-      ,surcharge = whistle_util:to_float(get_value(<<"rate_surcharge">>, RateData, 0))
+      rate = whistle_util:to_float(props:get_value(<<"rate_cost">>, RateData))
+      ,rate_increment = whistle_util:to_integer(props:get_value(<<"rate_increment">>, RateData))
+      ,rate_minimum = whistle_util:to_integer(props:get_value(<<"rate_minimum">>, RateData))
+      ,surcharge = whistle_util:to_float(props:get_value(<<"rate_surcharge">>, RateData, 0))
       ,rate_name = RateName
       ,flat_rate_enabled = false
      }.
 
 set_flat_flags(Flags, <<"inbound">>=In) ->
-    format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [In]),
+    logger:format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [In]),
     Flags#route_flags{
       rate = 0.0
       ,rate_increment = 0
@@ -281,7 +281,7 @@ set_flat_flags(Flags, <<"inbound">>=In) ->
       ,flat_rate_enabled = true
      };
 set_flat_flags(Flags, <<"outbound">>=Out) ->
-    format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [Out]),
+    logger:format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [Out]),
     Flags#route_flags{
       rate = 0.0
       ,rate_increment = 0
@@ -295,5 +295,5 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 %% All options set in Flags must be set in Rate to be usable
 -spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary())) -> boolean()).
 options_match(RouteOptions, RateOptions) ->
-    format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [RouteOptions, RateOptions]),
-    lists:all(fun(Opt) -> get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
+    logger:format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [RouteOptions, RateOptions]),
+    lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).

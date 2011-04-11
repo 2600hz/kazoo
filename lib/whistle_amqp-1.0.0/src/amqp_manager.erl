@@ -154,9 +154,9 @@ handle_info(timeout, #state{host=Host, handler_pid = undefined, timeout=T}=State
 	{error, _} -> {noreply, State#state{timeout=T*2}, T}
     end;
     
-handle_info({'DOWN', Ref, process, HPid, _Reason}, #state{handler_ref = Ref1}=State) when Ref =:= Ref1 ->
+handle_info({'DOWN', Ref, process, HPid, _Reason}, #state{host=Host, handler_ref = Ref}) ->
     logger:format_log(error, "AMQP_MGR(~p): amqp_host(~p) went down: ~p~n", [self(), HPid, _Reason]),
-    {noreply, #state{host = State#state.host}, 0};
+    {noreply, #state{host = Host}, 0};
 
 handle_info({nodedown, RabbitNode}, #state{conn_params=#'amqp_params'{node=RabbitNode}}=State) ->
     logger:format_log(error, "AMQP_MGR(~p): AMQP Node ~p is down~n", [self(), RabbitNode]),
@@ -218,13 +218,13 @@ create_amqp_params(Host, Port) ->
     end.
 
 -spec(get_new_connection/1 :: (tuple(Type :: direct | network, P :: #'amqp_params'{})) -> pid() | tuple(error, econnrefused)).
-get_new_connection({Type, #'amqp_params'{}=P}) ->
+get_new_connection({Type, #'amqp_params'{host=_Host}=P}) ->
     case amqp_connection:start(Type, P) of
 	{ok, Connection} ->
-	    logger:format_log(info, "AMQP_MGR(~p): Conn ~p(~p) started with ~p.~n", [self(), Connection, Type, P#'amqp_params'.host]),
+	    logger:format_log(info, "AMQP_MGR(~p): Conn ~p(~p) started with ~p.~n", [self(), Connection, Type, _Host]),
 	    Connection;
 	{error, econnrefused}=E ->
-	    logger:format_log(error, "AMQP_MGR(~p): Refusing to connect to ~p~n", [self(), P#'amqp_params'.host]),
+	    logger:format_log(error, "AMQP_MGR(~p): Refusing to connect to ~p~n", [self(), _Host]),
 	    E;
 	{error, broker_not_found_on_node}=E ->
 	    logger:format_log(error, "AMQP_MGR(~p): Node found, broker not.~n", [self()]),

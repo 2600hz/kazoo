@@ -171,7 +171,7 @@ response_datastore_conn_refused(Context) ->
 %% Create a standard response if the provided data did not validate
 %% @end
 %%--------------------------------------------------------------------
--spec(response_invalid_data/2 :: (Fields :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec(response_invalid_data/2 :: (Fields :: mochijson(), Context :: #cb_context{}) -> #cb_context{}).
 response_invalid_data(Fields, Context) ->
     response(error, <<"invalid data">>, 400, Fields, Context).
 
