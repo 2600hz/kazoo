@@ -35,7 +35,7 @@ init(Opts) ->
     %% binds http://host/wmtrace and stores the files in /tmp
     %% wmtrace_resource:remove_dispatch_rules/0 removes the trace rule
 
-allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
+allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->    
     Context1 = case wrq:get_req_header("Content-Type", RD) of
 		   "multipart/form-data" ++ _ ->
 		       extract_files_and_params(RD, Context);
@@ -53,7 +53,12 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-            Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),
+            Methods1 = case is_cors_preflight(RD) of 
+                true -> 
+                    allow_methods(Responses, Methods, Verb, wrq:method(RD)) ++ ['OPTIONS'];
+                false -> 
+                    allow_methods(Responses, Methods, Verb, wrq:method(RD))
+            end,
             {Methods1, RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb}};
         [] ->
             {Methods, RD, Context1#cb_context{req_verb=Verb}}
@@ -96,7 +101,9 @@ resource_exists(RD, Context) ->
             {RD1, Context1} = validate(RD, Context),
             case succeeded(Context1) of
                 true ->
-                    execute_request(RD1, Context1);
+                    ( is_cors_request(RD) 
+                        andalso create_cors_reply(RD1, Context1) )
+                        orelse execute_request(RD1, Context1);
                 false ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
@@ -286,6 +293,11 @@ override_verb(RD, JSON, <<"post">>) ->
 		V -> {true, whistle_util:to_binary(string:to_lower(V))}
 	    end;
 	V -> {true, whistle_util:to_binary(string:to_lower(binary_to_list(V)))}
+    end;
+override_verb(RD, _, <<"options">>) ->
+    case wrq:get_req_header("Access-Control-Request-Method", RD) of
+        undefined -> false;
+        V -> {true, whistle_util:to_binary(string:to_lower(V))}
     end;
 override_verb(_, _, _) -> false.
 
@@ -628,6 +640,46 @@ fix_header(RD, "Location"=H, Url) ->
     {H, lists:concat([Host | [Url1]])};
 fix_header(_, H, V) ->
     {whistle_util:to_list(H), whistle_util:to_list(V)}.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_cors_reply/2 :: (RD :: #wm_reqdata{}, #wm_reqdata{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
+create_cors_reply(RD, Context) ->
+    RD1 = wrq:set_resp_headers([
+                                 {"Access-Control-Allow-Origin", "*"}
+                                ,{"Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS"}
+                                ,{"Access-Control-Allow-Headers", "X-Auth-Token"}
+                                ,{"Access-Control-Max-Age", "86400"}
+                               ], RD),
+    {true, RD1, Context}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempts to determine if this is a cross origin resource sharing
+%% request
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_cors_request/1 :: (RD :: #wm_reqdata{}) -> boolean()).
+is_cors_request(RD) ->
+    wrq:get_req_header("Origin", RD) =/= 'undefined' 
+        orelse wrq:get_req_header("Access-Control-Request-Method", RD) =/= 'undefined' 
+        orelse wrq:get_req_header("Access-Control-Request-Headers", RD) =/= 'undefined'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempts to determine if this is a cross origin resource preflight
+%% request
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_cors_preflight/1 :: (RD :: #wm_reqdata{}) -> boolean()).
+is_cors_preflight(RD) ->
+    is_cors_request(RD) andalso wrq:method(RD) =:= 'OPTIONS'.
 
 %%--------------------------------------------------------------------
 %% @private
