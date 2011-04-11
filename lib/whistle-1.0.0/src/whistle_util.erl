@@ -154,6 +154,7 @@ ceiling(X) ->
         false -> T + 1
     end.
 
+%% returns current seconds
 -spec(current_tstamp/0 :: () -> integer()).
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
