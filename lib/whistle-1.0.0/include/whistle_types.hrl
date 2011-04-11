@@ -16,5 +16,12 @@
 -type json_objects() :: [json_object()] | [].
 -type mochijson() :: json_object() | json_objects() | json_term() | [].
 
+-type date() :: tuple(non_neg_integer(), non_neg_integer(), non_neg_integer()).
+-type time() :: tuple(non_neg_integer(), non_neg_integer(), non_neg_integer()).
+-type datetime() :: tuple(date(), time()).
+-type iso_week() :: tuple(non_neg_integer(), integer()).
+-type seconds() :: integer().
+-type day_of_week() :: 1 | 2 | 3 | 4 | 5 | 6 | 7.
+
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.
