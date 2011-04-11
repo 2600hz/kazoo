@@ -43,7 +43,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Db, Options) ->
-    gen_changes:start_link(?MODULE, Db, [{timeout, 10000} | Options], [Db]).
+    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 1000000} | Options], [Db]).
 
 stop(Srv) ->
     gen_changes:stop(Srv).
