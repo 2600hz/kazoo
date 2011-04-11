@@ -3,5 +3,7 @@
 */mnesia
 */error_log
 .eunit
+lib/rabbitmq-server/log/*.log*
+lib/rabbitmq-server/mnesia/*
 applications/apps/*/log/*
 applications/priv/mnesia/*.*

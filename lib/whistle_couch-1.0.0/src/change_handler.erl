@@ -43,12 +43,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Db, Options) ->
-    Opts1 = case props:get_value(changes_timeout, Options) of
-		undefined -> [ {changes_timeout, infinity} | Options];
-		true -> Options;
-		_ ->  Options
-	    end,
-    gen_changes:start_link(?MODULE, Db, Opts1, [Db]).
+    gen_changes:start_link(?MODULE, Db, [{timeout, 10000} | Options], [Db]).
 
 stop(Srv) ->
     gen_changes:stop(Srv).

@@ -180,8 +180,8 @@
 -type exc_kind() :: 'throw' | 'error' | 'exit'.
 -type exc_reason() :: term().
 -type stacktrace() :: [{atom(),atom(),arity() | [term()]}].
--type error_reason() :: 'cant_generate' | 'cant_satisfy' | 'rejected'
-		      | 'shrinking_error' | 'too_many_instances'
+-type error_reason() :: 'arity_limit' | 'cant_generate' | 'cant_satisfy'
+		      | 'rejected' | 'shrinking_error' | 'too_many_instances'
 		      | 'type_mismatch' | 'wrong_type' | {'typeserver',term()}
 		      | {'unexpected',any()} | {'unrecognized_option',term()}.
 
@@ -270,7 +270,6 @@ global_state_init(#opts{start_size = StartSize, constraint_tries = CTries,
     put('$any_type',AnyType),
     proper_arith:rand_start(Crypto),
     proper_typeserver:start(),
-    proper_funserver:start(),
     ok.
 
 -spec global_state_reset(opts()) -> 'ok'.
@@ -278,12 +277,10 @@ global_state_reset(#opts{start_size = StartSize} = Opts) ->
     clean_garbage(),
     put('$size', StartSize - 1),
     put('$left', 0),
-    grow_size(Opts),
-    proper_funserver:reset().
+    grow_size(Opts).
 
 -spec global_state_erase() -> 'ok'.
 global_state_erase() ->
-    proper_funserver:stop(),
     proper_typeserver:stop(),
     proper_arith:rand_stop(),
     erase('$any_type'),
@@ -403,10 +400,10 @@ check(OuterTest, CExm, UserOpts) ->
 
 -spec module(mod_name()) -> module_result().
 module(Mod) ->
-    module([], Mod).
+    module(Mod, []).
 
--spec module(user_opts(), mod_name()) -> module_result().
-module(UserOpts, Mod) ->
+-spec module(mod_name(), user_opts()) -> module_result().
+module(Mod, UserOpts) ->
     multi_test_prep(Mod, test, UserOpts).
 
 -spec check_specs(mod_name()) -> module_result().
@@ -702,7 +699,6 @@ perform(ToPass, ToPass, _TriesLeft, _Test, Samples, Printers, _Opts) ->
     #pass{samples = Samples, printers = Printers, performed = ToPass};
 perform(Passed, ToPass, TriesLeft, Test, Samples, Printers,
 	#opts{output_fun = Print} = Opts) ->
-    proper_funserver:reset(),
     case run(Test) of
 	#pass{reason = true_prop, samples = MoreSamples,
 	      printers = MorePrinters} ->
@@ -719,6 +715,8 @@ perform(Passed, ToPass, TriesLeft, Test, Samples, Printers,
 	#fail{} = FailResult ->
 	    Print("!", []),
 	    FailResult#fail{performed = Passed + 1};
+	{error, arity_limit} = Error ->
+	    Error;
 	{error, cant_generate} = Error ->
 	    Error;
 	{error, rejected} ->
@@ -922,6 +920,8 @@ apply_args(Args, Prop, Ctx) ->
 		false ->
 		    create_fail_result(Ctx, {exception,error,ErrReason,Trace})
 	    end;
+	throw:'$arity_limit' ->
+	    {error, arity_limit};
 	throw:'$cant_generate' ->
 	    {error, cant_generate};
 	throw:{'$typeserver',SubReason} ->
@@ -1254,6 +1254,9 @@ report_rerun_result({error,Reason}, #opts{output_fun = Print}) ->
 
 %% @private
 -spec report_error(error_reason(), output_fun()) -> 'ok'.
+report_error(arity_limit, Print) ->
+    Print("Error: Couldn't produce a function of the desired arity, please "
+	  "recompile PropEr with an increased value for ?MAX_ARITY.~n", []);
 report_error(cant_generate, Print) ->
     Print("Error: Couldn't produce an instance that satisfies all strict "
 	  "constraints after ~b tries.~n", [get('$constraint_tries')]);

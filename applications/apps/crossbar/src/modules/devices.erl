@@ -126,8 +126,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-		  spawn(fun() -> accounts:replicate_from_account(Context1#cb_context.db_name, ?SIP_CREDS_DB, ?SIP_FILTER) end),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+		  spawn(fun() -> accounts:replicate_from_account(Context1#cb_context.db_name, ?SIP_CREDS_DB, ?SIP_FILTER) end)
 	  end),
     {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->

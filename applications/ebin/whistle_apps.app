@@ -7,4 +7,4 @@
               {env,[]},
               {modules,[whapps_controller,whapps_json,whistle_apps,
                         whistle_apps_app,whistle_apps_cli,whistle_apps_deps,
-                        whistle_apps_mnesia,whistle_apps_sup]}]}.
+                        whistle_apps_sup]}]}.
