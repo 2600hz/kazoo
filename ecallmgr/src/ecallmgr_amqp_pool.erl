@@ -232,7 +232,7 @@ worker_free(Q) ->
 		{ok, JSON} ->
 		    Ref = erlang:monitor(process, Pid),
 		    PubFun(JSON),
-		    logger:format_log(info, "WORKER-F(~p): Working for ~p~n", [self(), Pid]),
+		    logger:format_log(info, "WORKER-F(~p): Working for ~p and sent ~s~n", [self(), Pid, JSON]),
 		    worker_busy(Q, From, Ref, Parent);
 		{error, _}=E ->
 		    gen_server:reply(From, E),
