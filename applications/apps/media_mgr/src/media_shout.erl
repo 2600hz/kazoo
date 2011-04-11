@@ -159,7 +159,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 	Header = get_header(MediaName, StreamUrl),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
-					,shout_response=Resp, shout_header={0,Header}, continuous=(S#state.stream_type =:= continuous)},
+				,shout_response=Resp, shout_header={0,Header}, continuous=(S#state.stream_type =:= continuous)},
 	MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
 		
 	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
@@ -261,6 +261,7 @@ start_acceptor(Parent, LSock) ->
 	_ -> ok
     end.
 
+-spec(get_request/2 :: (S :: port(), L :: list()) -> no_return()).
 get_request(S, L) ->
     inet:setopts(S, [{active,once}, binary]),
     receive
