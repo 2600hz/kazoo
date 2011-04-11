@@ -18,7 +18,7 @@
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
--export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
+-export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3]).
@@ -30,13 +30,10 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
--import(props, [get_value/2, get_value/3]).
-
 -include_lib("whistle/include/whistle_types.hrl"). % get the whistle types
 -include_lib("couchbeam/include/couchbeam.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 -define(STARTUP_FILE, [code:lib_dir(whistle_couch, priv), "/startup.config"]).
 -define(DEFAULT_PORT, 5984).
 -define(IBROWSE_OPTS, [{max_sessions, 1024}, {max_pipeline_size, 10}]).
@@ -84,7 +81,7 @@ update_doc_from_file(DbName, App, File) ->
 	DocId = props:get_value(<<"_id">>, Prop),
 	{ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
 	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
-    catch        
+    catch
         _Type:{badmatch,{error,Reason}} ->
 	    io:format("badmatch ~p:~p: ~p~n", [_Type, Reason, erlang:get_stacktrace()]),
             {error, Reason};
@@ -172,7 +169,7 @@ db_replicate({struct, _}=MochiJson) ->
 db_create(DbName) ->
     case get_conn() of
         {} -> false;
-        Conn -> 
+        Conn ->
             case couchbeam:create_db(Conn, whistle_util:to_list(DbName)) of
                 {error, _} -> false;
                 {ok, _} -> true
@@ -229,7 +226,7 @@ open_doc(DbName, DocId) ->
 -spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
-open_doc(DbName, DocId, Options) ->    
+open_doc(DbName, DocId, Options) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
 	Db ->
@@ -374,7 +371,7 @@ get_results(DbName, DesignDoc, ViewOptions) ->
 		View ->
 		    case couchbeam_view:fetch(View) of
 			{ok, {struct, Prop}} ->
-			    Rows = get_value(<<"rows">>, Prop, []),
+			    Rows = props:get_value(<<"rows">>, Prop, []),
                             {ok, Rows};
 			{error, _Error}=E -> E
 		    end
@@ -418,8 +415,8 @@ get_db(DbName) ->
     open_db(whistle_util:to_list(DbName), Conn).
 
 get_url() ->
-    case {whistle_util:to_binary(get_host()), get_creds()} of 
-        {<<"">>, _} -> 
+    case {whistle_util:to_binary(get_host()), get_creds()} of
+        {<<"">>, _} ->
             undefined;
         {H, {[], []}} ->
             <<"http://", H/binary, ":5984", $/>>;
@@ -430,10 +427,13 @@ get_url() ->
     end.
 
 add_change_handler(DBName, DocID) ->
-    gen_server:call(?MODULE, {add_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).
+    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
+
+add_change_handler(DBName, DocID, Pid) ->
+    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
-    gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_list(DBName), whistle_util:to_binary(DocID)}).
+    gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -473,12 +473,12 @@ handle_call(get_host, _From, #state{host=H}=State) ->
     {reply, H, State};
 
 handle_call({set_host, Host, User, Pass}, _From, #state{host=OldHost}=State) ->
-    format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
+    logger:format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
     S = get_new_connection(Host, User, Pass),
     {reply, ok, State#state{host=Host, connection=S, change_handlers=dict:new(), creds={User,Pass}}};
 
 handle_call({set_host, Host, User, Pass}, _From, State) ->
-    format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
+    logger:format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
     S = get_new_connection(Host, User, Pass),
     {reply, ok, State#state{host=Host, connection=S, change_handlers=dict:new(), creds={User,Pass}}};
 
@@ -488,30 +488,13 @@ handle_call({get_conn}, _, #state{connection=S}=State) ->
 handle_call({get_creds}, _, #state{creds=Cred}=State) ->
     {reply, Cred, State};
 
-handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH, connection=S}=State) ->
-    case dict:find(DBName, CH) of
-	{ok, {Srv, _}} ->
-	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {reply, ok, State};
-	error ->
-	    {ok, Srv} = change_mgr_sup:start_handler(open_db(whistle_util:to_list(DBName), S), []),
-	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
-	    SrvRef = erlang:monitor(process, Srv),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {reply, ok, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
-    end;
-
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
-    case dict:find(DBName, CH) of
-	{Srv, _} -> change_handler:rm_listener(Srv, Pid, DocID);
-	error -> ok
-    end,
-    {reply, ok, State};
-
-handle_call(_Request, _From, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Failed call ~p with state ~p~n", [self(), _Request, State]),
-    {reply, {error, unavailable}, State}.
+    spawn(fun() ->
+		  {ok, {Srv, _}} = dict:find(DBName, CH),
+		  logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Rm listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+		  change_handler:rm_listener(Srv, Pid, DocID)
+	  end),
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -523,9 +506,19 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
+handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
+    case dict:find(DBName, CH) of
+	{ok, {Srv, _}} ->
+	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {noreply, State};
+	error ->
+	    {ok, Srv} = change_handler:start_link(open_db(whistle_util:to_list(DBName), S), []),
+	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    SrvRef = erlang:monitor(process, Srv),
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -537,15 +530,15 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, Srv, complete}, #state{change_handlers=CH}=State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after complete~n", [self(), Srv]),
+    logger:format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after complete~n", [self(), Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{change_handlers=CH}=State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after conn closed~n", [self(), Srv]),
+    logger:format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after conn closed~n", [self(), Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info(_Info, State) ->
-    format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
+    logger:format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -589,9 +582,9 @@ get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, 
 -spec(get_new_conn/2 :: (Host :: string(), Opts :: proplist()) -> #server{}).
 get_new_conn(Host, Opts) ->
     Conn = couchbeam:server_connection(Host, ?DEFAULT_PORT, "", Opts),
-    format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
+    logger:format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
     {ok, _Version} = couchbeam:server_info(Conn),
-    format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
+    logger:format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
     spawn(fun() ->
 		  case props:get_value(basic_auth, Opts) of
 		      undefined -> save_config(Host);
@@ -613,14 +606,14 @@ open_db(DbName, Conn) ->
         {error, _Error}=E -> E;
         {ok, Db} -> Db
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% get_view, if Db/DesignDoc is known, return {#view{}, Views},
 %% else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
 %% @end
-%%--------------------------------------------------------------------    
+%%--------------------------------------------------------------------
 -spec(get_view/3 :: (Db :: #db{}, DesignDoc :: binary(), ViewOptions :: list()) -> #view{} | tuple(error, view_not_found)).
 get_view(Db, DesignDoc, ViewOptions) ->
     case couchbeam:view(Db, DesignDoc, ViewOptions) of
@@ -667,6 +660,7 @@ get_startup_config() ->
 save_config(H) ->
     save_config(H, "", "").
 
+-spec(save_config/3 :: (H :: string(), U :: string(), P :: string()) -> no_return()).
 save_config(H, U, P) ->
     {ok, Config} = get_startup_config(),
     file:write_file(?STARTUP_FILE

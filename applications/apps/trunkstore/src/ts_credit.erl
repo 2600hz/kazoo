@@ -61,8 +61,7 @@ force_rate_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, _} = timer:send_after(1000, ?MODULE, refresh),
-    {ok, []}.
+    {ok, [], 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,6 +112,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, OldRates) ->
+    logger:format_log(info, "TS_CREDIT(~p): timeout~n", [self()]),
+    handle_info(refresh, OldRates);
 handle_info(refresh, OldRates) ->
     case get_current_rates() of
 	{ok, Rates} ->

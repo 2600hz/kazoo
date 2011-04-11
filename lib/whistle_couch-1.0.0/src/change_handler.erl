@@ -43,7 +43,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Db, Options) ->
-    gen_changes:start_link(?MODULE, Db, [{timeout, 10000} | Options], [Db]).
+    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 5000} | Options], [Db]).
 
 stop(Srv) ->
     gen_changes:stop(Srv).
@@ -146,23 +146,22 @@ handle_info(_Info, State) ->
 handle_change(_, #state{listeners=[]}=State) ->
     {noreply, State};
 handle_change({struct, Change}, #state{listeners=Ls}=State) ->
-    DocID = props:get_value(<<"id">>, Change),
-    Send = case props:get_value(<<"deleted">>, Change) of
-	       undefined ->
-		   {document_changes, DocID, [ C || {struct, C} <- props:get_value(<<"changes">>, Change)]};
-	       true ->
-		   {document_deleted, DocID}
-	   end,
+    spawn(fun() ->
+		  DocID = props:get_value(<<"id">>, Change),
+		  Send = case props:get_value(<<"deleted">>, Change) of
+			     undefined ->
+				 {document_changes, DocID, [ C || {struct, C} <- props:get_value(<<"changes">>, Change)]};
+			     true ->
+				 {document_deleted, DocID}
+			 end,
 
-    logger:format_log(info, "CH(~p): sending change ~p~n", [self(), Send]),
-
-    lists:foreach(fun(#listener{pid=Pid, doc=DocID1}) when DocID =:= DocID1 ->
-			  Pid ! Send;
-		     (#listener{pid=Pid, doc = <<>>}) ->
-			  Pid ! Send;
-		     (_) -> ok
-		  end, Ls),
-
+		  lists:foreach(fun(#listener{pid=Pid, doc=DocID1}) when DocID =:= DocID1 ->
+					Pid ! Send;
+				   (#listener{pid=Pid, doc = <<>>}) ->
+					Pid ! Send;
+				   (_) -> ok
+				end, Ls)
+	  end),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
