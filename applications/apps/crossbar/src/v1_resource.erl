@@ -507,7 +507,7 @@ execute_request(RD, Context) ->
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
 allow_missing_post(RD, Context) ->
-    {wrq:method(RD) =:= 'POST', RD, Context};
+    {wrq:method(RD) =:= 'POST', RD, Context}.
 
 %% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
 %% POST is a create
