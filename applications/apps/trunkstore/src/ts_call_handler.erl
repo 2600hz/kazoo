@@ -44,9 +44,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
-
 -include("ts.hrl").
 
 -define(CALL_ACTIVITY_TIMEOUT, 2 * 60 * 1000). %% 2 mins to check call status
@@ -154,8 +151,8 @@ handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) when not is_binary(Q) ->
     {noreply, S#state{amqp_q=NewQ}, 1000};
 
 handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
-    format_log(info, "TS_CALL(~p): AmqpHost ~s went down~n", [self(), H]),
-    timer:send_after(1000, self(), is_amqp_up),
+    logger:format_log(info, "TS_CALL(~p): AmqpHost ~s went down~n", [self(), H]),
+    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
 handle_info(is_amqp_up, #state{callid=CallID, amqp_q={error, _}, is_amqp_up=false}=State) ->
@@ -164,47 +161,47 @@ handle_info(is_amqp_up, #state{callid=CallID, amqp_q={error, _}, is_amqp_up=fals
 	true ->
 	    {noreply, State#state{amqp_q = NewQ, is_amqp_up = true}};
 	false ->
-	    timer:send_after(1000, self(), is_amqp_up),
+	    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
 	    {noreply, State}
     end;
 
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
-    stop_call_activity_ref(Ref),
-    format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
+    _ = stop_call_activity_ref(Ref),
+    logger:format_log(info, "TS_CALL(~p): No status_resp received; assuming call is down and we missed it.~n", [self()]),
     {stop, shutdown, S};
 handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, callid=CallID}=S) when is_binary(Q) ->
-    format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
-    stop_call_activity_ref(Ref),
+    logger:format_log(info, "TS_CALL(~p): Haven't heard from the event stream for a bit, need to check in~n", [self()]),
+    _ = stop_call_activity_ref(Ref),
 
     Prop = [{<<"Call-ID">>, CallID} | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_call_handler">>, <<"0.5.3">>)],
     case whistle_api:call_status_req(Prop) of
 	{ok, JSON} ->
 	    amqp_util:callevt_publish(CallID, JSON, status_req);
 	{error, E} ->
-	    format_log(error, "TS_CALL(~p): sending status_req failed: ~p~n", [self(), E])
+	    logger:format_log(error, "TS_CALL(~p): sending status_req failed: ~p~n", [self(), E])
     end,
     {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=down}};
 handle_info(#'basic.consume_ok'{}, #state{call_activity_ref=Ref}=S) ->
-    stop_call_activity_ref(Ref),
+    _ = stop_call_activity_ref(Ref),
     {noreply, S#state{call_activity_ref=call_activity_ref()}};
-handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags, call_activity_ref=Ref}=S) ->
-    format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
-    stop_call_activity_ref(Ref),
+handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags, call_activity_ref=Ref, leg_number=LegNo}=S) ->
+    logger:format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
+    _ = stop_call_activity_ref(Ref),
 
     JObj = mochijson2:decode(binary_to_list(Payload)),
 
     case whapps_json:get_value(<<"Event-Name">>, JObj) of
 	<<"cdr">> ->
 	    spawn(fun() ->
-			  format_log(info, "TS_CALL(~p): Scenario(~p) for ~p~n", [self(), Flags#route_flags.scenario, Flags#route_flags.callid]),
+			  logger:format_log(info, "TS_CALL(~p): Scenario(~p) for ~p~n", [self(), Flags#route_flags.scenario, Flags#route_flags.callid]),
 			  true = whistle_api:call_cdr_v(JObj),
-			  close_down_call(JObj, Flags, S#state.leg_number),
+			  close_down_call(JObj, Flags, LegNo),
 			  ts_cdr:store_cdr(JObj, Flags)
 		  end),
 	    {stop, normal, S};
 	<<"route_win">> ->
 	    true = whistle_api:route_win_v(JObj),
-	    format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), JObj]),
+	    logger:format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), JObj]),
 	    {noreply, S#state{ctl_q=whapps_json:get_value(<<"Control-Queue">>, JObj), call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(JObj),
@@ -215,28 +212,28 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	    %% if an outbound was re-routed as inbound, diverted_account_doc_id won't be <<>>; otherwise, when the CDR is received, nothing really happens
 
 	    %% try to reserve a trunk for this leg
-	    ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid, 0),
-	    ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID, (Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)
+	    _ = ts_acctmgr:release_trunk(OtherAcctID, Flags#route_flags.callid, 0),
+	    _ = ts_acctmgr:reserve_trunk(OtherAcctID, OtherCallID, (Flags#route_flags.rate * Flags#route_flags.rate_minimum + Flags#route_flags.surcharge)
 				     ,Flags#route_flags.flat_rate_enabled),
-	    ts_call_sup:start_proc([OtherCallID
+	    _ = ts_call_sup:start_proc([OtherCallID
 				    ,Flags#route_flags{account_doc_id=OtherAcctID
 						       ,callid = OtherCallID
 						       ,diverted_account_doc_id=AcctID
 						       ,direction = <<"inbound">>
 						      }
-				    ,S#state.leg_number]),
-	    format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
+				    ,LegNo]),
+	    logger:format_log(info, "TS_CALL(~p): Bridging to ~s~n", [self(), OtherCallID]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"status_resp">> ->
 	    true = whistle_api:call_status_resp_v(JObj),
-	    format_log(info, "TS_CALL(~p): Call is active, despite appearances~n", [self()]),
+	    logger:format_log(info, "TS_CALL(~p): Call is active, despite appearances~n", [self()]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	_EvtName ->
-	    format_log(info, "TS_CALL(~p): Evt: ~p~n", [self(), _EvtName]),
+	    logger:format_log(info, "TS_CALL(~p): Evt: ~p~n", [self(), _EvtName]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}}
     end;
 handle_info(_Info, S) ->
-    format_log(error, "TS_CALL(~p): Unhandled info: ~p~n", [self(), _Info]),
+    logger:format_log(error, "TS_CALL(~p): Unhandled info: ~p~n", [self(), _Info]),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -251,22 +248,20 @@ handle_info(_Info, S) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(shutdown, #state{route_flags=Flags, start_time=StartT, call_activity_ref=Ref}) ->
-    stop_call_activity_ref(Ref),
-    Duration = get_call_duration([], Flags, StartT),
-    format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk and billing for ~p seconds"
+    _ = stop_call_activity_ref(Ref),
+    Duration = get_call_duration({struct, []}, Flags, StartT),
+    logger:format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk and billing for ~p seconds"
 	       ,[self(), Duration]),
-    update_account(Duration, Flags), % charge for minimmum seconds since we apparently messed up
-    ok;
+    update_account(Duration, Flags); % charge for minimmum seconds since we apparently messed up
 terminate(normal, #state{start_time=StartTime, call_activity_ref=Ref}) ->
-    stop_call_activity_ref(Ref),
+    _ = stop_call_activity_ref(Ref),
     DeltaTime = whistle_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
-    format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]),
-    ok;
+    logger:format_log(error, "TS_CALL(~p): terminating normally: took ~p~n", [self(), DeltaTime]);
 terminate(_Unexpected, #state{start_time=StartTime, call_activity_ref=Ref}) ->
-    stop_call_activity_ref(Ref),
+    _ = stop_call_activity_ref(Ref),
     DeltaTime = whistle_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
-    format_log(error, "TS_CALL(~p): terminating unexpectedly: took ~p~n~p~n", [self(), DeltaTime, _Unexpected]),
-    ok.
+    logger:format_log(error, "TS_CALL(~p): terminating unexpectedly: took ~p~n~p~n", [self(), DeltaTime, _Unexpected]).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -282,10 +277,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(get_amqp_queue/1 :: (CallID :: binary()) -> binary()).
+-spec(get_amqp_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, term())).
 get_amqp_queue(CallID) ->
     EvtQ = amqp_util:new_callevt_queue(<<>>),
-    format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
+    logger:format_log(info, "TS_CALL(~p): Listening on Q: ~p for call events relating to ~p~n", [self(), EvtQ, CallID]),
 
     amqp_util:bind_q_to_callevt(EvtQ, CallID, events),
     amqp_util:bind_q_to_callevt(EvtQ, CallID, cdr),
@@ -318,15 +313,18 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 	false -> Sur + ((RM / 60) * R) + ( whistle_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
 
+-spec(call_activity_ref/0 :: () -> reference()).
 call_activity_ref() ->
     erlang:start_timer(?CALL_ACTIVITY_TIMEOUT, self(), call_activity_timeout).
 
+-spec(stop_call_activity_ref/1 :: (Ref :: undefined | reference()) -> ok | integer() | false).
 stop_call_activity_ref(undefined) ->
     ok;
 stop_call_activity_ref(Ref) ->
     erlang:cancel_timer(Ref).
 
 %% Close down the A-Leg of a call
+-spec(close_down_call/3 :: (JObj :: json_object(), Flags :: #route_flags{}, LegNo :: integer()) -> no_return()).
 close_down_call(JObj, #route_flags{diverted_account_doc_id = <<>>}=Flags, 1) ->
     Duration = get_call_duration(JObj, Flags),
     update_account(Duration, Flags);
@@ -373,7 +371,7 @@ close_down_call(JObj, #route_flags{scenario=outbound_inbound, account_doc_id=Acc
 
     %% copy acct2's A-leg trunk reservation to a B-leg trunk reservation
     ts_acctmgr:copy_reserve_trunk(Acct2ID, ACallID, BCallID, (R * RM + S)),
-    ts_acctmgr:release_trunk(Acct2ID, ACallID, 0),
+    _ = ts_acctmgr:release_trunk(Acct2ID, ACallID, 0),
     ts_acctmgr:release_trunk(Acct2ID, BCallID, calculate_cost(R, RI, RM, S, Duration));
 
 close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_doc_id=Acct2ID}=Flags, _LegNumber) ->
@@ -388,8 +386,8 @@ close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_d
 
     Duration = get_call_duration(JObj, Flags),
 
-    ts_acctmgr:release_trunk(Acct2ID, ACallID, 0),
-    ts_acctmgr:release_trunk(Acct2ID, <<ACallID/binary, "-failover">>, 0),
+    _ = ts_acctmgr:release_trunk(Acct2ID, ACallID, 0),
+    _ = ts_acctmgr:release_trunk(Acct2ID, <<ACallID/binary, "-failover">>, 0),
 
     case IsFailoverRoute of
 	false -> %% inbound route bridged
@@ -400,12 +398,12 @@ close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_d
     ts_acctmgr:release_trunk(Acct2ID, BCallID, calculate_cost(R, RI, RM, S, Duration)).
 
 -spec(get_rate_data/2 :: (CCVs :: json_object(), Flags :: #route_flags{}) -> tuple(float(), integer(), integer(), float())).
-get_rate_data({struct, _}=CCVs, #route_flags{}=Flags) ->
+get_rate_data(CCVs, #route_flags{rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S}) ->
     {
-      whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, Flags#route_flags.rate))
-      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, Flags#route_flags.rate_increment))
-      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, Flags#route_flags.rate_minimum))
-      ,whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, Flags#route_flags.surcharge))
+      whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, R))
+      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, RI))
+      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, RM))
+      ,whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, S))
     }.
 
 -spec(get_call_duration/2 :: (JObj :: json_object(), Flags :: #route_flags{}) -> integer()).
@@ -422,6 +420,6 @@ get_call_duration(JObj, #route_flags{rate_minimum=RM}, StartTime) ->
 		Y when Y < RM -> RM;
 		Z -> Z
 	    end,
-    format_log(info, "TS_CALL(~p): get_call_d: BillSecs: ~p, StartTime: ~p, Now: ~p, Guess: ~p~n"
+    logger:format_log(info, "TS_CALL(~p): get_call_d: BillSecs: ~p, StartTime: ~p, Now: ~p, Guess: ~p~n"
 	       ,[self(), whapps_json:get_value(<<"Billing-Seconds">>, JObj), StartTime, Now, Guess]),
     whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj, Guess)).

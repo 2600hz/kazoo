@@ -26,7 +26,8 @@
 -export([pick/1, pick/2, sample/1, sample/3, sampleshrink/1, sampleshrink/2]).
 
 -export([safe_generate/1]).
--export([generate/1, normal_gen/1, alt_gens/1, clean_instance/1]).
+-export([generate/1, normal_gen/1, alt_gens/1, clean_instance/1,
+	 get_ret_type/1]).
 -export([integer_gen/3, float_gen/3, atom_gen/1, atom_rev/1, binary_gen/1,
 	 binary_str_gen/1, binary_rev/1, binary_len_gen/1, binary_len_str_gen/1,
 	 bitstring_gen/1, bitstring_rev/1, bitstring_len_gen/1, list_gen/2,
@@ -46,6 +47,7 @@
 %% @private_type alt_gens
 
 -include("proper_internal.hrl").
+-compile({parse_transform, vararg}).
 
 
 %%-----------------------------------------------------------------------------
@@ -59,6 +61,7 @@
 		      | instance()
 		      | {'$used', imm_instance(), imm_instance()}
 		      | {'$to_part', imm_instance()}.
+-type error_reason() :: 'arity_limit' | 'cant_generate' | {'typeserver',term()}.
 
 -type sized_generator() :: fun((size()) -> imm_instance()).
 -type nosize_generator() :: fun(() -> imm_instance()).
@@ -69,6 +72,7 @@
 -type reverse_gen() :: fun((instance()) -> imm_instance()).
 -type combine_fun() :: fun((instance()) -> imm_instance()).
 -type alt_gens() :: fun(() -> [imm_instance()]).
+-type fun_seed() :: {non_neg_integer(),non_neg_integer()}.
 
 
 %%-----------------------------------------------------------------------------
@@ -77,12 +81,12 @@
 
 %% @private
 -spec safe_generate(proper_types:raw_type()) ->
-	  {'ok',imm_instance()}
-	| {'error','cant_generate' | {'typeserver',term()}}.
+	  {'ok',imm_instance()} | {'error',error_reason()}.
 safe_generate(RawType) ->
     try generate(RawType) of
 	ImmInstance -> {ok, ImmInstance}
     catch
+	throw:'$arity_limit'            -> {error, arity_limit};
 	throw:'$cant_generate'          -> {error, cant_generate};
 	throw:{'$typeserver',SubReason} -> {error, {typeserver,SubReason}}
     end.
@@ -499,7 +503,7 @@ fixed_list_gen(ProperFields) ->
 function_gen(Arity, RetType) ->
     FunSeed = {proper_arith:rand_int(0, ?SEED_RANGE - 1),
 	       proper_arith:rand_int(0, ?SEED_RANGE - 1)},
-    proper_funserver:create_fun(Arity, RetType, FunSeed).
+    create_fun(Arity, RetType, FunSeed).
 
 %% @private
 -spec any_gen(size()) -> imm_instance().
@@ -539,4 +543,37 @@ native_type_gen(Mod, TypeStr) ->
     case proper_typeserver:translate_type({Mod,TypeStr}) of
 	{ok,Type}      -> Type;
 	{error,Reason} -> throw({'$typeserver',Reason})
+    end.
+
+
+%%------------------------------------------------------------------------------
+%% Function-generation functions
+%%------------------------------------------------------------------------------
+
+-spec create_fun(arity(), proper_types:type(), fun_seed()) -> function().
+create_fun(Arity, RetType, FunSeed) ->
+    Handler = fun(Args) -> function_body(Args, RetType, FunSeed) end,
+    Err = fun() -> throw('$arity_limit') end,
+    'MAKE_FUN'(Arity, Handler, Err).
+
+-spec get_ret_type(function()) -> proper_types:type().
+get_ret_type(Fun) ->
+    {arity,Arity} = erlang:fun_info(Fun, arity),
+    put('$get_ret_type', true),
+    RetType = apply(Fun, lists:duplicate(Arity,dummy)),
+    erase('$get_ret_type'),
+    RetType.
+
+-spec function_body([term()], proper_types:type(), fun_seed()) ->
+	  proper_types:type() | instance().
+function_body(Args, RetType, {Seed1,Seed2}) ->
+    case get('$get_ret_type') of
+	true ->
+	    RetType;
+	_ ->
+	    SavedSeed = get(random_seed),
+	    put(random_seed, {Seed1,Seed2,erlang:phash2(Args,?SEED_RANGE)}),
+	    Ret = clean_instance(generate(RetType)),
+	    put(random_seed, SavedSeed),
+	    proper_symb:internal_eval(Ret)
     end.

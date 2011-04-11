@@ -1,5 +1,5 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis (manopapad@gmail.com)
+%%%                 and Kostis Sagonas (kostis@cs.ntua.gr)
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -17,7 +17,7 @@
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
 %%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
+%%% @copyright 2010-2011 Manolis Papadakis and Kostis Sagonas
 %%% @version {@version}
 %%% @doc This is the file that generates the proper.app file.
 
@@ -25,5 +25,5 @@
  [{description, "A QuickCheck-inspired property-based testing tool for Erlang"},
   {vsn, "1.0"},
   {registered, []},
-  {applications, [compiler,erts,kernel,stdlib,crypto]},
+  {applications, [compiler,kernel,stdlib,crypto]},
   {env, []}]}.

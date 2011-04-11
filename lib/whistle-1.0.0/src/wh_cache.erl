@@ -18,7 +18,7 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE). 
--define(EXPIRES, 3600000).
+-define(EXPIRES, 3600). %% an hour
 
 %%%===================================================================
 %%% API
@@ -34,6 +34,7 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+%% T - seconds to store the pair
 -spec(store/2 :: (K :: term(), V :: term()) -> no_return()).
 -spec(store/3 :: (K :: term(), V :: term(), T :: integer()) -> no_return()).
 store(K, V) ->
@@ -84,7 +85,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {whistle_util:current_tstamp()*T, V, T} end, Dict)};
+	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {whistle_util:current_tstamp()+T, V, T} end, Dict)};
 	error -> {reply, {error, not_found}, Dict}
     end.
 
@@ -99,7 +100,7 @@ handle_call({fetch, K}, _, Dict) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({store, K, V, T}, Dict) ->
-    {noreply, dict:store(K, {whistle_util:current_tstamp()*T, V, T}, Dict)};
+    {noreply, dict:store(K, {whistle_util:current_tstamp()+T, V, T}, Dict)};
 handle_cast({erase, K}, Dict) ->
     {noreply, dict:erase(K, Dict)}.
 

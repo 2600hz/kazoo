@@ -15,7 +15,7 @@
          ,content_type = <<>> :: binary()
          ,media_name = <<>> :: binary()
 	 ,chunk_size = ?CHUNKSIZE :: integer()
-         ,shout_response = "" :: string()
-         ,shout_header = <<>> :: binary()
+         ,shout_response = "" :: iolist()
+         ,shout_header = {0, <<>>} :: tuple(integer(), binary())
          ,continuous = false :: boolean()
 	 }).

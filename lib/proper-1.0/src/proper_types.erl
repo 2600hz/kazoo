@@ -26,7 +26,7 @@
 -export([is_inst/2, is_inst/3]).
 
 -export([integer/2, float/2, atom/0, binary/0, binary/1, bitstring/0,
-	 bitstring/1, list/1, vector/2, union/1, weighted_union/1,tuple/1, 
+	 bitstring/1, list/1, vector/2, union/1, weighted_union/1,tuple/1,
 	 loose_tuple/1, exactly/1, fixed_list/1, function/2, any/0]).
 -export([integer/0, non_neg_integer/0, pos_integer/0, neg_integer/0, range/2,
 	 float/0, non_neg_float/0, number/0, boolean/0, byte/0, char/0,
@@ -42,7 +42,7 @@
 	 is_instance/2, unwrap/1, weakly/1, strongly/1, satisfies_all/2,
 	 new_type/2, list_get_indices/1]).
 -export([lazy/1, sized/1, bind/3, shrinkwith/2, add_constraint/3,
-	 native_type/2, distlist/3, with_parameter/3, with_parameters/2, 
+	 native_type/2, distlist/3, with_parameter/3, with_parameters/2,
 	 parameter/1, parameter/2]).
 
 -export_type([type/0, raw_type/0]).
@@ -150,7 +150,7 @@
       %% A list of constraints on instances of this type: each constraint is a
       %% tuple of a fun that must return 'true' for each valid instance and a
       %% boolean field that specifies whether the condition is strict.
-    |{'parameters',[{atom(),value()}]}. 
+    |{'parameters',[{atom(),value()}]}.
 
 
 %%------------------------------------------------------------------------------
@@ -374,7 +374,7 @@ satisfies_all(Instance, Type) ->
 %%------------------------------------------------------------------------------
 %% Type definition functions
 %%------------------------------------------------------------------------------
-    
+
 %% @private
 -spec lazy(proper_gen:nosize_generator()) -> proper_types:type().
 lazy(Gen) ->
@@ -741,7 +741,7 @@ function(RawArgTypes, RawRetType) ->
 function_test(X, Arity, RetType) ->
     is_function(X, Arity)
     %% TODO: what if it's not a function we produced?
-    andalso equal_types(RetType, proper_funserver:get_ret_type(X)).
+    andalso equal_types(RetType, proper_gen:get_ret_type(X)).
 
 -spec any() -> proper_types:type().
 any() ->
@@ -921,7 +921,7 @@ parameter(Param) ->
 
 -spec parameter(atom(), value()) -> value().
 parameter(Param, Default) ->
-    Parameters = 
+    Parameters =
 	case erlang:get('$parameters') of
 	    undefined -> [];
 	    List -> List

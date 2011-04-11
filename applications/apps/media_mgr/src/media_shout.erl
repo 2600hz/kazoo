@@ -17,8 +17,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("media.hrl").
 
 -define(SERVER, ?MODULE).
@@ -133,23 +131,24 @@ handle_cast(stop, State) ->
 %% handle_info(_, #state{stream_type=continuous}=S) ->
 %%     {stop, continuous_not_implemented, S};
 
-handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName}=S) ->
+handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName
+			    ,lsocket=LSocket, send_to=SendTo, stream_type=StreamType}=S) ->
     try
 	CT = <<"audio/mpeg">>,
 	{ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
 
-	{ok, PortNo} = inet:port(S#state.lsocket),
+	{ok, PortNo} = inet:port(LSocket),
 	StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
-	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, S#state.send_to]),
+	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, SendTo]),
 
-	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, S#state.send_to),
+	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
 	logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
 
 	Self = self(),
-	spawn(fun() -> start_acceptor(Self, S#state.lsocket) end),
+	spawn(fun() -> start_acceptor(Self, LSocket) end),
 
-	Size = binary:referenced_byte_size(Content),
+	Size = byte_size(Content),
 	ChunkSize = case ?CHUNKSIZE > Size of
 			true -> Size;
 			false -> ?CHUNKSIZE
@@ -159,9 +158,9 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 	Header = get_header(MediaName, StreamUrl),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
-					,shout_response=Resp, shout_header={0,Header}, continuous=(S#state.stream_type =:= continuous)},
+				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous)},
 	MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
-		
+
 	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
     catch A:B ->
 	    logger:format_log(info, "Exception Thrown: ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
@@ -176,9 +175,9 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=Med
 	  end),
     {noreply, S};
 
-handle_info({add_listener, ListenerQ}, #state{media_name=MediaName, media_file=Media}=S) ->
+handle_info({add_listener, ListenerQ}, #state{media_name=MediaName, media_file=Media, send_to=SendTo}=S) ->
     send_media_resp(MediaName, Media#media_file.stream_url, ListenerQ),
-    {noreply, S#state{send_to=[ListenerQ | S#state.send_to]}};
+    {noreply, S#state{send_to=[ListenerQ | SendTo]}};
 
 handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile}=S) ->
     MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
@@ -217,8 +216,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{lsocket=LSock}) ->
     logger:format_log(error, "SHOUT(~p): Shutting down: ~p~n", [self(), _Reason]),
-    gen_tcp:close(LSock),
-    ok.
+    gen_tcp:close(LSock).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,6 +259,7 @@ start_acceptor(Parent, LSock) ->
 	_ -> ok
     end.
 
+-spec(get_request/2 :: (S :: port(), L :: list()) -> no_return()).
 get_request(S, L) ->
     inet:setopts(S, [{active,once}, binary]),
     receive
@@ -297,18 +296,18 @@ response(MediaName, ChunkSize, Url, CT) ->
      "content-type: ", whistle_util:to_list(CT), "\r\n",
      "icy-pub: 1\r\n",
      "icy-metaint: ",integer_to_list(ChunkSize),"\r\n",
-     "icy-br: 96\r\n\r\n"]. 
+     "icy-br: 96\r\n\r\n"].
 
 get_header(MediaName, Url) ->
     Bin = list_to_binary(["StreamTitle='",whistle_util:to_list(MediaName)
 			  ,"';StreamUrl='",whistle_util:to_list(Url) ,"';"]),
-    Nblocks = ((size(Bin) - 1) div 16) + 1,
-    NPad = Nblocks*16 - size(Bin), 
+    Nblocks = ((byte_size(Bin) - 1) div 16) + 1,
+    NPad = Nblocks*16 - byte_size(Bin),
     Extra = lists:duplicate(NPad, 0),
     list_to_binary([Nblocks, Bin, Extra]).
 
 play_media(MediaFile) ->
-    play_media(MediaFile, [], 0, binary:referenced_byte_size(MediaFile#media_file.contents), <<>>, MediaFile#media_file.shout_header).
+    play_media(MediaFile, [], 0, byte_size(MediaFile#media_file.contents), <<>>, MediaFile#media_file.shout_header).
 
 play_media(MediaFile, [], _, Stop, _, _) ->
     receive
@@ -353,7 +352,7 @@ play_media(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
 %% OffSet = first byte to play
 %% Stop   = The last byte we can play
 play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
-    Need = MediaFile#media_file.chunk_size - size(SoFar),
+    Need = MediaFile#media_file.chunk_size - byte_size(SoFar),
     Last = Offset + Need,
     case Last >= Stop of
 	true ->
@@ -373,30 +372,32 @@ write_data(Sockets, B0, B1, Header, ChunkSize) ->
     %% Check that we really have got a block of the right size
     %% this is a very useful check that our program logic is
     %% correct
-    case size(B0) + size(B1) of
+    case byte_size(B0) + byte_size(B1) of
 	ChunkSize ->
 	    Send = [B0, B1, the_header(Header)],
-	    lists:filter(fun(S) ->
-				 Write = gen_tcp:send(S, Send),
-				 logger:format_log(info, "write_Data: ~p: ~p~n", [S, Send]),
-				 Write =:= ok
-			 end, Sockets);
+	    [S || S <- Sockets,
+		  begin
+		      Write = gen_tcp:send(S, Send),
+		      logger:format_log(info, "write_Data: ~p: ~p~n", [S, Send]),
+		      Write =:= ok
+		  end];
 	Size when Size < ChunkSize ->
 	    H = the_header(Header),
-	    Padding = binary:copy(<<0>>, ChunkSize-Size-size(Header)),
+	    Padding = binary:copy(<<0>>, ChunkSize-Size-byte_size(H)),
 	    Send = [B0, B1, H, Padding],
-	    lists:filter(fun(S) ->
-				 Write = gen_tcp:send(S, Send),
-				 logger:format_log(info, "write_Data1: ~p: ~p~n", [S, Send]),
-				 Write =:= ok
-			 end, Sockets);
+	    [ S || S <- Sockets,
+		   begin
+		       Write = gen_tcp:send(S, Send),
+		       logger:format_log(info, "write_Data1: ~p: ~p~n", [S, Send]),
+		       Write =:= ok
+		   end ];
 	_Other ->
 	    %% don't send the block - report an error
-	    logger:format_log(info, "Block length Error: B0 = ~p b1=~p~n", [size(B0), size(B1)]),
+	    logger:format_log(info, "Block length Error: B0 = ~p b1=~p~n", [byte_size(B0), byte_size(B1)]),
 	    Sockets
     end.
 
-bump({K, H})     -> {K+1, H}.
+bump({K, H}) -> {K+1, H}.
 
 the_header({K, H}) ->
     case K rem 5 of
