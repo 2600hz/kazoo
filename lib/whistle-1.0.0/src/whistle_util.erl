@@ -26,18 +26,6 @@ to_e164(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
 to_e164(Other) ->
     Other.
 
-prop_to_e164() ->
-    ?FORALL(Number, list(range(0,9)),
-	    begin
-		BinNum = list_to_binary(Number),
-		E164 = to_e164(BinNum),
-		case {length(Number), BinNum} of
-		    {11, <<$1, _/binary>>} -> E164 =:= <<$+, BinNum/binary>>;
-		    {10, _} -> E164 =:= <<$+, $1, BinNum/binary>>;
-		    _ -> E164 =:= BinNum
-		end
-	    end).
-
 %% end up with 8001234567 from 1NPAN and E.164
 -spec(to_npanxxxxxx/1 :: (NPAN :: binary()) -> binary()).
 to_npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
@@ -48,18 +36,6 @@ to_npanxxxxxx(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
     NPAN;
 to_npanxxxxxx(Other) ->
     Other.
-
-prop_to_npanxxxxxx() ->
-    ?FORALL(Number, list(range(0,9)),
-	    begin
-		BinNum = list_to_binary(Number),
-		NPAN = to_npanxxxxxx(BinNum),
-		case {length(Number), BinNum} of
-		    {11, <<_, N/binary>>} -> N =:= NPAN;
-		    {10, _} -> NPAN =:= BinNum;
-		    _ -> NPAN =:= BinNum
-		end
-	    end).
 
 to_1npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     <<$1, N/bitstring>>;
@@ -74,20 +50,24 @@ to_1npanxxxxxx(Other) ->
 to_integer(X) when is_float(X) ->
     round(X);
 to_integer(X) when is_binary(X) ->
-    list_to_integer(binary_to_list(X));
+    to_integer(binary_to_list(X));
 to_integer(X) when is_list(X) ->
-    list_to_integer(X);
+    try
+	list_to_integer(X)
+    catch
+	error:badarg -> to_integer(to_float(X))
+    end;
 to_integer(X) when is_integer(X) ->
     X.
 
 -spec(to_float/1 :: (X :: list() | binary() | integer() | float()) -> float()).
 to_float(X) when is_binary(X) ->
-    list_to_float(binary_to_list(X));
+    to_float(binary_to_list(X));
 to_float(X) when is_list(X) ->
     try
 	list_to_float(X)
     catch
-	error:badarg -> to_float(list_to_integer(X)) %% "500" -> 500.0
+	error:badarg -> to_float(to_integer(X)) %% "500" -> 500.0
     end;
 to_float(X) when is_integer(X) ->
     X * 1.0;
@@ -106,6 +86,8 @@ to_list(X) when is_atom(X) ->
 to_list(X) when is_list(X) ->
     X.
 
+%% Known limitations:
+%%   Converting [256 | _], lists with integers > 255
 -spec(to_binary/1 :: (X :: atom() | list() | binary() | integer() | float()) -> binary()).
 to_binary(X) when is_float(X) ->
     to_binary(mochinum:digits(X));
@@ -172,8 +154,70 @@ ceiling(X) ->
         false -> T + 1
     end.
 
+-spec(current_tstamp/0 :: () -> integer()).
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+
+%% PROPER TESTING
+prop_to_integer() ->
+    ?FORALL({F, I}, {float(), integer()},
+	    begin
+		Is = [ Fun(N) || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+		lists:all(fun(N) -> erlang:is_integer(to_integer(N)) end, Is)
+	    end).
+
+prop_to_float() ->
+    ?FORALL({F, I}, {float(), integer()},
+	    begin
+		Fs = [ Fun(N) || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+		lists:all(fun(N) -> erlang:is_float(to_float(N)) end, Fs)
+	    end).
+
+prop_to_list() ->
+    ?FORALL({A, L, B, I, F}, {atom(), list(), binary(), integer(), float()},
+	    lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
+
+prop_to_binary() ->
+    ?FORALL({A, L, B, I, F}, {atom(), list(range(0,255)), binary(), integer(), float()},
+	    lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F])).
+		
+
+%% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
+prop_to_npanxxxxxx() ->
+    ?FORALL(Number, range(1000000000,19999999999),
+	    begin
+		BinNum = to_binary(Number),
+		NPAN = to_npanxxxxxx(BinNum),
+		case byte_size(BinNum) of
+		    11 -> BinNum =:= <<"1", NPAN/binary>>;
+		    _ -> NPAN =:= BinNum
+		end
+	    end).
+
+%% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
+prop_to_1npanxxxxxx() ->
+    ?FORALL(Number, range(1000000000,19999999999),
+	    begin
+		BinNum = to_binary(Number),
+		OneNPAN = to_1npanxxxxxx(BinNum),
+		case byte_size(BinNum) of
+		    11 -> OneNPAN =:= BinNum;
+		    _ -> OneNPAN =:= <<"1", BinNum/binary>>
+		end
+	    end).
+
+%% (AAABBBCCCC, 1AAABBBCCCC) -> +1AAABBBCCCCCC.
+prop_to_e164() ->
+    ?FORALL(Number, range(1000000000,19999999999),
+	    begin
+		BinNum = to_binary(Number),
+		E164 = to_e164(BinNum),
+		case byte_size(BinNum) of
+		    11 -> E164 =:= <<$+, BinNum/binary>>;
+		    10 -> E164 =:= <<$+, $1, BinNum/binary>>;
+		    _ -> E164 =:= BinNum
+		end
+	    end).
 
 %% EUNIT TESTING
 
@@ -197,13 +241,5 @@ to_1npanxxxxxx_test() ->
     Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
     Ans = <<"11234567890">>,
     lists:foreach(fun(N) -> ?assertEqual(to_1npanxxxxxx(N), Ans) end, Ns).
-
-to_integer_test() ->
-    Good = [42, 4.2, "42", <<"42">>],
-    Bad = [ an_atom, "4.2", <<"4.2">>],
-    lists:foreach(fun(G) -> ?assertEqual(is_integer(to_integer(G)), true) end, Good),
-    lists:foreach(fun(B) ->
-			  ok = try to_integer(B) catch _:_ -> ok end
-		  end, Bad).
 
 -endif.

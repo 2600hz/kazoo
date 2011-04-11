@@ -43,6 +43,7 @@
 %%------------------------------------------------------------------------------
 
 -define(SEED_RANGE, 4294967296).
+-define(MAX_ARITY, 20).
 -define(MAX_TRIES_FACTOR, 5).
 -define(ANY_SIMPLE_PROB, 3).
 -define(ANY_BINARY_PROB, 1).

@@ -245,7 +245,7 @@ To test all properties exported from a module (a property is a 0-arity function
 whose name begins with "prop_"), you can run:
    proper:module(<Module>).
      or
-   proper:module(<option/options>, <Module>).
+   proper:module(<Module>, <option/options>).
 This returns a list of all failing properties, represented by mfas. Testing
 progress is also printed on screen (unless 'quiet' mode is active). The
 provided options are passed on to each property, except for 'long_result', which
@@ -982,7 +982,7 @@ is useful for zipping a command sequence with its (failing) execution history.
 
 Examples of sample properties to check can be found at examples/pdict_statem
 and examples/ets_statem. These modules contain an abstract state machine
-specification for testing operations on the process dictionary and ets tables 
+specification for testing operations on the process dictionary and ets tables
 respectively.
 
 
@@ -1030,7 +1030,7 @@ suitable concurrent tasks for each test. In this case, an 'f' is printed on
 screen to inform the user.
 
 An example of a sample property for parallel testing can be found at
-examples/ets_statem, where we test concurrent operations on a public ets table. 
+examples/ets_statem, where we test concurrent operations on a public ets table.
 
 
 --------------------------------------------------------------------------------
@@ -1041,10 +1041,15 @@ The following errors may be encountered during testing. The term provided for
 each error is the error type returned by proper:quickcheck in case such an error
 occurs. Normaly, a message is also printed on screen describing the error.
 
-* 'cant_generate': The instance generation subsystem has failed to produce an
-  instance that satisfies some ?SUCHTHAT constraint. You should either increase
-  the 'constraint_tries' limit, loosen the failing constraint, or make it
-  non-strict. This error should only be encountered during normal operation.
+* 'arity_limit': The random instance generation subsystem has failed to produce
+  a function of the desired arity. Please recompile PropEr with a suitable value
+  for ?MAX_ARITY (defined in proper_internal.hrl). This error should only be
+  encountered during normal operation.
+* 'cant_generate': The random instance generation subsystem has failed to
+  produce an instance that satisfies some ?SUCHTHAT constraint. You should
+  either increase the 'constraint_tries' limit, loosen the failing constraint,
+  or make it non-strict. This error should only be encountered during normal
+  operation.
 * 'cant_satisfy': All the tests were rejected because no produced test case
   would pass all ?IMPLIES checks. You should loosen the failing ?IMPLIES
   constraint(s). This error should only be encountered during normal operation.
@@ -1118,3 +1123,4 @@ provide a nonexhaustive list of known incompatibilities:
 * ?SUCHTHATMAYBE behaves differently in PropEr.
 * proper_gen:pick differs from eqc_gen:pick in return value format.
 * PropEr handles 'size' differently from QuickCheck.
+* proper:module/2 accepts options in the second argument instead of the first.
