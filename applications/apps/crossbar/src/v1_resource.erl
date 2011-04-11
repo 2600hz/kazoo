@@ -15,6 +15,7 @@
 -export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
 -export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
+-export([allow_missing_post/2, post_is_create/2, create_path/2]).
 -export([expires/2, generate_etag/2]).
 -export([process_post/2, delete_resource/2]).
 
@@ -503,6 +504,21 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     end;
 execute_request(RD, Context) ->
     {false, RD, Context}.
+
+%% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
+allow_missing_post(RD, Context) ->
+    {wrq:method(RD) =:= 'POST', RD, Context};
+
+%% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
+%% POST is a create
+post_is_create(RD, #cb_context{req_verb = <<"put">>}=Context) ->
+    {true, RD, Context};
+post_is_create(RD, Context) ->
+    {false, RD, Context}.
+
+%% whatever (for now)
+create_path(RD, Context) ->
+    {[], RD, Context}.
 
 %%--------------------------------------------------------------------
 %% @private
