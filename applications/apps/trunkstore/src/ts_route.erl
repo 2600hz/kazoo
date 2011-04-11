@@ -11,9 +11,6 @@
 %% API
 -export([handle_req/1]).
 
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
-
 -include("ts.hrl").
 
 -define(APP_NAME, <<"ts_responder.route">>).
@@ -24,15 +21,15 @@
 %%%===================================================================
 -spec(handle_req/1 :: (ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(ApiProp) ->
-    %% format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
+    %% logger:format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     wh_timer:start("ts_route"),
-    case get_value(<<"Custom-Channel-Vars">>, ApiProp) of
+    case props:get_value(<<"Custom-Channel-Vars">>, ApiProp) of
 	undefined ->
 	    {error, "No Custom Vars"};
 	{struct, []} -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
 	    inbound_handler([{<<"Direction">>, <<"inbound">>} | ApiProp]);
 	{struct, CCVs} ->
-	    case get_value(<<"Direction">>, CCVs) of
+	    case props:get_value(<<"Direction">>, CCVs) of
 		<<"outbound">>=D ->
 		    outbound_handler([{<<"Direction">>, D} | ApiProp]);
 		<<"inbound">>=D ->
@@ -46,8 +43,8 @@ handle_req(ApiProp) ->
 -spec(inbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
 inbound_handler(ApiProp) ->
     wh_timer:tick("inbound_handler/1"),
-    %% format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
-    [ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
+    %% logger:format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
+    [ToUser, _ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
     Flags = create_flags(whistle_util:to_e164(ToUser), ApiProp),
     case Flags#route_flags.account_doc_id of
 	<<>> -> response(404, ApiProp, Flags);
@@ -57,10 +54,10 @@ inbound_handler(ApiProp) ->
 -spec(outbound_handler/1 :: (ApiProp :: list()) -> tuple(ok, iolist()) | tuple(error, string())).
 outbound_handler(ApiProp) ->
     wh_timer:tick("outbound_handler/1"),
-    %% format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
-    Did = whistle_util:to_e164(get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
+    %% logger:format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
+    Did = whistle_util:to_e164(props:get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)),
     Flags = create_flags(Did, ApiProp),
-    %% format_log(info, "TS_ROUTE(~p): Flags acctid: ~p~n", [self(), Flags#route_flags.account_doc_id]),
+    %% logger:format_log(info, "TS_ROUTE(~p): Flags acctid: ~p~n", [self(), Flags#route_flags.account_doc_id]),
     process_routing(outbound_features(Flags), ApiProp).
 
 lookup_user_flags(Name, Realm) ->
@@ -89,18 +86,18 @@ lookup_did(Did) ->
 	    wh_timer:tick("lookup_did/1 cache miss"),
 	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 		{error, _} ->
-		    %% format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_DIDLOOKUP, Did]),
+		    %% logger:format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_DIDLOOKUP, Did]),
 		    {error, "No DIDLOOKUP view"};
 		{ok, []} ->
-		    %% format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
+		    %% logger:format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
 		    {error, "No matching DID"};
 		{ok, [{struct, ViewProp} | _Rest]} ->
-		    {struct, Value} = get_value(<<"value">>, ViewProp),
-		    Resp = [{<<"id">>, get_value(<<"id">>, ViewProp)} | Value],
+		    {struct, Value} = props:get_value(<<"value">>, ViewProp),
+		    Resp = [{<<"id">>, props:get_value(<<"id">>, ViewProp)} | Value],
 		    wh_cache:store({lookup_did, Did}, Resp),
 		    {ok, Resp};
 		_Else ->
-		    %% format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
+		    %% logger:format_log(error, "TS_ROUTE(~p): Got something unexpected~n~p~n", [self(), _Else]),
 		    {error, "Unexpected error in outbound_handler"}
 	    end
     end.
@@ -114,13 +111,13 @@ process_routing(Flags, ApiProp) ->
 	    wh_timer:tick("process_routing post credit"),
 	    find_route(Flags1, ApiProp);
 	{error, entry_exists} ->
-	    %% format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
+	    %% logger:format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
 	    {error, "Call-ID exists"};
 	{error, no_route_found} ->
-	    %% format_log(error, "TS_ROUTE(~p): No rating information found to handle routing to ~s~n", [self(), Flags#route_flags.to_user]),
+	    %% logger:format_log(error, "TS_ROUTE(~p): No rating information found to handle routing to ~s~n", [self(), Flags#route_flags.to_user]),
 	    {error, "No rating information found"};
 	{error, no_funds} ->
-	    %% format_log(error, "TS_ROUTE(~p): No funds/flat rate trunks to route call~n", [self()]),
+	    %% logger:format_log(error, "TS_ROUTE(~p): No funds/flat rate trunks to route call~n", [self()]),
 	    response(503, ApiProp, Flags)
     end.
 	
@@ -135,7 +132,7 @@ find_route(Flags, ApiProp) ->
 		{ok, Routes, InboundFlags} ->
 		    response(Routes, ApiProp, InboundFlags#route_flags{routes_generated=Routes});
 		{error, _Error}=E ->
-		    %% format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), _Error]),
+		    %% logger:format_log(error, "TS_ROUTE(~p): Inbound Routing Error ~p~n", [self(), _Error]),
 		    E
 	    end;
 	true ->
@@ -144,9 +141,8 @@ find_route(Flags, ApiProp) ->
 
 -spec(find_outbound_route/2 :: (Flags :: #route_flags{}, ApiProp :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 find_outbound_route(Flags, ApiProp) ->
-    wh_timer:tick("find_outbound_route/2"),
     try
-	[ToUser, _ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
+	[ToUser, _ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
 	Did = whistle_util:to_e164(ToUser),
 
 	case lookup_did(Did) of
@@ -157,19 +153,16 @@ find_outbound_route(Flags, ApiProp) ->
 		FlagsIn0 = create_flags(Did, ApiProp, DidProp),
 		FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
 
-		wh_timer:tick("pre force_outbound check"),
 		case (not FlagsIn1#route_flags.force_outbound) andalso ts_credit:check(FlagsIn1) of
 		    false -> % if force_outbound == true
-			wh_timer:tick("post force_outbound check - false"),
 			route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp);
 		    {ok, FlagsIn} ->
-			wh_timer:tick("post force_outbound check - ok, flags"),
 			%% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
-			%% format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n", [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
+			%% logger:format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n", [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
 			case inbound_route(FlagsIn) of
 			    {ok, Routes, FlagsIn2} ->
 				wh_timer:tick("found inbound route to route over instead"),
-				case FlagsIn1#route_flags.scenario of
+				case FlagsIn#route_flags.scenario of
 				    inbound ->
 					response(Routes, ApiProp, FlagsIn2#route_flags{routes_generated=Routes
 										       ,account_doc_id=OrigAcctId
@@ -184,7 +177,6 @@ find_outbound_route(Flags, ApiProp) ->
 										      })
 				end;
 			    {error, _} ->
-				wh_timer:tick("routing over carrier anyway"),
 				route_over_carriers(Flags#route_flags{scenario=outbound}, ApiProp)
 			end;
 
@@ -198,16 +190,16 @@ find_outbound_route(Flags, ApiProp) ->
 			end;
 
 		    {error, _}  ->
-			%% format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
-			ts_acctmgr:release_trunk(FlagsIn1#route_flags.account_doc_id, FlagsIn1#route_flags.callid, 0),
+			%% logger:format_log(error, "TS_ROUTE(~p): Unable to route back to ~p, no credits or flat rate trunks.~n", [self(), FlagsIn1#route_flags.account_doc_id]),
+			_ = ts_acctmgr:release_trunk(FlagsIn1#route_flags.account_doc_id, FlagsIn1#route_flags.callid, 0),
 			response(503, ApiProp, Flags)
 		end
 	end
     catch
 	_A:_B ->
-	    %% format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), _A, _B]),
-	    %% format_log(error, "TS_ROUTE(~p): Stacktrace: ~p~n", [self(), erlang:get_stacktrace()]),
-	    ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid, 0),
+	    %% logger:format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), _A, _B]),
+	    %% logger:format_log(error, "TS_ROUTE(~p): Stacktrace: ~p~n", [self(), erlang:get_stacktrace()]),
+	    _ = ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid, 0),
 	    response(503, ApiProp, Flags)
     end.
 
@@ -218,7 +210,7 @@ route_over_carriers(Flags, ApiProp) ->
 	{ok, Routes} ->
 	    response(Routes, ApiProp, Flags#route_flags{routes_generated=Routes});
 	{error, _Error} ->
-	    %% format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), _Error]),
+	    %% logger:format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), _Error]),
 	    {error, "We don't handle this route"}
     end.
 
@@ -272,7 +264,7 @@ inbound_route(Flags) ->
 	    {Routes, Flags1} = add_failover_route(Flags#route_flags.failover, Flags, {struct, Route1}),
 	    {ok, Routes, Flags1};
 	false ->
-	    %% format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route1]),
+	    %% logger:format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route1]),
 	    {error, "Inbound route validation failed"}
     end.
 
@@ -298,15 +290,15 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 	{ok, OutBFlags1} ->
 	    case ts_carrier:route(OutBFlags1) of
 		{ok, Routes} ->
-		    %% format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
+		    %% logger:format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
 		    { [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
 		{error, _Error} ->
-		    %% format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), _Error]),
-		    ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
+		    %% logger:format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), _Error]),
+		    _ = ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
 		    { [InboundRoute], Flags#route_flags{scenario=inbound}}
 	    end;
 	{error, _Error} ->
-	    %% format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, _Error]),
+	    %% logger:format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, _Error]),
 	    {[InboundRoute], Flags#route_flags{scenario=inbound}}
     end.
 
@@ -337,45 +329,44 @@ create_flags(Did, ApiProp) ->
     end.
 
 create_flags(_, ApiProp, DidProp) ->
-    {struct, ChannelVars} = get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
+    {struct, ChannelVars} = props:get_value(<<"Custom-Channel-Vars">>, ApiProp, {struct, []}),
 
     F1 = case DidProp of
-	     [] -> add_auth_user(add_auth_realm(#route_flags{}, get_value(<<"Realm">>, ChannelVars)), get_value(<<"Username">>, ChannelVars));
-	     _ -> add_auth_realm(flags_from_did(DidProp, #route_flags{}), get_value(<<"Realm">>, ChannelVars))
+	     [] -> add_auth_user(add_auth_realm(#route_flags{}, props:get_value(<<"Realm">>, ChannelVars)), props:get_value(<<"Username">>, ChannelVars));
+	     _ -> add_auth_realm(flags_from_did(DidProp, #route_flags{}), props:get_value(<<"Realm">>, ChannelVars))
 	 end,
 
     AuthUser = F1#route_flags.auth_user,
     Realm = F1#route_flags.auth_realm,
 
-    F3 = case lookup_user_flags(AuthUser, Realm) of
-	     {ok, D} ->
-		 Id = whapps_json:get_value(<<"id">>, D),
-		 F2 = flags_from_srv(whapps_json:get_value(<<"server">>, D, {struct, []}), F1#route_flags{account_doc_id = Id}),
-		 flags_from_account(whapps_json:get_value(<<"account">>, D, {struct, []}), F2)
-	 end,
+    {ok, D} = lookup_user_flags(AuthUser, Realm),    
+    Id = whapps_json:get_value(<<"id">>, D),
+
+    F2 = flags_from_srv(whapps_json:get_value(<<"server">>, D, {struct, []}), F1#route_flags{account_doc_id = Id}),
+    F3 = flags_from_account(whapps_json:get_value(<<"account">>, D, {struct, []}), F2),
     flags_from_api(ApiProp, ChannelVars, F3).
 
 -spec(flags_from_api/3 :: (ApiProp :: proplist(), ChannelVars :: proplist(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_api(ApiProp, ChannelVars, Flags) ->
     wh_timer:tick("flags_from_api/3"),
-    [ToUser, ToDomain] = binary:split(get_value(<<"To">>, ApiProp), <<"@">>),
-    [FromUser, FromDomain] = binary:split(get_value(<<"From">>, ApiProp), <<"@">>),
+    [ToUser, ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
+    [FromUser, FromDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
 
     F0 = case Flags#route_flags.caller_id of
-	     {} -> Flags#route_flags{caller_id = {get_value(<<"Caller-ID-Name">>, ApiProp, <<>>)
-						  ,get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)
+	     {} -> Flags#route_flags{caller_id = {props:get_value(<<"Caller-ID-Name">>, ApiProp, <<>>)
+						  ,props:get_value(<<"Caller-ID-Number">>, ApiProp, <<>>)
 						 }};
 	     _CID -> Flags
 	 end,
     F1 = F0#route_flags{
-	   callid = get_value(<<"Call-ID">>, ApiProp)
+	   callid = props:get_value(<<"Call-ID">>, ApiProp)
 	   ,to_user = whistle_util:to_e164(ToUser)
 	   ,to_domain = ToDomain
 	   ,from_user = whistle_util:to_e164(FromUser)
 	   ,from_domain = FromDomain
-	   ,direction = get_value(<<"Direction">>, ChannelVars, <<"inbound">>)
+	   ,direction = props:get_value(<<"Direction">>, ChannelVars, <<"inbound">>)
 	  },
-    add_auth_user(F1, get_value(<<"Auth-User">>, ChannelVars)).
+    add_auth_user(F1, props:get_value(<<"Auth-User">>, ChannelVars)).
 
 %% Flags from the DID
 %% - Failover
@@ -385,20 +376,20 @@ flags_from_api(ApiProp, ChannelVars, Flags) ->
 -spec(flags_from_did/2 :: (DidProp :: proplist(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_did(DidProp, Flags) ->
     wh_timer:tick("flags_from_did/2"),
-    {struct, DidOptions} = get_value(<<"DID_Opts">>, DidProp, {struct, []}),
-    {struct, AuthOpts} = get_value(<<"auth">>, DidProp, {struct, []}),
+    {struct, DidOptions} = props:get_value(<<"DID_Opts">>, DidProp, {struct, []}),
+    {struct, AuthOpts} = props:get_value(<<"auth">>, DidProp, {struct, []}),
 
-    {struct, Opts} = get_value(<<"options">>, DidProp, {struct, []}),
-    {struct, Acct} = get_value(<<"account">>, DidProp, {struct, []}),
+    {struct, Opts} = props:get_value(<<"options">>, DidProp, {struct, []}),
+    {struct, Acct} = props:get_value(<<"account">>, DidProp, {struct, []}),
 
-    F0 = add_failover(Flags, get_value(<<"failover">>, DidOptions, {struct, []})),
-    F1 = add_caller_id(F0, get_value(<<"caller_id">>, DidOptions, {struct, []})),
+    F0 = add_failover(Flags, props:get_value(<<"failover">>, DidOptions, {struct, []})),
+    F1 = add_caller_id(F0, props:get_value(<<"caller_id">>, DidOptions, {struct, []})),
     F2 = F1#route_flags{route_options = Opts
-			,account_doc_id = get_value(<<"id">>, DidProp)
+			,account_doc_id = props:get_value(<<"id">>, DidProp)
 		       },
-    F3 = add_auth_user(F2, get_value(<<"auth_user">>, AuthOpts)),
-    F4 = add_auth_realm(F3, get_value(<<"auth_realm">>, AuthOpts, get_value(<<"auth_realm">>, Acct))),
-    add_force_outbound(F4, get_value(<<"force_outbound">>, DidOptions, false)).
+    F3 = add_auth_user(F2, props:get_value(<<"auth_user">>, AuthOpts)),
+    F4 = add_auth_realm(F3, props:get_value(<<"auth_realm">>, AuthOpts, props:get_value(<<"auth_realm">>, Acct))),
+    add_force_outbound(F4, props:get_value(<<"force_outbound">>, DidOptions, false)).
 
 %% Flags from the Server
 %% - Inbound Format <- what format does the server expect the inbound caller-id in?
@@ -418,9 +409,9 @@ flags_from_srv(Srv, Flags) ->
 			   ,media_handling = whapps_json:get_value(<<"media_handling">>, Options)
 			   ,progress_timeout = whapps_json:get_value(<<"progress_timeout">>, Options, none)
 			  },
-    F1 = add_caller_id(F0, get_value(<<"caller_id">>, Srv, {struct, []})),
-    F2 = add_failover(F1, get_value(<<"failover">>, Srv, {struct, []})),
-    add_force_outbound(F2, get_value(<<"force_outbound">>, Options, false)).
+    F1 = add_caller_id(F0, props:get_value(<<"caller_id">>, Srv, {struct, []})),
+    F2 = add_failover(F1, props:get_value(<<"failover">>, Srv, {struct, []})),
+    add_force_outbound(F2, props:get_value(<<"force_outbound">>, Options, false)).
 
 %% Flags from the Account
 %% - Credit available
@@ -469,8 +460,8 @@ add_auth_realm(F, _Realm) ->
 -spec(add_caller_id/2 :: (F0 :: #route_flags{}, CID :: tuple(proplist())) -> #route_flags{}).
 add_caller_id(#route_flags{caller_id={}}=F0, {struct, []}) -> F0;
 add_caller_id(#route_flags{caller_id={}}=F0, {struct, CID}) ->
-    F0#route_flags{caller_id = {get_value(<<"cid_name">>, CID, <<>>)
-				,get_value(<<"cid_number">>, CID, <<>>)}};
+    F0#route_flags{caller_id = {props:get_value(<<"cid_name">>, CID, <<>>)
+				,props:get_value(<<"cid_number">>, CID, <<>>)}};
 add_caller_id(F, _) -> F.
 
 -spec(response/3 :: (Routes :: proplist() | integer(), Prop :: proplist(), Flags :: #route_flags{}) -> tuple(ok, iolist()) | tuple(error, string())).
@@ -484,7 +475,7 @@ response(Routes, Prop, Flags) ->
 		   false -> <<>>
 	       end,
 
-    Prop1 = [ {<<"Msg-ID">>, get_value(<<"Msg-ID">>, Prop)}
+    Prop1 = [ {<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Prop)}
 	      | whistle_api:default_headers(ServerID, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ],
     Data = specific_response(Routes, Prop1),
     case whistle_api:route_resp(Data) of

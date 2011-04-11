@@ -62,7 +62,7 @@ force_carrier_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    timer:send_after(1000, ?MODULE, refresh),
+    {ok, _} = timer:send_after(1000, ?MODULE, refresh),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -80,7 +80,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(Req, _From, []=C) ->
-    format_log(error, "TS_CARRIER(~p): No carrier information for Req ~p~n", [self(), Req]),
+    format_log(error, "TS_CARRIER(~p): No carrier information for Req ~p, refreshing~n", [self(), Req]),
+    ?MODULE ! refresh,
     {reply, no_carrier_information, C};
 handle_call({route, Flags}, _From, Carriers) ->
     {reply, get_routes(Flags, Carriers), Carriers}.
