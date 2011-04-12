@@ -25,7 +25,8 @@
 -include("ts.hrl").
 
 -define(SERVER, ?MODULE).
--define(QUEUE_NAME, <<"ts_responder.queue">>).
+-define(ROUTE_QUEUE_NAME, <<"ts_responder.route.queue">>).
+-define(AUTH_QUEUE_NAME, <<"ts_responder.auth.queue">>).
 
 -record(state, {
                 my_q = <<>> :: binary() | tuple(error, term())
@@ -217,14 +218,16 @@ send_resp(JSON, RespQ) ->
 
 -spec(start_amqp/0 :: () -> tuple(ok, binary())).
 start_amqp() ->
-    ReqQueue = amqp_util:new_callmgr_queue(?QUEUE_NAME, [{exclusive, false}]),
+    ReqQueue = amqp_util:new_callmgr_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
+    ReqQueue1 = amqp_util:new_callmgr_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
 
     %% Bind the queue to an exchange
-    amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_AUTH_REQ),
     amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
+    amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
 
     %% Register a consumer to listen to the queue
     amqp_util:basic_consume(ReqQueue, [{exclusive, false}]),
+    amqp_util:basic_consume(ReqQueue1, [{exclusive, false}]),
 
     logger:format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p)~n", [self(), ReqQueue]),
     {ok, ReqQueue}.
