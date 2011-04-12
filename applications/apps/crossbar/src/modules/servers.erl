@@ -279,12 +279,7 @@ validate([DocId, <<"deploy">>], #cb_context{req_verb = <<"post">>}=Context) ->
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             case whapps_json:get_value(<<"pvt_deploy_status">>, JObj) of
                 <<"running">> ->
-                    #cb_context{
-                       resp_status = error
-                      ,resp_error_msg = <<"deployment already running">>
-                      ,resp_error_code = 409
-                      ,resp_data = []
-                 };             
+                    crossbar_util:response(error, <<"deployment already running">>, 409, Context1);
                _Else ->
                     Context1
             end;
