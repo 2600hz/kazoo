@@ -138,7 +138,7 @@ handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref}=S) ->
 
 handle_info({timeout, Ref1, _}, #state{cleanup_ref=Ref}=S) ->
     format_log(info, "REG_SRV(~p): wrong ref ~p, expected ~p~n", [self(), Ref1, Ref]),
-    erlang:cancel_timer(Ref),
+    _ = erlang:cancel_timer(Ref),
     NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     {noreply, S#state{cleanup_ref=NewRef}};
 
