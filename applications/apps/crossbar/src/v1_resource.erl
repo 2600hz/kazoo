@@ -15,7 +15,7 @@
 -export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
 -export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
--export([allow_missing_post/2, post_is_create/2, create_path/2]).
+-export([allow_missing_post/2, post_is_create/2, create_path/2, options/2]).
 -export([expires/2, generate_etag/2]).
 -export([process_post/2, delete_resource/2]).
 
@@ -101,9 +101,7 @@ resource_exists(RD, Context) ->
             {RD1, Context1} = validate(RD, Context),
             case succeeded(Context1) of
                 true ->
-                    ( is_cors_request(RD) 
-                        andalso create_cors_reply(RD1, Context1) )
-                        orelse execute_request(RD1, Context1);
+                    execute_request(add_cors_headers(RD1), Context1);
                 false ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
@@ -113,6 +111,9 @@ resource_exists(RD, Context) ->
 	false ->
 	    {false, RD, Context}
     end.
+
+options(RD, Context)->            
+    {get_cors_headers(), RD, Context}.
 
 %% each successive cb module adds/removes the content types they provide (to be matched against the request Accept header)
 content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
@@ -641,22 +642,6 @@ fix_header(RD, "Location"=H, Url) ->
 fix_header(_, H, V) ->
     {whistle_util:to_list(H), whistle_util:to_list(V)}.
 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(create_cors_reply/2 :: (RD :: #wm_reqdata{}, #wm_reqdata{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
-create_cors_reply(RD, Context) ->
-    RD1 = wrq:set_resp_headers([
-                                 {"Access-Control-Allow-Origin", "*"}
-                                ,{"Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS"}
-                                ,{"Access-Control-Allow-Headers", "X-Auth-Token"}
-                                ,{"Access-Control-Max-Age", "86400"}
-                               ], RD),
-    {true, RD1, Context}.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -670,6 +655,34 @@ is_cors_request(RD) ->
         orelse wrq:get_req_header("Access-Control-Request-Method", RD) =/= 'undefined' 
         orelse wrq:get_req_header("Access-Control-Request-Headers", RD) =/= 'undefined'.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(add_cors_headers/1 :: (RD :: #wm_reqdata{}) -> #wm_reqdata{}).                                 
+add_cors_headers(RD) ->
+    case is_cors_request(RD) of 
+        true ->
+            wrq:set_resp_headers(get_cors_headers(), RD);
+        false ->
+            RD
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_cors_headers/0 :: () -> list()).                                 
+get_cors_headers() ->
+    [
+      {"Access-Control-Allow-Origin", "*"}
+     ,{"Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS"}
+     ,{"Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token"}
+     ,{"Access-Control-Max-Age", "86400"}
+    ].
+   
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
