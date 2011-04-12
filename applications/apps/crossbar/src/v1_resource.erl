@@ -113,7 +113,7 @@ resource_exists(RD, Context) ->
     end.
 
 options(RD, Context)->            
-    {get_cors_headers() , RD, Context}.
+    {get_cors_headers(), RD, Context}.
 
 %% each successive cb module adds/removes the content types they provide (to be matched against the request Accept header)
 content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
