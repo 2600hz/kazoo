@@ -61,8 +61,7 @@ force_rate_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, _} = timer:send_after(1000, ?MODULE, refresh),
-    {ok, []}.
+    {ok, [], 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,6 +112,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, OldRates) ->
+    logger:format_log(info, "TS_CREDIT(~p): timeout~n", [self()]),
+    handle_info(refresh, OldRates);
 handle_info(refresh, OldRates) ->
     case get_current_rates() of
 	{ok, Rates} ->
@@ -190,15 +192,15 @@ process_rates({<<"_rev">>, _}=Rev) -> Rev;
 process_rates({RouteName, {struct, RouteOptions}}) ->
     RoutesRegexStrs = props:get_value(<<"routes">>, RouteOptions, []),
     {struct, Options} = props:get_value(<<"options">>, RouteOptions, {struct, []}),
-    ROs0 = proplists:delete(<<"routes">>, RouteOptions),
+    ROs0 = props:delete(<<"routes">>, RouteOptions),
     {RouteName, [{<<"routes">>, lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs)}
 		 ,{<<"options">>, Options}
-		 | proplists:delete(<<"options">>, ROs0)]}.
+		 | props:delete(<<"options">>, ROs0)]}.
 
 set_rate_flags(Flags, Rates) ->
     Dir = Flags#route_flags.direction,
     User = Flags#route_flags.to_user,
-    Rates0 = proplists:delete(<<"_rev">>, props:delete(<<"_id">>, Rates)),
+    Rates0 = props:delete(<<"_rev">>, props:delete(<<"_id">>, Rates)),
     Rates1 = lists:filter(fun({_RateName, RateData}) ->
 				  lists:member(Dir, props:get_value(<<"direction">>, RateData)) andalso
 				      lists:any(fun(Regex) ->
@@ -291,7 +293,9 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
--spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary())) -> boolean()).
+-spec(options_match/2 :: (RouteOptions :: list(binary()) | json_object(), RateOptions :: list(binary())) -> boolean()).
+options_match({struct, RouteOptions}, RateOptions) ->
+    options_match(RouteOptions, RateOptions);
 options_match(RouteOptions, RateOptions) ->
     logger:format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [RouteOptions, RateOptions]),
     lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).

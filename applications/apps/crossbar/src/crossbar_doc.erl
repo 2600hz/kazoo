@@ -300,8 +300,9 @@ private_fields(Json) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_private_key/1 :: (Key :: binary()) -> boolean()).
-is_private_key(Key) ->
-    binary:first(Key) == 95 orelse byte_size(Key) < 4 orelse binary:bin_to_list(Key, 0, 4) == "pvt_".
+is_private_key(<<"_", _/binary>>) -> true;
+is_private_key(<<"pvt_", _/binary>>) -> true;
+is_private_key(_) -> false.
 
 %%--------------------------------------------------------------------
 %% @public

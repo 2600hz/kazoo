@@ -55,7 +55,7 @@
           ,flat_rate_enabled = true :: boolean()
 	  ,account_doc_id = <<>> :: binary()             % doc id of the account
 	  ,diverted_account_doc_id = <<>> :: binary()    % if an outbound call routes to a known DID, route internally rather than over a carrier; for billing
-          ,routes_generated = [] :: proplist()           % the routes generated during the routing phase
+          ,routes_generated = {struct, []} :: json_object() | json_objects()           % the routes generated during the routing phase
 	  ,scenario = inbound :: inbound | outbound | inbound_failover | outbound_inbound | outbound_inbound_failover % what scenario have we routed over
 	 }).
 

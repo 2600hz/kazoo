@@ -18,7 +18,7 @@
 
 -include("ts.hrl").
 
--spec(store_cdr/2 :: (CDR :: json_object(), Flags :: #route_flags{}) -> tuple(ok, json_object())).
+-spec(store_cdr/2 :: (CDR :: json_object(), Flags :: #route_flags{}) -> no_return()).
 store_cdr({struct, CDRProp}, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}) ->
     TScdr = [{<<"_id">>, get_value(<<"Call-ID">>, CDRProp)}
 	     ,{<<"Routes-Available">>, RGs}
@@ -28,7 +28,9 @@ store_cdr({struct, CDRProp}, #route_flags{routes_generated=RGs, direction=Dir, a
 	     | CDRProp],
     couch_mgr:save_doc(?TS_CDR_DB, TScdr).
 
--spec(find_route_used/3 :: (Direction :: binary(), ToUri :: binary(), Routes :: list(tuple(struct, proplist()))) -> proplist()).
+-spec(find_route_used/3 :: (Direction :: binary(), ToUri :: binary(), Routes :: json_object() | json_objects()) -> json_object()).
+find_route_used(Dir, To, {struct,_}=Route) ->
+    find_route_used(Dir, To, [Route]);
 find_route_used(<<"outbound">>, ToUri, Routes) ->
     [ToUser, _ToDomain] = binary:split(ToUri, <<"@">>),
     lists:foldl(fun({struct, RouteData}=R, Acc) ->
@@ -48,8 +50,8 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 				    false -> Acc
 				end
 			end
-		end, [], Routes);
-find_route_used(<<"inbound">>, _, _) -> [].
+		end, {struct, []}, Routes);
+find_route_used(<<"inbound">>, _, _) -> {struct, []}.
 
 -spec(fetch_cdr/1 :: (CallID :: binary()) -> {error, not_found} | {ok, json_object()}).
 fetch_cdr(CallID) ->
