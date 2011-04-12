@@ -163,6 +163,7 @@ handle_call({has_flatrates, AcctId}, From, #state{current_read_db=RDB}=S) ->
 
 handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
+    logger:format_log(info, "TS_ACCTMGR(~p): reserve per_min for ~p: ~p: ~p~n", [self(), AcctId, CallID, Amt]),
     spawn(fun() ->
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 		  case has_credit(RDB, AcctId, Amt) of
@@ -177,10 +178,11 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_
 
 handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
+    logger:format_log(info, "TS_ACCTMGR(~p): reserve trunk for ~p: ~p: ~p~n", [self(), AcctId, CallID, Amt]),
     spawn(fun() ->
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 
-		  case couch_mgr:get_results(RDB, {"accounts", "balance"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
+		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
 		      {error, E} ->
 			  gen_server:reply(From, {error, E});
 		      {ok, []} ->
@@ -188,7 +190,8 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case whapps_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
-				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end);
+				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
+				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
 				  case whapps_json:get_value(<<"credit">>, Funds, 0) > Amt of
 				      true ->

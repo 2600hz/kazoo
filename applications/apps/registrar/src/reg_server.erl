@@ -22,6 +22,7 @@
 -import(logger, [format_log/3]).
 
 -define(SERVER, ?MODULE).
+-define(REG_QUEUE_NAME, <<"registrar.queue">>).
 
 -record(state, {
 	  is_amqp_up = true :: boolean()
@@ -185,13 +186,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(start_amqp/0 :: () -> binary() | tuple(error, term())).
 start_amqp() ->
-    Q = amqp_util:new_queue(<<>>),
+    Q = amqp_util:new_queue(?REG_QUEUE_NAME, [{exclusive, false}]),
 
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ),
 
-    amqp_util:basic_consume(Q),
+    amqp_util:basic_consume(Q, [{exclusive, false}]),
     Q.
 
 -spec(stop_amqp/1 :: (Q :: binary()) -> no_return()).
