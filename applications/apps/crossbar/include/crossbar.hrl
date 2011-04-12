@@ -20,6 +20,7 @@
 			  ,'POST'
 			  ,'PUT'
 			  ,'DELETE'
+                          ,'OPTIONS'
 			 ]).
 
 -record(session, {
