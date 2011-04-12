@@ -51,14 +51,14 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
 
     case parse_path_tokens(Tokens) of
-        [{Mod, Params}|_] = Nouns ->
+        [{Mod, Params}|_] = Nouns ->            
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
             Methods1 = case is_cors_preflight(RD) of 
-                true -> 
-                    allow_methods(Responses, Methods, Verb, wrq:method(RD)) ++ ['OPTIONS'];
-                false -> 
-                    allow_methods(Responses, Methods, Verb, wrq:method(RD))
-            end,
+                           true -> 
+                               allow_methods(Responses, Methods, Verb, wrq:method(RD)) ++ ['OPTIONS'];
+                           false -> 
+                               allow_methods(Responses, Methods, Verb, wrq:method(RD))
+                       end,
             {Methods1, RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb}};
         [] ->
             {Methods, RD, Context1#cb_context{req_verb=Verb}}
@@ -506,13 +506,13 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
-	    logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+            logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             Content = create_resp_content(RD1, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
-	    logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+            logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
 	    {Verb =/= <<"put">>, RD1, Context1}
     end;
 execute_request(RD, Context) ->
