@@ -99,7 +99,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {<<"">>, _}}, State) ->
     logger:format_log(info, "NOAUTHN(~p): NO SOUP FOR YOU!~n", [self()]),
-    Pid ! {binding_result, false, []},
+    Pid ! {binding_result, true, []},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {_Auth, _}}, State) ->
