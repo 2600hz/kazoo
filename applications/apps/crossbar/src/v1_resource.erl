@@ -87,13 +87,19 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
 
 forbidden(RD, Context) ->
     case is_authentic(RD, Context) of
-        true ->
-            {not is_permitted(Context), RD, Context};
+        {true, RD1, Context1} ->         
+            case is_permitted(RD1, Context1) of
+                {true, RD2, Context2} ->
+                    {false, RD2, Context2};
+                false ->
+                    {true, RD1, Context1}
+            end;
         false ->
             {{halt, 401}, RD, Context}
     end.
 
 resource_exists(RD, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
+    logger:format_log(info, "v1: requested resource with no nouns", []),
     {false, RD, Context};
 resource_exists(RD, Context) ->
     case does_resource_exist(RD, Context) of
@@ -101,14 +107,17 @@ resource_exists(RD, Context) ->
             {RD1, Context1} = validate(RD, Context),
             case succeeded(Context1) of
                 true ->
+                    logger:format_log(info, "v1: requested resource validated", []),
                     execute_request(add_cors_headers(RD1), Context1);
                 false ->
+                    logger:format_log(info, "v1: requested resource did not validate", []),
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
                     ReturnCode = Context1#cb_context.resp_error_code,
                     {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
             end;
 	false ->
+            logger:format_log(info, "v1: requested resource does not exist", []),
 	    {false, RD, Context}
     end.
 
@@ -458,12 +467,16 @@ does_resource_exist(_RD, _Context) ->
 %% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
--spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
-is_authentic(_RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
+-spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+is_authentic(RD, Context)->
     Event = <<"v1_resource.authenticate">>,
-    Responses = crossbar_bindings:map(Event, {AuthToken, Nouns}),
-    crossbar_bindings:any(Responses).
-
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
+        [] ->
+            false;
+        [{true, {RD1, Context1}}|_] -> 
+            {true, RD1, Context1}
+    end.
+            
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -471,11 +484,15 @@ is_authentic(_RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_permitted/1 :: (Context :: #cb_context{}) -> boolean()).
-is_permitted(#cb_context{req_nouns=Nouns, req_verb=Verb, auth_token=AuthToken})->
+-spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+is_permitted(RD, Context)->
     Event = <<"v1_resource.authorize">>,
-    Responses = crossbar_bindings:map(Event, {AuthToken, Verb, Nouns}),
-    crossbar_bindings:any(Responses).
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
+        [] ->
+            false;
+        [{true, {RD1, Context1}}|_] -> 
+            {true, RD1, Context1}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -503,6 +520,7 @@ validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
 execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [RD, Context] ++ Params,
+    logger:format_log(info, "Execute request ~p", [Event]),
     [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
