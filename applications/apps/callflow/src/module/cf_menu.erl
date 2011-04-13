@@ -366,15 +366,15 @@ get_menu_profile(Data) ->
             #menu{         
                     database = Db
                    ,menu_id = Id
-                   ,retries = whapps_json:get_value([<<"base">>, <<"retries">>], JObj, Default#menu.retries)
-                   ,timeout = whapps_json:get_value([<<"base">>, <<"timeout">>], JObj, Default#menu.timeout)
-                   ,max_length = whapps_json:get_value([<<"base">>, <<"max-extension-length">>], JObj, Default#menu.max_length)
-                   ,hunt = whapps_json:get_value([<<"base">>, <<"hunt">>], JObj, Default#menu.hunt)
-                   ,hunt_deny = whapps_json:get_value([<<"base">>, <<"hunt-deny">>], JObj, Default#menu.hunt_deny)
-                   ,hunt_allow = whapps_json:get_value([<<"base">>, <<"hunt-allow">>], JObj, Default#menu.hunt_allow)
-                   ,record_pin = whapps_json:get_value([<<"base">>, <<"record_pin">>], JObj, Default#menu.record_pin)
+                   ,retries = whapps_json:get_value(<<"retries">>, JObj, Default#menu.retries)
+                   ,timeout = whapps_json:get_value(<<"timeout">>, JObj, Default#menu.timeout)
+                   ,max_length = whapps_json:get_value(<<"max-extension-length">>, JObj, Default#menu.max_length)
+                   ,hunt = whapps_json:get_value(<<"hunt">>, JObj, Default#menu.hunt)
+                   ,hunt_deny = whapps_json:get_value(<<"hunt-deny">>, JObj, Default#menu.hunt_deny)
+                   ,hunt_allow = whapps_json:get_value(<<"hunt-allow">>, JObj, Default#menu.hunt_allow)
+                   ,record_pin = whapps_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
                    ,has_prompt_media = whapps_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
-                   ,s_prompt = whapps_json:get_value([<<98,97,115,101>>, <<115,97,115,115,121,45,109,111,100,101>>], JObj) =/= undefined
+                   ,s_prompt = whapps_json:get_value(<<115,97,115,115,121,45,109,111,100,101>>, JObj) =/= undefined
                  };
         _ -> 
             #menu{}
