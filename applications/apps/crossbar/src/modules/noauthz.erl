@@ -107,7 +107,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, Payload}, State) -
 
 handle_info({binding_fired, Pid, Route, Payload}, State) ->
     logger:format_log(info, "NOAUTHZ(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
-    Pid ! {binding_result, false, []},
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
