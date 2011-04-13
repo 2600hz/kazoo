@@ -14,7 +14,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, update_all_accounts/1, replicate_from_accounts/2, replicate_from_account/3]).
+-export([start_link/0, update_all_accounts/1, replicate_from_accounts/2, 
+         replicate_from_account/3, get_db_name/1, get_db_name/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -71,6 +72,11 @@ update_all_accounts(File) ->
             error
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(replicate_from_accounts/2 :: (TargetDB :: binary(), FilterDoc :: binary()) -> ok | error).
 replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
     couch_mgr:db_create(TargetDB),
@@ -78,24 +84,36 @@ replicate_from_accounts(TargetDB, FilterDoc) when is_binary(FilterDoc) ->
         #cb_context{resp_status=success, doc=Doc} ->
 	    BaseReplicate = [{<<"target">>, TargetDB}
 			     ,{<<"filter">>, FilterDoc}
+                             ,{<<"create_target">>, true}
+                             ,{<<"continuous">>, true}
 			    ],
 
             lists:foreach(fun(Account) ->
-                                  DbName = get_db_name(whapps_json:get_value(["id"], Account)),
-				  couch_mgr:db_replicate([{<<"source">>, DbName} | BaseReplicate])
+                                  DbName = get_db_name(whapps_json:get_value(["id"], Account), unencoded),
+                                  logger:format_log(info, "Replicate ~p to ~p using filter ~p", [DbName, TargetDB, FilterDoc]),
+                                  couch_mgr:db_replicate([{<<"source">>, DbName} | BaseReplicate])
                           end, Doc),
 	    ok;
         _Else ->
             error
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(replicate_from_account/3 :: (SourceDB :: binary(), TargetDB :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_account(SourceDB, TargetDB, FilterDoc) ->
-    BaseReplicate = [{<<"source">>, get_db_name(SourceDB)}
+    BaseReplicate = [{<<"source">>, get_db_name(SourceDB, unencoded)}
 		     ,{<<"target">>, TargetDB}
 		     ,{<<"filter">>, FilterDoc}
+                     ,{<<"create_target">>, true}
+                     ,{<<"continuous">>, true}
 		    ],
+    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDB, unencoded), TargetDB, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate).
+
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -201,7 +219,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
     spawn(fun() ->
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc, resp_headers=RHs}=Context1 ->
-                          DbName = get_db_name(Doc),
+                          DbName = get_db_name(Doc, encoded),
                           case couch_mgr:db_create(DbName) of
                               false ->
                                   logger:format_log(error, "ACCOUNTS(~p): Failed to create database: ~p~n", [self(), DbName]),
@@ -211,7 +229,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
                                   Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]
 											,resp_headers=[{"Location", get_db_name(DbName, raw)} | RHs]
 										       }, Params]},
-                                  Responses = crossbar_bindings:map(<<"account.created">>, Context1),
+                                  Responses = crossbar_bindings:map(<<"account.created">>, DbName),
                                   lists:foreach(fun({true, File}) ->
                                                         couch_mgr:load_doc_from_file(DbName, crossbar, File)
                                                 end, crossbar_bindings:succeeded(Responses))
@@ -235,8 +253,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
@@ -624,30 +643,39 @@ set_private_fields(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_db_name/1 :: (DocId :: list(binary()) | json_object() | binary()) -> binary()).
-get_db_name(Doc) -> get_db_name(Doc, encoded).
+get_db_name(Doc) -> get_db_name(Doc, unencoded).
 
 -spec(get_db_name/2 :: (DocId :: list(binary()) | binary() | json_object(), Encoded :: unencoded | encoded | raw) -> binary()).
 get_db_name({struct, _}=Doc, Encoded) ->
+    logger:format_log(info, "marker 1", []),
     get_db_name([whapps_json:get_value(["_id"], Doc)], Encoded);
 get_db_name([DocId], Encoded) when is_binary(DocId) ->
+    logger:format_log(info, "marker 2", []),
     get_db_name(DocId, Encoded);
-get_db_name("crossbar%2Fclients" ++ _ = DocId, encoded) ->
-    DocId;
+
+%get_db_name("crossbar%2Fclients" ++ _ = DocId, encoded) ->
+%    DocId;
+
+get_db_name(<<"crossbar%2Fclients%2F", _/binary>>=Db, unencoded) ->
+    binary:replace(Db, <<"%2F">>, <<"/">>, [global]);
+
+get_db_name(DocId, unencoded) when is_binary(DocId) ->
+    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
+    whistle_util:to_binary(["crossbar/clients/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+
+get_db_name(<<"crossbar/clients/", _/binary>>=Db, encoded) ->
+    binary:replace(Db, <<"/">>, <<"%2F">>, [global]);
+
 get_db_name(DocId, encoded) when is_binary(DocId) ->
     [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
     whistle_util:to_binary(["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
-%% get_db_name(DocId, unencoded) when is_binary(DocId) ->
-%%     case binary:longest_common_prefix([<<"crossbar%2Fclients%2F">>, DocId]) of
-%% 	0 ->
-%% 	    Id = whistle_util:to_list(DocId),
-%% 	    Db = ["crossbar/clients/", string:sub_string(Id, 1, 2), "/", string:sub_string(Id, 3, 4), "/", string:sub_string(Id, 5)],
-%% 	    whistle_util:to_binary(Db);
-%% 	_ ->
-%% 	    whistle_util:to_binary(mochiweb_util:unquote(DocId))
-%%     end;
+
 get_db_name(<<"crossbar%2Fclients%2F", DocId/binary>>, raw) ->
+    logger:format_log(info, "marker 7", []),
     binary:replace(DocId, <<"%2F">>, <<>>, [global]);
+
 get_db_name(<<"crossbar/clients/", DocId/binary>>, raw) ->
+    logger:format_log(info, "marker 8", []),
     binary:replace(DocId, <<"/">>, <<>>, [global]).
 
 
@@ -660,7 +688,8 @@ get_db_name(<<"crossbar/clients/", DocId/binary>>, raw) ->
 %%--------------------------------------------------------------------
 -spec(load_account_db/2 :: (DocId :: list(binary()) | json_object(), #cb_context{}) -> #cb_context{}).
 load_account_db(DocId, Context)->
-    DbName = get_db_name(DocId),
+    DbName = get_db_name(DocId, encoded),
+    logger:format_log(info, "Account determined that db name ~p", [DbName]),
     case couch_mgr:db_exists(DbName) of
         false ->
             Context#cb_context{
