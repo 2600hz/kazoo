@@ -647,14 +647,13 @@ get_db_name(Doc) -> get_db_name(Doc, unencoded).
 
 -spec(get_db_name/2 :: (DocId :: list(binary()) | binary() | json_object(), Encoded :: unencoded | encoded | raw) -> binary()).
 get_db_name({struct, _}=Doc, Encoded) ->
-    logger:format_log(info, "marker 1", []),
     get_db_name([whapps_json:get_value(["_id"], Doc)], Encoded);
+
 get_db_name([DocId], Encoded) when is_binary(DocId) ->
-    logger:format_log(info, "marker 2", []),
     get_db_name(DocId, Encoded);
 
-%get_db_name("crossbar%2Fclients" ++ _ = DocId, encoded) ->
-%    DocId;
+get_db_name("crossbar/clients" ++ _ = DbName, unencoded) ->
+    DbName;
 
 get_db_name(<<"crossbar%2Fclients%2F", _/binary>>=Db, unencoded) ->
     binary:replace(Db, <<"%2F">>, <<"/">>, [global]);
@@ -662,6 +661,9 @@ get_db_name(<<"crossbar%2Fclients%2F", _/binary>>=Db, unencoded) ->
 get_db_name(DocId, unencoded) when is_binary(DocId) ->
     [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
     whistle_util:to_binary(["crossbar/clients/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+
+get_db_name("crossbar%2Fclients" ++ _ = DbName, encoded) ->
+    DbName;
 
 get_db_name(<<"crossbar/clients/", _/binary>>=Db, encoded) ->
     binary:replace(Db, <<"/">>, <<"%2F">>, [global]);
@@ -671,11 +673,9 @@ get_db_name(DocId, encoded) when is_binary(DocId) ->
     whistle_util:to_binary(["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 
 get_db_name(<<"crossbar%2Fclients%2F", DocId/binary>>, raw) ->
-    logger:format_log(info, "marker 7", []),
     binary:replace(DocId, <<"%2F">>, <<>>, [global]);
 
 get_db_name(<<"crossbar/clients/", DocId/binary>>, raw) ->
-    logger:format_log(info, "marker 8", []),
     binary:replace(DocId, <<"/">>, <<>>, [global]).
 
 
