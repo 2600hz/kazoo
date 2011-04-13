@@ -32,9 +32,10 @@ Quickstart guide
      -include_lib("proper/include/proper.hrl").
   By including this header, all the macros, types and functions described in
   this file are automatically imported, so you can use them without a module
-  identifier. Also, all functions of arity 0 whose name starts with "prop_" are
-  automatically exported from the module. If you wish to disable the automatic
-  exporting of properties, compile your module with -DPROPER_NOTRANS.
+  identifier. You can disable this behaviour by compiling your module with
+  -DPROPER_NO_IMPORTS. Also, all functions of arity 0 whose name starts with
+  "prop_" are automatically exported from the module. If you wish to disable the
+  automatic exporting of properties, compile your module with -DPROPER_NO_TRANS.
 * Compile your source files.
 * For each property, run:
      proper:quickcheck(your_module:some_property()).
@@ -616,7 +617,7 @@ constructors in the second argument of ?FORALLs. No extra notation is required -
 PropEr will detect which calls correspond to native types by applying a parse
 transform during compilation. This parse transform is automatically applied to
 any module that includes the proper.hrl header file. You can disable this
-feature by compiling your modules with -DPROPER_NOTRANS. Note that this will
+feature by compiling your modules with -DPROPER_NO_TRANS. Note that this will
 currently also disable the automatic exporting of properties.
 
 The use of native types in properties is subject to the following usage rules:
@@ -799,8 +800,9 @@ syntax:
   known at type construction time. It will be replaced by the actual value of
   the variable during evaluation.
 
-The following functions, automatically imported from the proper_symb module, can
-be used when working with symbolic instances:
+The following functions, automatically imported from the proper_symb module
+(unless PROPER_NO_IMPORTS is defined), can be used when working with symbolic
+instances:
 
 * eval(<Symbolic_instance>): Intended for use inside the property-testing code,
   this function evaluates a symbolic instance.
@@ -932,8 +934,9 @@ command generation and command execution time in order to determine the next
 state, therefore the <Result> can be either symbolic (i.e. {var,N}) or dynamic.
 
 
-The following functions, automatically imported from the proper_statem module,
-can be used when working with stateful code:
+The following functions, automatically imported from the proper_statem module
+(unless PROPER_NO_IMPORTS is defined), can be used when working with stateful
+code:
 
 * commands(<Module>): A special PropEr type which generates random command
 sequences, as specified by the absract state machine in <Module>. The initial
@@ -1002,8 +1005,8 @@ to check if the results observed could have been produced by a possible
 serialization of the concurrent tasks. If no such serialization is possible,
 then an atomicity violation is detected.
 
-The following functions, automatically imported from the proper_statem module,
-can be used for parallel testing:
+The following functions, automatically imported from the proper_statem module
+(unless PROPER_NO_IMPORTS is defined), can be used for parallel testing:
 
 * parallel_commands(<Module>): A special PropEr type which generates parallel
 testcases from the absract state machine specified in <Module>. The initial
