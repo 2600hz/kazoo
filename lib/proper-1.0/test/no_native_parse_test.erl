@@ -20,12 +20,12 @@
 %%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
 %%% @version {@version}
 %%% @doc This module tests whether parsing of native types is disabled when
-%%%	 compiling with PROPER_NOTRANS enabled.
+%%%	 compiling with PROPER_NO_TRANS enabled.
 
 -module(no_native_parse_test).
 -export([prop_1/0]).
 
--define(PROPER_NOTRANS, true).
+-define(PROPER_NO_TRANS, true).
 
 -include_lib("proper/include/proper.hrl").
 
