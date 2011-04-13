@@ -59,7 +59,7 @@ start_link() ->
 update_all_accounts(File) ->
     case crossbar_doc:load_view(?VIEW_LIST, [], #cb_context{db_name=?ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
-	    lists:foreach(fun(Account) ->
+	    lists:foreach(fun(Account) ->                                  
 				  DbName = get_db_name(whapps_json:get_value(["id"], Account)),
 				  case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
 				      {error, _} ->
@@ -242,7 +242,11 @@ handle_info({binding_fired, Pid, _Route, Payload}, State) ->
 handle_info(timeout, State) ->
     couch_mgr:db_create(?ACCOUNTS_DB),
     bind_to_crossbar(),
-    crossbar_doc:load_from_file(?ACCOUNTS_DB, ?VIEW_FILE),
+    case couch_mgr:update_doc_from_file(?ACCOUNTS_DB, crossbar, ?VIEW_FILE) of
+        {error, _} ->
+            couch_mgr:load_doc_from_file(?ACCOUNTS_DB, crossbar, ?VIEW_FILE);
+        {ok, _} -> ok
+    end,
     {noreply, State};
 
 handle_info(_Info, State) ->
