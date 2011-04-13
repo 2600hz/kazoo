@@ -25,11 +25,12 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(VIEW_FILE, <<"views/devices.json">>).
 -define(DEVICES_LIST, <<"devices/listing_by_id">>).
 
--define(SIP_CREDS_DB, <<"sip_auth">>).
--define(SIP_FILTER, <<"devices/export_sip">>).
+-define(AGG_DB, <<"sip_auth">>).
+-define(AGG_FILTER, <<"devices/export_sip">>).
 
 %%%===================================================================
 %%% API
@@ -110,12 +111,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.devices">>, Payl
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
@@ -123,37 +126,43 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-		  spawn(fun() -> accounts:replicate_from_account(Context1#cb_context.db_name, ?SIP_CREDS_DB, ?SIP_FILTER) end),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
+
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?SIP_CREDS_DB),
+    couch_mgr:db_create(?AGG_DB),
     accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?SIP_CREDS_DB, ?SIP_FILTER),
+    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
