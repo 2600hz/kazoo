@@ -213,7 +213,7 @@ publish_register_event(Data, AppVsn) ->
     Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
     DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, whistle_util:to_binary(?MODULE), AppVsn),
     ApiProp = lists:foldl(fun(K, Api) ->
-				  Lk = binary_to_lower(K),
+				  Lk = whistle_util:binary_to_lower(K),
 				  case props:get_value(Lk, Data) of
 				      undefined -> Api;
 				      V -> [{K, V} | Api]
@@ -225,7 +225,3 @@ publish_register_event(Data, AppVsn) ->
 	    format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
 	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
     end.
-
--spec(binary_to_lower/1 :: (B :: binary()) -> binary()).
-binary_to_lower(B) when is_binary(B) ->
-    whistle_util:to_binary(string:to_lower(whistle_util:to_list(B))).
