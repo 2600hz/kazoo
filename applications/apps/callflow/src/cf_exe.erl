@@ -106,7 +106,6 @@ wait(Call, Flow, Pid) ->
                    next(Call, NewFlow)
            end;
        {branch, NewFlow} ->
-           format_log(info, "NEW BRANCH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ~p", [NewFlow]),
            next(Call, NewFlow);
        {heartbeat} ->
            wait(Call, Flow, Pid); 
@@ -134,10 +133,7 @@ wait(Call, Flow, Pid) ->
                    end;
                _Else ->
                    wait(Call, Flow, Pid)
-           end;
-       Unknown ->
-           format_log(info, "CF EXECUTIONER (~p): !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Unknown message ~p", [self(), Unknown]),
-           wait(Call, Flow, Pid)
+           end
    after
        120000 -> 
            format_log(info, "CF EXECUTIONER (~p): Callflow timeout!", [self()]),
