@@ -22,6 +22,8 @@
 -define(SERVER, ?MODULE).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
 
+-type routes() :: json_objects().
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -197,7 +199,7 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 		   ,{<<"options">>, lists:map(fun({struct, Gateway}) -> Gateway end, Gateways)}
 		   | proplists:delete(<<"routes">>, COs1)]}.
 
--spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
+-spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, routes()} | {error, string()}).
 get_routes(Flags, Carriers) ->
     User = Flags#route_flags.to_user,
     logger:format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
@@ -222,7 +224,6 @@ sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
     ts_util:constrain_weight(props:get_value(<<"weight_cost">>, CarrierAData, 0)) >= ts_util:constrain_weight(props:get_value(<<"weight_cost">>, CarrierBData, 0)).
 
 %% transform Carriers proplist() into a list of Routes for the API
--type routes() :: json_objects().
 -spec(create_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> tuple(ok, routes()) | tuple(error, string())).
 create_routes(Flags, Carriers) ->
     CallerID = case Flags#route_flags.caller_id of
@@ -267,7 +268,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
     case whistle_util:to_binary(props:get_value(<<"enabled">>, Gateway, <<"0">>)) of
 	<<"1">> ->
 	    Dialstring = list_to_binary([<<"sip:">>
-					     ,props:get_value(<<"prefix">>, Gateway)
+					 ,props:get_value(<<"prefix">>, Gateway)
 					 ,Regexed
 					 ,props:get_value(<<"suffix">>, Gateway)
 					 ,"@"

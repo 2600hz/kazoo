@@ -22,6 +22,7 @@
 
 -include("proper_common.hrl").
 
+-ifndef(PROPER_NO_IMPORTS).
 
 %%------------------------------------------------------------------------------
 %% Test generation functions
@@ -82,12 +83,14 @@
 			command_names/1, zip/2, run_parallel_commands/2,
 			run_parallel_commands/3]).
 
+-endif.
+
 
 %%------------------------------------------------------------------------------
 %% Enable the PropEr parse transformer
 %%------------------------------------------------------------------------------
 
--ifndef(PROPER_NOTRANS).
+-ifndef(PROPER_NO_TRANS).
 -ifdef(PROPER_REMOVE_PROPS).
 -compile({parse_transform, proper_prop_remover}).
 -else.

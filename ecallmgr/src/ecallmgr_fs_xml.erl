@@ -111,9 +111,9 @@ build_route(RouteProp, DIDFormat) ->
 format_did(DID, <<"e164">>) ->
     whistle_util:to_e164(DID);
 format_did(DID, <<"npan">>) ->
-    whistle_util:to_npanxxxxxx(DID);
+    whistle_util:to_npan(DID);
 format_did(DID, <<"1npan">>) ->
-    whistle_util:to_1npanxxxxxx(DID).
+    whistle_util:to_1npan(DID).
 
 -spec(get_leg_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
 get_leg_vars({struct, Prop}) -> get_leg_vars(Prop);
