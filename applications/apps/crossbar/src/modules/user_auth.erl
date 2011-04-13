@@ -103,10 +103,17 @@ handle_cast(_Msg, State) ->
 %%
 %% @spec handle_info(Info, State) -> {noreply, State} |
 %%                                   {noreply, State, Timeout} |
-
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.user_auth">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
@@ -119,10 +126,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.user_auth">>, Pa
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {_, [{<<"user_auth">>,[]}]}}, State) ->
-    Pid ! {binding_result, true, []},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Context | Params]}, State) ->
@@ -154,8 +157,7 @@ handle_info(timeout, State) ->
     end,
     {noreply, State};
 
-handle_info(_Info, State) ->
-    logger:format_log(info, "NOAUTHN(~p): unhandled info ~p~n", [self(), _Info]),
+handle_info(_, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -189,6 +191,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.user_auth">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.user_auth">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.user_auth">>),
@@ -299,7 +302,7 @@ create_token(RD, #cb_context{doc=[JObj]}=Context) ->
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = whapps_json:get_value(<<"_id">>, Doc),
-            crossbar_util:response([], Context#cb_context{auth_token=AuthToken});
+            crossbar_util:response([], Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, _} ->
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
     end.
