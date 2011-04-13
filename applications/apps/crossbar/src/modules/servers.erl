@@ -2,14 +2,14 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%% Devices module
+%%% Servers module
 %%%
-%%% Handle client requests for device documents
+%%% Handle client requests for server documents
 %%%
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(devices).
+-module(servers).
 
 -behaviour(gen_server).
 
@@ -20,16 +20,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(VIEW_FILE, <<"views/devices.json">>).
--define(DEVICES_LIST, <<"devices/listing_by_id">>).
 
--define(SIP_CREDS_DB, <<"sip_auth">>).
--define(SIP_FILTER, <<"devices/export_sip">>).
+-define(VIEW_FILE, <<"views/servers.json">>).
+-define(SERVERS_LIST, <<"servers/listing_by_id">>).
+-define(DEPLOY_CMD, "knife bootstrap ~s '~s' -x root -P ~s -N ~s -d ~s").
+
 
 %%%===================================================================
 %%% API
@@ -104,56 +102,75 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.devices">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.servers">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payload}, State) ->
+
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.servers">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
-handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
+
+handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
                 Context1 = validate(Params, Context),
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, #cb_context{doc=Doc0}=Context | [_, <<"deploy">>]=Params]}, State) ->
+    spawn(fun() ->
+                  crossbar_util:binding_heartbeat(Pid),
+                  Doc1 = whapps_json:set_value(<<"pvt_deploy_status">>, <<"running">>, Doc0),
+                  case crossbar_doc:save(Context#cb_context{doc=Doc1}) of
+                      #cb_context{resp_status=success}=Context1 ->
+                          spawn(fun() -> execute_deploy_cmd(Context1, Params) end),
+                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data={struct, []}}, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end,
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-		  spawn(fun() -> accounts:replicate_from_account(Context1#cb_context.db_name, ?SIP_CREDS_DB, ?SIP_FILTER) end),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, Context | Params]}, State) ->
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
+
 handle_info({binding_fired, Pid, _Route, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?SIP_CREDS_DB),
     accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?SIP_CREDS_DB, ?SIP_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -194,12 +211,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.devices">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.servers">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.servers">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.servers">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.servers">>),
     crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
@@ -216,6 +233,8 @@ allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
+allowed_methods([_, <<"deploy">>]) ->
+    {true, ['POST']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -232,6 +251,8 @@ resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
     {true, []};
+resource_exists([_, <<"deploy">>]) ->
+    {true, []};
 resource_exists(_) ->
     {false, []}.
 
@@ -246,15 +267,27 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device_summary(Context);
+    load_server_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_device(Context);
+    create_server(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device(DocId, Context);
+    load_server(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_device(DocId, Context);
+    update_server(DocId, Context);
+validate([DocId, <<"deploy">>], #cb_context{req_verb = <<"post">>}=Context) ->   
+    case load_server(DocId, Context) of
+        #cb_context{resp_status=success, doc=JObj}=Context1 ->
+            case whapps_json:get_value(<<"pvt_deploy_status">>, JObj) of
+                <<"running">> ->
+                    crossbar_util:response(error, <<"deployment already running">>, 409, Context1);
+               _Else ->
+                    Context1
+            end;
+        Else ->
+            Else
+    end;
 validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_device(DocId, Context);
+    load_server(DocId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -265,24 +298,26 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_device_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-load_device_summary(Context) ->
-    crossbar_doc:load_view(?DEVICES_LIST, [], Context, fun normalize_view_results/2).
+-spec(load_server_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_server_summary(Context) ->
+    crossbar_doc:load_view(?SERVERS_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new device document with the data provided, if it is valid
+%% Create a new server document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_device/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_device(#cb_context{req_data=JObj}=Context) ->
+-spec(create_server/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_server(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
+            Doc1=whapps_json:set_value(<<"pvt_type">>, <<"server">>, JObj),
+            Doc2=whapps_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, Doc1),            
             Context#cb_context{
-                 doc=whapps_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
+                 doc=Doc2
                 ,resp_status=success
             }
     end.
@@ -290,45 +325,92 @@ create_device(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a device document from the database
+%% Load a server document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_device(DocId, Context) ->
+-spec(load_server/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_server(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing device document with the data provided, if it is
+%% Update an existing server document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_device(DocId, #cb_context{req_data=JObj}=Context) ->
+-spec(update_server/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_server(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
-
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].    
+    [whapps_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% NOTICE: This is very temporary, placeholder until the schema work is
+%% complete!
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Execute the deploy command with the provided arguments, ensuring the 
+%% doc is updated afterward
+%% @end
+%%--------------------------------------------------------------------
+-spec(execute_deploy_cmd/2 :: (Context :: #cb_context{}, Params :: list(binary())) -> 
+                                   tuple(ok, json_object()) | tuple(error, atom())).
+execute_deploy_cmd(#cb_context{db_name=Db, req_data=Request}, [DocId, _]) ->        
+    try
+        Command = io_lib:format(?DEPLOY_CMD, [
+                                               whapps_json:get_value(<<"ip">>, Request)
+                                              ,lists:map(fun(E) -> <<E/binary, $ >> end, whapps_json:get_value(<<"roles">>, Request))
+                                              ,whapps_json:get_value(<<"password">>, Request)
+                                              ,whapps_json:get_value(<<"node_name">>, Request)
+                                              ,whapps_json:get_value(<<"operating_system">>, Request)
+                                             ]),
+        logger:format_log(info, "Executing command ~s", [Command]),
+        Results = os:cmd(Command),    
+        couch_mgr:put_attachment(Db, DocId, <<"deployment.log">>, Results)
+    catch 
+        _:_ -> 
+            ignore
+    end,
+    {ok, JObj0} = couch_mgr:open_doc(Db, DocId),
+    {ok, JObj1} = safe_save(Db, whapps_json:set_value(<<"pvt_deploy_status">>, <<"idle">>, JObj0)),
+    safe_save(Db, whapps_json:set_value(<<"pvt_deploy_request">>, Request, JObj1)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Loop the save if it is in conflict until it works
+%% @end
+%%--------------------------------------------------------------------
+-spec(safe_save/2 :: (Db :: binary(), JObj :: json_object()) ->
+                          tuple(ok, json_object()) | tuple(error, atom())).
+safe_save(Db, JObj) ->
+    case couch_mgr:save_doc(Db, JObj) of
+        {error, conflict} ->
+            Rev = couch_mgr:lookup_doc_rev(Db, whapps_json:get_value(<<"_id">>, JObj)),
+            safe_save(Db, whapps_json:set_value(<<"_rev">>, Rev, JObj));
+        Else ->
+            Else
+    end.           

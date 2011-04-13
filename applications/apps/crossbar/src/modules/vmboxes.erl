@@ -330,10 +330,5 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(JObj) ->
-    Schema = [
-               {[<<"base">>, <<"mailbox">>], [{not_empty, []}]}
-              ,{[<<"base">>, <<"pin">>], [{not_empty, []}]}
-             ],
-    Failed = crossbar_validator:validate(Schema, JObj),
-    {Failed =:= [], Failed}.
+is_valid_doc(_JObj) ->
+    {true, []}.

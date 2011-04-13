@@ -543,19 +543,8 @@ is_valid_parent(_JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(JObj) ->
-    Schema = [
-	   { [<<"base">>, <<"name">>]
-	    ,[ {not_empty, []}
-              ,{is_format, [phrase]}
-	     ]}
-	   ,{ [<<"base">>, <<"status">>]
-	      ,[ {not_empty, []}
-		%,{in_list, [{<<"enabled">>, <<"disabled">>}]}
-	       ]}
-	  ],
-    Failed = crossbar_validator:validate(Schema, JObj),
-    {Failed =:= [], Failed}.
+is_valid_doc(_JObj) ->
+    {true, []}.
 
 
 %%--------------------------------------------------------------------

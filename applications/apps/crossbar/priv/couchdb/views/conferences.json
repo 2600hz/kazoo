@@ -3,10 +3,10 @@
     ,"language": "javascript"
     ,"views": {
         "listing_by_id": {
-            "map": "function(doc) { if ( doc.pvt_type != 'conference') return; emit(doc._id, {'id': doc._id, 'name': doc.base.name}); }"
+            "map": "function(doc) { if ( doc.pvt_type != 'conference') return; emit(doc._id, {'id': doc._id, 'name': doc.name}); }"
         }
         ,"listing_by_name": {
-            "map": "function(doc) { if ( doc.pvt_type != 'conference') return; emit(doc.base.name,  {'id': doc._id, 'name': doc.base.name}); }"
+            "map": "function(doc) { if ( doc.pvt_type != 'conference') return; emit(doc.name,  {'id': doc._id, 'name': doc.name}); }"
         }       
     }
     ,"filters": {
