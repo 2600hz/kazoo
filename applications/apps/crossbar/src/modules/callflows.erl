@@ -134,6 +134,10 @@ handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
+    {noreply, State};
+
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     accounts:update_all_accounts(?VIEW_FILE),
