@@ -2,7 +2,7 @@
 
 -export([to_e164/1, to_npanxxxxxx/1, to_1npanxxxxxx/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
--export([to_boolean/1, is_true/1]).
+-export([to_boolean/1, is_true/1, binary_to_lower/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0]).
 
@@ -128,6 +128,10 @@ is_true("true") -> true;
 is_true(true) -> true;
 is_true(_) -> false.
 
+-spec(binary_to_lower/1 :: (B :: binary()) -> binary()).
+binary_to_lower(B) when is_binary(B) ->
+    to_binary(string:to_lower(to_list(B))).
+
 -spec(a1hash/3 :: (User :: binary() | list(), Realm :: binary() | list(), Password :: binary() | list()) -> string()).
 a1hash(User, Realm, Password) ->
     to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
@@ -178,10 +182,13 @@ prop_to_list() ->
     ?FORALL({A, L, B, I, F}, {atom(), list(), binary(), integer(), float()},
 	    lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
 
+%-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
 prop_to_binary() ->
-    ?FORALL({A, L, B, I, F}, {atom(), list(range(0,255)), binary(), integer(), float()},
-	    lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F])).
-		
+    ?FORALL({A, L, B, I, F, IO}, {atom(), list(range(0,255)), binary(), integer(), float(), iolist()},
+	    lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).
+
+prop_iolist_t() ->
+    ?FORALL(IO, iolist(), is_binary(iolist_to_binary(IO))).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
 prop_to_npanxxxxxx() ->
