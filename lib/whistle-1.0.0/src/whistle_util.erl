@@ -1,6 +1,6 @@
 -module(whistle_util).
 
--export([to_e164/1, to_npanxxxxxx/1, to_1npanxxxxxx/1]).
+-export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, binary_to_lower/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
@@ -27,23 +27,24 @@ to_e164(Other) ->
     Other.
 
 %% end up with 8001234567 from 1NPAN and E.164
--spec(to_npanxxxxxx/1 :: (NPAN :: binary()) -> binary()).
-to_npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
+-spec(to_npan/1 :: (NPAN :: binary()) -> binary()).
+to_npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
-to_npanxxxxxx(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
+to_npan(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
-to_npanxxxxxx(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
+to_npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
     NPAN;
-to_npanxxxxxx(Other) ->
+to_npan(Other) ->
     Other.
 
-to_1npanxxxxxx(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
+-spec(to_1npan/1 :: (NPAN :: binary()) -> binary()).
+to_1npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     <<$1, N/bitstring>>;
-to_1npanxxxxxx(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
+to_1npan(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
     NPAN1;
-to_1npanxxxxxx(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
+to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
     <<$1, NPAN/bitstring>>;
-to_1npanxxxxxx(Other) ->
+to_1npan(Other) ->
     Other.
 
 -spec(to_integer/1 :: (X :: list() | binary() | integer() | float()) -> integer()).
@@ -191,11 +192,11 @@ prop_iolist_t() ->
     ?FORALL(IO, iolist(), is_binary(iolist_to_binary(IO))).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
-prop_to_npanxxxxxx() ->
+prop_to_npan() ->
     ?FORALL(Number, range(1000000000,19999999999),
 	    begin
 		BinNum = to_binary(Number),
-		NPAN = to_npanxxxxxx(BinNum),
+		NPAN = to_npan(BinNum),
 		case byte_size(BinNum) of
 		    11 -> BinNum =:= <<"1", NPAN/binary>>;
 		    _ -> NPAN =:= BinNum
@@ -203,11 +204,11 @@ prop_to_npanxxxxxx() ->
 	    end).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
-prop_to_1npanxxxxxx() ->
+prop_to_1npan() ->
     ?FORALL(Number, range(1000000000,19999999999),
 	    begin
 		BinNum = to_binary(Number),
-		OneNPAN = to_1npanxxxxxx(BinNum),
+		OneNPAN = to_1npan(BinNum),
 		case byte_size(BinNum) of
 		    11 -> OneNPAN =:= BinNum;
 		    _ -> OneNPAN =:= <<"1", BinNum/binary>>
@@ -240,14 +241,14 @@ to_e164_test() ->
     Ans = <<"+11234567890">>,
     lists:foreach(fun(N) -> ?assertEqual(to_e164(N), Ans) end, Ns).
 
-to_npanxxxxxx_test() ->
+to_npan_test() ->
     Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
     Ans = <<"1234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_npanxxxxxx(N), Ans) end, Ns).
+    lists:foreach(fun(N) -> ?assertEqual(to_npan(N), Ans) end, Ns).
 
-to_1npanxxxxxx_test() ->
+to_1npan_test() ->
     Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
     Ans = <<"11234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_1npanxxxxxx(N), Ans) end, Ns).
+    lists:foreach(fun(N) -> ?assertEqual(to_1npan(N), Ans) end, Ns).
 
 -endif.
