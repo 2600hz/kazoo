@@ -215,71 +215,70 @@ route_over_carriers(Flags, ApiJObj) ->
     end.
 
 -spec(inbound_route/1 :: (Flags :: #route_flags{}) -> tuple(ok, json_object(), #route_flags{}) | tuple(error, string())).
-inbound_route(Flags) ->
+inbound_route(#route_flags{auth_user=U, auth_realm=R, to_user=To, inbound_format=InFormat, failover=Failover
+			   ,media_handling=MediaHandling, progress_timeout=ProgressTimeout}=Flags) ->
     wh_timer:tick("inbound_route/1"),
-    Invite = case Flags#route_flags.inbound_format of
-		 <<"E.164">> ->
-		     [{<<"Invite-Format">>, <<"e164">>}
-		      ,{<<"To-User">>, Flags#route_flags.auth_user}
-		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
-		      ,{<<"To-DID">>, whistle_util:to_e164(Flags#route_flags.to_user)}
-		     ];
-		 <<"1NPANXXXXXX">> ->
-		     [{<<"Invite-Format">>, <<"1npan">>}
-		      ,{<<"To-User">>, Flags#route_flags.auth_user}
-		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
-		      ,{<<"To-DID">>, whistle_util:to_1npanxxxxxx(Flags#route_flags.to_user)}
-		     ];
-		 <<"NPANXXXXXX">> ->
-		     [{<<"Invite-Format">>, <<"npan">>}
-		      ,{<<"To-User">>, Flags#route_flags.auth_user}
-		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
-		      ,{<<"To-DID">>, whistle_util:to_npanxxxxxx(Flags#route_flags.to_user)}
-		     ];
-		 _ ->
-		     [{<<"Invite-Format">>, <<"username">>}
-		      ,{<<"To-User">>, Flags#route_flags.auth_user}
-		      ,{<<"To-Realm">>, Flags#route_flags.auth_realm}
-		     ]
-	     end,
+
+    InviteBase = [{<<"To-User">>, U}, {<<"To-Realm">>, R}],
+
+    Invite = invite_format(whistle_util:binary_to_lower(InFormat), To) ++ InviteBase,
+
     Route = [{<<"Weight-Cost">>, <<"1">>}
 	     ,{<<"Weight-Location">>, <<"1">>}
 	     ,{<<"Custom-Channel-Vars">>, {struct, [
-						    {<<"Auth-User">>, Flags#route_flags.auth_user}
-						    ,{<<"Auth-Realm">>, Flags#route_flags.auth_realm}
+						    {<<"Auth-User">>, U}
+						    ,{<<"Auth-Realm">>, R}
 						    ,{<<"Direction">>, <<"inbound">>}
 						    | ts_util:get_base_channel_vars(Flags)
 						   ]}
 	      }
-	     ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
+	     ,{<<"Media">>, ts_util:get_media_handling(MediaHandling)}
 	     | Invite ],
 
-    Route1 = case Flags#route_flags.progress_timeout of
+    Route1 = case ProgressTimeout of
 		 none -> Route;
 		 Secs -> [{<<"Progress-Timeout">>, whistle_util:to_integer(Secs)} | Route]
 	     end,
 
     case whistle_api:route_resp_route_v(Route1) of
 	true ->
-	    {Routes, Flags1} = add_failover_route(Flags#route_flags.failover, Flags, {struct, Route1}),
+	    {Routes, Flags1} = add_failover_route(Failover, Flags, {struct, Route1}),
 	    {ok, {struct, Routes}, Flags1};
 	false ->
 	    %% logger:format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route1]),
 	    {error, "Inbound route validation failed"}
     end.
 
--spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), Flags :: #route_flags{}, tuple(struct, proplist())) -> tuple(proplist(), #route_flags{})).
+-spec(invite_format/2 :: (Format :: binary(), To :: binary()) -> proplist()).
+invite_format(<<"e.164">>, To) ->
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
+invite_format(<<"e164">>, To) ->
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
+invite_format(<<"1npanxxxxxx">>, To) ->
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
+invite_format(<<"1npan">>, To) ->
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
+invite_format(<<"npanxxxxxx">>, To) ->
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
+invite_format(<<"npan">>, To) ->
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
+invite_format(_, _) ->
+    [{<<"Invite-Format">>, <<"username">>} ].
+
+-spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), Flags :: #route_flags{}, InboundRoute :: json_object()) ->
+				   tuple(json_objects(), #route_flags{})).
 add_failover_route({}, Flags, InboundRoute) -> {[InboundRoute], Flags#route_flags{scenario=inbound}};
 %% route to a SIP URI
-add_failover_route({<<"sip">>, URI}, Flags, InboundRoute) ->
+add_failover_route({<<"sip">>, URI}, #route_flags{media_handling=MediaHandling}=Flags, InboundRoute) ->
     { [InboundRoute, {struct, [{<<"Route">>, URI}
 			       ,{<<"Invite-Format">>, <<"route">>}
 			       ,{<<"Weight-Cost">>, <<"1">>}
 			       ,{<<"Weight-Location">>, <<"1">>}
 			       ,{<<"Failover-Route">>, <<"true">>}
-			       ,{<<"Media">>, ts_util:get_media_handling(Flags#route_flags.media_handling)}
+			       ,{<<"Media">>, ts_util:get_media_handling(MediaHandling)}
 			      ]}]
-      ,Flags#route_flags{scenario=inbound_failover}};
+      ,Flags#route_flags{scenario=inbound_failover}
+    };
 %% route to a E.164 number - need to setup outbound for this sucker
 add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, InboundRoute) ->
     OutBFlags = Flags#route_flags{to_user=DID
@@ -352,12 +351,10 @@ flags_from_api(ApiJObj, ChannelVarsJObj, Flags) ->
     [ToUser, ToDomain] = binary:split(whapps_json:get_value(<<"To">>, ApiJObj), <<"@">>),
     [FromUser, FromDomain] = binary:split(whapps_json:get_value(<<"From">>, ApiJObj), <<"@">>),
 
-    F0 = case Flags#route_flags.caller_id of
-	     {} -> Flags#route_flags{caller_id = {whapps_json:get_value(<<"Caller-ID-Name">>, ApiJObj, <<>>)
-						  ,whapps_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)
-						 }};
-	     _CID -> Flags
-	 end,
+    F0 = add_caller_id(Flags, {struct, [ {<<"cid_name">>, whapps_json:get_value(<<"Caller-ID-Name">>, ApiJObj, <<>>)}
+					 ,{<<"cid_number">>, whapps_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)}
+				       ]
+			      }),
     F1 = F0#route_flags{
 	   callid = whapps_json:get_value(<<"Call-ID">>, ApiJObj)
 	   ,to_user = whistle_util:to_e164(ToUser)
