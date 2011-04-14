@@ -2,14 +2,13 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%% Conferences module
+%%% User auth module
 %%%
-%%% Handle client requests for conference documents
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(conferences).
+-module(api_auth).
 
 -behaviour(gen_server).
 
@@ -20,14 +19,17 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/conferences.json">>).
--define(CONFERENCES_LIST, <<"conferences/listing_by_id">>).
+-define(TOKEN_DB, <<"token_auth">>).
+
+-define(VIEW_FILE, <<"views/agg_accounts.json">>).
+-define(API_LIST, <<"accounts/listing_by_api">>).
+
+-define(AGG_DB, <<"crossbar%2Faccounts">>).
 
 %%%===================================================================
 %%% API
@@ -58,7 +60,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init(_) ->
+init([]) ->
     {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
@@ -102,51 +104,40 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.conferences">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.api_auth">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.conferences">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.api_auth">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.conferences">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+                Pid ! {binding_result, true, [RD, validate(Params, Context), Params]}
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.conferences">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.conferences">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.conferences">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
-    Pid ! {binding_result, true, ?VIEW_FILE},
+                crossbar_util:binding_heartbeat(Pid),
+                Pid ! {binding_result, true, [RD, create_token(RD, Context), Params]}
+	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -155,10 +146,16 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    accounts:update_all_accounts(?VIEW_FILE),
+    couch_mgr:db_create(?TOKEN_DB),
+    couch_mgr:db_create(?AGG_DB),
+    case couch_mgr:update_doc_from_file(?AGG_DB, crossbar, ?VIEW_FILE) of
+        {error, _} ->
+            couch_mgr:load_doc_from_file(?AGG_DB, crossbar, ?VIEW_FILE);
+        {ok, _} -> ok
+    end,
     {noreply, State};
 
-handle_info(_Info, State) ->
+handle_info(_, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -189,20 +186,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.conferences">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.conferences">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.conferences">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.conferences">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.api_auth">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.api_auth">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.api_auth">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.api_auth">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -215,9 +206,7 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
-allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['PUT']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -232,10 +221,9 @@ allowed_methods(_) ->
 -spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
 resource_exists([]) ->
     {true, []};
-resource_exists([_]) ->
-    {true, []};
 resource_exists(_) ->
     {false, []}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -247,89 +235,67 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_conference_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_conference(Context);
-validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_conference(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_conference(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_conference(DocId, Context);
+validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+    logger:format_log(info, "API AUTH : ~p", [whapps_json:get_value(<<"api-key">>, JObj)]),
+    authorize_user(Context, 
+                   whapps_json:get_value(<<"api-key">>, JObj)
+                  );
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
-%% @end
-%%--------------------------------------------------------------------
--spec(load_conference_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-load_conference_summary(Context) ->
-    crossbar_doc:load_view(?CONFERENCES_LIST, [], Context, fun normalize_view_results/2).
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new conference document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec(create_conference/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_conference(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, _} ->
-            Context#cb_context{
-	      doc=whapps_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
-	      ,resp_status=success
-	     }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a conference document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec(load_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_conference(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing conference document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec(update_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
-normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].    
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
+%% This function determines if the credentials are valid based on the
+%% provided hash method
 %%
+%% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (_JObj :: mochijson()) -> tuple(true, [])).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec(authorize_user/2 :: (Context :: #cb_context{}, ApiKey :: binary()) -> #cb_context{}).
+authorize_user(Context, ApiKey) when not is_binary(ApiKey) ->
+    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
+authorize_user(Context, <<"">>) ->
+    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
+authorize_user(Context, ApiKey) ->
+    case crossbar_doc:load_view(?API_LIST, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
+        #cb_context{resp_status=success, doc=[JObj]} when JObj =/= []->
+            Context#cb_context{resp_status=success, doc=JObj};
+        _ ->
+            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to create a token and save it to the token db
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_token/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+create_token(RD, #cb_context{doc=[JObj]}=Context) ->
+    create_token(RD, Context#cb_context{doc=JObj});
+create_token(RD, #cb_context{doc=JObj}=Context) ->
+    Value = whapps_json:get_value(<<"value">>, JObj),
+    Token = {struct, [                      
+                       {<<"account_id">>, whapps_json:get_value(<<"account_id">>, Value)}
+                      ,{<<"user_id">>, <<"">>}
+                      ,{<<"api_id">>, whapps_json:get_value(<<"api_key">>, Value)}
+                      ,{<<"secret">>, <<"">>}
+                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                      ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
+                      ,{<<"user-agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                      ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
+                      ,{<<"accept-charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                      ,{<<"accept-endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                      ,{<<"accept-language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                      ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                      ,{<<"keep-alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                     ]},
+    case couch_mgr:save_doc(?TOKEN_DB, Token) of
+        {ok, Doc} ->
+            AuthToken = whapps_json:get_value(<<"_id">>, Doc),
+            crossbar_util:response([], Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
+        {error, _} ->
+            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+    end.

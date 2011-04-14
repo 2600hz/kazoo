@@ -1,15 +1,15 @@
-%%%-------------------------------------------------------------------
+%%%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%% Conferences module
+%%% Resources module
 %%%
-%%% Handle client requests for conference documents
+%%% Handle client requests for resource documents
 %%%
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(conferences).
+-module(resources).
 
 -behaviour(gen_server).
 
@@ -20,14 +20,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/conferences.json">>).
--define(CONFERENCES_LIST, <<"conferences/listing_by_id">>).
+-define(VIEW_FILE, <<"views/resources.json">>).
+-define(RESOURCES_LIST, <<"resources/listing_by_id">>).
 
 %%%===================================================================
 %%% API
@@ -102,21 +100,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.conferences">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.resources">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.conferences">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.resources">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.conferences">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
                 Context1 = validate(Params, Context),
@@ -124,21 +122,21 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.conferences">>, [RD, Co
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.conferences">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.conferences">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.conferences">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -196,12 +194,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.conferences">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.conferences">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.conferences">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.conferences">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.resources">>),
     crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
@@ -248,15 +246,15 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_conference_summary(Context);
+    load_resource_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_conference(Context);
+    create_resource(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_conference(DocId, Context);
+    load_resource(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_conference(DocId, Context);
+    update_resource(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_conference(DocId, Context);
+    load_resource(DocId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -267,49 +265,50 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_conference_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-load_conference_summary(Context) ->
-    crossbar_doc:load_view(?CONFERENCES_LIST, [], Context, fun normalize_view_results/2).
+-spec(load_resource_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_resource_summary(Context) ->
+    crossbar_doc:load_view(?RESOURCES_LIST, [], Context, fun normalize_view_results/2).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new conference document with the data provided, if it is valid
+%% Create a new resource document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_conference/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_conference(#cb_context{req_data=JObj}=Context) ->
+-spec(create_resource/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_resource(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, _} ->
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
             Context#cb_context{
-	      doc=whapps_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
-	      ,resp_status=success
-	     }
+                 doc=whapps_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
+                ,resp_status=success
+            }
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a conference document from the database
+%% Load a resource document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_conference(DocId, Context) ->
+-spec(load_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_resource(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing conference document with the data provided, if it is
+%% Update an existing resource document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
+-spec(update_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -320,16 +319,17 @@ update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].    
+    [whapps_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% NOTICE: This is very temporary, placeholder until the schema work is
+%% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (_JObj :: mochijson()) -> tuple(true, [])).
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.

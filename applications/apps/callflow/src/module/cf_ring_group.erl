@@ -56,17 +56,17 @@ get_endpoint({struct, Props}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Endpoint = [
-                         {<<"Invite-Format">>, whapps_json:get_value(["sip", "invite-format"], JObj)}
-                        ,{<<"To-User">>, whapps_json:get_value(["sip", "username"], JObj)}
-                        ,{<<"To-Realm">>, whapps_json:get_value(["sip", "realm"], JObj)}
-                        ,{<<"To-DID">>, whapps_json:get_value(["sip", "number"], JObj)}
-                        ,{<<"Route">>, whapps_json:get_value(["sip", "url"], JObj)}
-                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value(["media", "ignore-early-media"], JObj)}
-                        ,{<<"Bypass-Media">>, whapps_json:get_value(["media", "bypass-media"], JObj)}
+                         {<<"Invite-Format">>, whapps_json:get_value([<<"sip">>, <<"invite-format">>], JObj)}
+                        ,{<<"To-User">>, whapps_json:get_value([<<"sip">>, <<"username">>], JObj)}
+                        ,{<<"To-Realm">>, whapps_json:get_value([<<"sip">>, <<"realm">>], JObj)}
+                        ,{<<"To-DID">>, whapps_json:get_value([<<"sip">>, <<"number">>], JObj)}
+                        ,{<<"Route">>, whapps_json:get_value([<<"sip">>, <<"url">>], JObj)}
+                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value(<<"ignore-early-media">>, JObj)}
+                        ,{<<"Bypass-Media">>, whapps_json:get_value(<<"bypass-media">>, JObj)}
                         ,{<<"Endpoint-Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
                         ,{<<"Endpoint-Progress-Timeout">>, get_value(<<"progress-timeout">>, Props, <<"6">>)}
                         ,{<<"Endpoint-Delay">>, get_value(<<"delay">>, Props)}
-                        ,{<<"Codecs">>, whapps_json:get_value(["media", "codecs"], JObj)}
+                        ,{<<"Codecs">>, whapps_json:get_value(<<"codecs">>, JObj)}
                     ],
             {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
         {error, _}=E ->

@@ -20,10 +20,12 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(VIEW_FILE, <<"views/callflows.json">>).
+-define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
+
 -define(AGG_DB, <<"callflows">>).
 -define(AGG_FILTER, <<"callflows/export">>).
--define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
 
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
@@ -89,12 +91,14 @@ handle_info ({binding_fired, Pid, <<"v1_resource.allowed_methods.callflows">>, P
                   Pid ! { binding_result, Result, Payload1 }
           end),
     {noreply, State};
+
 handle_info ({binding_fired, Pid, <<"v1_resource.resource_exists.callflows">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
+
 handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
@@ -102,35 +106,44 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-                  aggregate_changes(Context1)
+                  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-                  aggregate_changes(Context1)
+                  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  aggregate_changes(Context1)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
+
 handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
+
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
+    {noreply, State};
+
 handle_info(timeout, State) ->
+    bind_to_crossbar(),
     accounts:update_all_accounts(?VIEW_FILE),
     accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
-    bind_to_crossbar(),
     {noreply, State};
+
 handle_info (_Info, State) ->
    {noreply, State}.
 
@@ -310,17 +323,6 @@ normalize_view_results(JObj, Acc) ->
 is_valid_doc(_JObj) ->
     {true, []}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec(aggregate_changes/1 :: (Context :: #cb_context{}) -> pid()).
-aggregate_changes(#cb_context{db_name=Db}) ->
-    spawn(fun() ->
-                  accounts:replicate_from_account(Db, ?AGG_DB, ?AGG_FILTER)
-          end).
 %%%
 %%%============================================================================
 %%%== END =====

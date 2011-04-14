@@ -17,7 +17,7 @@
 
 -import(cf_call_command, [b_bridge/3, wait_for_bridge/1, wait_for_unbridge/0]).
 
--define(VIEW_BY_ROUTE, <<"resources/listing_by_route">>).
+-define(VIEW_BY_ROUTE, <<"resources/listing_active_by_route">>).
 
 %%--------------------------------------------------------------------
 %% @public

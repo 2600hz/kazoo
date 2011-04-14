@@ -543,7 +543,7 @@ change_pin(#mailbox{prompts=Prompts, database=Db, mailbox_id=Id}=Box, Call) ->
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.reenter_new_pin, <<"1">>, <<"8000">>, Call),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        couch_mgr:save_doc(Db, whapps_json:set_value([<<"base">>, <<"pin">>], Pin, JObj))
+        couch_mgr:save_doc(Db, whapps_json:set_value(<<"pin">>, Pin, JObj))
     catch
         _:_ ->
             change_pin(Box, Call)
@@ -566,11 +566,11 @@ get_mailbox_profile(Data) ->
             #mailbox{         
                        database = Db
                       ,mailbox_id = Id
-                      ,skip_instructions = whapps_json:get_value([<<"base">>, <<"skip-instructions">>], JObj, Default#mailbox.skip_instructions)
-                      ,skip_greeting = whapps_json:get_value([<<"base">>, <<"skip-greeting">>], JObj, Default#mailbox.skip_greeting)
+                      ,skip_instructions = whapps_json:get_value(<<"skip-instructions">>, JObj, Default#mailbox.skip_instructions)
+                      ,skip_greeting = whapps_json:get_value(<<"skip-greeting">>, JObj, Default#mailbox.skip_greeting)
                       ,has_unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
-                      ,pin = whapps_json:get_value([<<"base">>, <<"pin">>], JObj, <<>>)
-                      ,timezone = whapps_json:get_value([<<"base">>, <<"timezone">>], JObj, Default#mailbox.timezone)
+                      ,pin = whapps_json:get_value(<<"pin">>, JObj, <<>>)
+                      ,timezone = whapps_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
                       ,exists=true
                     };
         _ -> 

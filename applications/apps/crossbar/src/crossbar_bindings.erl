@@ -59,13 +59,7 @@
 %%--------------------------------------------------------------------
 -spec(map/2 :: (Routing :: binary(), Payload :: term()) -> list(tuple(term(), term()))).
 map(Routing, Payload) ->
-    format_log(info, "Running map: ~p~n", [Routing]),
-    lists:foldl(fun({B, Ps}, Acc) ->
-                       case binding_matches(B, Routing) of
-                           true -> map_bind_results(Ps, Payload, Acc, Routing);
-                           false -> Acc
-                       end
-		end, [], get_bindings()).
+    gen_server:call(?MODULE, {map, Routing, Payload}, infinity).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,13 +70,7 @@ map(Routing, Payload) ->
 %%--------------------------------------------------------------------
 -spec(fold/2 :: (Routing :: binary(), Payload :: term()) -> term()).
 fold(Routing, Payload) ->
-    format_log(info, "Running fold: ~p~n~p~n", [Routing, Payload]),
-    lists:foldl(fun({B, Ps}, Acc) ->
-                       case binding_matches(B, Routing) of
-                           true -> fold_bind_results(Ps, Acc, Routing);
-			   false -> Acc
-                       end
-                end, Payload, get_bindings()).
+    gen_server:call(?MODULE, {fold, Routing, Payload}, infinity).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -158,6 +146,34 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({map, Routing, Payload}, From , State) ->
+    spawn(fun() ->
+                  format_log(info, "Running map: ~p~n", [Routing]),
+                  Reply = lists:foldl(
+                            fun({B, Ps}, Acc) ->
+                                    case binding_matches(B, Routing) of
+                                        true -> 
+                                            map_bind_results(Ps, Payload, Acc, Routing);
+                                        false -> 
+                                            Acc
+                                    end
+                            end, [], get_bindings()),
+                  gen_server:reply(From, Reply)                  
+          end),
+    {noreply, State};
+handle_call({fold, Routing, Payload}, From , State) ->
+    spawn(fun() ->
+                  format_log(info, "Running fold: ~p~n~p~n", [Routing, Payload]),
+                  Reply = lists:foldl(
+                            fun({B, Ps}, Acc) ->
+                                    case binding_matches(B, Routing) of
+                                        true -> fold_bind_results(Ps, Acc, Routing);
+                                        false -> Acc
+                                    end
+                            end, Payload, get_bindings()),
+                  gen_server:reply(From, Reply)                  
+          end),
+    {noreply, State};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
     link(From),
     {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
@@ -330,13 +346,11 @@ matches(_, _) -> false.
 %%--------------------------------------------------------------------
 -spec(map_bind_results/4 :: (Pids :: queue(), Payload :: term(), Results :: list(binding_result()), Route :: binary()) -> list(tuple(term() | timeout, term()))).
 map_bind_results(Pids, Payload, Results, Route) ->
-    lists:foldr(fun(Pid, Acc) ->
+    lists:foldr(fun(Pid, Acc) ->                        
 		      Pid ! {binding_fired, self(), Route, Payload},
                       case wait_for_map_binding() of
-                          {ok,  Resp, Pay1} ->
-                              [{Resp, Pay1} | Acc];
-                          timeout ->
-                              [{timeout, Payload} | Acc]
+                          {ok,  Resp, Pay1} -> [{Resp, Pay1} | Acc];
+                          timeout -> [{timeout, Payload} | Acc]
                       end
 		end, Results, queue:to_list(Pids)).
 

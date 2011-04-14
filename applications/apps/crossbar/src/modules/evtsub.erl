@@ -204,9 +204,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.evtsub">>, [RD, C
     	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    %%format_log(info, "ACCOUNTS(~p): unhandled binding: ~p~n", [self(), Route]),
-    Pid ! {binding_result, true, Payload},
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->

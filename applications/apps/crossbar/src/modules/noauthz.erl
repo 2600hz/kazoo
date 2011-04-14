@@ -4,7 +4,7 @@
 %%% @doc
 %%% NoAuth module
 %%%
-%%% Authenticates everyone! PARTY TIME!
+%%% Authenticates any request
 %%%
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
@@ -97,17 +97,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.start_session">>, #session{}=Session}, State) ->
-    Pid ! {binding_result, true, Session#session{account_id = <<"HAPPY FUN TIME, INC">>}},
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
+    Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    logger:format_log(info, "NOAUTHZ(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
-    Pid ! {binding_result, false, []},
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
@@ -115,7 +110,6 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "NOAUTHZ(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -148,5 +142,4 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.start_session">>),
     crossbar_bindings:bind(<<"v1_resource.authorize">>).

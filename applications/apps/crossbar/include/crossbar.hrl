@@ -38,6 +38,7 @@
 	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
 	  ,session = undefined :: undefined | #session{}
           ,auth_token = <<"">> :: binary()
+          ,auth_doc = undefined :: json_object() | undefined                        
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
           ,req_json = {struct, []} :: json_object() | tuple(malformed, binary())
