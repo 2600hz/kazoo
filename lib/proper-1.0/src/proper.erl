@@ -910,14 +910,14 @@ apply_args(Args, Prop, Ctx) ->
 	InnerProp ->
 	    run(InnerProp, Ctx)
     catch
-	%% TODO: remove our functions from the stacktrace
 	error:ErrReason ->
-	    Trace = erlang:get_stacktrace(),
+	    RawTrace = erlang:get_stacktrace(),
 	    case ErrReason =:= function_clause
-		 andalso threw_exception(Prop, Trace) of
+		 andalso threw_exception(Prop, RawTrace) of
 		true ->
 		    {error, type_mismatch};
 		false ->
+		    Trace = clean_stacktrace(RawTrace),
 		    create_fail_result(Ctx, {exception,error,ErrReason,Trace})
 	    end;
 	throw:'$arity_limit' ->
@@ -967,6 +967,15 @@ threw_exception(Fun, [{TopMod,TopName,TopArgs} | _Rest]) ->
 		   is_list(TopArgs)    -> length(TopArgs)
 	       end,
     FunMod =:= TopMod andalso FunName =:= TopName andalso FunArity =:= TopArity.
+
+-spec clean_stacktrace(stacktrace()) -> stacktrace().
+clean_stacktrace(RawTrace) ->
+    IsNotPropErCall =
+	fun({Mod,_Fun,_Args}) ->
+	    not lists:prefix("proper", atom_to_list(Mod))
+	end,
+    {Trace,_Rest} = lists:splitwith(IsNotPropErCall, RawTrace),
+    Trace.
 
 -spec clean_testcase(imm_testcase()) -> counterexample().
 clean_testcase(ImmTestCase) ->
@@ -1290,9 +1299,9 @@ report_fail_reason(time_out, Prefix, Print) ->
     Print(Prefix ++ "Test execution timed out.~n", []);
 report_fail_reason({trapped,ExcReason}, Prefix, Print) ->
     Print(Prefix ++ "A linked process died with reason ~w.~n", [ExcReason]);
-report_fail_reason({exception,ExcKind,ExcReason,_StackTrace}, Prefix, Print) ->
-    %% TODO: print stacktrace too?
-    Print(Prefix ++ "An exception was raised: ~w:~w.~n", [ExcKind,ExcReason]);
+report_fail_reason({exception,ExcKind,ExcReason,StackTrace}, Prefix, Print) ->
+    Print(Prefix ++ "An exception was raised: ~w:~w.~n", [ExcKind,ExcReason]),
+    Print(Prefix ++ "Stacktrace: ~p.~n", [StackTrace]);
 report_fail_reason({sub_props,SubReasons}, Prefix, Print) ->
     Report =
 	fun({Tag,Reason}) ->
