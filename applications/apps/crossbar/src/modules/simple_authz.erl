@@ -27,7 +27,7 @@
 
 -define(ACCOUNTS_DB, <<"crossbar%2Faccounts">>).
 
--define(VIEW_LIST, <<"accounts/listing">>).
+-define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 
 %%%===================================================================
 %%% API
@@ -115,10 +115,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{a
                       Params ->
                           AuthAccountId = whapps_json:get_value(<<"account_id">>, AuthDoc),
                           ReqAccountId = hd(Params),
-                          case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_LIST, [
+                          case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, [
                                                                                 {<<"startkey">>, [ReqAccountId]}
-                                                                                ,{<<"endkey">>, [ReqAccountId, {struct, []}]}]) of
-                              {ok, []}->
+                                                                                ,{<<"endkey">>, [ReqAccountId, {struct, []} ] } ] ) of
+                              {ok, []} ->
                                   Pid ! {binding_result, false, {RD, Context}};            
                               {ok, [JObj]} ->
                                   [_, Tree] = whapps_json:get_value(<<"key">>, JObj),
