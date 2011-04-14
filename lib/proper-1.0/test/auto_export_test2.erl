@@ -20,11 +20,11 @@
 %%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
 %%% @version {@version}
 %%% @doc This module tests whether auto-exporting is disabled when compiling
-%%%	 with PROPER_NOTRANS enabled.
+%%%	 with PROPER_NO_TRANS enabled.
 
 -module(auto_export_test2).
 
--define(PROPER_NOTRANS, true).
+-define(PROPER_NO_TRANS, true).
 
 -include_lib("proper/include/proper.hrl").
 
