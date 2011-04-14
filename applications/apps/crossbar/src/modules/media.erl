@@ -231,6 +231,10 @@ handle_info({binding_fired, Pid, <<"account.created">>, _}, State) ->
     accounts:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
     {noreply, State};
 
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
+    {noreply, State};
+
 handle_info(timeout, State) ->
     couch_mgr:db_create(?AGG_DB),
     accounts:update_all_accounts(?VIEW_FILE),
@@ -421,7 +425,7 @@ update_media_binary(MediaID, Contents, Context, Options) ->
 	#cb_context{resp_status=success}=Context1 ->
 	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
 	    Doc1 = lists:foldl(fun({K,V}, D0) -> whapps_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0) end, Doc, Options),
-	    crossbar_doc:save(Context#cb_context{doc=Doc1});
+	    crossbar_doc:save(Context1#cb_context{doc=Doc1});
 	C -> C
     end.
 

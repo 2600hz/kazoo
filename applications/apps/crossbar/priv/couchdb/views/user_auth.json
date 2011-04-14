@@ -1,0 +1,12 @@
+{
+   "_id": "_design/user_auth",
+   "language": "javascript",
+   "views": {
+       "creds_by_md5": {
+           "map": "function(doc) { emit( doc.md5_auth, {'id': doc._id, 'account_id': doc.account_id} ); }"
+       },
+       "creds_by_sha": {
+           "map": "function(doc) { emit( doc.sha_auth, {'id': doc._id, 'account_id': doc.account_id} ); }"
+       }
+   }
+}
