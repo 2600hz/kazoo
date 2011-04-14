@@ -8,7 +8,7 @@
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(user_auth).
+-module(api_auth).
 
 -behaviour(gen_server).
 
@@ -26,12 +26,10 @@
 
 -define(TOKEN_DB, <<"token_auth">>).
 
--define(VIEW_FILE, <<"views/user_auth.json">>).
--define(MD5_LIST, <<"user_auth/creds_by_md5">>).
--define(SHA1_LIST, <<"user_auth/creds_by_sha">>).
+-define(VIEW_FILE, <<"views/agg_accounts.json">>).
+-define(API_LIST, <<"accounts/listing_by_api">>).
 
--define(AGG_DB, <<"user_auth">>).
--define(AGG_FILTER, <<"users/export">>).
+-define(AGG_DB, <<"crossbar%2Faccounts">>).
 
 %%%===================================================================
 %%% API
@@ -106,36 +104,36 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.user_auth">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.api_auth">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.user_auth">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.api_auth">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
                 Pid ! {binding_result, true, [RD, validate(Params, Context), Params]}
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.user_auth">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
                 Pid ! {binding_result, true, [RD, create_token(RD, Context), Params]}
@@ -192,10 +190,10 @@ code_change(_OldVsn, State, _Extra) ->
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.user_auth">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.user_auth">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.user_auth">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.user_auth">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.api_auth">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.api_auth">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.api_auth">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.api_auth">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -238,9 +236,9 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+    logger:format_log(info, "API AUTH : ~p", [whapps_json:get_value(<<"api-key">>, JObj)]),
     authorize_user(Context, 
-                   whapps_json:get_value(<<"credentials">>, JObj), 
-                   whapps_json:get_value(<<"method">>, JObj, <<"md5">>)
+                   whapps_json:get_value(<<"api-key">>, JObj)
                   );
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -254,27 +252,18 @@ validate(_, Context) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec(authorize_user/3 :: (Context :: #cb_context{}, Credentials :: binary(), Method :: binary()) -> #cb_context{}).
-authorize_user(Context, Credentials, _) when not is_binary(Credentials) ->
+-spec(authorize_user/2 :: (Context :: #cb_context{}, ApiKey :: binary()) -> #cb_context{}).
+authorize_user(Context, ApiKey) when not is_binary(ApiKey) ->
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
-authorize_user(Context, <<"">>, _) ->
+authorize_user(Context, <<"">>) ->
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
-authorize_user(Context, Credentials, <<"md5">>) ->
-    case crossbar_doc:load_view(?MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
+authorize_user(Context, ApiKey) ->
+    case crossbar_doc:load_view(?API_LIST, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=[JObj]} when JObj =/= []->
             Context#cb_context{resp_status=success, doc=JObj};
         _ ->
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
-    end;
-authorize_user(Context, Credentials, <<"sha">>) ->    
-    case crossbar_doc:load_view(?SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
-        #cb_context{resp_status=success, doc=JObj}=C1 when JObj =/= []->
-            C1;
-        _ ->
-            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
-    end;
-authorize_user(Context, _, _) ->
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context).    
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -289,9 +278,9 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
     Value = whapps_json:get_value(<<"value">>, JObj),
     Token = {struct, [                      
                        {<<"account_id">>, whapps_json:get_value(<<"account_id">>, Value)}
-                      ,{<<"user_id">>, whapps_json:get_value(<<"id">>, Value)}
-                      ,{<<"api_id">>, <<"">>}
-                      ,{<<"secret">>, whapps_json:get_value(<<"password">>, Value)}
+                      ,{<<"user_id">>, <<"">>}
+                      ,{<<"api_id">>, whapps_json:get_value(<<"api_key">>, Value)}
+                      ,{<<"secret">>, <<"">>}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
