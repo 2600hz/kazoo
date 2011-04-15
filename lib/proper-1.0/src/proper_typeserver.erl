@@ -486,7 +486,8 @@ get_chunks(ObjFile) ->
 	{ok,{_Mod,[{abstract_code,AbsCodeChunk},{exports,ExpFunsList}]}} ->
 	    case AbsCodeChunk of
 		{raw_abstract_v1,AbsCode} ->
-		    {ok, AbsCode, sets:from_list(ExpFunsList)};
+		    %% HACK: Add a declaration for iolist() to every module
+		    {ok, add_iolist(AbsCode), sets:from_list(ExpFunsList)};
 		no_abstract_code ->
 		    {error, no_abstract_code};
 		_ ->
@@ -495,6 +496,16 @@ get_chunks(ObjFile) ->
 	{error,beam_lib,Reason} ->
 	    {error, Reason}
     end.
+
+-spec add_iolist([abs_form()]) -> [abs_form()].
+add_iolist(Forms) ->
+    IOListDef =
+	{type,0,maybe_improper_list,
+	 [{type,0,union,[{type,0,byte,[]},{type,0,binary,[]},
+			 {type,0,iolist,[]}]},
+	  {type,0,binary,[]}]},
+    IOListDecl = {attribute,0,type,{iolist,IOListDef,[]}},
+    [IOListDecl | Forms].
 
 -spec get_mod_info(mod_name(), [abs_form()], mod_exp_funs()) -> mod_info().
 get_mod_info(Mod, AbsCode, ModExpFuns) ->
@@ -1407,7 +1418,8 @@ convert(Mod, {type,_,union,ChoiceForms}, State, Stack, VarDict) ->
 convert(Mod, {type,_,'fun',[{type,_,product,Domain},Range]}, State, Stack,
 	VarDict) ->
     convert_fun(Mod, length(Domain), Range, State, Stack, VarDict);
-%% TODO: These should be replaced with accurate types.
+%% TODO: These types should be replaced with accurate types.
+%% TODO: Add support for nonempty_improper_list/2.
 convert(Mod, {type,_,maybe_improper_list,[]}, State, Stack, VarDict) ->
     convert(Mod, {type,0,list,[]}, State, Stack, VarDict);
 convert(Mod, {type,_,maybe_improper_list,[Cont,_Ter]}, State, Stack, VarDict) ->
@@ -1417,6 +1429,9 @@ convert(Mod, {type,_,nonempty_maybe_improper_list,[]}, State, Stack, VarDict) ->
 convert(Mod, {type,_,nonempty_maybe_improper_list,[Cont,_Term]}, State, Stack,
 	VarDict) ->
     convert(Mod, {type,0,nonempty_list,[Cont]}, State, Stack, VarDict);
+convert(Mod, {type,_,iodata,[]}, State, Stack, VarDict) ->
+    RealType = {type,0,union,[{type,0,binary,[]},{type,0,iolist,[]}]},
+    convert(Mod, RealType, State, Stack, VarDict);
 convert(Mod, {type,_,Name,[]}, State, Stack, VarDict) ->
     case ordsets:is_element(Name, ?STD_TYPES_0) of
 	true ->
