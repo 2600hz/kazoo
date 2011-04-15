@@ -376,7 +376,11 @@ simple_types_with_data() ->
 	      [42,<<>>],{},{tag,12},{tag,[vals,12,12.2],[],<<>>}],
 	     0, [], "any()"},
      {list(any()), [[<<>>,a,1,-42.0,{11.8,[]}]], [], [{1,aa},<<>>], "[any()]"},
-     {deeplist(), [[[],[]], [[[]],[]]], [], [[a]], "deeplist()"}].
+     {deeplist(), [[[],[]], [[[]],[]]], [], [[a]], "deeplist()"},
+     {none, [[234,<<1>>,[<<78>>,[]],0],[]], [], [21,3.1,[7.1],<<22>>],
+      "iolist()"},
+     {none, [[234,<<1>>,[<<78>>,[]],0],[],<<21,15>>], <<>>, [21,3.1,[7.1]],
+      "iodata()"}].
 
 %% TODO: These rely on the intermediate form of the instances.
 constructed_types_with_data() ->
@@ -561,10 +565,10 @@ symbolic_init_invalid_sequences() ->
     [{pdict_statem, [{init,[{a,{call,foo,bar,[some_arg]}}]},
 		     {set,{var,1},{call,erlang,put,[b,42]}},
 		     {set,{var,2},{call,erlang,get,[b]}}],
-      [{some_arg, 0}],  
+      [{some_arg, 0}],
       [{init,[{a,{call,foo,bar,[some_arg]}}]}]}].
 
-invalid_precondition() -> 
+invalid_precondition() ->
     %% {module, command_sequence, environment, shrunk}
      [{pdict_statem, [{set,{var,1},{call,erlang,put,[a,0]}},
 		      {set,{var,2},{call,erlang,put,[b,1]}},
@@ -933,7 +937,7 @@ invalid_cmds_test_() ->
      || {Module,Cmds,_,_} <- invalid_precondition()] ++
     [?_assertNot(proper_statem:is_valid(Module, Module:initial_state(), Cmds, []))
      || {Module,Cmds} <- invalid_var()].
-    
+
 state_after_test_() ->
     [?_assertEqual(setup_state_after(Module, Cmds), StateAfter)
      || {Module,_,Cmds,StateAfter,_,_} <- valid_command_sequences()].
@@ -959,13 +963,13 @@ can_generate_commands1_test_() ->
 
 can_generate_parallel_commands0_test_() ->
     {timeout, 20,
-     [?_test(assert_can_generate(proper_statem:parallel_commands(Module),true)) 
+     [?_test(assert_can_generate(proper_statem:parallel_commands(Module),true))
       || Module <- [ets_counter]]}.
 
 can_generate_parallel_commands1_test_() ->
     {timeout, 20,
      [?_test(assert_can_generate(
-	       proper_statem:parallel_commands(Module, Module:initial_state()),true)) 
+	       proper_statem:parallel_commands(Module, Module:initial_state()),true))
       || Module <- [ets_counter]]}.
 
 run_valid_commands_test_() ->
