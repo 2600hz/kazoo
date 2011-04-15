@@ -11,10 +11,10 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/3, get_host/0, get_creds/0, get_url/0]).
+-export([start_link/0, set_host/1, set_host/3, get_host/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
 
 %% System manipulation
--export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
+-export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
@@ -101,6 +101,23 @@ db_exists(DbName) ->
     case get_conn() of
         {} -> false;
         Conn -> couchbeam:db_exists(Conn, whistle_util:to_list(DbName))
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieve information regarding all databases
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_info/0 :: () -> tuple(ok, json_objects()) | tuple(error, atom())).
+db_info() ->
+    case get_conn() of
+        {} -> {error, db_not_reachable};
+        Conn ->
+            case couchbeam:all_dbs(Conn) of
+                {error, _Error}=E -> E;
+                {ok, Info} -> {ok, Info}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -413,6 +430,15 @@ get_conn() ->
 get_db(DbName) ->
     Conn = gen_server:call(?MODULE, {get_conn}),
     open_db(whistle_util:to_list(DbName), Conn).
+
+get_uuid() ->
+    Conn = gen_server:call(?MODULE, {get_conn}),
+    [UUID] = couchbeam:get_uuid(Conn),   
+    UUID.
+
+get_uuids(Count) ->
+    Conn = gen_server:call(?MODULE, {get_conn}),
+    couchbeam:get_uuids(Conn, Count).
 
 get_url() ->
     case {whistle_util:to_binary(get_host()), get_creds()} of
