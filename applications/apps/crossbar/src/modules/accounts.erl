@@ -418,13 +418,13 @@ load_account_summary(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_account(#cb_context{req_data=Data}=Context) ->
-    case is_valid_doc(Data) of
+create_account(#cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
-              doc=set_private_fields(Data)
+              doc=set_private_fields(JObj)
               ,resp_status=success
              }
     end.
