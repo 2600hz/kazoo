@@ -18,17 +18,23 @@ get_value(Key, Doc) ->
     get_value(Key, Doc, undefined).
 
 -spec(get_value/3 :: (Key :: term(), Doc :: json_object(), Default :: term()) -> term()).
-get_value([], Doc, _Default) -> Doc;
-get_value(Key, Doc, Default) when not is_list(Key)->
-    get_value([Key], Doc, Default);
-get_value([K|Ks], {struct, Props}, Default) ->
-    get_value(Ks, props:get_value(whistle_util:to_binary(K), Props, Default), Default);
-get_value([K|Ks], Doc, Default) when is_list(Doc) ->
+get_value(Key, L, Default) when is_list(L) ->
+    get_value1(Key, {struct, L}, Default);
+get_value(K, Doc, Default) ->
+    get_value1(K, Doc, Default).
+
+-spec(get_value1/3 :: (Key :: term(), Doc :: json_object(), Default :: term()) -> term()).
+get_value1([], Doc, _Default) -> Doc;
+get_value1(Key, Doc, Default) when not is_list(Key)->
+    get_value1([Key], Doc, Default);
+get_value1([K|Ks], {struct, Props}, Default) ->
+    get_value1(Ks, props:get_value(whistle_util:to_binary(K), Props, Default), Default);
+get_value1([K|Ks], Doc, Default) when is_list(Doc) ->
     case try lists:nth(whistle_util:to_integer(K), Doc) catch _:_ -> undefined end of
 	undefined -> Default;
-	Doc1 -> get_value(Ks, Doc1, Default)
+	Doc1 -> get_value1(Ks, Doc1, Default)
     end;
-get_value(_, _, Default) -> Default.
+get_value1(_, _, Default) -> Default.
 
 %% Figure out how to set the current key among a list of objects
 
