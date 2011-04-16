@@ -78,7 +78,8 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    Conf = update_members(get_conference_profile(Data), Call),
+    Conf = update_members(
+             get_conference_profile(Data, Call#cf_call.account_db), Call),
     answer(Call),
     play_conference_name(Conf, Call),
     case check_pin(Conf, Call, 1) of
@@ -200,9 +201,8 @@ announce_leave(#conf{prompts=Prompts, id=ConfId}, Call) ->
 %% conference record
 %% @end
 %%--------------------------------------------------------------------
--spec(get_conference_profile/1 :: (Data :: json_object()) -> #conf{}).
-get_conference_profile(Data) ->
-    Db = whapps_json:get_value(<<"database">>, Data),
+-spec(get_conference_profile/2 :: (Data :: json_object(), Db :: binary()) -> #conf{}).
+get_conference_profile(Data, Db) ->
     Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
