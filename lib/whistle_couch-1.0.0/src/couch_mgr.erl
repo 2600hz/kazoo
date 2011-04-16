@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, get_host/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
+-export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, get_host/0, get_port/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
 
 %% System manipulation
 -export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
@@ -423,28 +423,31 @@ set_host(HostName, UserName, Password) ->
 
 -spec(set_host/4 :: (HostName :: string(), Port :: integer(), UserName :: string(), Password :: string()) -> ok | tuple(error, term())).
 set_host(HostName, Port, UserName, Password) ->
-    gen_server:call(?MODULE, {set_host, HostName, Port, UserName, Password}, infinity).
+    gen_server:call(?SERVER, {set_host, HostName, whistle_util:to_integer(Port), UserName, Password}, infinity).
 
 get_host() ->
-    gen_server:call(?MODULE, get_host).
+    gen_server:call(?SERVER, get_host).
+
+get_port() ->
+    gen_server:call(?SERVER, get_port).
 
 get_creds() ->
-    gen_server:call(?MODULE, {get_creds}).
+    gen_server:call(?SERVER, {get_creds}).
 
 get_conn() ->
-    gen_server:call(?MODULE, {get_conn}).
+    gen_server:call(?SERVER, {get_conn}).
 
 get_db(DbName) ->
-    Conn = gen_server:call(?MODULE, {get_conn}),
+    Conn = gen_server:call(?SERVER, {get_conn}),
     open_db(whistle_util:to_list(DbName), Conn).
 
 get_uuid() ->
-    Conn = gen_server:call(?MODULE, {get_conn}),
+    Conn = gen_server:call(?SERVER, {get_conn}),
     [UUID] = couchbeam:get_uuid(Conn),   
     UUID.
 
 get_uuids(Count) ->
-    Conn = gen_server:call(?MODULE, {get_conn}),
+    Conn = gen_server:call(?SERVER, {get_conn}),
     couchbeam:get_uuids(Conn, Count).
 
 get_url() ->
@@ -460,13 +463,13 @@ get_url() ->
     end.
 
 add_change_handler(DBName, DocID) ->
-    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
+    gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
 
 add_change_handler(DBName, DocID, Pid) ->
-    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
+    gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
-    gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
+    gen_server:call(?SERVER, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -502,18 +505,21 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(get_host, _From, #state{host=H}=State) ->
+handle_call(get_host, _From, #state{host={H,_}}=State) ->
     {reply, H, State};
 
-handle_call({set_host, Host, Port, User, Pass}, _From, #state{host=OldHost}=State) ->
-    logger:format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
-    S = get_new_connection(Host, Port, User, Pass),
-    {reply, ok, State#state{host={Host, Port}, connection=S, change_handlers=dict:new(), creds={User,Pass}}};
+handle_call(get_port, _From, #state{host={_,P}}=State) ->
+    {reply, P, State};
 
-handle_call({set_host, Host, User, Pass}, _From, State) ->
+handle_call({set_host, Host, Port, User, Pass}, _From, #state{host={OldHost,_}}=State) ->
+    logger:format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
+    Conn = get_new_connection(Host, Port, User, Pass),
+    {reply, ok, State#state{host={Host, Port}, connection=Conn, change_handlers=dict:new(), creds={User,Pass}}};
+
+handle_call({set_host, Host, Port, User, Pass}, _From, State) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
-    S = get_new_connection(Host, User, Pass),
-    {reply, ok, State#state{host=Host, connection=S, change_handlers=dict:new(), creds={User,Pass}}};
+    Conn = get_new_connection(Host, Port, User, Pass),
+    {reply, ok, State#state{host={Host,Port}, connection=Conn, change_handlers=dict:new(), creds={User,Pass}}};
 
 handle_call({get_conn}, _, #state{connection=S}=State) ->
     {reply, S, State};
@@ -620,8 +626,8 @@ get_new_conn(Host, Port, Opts) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
     spawn(fun() ->
 		  case props:get_value(basic_auth, Opts) of
-		      undefined -> save_config(Host);
-		      {U, P} -> save_config(Host, U, P)
+		      undefined -> save_config(Host, Port);
+		      {U, P} -> save_config(Host, Port, U, P)
 		  end
 	  end),
     Conn.
@@ -664,15 +670,18 @@ init_state() ->
     case get_startup_config() of
 	{ok, Ts} ->
 	    {_, Host, Port, User, Pass} = case lists:keyfind(couch_host, 1, Ts) of
-					false ->
-					    case lists:keyfind(default_couch_host, 1, Ts) of
-						false -> {ok, net_adm:localhost(), ?DEFAULT_PORT, "", ""};
-						{_,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P};
-						{_,_,_,_,_}=Conf -> Conf
-					    end;
-					H -> H
-				    end,
-	    #state{connection=get_new_connection(Host, Port,User, Pass), host={Host,Port}, creds={User,Pass}};
+					      false ->
+						  case lists:keyfind(default_couch_host, 1, Ts) of
+						      false -> {ok, net_adm:localhost(), ?DEFAULT_PORT, "", ""};
+						      {default_couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", ""};
+						      {default_couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P};
+						      {default_couch_host,_,_,_,_}=Conf -> Conf
+						  end;
+					      {couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", ""};
+					      {couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P};
+					      {couch_host,_,_,_,_}=Conf -> Conf
+					  end,
+	    #state{connection=get_new_connection(Host, whistle_util:to_integer(Port), User, Pass), host={Host, whistle_util:to_integer(Port)}, creds={User,Pass}};
 	_ -> #state{}
     end.
 
@@ -690,16 +699,16 @@ get_startup_config() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(save_config/1 :: (H :: string()) -> no_return()).
-save_config(H) ->
-    save_config(H, "", "").
+-spec(save_config/2 :: (H :: string(), Port :: integer()) -> no_return()).
+save_config(H, Port) ->
+    save_config(H, Port, "", "").
 
--spec(save_config/3 :: (H :: string(), U :: string(), P :: string()) -> no_return()).
-save_config(H, U, P) ->
+-spec(save_config/4 :: (H :: string(), Port :: integer(), U :: string(), P :: string()) -> no_return()).
+save_config(H, Port, U, P) ->
     {ok, Config} = get_startup_config(),
     file:write_file(?STARTUP_FILE
 		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
-				 , "", [{couch_host, H, U, P} | lists:keydelete(couch_host, 1, Config)])
+				 , "", [{couch_host, H, Port, U, P} | lists:keydelete(couch_host, 1, Config)])
 		   ).
 
 -spec(remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict()).
