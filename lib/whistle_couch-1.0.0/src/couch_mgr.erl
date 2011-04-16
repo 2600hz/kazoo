@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/3, get_host/0, get_creds/0, get_url/0]).
+-export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, get_host/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
 
 %% System manipulation
 -export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
@@ -42,7 +42,7 @@
 %% Connection = {Host, #server{}}
 %% Change handler {DBName :: string(), {Srv :: pid(), SrvRef :: reference()}
 -record(state, {
-          host = "" :: string()
+          host = {"", ?DEFAULT_PORT} :: tuple(string(), integer())
 	  ,connection = #server{} :: #server{}
 	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
 	  ,change_handlers = dict:new() :: dict()
@@ -396,10 +396,19 @@ start_link() ->
 %% set the host to connect to
 -spec(set_host/1 :: (HostName :: string()) -> ok | tuple(error, term())).
 set_host(HostName) ->
-    set_host(HostName, "", "").
+    set_host(HostName, ?DEFAULT_PORT, "", "").
 
+-spec(set_host/2 :: (HostName :: string(), Port :: integer()) -> ok | tuple(error, term())).
+set_host(HostName, Port) ->
+    set_host(HostName, Port, "", "").
+
+-spec(set_host/3 :: (HostName :: string(), UserName :: string(), Password :: string()) -> ok | tuple(error, term())).
 set_host(HostName, UserName, Password) ->
-    gen_server:call(?MODULE, {set_host, HostName, UserName, Password}, infinity).
+    set_host(HostName, ?DEFAULT_PORT, UserName, Password).
+
+-spec(set_host/4 :: (HostName :: string(), Port :: integer(), UserName :: string(), Password :: string()) -> ok | tuple(error, term())).
+set_host(HostName, Port, UserName, Password) ->
+    gen_server:call(?MODULE, {set_host, HostName, Port, UserName, Password}, infinity).
 
 get_host() ->
     gen_server:call(?MODULE, get_host).
@@ -469,10 +478,10 @@ init(_) ->
 handle_call(get_host, _From, #state{host=H}=State) ->
     {reply, H, State};
 
-handle_call({set_host, Host, User, Pass}, _From, #state{host=OldHost}=State) ->
+handle_call({set_host, Host, Port, User, Pass}, _From, #state{host=OldHost}=State) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
-    S = get_new_connection(Host, User, Pass),
-    {reply, ok, State#state{host=Host, connection=S, change_handlers=dict:new(), creds={User,Pass}}};
+    S = get_new_connection(Host, Port, User, Pass),
+    {reply, ok, State#state{host={Host, Port}, connection=S, change_handlers=dict:new(), creds={User,Pass}}};
 
 handle_call({set_host, Host, User, Pass}, _From, State) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
@@ -576,13 +585,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_new_connection/3 :: (Host :: string(), User :: string(), Pass :: string()) -> #server{}).
-get_new_connection(Host, "", "") -> get_new_conn(Host, ?IBROWSE_OPTS);
-get_new_connection(Host, User, Pass) -> get_new_conn(Host, [{basic_auth, {User, Pass}} | ?IBROWSE_OPTS]).
+-spec(get_new_connection/4 :: (Host :: string(), Port :: integer(), User :: string(), Pass :: string()) -> #server{}).
+get_new_connection(Host, Port, "", "") -> get_new_conn(Host, Port, ?IBROWSE_OPTS);
+get_new_connection(Host, Port, User, Pass) -> get_new_conn(Host, Port, [{basic_auth, {User, Pass}} | ?IBROWSE_OPTS]).
 
--spec(get_new_conn/2 :: (Host :: string(), Opts :: proplist()) -> #server{}).
-get_new_conn(Host, Opts) ->
-    Conn = couchbeam:server_connection(Host, ?DEFAULT_PORT, "", Opts),
+-spec(get_new_conn/3 :: (Host :: string(), Port :: integer(), Opts :: proplist()) -> #server{}).
+get_new_conn(Host, Port, Opts) ->
+    Conn = couchbeam:server_connection(Host, Port, "", Opts),
     logger:format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
     {ok, _Version} = couchbeam:server_info(Conn),
     logger:format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
@@ -631,15 +640,16 @@ get_view(Db, DesignDoc, ViewOptions) ->
 init_state() ->
     case get_startup_config() of
 	{ok, Ts} ->
-	    {_, Host, User, Pass} = case lists:keyfind(couch_host, 1, Ts) of
+	    {_, Host, Port, User, Pass} = case lists:keyfind(couch_host, 1, Ts) of
 					false ->
 					    case lists:keyfind(default_couch_host, 1, Ts) of
-						false -> {ok, net_adm:localhost(), "", ""};
-						H -> H
+						false -> {ok, net_adm:localhost(), ?DEFAULT_PORT, "", ""};
+						{_,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P};
+						{_,_,_,_,_}=Conf -> Conf
 					    end;
 					H -> H
 				    end,
-	    #state{connection=get_new_connection(Host, User, Pass), host=Host, creds={User,Pass}};
+	    #state{connection=get_new_connection(Host, Port,User, Pass), host={Host,Port}, creds={User,Pass}};
 	_ -> #state{}
     end.
 
