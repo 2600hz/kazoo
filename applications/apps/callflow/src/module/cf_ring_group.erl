@@ -27,7 +27,7 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
     Endpoints = lists:foldr(fun(Endpoint, Acc) ->
-                                    case get_endpoint(Endpoint) of
+                                    case get_endpoint(Endpoint, Call) of
                                         {ok, E} -> [E|Acc];
                                         _ -> Acc
                                     end
@@ -49,9 +49,8 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %% whistle_api endpoint json
 %% @end
 %%--------------------------------------------------------------------
--spec(get_endpoint/1 :: (Data :: json_object()) -> tuple(ok, json_object()) | tuple(error, atom())).
-get_endpoint({struct, Props}) ->
-    Db = get_value(<<"database">>, Props),
+-spec(get_endpoint/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+get_endpoint({struct, Props}, #cf_call{account_db=Db}) ->
     Id = get_value(<<"id">>, Props),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
@@ -61,12 +60,12 @@ get_endpoint({struct, Props}) ->
                         ,{<<"To-Realm">>, whapps_json:get_value([<<"sip">>, <<"realm">>], JObj)}
                         ,{<<"To-DID">>, whapps_json:get_value([<<"sip">>, <<"number">>], JObj)}
                         ,{<<"Route">>, whapps_json:get_value([<<"sip">>, <<"url">>], JObj)}
-                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value(<<"ignore-early-media">>, JObj)}
-                        ,{<<"Bypass-Media">>, whapps_json:get_value(<<"bypass-media">>, JObj)}
+                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value([<<"media">>, <<"ignore-early-media">>], JObj)}
+                        ,{<<"Bypass-Media">>, whapps_json:get_value([<<"media">>, <<"bypass-media">>], JObj)}
                         ,{<<"Endpoint-Timeout">>, get_value(<<"timeout">>, Props, ?DEFAULT_TIMEOUT)}
                         ,{<<"Endpoint-Progress-Timeout">>, get_value(<<"progress-timeout">>, Props, <<"6">>)}
                         ,{<<"Endpoint-Delay">>, get_value(<<"delay">>, Props)}
-                        ,{<<"Codecs">>, whapps_json:get_value(<<"codecs">>, JObj)}
+                        ,{<<"Codecs">>, whapps_json:get_value([<<"media">>, <<"codecs">>], JObj)}
                     ],
             {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
         {error, _}=E ->
