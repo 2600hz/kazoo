@@ -199,9 +199,8 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 		   ,{<<"options">>, lists:map(fun({struct, Gateway}) -> Gateway end, Gateways)}
 		   | proplists:delete(<<"routes">>, COs1)]}.
 
--spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, routes()} | {error, string()}).
-get_routes(Flags, Carriers) ->
-    User = Flags#route_flags.to_user,
+-spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
+get_routes(#route_flags{to_user=User}=Flags, Carriers) ->
     logger:format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
 
     Carriers1 = lists:filter(fun({_CarrierName, CarrierData}) ->

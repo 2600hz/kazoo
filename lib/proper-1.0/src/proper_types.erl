@@ -57,10 +57,10 @@
 %% Missing types
 %% -------------------
 %% will do:
-%%	records, maybe_improper_list(T,S), improper_list(T,S)?
+%%	records, maybe_improper_list(T,S), nonempty_improper_list(T,S)
 %%	maybe_improper_list(), maybe_improper_list(T), iolist, iodata
 %% don't need:
-%%	nonempty_{list,string,improper_list,maybe_improper_list}
+%%	nonempty_{list,string,maybe_improper_list}
 %% won't do:
 %%	pid, port, ref, identifier, none, no_return, module, mfa, node
 %%	array, dict, digraph, set, gb_tree, gb_set, queue, tid
@@ -809,7 +809,6 @@ timeout() -> union([non_neg_integer(), 'infinity']).
 
 -spec arity() -> proper_types:type().
 arity() -> integer(0, 255).
-
 
 %%------------------------------------------------------------------------------
 %% QuickCheck compatibility types
