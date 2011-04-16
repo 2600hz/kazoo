@@ -25,7 +25,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(ACCOUNTS_DB, <<"crossbar%2Faccounts">>).
+-define(ACCOUNTS_DB, <<"accounts">>).
 
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 
