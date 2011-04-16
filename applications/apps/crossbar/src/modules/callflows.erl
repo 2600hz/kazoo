@@ -265,14 +265,13 @@ load_callflow_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_callflow/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_callflow(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
+create_callflow(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         %% {false, Fields} ->
         %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            JObj1 = whapps_json:set_value(<<"account">>, whistle_util:to_binary(AccountId), JObj),
             Context#cb_context{
-                 doc=whapps_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj1)
+                 doc=whapps_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj)
                 ,resp_status=success
             }
     end.

@@ -26,8 +26,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    {ok, Gateways} = find_gateways(whapps_json:get_value(<<"database">>, Data), Call),
+handle(_, #cf_call{cf_pid=CFPid}=Call) ->
+    {ok, Gateways} = find_gateways(Call),
     bridge_to_gateways(Gateways, Call),
     CFPid ! {stop}.
 
@@ -73,8 +73,8 @@ create_endpoint(To, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(find_gateways/2 :: (Db :: binary(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).                               
-find_gateways(Db, #cf_call{to_number=To}) ->
+-spec(find_gateways/1 :: (Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).                               
+find_gateways(#cf_call{account_db=Db, to_number=To}) ->
     case couch_mgr:get_results(Db, ?VIEW_BY_ROUTE, []) of
         {ok, Resources} ->
             {ok, [ {Number, whapps_json:get_value([<<"value">>, <<"gateways">>], Resource, [])} ||

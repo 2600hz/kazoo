@@ -29,9 +29,9 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    CFPid ! find_temporal_routes(whapps_json:get_value(<<"database">>, Data)).
+    CFPid ! find_temporal_routes(Call).
 
-find_temporal_routes(Db) ->    
+find_temporal_routes(#cf_call{account_db=Db}) ->    
     case couch_mgr:get_all_results(Db, <<"temporal-route/listing_by_occurence">>) of
         {ok, JObj} ->
             format_log(info, "FOUND: ~p", [JObj]),

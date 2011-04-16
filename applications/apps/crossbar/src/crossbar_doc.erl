@@ -153,7 +153,17 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 save(#cb_context{db_name=undefined}=Context) ->
     crossbar_util:response_db_missing(Context);
 save(#cb_context{db_name=DB, doc=Doc}=Context) ->
-    case couch_mgr:save_doc(DB, Doc) of
+    Timestamp = whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(calendar:universal_time())),
+    Doc1 = case whapps_json:get_value(<<"pvt_created">>, Doc) of
+               undefined ->                                    
+                   D1 = whapps_json:set_value(<<"pvt_created">>, Timestamp, Doc),
+                   D2 = whapps_json:set_value(<<"pvt_modified">>, Timestamp, D1),
+                   whapps_json:set_value(<<"pvt_account_db">>, Context#cb_context.db_name, D2);
+               _ -> 
+                   D1 = whapps_json:set_value(<<"pvt_modified">>, Timestamp, Doc),
+                   whapps_json:set_value(<<"pvt_account_db">>, Context#cb_context.db_name, D1)
+           end,
+    case couch_mgr:save_doc(DB, Doc1) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
 	{error, conflict} ->

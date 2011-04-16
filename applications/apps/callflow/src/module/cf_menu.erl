@@ -52,8 +52,7 @@
          }).
 
 -record(menu, {           
-           database = undefined :: binary() | undefined
-          ,menu_id = undefined :: binary() | undefined
+           menu_id = undefined :: binary() | undefined
           ,s_prompt = false :: boolean()
           ,retries = 3 :: pos_integer()
           ,timeout = <<"4000">> :: binary()
@@ -75,7 +74,7 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, Call) ->
-    Menu = get_menu_profile(Data),
+    Menu = get_menu_profile(Data, Call#cf_call.account_db),
     answer(Call),
     menu_loop(Menu, Call).
 
@@ -99,7 +98,7 @@ menu_loop(#menu{retries=Retries, prompts=Prompts}, #cf_call{cf_pid=CFPid} = Call
 menu_loop(#menu{max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
     try 
         {ok, Digits} = 
-            b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu), <<"1">>, Timeout, Call),
+            b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call),
         if
             Digits =:= <<>> ->
                 throw(no_digits_collected);
@@ -313,15 +312,15 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=Keys}=Menu, Call) ->
 %%--------------------------------------------------------------------
 -spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
 store_recording(MediaName, DestName, Menu, Call) ->
-    store(MediaName, get_attachment_path(DestName, Menu), Call).
+    store(MediaName, get_attachment_path(DestName, Menu, Call), Call).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_attachment_path/2 :: (MediaName :: binary(), Menu :: #menu{}) -> binary()).
-get_attachment_path(MediaName, #menu{database=Db, menu_id=Id}) ->
+-spec(get_attachment_path/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> binary()).
+get_attachment_path(MediaName, #menu{menu_id=Id}, #cf_call{account_db=Db}) ->
     <<(couch_mgr:get_url())/binary
       ,Db/binary
       ,$/, Id/binary
@@ -343,10 +342,10 @@ tmp_file() ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec(get_prompt/1 :: (Menu :: #menu{}) -> binary()).
-get_prompt(#menu{has_prompt_media=false, prompts=Prompts}) ->
+-spec(get_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> binary()).
+get_prompt(#menu{has_prompt_media=false, prompts=Prompts}, _) ->
     Prompts#prompts.generic_prompt;
-get_prompt(#menu{database=Db, menu_id=Id}) ->                            
+get_prompt(#menu{menu_id=Id}, #cf_call{account_db=Db}) ->                            
     Prompt = ?MEDIA_PROMPT,
     <<$/, Db/binary, $/, Id/binary, $/, Prompt/binary>>.
 
@@ -356,23 +355,21 @@ get_prompt(#menu{database=Db, menu_id=Id}) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec(get_menu_profile/1 :: (Data :: json_object()) -> #menu{}).                                  
-get_menu_profile(Data) ->
-    Db = whapps_json:get_value(<<"database">>, Data),
+-spec(get_menu_profile/2 :: (Data :: json_object(), Db :: binary()) -> #menu{}).                                  
+get_menu_profile(Data, Db) ->
     Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Default=#menu{},
             #menu{         
-                    database = Db
-                   ,menu_id = Id
+                    menu_id = Id
                    ,retries = whapps_json:get_value(<<"retries">>, JObj, Default#menu.retries)
                    ,timeout = whapps_json:get_value(<<"timeout">>, JObj, Default#menu.timeout)
                    ,max_length = whapps_json:get_value(<<"max-extension-length">>, JObj, Default#menu.max_length)
                    ,hunt = whapps_json:get_value(<<"hunt">>, JObj, Default#menu.hunt)
                    ,hunt_deny = whapps_json:get_value(<<"hunt-deny">>, JObj, Default#menu.hunt_deny)
                    ,hunt_allow = whapps_json:get_value(<<"hunt-allow">>, JObj, Default#menu.hunt_allow)
-                   ,record_pin = whapps_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
+                   ,record_pin = whapps_json:get_value(<<"record-pin">>, JObj, Default#menu.record_pin)
                    ,has_prompt_media = whapps_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
                    ,s_prompt = whapps_json:get_value(<<115,97,115,115,121,45,109,111,100,101>>, JObj) =/= undefined
                  };

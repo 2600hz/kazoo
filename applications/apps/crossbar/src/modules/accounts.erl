@@ -19,23 +19,23 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(ACCOUNTS_DB, <<"crossbar%2Faccounts">>).
--define(VIEW_FILE, <<"views/accounts.json">>).
--define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
+-define(VIEW_FILE, <<"views/account.json">>).
 
--define(AGG_DB, <<"crossbar/accounts">>).
--define(AGG_FILTER, <<"accounts/export">>).
--define(AGG_VIEW_FILE, <<"views/agg_accounts.json">>).
+-define(AGG_DB, <<"accounts">>).
+-define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
+-define(AGG_FILTER, <<"account/export">>).
+
+-define(REPLICATE_ENCODING, encoded).
 
 %%%===================================================================
 %%% API
@@ -63,13 +63,12 @@ start_link() ->
 update_all_accounts(File) ->
     {ok, Databases} = couch_mgr:db_info(),
     lists:foreach(fun(ClientDb) ->
-                          DbName = get_db_name(ClientDb, encoded),
-                          case couch_mgr:update_doc_from_file(DbName, crossbar, File) of
+                          case couch_mgr:update_doc_from_file(ClientDb, crossbar, File) of
                               {error, _} ->
-                                  couch_mgr:load_doc_from_file(DbName, crossbar, File);
+                                  couch_mgr:load_doc_from_file(ClientDb, crossbar, File);
                               {ok, _} -> ok
                           end
-                  end, [Db || Db <- Databases, fun(<<"crossbar/clients", _/binary>>) -> true; (_) -> false end(Db)]).
+                  end, [get_db_name(Db, encoded) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,10 +84,9 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                      ,{<<"continuous">>, true}
                     ],
     lists:foreach(fun(SourceDb) ->
-			  SDB = get_db_name(SourceDb, encoded),
-                          logger:format_log(info, "Replicating ~p to ~p using filter ~p", [SDB, TargetDb, FilterDoc]),
-                          couch_mgr:db_replicate([{<<"source">>, SDB} | BaseReplicate])
-                  end, [Db || Db <- Databases, fun(<<"crossbar/clients", _/binary>>) -> true; (_) -> false end(Db)]).
+                          logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
+                          couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate])
+                  end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account", _/binary>>) -> true; (_) -> false end(Db)]).
 
 
 %%--------------------------------------------------------------------
@@ -98,13 +96,13 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %%--------------------------------------------------------------------
 -spec(replicate_from_account/3 :: (SourceDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
-    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, encoded)}
-		     ,{<<"target">>, TargetDb}
-		     ,{<<"filter">>, FilterDoc}
+    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, ?REPLICATE_ENCODING)}
+                     ,{<<"target">>, TargetDb}
+                     ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, true}
                      ,{<<"continuous">>, true}
-		    ],
-    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, encoded), TargetDb, FilterDoc]),
+                    ],
+    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate).
 
 %%%===================================================================
@@ -167,33 +165,33 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.accounts">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
     spawn(fun() ->                  
-		  crossbar_util:binding_heartbeat(Pid),
+                  crossbar_util:binding_heartbeat(Pid),
                   %% Do all of our prep-work out of the agg db
                   %% later we will switch to save to the client db
-		  Context1 = validate(Params, Context#cb_context{db_name=?ACCOUNTS_DB}),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = validate(Params, Context#cb_context{db_name=?AGG_DB}),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		      Context1 = load_account_db(Params, Context),
-		      Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+                      Context1 = load_account_db(Params, Context),
+                      Pid ! {binding_result, true, [RD, Context1, Params]}
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId, <<"parent">>]=Params]}, State) ->
@@ -205,7 +203,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
@@ -213,7 +211,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = crossbar_doc:save(Context#cb_context{db_name=get_db_name(AccountId, encoded)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #cb_context{doc=Doc, resp_headers=RHs}=Context | Params]}, State) ->
@@ -241,7 +239,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #c
                                   Pid ! {binding_result, true, [RD, Else, Params]}
                           end
                   end
-	  end),
+          end),
     {noreply, State};
 
 %handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
@@ -249,14 +247,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #c
 %                  Doc1 = crossbar_util:set_json_values(<<"pvt_tree">>, [], Doc),
 %                  Context1 = crossbar_doc:save(Context#cb_context{db_name=?AGG_DB, doc=Doc1}),
 %                  Pid ! {binding_result, true, [RD, Context1, Params]},
-%	%%  end),
+%       %%  end),
 %    {noreply, State};
 %
 %handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | Params]}, State) ->
 %    spawn(fun() ->
 %                  Context1 = crossbar_doc:delete(Context),
 %                  Pid ! {binding_result, true, [RD, Context1, Params]}
-%	  end),
+%         end),
 %    {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -265,10 +263,10 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?ACCOUNTS_DB),
-    case couch_mgr:update_doc_from_file(?ACCOUNTS_DB, crossbar, ?AGG_VIEW_FILE) of
+    couch_mgr:db_create(?AGG_DB),
+    case couch_mgr:update_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE) of
         {error, _} ->
-            couch_mgr:load_doc_from_file(?ACCOUNTS_DB, crossbar, ?AGG_VIEW_FILE);
+            couch_mgr:load_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE);
         {ok, _} -> ok
     end,
     update_all_accounts(?VIEW_FILE),
@@ -406,7 +404,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_account_summary/2 :: (DocId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
 load_account_summary([], Context) ->
-    crossbar_doc:load_view(?VIEW_SUMMARY, [], Context, fun normalize_view_results/2);
+    crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [], Context, fun normalize_view_results/2);
 load_account_summary(DocId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [
          {<<"startkey">>, [DocId]}
@@ -420,17 +418,17 @@ load_account_summary(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_account(#cb_context{req_data=Data}=Context) ->
-    case is_valid_doc(Data) of
+create_account(#cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
-	      doc=set_private_fields(Data)
-	      ,resp_status=success
-	     }
+              doc=set_private_fields(JObj)
+              ,resp_status=success
+             }
     end.
-		
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -614,7 +612,7 @@ update_tree(DocId, ParentId, Context) ->
 update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
     DocId = props:get_value(<<"id">>, Prop),
     ParentId = lists:last(ParentTree),
-    case crossbar_doc:load(DocId, #cb_context{db_name=?ACCOUNTS_DB}) of
+    case crossbar_doc:load(DocId, #cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
             Tree = whapps_json:get_value(<<"pvt_tree">>, Doc),
             SubTree =
@@ -661,34 +659,38 @@ set_api_keys(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_db_name/1 :: (DocId :: list(binary()) | json_object() | binary()) -> binary()).
+-spec(get_db_name/2 :: (DocId :: list(binary()) | binary() | json_object(), Encoding :: unencoded | encoded | raw) -> binary()).
+
 get_db_name(Doc) -> get_db_name(Doc, unencoded).
 
--spec(get_db_name/2 :: (DocId :: list(binary()) | binary() | json_object(), Encoded :: unencoded | encoded | raw) -> binary()).
-get_db_name({struct, _}=Doc, Encoded) ->
-    get_db_name([whapps_json:get_value(["_id"], Doc)], Encoded);
-get_db_name([DocId], Encoded) when is_binary(DocId) ->
-    get_db_name(DocId, Encoded);
-get_db_name(<<"crossbar/clients/", _/binary>>=DbName, unencoded) ->
+get_db_name({struct, _}=Doc, Encoding) ->
+    get_db_name([whapps_json:get_value(["_id"], Doc)], Encoding);
+get_db_name([DocId], Encoding) ->
+    get_db_name(DocId, Encoding);
+get_db_name(DocId, Encoding) when not is_binary(DocId) ->
+    get_db_name(whistle_util:to_binary(DocId), Encoding);
+get_db_name(<<"accounts">>, _) ->
+    <<"accounts">>;
+%% unencode the account db name
+get_db_name(<<"account/", _/binary>>=DbName, unencoded) ->
     DbName;
-get_db_name(<<"crossbar%2Fclients%2F", _/binary>>=DbName, unencoded) ->
+get_db_name(<<"account%2F", _/binary>>=DbName, unencoded) ->
     binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
-get_db_name(DocId, unencoded) when is_binary(DocId) ->
+get_db_name(DocId, unencoded) ->
     [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
-    whistle_util:to_binary(["crossbar/clients/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
-get_db_name("crossbar/clients" ++ _ = DbName, unencoded) ->
+    whistle_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+%% encode the account db name
+get_db_name(<<"account%2F", _/binary>>=DbName, encoded) ->
     DbName;
-get_db_name(<<"crossbar%2Fclients%2F", _/binary>>=DbName, encoded) ->
-    DbName;
-get_db_name(<<"crossbar/clients/", _/binary>>=DbName, encoded) ->
+get_db_name(<<"account/", _/binary>>=DbName, encoded) ->
     binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
 get_db_name(DocId, encoded) when is_binary(DocId) ->
     [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(DocId),
-    whistle_util:to_binary(["crossbar%2Fclients%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
-get_db_name("crossbar%2Fclients" ++ _ = DbName, encoded) ->
-    DbName;
-get_db_name(<<"crossbar%2Fclients%2F", DocId/binary>>, raw) ->
+    whistle_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
+%% get just the account ID from the account db name
+get_db_name(<<"account%2F", DocId/binary>>, raw) ->
     binary:replace(DocId, <<"%2F">>, <<>>, [global]);
-get_db_name(<<"crossbar/clients/", DocId/binary>>, raw) ->
+get_db_name(<<"account/", DocId/binary>>, raw) ->
     binary:replace(DocId, <<"/">>, <<>>, [global]).
 
 
