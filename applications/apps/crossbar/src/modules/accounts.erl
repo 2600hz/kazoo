@@ -85,8 +85,9 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                      ,{<<"continuous">>, true}
                     ],
     lists:foreach(fun(SourceDb) ->
-                          logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
-                          couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate])
+			  SDB = get_db_name(SourceDb, encoded),
+                          logger:format_log(info, "Replicating ~p to ~p using filter ~p", [SDB, TargetDb, FilterDoc]),
+                          couch_mgr:db_replicate([{<<"source">>, SDB} | BaseReplicate])
                   end, [Db || Db <- Databases, fun(<<"crossbar/clients", _/binary>>) -> true; (_) -> false end(Db)]).
 
 
@@ -97,13 +98,13 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %%--------------------------------------------------------------------
 -spec(replicate_from_account/3 :: (SourceDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
-    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, unencoded)}
+    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, encoded)}
 		     ,{<<"target">>, TargetDb}
 		     ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, true}
                      ,{<<"continuous">>, true}
 		    ],
-    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, unencoded), TargetDb, FilterDoc]),
+    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, encoded), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate).
 
 %%%===================================================================
