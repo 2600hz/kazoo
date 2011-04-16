@@ -27,6 +27,9 @@
 -define(VIEW_FILE, <<"views/users.json">>).
 -define(USERS_LIST, <<"users/listing_by_id">>).
 
+-define(AGG_DB, <<"user_auth">>).
+-define(AGG_FILTER, <<"users/export">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -125,14 +128,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
 
@@ -147,13 +152,14 @@ handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
-handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     accounts:update_all_accounts(?VIEW_FILE),
+    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -331,10 +337,5 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(JObj) ->
-    Schema = [
-               {[<<"base">>, <<"first_name">>], [{not_empty, []}, {is_format, [phrase]}]}
-              ,{[<<"base">>, <<"last_name">>], [{not_empty, []}, {is_format, [phrase]}]}
-             ],
-    Failed = crossbar_validator:validate(Schema, JObj),
-    {Failed =:= [], Failed}.
+is_valid_doc(_JObj) ->
+    {true, []}.

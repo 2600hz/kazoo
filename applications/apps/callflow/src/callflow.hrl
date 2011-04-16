@@ -30,6 +30,7 @@
             ,call_id = <<>> :: binary()                           %% The call-id of this request
             ,cf_pid = undefined :: pid() | undefined              %% PID of the callflow tree processor, who we should pass control back to
             ,cf_responder = undefined :: pid() | undefined        %% PID of the callflow responder that won this route_request
+            ,account_db = undefined :: binary()
             ,from_number = <<>>
             ,from_realm = <<>>
             ,to_number = <<>>

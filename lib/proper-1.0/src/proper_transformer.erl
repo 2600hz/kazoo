@@ -21,7 +21,7 @@
 %%% @version {@version}
 %%% @doc This module contains PropEr's main parse transformer. It is
 %%%	 automatically applied to modules when including the main PropEr header,
-%%%	 unless PROPER_NOTRANS is defined. Applying this transform has the
+%%%	 unless PROPER_NO_TRANS is defined. Applying this transform has the
 %%%	 following effects:
 %%%	 <ul>
 %%%	 <li>All prop_* functions of arity 0 in the module are automatically

@@ -2,43 +2,36 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%% NoSipAuth module
+%%% User auth module
 %%%
-%%% Authenticates everyone! PARTY TIME!
-%%%
-%%% This is just a gen_server that can be used to authenticate calls
-%%% so we can build route handlers until sip registration checks user
-%%% creds.  It will authenticate any call/registration that has the
-%%% the equal username and passwords.
-%%%
-%%% To start this gen_server run (in your erlang shell): nosipauth:start("localhost").
-%%% Where localhost is the hostname of the AMQP server to connect to
 %%%
 %%% @end
-%%% Created : 24 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(nosipauth).
+-module(token_auth).
 
 -behaviour(gen_server).
 
 %% API
--export([start/1, start_link/0, set_amqp_host/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
--record(state, {
-         amqp_host = "localhost"  :: string()
-        ,auth_q = undefined  :: binary() | undefined
-    }).
+-define(TOKEN_DB, <<"token_auth">>).
 
+-define(VIEW_FILE, <<"views/token_auth.json">>).
+-define(MD5_LIST, <<"users/creds_by_md5">>).
+-define(SHA1_LIST, <<"users/creds_by_sha">>).
+
+-define(AGG_DB, <<"token_auth">>).
+-define(AGG_FILTER, <<"users/export">>).
 
 %%%===================================================================
 %%% API
@@ -51,14 +44,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start(AHost) ->
-    gen_server:start({local, ?SERVER}, ?MODULE, [AHost], []).
-
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-set_amqp_host(AHost) ->
-    gen_server:call(?SERVER, {set_amqp_host, AHost}, infinity).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -75,18 +62,8 @@ set_amqp_host(AHost) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (_) -> tuple(ok, #state{})).
 init([]) ->
-    State = #state{},
-    AHost = State#state.amqp_host,
-    format_log(info, "NO_SIP_AUTH(~p): Starting server with amqp host ~p~n", [self(), AHost]),
-    {ok, Auth_Q} = start_amqp(AHost),
-    {ok, State#state{auth_q = Auth_Q}};
-
-init([AHost]) ->
-    format_log(info, "NO_SIP_AUTH(~p): Starting server with amqp host ~p~n", [self(), AHost]),
-    {ok, Auth_Q} = start_amqp(AHost),
-    {ok, #state{amqp_host=AHost, auth_q=Auth_Q}}.
+    {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,11 +79,6 @@ init([AHost]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({set_amqp_host, AHost1}, _From, #state{amqp_host=AHost2}=State) ->
-    format_log(info, "NO_SIP_AUTH(~p): Updating amqp host from ~p to ~p~n", [self(), AHost2, AHost1]),
-    amqp_manager:close_channel(self(), AHost2),
-    {ok, Auth_Q} = start_amqp(AHost1),
-    {reply, ok, State#state{amqp_host = AHost1, auth_q = Auth_Q}};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -122,7 +94,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    io:format("Unhandled ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -135,17 +106,34 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    case amqp_util:is_json(Props) of
-        true ->
-            {struct, Msg} = mochijson2:decode(binary_to_list(Payload)),
-            spawn(fun() -> process_req(amqp_util:get_msg_type(Msg), Msg, State) end);
-        _ ->
-            format_log(info, "NO_SIP_AUTH(~p): Recieved non JSON AMQP msg content type~n", [self()])
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{auth_token=AuthToken}=Context}}, State) ->
+    spawn(fun() ->
+                  crossbar_util:binding_heartbeat(Pid),
+                  case authenticate_token(AuthToken) of
+                      {ok, JObj} ->
+                          update_token_doc(JObj, RD),
+                          Pid ! {binding_result, true, {RD, Context#cb_context{auth_doc=JObj}}};
+                      {error, _} ->
+                          Pid ! {binding_result, false, {RD, Context}}
+                  end
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
+    {noreply, State};
+
+handle_info(timeout, State) ->
+    bind_to_crossbar(),
+    couch_mgr:db_create(?TOKEN_DB),
+    case couch_mgr:update_doc_from_file(?TOKEN_DB, crossbar, ?VIEW_FILE) of
+        {error, _} ->
+            couch_mgr:load_doc_from_file(?TOKEN_DB, crossbar, ?VIEW_FILE);
+        {ok, _} -> ok
     end,
     {noreply, State};
-handle_info(_Info, State) ->
-    format_log(info, "NO_SIP_AUTH(~p): unhandled info ~p~n", [self(), _Info]),
+
+handle_info(_, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -176,47 +164,45 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Ensures the monitor exchange exists, then creates a named queue
-%% and places a consumer on it
-%% @end
-%%--------------------------------------------------------------------
--spec(start_amqp/1 :: (AHost :: string()) -> tuple(ok, binary())).
-start_amqp(AHost) ->
-    amqp_util:callmgr_exchange(AHost),
-    amqp_util:targeted_exchange(AHost),
-    Auth_Q = amqp_util:new_callmgr_queue(AHost, <<>>),
-    amqp_util:bind_q_to_callmgr(AHost, Auth_Q, ?KEY_AUTH_REQ),
-    amqp_util:basic_consume(AHost, Auth_Q),
-    {ok, Auth_Q}.
+-spec(bind_to_crossbar/0 :: () -> no_return()).
+bind_to_crossbar() ->
+    crossbar_bindings:bind(<<"v1_resource.authenticate">>).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Process the requests recieved from AMQP
+%% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
-    Resp = [
-         {<<"Event-Category">>, <<"directory">>}
-        ,{<<"Event-Name">>, <<"auth_resp">>}
-        ,{<<"Server-ID">>, <<"">>}
-        ,{<<"App-Name">>, <<"nosipauth">>}
-        ,{<<"App-Version">>, <<"1.0">>}
-        ,{<<"Msg-ID">>, proplists:get_value(<<"Msg-ID">>, Prop)}
-        ,{<<"Auth-Method">>, <<"password">>}
-        ,{<<"Auth-Password">>, proplists:get_value(<<"Auth-User">>, Prop)}
-    ],
-    {ok, Json} = whistle_api:auth_resp(Resp),
-    RespQ = proplists:get_value(<<"Server-ID">>, Prop),
-    send_resp(Json, RespQ, State);
+-spec(authenticate_token/1 :: (AuthToken :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+authenticate_token(AuthToken) ->
+    case couch_mgr:lookup_doc_rev(?TOKEN_DB, AuthToken) of
+        {ok, <<"undefined">>} ->
+            {error, bad_token};
+        {ok, _} ->
+            couch_mgr:open_doc(?TOKEN_DB, AuthToken);
+        {error, _}=E ->
+            E
+    end.
 
-process_req(_MsgType, _Msg, _State) ->
-    format_log(error, "NO_SIP_AUTH(~p): Unhandled Msg ~p~nJSON: ~p~n", [self(), _MsgType, _Msg]).
 
--spec(send_resp/3 :: (JSON :: iolist(), RespQ :: binary(), tuple()) -> no_return()).
-send_resp(Json, RespQ, #state{amqp_host=AHost}) ->
-    amqp_util:targeted_publish(AHost, RespQ, Json, <<"application/json">>).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update the token doc timestamp
+%%
+%% TODO: 
+%%    Record the URL and verb in token 'history'
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_token_doc/2 :: (JObj :: json_object(), RD :: #wm_reqdata{}) -> no_return()).                                  
+update_token_doc(JObj, _) ->
+    spawn(fun() ->
+                  Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+                  couch_mgr:save_doc(?TOKEN_DB,  whapps_json:set_value(<<"modified">>, Now, JObj))
+          end).
+
+%% TODO:
+%%   - Create a map reduce on the peer and implement as a limit
+%%   - Create spawn to clean expired docs
+%%   - Use revision id as hash/seq ?

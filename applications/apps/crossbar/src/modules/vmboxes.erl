@@ -147,8 +147,8 @@ handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
-handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
+handle_info({binding_fired, Pid, _false, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
@@ -330,10 +330,5 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(JObj) ->
-    Schema = [
-               {[<<"base">>, <<"mailbox">>], [{not_empty, []}]}
-              ,{[<<"base">>, <<"pin">>], [{not_empty, []}]}
-             ],
-    Failed = crossbar_validator:validate(Schema, JObj),
-    {Failed =:= [], Failed}.
+is_valid_doc(_JObj) ->
+    {true, []}.

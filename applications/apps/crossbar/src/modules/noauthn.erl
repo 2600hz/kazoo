@@ -97,19 +97,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {<<"">>, _}}, State) ->
-    logger:format_log(info, "NOAUTHN(~p): NO SOUP FOR YOU!~n", [self()]),
-    Pid ! {binding_result, false, []},
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, Context}}, State) ->
+    Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {_Auth, _}}, State) ->
-    logger:format_log(info, "NOAUTHN(~p): Willkommen. Bienvenue. Welcome. C'mon in~n", [self()]),
-    Pid ! {binding_result, true, []},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, Route, Payload}, State) ->
-    logger:format_log(info, "NOAUTHN(~p): unhandled binding: ~p~n~p~n", [self(), Route, Payload]),
-    Pid ! {binding_result, false, []},
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
@@ -117,7 +110,6 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "NOAUTHN(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

@@ -15,7 +15,7 @@
 -export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
 -export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
--export([allow_missing_post/2, post_is_create/2, create_path/2]).
+-export([allow_missing_post/2, post_is_create/2, create_path/2, options/2]).
 -export([expires/2, generate_etag/2]).
 -export([process_post/2, delete_resource/2]).
 
@@ -35,7 +35,7 @@ init(Opts) ->
     %% binds http://host/wmtrace and stores the files in /tmp
     %% wmtrace_resource:remove_dispatch_rules/0 removes the trace rule
 
-allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
+allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->    
     Context1 = case wrq:get_req_header("Content-Type", RD) of
 		   "multipart/form-data" ++ _ ->
 		       extract_files_and_params(RD, Context);
@@ -51,9 +51,14 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
 
     case parse_path_tokens(Tokens) of
-        [{Mod, Params}|_] = Nouns ->
+        [{Mod, Params}|_] = Nouns ->            
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-            Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),
+            Methods1 = case is_cors_preflight(RD) of 
+                           true -> 
+                               allow_methods(Responses, Methods, Verb, wrq:method(RD)) ++ ['OPTIONS'];
+                           false -> 
+                               allow_methods(Responses, Methods, Verb, wrq:method(RD))
+                       end,
             {Methods1, RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb}};
         [] ->
             {Methods, RD, Context1#cb_context{req_verb=Verb}}
@@ -82,13 +87,19 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
 
 forbidden(RD, Context) ->
     case is_authentic(RD, Context) of
-        true ->
-            {not is_permitted(Context), RD, Context};
+        {true, RD1, Context1} ->         
+            case is_permitted(RD1, Context1) of
+                {true, RD2, Context2} ->
+                    {false, RD2, Context2};
+                false ->
+                    {true, RD1, Context1}
+            end;
         false ->
             {{halt, 401}, RD, Context}
     end.
 
 resource_exists(RD, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
+    logger:format_log(info, "v1: requested resource with no nouns", []),
     {false, RD, Context};
 resource_exists(RD, Context) ->
     case does_resource_exist(RD, Context) of
@@ -96,16 +107,22 @@ resource_exists(RD, Context) ->
             {RD1, Context1} = validate(RD, Context),
             case succeeded(Context1) of
                 true ->
-                    execute_request(RD1, Context1);
+                    logger:format_log(info, "v1: requested resource validated", []),
+                    execute_request(add_cors_headers(RD1), Context1);
                 false ->
+                    logger:format_log(info, "v1: requested resource did not validate", []),
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
                     ReturnCode = Context1#cb_context.resp_error_code,
                     {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
             end;
 	false ->
+            logger:format_log(info, "v1: requested resource does not exist", []),
 	    {false, RD, Context}
     end.
+
+options(RD, Context)->            
+    {get_cors_headers(), RD, Context}.
 
 %% each successive cb module adds/removes the content types they provide (to be matched against the request Accept header)
 content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
@@ -287,6 +304,11 @@ override_verb(RD, JSON, <<"post">>) ->
 	    end;
 	V -> {true, whistle_util:to_binary(string:to_lower(binary_to_list(V)))}
     end;
+override_verb(RD, _, <<"options">>) ->
+    case wrq:get_req_header("Access-Control-Request-Method", RD) of
+        undefined -> false;
+        V -> {true, whistle_util:to_binary(string:to_lower(V))}
+    end;
 override_verb(_, _, _) -> false.
 
 -spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | tuple(malformed, binary())).
@@ -445,12 +467,16 @@ does_resource_exist(_RD, _Context) ->
 %% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
--spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
-is_authentic(_RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
+-spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+is_authentic(RD, Context)->
     Event = <<"v1_resource.authenticate">>,
-    Responses = crossbar_bindings:map(Event, {AuthToken, Nouns}),
-    crossbar_bindings:any(Responses).
-
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
+        [] ->
+            false;
+        [{true, {RD1, Context1}}|_] -> 
+            {true, RD1, Context1}
+    end.
+            
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -458,11 +484,15 @@ is_authentic(_RD, #cb_context{req_nouns=Nouns, auth_token=AuthToken})->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_permitted/1 :: (Context :: #cb_context{}) -> boolean()).
-is_permitted(#cb_context{req_nouns=Nouns, req_verb=Verb, auth_token=AuthToken})->
+-spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+is_permitted(RD, Context)->
     Event = <<"v1_resource.authorize">>,
-    Responses = crossbar_bindings:map(Event, {AuthToken, Verb, Nouns}),
-    crossbar_bindings:any(Responses).
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
+        [] ->
+            false;
+        [{true, {RD1, Context1}}|_] -> 
+            {true, RD1, Context1}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -490,16 +520,17 @@ validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
 execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [RD, Context] ++ Params,
+    logger:format_log(info, "Execute request ~p", [Event]),
     [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
     case succeeded(Context1) of
         false ->
-	    logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+            logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
             Content = create_resp_content(RD1, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
-	    logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+            logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
 	    {Verb =/= <<"put">>, RD1, Context1}
     end;
 execute_request(RD, Context) ->
@@ -628,6 +659,58 @@ fix_header(RD, "Location"=H, Url) ->
     {H, lists:concat([Host | [Url1]])};
 fix_header(_, H, V) ->
     {whistle_util:to_list(H), whistle_util:to_list(V)}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempts to determine if this is a cross origin resource sharing
+%% request
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_cors_request/1 :: (RD :: #wm_reqdata{}) -> boolean()).
+is_cors_request(RD) ->
+    wrq:get_req_header("Origin", RD) =/= 'undefined' 
+        orelse wrq:get_req_header("Access-Control-Request-Method", RD) =/= 'undefined' 
+        orelse wrq:get_req_header("Access-Control-Request-Headers", RD) =/= 'undefined'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(add_cors_headers/1 :: (RD :: #wm_reqdata{}) -> #wm_reqdata{}).                                 
+add_cors_headers(RD) ->
+    case is_cors_request(RD) of 
+        true ->
+            wrq:set_resp_headers(get_cors_headers(), RD);
+        false ->
+            RD
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_cors_headers/0 :: () -> list()).                                 
+get_cors_headers() ->
+    [
+      {"Access-Control-Allow-Origin", "*"}
+     ,{"Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS"}
+     ,{"Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token"}
+     ,{"Access-Control-Max-Age", "86400"}
+    ].
+   
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempts to determine if this is a cross origin resource preflight
+%% request
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_cors_preflight/1 :: (RD :: #wm_reqdata{}) -> boolean()).
+is_cors_preflight(RD) ->
+    is_cors_request(RD) andalso wrq:method(RD) =:= 'OPTIONS'.
 
 %%--------------------------------------------------------------------
 %% @private

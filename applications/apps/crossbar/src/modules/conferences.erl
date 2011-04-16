@@ -149,8 +149,8 @@ handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
-handle_info({binding_fired, Pid, _Route, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
+handle_info({binding_fired, Pid, _, Payload}, State) ->
+    Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
@@ -330,6 +330,6 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (Data :: mochijson()) -> tuple(true, [])).
-is_valid_doc(Data) ->
+-spec(is_valid_doc/1 :: (_JObj :: mochijson()) -> tuple(true, [])).
+is_valid_doc(_JObj) ->
     {true, []}.

@@ -78,7 +78,8 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    Conf = update_members(get_conference_profile(Data), Call),
+    Conf = update_members(
+             get_conference_profile(Data, Call#cf_call.account_db), Call),
     answer(Call),
     play_conference_name(Conf, Call),
     case check_pin(Conf, Call, 1) of
@@ -200,24 +201,23 @@ announce_leave(#conf{prompts=Prompts, id=ConfId}, Call) ->
 %% conference record
 %% @end
 %%--------------------------------------------------------------------
--spec(get_conference_profile/1 :: (Data :: json_object()) -> #conf{}).
-get_conference_profile(Data) ->
-    Db = whapps_json:get_value(<<"database">>, Data),
+-spec(get_conference_profile/2 :: (Data :: json_object(), Db :: binary()) -> #conf{}).
+get_conference_profile(Data, Db) ->
     Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Default=#conf{},
             #conf{         
                  id = Id
-                ,member_pins = whapps_json:get_value([<<"base">>, <<"member-pins">>], JObj, [])
-                ,moderator_pins = whapps_json:get_value([<<"base">>, <<"moderator-pins">>], JObj, [])
-                ,member_join_muted = whapps_json:get_value([<<"base">>, <<"member-join-muted">>], JObj, Default#conf.member_join_muted)
-                ,member_join_deaf = whapps_json:get_value([<<"base">>, <<"member-join-deaf">>], JObj, Default#conf.member_join_deaf)
-                ,moderator_join_muted = whapps_json:get_value([<<"base">>, <<"moderator-join-muted">>], JObj, Default#conf.moderator_join_muted)
-                ,moderator_join_deaf = whapps_json:get_value([<<"base">>, <<"moderator-join-deaf">>], JObj, Default#conf.moderator_join_deaf)
-                ,max_members = whapps_json:get_value([<<"base">>, <<"max-members">>], JObj, Default#conf.max_members)
-                ,require_moderator = whapps_json:get_value([<<"base">>, <<"require-moderator">>], JObj, Default#conf.require_moderator)
-                ,wait_for_moderator = whapps_json:get_value([<<"base">>, <<"wait-for-moderator">>], JObj, Default#conf.wait_for_moderator)
+                ,member_pins = whapps_json:get_value(<<"member-pins">>, JObj, [])
+                ,moderator_pins = whapps_json:get_value(<<"moderator-pins">>, JObj, [])
+                ,member_join_muted = whapps_json:get_value(<<"member-join-muted">>, JObj, Default#conf.member_join_muted)
+                ,member_join_deaf = whapps_json:get_value(<<"member-join-deaf">>, JObj, Default#conf.member_join_deaf)
+                ,moderator_join_muted = whapps_json:get_value(<<"moderator-join-muted">>, JObj, Default#conf.moderator_join_muted)
+                ,moderator_join_deaf = whapps_json:get_value(<<"moderator-join-deaf">>, JObj, Default#conf.moderator_join_deaf)
+                ,max_members = whapps_json:get_value(<<"max-members">>, JObj, Default#conf.max_members)
+                ,require_moderator = whapps_json:get_value(<<"require-moderator">>, JObj, Default#conf.require_moderator)
+                ,wait_for_moderator = whapps_json:get_value(<<"wait-for-moderator">>, JObj, Default#conf.wait_for_moderator)
          };
         _ -> 
             #conf{}

@@ -14,11 +14,11 @@
 -export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, get_host/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
 
 %% System manipulation
--export([db_exists/1, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
+-export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
--export([add_change_handler/2, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
+-export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3]).
@@ -83,10 +83,8 @@ update_doc_from_file(DbName, App, File) ->
 	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
     catch
         _Type:{badmatch,{error,Reason}} ->
-	    io:format("badmatch ~p:~p: ~p~n", [_Type, Reason, erlang:get_stacktrace()]),
             {error, Reason};
  	_Type:Reason ->
-	    io:format("excep ~p:~p: ~p~n", [_Type, Reason, erlang:get_stacktrace()]),
             {error, Reason}
     end.
 
@@ -101,6 +99,23 @@ db_exists(DbName) ->
     case get_conn() of
         {} -> false;
         Conn -> couchbeam:db_exists(Conn, whistle_util:to_list(DbName))
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieve information regarding all databases
+%% @end
+%%--------------------------------------------------------------------
+-spec(db_info/0 :: () -> tuple(ok, json_objects()) | tuple(error, atom())).
+db_info() ->
+    case get_conn() of
+        {} -> {error, db_not_reachable};
+        Conn ->
+            case couchbeam:all_dbs(Conn) of
+                {error, _Error}=E -> E;
+                {ok, Info} -> {ok, Info}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -423,6 +438,15 @@ get_db(DbName) ->
     Conn = gen_server:call(?MODULE, {get_conn}),
     open_db(whistle_util:to_list(DbName), Conn).
 
+get_uuid() ->
+    Conn = gen_server:call(?MODULE, {get_conn}),
+    [UUID] = couchbeam:get_uuid(Conn),   
+    UUID.
+
+get_uuids(Count) ->
+    Conn = gen_server:call(?MODULE, {get_conn}),
+    couchbeam:get_uuids(Conn, Count).
+
 get_url() ->
     case {whistle_util:to_binary(get_host()), get_creds()} of
         {<<"">>, _} ->
@@ -436,7 +460,10 @@ get_url() ->
     end.
 
 add_change_handler(DBName, DocID) ->
-    gen_server:call(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
+    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
+
+add_change_handler(DBName, DocID, Pid) ->
+    gen_server:cast(?MODULE, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
     gen_server:call(?MODULE, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
@@ -494,20 +521,6 @@ handle_call({get_conn}, _, #state{connection=S}=State) ->
 handle_call({get_creds}, _, #state{creds=Cred}=State) ->
     {reply, Cred, State};
 
-handle_call({add_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH, connection=S}=State) ->
-    case dict:find(DBName, CH) of
-	{ok, {Srv, _}} ->
-	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {reply, ok, State};
-	error ->
-	    {ok, Srv} = change_handler:start_link(open_db(whistle_util:to_list(DBName), S), []),
-	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
-	    SrvRef = erlang:monitor(process, Srv),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {reply, ok, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
-    end;
-
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
     spawn(fun() ->
 		  {ok, {Srv, _}} = dict:find(DBName, CH),
@@ -526,9 +539,19 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
+handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
+    case dict:find(DBName, CH) of
+	{ok, {Srv, _}} ->
+	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {noreply, State};
+	error ->
+	    {ok, Srv} = change_handler:start_link(open_db(whistle_util:to_list(DBName), S), []),
+	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    SrvRef = erlang:monitor(process, Srv),
+	    change_handler:add_listener(Srv, Pid, DocID),
+	    {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
