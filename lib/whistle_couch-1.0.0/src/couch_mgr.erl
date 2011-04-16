@@ -83,10 +83,8 @@ update_doc_from_file(DbName, App, File) ->
 	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
     catch
         _Type:{badmatch,{error,Reason}} ->
-	    io:format("badmatch ~p:~p: ~p~n", [_Type, Reason, erlang:get_stacktrace()]),
             {error, Reason};
  	_Type:Reason ->
-	    io:format("excep ~p:~p: ~p~n", [_Type, Reason, erlang:get_stacktrace()]),
             {error, Reason}
     end.
 
