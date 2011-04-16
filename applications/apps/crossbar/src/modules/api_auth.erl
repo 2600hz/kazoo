@@ -26,10 +26,10 @@
 
 -define(TOKEN_DB, <<"token_auth">>).
 
--define(VIEW_FILE, <<"views/agg_accounts.json">>).
--define(API_LIST, <<"accounts/listing_by_api">>).
+-define(AGG_DB, <<"accounts">>).
+-define(AGG_VIEW_FILE, <<"views/accounts.json">>).
+-define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
 
--define(AGG_DB, <<"crossbar%2Faccounts">>).
 
 %%%===================================================================
 %%% API
@@ -148,9 +148,9 @@ handle_info(timeout, State) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
     couch_mgr:db_create(?AGG_DB),
-    case couch_mgr:update_doc_from_file(?AGG_DB, crossbar, ?VIEW_FILE) of
+    case couch_mgr:update_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE) of
         {error, _} ->
-            couch_mgr:load_doc_from_file(?AGG_DB, crossbar, ?VIEW_FILE);
+            couch_mgr:load_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE);
         {ok, _} -> ok
     end,
     {noreply, State};
@@ -258,7 +258,7 @@ authorize_user(Context, ApiKey) when not is_binary(ApiKey) ->
 authorize_user(Context, <<"">>) ->
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 authorize_user(Context, ApiKey) ->
-    case crossbar_doc:load_view(?API_LIST, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
+    case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=[JObj]} when JObj =/= []->
             Context#cb_context{resp_status=success, doc=JObj};
         _ ->
