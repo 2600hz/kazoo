@@ -3,19 +3,19 @@
    "language": "javascript",
    "views": {
        "listing_by_gateway": {
-           "map": "function(doc) { if ( doc.pvt_type != 'resource' ) return; for (var i in  doc.gateways) emit( doc.gateways[i].server, doc.gateways[i]); }"
+           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; for (var i in  doc.gateways) emit( doc.gateways[i].server, doc.gateways[i]); }"
        },
        "listing_by_type": {
-           "map": "function(doc) { if ( doc.pvt_type != 'resource' ) return; emit(doc.type, {'id': doc._id, 'route': doc.route, 'gateways': doc.gateways}); }"
+           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc.type, {'id': doc._id, 'route': doc.route, 'gateways': doc.gateways}); }"
        },
        "listing_by_route": {
-           "map": "function(doc) { if ( doc.pvt_type != 'resource' ) return; for (var i in doc.route) emit([doc.weight_cost, doc.route[i]], {'id': doc._id, 'gateways': doc.gateways}); }"
+           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; for (var i in doc.route) emit([doc.weight_cost, doc.route[i]], {'id': doc._id, 'gateways': doc.gateways}); }"
        },
        "listing_active_by_route": {
-           "map": "function(doc) { if ( doc.pvt_type != 'resource' || ! doc.enabled ) return; for (var i in doc.route) emit([doc.weight_cost, doc.route[i]], {'id': doc._id, 'gateways': doc.gateways}); }"
+           "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.route) emit([doc.weight_cost, doc.route[i]], {'id': doc._id, 'gateways': doc.gateways}); }"
        },
        "listing_by_id": {
-           "map": "function(doc) { if ( doc.pvt_type != 'resource' ) return; emit(doc._id, {'id': doc._id, 'route': doc.route, 'gateways': doc.gateways}); }"
+           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'route': doc.route, 'gateways': doc.gateways}); }"
        },
    },
    "filters": {
