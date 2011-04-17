@@ -25,12 +25,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(MAINTANCE_CYCLE, 60000).
-
 -record(state, {
            callmgr_q = <<>> :: binary()          
-          ,flows = undefined :: undefined | dict()
-          ,calls = undefined :: undefined | dict()
          }).
 
 %%-----------------------------------------------------------------------------
@@ -64,8 +60,7 @@ init([]) ->
     {ok, CQ} = start_amqp(),
     couch_mgr:db_create(?CALLFLOW_DB),
     couch_mgr:load_doc_from_file(?CALLFLOW_DB, callflow, ?VIEW_FILE),
-    timer:send_after(?MAINTANCE_CYCLE, self(), {maintain_dicts}),
-    {ok, #state{callmgr_q=CQ, flows=dict:new(), calls=dict:new()}}.
+    {ok, #state{callmgr_q=CQ}}.
 
 %------------------------------------------------------------------------------
 % @private
@@ -74,11 +69,6 @@ init([]) ->
 %
 % @end
 %------------------------------------------------------------------------------
-handle_call({find_flow, To}, From, #state{flows=Flows}=State) ->
-    spawn(fun() ->
-                  spawn(fun() -> gen_server:reply(From, find_callflow(To, Flows)) end)                  
-          end),
-    {noreply, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -89,14 +79,6 @@ handle_call(_Request, _From, State) ->
 %
 % @end
 %------------------------------------------------------------------------------
-handle_cast({rm_flow, FlowId}, #state{flows=Flows, calls=Calls}=State) ->
-    Flows1 = dict:filter(fun(_, {F, _, _}) when F == FlowId -> false;
-                            (_, _) -> true
-                         end, Flows),
-    Calls1 = dict:filter(fun(_, {_, _, F, _}) when F == FlowId -> false;
-                            (_, _) -> true
-                         end, Calls),
-    {noreply, State#state{flows=Flows1, calls=Calls1}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -111,43 +93,11 @@ handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
     Parent = self(),
-    spawn(fun() ->
+%%    spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-                  handle_req(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State)
-          end),
+                  handle_req(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State),
+%%          end),
     {noreply, State};
-handle_info({add_flow, JObj, RouteReq}, #state{flows=Flows, calls=Calls}=State) ->
-    FlowId = whapps_json:get_value(<<"id">>, JObj),
-    Flow = whapps_json:get_value(<<"flow">>, JObj),
-    CallId = whapps_json:get_value(<<"Call-ID">>, RouteReq),
-    To = whapps_json:get_value(<<"To">>, RouteReq),
-    TS = calendar:datetime_to_gregorian_seconds({date(), time()}),
-    format_log(info, "CF_RESP(~p): Associate call flow ~p for ~p to call ~p", [self(), FlowId, To, CallId]),    
-    {noreply, State#state{
-                 flows=dict:store(To, {FlowId, Flow, TS}, Flows)
-                ,calls=dict:store(CallId, {To, RouteReq, FlowId, TS}, Calls)
-               }};
-handle_info({maintain_dicts}, #state{flows=Flows, calls=Calls}=State) ->
-    C1 = case dict:size(Calls) of
-             0 ->
-                 Calls;
-             _ ->
-                 E1 = calendar:datetime_to_gregorian_seconds({date(), time()}) - 5,
-                 dict:filter(fun(_, {_, _, _, TS}) when TS < E1 -> false;
-                                (_, _) -> true
-                             end, Calls)
-         end,
-    F1 = case dict:size(Flows) of
-             0 ->
-                 Flows;
-             _ ->
-                 E2 = calendar:datetime_to_gregorian_seconds({date(), time()}) - 3600,
-                 dict:filter(fun(_, {_, _, TS}) when TS < E2 -> false;
-                                (_, _) -> true
-                             end, Flows)
-         end,
-    timer:send_after(?MAINTANCE_CYCLE, self(), {maintain_dicts}),
-    {noreply, State#state{calls=C1, flows=F1}};
 handle_info(_Info, State) ->
    {noreply, State}.
 
@@ -214,10 +164,13 @@ start_amqp() ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec(handle_req/4 :: (EventName :: binary()|undefined, JObj:: json_object(), Parent :: pid(), State :: #state{}) -> ok|tuple(error, atom())).
-handle_req(<<"route_req">>, JObj, Parent, #state{callmgr_q=CQ, flows=Flows}) ->
+handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
     <<"dialplan">> = whapps_json:get_value(<<"Event-Category">>, JObj),
-    {ok, Flow} = find_callflow(whapps_json:get_value(<<"To">>, JObj), Flows),
-    Parent ! {add_flow, Flow, JObj},
+    CallId = whapps_json:get_value(<<"Call-ID">>, JObj),
+    To = whapps_json:get_value(<<"To">>, JObj),
+    From = whapps_json:get_value(<<"From">>, JObj),
+    true = hunt_to(To) orelse hunt_no_match(To),
+    wh_cache:store({cf_call, CallId}, {To, From, JObj}, 5),
     Resp = [
              {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
@@ -226,71 +179,73 @@ handle_req(<<"route_req">>, JObj, Parent, #state{callmgr_q=CQ, flows=Flows}) ->
            ],
     {ok, Payload} = whistle_api:route_resp(Resp),
     amqp_util:targeted_publish(whapps_json:get_value(<<"Server-ID">>, JObj), Payload);
-handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ, flows=Flows, calls=Calls}) ->
+
+handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
     CallId = whapps_json:get_value(<<"Call-ID">>, JObj),
-    {To, RouteReq, _, _} = dict:fetch(CallId, Calls),
-    {_, Flow, _} = dict:fetch(To, Flows),
-    [ToNumber, ToRealm] = binary:split(whapps_json:get_value(<<"To">>, RouteReq), <<"@">>),
-    [FromNumber, FromRealm] = binary:split(whapps_json:get_value(<<"From">>, RouteReq), <<"@">>),
+    {ok, {To, From, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
+    {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, To}),
+    [ToNumber, ToRealm] = binary:split(To, <<"@">>),
+    [FromNumber, FromRealm] = binary:split(From, <<"@">>),
     Call = #cf_call {
-       call_id = CallId
+       call_id=CallId
+      ,flow_id=FlowId
       ,cf_responder=Parent
       ,bdst_q=CQ
       ,ctrl_q=whapps_json:get_value(<<"Control-Queue">>, JObj)
+      ,account_db=AccountDb
+      ,to=To
       ,to_number=ToNumber
       ,to_realm=ToRealm
+      ,from=From
       ,from_number=FromNumber
       ,from_realm=FromRealm
       ,route_request=RouteReq
      },
     format_log(info, "CF_RESP(~p): Executing callflow for ~p(~p)", [self(), To, CallId]),
     spawn(fun() -> cf_exe:start(Call, Flow) end);
+
 handle_req(_EventName, _JObj, _Parent, _State) ->
     {error, invalid_event}.
 
--spec(find_callflow/2 :: (To :: binary(), Flows :: dict()) -> tuple(ok, json_object()) | tuple(error, atom())).
-find_callflow(To, Flows) ->
-    case hunt_to(To, Flows) of
-        {ok, _}=F ->
-            F;
-        _ ->
-            hunt_no_match(To, Flows)
-    end.
-
--spec(hunt_to/2 :: (To :: binary(), Flows :: dict()) -> tuple(ok, json_object()) | tuple(error, atom())).
-hunt_to(To, Flows) ->
-    case dict:find(To, Flows) of
-        {ok, {I, F, _}} ->
+-spec(hunt_to/1 :: (To :: binary()) -> boolean()).
+hunt_to(To) ->
+    case wh_cache:fetch({cf_flow, To}) of         
+        {ok, _} ->
             format_log(info, "CF_RESP(~p): Callflow for ~p exists in cache...", [self(), To]),
-            {ok, {struct, [{<<"id">>, I}, {<<"flow">>, F}]}};
-        error ->
+            true;
+        {error, _} ->
             lookup_flow(To)
     end.
 
--spec(hunt_no_match/2 :: (To :: binary(), Flows :: dict()) -> tuple(ok, json_object()) | tuple(error, atom())).
-hunt_no_match(To, Flows) ->    
+-spec(hunt_no_match/1 :: (To :: binary()) -> boolean()).
+hunt_no_match(To) ->    
     [_, ToRealm] = binary:split(To, <<"@">>),
     NoMatch = <<"no_match@", ToRealm/binary>>,
-    case dict:find(NoMatch, Flows) of
-        {ok, {I, F, _}} ->
+    case wh_cache:fetch({cf_flow, To}) of
+        {ok, _} ->
             format_log(info, "CF_RESP(~p): Callflow for ~p exists in cache...", [self(), NoMatch]),
-            {ok, {struct, [{<<"id">>, I}, {<<"flow">>, F}]}};
-        error ->
+            true;
+        {error, _} ->
             lookup_flow(NoMatch)
     end.    
 
--spec(lookup_flow/1 :: (To :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(lookup_flow/1 :: (To :: binary()) -> boolean()).
 lookup_flow(To) ->
     case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, To}]) of
         {ok, []} ->
             format_log(info, "CF_RESP(~p): Could not find callflow for ~p", [self(), To]),
-            {error, not_found};
+            false;
         {ok, [JObj]} ->
-            format_log(info, "CF_RESP(~p): Retreived callflow for ~p", [self(), To]),
-            {ok, whapps_json:get_value(<<"value">>, JObj)};
+            format_log(info, "CF_RESP(~p): Retreived callflow for ~p: ~p", [self(), To, JObj]),
+            wh_cache:store({cf_flow, To}, {
+                             whapps_json:get_value(<<"id">>, JObj),
+                             whapps_json:get_value([<<"value">>, <<"flow">>], JObj),
+                             whapps_json:get_value([<<"value">>, <<"account_db">>], JObj)
+                            }, 500),
+            true;
         {error, _}=E ->
             format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p", [self(), E, To]),
-            E
+            false
     end.    
 %%%
 %%%============================================================================
