@@ -31,8 +31,11 @@
             ,cf_pid = undefined :: pid() | undefined              %% PID of the callflow tree processor, who we should pass control back to
             ,cf_responder = undefined :: pid() | undefined        %% PID of the callflow responder that won this route_request
             ,account_db = undefined :: binary()
+            ,flow_id = undefined
+            ,from = <<>>
             ,from_number = <<>>
             ,from_realm = <<>>
+            ,to = <<>>
             ,to_number = <<>>
             ,to_realm = <<>>
             ,route_request = undefined :: json_object() | undefined  %% The initial route request that spawned this call flow

@@ -3,19 +3,19 @@
     ,"language":"javascript"
     ,"views": {
         "listing_by_id": {
-            "map":"function(doc) { if (doc.pvt_type != 'account') return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit([doc._id, t], {'id': doc._id, 'name': doc.name}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit([doc._id, t], {'id': doc._id, 'name': doc.name}); }"
         }
         ,"listing_by_parent": {
-            "map":"function(doc) { if (doc.pvt_type != 'account') return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit(doc._id, {'id': t.slice(-2,-1)[0]}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit(doc._id, {'id': t.slice(-2,-1)[0]}); }"
         }
         ,"listing_by_children": {
-            "map":"function(doc) { if (doc.pvt_type != 'account') return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit([t.slice(-2,-1)[0], t], {'id': doc._id, 'name': doc.name}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit([t.slice(-2,-1)[0], t], {'id': doc._id, 'name': doc.name}); }"
         }
         ,"listing_by_descendants": {
-            "map":"function(doc) { if (doc.pvt_type != 'account') return; var t = doc.pvt_tree.slice(0); t.push(doc._id); for (var i in t) { emit([t[i], t], {'id': doc._id, 'name': doc.name}); } }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); for (var i in t) { emit([t[i], t], {'id': doc._id, 'name': doc.name}); } }"
         },
         "listing_by_api": {
-            "map":"function(doc) { if (doc.pvt_type != 'account') return; emit(doc.pvt_api_key, {'account_id': doc._id, 'api_key': doc.pvt_api_key}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_api_key, {'account_id': doc._id, 'api_key': doc.pvt_api_key}); }"
         }
     }
 }

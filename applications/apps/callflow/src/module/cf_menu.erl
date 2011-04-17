@@ -325,7 +325,17 @@ get_attachment_path(MediaName, #menu{menu_id=Id}, #cf_call{account_db=Db}) ->
       ,Db/binary
       ,$/, Id/binary
       ,$/, MediaName/binary
-      ,"?rev=", (couch_mgr:lookup_doc_rev(Db, Id))/binary>>.   
+      ,"?rev=", (lookup_doc_rev(Db, Id))/binary>>.   
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(lookup_doc_rev/2 :: (Db :: binary(), Id :: binary()) -> binary()).
+lookup_doc_rev(Db, Id) ->
+    {ok, Rev} = couch_mgr:lookup_doc_rev(Db, Id),
+    Rev.
 
 %%--------------------------------------------------------------------
 %% @private
