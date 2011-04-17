@@ -3,10 +3,9 @@
 %% Test the full API using ibrowse to make calls to the rest endpoint
 -export([start_full_test/0]).
 
--import(logger, [format_log/3]).
-
 start_full_test() ->
     ibrowse:start(),
+    logger:start(),
     UrlBase = "http://localhost:8000/v1/accounts",
 
     Headers = [{"X-Auth-Token", "evtsub-test"}
@@ -23,7 +22,7 @@ start_full_test() ->
     PutJSON = get_put_json(<<"directory.auth_req">>, MaxEvents),
     DeleteJSON = get_delete_json(false),
 
-    format_log(info, "GET ~s~n", [UrlBase]),
+    logger:format_log(info, "GET ~s~n", [UrlBase]),
     {ok, "200", _, JSON} = ibrowse:send_req(UrlBase, Headers, get),
     AcctJObj = mochijson2:decode(JSON),
     AcctId = whapps_json:get_value([<<"data">>, 1, <<"id">>], AcctJObj),
@@ -31,49 +30,49 @@ start_full_test() ->
     UrlEvtBase = lists:flatten([UrlBase, "/", whistle_util:to_list(AcctId), "/evtsub/"]),
 
     try
-	format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
+	logger:format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
 
-	format_log(info, "GET ~s~n", [UrlEvtBase]),
+	logger:format_log(info, "GET ~s~n", [UrlEvtBase]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", EmptyEvtSubResp),
 
-	format_log(info, "PUT ~s ~s~n", [UrlEvtBase, PutJSON]),
+	logger:format_log(info, "PUT ~s ~s~n", [UrlEvtBase, PutJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.auth_req">>]}]),
 
-	format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
+	logger:format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
 
-	format_log(info, "PUT ~s ~s~n", [UrlEvtBase, PutJSON]),
+	logger:format_log(info, "PUT ~s ~s~n", [UrlEvtBase, PutJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.auth_req">>]}]),
 
 	PublishNTimes = 25, % divisible by MaxEvents please
 	lists:foreach(fun(_) -> publish_auth_req() end, lists:seq(1, PublishNTimes)),
 
 	CmpFun = fun(V) ->
-			 format_log(info, "Len == ~p~n", [length(V)]),
+			 logger:format_log(info, "Len == ~p~n", [length(V)]),
 			 length(V) =:= MaxEvents
 		 end,
 	
 	lists:foreach(fun(_) ->
-			      format_log(info, "GET ~s~n", [UrlEvtBase]),
+			      logger:format_log(info, "GET ~s~n", [UrlEvtBase]),
 			      true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", [{[<<"data">>, <<"events">>, <<"directory.auth_req">>]
 												      , CmpFun
 												     }])
 		      end, lists:seq(1, PublishNTimes div MaxEvents)),
 
-	format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
+	logger:format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
 
-	format_log(info, "Testing evtsub successful~n", [])
+	logger:format_log(info, "Testing evtsub successful~n", [])
     catch
 	E:R ->
-	    format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
+	    logger:format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
 	    true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
-	    format_log(error, "Error ~p:~p~n~p~n", [E, R, erlang:get_stacktrace()])
+	    logger:format_log(error, "Error ~p:~p~n~p~n", [E, R, erlang:get_stacktrace()])
     end.
 
 verify_resp({_,Code,_,JSON}, Code, Rules) ->
-    format_log(info, "JSON: ~s~n", [JSON]),
+    logger:format_log(info, "JSON: ~s~n", [JSON]),
     JObj = mochijson2:decode(JSON),
     lists:all(
       fun({KeyPath, Fun}) when is_function(Fun) ->
@@ -81,7 +80,7 @@ verify_resp({_,Code,_,JSON}, Code, Rules) ->
 	      Fun(V);
 	 ({KeyPath, Result}) ->
 	      V = whapps_json:get_value(KeyPath, JObj),
-	      format_log(info, "~p: Is ~p == ~p~n", [KeyPath, V, Result]),
+	      logger:format_log(info, "~p: Is ~p == ~p~n", [KeyPath, V, Result]),
 	      V == Result
       end, Rules);
 verify_resp(_, _, _) -> false.
