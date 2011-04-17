@@ -17,6 +17,7 @@
 %% ===================================================================
 
 start_link() ->
+    wh_cache:start_link(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 -spec(start_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
