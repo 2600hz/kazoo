@@ -640,7 +640,7 @@ fix_header(RD, "Location"=H, Url) ->
 	       80 -> "";
 	       P -> [":", whistle_util:to_list(P)]
 	   end,
-    Host = ["http://", string:join(wrq:host_tokens(RD), "."), Port, "/"],
+    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
 
     %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
     PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),

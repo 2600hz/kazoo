@@ -153,7 +153,7 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 save(#cb_context{db_name=undefined}=Context) ->
     crossbar_util:response_db_missing(Context);
 save(#cb_context{db_name=DB, doc=Doc}=Context) ->
-    Timestamp = whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(calendar:universal_time())),
+    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     Doc1 = case whapps_json:get_value(<<"pvt_created">>, Doc) of
                undefined ->                                    
                    D1 = whapps_json:set_value(<<"pvt_created">>, Timestamp, Doc),
@@ -168,12 +168,20 @@ save(#cb_context{db_name=DB, doc=Doc}=Context) ->
             crossbar_util:response_datastore_timeout(Context);
 	{error, conflict} ->
 	    crossbar_util:response_conflicting_docs(Context);
-	{ok, Doc1} ->
+	{ok, JObj} when Context#cb_context.req_verb =:= <<"put">> ->
             Context#cb_context{
-                 doc=Doc1
+                 doc=JObj
                 ,resp_status=success
-                ,resp_data=public_fields(Doc1)
-                ,resp_etag=rev_to_etag(Doc1)
+                ,resp_headers=[{"Location", whapps_json:get_value(<<"_id">>, JObj)} | Context#cb_context.resp_headers]
+                ,resp_data=[]
+                ,resp_etag=[]
+            };
+	{ok, JObj} ->
+            Context#cb_context{
+                 doc=JObj
+                ,resp_status=success
+                ,resp_data=public_fields(JObj)
+                ,resp_etag=rev_to_etag(JObj)
             };
         _Else ->
             format_log(error, "CB_DOC.save: Unexpected return from datastore: ~p~n", [_Else]),
@@ -223,13 +231,16 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 delete(#cb_context{db_name=undefined}=Context) ->
     crossbar_util:response_db_missing(Context);
 delete(#cb_context{db_name=DB, doc=Doc}=Context) ->
-    case couch_mgr:del_doc(DB, Doc) of
+    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+    D1 = whapps_json:set_value(<<"pvt_deleted">>, true, Doc),
+    D2 = whapps_json:set_value(<<"pvt_modified">>, Timestamp, D1),
+    case couch_mgr:save_doc(DB, D2) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
 	{ok, _Doc} ->
 	    format_log(info, "CB_DOC.delete: result: ~p~n", [_Doc]),
             Context#cb_context{
-	      doc=undefined
+	       doc=undefined
 	      ,resp_status=success
 	      ,resp_data=[]
 	     };
