@@ -1,0 +1,4 @@
+*.beam
+priv/*.so
+priv/lib/*
+c_src/*.o
