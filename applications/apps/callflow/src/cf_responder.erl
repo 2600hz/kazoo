@@ -69,7 +69,18 @@ init([]) ->
 %
 % @end
 %------------------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
+handle_call({find_flow, To}, From, State) ->
+    spawn(fun() ->                  
+                  case hunt_to(To) orelse hunt_no_match(To) of
+                      true ->
+                          {ok, {_, Flow, _}} = wh_cache:fetch({cf_flow, To}),
+                          gen_server:reply(From, {ok, Flow});
+                      false ->
+                          gen_server:reply(From, {error, not_found})
+                  end
+          end),
+    {noreply, State};
+handle_call(_Request, _From, State) ->   
     {reply, ok, State}.
 
 %------------------------------------------------------------------------------
@@ -93,10 +104,10 @@ handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
     Parent = self(),
-%%    spawn(fun() ->
+    spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-                  handle_req(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State),
-%%          end),
+                  handle_req(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State)
+          end),
     {noreply, State};
 handle_info(_Info, State) ->
    {noreply, State}.
