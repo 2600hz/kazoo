@@ -33,7 +33,8 @@
 -define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
 -define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
--define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
+-define(TS_USAGE_PREFIX, <<"ts_usage">>).
+
 -define(EOD, end_of_day).
 -define(ACTIVE_CALL_TIMEOUT, 1000).
 
@@ -125,9 +126,10 @@ release_trunk(Acct, CallID, Amt) ->
 init(_) ->
     {_, {H,Min,S}} = calendar:universal_time(),
 
-    DB = todays_db_name(),
+    DB = ts_util:todays_db_name(?TS_USAGE_PREFIX),
 
     logger:format_log(info, "TS_ACCTMGR: Starting DB ~p~n", [DB]),
+    couch_mgr:db_create(DB),
 
     MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
     logger:format_log(info, "TS_ACCTMGR: ms till Midnight: ~p (~p:~p:~p)~n", [MillisecsToMidnight, H, Min, S]),
@@ -270,7 +272,7 @@ handle_info(timeout, #state{current_write_db=WDB}=S) ->
     spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB, Self) end),
     {noreply, S};
 handle_info(?EOD, S) ->
-    DB = todays_db_name(),
+    DB = ts_util:todays_db_name(?TS_USAGE_PREFIX),
 
     {ok, _} = timer:send_after(?MILLISECS_PER_DAY, ?EOD),
 
@@ -341,11 +343,6 @@ load_accounts_from_ts(DB, Srv) ->
 	    AcctIds = lists:map(fun({struct, A}) -> props:get_value(<<"id">>, A) end, Accts),
 	    lists:foreach(fun(Id) -> load_account(Id, DB, Srv) end, AcctIds)
     end.
-
--spec(todays_db_name/0 :: () -> binary()).
-todays_db_name() ->
-    {{Y,M,D}, _} = calendar:universal_time(),
-    iolist_to_binary(io_lib:format("ts_usage_~4B_~2..0B_~2..0B", [Y,M,D])).
 
 -spec(has_credit/3 :: (DB :: binary(), AcctId :: binary(), Amt :: integer() | float()) -> boolean()).
 has_credit(DB, AcctId, Amt) ->
@@ -482,18 +479,20 @@ transfer_acct(AcctId, RDB, WDB) ->
     update_account(AcctId, Bal).
 
 transfer_active_calls(AcctId, RDB, WDB) ->
-    case couch_mgr:get_results(RDB, {"trunks", "trunk_status"}, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
+    case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
 	{ok, []} -> logger:format_log(info, "TS_ACCTMGR.trans_active: No active for ~p~n", [AcctId]);
 	{ok, Calls} when is_list(Calls) ->
 	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, <<"active">>}] }) ->
-				  case is_call_active(CallId) of
-				      true ->
-					  NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
-					  logger:format_log(info, "TS_ACCTMGR.trans_active: Moving ~p over~n", [CallId]),
-					  couch_mgr:save_doc(WDB, {struct, NewDoc});
-				      false ->
-					  release_trunk_error(AcctId, CallId, RDB)
-				  end;
+				  spawn(fun() ->
+						case is_call_active(CallId) of
+						    true ->
+							NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
+							logger:format_log(info, "TS_ACCTMGR.trans_active: Moving ~p over~n", [CallId]),
+							couch_mgr:save_doc(WDB, {struct, NewDoc});
+						    false ->
+							release_trunk_error(AcctId, CallId, RDB)
+						end
+					end);
 			     (_) -> ok
 			  end, Calls)
     end.
@@ -602,9 +601,9 @@ release_trunk_error(AcctId, CallID, DB) ->
 	non_existant -> logger:format_log(info, "TS_ACCTMGR.release_error: Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
 	flat_rate -> couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, flat_rate));
 	per_min ->
-	    Amt = case ts_cdr:fetch_cdr(CallID) of
+	    Amt = case ts_cdr:fetch_cdr(binary:replace(DB, ?TS_USAGE_PREFIX, ?TS_CDR_PREFIX), CallID) of
 		      {error, not_found} -> 0;
-		      {ok, {struct, CDR}} -> props:get_value(<<"Billing-Seconds">>, CDR, 0)
+		      {ok, CDR} -> whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, CDR, 0))
 		  end,
 	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, per_min, Amt))
     end.

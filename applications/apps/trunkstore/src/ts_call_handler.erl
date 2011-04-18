@@ -58,6 +58,7 @@
 		,call_status = up :: up | down
                 ,route_flags = #route_flags{} :: #route_flags{}
 		,leg_number = 1 :: integer() %% a-leg is 1, b-leg is 2, each transfer increments leg number
+                ,todays_db = <<>> :: binary()
 	       }).
 
 %%%===================================================================
@@ -104,6 +105,7 @@ init([CallID, RouteFlags, LegNumber]) ->
 		,route_flags = RouteFlags
 		,start_time = whistle_util:current_tstamp()
 		,leg_number = LegNumber
+		,todays_db = ts_util:todays_db_name(?TS_CDR_PREFIX)
 	       }, 0}.
 
 %%--------------------------------------------------------------------
@@ -146,8 +148,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{callid=CallID, amqp_q=Q}=S) when not is_binary(Q) ->
+handle_info(timeout, #state{callid=CallID, amqp_q=Q, todays_db=DB}=S) when not is_binary(Q) ->
     NewQ = get_amqp_queue(CallID),
+    couch_mgr:db_create(DB),
     {noreply, S#state{amqp_q=NewQ}, 1000};
 
 handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
@@ -184,7 +187,7 @@ handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref,
 handle_info(#'basic.consume_ok'{}, #state{call_activity_ref=Ref}=S) ->
     _ = stop_call_activity_ref(Ref),
     {noreply, S#state{call_activity_ref=call_activity_ref()}};
-handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags, call_activity_ref=Ref, leg_number=LegNo}=S) ->
+handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flags=Flags, call_activity_ref=Ref, leg_number=LegNo, todays_db=DB}=S) ->
     logger:format_log(info, "TS_CALL(~p): Recv off amqp: ~s~n", [self(), Payload]),
     _ = stop_call_activity_ref(Ref),
 
@@ -196,7 +199,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 			  logger:format_log(info, "TS_CALL(~p): Scenario(~p) for ~p~n", [self(), Flags#route_flags.scenario, Flags#route_flags.callid]),
 			  true = whistle_api:call_cdr_v(JObj),
 			  close_down_call(JObj, Flags, LegNo),
-			  ts_cdr:store_cdr(JObj, Flags)
+			  ts_cdr:store_cdr(JObj, Flags, DB)
 		  end),
 	    {stop, normal, S};
 	<<"route_win">> ->
