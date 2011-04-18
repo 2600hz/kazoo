@@ -27,8 +27,6 @@ init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   , [
 	      ?CHILD(ts_call_sup, supervisor)
-	      ,?CHILD(wh_cache, worker)
-	      ,?CHILD(wh_timer, worker)
 	      ,?CHILD(ts_responder_sup, supervisor)
 	      ,?CHILD(ts_acctmgr, worker)
 	      ,?CHILD(ts_credit, worker)

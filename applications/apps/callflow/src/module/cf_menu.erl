@@ -152,7 +152,7 @@ is_callflow_child(Digits, _, #cf_call{cf_pid=CFPid}) ->
 %%--------------------------------------------------------------------
 -spec(is_hunt_enabled/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).                                
 is_hunt_enabled(_, #menu{hunt=Hunt}, _) ->
-    Hunt.
+    whistle_util:is_true(Hunt).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,10 +205,10 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 -spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).                                
 hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{from_realm=To, cf_pid=CFPid, cf_responder=CFRPid}=Call) ->
     case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, To/binary>>}, 2000) of
-        {ok, JObj} ->
+        {ok, Flow} ->
             cf_call_command:flush_dtmf(Call),
             b_play(Prompts#prompts.hunt_transfer, Call),
-            CFPid ! {branch, whapps_json:get_value(<<"flow">>, JObj)},
+            CFPid ! {branch, Flow},
             true;
         _ ->
             false
