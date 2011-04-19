@@ -104,11 +104,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}, {<<"accounts">>, [_]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}, {<<"accounts">>, [_]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
@@ -120,23 +120,23 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.api_auth">>, Pay
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.api_auth">>, Payload}, State) ->
-    spawn(fun() ->
+    spawn(fun() ->                  
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.api_auth">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.api_auth">>, [RD, Context| []]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Pid ! {binding_result, true, [RD, validate(Params, Context), Params]}
-	 end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Pid ! {binding_result, true, [RD, validate(RD, Context), []]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
-                Pid ! {binding_result, true, [RD, create_token(RD, Context), Params]}
+                Pid ! {binding_result, true, [RD, create_token(Context), Params]}
 	 end),
     {noreply, State};
 
@@ -206,7 +206,7 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
-    {true, ['PUT']};
+    {true, ['GET','PUT']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -234,36 +234,42 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    logger:format_log(info, "API AUTH : ~p", [whapps_json:get_value(<<"api-key">>, JObj)]),
-    authorize_user(Context, 
-                   whapps_json:get_value(<<"api-key">>, JObj)
-                  );
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the credentials are valid based on the
-%% provided hash method
-%%
-%% Failure here returns 401
-%% @end
-%%--------------------------------------------------------------------
--spec(authorize_user/2 :: (Context :: #cb_context{}, ApiKey :: binary()) -> #cb_context{}).
-authorize_user(Context, ApiKey) when not is_binary(ApiKey) ->
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
-authorize_user(Context, <<"">>) ->
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
-authorize_user(Context, ApiKey) ->
-    case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
-        #cb_context{resp_status=success, doc=[JObj]} when JObj =/= []->
-            Context#cb_context{resp_status=success, doc=JObj};
+-spec(validate/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate(RD, #cb_context{req_verb = <<"get">>, req_nouns=[{<<"api_auth">>,[]}, {<<"accounts">>, [AccountId]}]}=Context) ->
+    case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, AccountId}], Context#cb_context{db_name=?AGG_DB}) of
+        #cb_context{resp_status=success, doc=[JObj]} when JObj =/= [] ->
+            A = whapps_json:get_value(<<"value">>, JObj),
+            B = whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))),            
+            R = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(<<A/binary, $:, B/binary>>))),
+            wh_cache:store({api_auth, wrq:peer(RD)}, {R, AccountId}, 20),
+            crossbar_util:response({struct, [{<<"nonce">>, B}]}, Context);
         _ ->
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
-    end.
+    end;
+validate(RD, #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+    R = whapps_json:get_value(<<"response">>, JObj),
+    logger:format_log(info, "FETCHED ~p", [wh_cache:fetch({api_auth, wrq:peer(RD)})]),
+    case wh_cache:fetch({api_auth, wrq:peer(RD)}) of
+        {ok, {R, AccountId}} ->
+            Token = {struct, [                      
+                                {<<"account_id">>, AccountId}
+                               ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                               ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                               ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
+                               ,{<<"user-agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                               ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
+                               ,{<<"accept-charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                               ,{<<"accept-endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                               ,{<<"accept-language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                               ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                               ,{<<"keep-alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                             ]},            
+            crossbar_util:response({struct, []}, Context#cb_context{doc=Token});
+        _ ->
+            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+    end;
+validate(_, Context) ->
+    crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -271,28 +277,10 @@ authorize_user(Context, ApiKey) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec(create_token/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-create_token(RD, #cb_context{doc=[JObj]}=Context) ->
-    create_token(RD, Context#cb_context{doc=JObj});
-create_token(RD, #cb_context{doc=JObj}=Context) ->
-    Value = whapps_json:get_value(<<"value">>, JObj),
-    Token = {struct, [                      
-                       {<<"account_id">>, whapps_json:get_value(<<"account_id">>, Value)}
-                      ,{<<"user_id">>, <<"">>}
-                      ,{<<"api_id">>, whapps_json:get_value(<<"api_key">>, Value)}
-                      ,{<<"secret">>, <<"">>}
-                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user-agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                      ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept-charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept-endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept-language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                      ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep-alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-                     ]},
-    case couch_mgr:save_doc(?TOKEN_DB, Token) of
+-spec(create_token/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_token(#cb_context{doc=JObj}=Context) ->
+    logger:format_log(info, "Test ~p", [JObj]),
+    case couch_mgr:save_doc(?TOKEN_DB, JObj) of
         {ok, Doc} ->
             AuthToken = whapps_json:get_value(<<"_id">>, Doc),
             crossbar_util:response([], Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
