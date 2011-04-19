@@ -248,7 +248,6 @@ validate(RD, #cb_context{req_verb = <<"get">>, req_nouns=[{<<"api_auth">>,[]}, {
     end;
 validate(RD, #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
     R = whapps_json:get_value(<<"response">>, JObj),
-    logger:format_log(info, "FETCHED ~p", [wh_cache:fetch({api_auth, wrq:peer(RD)})]),
     case wh_cache:fetch({api_auth, wrq:peer(RD)}) of
         {ok, {R, AccountId}} ->
             Token = {struct, [                      
@@ -279,7 +278,6 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(create_token/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_token(#cb_context{doc=JObj}=Context) ->
-    logger:format_log(info, "Test ~p", [JObj]),
     case couch_mgr:save_doc(?TOKEN_DB, JObj) of
         {ok, Doc} ->
             AuthToken = whapps_json:get_value(<<"_id">>, Doc),
