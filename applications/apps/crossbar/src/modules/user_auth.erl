@@ -226,7 +226,6 @@ resource_exists([]) ->
 resource_exists(_) ->
     {false, []}.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -256,25 +255,25 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(authorize_user/3 :: (Context :: #cb_context{}, Credentials :: binary(), Method :: binary()) -> #cb_context{}).
 authorize_user(Context, Credentials, _) when not is_binary(Credentials) ->
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
+    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 authorize_user(Context, <<"">>, _) ->
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
+    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 authorize_user(Context, Credentials, <<"md5">>) ->
     case crossbar_doc:load_view(?MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=[JObj]} when JObj =/= []->
             Context#cb_context{resp_status=success, doc=JObj};
         _ ->
-            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, Credentials, <<"sha">>) ->    
     case crossbar_doc:load_view(?SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=JObj}=C1 when JObj =/= []->
             C1;
         _ ->
-            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, _, _) ->
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context).    
+    crossbar_util:response(error, <<"invalid credentials">>, 401, Context).    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -287,7 +286,7 @@ create_token(RD, #cb_context{doc=[JObj]}=Context) ->
     create_token(RD, Context#cb_context{doc=JObj});
 create_token(RD, #cb_context{doc=JObj}=Context) ->
     Value = whapps_json:get_value(<<"value">>, JObj),
-    Token = {struct, [                      
+    Token = {struct, [
                        {<<"account_id">>, whapps_json:get_value(<<"account_id">>, Value)}
                       ,{<<"user_id">>, whapps_json:get_value(<<"id">>, Value)}
                       ,{<<"api_id">>, <<"">>}
@@ -308,5 +307,5 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
             AuthToken = whapps_json:get_value(<<"_id">>, Doc),
             crossbar_util:response([], Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, _} ->
-            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end.
