@@ -77,16 +77,16 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec(any/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+-spec(any/1 :: (Res :: proplist()) -> boolean()).
 any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 
--spec(all/1 :: (Res :: list(tuple(boolean(), term()))) -> boolean()).
+-spec(all/1 :: (Res :: proplist()) -> boolean()).
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec(failed/1 :: (Res :: list(tuple(boolean(), term()))) -> list()).
+-spec(failed/1 :: (Res :: proplist()) -> proplist()).
 failed(Res) when is_list(Res) -> lists:filter(fun filter_out_succeeded/1, Res).
 
--spec(succeeded/1 :: (Res :: list(tuple(boolean(), term()))) -> list()).
+-spec(succeeded/1 :: (Res :: proplist()) -> proplist()).
 succeeded(Res) when is_list(Res) -> lists:filter(fun filter_out_failed/1, Res).
 
 %%--------------------------------------------------------------------
