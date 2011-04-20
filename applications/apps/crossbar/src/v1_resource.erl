@@ -454,7 +454,7 @@ does_resource_exist(_RD, _Context) ->
 %% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
--spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+-spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
 is_authentic(RD, Context)->
     Event = <<"v1_resource.authenticate">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
@@ -471,7 +471,7 @@ is_authentic(RD, Context)->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+-spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
 is_permitted(RD, Context)->
     Event = <<"v1_resource.authorize">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of

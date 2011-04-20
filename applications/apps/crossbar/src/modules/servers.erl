@@ -129,13 +129,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, #c
                   crossbar_util:binding_heartbeat(Pid),
                   Doc1 = whapps_json:set_value(<<"pvt_deploy_status">>, <<"running">>, Doc0),
                   case crossbar_doc:save(Context#cb_context{doc=Doc1}) of
-                      #cb_context{resp_status=success}=Context1 ->
-                          spawn(fun() -> execute_deploy_cmd(Context1, Params) end),
-                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data={struct, []}}, Params]};
-                      Else ->
-                          Pid ! {binding_result, true, [RD, Else, Params]}
-                  end,
-                  Pid ! {binding_result, true, [RD, Context, Params]}
+		      #cb_context{resp_status=success}=Context1 ->
+			  spawn(fun() -> execute_deploy_cmd(Context1, Params) end),
+			  Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data={struct, []}}, Params]};
+		      Else ->
+			  Pid ! {binding_result, true, [RD, Else, Params]}
+		  end
 	  end),
     {noreply, State};
 

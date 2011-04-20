@@ -75,7 +75,7 @@ update_all_accounts(File) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> ok | error).
+-spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     {ok, Databases} = couch_mgr:db_info(),
     BaseReplicate = [{<<"target">>, TargetDb}
@@ -231,7 +231,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #c
                                                                                       }, Params]},
                                   couch_mgr:load_doc_from_file(DbName, crossbar, ?VIEW_FILE),
                                   Responses = crossbar_bindings:map(<<"account.created">>, DbName),
-                                  [couch_mgr:load_doc_from_file(DbName, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
+                                  _ = [couch_mgr:load_doc_from_file(DbName, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
                                   replicate_from_account(get_db_name(DbName, unencoded), ?AGG_DB, ?AGG_FILTER);
                               Else ->
                                   logger:format_log(info, "ACCTS(~p): Other PUT resp: ~p: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
@@ -419,8 +419,8 @@ load_account_summary(DocId, Context) ->
 -spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_account(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
               doc=set_private_fields(JObj)
@@ -448,8 +448,8 @@ load_account(DocId, Context) ->
 -spec(update_account/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_account(DocId, #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             crossbar_doc:load_merge(DocId, Data, Context)
     end.
@@ -568,10 +568,9 @@ is_valid_parent(_JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
-
 
 %%--------------------------------------------------------------------
 %% @private

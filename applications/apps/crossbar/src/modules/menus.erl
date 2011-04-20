@@ -278,8 +278,8 @@ load_menu_summary(Context) ->
 -spec(create_menu/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_menu(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
                  doc=whapps_json:set_value(<<"pvt_type">>, <<"menu">>, JObj)
@@ -307,8 +307,8 @@ load_menu(DocId, Context) ->
 -spec(update_menu/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_menu(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -330,6 +330,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
