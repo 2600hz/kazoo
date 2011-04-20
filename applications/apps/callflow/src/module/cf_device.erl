@@ -12,9 +12,6 @@
 
 -export([handle/2]).
 
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
-
 -import(cf_call_command, [b_bridge/3, wait_for_bridge/1, wait_for_unbridge/0]).
 
 %%--------------------------------------------------------------------
@@ -25,13 +22,13 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
     {ok, Endpoint} = get_endpoint(Data, Call#cf_call.account_db),
     Timeout = whapps_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     case b_bridge([Endpoint], Timeout, Call) of
         {ok, _} ->
-            wait_for_unbridge(),
+            _ = wait_for_unbridge(),
             CFPid ! { stop };
         {error, _} ->
             CFPid ! { continue }
@@ -45,8 +42,8 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_endpoint/2 :: (JObj :: json_object(), Db :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
-get_endpoint({struct, Props}, Db) ->
-    Id = get_value(<<"id">>, Props),
+get_endpoint({struct, _}=EP, Db) ->
+    Id = whapps_json:get_value(<<"id">>, EP),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Endpoint = [
@@ -57,11 +54,11 @@ get_endpoint({struct, Props}, Db) ->
                         ,{<<"Route">>, whapps_json:get_value([<<"sip">>, <<"route">>], JObj)}
                         ,{<<"Ignore-Early-Media">>, whapps_json:get_value([<<"media">>, <<"ignore-early-media">>], JObj)}
                         ,{<<"Bypass-Media">>, whapps_json:get_value([<<"media">>, <<"bypass-media">>], JObj)}
-                        ,{<<"Endpoint-Progress-Timeout">>, get_value([<<"media">>, <<"progress-timeout">>], Props, <<"6">>)}
+                        ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value([<<"media">>, <<"progress-timeout">>], EP, <<"6">>)}
                         ,{<<"Codecs">>, whapps_json:get_value([<<"media">>, <<"codecs">>], JObj)}
                     ],
-            {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
+            {ok, {struct, [ KV || {_, V}=KV <- Endpoint, V =/= undefined ]} };
         {error, _}=E ->
-            format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Id, Db, E]),
+            logger:format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Id, Db, E]),
            E
     end.

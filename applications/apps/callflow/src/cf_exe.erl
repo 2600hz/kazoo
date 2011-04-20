@@ -14,8 +14,6 @@
 %% API
 -export([start/2]).
 
--import(logger, [format_log/3]).
-
 -import(cf_call_command, [hangup/1]).
 
 -include("callflow.hrl").
@@ -23,7 +21,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Sets up the call flow executioner for this call, and starts 
+%% Sets up the call flow executioner for this call, and starts
 %% execution of the first node
 %% @end
 %%--------------------------------------------------------------------
@@ -43,22 +41,22 @@ start(Call, Flow) ->
 -spec(next/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> ok).
 next(Call, Flow) ->
     Module = <<"cf_", (whapps_json:get_value(<<"module">>, Flow))/binary>>,
-    Data = whapps_json:get_value(<<"data">>, Flow),   
+    Data = whapps_json:get_value(<<"data">>, Flow),
     try list_to_existing_atom(binary_to_list(Module)) of
         CF_Module ->
-            format_log(info, "CF EXECUTIONER (~p): Executing ~p...", [self(), Module]),
+            logger:format_log(info, "CF EXECUTIONER (~p): Executing ~p...", [self(), Module]),
             wait(Call, Flow, spawn_link(CF_Module, handle, [Data, Call]))
     catch
         _:_ ->
-            format_log(error, "CF EXECUTIONER (~p): Module ~p doesn't exist!", [self(), Module]),
+            logger:format_log(error, "CF EXECUTIONER (~p): Module ~p doesn't exist!", [self(), Module]),
             self() ! {continue, <<"_">>},
             wait(Call, Flow, undefined)
-    end.    
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Waits for the module handling the current call flow node to  reply, 
+%% Waits for the module handling the current call flow node to  reply,
 %% unexpectly die, or timeout and advance the call flow accordingly
 %% @end
 %%--------------------------------------------------------------------
@@ -66,39 +64,39 @@ next(Call, Flow) ->
 wait(Call, Flow, Pid) ->
    receive
        {'EXIT', Pid, Reason} when Reason =/= normal ->
-           format_log(info, "CF EXECUTIONER (~p): Module died unexpectedly (~p)", [self(), Reason]),
+           logger:format_log(info, "CF EXECUTIONER (~p): Module died unexpectedly (~p)", [self(), Reason]),
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
-       {continue} -> 
-           self() ! {continue, <<"_">>}, 
+       {continue} ->
+           self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue, Key} ->
-           format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
+           logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
            case whapps_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
-                   format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
+                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
                    hangup(Call);
                {struct, []} ->
-                   format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
+                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
                    hangup(Call);
                NewFlow ->
                    next(Call, NewFlow)
            end;
-       {attempt} when not is_pid(Pid) -> 
-           self() ! {continue, <<"_">>}, 
+       {attempt} when not is_pid(Pid) ->
+           self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
-       {attempt, Key} when not is_pid(Pid) -> 
-           self() ! {continue, Key}, 
+       {attempt, Key} when not is_pid(Pid) ->
+           self() ! {continue, Key},
            wait(Call, Flow, Pid);
-       {attempt} -> 
-           self() ! {attempt, <<"_">>}, 
+       {attempt} ->
+           self() ! {attempt, <<"_">>},
            wait(Call, Flow, Pid);
        {attempt, Key} ->
            case whapps_json:get_value([<<"children">>, Key], Flow) of
-               undefined -> 
+               undefined ->
                    Pid ! {attempt_resp, {error, undefined}},
                    wait(Call, Flow, Pid);
-               {struct, []} -> 
+               {struct, []} ->
                    Pid ! {attempt_resp, {error, empty}},
                    wait(Call, Flow, Pid);
                NewFlow ->
@@ -108,35 +106,32 @@ wait(Call, Flow, Pid) ->
        {branch, NewFlow} ->
            next(Call, NewFlow);
        {heartbeat} ->
-           wait(Call, Flow, Pid); 
+           wait(Call, Flow, Pid);
        {stop} ->
-           format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]),
+           logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]),
            hangup(Call);
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
-           if 
-               is_pid(Pid) -> Pid ! {amqp_msg, Msg};
-               true -> ok
-           end,           
+           is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
            case whapps_json:get_value(<<"Event-Name">>, Msg) of
                <<"CHANNEL_HANGUP_COMPLETE">> ->
                    receive
                        {_, #amqp_msg{props = Props, payload = Payload}}=Message when Props#'P_basic'.content_type == <<"application/json">> ->
-                           self() ! Message, 
-                           wait(Call, Flow, Pid);                          
+                           self() ! Message,
+                           wait(Call, Flow, Pid);
                        {heartbeat} ->
                            self() ! {heartbeat},
                            wait(Call, Flow, Pid)
                    after
                        1000 ->
-                           format_log(info, "CF EXECUTIONER (~p): Channel was hung up", [self()])
+                           logger:format_log(info, "CF EXECUTIONER (~p): Channel was hung up", [self()])
                    end;
                _Else ->
                    wait(Call, Flow, Pid)
            end
    after
-       120000 -> 
-           format_log(info, "CF EXECUTIONER (~p): Callflow timeout!", [self()]),
+       120000 ->
+           logger:format_log(info, "CF EXECUTIONER (~p): Callflow timeout!", [self()]),
            hangup(Call)
    end.
 
@@ -146,14 +141,10 @@ wait(Call, Flow, Pid) ->
 %% Initializes a AMQP queue and consumer to recieve call events
 %% @end
 %%--------------------------------------------------------------------
--spec(init_amqp/1 :: (Call :: #cf_call{}) -> binary()).                          
+-spec(init_amqp/1 :: (Call :: #cf_call{}) -> binary()).
 init_amqp(#cf_call{call_id=CallId}) ->
     AmqpQ = amqp_util:new_queue(),
     amqp_util:bind_q_to_callevt(AmqpQ, CallId),
     amqp_util:bind_q_to_targeted(AmqpQ),
     amqp_util:basic_consume(AmqpQ),
-    AmqpQ.    
-
-%%%============================================================================
-%%%== END =====
-%%%============================================================================
+    AmqpQ.

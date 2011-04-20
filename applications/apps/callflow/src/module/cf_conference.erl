@@ -12,11 +12,8 @@
 
 -export([handle/2]).
 
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
-
 -import(cf_call_command, [
-                          answer/1, b_conference/5, b_play/2, hangup/1, 
+                          answer/1, b_conference/5, b_play/2, hangup/1,
                           b_play_and_collect_digits/6, wait_for_dtmf/1
                          ]).
 
@@ -25,7 +22,7 @@
                               ]).
 
 -record(prompts, {
-           greeting = <<"/system_media/conf-welcome">> 
+           greeting = <<"/system_media/conf-welcome">>
           ,request_pin = <<"/system_media/conf-pin">>
           ,incorrect_pin = <<"/system_media/conf-bad-pin">>
           ,max_pin_tries = <<"shout://translate.google.com/translate_tts?tl=en&q=You+have+reached+the+maximum+number+of+entry+attempts!+Goodbye.">>
@@ -35,14 +32,14 @@
           ,announce_join = <<"tone_stream://%(200,0,500,600,700)">>
           ,announce_leave = <<"tone_stream://%(500,0,300,200,100,50,25)">>
           ,muted = <<"/system_media/conf-muted">>
-          ,unmuted = <<"/system_media/conf-unmuted">>          
+          ,unmuted = <<"/system_media/conf-unmuted">>
           ,deaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Silenced.">>
-          ,undeaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Audiable.">>          
+          ,undeaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Audiable.">>
          }).
 
 -record(control, {
            mute = <<>>
-          ,unmute = <<>>     
+          ,unmute = <<>>
           ,deaf = <<>>
           ,undeaf = <<>>
           ,toggle_mute = <<"0">>
@@ -63,25 +60,24 @@
           ,moderator_join_deaf = <<"false">>
           ,max_members = 0
           ,require_moderator = <<"false">>
-          ,wait_for_moderator = <<"false">>    
+          ,wait_for_moderator = <<"false">>
           ,prompts = #prompts{}
-          ,control = #control{} 
+          ,control = #control{}
          }).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Entry point for this module, attempts to call an endpoint as defined
-%% in the Data payload.  Returns continue if fails to connect or 
+%% in the Data payload.  Returns continue if fails to connect or
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    Conf = update_members(
-             get_conference_profile(Data, Call#cf_call.account_db), Call),
+    Conf = update_members(get_conference_profile(Data, Call#cf_call.account_db), Call),
     answer(Call),
-    play_conference_name(Conf, Call),
+    _ = play_conference_name(Conf, Call),
     case check_pin(Conf, Call, 1) of
         member ->
             join_conference(Conf, Call, member),
@@ -91,7 +87,7 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
         moderator ->
             join_conference(Conf, Call, moderator),
             caller_controls(Conf, Call),
-            announce_leave(Conf, Call),                
+            announce_leave(Conf, Call),
             CFPid ! {continue};
         stop ->
             CFPid ! {stop}
@@ -106,13 +102,13 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %%--------------------------------------------------------------------
 -spec(join_conference/3 :: (Conf :: #conf{}, Call :: #cf_call{}, Type :: member|moderator) -> ok).
 join_conference(Conf, Call, Type) ->
-    play_conference_count(Conf, Call),
-    case Type of 
-        member ->
-            b_conference(Conf#conf.id, Conf#conf.member_join_muted, Conf#conf.member_join_deaf, <<"false">>, Call);
-        moderator ->
-            b_conference(Conf#conf.id, Conf#conf.moderator_join_muted, Conf#conf.moderator_join_deaf, <<"true">>, Call)
-    end,
+    _ = play_conference_count(Conf, Call),
+    _ = case Type of
+	    member ->
+		b_conference(Conf#conf.id, Conf#conf.member_join_muted, Conf#conf.member_join_deaf, <<"false">>, Call);
+	    moderator ->
+		b_conference(Conf#conf.id, Conf#conf.moderator_join_muted, Conf#conf.moderator_join_deaf, <<"true">>, Call)
+	end,
     announce_join(Conf, Call).
 
 %%--------------------------------------------------------------------
@@ -129,13 +125,13 @@ play_conference_name(#conf{prompts=Prompts}, Call) ->
 %% @private
 %% @doc
 %% Request the conference pin number from the caller, and determines
-%% if the pin is for a member or moderator.  If the caller fails to 
+%% if the pin is for a member or moderator.  If the caller fails to
 %% provide a valid pin within max_pin_tries the call is hungup
 %% @end
 %%--------------------------------------------------------------------
 -spec(check_pin/3 :: (Conf :: #conf{}, Call :: #cf_call{}, LoopCount :: integer()) -> member | moderator | stop).
 check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) when LoopCount > Conf#conf.max_pin_tries ->
-    b_play(Prompts#prompts.max_pin_tries, Call),
+    _ = b_play(Prompts#prompts.max_pin_tries, Call),
     stop;
 check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) ->
     case b_play_and_collect_digits(<<"4">>, <<"6">>, Prompts#prompts.request_pin, <<"1">>, <<"5000">>, Call) of
@@ -147,8 +143,8 @@ check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) ->
                     case lists:member(Pin, Conf#conf.moderator_pins) of
                         true ->
                             moderator;
-                        false -> 
-                            b_play(Prompts#prompts.incorrect_pin, Call),
+                        false ->
+                            _ = b_play(Prompts#prompts.incorrect_pin, Call),
                             check_pin(Conf, Call, LoopCount+1)
                     end
             end;
@@ -164,12 +160,12 @@ check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) ->
 %%-------------------------------------------------------------------
 -spec(play_conference_count/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 play_conference_count(#conf{prompts=Prompts, members=Members}, Call) ->
-    case length(Members) of 
+    case length(Members) of
         0 ->
             b_play(Prompts#prompts.alone_enter, Call);
         1 ->
             b_play(Prompts#prompts.single_enter, Call);
-        Count ->            
+        Count ->
             Prompt = io_lib:format(whistle_util:to_list(Prompts#prompts.multiple_enter), [Count]),
             b_play(whistle_util:to_binary(Prompt), Call)
     end.
@@ -180,7 +176,7 @@ play_conference_count(#conf{prompts=Prompts, members=Members}, Call) ->
 %% Plays the conference announce_join media to the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(announce_join/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(announce_join/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 announce_join(#conf{prompts=Prompts, id=ConfId}, Call) ->
     cf_conference_command:play(Prompts#prompts.announce_join, ConfId, Call).
 
@@ -190,7 +186,7 @@ announce_join(#conf{prompts=Prompts, id=ConfId}, Call) ->
 %% Plays the conference announce_leave media to the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(announce_leave/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(announce_leave/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 announce_leave(#conf{prompts=Prompts, id=ConfId}, Call) ->
     cf_conference_command:play(Prompts#prompts.announce_leave, ConfId, Call).
 
@@ -207,7 +203,7 @@ get_conference_profile(Data, Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Default=#conf{},
-            #conf{         
+            #conf{
                  id = Id
                 ,member_pins = whapps_json:get_value(<<"member-pins">>, JObj, [])
                 ,moderator_pins = whapps_json:get_value(<<"moderator-pins">>, JObj, [])
@@ -219,7 +215,7 @@ get_conference_profile(Data, Db) ->
                 ,require_moderator = whapps_json:get_value(<<"require-moderator">>, JObj, Default#conf.require_moderator)
                 ,wait_for_moderator = whapps_json:get_value(<<"wait-for-moderator">>, JObj, Default#conf.wait_for_moderator)
          };
-        _ -> 
+        _ ->
             #conf{}
     end.
 
@@ -249,7 +245,7 @@ caller_controls(#conf{control=Control} = Conf, Call) ->
                     toggle_deaf(Conf, Call);
                 Digit == Control#control.hangup ->
                     cf_call_command:hangup(Call);
-                true -> 
+                true ->
                     ok
             end,
             caller_controls(Conf, Call);
@@ -262,7 +258,7 @@ caller_controls(#conf{control=Control} = Conf, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Mutes or unmutes the conference member belonging to Call, 
+%% Mutes or unmutes the conference member belonging to Call,
 %% depending on the current 'speak' state
 %% @end
 %%--------------------------------------------------------------------
@@ -270,7 +266,7 @@ caller_controls(#conf{control=Control} = Conf, Call) ->
 toggle_mute(Conf, Call) ->
     C1 = update_members(Conf, Call),
     case binary:match(whapps_json:get_value(<<"Status">>, C1#conf.member), <<"speak">>) of
-        nomatch ->                     
+        nomatch ->
             unmute_caller(C1, Call);
         _ ->
             mute_caller(C1, Call)
@@ -287,11 +283,11 @@ toggle_mute(Conf, Call) ->
 toggle_deaf(Conf, Call) ->
     C1 = update_members(Conf, Call),
     case binary:match(whapps_json:get_value(<<"Status">>, C1#conf.member), <<"hear">>) of
-        nomatch ->                     
+        nomatch ->
             undeaf_caller(C1, Call);
         _ ->
             deaf_caller(C1, Call)
-    end.    
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -347,7 +343,7 @@ undeaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
 %% Fetches a list of members in the conference and updates the record
 %% @end
 %%--------------------------------------------------------------------
--spec(update_members/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+-spec(update_members/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> #conf{}).
 update_members(#conf{id=ConfId} = Conf, Call) ->
     C1 = Conf#conf{members = b_members(ConfId, Call)},
     find_call_member(C1, Call).
@@ -359,7 +355,7 @@ update_members(#conf{id=ConfId} = Conf, Call) ->
 %% the record
 %% @end
 %%-------------------------------------------------------------------
--spec(find_call_member/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
+-spec(find_call_member/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> #conf{}).
 find_call_member(Conf, #cf_call{route_request=RR}) ->
     CallId = whapps_json:get_value(<<"Call-ID">>, RR),
     Member = lists:foldr(fun (Member, Acc) ->
