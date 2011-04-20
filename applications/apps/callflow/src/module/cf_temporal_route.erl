@@ -127,7 +127,7 @@ event_date(_, _, _, _, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_date/1 :: (Date :: date()) -> non_neg_integer()).
+-spec(normalize_date/1 :: (Date :: date()) -> date()).
 normalize_date({Y, M, D}) when M =:= 13 ->
     normalize_date({Y + 1, 1, D});
 normalize_date({Y, M, D}) when M > 12 ->
@@ -155,9 +155,9 @@ current_date() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(current_date_in_seconds/0 :: () -> seconds()).
-current_date_in_seconds() ->
-    datetime_to_gregorian_seconds({current_date(), {0, 0, 0}}).
+%% -spec(current_date_in_seconds/0 :: () -> seconds()).
+%% current_date_in_seconds() ->
+%%     datetime_to_gregorian_seconds({current_date(), {0, 0, 0}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,8 +205,8 @@ find_next_weekday(Y1, M1, When, Weekday) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(date_of_dow/4 :: (Year :: non_neg_integer(), Month :: non_neg_integer()
-                       ,DOW :: day_of_week(), Occurance :: integer()) -> non_neg_integer()).
+-spec(date_of_dow/4 :: (Year :: non_neg_integer(), Month :: 2..13
+                       ,DOW :: 1..7, Occurance :: 0..4) -> date()).
 date_of_dow(Year, 1, DOW, Occurance) ->
     date_of_dow(Year - 1, 13, DOW, Occurance);
 date_of_dow(Year, Month, DOW, Occurance) ->
@@ -262,5 +262,41 @@ iso_week_to_gregorian_date({Year, Week}) ->
     gregorian_days_to_date(Days).
 
 %% I don't know what this should be doing!
-iso_week_number({Y, M, _D}) ->
-    {Y, M}.
+iso_week_number(Date) ->
+    case erlang:function_exported(calendar, iso_week_number, 1) of
+	true -> calendar:iso_week_number(Date);
+	false -> our_iso_week_number(Date)
+    end.
+
+%% TAKEN FROM THE R14B02 SOURCE FOR calender.erl
+our_iso_week_number({Year,_Month,_Day}=Date) ->
+    D = calendar:date_to_gregorian_days(Date),
+    W01_1_Year = gregorian_days_of_iso_w01_1(Year),
+    W01_1_NextYear = gregorian_days_of_iso_w01_1(Year + 1),
+    if W01_1_Year =< D andalso D < W01_1_NextYear ->
+	    % Current Year Week 01..52(,53)
+	    {Year, (D - W01_1_Year) div 7 + 1};
+	D < W01_1_Year ->
+	    % Previous Year 52 or 53
+	    PWN = case calender:day_of_the_week(Year - 1, 1, 1) of
+		4 -> 53;
+		_ -> case calendar:day_of_the_week(Year - 1, 12, 31) of
+			4 -> 53;
+			_ -> 52
+		     end
+		end,
+	    {Year - 1, PWN};
+	W01_1_NextYear =< D ->
+	    % Next Year, Week 01
+	    {Year + 1, 1}
+    end.
+
+-spec gregorian_days_of_iso_w01_1(calendar:year()) -> non_neg_integer().
+gregorian_days_of_iso_w01_1(Year) ->
+    D0101 = calendar:date_to_gregorian_days(Year, 1, 1),
+    DOW = calendar:day_of_the_week(Year, 1, 1),
+    if DOW =< 4 ->
+	D0101 - DOW + 1;
+    true ->
+	D0101 + 7 - DOW + 1
+    end.
