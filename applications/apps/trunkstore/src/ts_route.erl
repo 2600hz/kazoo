@@ -205,7 +205,7 @@ find_outbound_route(Flags, ApiJObj) ->
 	    logger:format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), _A, _B]),
 	    logger:format_log(error, "TS_ROUTE(~p): Stacktrace: ~p~n", [self(), erlang:get_stacktrace()]),
 	    _ = ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid, 0),
-	    response(404, ApiJObj, Flags)
+	    response(500, ApiJObj, Flags)
     end.
 
 -spec(route_over_carriers/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).

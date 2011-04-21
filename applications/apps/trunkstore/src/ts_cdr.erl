@@ -11,9 +11,37 @@
 %%%-------------------------------------------------------------------
 -module(ts_cdr).
 
--export([store_cdr/3, fetch_cdr/2]).
+-export([start_link/0, store_cdr/3, fetch_cdr/2]).
 
 -include("ts.hrl").
+
+start_link() ->
+    proc_lib:spawn_link(fun() -> cdr_init() end).
+
+cdr_init() ->
+    {_, {H,Min,S}} = calendar:universal_time(),
+    MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
+    {ok, _} = timer:send_after(MillisecsToMidnight, ?EOD),
+
+    create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
+
+    cdr_loop().
+
+cdr_loop() ->
+    receive
+	?EOD ->
+	    create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
+	    {ok, _} = timer:send_after(?MILLISECS_PER_DAY, ?EOD),
+	    cdr_loop()
+    end.
+
+create_cdr_db(DB) ->
+    logger:format_log("TS_CDR(~p): Creating new cdr db ~p~n", [self(), DB]),
+    couch_mgr:db_create(DB),
+    case couch_mgr:load_doc_from_file(DB, trunkstore, <<"ts_cdr.json">>) of
+	{ok, _} -> ok;
+	{error, _} -> couch_mgr:update_doc_from_file(DB, trunkstore, <<"ts_cdr.json">>)
+    end.
 
 -spec(store_cdr/3 :: (CDR :: json_object(), Flags :: #route_flags{}, DB :: binary()) -> no_return()).
 store_cdr({struct, CDRProp}=CDRJObj, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}, DB) ->

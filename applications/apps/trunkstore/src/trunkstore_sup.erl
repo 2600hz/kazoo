@@ -31,5 +31,6 @@ init([]) ->
 	      ,?CHILD(ts_acctmgr, worker)
 	      ,?CHILD(ts_credit, worker)
 	      ,?CHILD(ts_carrier, worker)
+              ,?CHILD(ts_cdr, worker)
 	     ]} }.
 
