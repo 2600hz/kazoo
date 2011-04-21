@@ -128,7 +128,7 @@ handle_info(Req, #state{is_amqp_up=false}=S) ->
 
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    logger:format_log(info, "TS_RESPONDER(~p): Amqp Request recv ~p: ~s~n", [self(), Props, Payload]),
+    logger:format_log(info, "TS_RESPONDER(~p): Amqp Request recv: ~s~n", [self(), Payload]),
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
     {noreply, State};
 
@@ -195,9 +195,11 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
 		    logger:format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
 	    end
     end;
+
 process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
     logger:format_log(info, "TS_RESPONDER.route(~p): Looking up route req~n", [self()]),
     Start = erlang:now(),
+    try
     case whistle_api:route_req_v(JObj) andalso ts_route:handle_req(JObj) of
 	false ->
 	    logger:format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
@@ -207,7 +209,11 @@ process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
 	    send_resp(JSON, RespQ);
 	{error, _Msg} ->
 	    logger:format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
+    end
+    catch
+	A:B -> logger:format_log(error, "TS_RESPONDER.route(~p): CATCH ~p:~p~n~p~n", [self(), A, B, erlang:get_stacktrace()])
     end;
+
 process_req(_MsgType, _Prop) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
