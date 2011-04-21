@@ -13,11 +13,11 @@
 
 -include_lib("whistle/include/whistle_types.hrl").
 
--spec(get_value/2 :: (Key :: term(), Doc :: json_object()) -> undefined | term()).
+-spec(get_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | term()).
 get_value(Key, Doc) ->
     get_value(Key, Doc, undefined).
 
--spec(get_value/3 :: (Key :: term(), Doc :: json_object(), Default :: term()) -> term()).
+-spec(get_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> term()).
 get_value(Key, L, Default) when is_list(L) ->
     get_value1(Key, {struct, L}, Default);
 get_value(K, Doc, Default) ->
@@ -39,9 +39,13 @@ get_value1(_, _, Default) -> Default.
 %% Figure out how to set the current key among a list of objects
 
 -spec(set_value/3 :: (Key :: term(), Value :: term(), Doc :: json_object()) -> json_object()).
-set_value(Key, Value, Doc) when not is_list(Key) ->
-    set_value([Key], Value, Doc);
-set_value([Key|T], Value, [{struct, _}|_]=Doc) ->
+set_value(Key, Value, {struct, _}=Doc) ->
+    set_value1(Key, Value, Doc).
+
+-spec(set_value1/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object()).
+set_value1(Key, Value, Doc) when not is_list(Key) ->
+    set_value1([Key], Value, Doc);
+set_value1([Key|T], Value, [{struct, _}|_]=Doc) ->
     Key1 = whistle_util:to_integer(Key),
     case Key1 > length(Doc) of
         %% The object index does not exist so try to add a new one to the list
@@ -49,7 +53,7 @@ set_value([Key|T], Value, [{struct, _}|_]=Doc) ->
             try
                 %% Create a new object with the next key as a property
                 NxtKey = whistle_util:to_binary(hd(T)),
-                Doc ++ [set_value(T, Value, {struct, [{NxtKey, []}]})]
+                Doc ++ [set_value1(T, Value, {struct, [{NxtKey, []}]})]
             catch
                 %% There are no more keys in the list, add it unless not an object
                 error:badarg ->
@@ -59,28 +63,28 @@ set_value([Key|T], Value, [{struct, _}|_]=Doc) ->
         %% The object index exists so iterate into the object and updat it
         false ->
             element(1, lists:mapfoldl(fun(E, {Pos, Pos}) ->
-                                             {set_value(T, Value, E), {Pos + 1, Pos}};
+                                             {set_value1(T, Value, E), {Pos + 1, Pos}};
                                          (E, {Pos, Idx}) ->
                                              {E, {Pos + 1, Idx}}
                                       end, {1, Key1}, Doc))
     end;
 %% Figure out how to set the current key in an existing object
-set_value([Key|T], Value, {struct, Props}) ->
+set_value1([Key|T], Value, {struct, Props}) ->
     Key1 = whistle_util:to_binary(Key),
     case lists:keyfind(Key1, 1, Props) of
         {Key1, {struct, _}=V1} ->
             %% Replace or add a property in an object in the object at this key
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(T, Value, V1)})};
+            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)})};
         {Key1, V1} when is_list(V1) ->
             %% Replace or add a member in an array in the object at this key
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(T, Value, V1)})};
+            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)})};
         {Key1, _} when T == [] ->
             %% This is the final key and the objects property should just be replaced
             {struct, lists:keyreplace(Key1, 1, Props, {Key1, Value})};
         {Key1, _} ->
             %% This is not the final key and the objects property should just be
             %% replaced so continue looping the keys creating the necessary json as we go
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value(T, Value, {struct, []})})};
+            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, {struct, []})})};
         false when T == [] ->
             %% This is the final key and doesnt already exist, just add it to this
             %% objects existing properties
@@ -88,10 +92,10 @@ set_value([Key|T], Value, {struct, Props}) ->
         false ->
             %% This is not the final key and this object does not have this key
             %% so continue looping the keys creating the necessary json as we go
-            {struct, Props ++ [{Key1, set_value(T, Value, {struct, []})}]}
+            {struct, Props ++ [{Key1, set_value1(T, Value, {struct, []})}]}
     end;
 %% There are no more keys to iterate through! Override the value here...
-set_value([], Value, _Doc) -> Value.
+set_value1([], Value, _Doc) -> Value.
 
 
 %% EUNIT TESTING
@@ -106,20 +110,20 @@ set_value([], Value, _Doc) -> Value.
 -spec(get_value_test/0 :: () -> no_return()).
 get_value_test() ->
     %% Basic first level key
-    ?assertEqual(undefined, get_value(["d1k1"], [])),
+    ?assertEqual(undefined, get_value(["d1k1"], {struct, []})),
     ?assertEqual("d1v1",    get_value(["d1k1"], ?D1)),
     ?assertEqual(undefined, get_value(["d1k1"], ?D2)),
     ?assertEqual(undefined, get_value(["d1k1"], ?D3)),
     ?assertEqual(undefined, get_value(["d1k1"], ?D4)),
     %% Basic nested key
-    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], [])),
+    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], {struct, []})),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D1)),
     ?assertEqual(d1v2,      get_value(["sub_d1", "d1k2"], ?D2)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D3)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D4)),
     %% Get the value in an object in an array in another object that is part of
     %% an array of objects
-    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], [])),
+    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], {struct, []})),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D1)),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D2)),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D3)),

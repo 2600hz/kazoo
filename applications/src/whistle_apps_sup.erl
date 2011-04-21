@@ -24,7 +24,7 @@ start_app(App) ->
     supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
 
 stop_app(App) ->
-    supervisor:terminate_child(?MODULE, App),
+    _ = supervisor:terminate_child(?MODULE, App),
     supervisor:delete_child(?MODULE, App).
 
 %% ===================================================================
