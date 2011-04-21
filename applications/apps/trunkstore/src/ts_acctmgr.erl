@@ -189,18 +189,22 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 		      {error, E} ->
 			  gen_server:reply(From, {error, E});
 		      {ok, []} ->
+			  logger:format_log(info, "TS_ACCTMGR.reserve: no_funds for ~p:~p~n", [AcctId, CallID]),
 			  gen_server:reply(From, {error, no_funds});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case whapps_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
 				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
+				  logger:format_log(info, "TS_ACCTMGR.reserve: flat_rate for ~p:~p~n", [AcctId, CallID]),
 				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
 				  case whapps_json:get_value(<<"credit">>, Funds, 0) > Amt of
 				      true ->
 					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
+					  logger:format_log(info, "TS_ACCTMGR.reserve: per_min for ~p:~p~n", [AcctId, CallID]),
 					  gen_server:reply(From, {ok, per_min});
 				      false ->
+					  logger:format_log(info, "TS_ACCTMGR.reserve: no_funds for ~p:~p~n", [AcctId, CallID]),
 					  gen_server:reply(From, {error, no_funds})
 				  end
 			  end
