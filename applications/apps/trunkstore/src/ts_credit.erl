@@ -214,6 +214,7 @@ set_rate_flags(Flags, Rates) ->
 			  end, Rates1),
     wh_timer:tick("post second filter"),
 
+    try
     case lists:usort(fun sort_rates/2, Rates2) of
 	[] ->
 	    wh_timer:tick("post usort empty"),
@@ -243,7 +244,11 @@ set_rate_flags(Flags, Rates) ->
 		    logger:format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
 		    E3
 	    end
+    end
+    catch A:B -> logger:format_log(error, "TS_CREDIT(~p): EXCEPTION: ~p:~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+		 {error, B}
     end.
+
 
 %% Return true of RateA has higher weight than RateB
 sort_rates({_RNameA, RateDataA}, {_RNameB, RateDataB}) ->
@@ -268,7 +273,11 @@ set_rate_flags(Flags, <<"outbound">>=Out, RateData, RateName) ->
       ,surcharge = whistle_util:to_float(props:get_value(<<"rate_surcharge">>, RateData, 0))
       ,rate_name = RateName
       ,flat_rate_enabled = false
-     }.
+     };
+set_rate_flags(F, Dir, RD, RN) ->
+    logger:format_log(error, "TS_CREDIT.set_rate_flags(~p): ERROR: Dir: ~s RD: ~p RN: ~p~n", [self(), Dir, RD, RN]),
+    F.
+
 
 set_flat_flags(Flags, <<"inbound">>=In) ->
     logger:format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [In]),
