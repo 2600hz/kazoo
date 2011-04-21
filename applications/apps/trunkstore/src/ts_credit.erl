@@ -276,10 +276,7 @@ set_rate_flags(Flags, <<"outbound">>=Out, RateData, RateName) ->
       ,surcharge = whistle_util:to_float(props:get_value(<<"rate_surcharge">>, RateData, 0))
       ,rate_name = RateName
       ,flat_rate_enabled = false
-     };
-set_rate_flags(F, Dir, RD, RN) ->
-    logger:format_log(error, "TS_CREDIT.set_rate_flags(~p): ERROR: Dir: ~s RD: ~p RN: ~p~n", [self(), Dir, RD, RN]),
-    F.
+     }.
 
 
 set_flat_flags(Flags, <<"inbound">>=In) ->
