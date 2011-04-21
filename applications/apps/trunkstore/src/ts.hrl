@@ -15,6 +15,7 @@
 -define(TS_VIEW_DIDLOOKUP, <<"LookUpDID/LookUpDID">>).
 -define(TS_VIEW_CARRIERIP, <<"LookUpCarrierIP/LookUpCarrierIP">>).
 
+-define(EOD, end_of_day).
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 
 %% couch params for the routing table and its views
@@ -62,5 +63,5 @@
 	 }).
 
 
--define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json"]).
+-define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json", "ts_cdr.json"]).
 -define(TS_COUCH_BASE_DOCS, ["carriers.json", "rates.json"]).

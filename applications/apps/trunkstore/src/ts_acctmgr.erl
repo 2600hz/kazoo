@@ -35,7 +35,6 @@
 -define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(TS_USAGE_PREFIX, <<"ts_usage">>).
 
--define(EOD, end_of_day).
 -define(ACTIVE_CALL_TIMEOUT, 1000).
 
 -record(state, {
