@@ -83,9 +83,9 @@ handle_call(Req, _From, []=R) ->
     {reply, no_rate_information, R};
 handle_call({check, Flags}, From, Rates) ->
     spawn(fun() ->
-		  wh_timer:start("ts_credit"),
-		  gen_server:reply(From, set_rate_flags(Flags, Rates)),
-		  wh_timer:stop("ts_Credit")
+		  %% wh_timer:start("ts_credit"),
+		  gen_server:reply(From, set_rate_flags(Flags, Rates))
+		  %% ,wh_timer:stop("ts_Credit")
 	  end),
     {noreply, Rates}.
 
@@ -207,21 +207,21 @@ set_rate_flags(Flags, Rates) ->
 							re:run(User, Regex) =/= nomatch
 						end, props:get_value(<<"routes">>, RateData))
 			  end, Rates0),
-    wh_timer:tick("post first filter"),
+    %% wh_timer:tick("post first filter"),
     %% Filter on Options - All flag options must be in Rate options
     Rates2 = lists:filter(fun({_RateName, RateData}) ->
 				  options_match(Flags#route_flags.route_options, props:get_value(<<"options">>, RateData, []))
 			  end, Rates1),
-    wh_timer:tick("post second filter"),
+    %% wh_timer:tick("post second filter"),
 
     try
     case lists:usort(fun sort_rates/2, Rates2) of
 	[] ->
-	    wh_timer:tick("post usort empty"),
+	    %% wh_timer:tick("post usort empty"),
 	    logger:format_log(error, "TS_CREDIT(~p): No Rate found for ~p~n", [self(), User]),
 	    {error, no_route_found};
 	[{RateName, RateData} | _] ->
-	    wh_timer:tick("post usort data found"),
+	    %% wh_timer:tick("post usort data found"),
 	    logger:format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    case ts_acctmgr:reserve_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid
