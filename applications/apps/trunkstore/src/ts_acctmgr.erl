@@ -180,7 +180,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_
 
 handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
-    logger:format_log(info, "TS_ACCTMGR(~p): reserve trunk for ~p: ~p: ~p~n", [self(), AcctId, CallID, Amt]),
+    logger:format_log(info, "TS_ACCTMGR(~p): reserve trunk for ~p: ~p: ~p from ~p~n", [self(), AcctId, CallID, Amt, RDB]),
     spawn(fun() ->
 		  try
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),

@@ -242,7 +242,10 @@ set_rate_flags(Flags, Rates) ->
 		    E2;
 		{error, no_callid}=E3 ->
 		    logger:format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
-		    E3
+		    E3;
+		{error, not_found}=E4 ->
+		    logger:format_log(error, "TS_CREDIT(~p): acctmgr get_results failed.~n", [self()]),
+		    E4
 	    end
     end
     catch A:B -> logger:format_log(error, "TS_CREDIT(~p): EXCEPTION: ~p:~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
@@ -273,10 +276,7 @@ set_rate_flags(Flags, <<"outbound">>=Out, RateData, RateName) ->
       ,surcharge = whistle_util:to_float(props:get_value(<<"rate_surcharge">>, RateData, 0))
       ,rate_name = RateName
       ,flat_rate_enabled = false
-     };
-set_rate_flags(F, Dir, RD, RN) ->
-    logger:format_log(error, "TS_CREDIT.set_rate_flags(~p): ERROR: Dir: ~s RD: ~p RN: ~p~n", [self(), Dir, RD, RN]),
-    F.
+     }.
 
 
 set_flat_flags(Flags, <<"inbound">>=In) ->
