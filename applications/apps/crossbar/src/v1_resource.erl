@@ -132,7 +132,6 @@ content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
 				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
 				   Context01
 			   end, Context, Nouns),
-    logger:format_log(info, "v1: ctp: req: ~p Pro: ~p~n", [wrq:get_req_header("Accept", RD), Context1#cb_context.content_types_provided]),
     CTP = lists:foldr(fun({Fun, L}, Acc) ->
 			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
 		      end, [], Context1#cb_context.content_types_provided),
@@ -145,7 +144,6 @@ content_types_accepted(RD, #cb_context{req_nouns=Nouns}=Context) ->
 				   {_, Context01, _} = crossbar_bindings:fold(Event, Payload),
 				   Context01
 			   end, Context, Nouns),
-    logger:format_log(info, "v1: cta: req: ~p Acc: ~p~n", [wrq:get_req_header("Content-Type", RD), Context1#cb_context.content_types_accepted]),
     CTA = lists:foldr(fun({Fun, L}, Acc) ->
 			      lists:foldr(fun(EncType, Acc1) -> [ {EncType, Fun} | Acc1 ] end, Acc, L)
 		      end, [], Context1#cb_context.content_types_accepted),
@@ -153,9 +151,7 @@ content_types_accepted(RD, #cb_context{req_nouns=Nouns}=Context) ->
 
 generate_etag(RD, Context) ->
     Event = <<"v1_resource.etag">>,
-    logger:format_log(info, "~p: ~p~n", [Event, Context#cb_context.resp_etag]),
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
-    logger:format_log(info, "~p: after: ~p~n", [Event, Context1#cb_context.resp_etag]),
     case Context1#cb_context.resp_etag of
         automatic ->
             RespContent = create_resp_content(RD, Context1),
@@ -168,7 +164,6 @@ generate_etag(RD, Context) ->
 
 encodings_provided(RD, Context) ->
     { [ {"identity", fun(X) -> X end} ]
-      %%,{"gzip", fun(X) -> zlib:gzip(X) end}] %
       ,RD, Context}.
 
 expires(RD, #cb_context{resp_expires=Expires}=Context) ->
@@ -185,18 +180,16 @@ delete_resource(RD, Context) ->
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
+finish_request(RD, #cb_context{start=T1, session=undefined}=Context) ->
+    Event = <<"v1_resource.finish_request">>,
+    {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    logger:format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+    {true, RD1, Context1};
 finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
-
-    case S of
-        undefined ->
-            logger:format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
-            {true, RD1, Context1};
-        #session{}=S ->
-            logger:format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
-            {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}
-    end.
+    logger:format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
+    {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}.
 
 %%%===================================================================
 %%% Content Acceptors
@@ -227,24 +220,20 @@ from_binary(RD, Context) ->
 -spec(to_json/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_json(RD, Context) ->
     Event = <<"v1_resource.to_json">>,
-    logger:format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 -spec(to_xml/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_xml(RD, Context) ->
     Event = <<"v1_resource.to_xml">>,
-    logger:format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
 -spec(to_binary/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
-to_binary(RD, Context) ->
+to_binary(RD, #cb_context{resp_data=RespData}=Context) ->
     Event = <<"v1_resource.to_binary">>,
-    logger:format_log(info, "~p~n", [Event]),
     _ = crossbar_bindings:map(Event, {RD, Context}),
-
-    {Context#cb_context.resp_data, set_resp_headers(RD, Context), Context}.
+    {RespData, set_resp_headers(RD, Context), Context}.
 
 %%%===================================================================
 %%% Internal functions
@@ -272,7 +261,7 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
             parse_path_tokens([], Loaded, []);
         true ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(Elem, Loaded) end, T),
-            Params1 = lists:map(fun whistle_util:to_binary/1, Params),
+            Params1 = [ whistle_util:to_binary(P) || P <- Params ],
             parse_path_tokens(List2, Loaded, [{Mod, Params1} | Events])
     end.
 
@@ -380,8 +369,6 @@ get_streamed_body({{_, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
 						       ]}}
 					| FilesProp]).
 
-
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -437,7 +424,7 @@ get_auth_token(RD, JsonToken, Verb) ->
         undefined ->
             case Verb of
                 <<"get">> ->
-                    whistle_util:to_binary(props:get_value("auth-token", wrq:req_qs(RD), <<>>));
+                    whistle_util:to_binary(props:get_value("auth_token", wrq:req_qs(RD), <<>>));
 		_ ->
 		    JsonToken
 	    end;
@@ -467,7 +454,7 @@ does_resource_exist(_RD, _Context) ->
 %% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
--spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+-spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
 is_authentic(RD, Context)->
     Event = <<"v1_resource.authenticate">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
@@ -484,7 +471,7 @@ is_authentic(RD, Context)->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(#wm_reqdata{}, #cb_context{})).
+-spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
 is_permitted(RD, Context)->
     Event = <<"v1_resource.authorize">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
@@ -537,6 +524,7 @@ execute_request(RD, Context) ->
     {false, RD, Context}.
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
+%% AKA, 201 Created header set
 allow_missing_post(RD, Context) ->
     {wrq:method(RD) =:= 'POST', RD, Context}.
 
@@ -640,7 +628,10 @@ fix_header(RD, "Location"=H, Url) ->
 	       80 -> "";
 	       P -> [":", whistle_util:to_list(P)]
 	   end,
+
+    logger:format_log(info, "v1.fix_header: host_tokens: ~p~n", [wrq:host_tokens(RD)]),
     Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
+    logger:format_log(info, "v1.fix_header: host: ~s~n", [Host]),
 
     %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
     PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
