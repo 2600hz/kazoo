@@ -318,7 +318,7 @@ main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMe
                  ,{say,  Exit}
                 ], Call),
     {ok, Digit} = wait_for_dtmf(30000),
-    flush(Call),
+    _ = flush(Call),
     case Digit of
 	HearNew ->
 	    play_messages(get_folder(Messages, ?FOLDER_NEW), Box, Call),
@@ -370,7 +370,7 @@ play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
                  ,{say,  ReturnMain}
                 ], Call),
     {ok, Digit} = wait_for_dtmf(30000),
-    flush(Call),
+    _ = flush(Call),
     case Digit of
 	Keep ->
 	    play(MessageSaved, Call),
@@ -418,28 +418,24 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
                  ,{play, Press}
                  ,{say,  ReturnMain}
                 ], Call),
-    case wait_for_dtmf(30000) of
-        {error, _}=E ->
-            E;
-        {ok, Digit} ->
-            flush(Call),
-            case Digit of
-                RecUnavailable ->
-                    record_unavailable_greeting(tmp_file(), Box, Call),
-                    config_menu(Box, Call);
-                RecName ->
-                    record_name(tmp_file(), Box, Call),
-                    config_menu(Box, Call);
-                SetPin ->
-                    change_pin(Box, Call),
-                    config_menu(Box, Call);
-                ReturnMain ->
-                    main_menu(Box, Call);
-                %% Bulk delete -> delete all voicemails
-                %% Reset -> delete all voicemails, greetings, name, and reset pin
-                _ ->
-                    config_menu(Box, Call)
-            end
+    {ok, Digit} =  wait_for_dtmf(30000),
+    _ = flush(Call),
+    case Digit of
+	RecUnavailable ->
+	    record_unavailable_greeting(tmp_file(), Box, Call),
+	    config_menu(Box, Call);
+	RecName ->
+	    record_name(tmp_file(), Box, Call),
+	    config_menu(Box, Call);
+	SetPin ->
+	    change_pin(Box, Call),
+	    config_menu(Box, Call);
+	ReturnMain ->
+	    main_menu(Box, Call);
+	%% Bulk delete -> delete all voicemails
+	%% Reset -> delete all voicemails, greetings, name, and reset pin
+	_ ->
+	    config_menu(Box, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -448,24 +444,18 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
+-spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting, tone_spec=ToneSpec}}=Box, Call) ->
     audio_macro([
                   {play,  RecordUnavailGreeting}
                  ,{tones, ToneSpec}
                 ], Call),
-    case b_record(MediaName, Call) of
-        {ok, _Msg} ->
-            case review_recording(MediaName, Box, Call) of
-                {ok, record} ->
-                    record_unavailable_greeting(MediaName, Box, Call);
-                {ok, save} ->
-                    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call);
-                _Else ->
-                    ok
-            end;
-        _Else ->
-            ok
+    {ok, _} = b_record(MediaName, Call),
+    case review_recording(MediaName, Box, Call) of
+	{ok, record} ->
+	    record_unavailable_greeting(MediaName, Box, Call);
+	{ok, save} ->
+	    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -503,18 +493,12 @@ record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_sp
                   {play,  RecordName}
                  ,{tones, ToneSpec}
                 ], Call),
-    case b_record(MediaName, Call) of
-        {ok, _Msg} ->
-            case review_recording(MediaName, Box, Call) of
-                {ok, record} ->
-                    record_name(MediaName, Box, Call);
-                {ok, save} ->
-                    store_recording(MediaName, ?NAME_RECORDING, Box, Call);
-                _Else ->
-                    ok
-            end;
-        _Else ->
-            ok
+    {ok, _} = b_record(MediaName, Call),
+    case review_recording(MediaName, Box, Call) of
+	{ok, record} ->
+	    record_name(MediaName, Box, Call);
+	{ok, save} ->
+	    store_recording(MediaName, ?NAME_RECORDING, Box, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -569,7 +553,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(review_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, record | save) | tuple(error, term())).
+-spec(review_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, record | save)).
 review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToListen, to_save=ToSave, to_rerecord=ToRerecord}
 				     ,keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call) ->
     audio_macro([
@@ -585,22 +569,19 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
                  ,{say,  Record}
                  ,{play, ToRerecord}
                 ], Call),
-    case wait_for_dtmf(5000) of
-        {error, _}=E ->
-            E;
-        {ok, Digit} ->
-            flush(Call),
-            case Digit of
-                Listen ->
-                    b_play(MediaName, Call),
-                    review_recording(MediaName, Box, Call);
-                Record ->
-                    {ok, record};
-                Save ->
-                    {ok, save};
-                _ ->
-                    review_recording(MediaName, Box, Call)
-            end
+    {ok, Digit} = wait_for_dtmf(5000),
+
+    _ = flush(Call),
+    case Digit of
+	Listen ->
+	    _ = b_play(MediaName, Call),
+	    review_recording(MediaName, Box, Call);
+	Record ->
+	    {ok, record};
+	Save ->
+	    {ok, save};
+	_ ->
+	    review_recording(MediaName, Box, Call)
     end.
 
 %%--------------------------------------------------------------------
