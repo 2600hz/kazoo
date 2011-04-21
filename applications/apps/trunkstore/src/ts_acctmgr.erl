@@ -182,6 +182,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
     Self = self(),
     logger:format_log(info, "TS_ACCTMGR(~p): reserve trunk for ~p: ~p: ~p~n", [self(), AcctId, CallID, Amt]),
     spawn(fun() ->
+		  try
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 
 		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
@@ -203,6 +204,10 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 					  gen_server:reply(From, {error, no_funds})
 				  end
 			  end
+		  end
+		  catch
+		      A:B -> logger:format_log(error, "TS_ACCTMGR.reserve: EXCEPTION: ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+			     gen_server:reply(From, {error, B})
 		  end
 	  end),
     {noreply, S};
