@@ -242,7 +242,10 @@ set_rate_flags(Flags, Rates) ->
 		    E2;
 		{error, no_callid}=E3 ->
 		    logger:format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
-		    E3
+		    E3;
+		{error, not_found}=E4 ->
+		    logger:format_log(error, "TS_CREDIT(~p): acctmgr get_results failed.~n", [self()]),
+		    E4
 	    end
     end
     catch A:B -> logger:format_log(error, "TS_CREDIT(~p): EXCEPTION: ~p:~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
