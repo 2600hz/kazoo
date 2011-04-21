@@ -29,9 +29,8 @@
 -define(AUTH_QUEUE_NAME, <<"ts_responder.auth.queue">>).
 
 -record(state, {
-                my_q = <<>> :: binary() | tuple(error, term())
-		,is_amqp_up = true :: boolean()
-	       }).
+	  is_amqp_up = true :: boolean()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -109,22 +108,17 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, S) ->
     logger:format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
-    {noreply, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
+    {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
 
 handle_info({amqp_host_down, H}, S) ->
     logger:format_log(info, "TS_RESPONDER(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
     {ok, CQ} = start_amqp(),
-    {noreply, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
+    {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
 
-handle_info(Req, #state{my_q={error, _}}=S) ->
+handle_info(_, #state{is_amqp_up=false}=S) ->
     logger:format_log(info, "TS_RESPONDER(~p): restarting amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
-    handle_info(Req, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)});
-
-handle_info(Req, #state{is_amqp_up=false}=S) ->
-    logger:format_log(info, "TS_RESPONDER(~p): restarting up amqp, will retry in a bit if doesn't work~n", [self()]),
-    {ok, CQ} = start_amqp(),
-    handle_info(Req, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)});
+    {noreply, S#state{is_amqp_up=is_binary(CQ)}};
 
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
@@ -151,8 +145,7 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{my_q=CQ}) ->
-    amqp_util:queue_delete(CQ),
+terminate(_Reason, _) ->
     logger:format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]).
 
 %%--------------------------------------------------------------------
