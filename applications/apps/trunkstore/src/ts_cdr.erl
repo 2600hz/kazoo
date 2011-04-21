@@ -16,7 +16,7 @@
 -include("ts.hrl").
 
 start_link() ->
-    proc_lib:spawn_link(fun() -> cdr_init() end).
+    {ok, proc_lib:spawn_link(fun() -> cdr_init() end)}.
 
 cdr_init() ->
     {_, {H,Min,S}} = calendar:universal_time(),
@@ -36,7 +36,7 @@ cdr_loop() ->
     end.
 
 create_cdr_db(DB) ->
-    logger:format_log("TS_CDR(~p): Creating new cdr db ~p~n", [self(), DB]),
+    logger:format_log(info, "TS_CDR(~p): Creating new cdr db ~p~n", [self(), DB]),
     couch_mgr:db_create(DB),
     case couch_mgr:load_doc_from_file(DB, trunkstore, <<"ts_cdr.json">>) of
 	{ok, _} -> ok;
