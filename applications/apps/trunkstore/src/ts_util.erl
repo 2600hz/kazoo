@@ -92,4 +92,4 @@ get_base_channel_vars(Flags) ->
 -spec(todays_db_name/1 :: (Prefix :: string() | binary()) -> binary()).
 todays_db_name(Prefix) ->
     {{Y,M,D}, _} = calendar:universal_time(),
-    whistle_util:to_binary(io_lib:format(whistle_util:to_list(Prefix) ++ "/~4B/~2..0B/~2..0B", [Y,M,D])).
+    whistle_util:to_binary(io_lib:format(whistle_util:to_list(Prefix) ++ "%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
