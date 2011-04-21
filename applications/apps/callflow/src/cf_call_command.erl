@@ -672,7 +672,7 @@ wait_for_bridge(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_application_or_dtmf/2 :: (Application :: binary(), Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(wait_for_application_or_dtmf/2 :: (Application :: binary(), Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom()) | tuple(dtmf, binary())).
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
