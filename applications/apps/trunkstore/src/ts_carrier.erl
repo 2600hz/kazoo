@@ -38,6 +38,7 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+-spec(route/1 :: (Flags :: #route_flags{}) -> tuple(ok, routes()) | {error, string()}).
 route(Flags) ->
     gen_server:call(?MODULE, {route, Flags}).
 
@@ -199,7 +200,7 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 		   ,{<<"options">>, lists:map(fun({struct, Gateway}) -> Gateway end, Gateways)}
 		   | proplists:delete(<<"routes">>, COs1)]}.
 
--spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
+-spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, routes()} | {error, string()}).
 get_routes(#route_flags{to_user=User}=Flags, Carriers) ->
     logger:format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
 
@@ -210,8 +211,10 @@ get_routes(#route_flags{to_user=User}=Flags, Carriers) ->
 			     end, props:delete(<<"_rev">>, props:delete(<<"_id">>, Carriers))),
     case Carriers1 of
 	[] ->
+	    logger:format_log(error, "TS_CARRIER(~p): No carriers matching ~p~n", [self(), User]),
 	    {error, "No carriers match outbound number"};
 	Cs ->
+	    logger:format_log(error, "TS_CARRIER(~p): Creating routes for ~p~n", [self(), User]),
 	    create_routes(Flags, lists:sort(fun sort_carriers/2, Cs))
     end.
 
@@ -234,8 +237,10 @@ create_routes(Flags, Carriers) ->
 
     case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID, ChannelVars}, Carriers) of
 	{[], _, _, _} ->
+	    logger:format_log(info, "TS_CARRIER(~p): Failed to create routes~n", [self()]),
 	    {error, "Failed to find routes for the call"};
 	{Routes, _, _, _} ->
+	    logger:format_log(info, "TS_CARRIER(~p): Found ~p routes~n", [self(), length(Routes)]),
 	    {ok, Routes}
     end.
 

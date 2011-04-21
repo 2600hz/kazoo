@@ -84,7 +84,7 @@ has_flatrates(Acct) ->
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
 -spec(reserve_trunk/4 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer(), FRE :: boolean()) ->
-			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds)).
+			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds | not_found)).
 reserve_trunk(<<>>, _, _, _) ->
     {error, no_account};
 reserve_trunk(_, <<>>, _, _) ->
@@ -182,12 +182,11 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
     Self = self(),
     logger:format_log(info, "TS_ACCTMGR(~p): reserve trunk for ~p: ~p: ~p from ~p~n", [self(), AcctId, CallID, Amt, RDB]),
     spawn(fun() ->
-		  try
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 
 		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
-		      {error, E} ->
-			  gen_server:reply(From, {error, E});
+		      {error, not_found}=E ->
+			  gen_server:reply(From, E);
 		      {ok, []} ->
 			  logger:format_log(info, "TS_ACCTMGR.reserve: no_funds for ~p:~p~n", [AcctId, CallID]),
 			  gen_server:reply(From, {error, no_funds});
@@ -208,10 +207,6 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 					  gen_server:reply(From, {error, no_funds})
 				  end
 			  end
-		  end
-		  catch
-		      A:B -> logger:format_log(error, "TS_ACCTMGR.reserve: EXCEPTION: ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
-			     gen_server:reply(From, {error, B})
 		  end
 	  end),
     {noreply, S};
