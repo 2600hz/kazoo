@@ -18,9 +18,6 @@
 # Start a pool of asynchronous IO threads
 +A 8
 
-# Restart the VM if it dies
--heart
-
 # Comment this line out if you want the Erlang shell
 +Bd
 

@@ -22,4 +22,6 @@ if [[ ! "$REMOTE_SHELL" == *@*  ]]; then
     REMOTE_SHELL="${REMOTE_SHELL}@`hostname`"
 fi
 
-exec erl -setcookie `cat ../confs/fs_conf/autoload_configs/.erlang.cookie` -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}
+ERL_COOKIE=`grep "setcookie" conf/vm.args`
+
+exec erl $ERL_COOKIE -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}
