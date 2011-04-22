@@ -38,11 +38,7 @@ new_siblings(Module) ->
                            ordsets:is_element(
                              filename:basename(filename:dirname(X)),
                              Existing) =:= false],
-    lists:filter(fun filelib:is_dir/1, 
-                 lists:append([[filename:join([X, "ebin"]),
-                                filename:join([X, "include"])] ||
-                                  X <- Siblings])).
-        
+    [D || D <- lists:append([[filename:join([X, "ebin"]), filename:join([X, "include"])] || X <- Siblings]), filelib:is_dir(D)].
 
 %% @spec ensure(Module) -> ok
 %% @doc Ensure that all ebin and include paths for dependencies
