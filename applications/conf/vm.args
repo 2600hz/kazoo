@@ -22,7 +22,7 @@
 -heart
 
 # Comment this line out if you want the Erlang shell
-+Bd -detached
++Bd
 
 # Limit the size of error reports
 -riak_err term_max_size 8192 fmt_max_bytes 9000
