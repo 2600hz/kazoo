@@ -370,7 +370,6 @@ confirmation_email(RD, #cb_context{doc=JObj}) ->
           (whistle_util:to_binary(Host))/binary
          ,"v1/signup/"
          ,(whapps_json:get_value(<<"pvt_activation_key">>, JObj, <<>>))/binary
-         ,"?verb=put"
        >>
      ).
 
