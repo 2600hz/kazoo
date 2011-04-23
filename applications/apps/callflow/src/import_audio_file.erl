@@ -13,6 +13,7 @@
 -define(DB, <<"system_media">>).
 
 to_couch(Dir) ->
+    couch_mgr:db_create(?DB),
     List = filelib:wildcard(Dir),
     lists:foreach(fun(File) ->
                           F = whistle_util:to_binary(File),
