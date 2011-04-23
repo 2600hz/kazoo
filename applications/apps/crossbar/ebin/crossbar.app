@@ -6,7 +6,7 @@
                         crossbar_module_sup,crossbar_resource,
                         crossbar_session,crossbar_sup,crossbar_util,
                         crossbar_validator,devices,evtsub,media,menus,noauthn,
-                        noauthz,plists,registrations,resources,servers,
+                        noauthz,plists,registrations,resources,servers,signup,
                         simple_authz,static_resource,t_evtsub,token_auth,
                         user_auth,users,v1_resource,vmboxes]},
               {registered,[]},

@@ -22,4 +22,4 @@
                         ecallmgr_fs_node,ecallmgr_fs_route,ecallmgr_fs_xml,
                         ecallmgr_media_registry,ecallmgr_registrar,
                         ecallmgr_sup,ecallmgr_util,freeswitch,resource_mgr,
-                        t_ecallmgr_route,whapps_json]}]}.
+                        t_ecallmgr_route]}]}.

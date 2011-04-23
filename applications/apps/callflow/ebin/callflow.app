@@ -4,7 +4,7 @@
               {modules,[callflow,callflow_app,callflow_sup,cf_call_command,
                         cf_call_sup,cf_conference,cf_conference_command,
                         cf_device,cf_dialplan,cf_exe,cf_menu,cf_resource,
-                        cf_responder,cf_ring_group,cf_temporal_route,cf_test,
+                        cf_responder,cf_ring_group,cf_temporal_route,
                         cf_voicemail,import_audio_file]},
               {registered,[]},
               {applications,[kernel,stdlib,crypto]},
