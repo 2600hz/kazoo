@@ -50,16 +50,23 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Verb = get_http_verb(RD, Context1#cb_context.req_json),
     Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
 
+    logger:format_log(info, "v1: Processing new request ~p as ~p but treating as ~p", [
+                                                                                       wrq:raw_path(RD),
+                                                                                       wrq:method(RD),
+                                                                                       Verb
+                                                                                      ]),
+    logger:format_log(info, "v1: Payload ~p", [Context1#cb_context.req_json]),
+
     case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->            
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-            Methods1 = case is_cors_preflight(RD) of 
-                           true -> 
-                               allow_methods(Responses, Methods, Verb, wrq:method(RD)) ++ ['OPTIONS'];
-                           false -> 
-                               allow_methods(Responses, Methods, Verb, wrq:method(RD))
-                       end,
-            {Methods1, RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb}};
+            Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),            
+            case is_cors_preflight(RD) of
+                true ->
+                    {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}};
+                false ->
+                    {Methods1 , RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
+            end;
         [] ->
             {Methods, RD, Context1#cb_context{req_verb=Verb}}
     end.
@@ -108,7 +115,7 @@ resource_exists(RD, Context) ->
             case succeeded(Context1) of
                 true ->
                     logger:format_log(info, "v1: requested resource validated", []),
-                    execute_request(add_cors_headers(RD1), Context1);
+                    execute_request(add_cors_headers(RD1, Context1), Context1);
                 false ->
                     logger:format_log(info, "v1: requested resource did not validate", []),
                     Content = create_resp_content(RD, Context1),
@@ -122,7 +129,7 @@ resource_exists(RD, Context) ->
     end.
 
 options(RD, Context)->            
-    {get_cors_headers(), RD, Context}.
+    {get_cors_headers(Context), RD, Context}.
 
 %% each successive cb module adds/removes the content types they provide (to be matched against the request Accept header)
 content_types_provided(RD, #cb_context{req_nouns=Nouns}=Context) ->
@@ -296,6 +303,7 @@ override_verb(RD, JSON, <<"post">>) ->
 override_verb(RD, _, <<"options">>) ->
     case wrq:get_req_header("Access-Control-Request-Method", RD) of
         undefined -> false;
+
         V -> {true, whistle_util:to_binary(string:to_lower(V))}
     end;
 override_verb(_, _, _) -> false.
@@ -466,12 +474,18 @@ does_resource_exist(_RD, _Context) ->
 %%--------------------------------------------------------------------
 -spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
 is_authentic(RD, Context)->
-    Event = <<"v1_resource.authenticate">>,
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
-        [] ->
-            false;
-        [{true, {RD1, Context1}}|_] -> 
-            {true, RD1, Context1}
+    case wrq:method(RD) of
+        %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
+        'OPTIONS' ->
+            {true, RD, Context};
+        _ ->
+            Event = <<"v1_resource.authenticate">>,
+            case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
+                [] ->
+                    false;
+                [{true, {RD1, Context1}}|_] -> 
+                    {true, RD1, Context1}
+            end
     end.
             
 %%--------------------------------------------------------------------
@@ -483,12 +497,18 @@ is_authentic(RD, Context)->
 %%--------------------------------------------------------------------
 -spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
 is_permitted(RD, Context)->
-    Event = <<"v1_resource.authorize">>,
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
-        [] ->
+    case wrq:method(RD) of 
+        %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
+        'OPTIONS' ->
+            {true, RD, Context};
+        _ ->
+            Event = <<"v1_resource.authorize">>,
+            case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
+                [] ->
             false;
-        [{true, {RD1, Context1}}|_] -> 
-            {true, RD1, Context1}
+                [{true, {RD1, Context1}}|_] -> 
+                    {true, RD1, Context1}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -679,11 +699,11 @@ is_cors_request(RD) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(add_cors_headers/1 :: (RD :: #wm_reqdata{}) -> #wm_reqdata{}).                                 
-add_cors_headers(RD) ->
+-spec(add_cors_headers/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).                                 
+add_cors_headers(RD, Context) ->
     case is_cors_request(RD) of 
         true ->
-            wrq:set_resp_headers(get_cors_headers(), RD);
+            wrq:set_resp_headers(get_cors_headers(Context), RD);
         false ->
             RD
     end.
@@ -693,11 +713,11 @@ add_cors_headers(RD) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_cors_headers/0 :: () -> list()).                                 
-get_cors_headers() ->
+-spec(get_cors_headers/1 :: (Context :: #cb_context{}) -> proplist()).                                 
+get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     [
       {"Access-Control-Allow-Origin", "*"}
-     ,{"Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS"}
+     ,{"Access-Control-Allow-Methods", string:join([atom_to_list(A) || A <- Allowed], ", ")}
      ,{"Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token"}
      ,{"Access-Control-Max-Age", "86400"}
     ].
