@@ -28,6 +28,7 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -147,7 +148,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
                   Event1 = <<"v1_resource.execute.put.accounts">>,
@@ -164,7 +165,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, #cb_
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  confirmation_email(RD, Context1)
 	  end),
     {noreply, State};
 
@@ -242,7 +244,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods([_]) ->
-    {true, ['PUT']};
+    {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -274,7 +276,7 @@ resource_exists(_) ->
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     signup_new_account(Context);
-validate([ActivationKey], #cb_context{req_verb = <<"put">>}=Context) ->
+validate([ActivationKey], #cb_context{req_verb = <<"get">>}=Context) ->
     check_activation_key(ActivationKey, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -327,6 +329,7 @@ is_valid_doc(_JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec(create_activation_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_activation_request(#cb_context{req_data=JObj}=Context) ->
     #cb_context{resp_status=success, doc=User} = 
         users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, [])}),
@@ -342,6 +345,48 @@ create_activation_request(#cb_context{req_data=JObj}=Context) ->
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------            
+%%--------------------------------------------------------------------
+-spec(create_activation_key/0 :: () -> binary()).
 create_activation_key() ->
      whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------            
+-spec(confirmation_email/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> no_return()).                                   
+confirmation_email(RD, #cb_context{doc=JObj}) ->
+    Port = case wrq:port(RD) of
+	       80 -> "";
+	       P -> [":", whistle_util:to_list(P)]
+	   end,
+    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
+    send_confirmation_email(
+       whapps_json:get_value([<<"pvt_user">>, <<"email">>], JObj)
+      ,whapps_json:get_value([<<"pvt_user">>, <<"first_name">>], JObj)
+      ,whapps_json:get_value([<<"pvt_user">>, <<"last_name">>], JObj)
+      ,<<
+          (whistle_util:to_binary(Host))/binary
+         ,"v1/signup/"
+         ,(whapps_json:get_value(<<"pvt_activation_key">>, JObj, <<>>))/binary
+         ,"?verb=put"
+       >>
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------            
+-spec(send_confirmation_email/4 :: (Email :: binary(), First :: binary(), Last :: binary(), URL :: binary()) -> no_return()).                                        
+send_confirmation_email(Email, First, Last, URL) ->
+    Cmd = whistle_util:to_list(<<
+                                  (whistle_util:to_binary(code:priv_dir(crossbar)))/binary
+                                 ,"/confirmation_email.sh"
+                                 ,$ , $", Email/binary, $"
+                                 ,$ , $", First/binary, $"
+                                 ,$ , $", Last/binary, $"
+                                 ,$ , $", URL/binary, $"
+                               >>),
+    os:cmd(Cmd).
