@@ -15,7 +15,7 @@
 
 %% API
 -export([start_link/0, update_all_accounts/1, replicate_from_accounts/2, 
-         replicate_from_account/3, get_db_name/1, get_db_name/2]).
+         replicate_from_account/3, get_db_name/1, get_db_name/2, create_account/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -188,13 +188,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_c
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                      Context1 = load_account_db(Params, Context),
-                      Pid ! {binding_result, true, [RD, Context1, Params]}
-         end),
+                  Context1 = load_account_db(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId, <<"parent">>]=Params]}, State) ->
-   spawn(fun() ->
+    spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context#cb_context{db_name=get_db_name(AccountId, encoded)}) of
                       #cb_context{resp_status=success}=Context1 ->
@@ -213,31 +213,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, #cb_context{doc=Doc, resp_headers=RHs}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  DbName = get_db_name(couch_mgr:get_uuid(), encoded),
-                  case couch_mgr:db_create(DbName) of
-                      false ->
-                          logger:format_log(error, "ACCOUNTS(~p): Failed to create database: ~p", [self(), DbName]),
-                          Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]};
-
-                      true ->
-                          logger:format_log(info, "ACCOUNTS(~p): Created DB for account id ~p", [self(), get_db_name(DbName, raw)]),
-                          JObj = whapps_json:set_value(<<"_id">>, get_db_name(DbName, raw), Doc),
-                          case crossbar_doc:save(Context#cb_context{db_name=DbName, doc=JObj}) of
-                              #cb_context{resp_status=success}=Context1 ->                              
-                                  Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]
-                                                                                       ,resp_headers=[{"Location", get_db_name(DbName, raw)} | RHs]
-                                                                                      }, Params]},
-                                  couch_mgr:load_doc_from_file(DbName, crossbar, ?VIEW_FILE),
-                                  Responses = crossbar_bindings:map(<<"account.created">>, DbName),
-                                  _ = [couch_mgr:load_doc_from_file(DbName, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
-                                  replicate_from_account(get_db_name(DbName, unencoded), ?AGG_DB, ?AGG_FILTER);
-                              Else ->
-                                  logger:format_log(info, "ACCTS(~p): Other PUT resp: ~p: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
-                                  Pid ! {binding_result, true, [RD, Else, Params]}
-                          end
-                  end
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = create_new_account_db(Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
@@ -714,4 +694,36 @@ load_account_db(DocId, Context)->
                 db_name = DbName
                ,account_id = DocId
             }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will create a new account and corresponding database
+%% then spawn a short initial function
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_new_account_db/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_new_account_db(#cb_context{doc=Doc}=Context) ->
+    DbName = get_db_name(couch_mgr:get_uuid(), encoded),
+    case couch_mgr:db_create(DbName) of
+        false ->
+            logger:format_log(error, "ACCOUNTS(~p): Failed to create database: ~p", [self(), DbName]),
+            crossbar_util:response_db_fatal(Context);
+        true ->
+            logger:format_log(info, "ACCOUNTS(~p): Created DB for account id ~p", [self(), get_db_name(DbName, raw)]),
+            JObj = whapps_json:set_value(<<"_id">>, get_db_name(DbName, raw), Doc),
+            case crossbar_doc:save(Context#cb_context{db_name=DbName, doc=JObj}) of
+                #cb_context{resp_status=success}=Context1 ->                              
+                    spawn(fun() ->
+                                  couch_mgr:load_doc_from_file(DbName, crossbar, ?VIEW_FILE),
+                                  Responses = crossbar_bindings:map(<<"account.created">>, DbName),
+                                  _ = [couch_mgr:load_doc_from_file(DbName, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
+                                  replicate_from_account(get_db_name(DbName, unencoded), ?AGG_DB, ?AGG_FILTER)
+                             end),
+                    Context1;
+                Else ->
+                    logger:format_log(info, "ACCTS(~p): Other PUT resp: ~p: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
+                    Else
+            end
     end.
