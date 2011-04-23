@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd `dirname $0`
+
 export email_address="$1"
 export first_name="$2"
 export last_name="$3"
