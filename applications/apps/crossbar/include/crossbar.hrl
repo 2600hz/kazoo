@@ -36,6 +36,7 @@
            content_types_provided = ?CONTENT_PROVIDED :: list(crossbar_content_handler()) | []
           ,content_types_accepted = ?CONTENT_ACCEPTED :: list(crossbar_content_handler()) | []
 	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
+          ,allow_methods = ?ALLOWED_METHODS :: list() | []
 	  ,session = undefined :: undefined | #session{}
           ,auth_token = <<"">> :: binary()
           ,auth_doc = undefined :: json_object() | undefined                        
