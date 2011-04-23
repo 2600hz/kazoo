@@ -33,7 +33,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 
 -include("../include/crossbar.hrl").
@@ -148,7 +147,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({map, Routing, Payload}, From , State) ->
     spawn(fun() ->
-                  format_log(info, "Running map: ~p~n", [Routing]),
+                  logger:format_log(info, "Running map: ~p", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
                                     case binding_matches(B, Routing) of
@@ -163,7 +162,7 @@ handle_call({map, Routing, Payload}, From , State) ->
     {noreply, State};
 handle_call({fold, Routing, Payload}, From , State) ->
     spawn(fun() ->
-                  format_log(info, "Running fold: ~p~n~p~n", [Routing, Payload]),
+                  logger:format_log(info, "Running fold: ~p", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
                                     case binding_matches(B, Routing) of
@@ -178,7 +177,7 @@ handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
     link(From),
     {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
-    format_log(info, "CB_BINDING(~p): ~p binding ~p~n", [self(), From, Binding]),
+    logger:format_log(info, "CB_BINDING(~p): ~p binding ~p", [self(), From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
 	false ->
 	    link(From),
@@ -231,7 +230,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
-    format_log(info, "CB_BINDINGS(~p): ~p went down(~p)~n", [self(), Pid, _Reason]),
+    logger:format_log(info, "CB_BINDINGS(~p): ~p went down(~p)", [self(), Pid, _Reason]),
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, remove_subscriber(Pid, Subs)} | Acc]
 		      end, [], Bs),
@@ -251,7 +250,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{bindings=Bs}) ->
-    logger:format_log(info, "CB_BINDINGS(~p): Terminating: ~p~n", [self(), _Reason]),
+    logger:format_log(info, "CB_BINDINGS(~p): Terminating: ~p", [self(), _Reason]),
     lists:foreach(fun flush_binding/1, Bs),
     ok.
 
@@ -391,7 +390,7 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
 		    fold_bind_results(ReRunQ, Payload, Route, queue:len(ReRunQ), queue:new());
 		PidsLen ->
 		    %% If all Pids 'eoq'ed, ReRunQ will be the same queue, and Payload will be unchanged - exit the fold
-		    format_log(error, "CB_BIND(~p): Loop detected for ~p, returning~n", [self(), Route]),
+		    logger:format_log(error, "CB_BIND(~p): Loop detected for ~p, returning", [self(), Route]),
 		    Payload
 	    end;
 
