@@ -330,6 +330,6 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (_JObj :: mochijson()) -> tuple(true, [])).
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, [])).
 is_valid_doc(_JObj) ->
     {true, []}.
