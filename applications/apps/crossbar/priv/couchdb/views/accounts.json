@@ -15,7 +15,7 @@
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); for (var i in t) { emit([t[i], t], {'id': doc._id, 'name': doc.name}); } }"
         },
         "listing_by_api": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc._id, doc.pvt_api_key); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_api_key, {'account_id': doc._id}); }"
         }
     }
 }

@@ -260,15 +260,19 @@ authorize_user(Context, <<"">>, _) ->
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 authorize_user(Context, Credentials, <<"md5">>) ->
     case crossbar_doc:load_view(?MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
-        #cb_context{resp_status=success, doc=[JObj]} when JObj =/= []->
-            Context#cb_context{resp_status=success, doc=JObj};
+        #cb_context{resp_status=success, doc=[JObj|_]} ->
+            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
+        #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
+            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
         _ ->
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, Credentials, <<"sha">>) ->    
     case crossbar_doc:load_view(?SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
-        #cb_context{resp_status=success, doc=JObj}=C1 when JObj =/= []->
-            C1;
+        #cb_context{resp_status=success, doc=[JObj|_]} ->
+            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
+        #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
+            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
         _ ->
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
@@ -282,15 +286,12 @@ authorize_user(Context, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_token/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-create_token(RD, #cb_context{doc=[JObj]}=Context) ->
-    create_token(RD, Context#cb_context{doc=JObj});
+create_token(_, #cb_context{doc=undefined}=Context) ->
+    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
-    Value = whapps_json:get_value(<<"value">>, JObj),
+    AccountId = accounts:get_db_name(whapps_json:get_value(<<"account_db">>, JObj), raw),
     Token = {struct, [
-                       {<<"account_id">>, whapps_json:get_value(<<"account_id">>, Value)}
-                      ,{<<"user_id">>, whapps_json:get_value(<<"id">>, Value)}
-                      ,{<<"api_id">>, <<"">>}
-                      ,{<<"secret">>, whapps_json:get_value(<<"password">>, Value)}
+                       {<<"account_id">>, AccountId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
@@ -305,7 +306,9 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = whapps_json:get_value(<<"_id">>, Doc),
-            crossbar_util:response([], Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
+            crossbar_util:response(
+              {struct, [{<<"account_id">>, AccountId}]}
+              ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, _} ->
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end.

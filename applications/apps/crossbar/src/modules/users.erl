@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, create_user/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -127,7 +127,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
+                  Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
 		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
@@ -135,7 +135,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
+                  Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
 		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
@@ -339,3 +339,27 @@ normalize_view_results(JObj, Acc) ->
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will determine if the password parameter is present
+%% and if so create the hashes then remove it.
+%% @end
+%%--------------------------------------------------------------------
+-spec(hash_password/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+hash_password(#cb_context{doc=JObj}=Context) ->
+    case whapps_json:get_value(<<"password">>, JObj) of
+        undefined ->
+            Context;
+        Password ->
+            Creds = <<(whapps_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
+            SHA1 = whistle_util:to_binary(whistle_util:to_hex(crypto:sha(Creds))),
+            MD5 = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Creds))),
+            JObj1 = whapps_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
+            {struct, Props} = whapps_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
+            logger:format_log(info, "CREATE ~p", [{struct, props:delete(<<"password">>, Props)}]),
+            Context#cb_context{doc={struct, props:delete(<<"password">>, Props)}}
+    end.
+            
+

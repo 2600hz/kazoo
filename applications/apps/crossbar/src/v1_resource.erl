@@ -308,7 +308,7 @@ get_json_body(RD) ->
 	    <<>> -> {struct, QS};
 	    ReqBody ->
 		{struct, Prop} = JSON = mochijson2:decode(ReqBody),
-		case crossbar_util:is_valid_request_envelope(JSON) of
+		case is_valid_request_envelope(JSON) of
 		    true -> {struct, Prop ++ QS};
 		    false -> {malformed, <<"Invalid request envelope">>}
 		end
@@ -431,6 +431,16 @@ get_auth_token(RD, JsonToken, Verb) ->
         AuthToken ->
             whistle_util:to_binary(AuthToken)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determines if the request envelope is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_valid_request_envelope/1 :: (JSON :: json_object()) -> boolean()).
+is_valid_request_envelope(JSON) ->
+    whapps_json:get_value([<<"data">>], JSON, not_found) =/= not_found.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -837,3 +847,4 @@ xml_tag(Value, Type) ->
     io_lib:format("<~s>~s</~s>~n", [Type, Value, Type]).
 xml_tag(Key, Value, Type) ->
     io_lib:format("<~s type=\"~s\">~s</~s>~n", [Key, Type, string:strip(Value, both, $"), Key]).
+
