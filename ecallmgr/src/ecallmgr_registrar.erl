@@ -163,7 +163,7 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 		       ,{<<"Realm">>, Realm}
 		       ,{<<"Fields">>, []}
 		       | whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
-	    case ecallmgr_amqp_pool:reg_query(RegProp, 2500) of
+	    case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
 		{ok, {struct, RegResp}} ->
 		    true = whistle_api:reg_query_resp_v(RegResp),
 
