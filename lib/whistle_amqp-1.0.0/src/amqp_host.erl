@@ -242,6 +242,60 @@ handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{
 	    {noreply, State}
     end;
 
+handle_cast({consume, {FromPid, _}=From, #'basic.qos'{}=BasicQos}, #state{connection=Conn, consumers=Consumers}=State) ->
+    case dict:find(FromPid, Consumers) of
+	error ->
+	    case start_channel(Conn, FromPid) of
+		{C,R,T} ->
+		    FromRef = erlang:monitor(process, FromPid),
+
+		    gen_server:reply(From, amqp_channel:call(C, BasicQos)),
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		{error, _}=E ->
+		    gen_server:reply(From, E),
+		    {noreply, State}
+	    end;
+	{ok, {C,_,_,_}} ->
+	    gen_server:reply(From, amqp_channel:call(C, BasicQos)),
+	    {noreply, State}
+    end;
+
+handle_cast({consume, {FromPid, _}=From, #'basic.ack'{}=BasicAck}, #state{connection=Conn, consumers=Consumers}=State) ->
+    case dict:find(FromPid, Consumers) of
+	error ->
+	    case start_channel(Conn, FromPid) of
+		{C,R,T} ->
+		    FromRef = erlang:monitor(process, FromPid),
+
+		    gen_server:reply(From, amqp_channel:cast(C, BasicAck)),
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		{error, _}=E ->
+		    gen_server:reply(From, E),
+		    {noreply, State}
+	    end;
+	{ok, {C,_,_,_}} ->
+	    gen_server:reply(From, amqp_channel:cast(C, BasicAck)),
+	    {noreply, State}
+    end;
+
+handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{connection=Conn, consumers=Consumers}=State) ->
+    case dict:find(FromPid, Consumers) of
+	error ->
+	    case start_channel(Conn, FromPid) of
+		{C,R,T} ->
+		    FromRef = erlang:monitor(process, FromPid),
+
+		    gen_server:reply(From, amqp_channel:cast(C, BasicNack)),
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		{error, _}=E ->
+		    gen_server:reply(From, E),
+		    {noreply, State}
+	    end;
+	{ok, {C,_,_,_}} ->
+	    gen_server:reply(From, amqp_channel:cast(C, BasicNack)),
+	    {noreply, State}
+    end;
+
 handle_cast({misc_req, From, #'exchange.declare'{}=ED}, #state{misc_channel={C,_,T}}=State) ->
     gen_server:reply(From, amqp_channel:call(C, ED#'exchange.declare'{ticket=T})),
     {noreply, State};
