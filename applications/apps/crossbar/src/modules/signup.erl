@@ -380,8 +380,7 @@ confirmation_email(RD, #cb_context{doc=JObj}) ->
 %%--------------------------------------------------------------------            
 -spec(send_confirmation_email/4 :: (Email :: binary(), First :: binary(), Last :: binary(), URL :: binary()) -> no_return()).                                        
 send_confirmation_email(Email, First, Last, URL) ->
-    Cmd = whistle_util:to_list(<<
-                                  (whistle_util:to_binary(code:priv_dir(crossbar)))/binary
+    Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
                                  ,"/confirmation_email.sh"
                                  ,$ , $", Email/binary, $"
                                  ,$ , $", First/binary, $"
