@@ -20,6 +20,7 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
+-define(REFRESH_MSG, timeout).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
 
 -type routes() :: json_objects().
@@ -43,7 +44,7 @@ route(Flags) ->
     gen_server:call(?MODULE, {route, Flags}).
 
 force_carrier_refresh() ->
-    ?MODULE ! refresh,
+    ?MODULE ! ?REFRESH_MSG,
     ok.
 
 %%%===================================================================
@@ -62,8 +63,7 @@ force_carrier_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, _} = timer:send_after(1000, ?MODULE, refresh),
-    {ok, []}.
+    {ok, [], 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,7 +109,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(refresh, OldCarriers) ->
+handle_info(?REFRESH_MSG, OldCarriers) ->
     case get_current_carriers() of
 	{ok, Carriers} ->
 	    {noreply, Carriers};
@@ -119,7 +119,7 @@ handle_info(refresh, OldCarriers) ->
     end;
 handle_info({document_changes, DocID, Changes}, Carriers) ->
     logger:format_log(info, "TS_CARRIER(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
-    CurrRev =props:get_value(<<"_rev">>, Carriers),
+    CurrRev = props:get_value(<<"_rev">>, Carriers),
     ChangedCarriers = lists:foldl(fun(ChangeProp, Cs) ->
 					  case props:get_value(<<"rev">>, ChangeProp) of
 					      undefined -> Cs;
