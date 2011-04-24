@@ -442,10 +442,10 @@ add_failover(#route_flags{failover={}}=F0, Failover) ->
 	undefined ->
 	    case whapps_json:get_value(<<"sip">>, Failover) of
 		undefined -> F0;
-		SipFail -> F0#route_flags{failover=SipFail}
+		SipFail -> F0#route_flags{failover={<<"sip">>, SipFail}}
 	    end;
 	E164Fail ->
-	    F0#route_flags{failover=E164Fail}
+	    F0#route_flags{failover={<<"e164">>, E164Fail}}
     end;
 add_failover(F, _) -> F.
 
