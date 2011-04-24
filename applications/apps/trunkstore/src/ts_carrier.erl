@@ -131,6 +131,20 @@ handle_info({document_changes, DocID, Changes}, Carriers) ->
 				  end, Carriers, Changes),
     logger:format_log(info, "TS_CARRIER(~p): Changed carriers from ~p to ~p~n", [self(), CurrRev,props:get_value(<<"_rev">>, ChangedCarriers)]),
     {noreply, ChangedCarriers};
+handle_info({document_deleted, DocID}, Carriers) ->
+    CurrID = props:get_value(<<"_id">>, Carriers),
+    case DocID =:= CurrID of
+	true -> {stop, normal, Carriers};
+	false -> {noreply, Carriers}
+    end;
+
+handle_info({change_handler_terminating, _, DocID}, Carriers) ->
+    CurrID = props:get_value(<<"_id">>, Carriers),
+    case DocID =:= CurrID of
+	true -> {noreply, Carriers, 0};
+	false -> {noreply, Carriers}
+    end;
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
