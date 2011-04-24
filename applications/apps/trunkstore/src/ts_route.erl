@@ -248,6 +248,7 @@ inbound_route(#route_flags{auth_user=U, auth_realm=R, to_user=To, inbound_format
 
     case whistle_api:route_resp_route_v(Route1) of
 	true ->
+	    logger:format_log(info, "TS_ROUTE(~p): Trying to add failover route ~p~n", [self(), Failover]),
 	    add_failover_route(Failover, Flags, {struct, Route1});
 	false ->
 	    %% logger:format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route1]),
