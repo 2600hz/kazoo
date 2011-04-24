@@ -218,7 +218,10 @@ send_resp(JSON, RespQ) ->
 -spec(start_amqp/0 :: () -> tuple(ok, binary())).
 start_amqp() ->
     ReqQueue = amqp_util:new_callmgr_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
+
     ReqQueue1 = amqp_util:new_callmgr_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
+
+    amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
 
     %% Bind the queue to an exchange
     amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
