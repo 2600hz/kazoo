@@ -341,6 +341,15 @@ create_activation_request(#cb_context{req_data=JObj}=Context) ->
                                                               ,{<<"pvt_activation_key">>, create_activation_key()}              
                                                          ]}}.
 
+create_account(User) ->
+    case users:create_user(Context#cb_context{req_data=User}) of
+        #cb_context{resp_status=success, doc=User} ->
+            {ok, User};
+        #cb_context{resp_data=Error} when is_list(Error) ->
+            {error, Error};
+        _ -> {error, [<<"invalid accounts">>]}
+    end.
+            
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
