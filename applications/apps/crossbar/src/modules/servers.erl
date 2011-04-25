@@ -406,14 +406,14 @@ is_valid_doc(_JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(execute_deploy_cmd/1 :: (Context :: #cb_context{}) -> tuple(ok, json_object()) | tuple(error, atom())).
-execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj}=Context) ->
+execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
     case couch_mgr:save_doc(Db, whapps_json:set_value(<<"pvt_deploy_status">>, <<"running">>, JObj)) of
         {ok, _} ->
             ServerId = whapps_json:get_value(<<"_id">>, JObj),                
             try 
                 Ip = whapps_json:get_value(<<"ip">>, JObj),
                 Roles = list_to_binary(lists:map(fun(E) -> <<E/binary, $ >> end, whapps_json:get_value(<<"roles">>, JObj))),
-                Password = whapps_json:get_value(<<"password">>, JObj),
+                Password = whapps_json:get_value(<<"password">>, Data),
                 Hostname = whapps_json:get_value(<<"hostname">>, JObj),
                 OS = whapps_json:get_value(<<"operating_system">>, JObj),
                 AccountId = accounts:get_db_name(Db, raw),
