@@ -348,8 +348,11 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+is_valid_doc(JObj) ->
+    case whapps_json:get_value(<<"email">>, JObj) of
+	undefined -> {false, [<<"email">>]};
+	Email when is_binary(Email) -> {true, []}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

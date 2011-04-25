@@ -151,13 +151,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
+
                   Event1 = <<"v1_resource.execute.put.accounts">>,
                   Payload1 = [RD, Context#cb_context{doc=whapps_json:get_value(<<"account">>, JObj)}, [[]]],
                   [_, #cb_context{resp_status=success}=Context1 | _] = crossbar_bindings:fold(Event1, Payload1),
+
                   Event2 = <<"v1_resource.execute.put.users">>,
                   Payload2 = [RD, Context1#cb_context{doc=whapps_json:get_value(<<"user">>, JObj)}, [[]]],
                   crossbar_bindings:fold(Event2, Payload2),
-                  crossbar_doc:delete(Context),
+
+                  _ = crossbar_doc:delete(Context),
+
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -331,15 +335,19 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(create_activation_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_activation_request(#cb_context{req_data=JObj}=Context) ->
-    #cb_context{resp_status=success, doc=User} =
-        users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}),
-    #cb_context{resp_status=success, doc=Account} =
-        accounts:create_account(Context#cb_context{req_data=whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT)}),
-    Context#cb_context{resp_status=success, doc={struct, [
-							  {<<"pvt_user">>, User}
-							  ,{<<"pvt_account">>, Account}
-							  ,{<<"pvt_activation_key">>, create_activation_key()}
-                                                         ]}}.
+    case users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}) of
+	#cb_context{resp_status=success, doc=User} ->
+	    case accounts:create_account(Context#cb_context{req_data=whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT)}) of
+		#cb_context{resp_status=success, doc=Account}=Context1 ->
+		    Context1#cb_context{doc={struct, [
+						      {<<"pvt_user">>, User}
+						      ,{<<"pvt_account">>, Account}
+						      ,{<<"pvt_activation_key">>, create_activation_key()}
+						     ]}};
+		Context1 -> Context1
+	    end;
+	Context1 -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

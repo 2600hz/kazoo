@@ -86,7 +86,8 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                     ],
     lists:foreach(fun(SourceDb) ->
                           logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
-                          couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate])
+                          R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
+			  logger:format_log(info, "DB REPLICATE: ~p~n", [R])
                   end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account", _/binary>>) -> true; (_) -> false end(Db)]).
 
 %%--------------------------------------------------------------------
@@ -400,8 +401,8 @@ load_account_summary(AccountId, Context) ->
 -spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_account(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             case is_unique_realm(undefined, Context) of
                 true ->
@@ -560,8 +561,14 @@ is_valid_parent(_JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+is_valid_doc(JObj) ->
+    case whapps_json:get_value(<<"realm">>, JObj) of
+	undefined ->
+	    {false, [<<"realm">>]};
+	Realm when is_binary(Realm) ->
+	    {true, []}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -748,7 +755,10 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 %%--------------------------------------------------------------------
 -spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
 is_unique_realm(AccountId, Context) ->
-    Realm = whapps_json:get_value(<<"realm">>, Context#cb_context.req_data),
+    is_unique_realm(AccountId, Context, whapps_json:get_value(<<"realm">>, Context#cb_context.req_data)).
+
+is_unique_realm(_, _, undefined) -> false;
+is_unique_realm(AccountId, Context, Realm) ->
     JObj = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}, {<<"reduce">>, <<"true">>}], Context#cb_context{db_name=?AGG_DB}) of
                #cb_context{resp_status=success, doc=[J]} -> J;
                #cb_context{resp_status=success, doc=[]} -> []
