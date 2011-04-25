@@ -7,6 +7,9 @@
 
 %% -type iolist() :: [char() | binary() | iolist()].
 %% -type iodata() :: iolist() | binary().
+
+-define(EMPTY_JSON_OBJECT, {struct, []}).
+
 -type json_string() :: atom() | binary().
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term()].

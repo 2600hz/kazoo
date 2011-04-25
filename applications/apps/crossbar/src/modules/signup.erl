@@ -332,23 +332,23 @@ is_valid_doc(_JObj) ->
 -spec(create_activation_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_activation_request(#cb_context{req_data=JObj}=Context) ->
     #cb_context{resp_status=success, doc=User} = 
-        users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, [])}),
+        users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}),
     #cb_context{resp_status=success, doc=Account} = 
-        accounts:create_account(Context#cb_context{req_data=whapps_json:get_value(<<"account">>, JObj, [])}),
+        accounts:create_account(Context#cb_context{req_data=whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT)}),
     Context#cb_context{resp_status=success, doc={struct, [    
                                                                {<<"pvt_user">>, User}
                                                               ,{<<"pvt_account">>, Account}
                                                               ,{<<"pvt_activation_key">>, create_activation_key()}              
                                                          ]}}.
 
-create_account(User) ->
-    case users:create_user(Context#cb_context{req_data=User}) of
-        #cb_context{resp_status=success, doc=User} ->
-            {ok, User};
-        #cb_context{resp_data=Error} when is_list(Error) ->
-            {error, Error};
-        _ -> {error, [<<"invalid accounts">>]}
-    end.
+%% create_account(User) ->
+%%     case users:create_user(Context#cb_context{req_data=User}) of
+%%         #cb_context{resp_status=success, doc=User} ->
+%%             {ok, User};
+%%         #cb_context{resp_data=Error} when is_list(Error) ->
+%%             {error, Error};
+%%         _ -> {error, [<<"invalid accounts">>]}
+%%     end.
             
 %%--------------------------------------------------------------------
 %% @private

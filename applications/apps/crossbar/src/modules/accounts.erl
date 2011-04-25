@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, update_all_accounts/1, replicate_from_accounts/2, 
+-export([start_link/0, update_all_accounts/1, replicate_from_accounts/2,
          replicate_from_account/3, get_db_name/1, get_db_name/2, create_account/1]).
 
 %% gen_server callbacks
@@ -178,7 +178,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
-    spawn(fun() ->                  
+    spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
                   %% Do all of our prep-work out of the agg db
                   %% later we will switch to save to the client db
@@ -199,7 +199,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context#cb_context{db_name=get_db_name(AccountId, encoded)}) of
                       #cb_context{resp_status=success}=Context1 ->
-                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data={struct, []}}, Params]};
+                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=?EMPTY_JSON_OBJECT}, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
@@ -388,7 +388,7 @@ load_account_summary([], Context) ->
 load_account_summary(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [
          {<<"startkey">>, [AccountId]}
-        ,{<<"endkey">>, [AccountId, {struct, []}]}
+        ,{<<"endkey">>, [AccountId, ?EMPTY_JSON_OBJECT]}
     ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -494,7 +494,7 @@ update_parent(AccountId, #cb_context{req_data=Data}=Context) ->
 load_children(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [
          {<<"startkey">>, [AccountId]}
-        ,{<<"endkey">>, [AccountId, {struct, []}]}
+        ,{<<"endkey">>, [AccountId, ?EMPTY_JSON_OBJECT]}
     ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -507,7 +507,7 @@ load_children(AccountId, Context) ->
 load_descendants(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [
          {<<"startkey">>, [AccountId]}
-        ,{<<"endkey">>, [AccountId, {struct, []}]}
+        ,{<<"endkey">>, [AccountId, ?EMPTY_JSON_OBJECT]}
     ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -576,7 +576,7 @@ update_tree(AccountId, ParentId, Context) ->
             Descendants =
                 crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [
                      {<<"startkey">>, [AccountId]}
-                    ,{<<"endkey">>, [AccountId, {struct, []}]}
+                    ,{<<"endkey">>, [AccountId, ?EMPTY_JSON_OBJECT]}
                 ], Context),
             case Descendants of
                 #cb_context{resp_status=success, doc=[]} ->
@@ -624,7 +624,7 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(set_private_fields/1 :: (JObj :: json_object()) -> json_object()).
-set_private_fields(JObj) ->    
+set_private_fields(JObj) ->
     JObj1 = whapps_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
     JObj2 = whapps_json:set_value(<<"pvt_tree">>, [], JObj1),
     set_api_keys(JObj2).
@@ -725,7 +725,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
             logger:format_log(info, "ACCOUNTS(~p): Created DB for account id ~p", [self(), get_db_name(DbName, raw)]),
             JObj = whapps_json:set_value(<<"_id">>, get_db_name(DbName, raw), Doc),
             case crossbar_doc:save(Context#cb_context{db_name=DbName, doc=JObj}) of
-                #cb_context{resp_status=success}=Context1 ->                              
+                #cb_context{resp_status=success}=Context1 ->
                     spawn(fun() ->
                                   couch_mgr:load_doc_from_file(DbName, crossbar, ?VIEW_FILE),
                                   Responses = crossbar_bindings:map(<<"account.created">>, DbName),
@@ -742,17 +742,17 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will determine if the realm in the request is 
+%% This function will determine if the realm in the request is
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).            
+-spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
 is_unique_realm(AccountId, Context) ->
     Realm = whapps_json:get_value(<<"realm">>, Context#cb_context.req_data),
     JObj = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}, {<<"reduce">>, <<"true">>}], Context#cb_context{db_name=?AGG_DB}) of
                #cb_context{resp_status=success, doc=[J]} -> J;
                #cb_context{resp_status=success, doc=[]} -> []
-           end,    
+           end,
     Assignments = whapps_json:get_value(<<"value">>, JObj, []),
     case AccountId of
         undefined ->

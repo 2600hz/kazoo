@@ -188,7 +188,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 			  gen_server:reply(From, E);
 		      {ok, []} ->
 			  logger:format_log(info, "TS_ACCTMGR.reserve: no_funds for ~p:~p~n", [AcctId, CallID]),
-			  gen_server:reply(From, {error, no_funds});
+			  gen_server:reply(From, {error, no_account});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case whapps_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
@@ -287,11 +287,13 @@ handle_info(?EOD, S) ->
 		current_write_db = DB % all new writes should go in new DB, but old DB is needed still
 	       }};
 handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
+    Self = self(),
     spawn( fun() -> lists:foreach(fun(Acct) ->
 					  transfer_acct(Acct, RDB, WDB),
 					  transfer_active_calls(Acct, RDB, WDB)
 				  end, get_accts(RDB)),
-		    couch_mgr:db_compact(RDB)
+		    %% once active accounts from yesterday are done, make sure all others are in too
+		    load_accounts_from_ts(WDB, Self)
 	   end),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
@@ -353,7 +355,7 @@ has_credit(DB, AcctId, Amt) ->
 
 -spec(credit_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
 credit_available(DB, AcctId) ->
-    case couch_mgr:get_results(DB, {"credit","credit_available"}, [{<<"group">>, <<"true">>}, {<<"key">>, AcctId}]) of
+    case couch_mgr:get_results(DB, <<"credit/credit_available">>, [{<<"group">>, true}, {<<"key">>, AcctId}]) of
 	{ok, []} -> 0;
 	{ok, [{struct, [{<<"key">>, _}, {<<"value">>, Avail}] }] } -> Avail
     end.
@@ -364,14 +366,14 @@ has_flatrates(DB, AcctId) ->
 
 -spec(flatrates_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
 flatrates_available(DB, AcctId) ->
-    case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"group">>, <<"true">>}, {<<"key">>, AcctId}]) of
+    case couch_mgr:get_results(DB, <<"trunks/flat_rates_available">>, [{<<"group">>, true}, {<<"key">>, AcctId}]) of
 	{ok, []} -> 0;
 	{ok, [{struct, [{<<"key">>, _}, {<<"value">>, Avail}] }] } -> Avail
     end.
 
 -spec(trunk_type/3 :: (RDB :: binary(), AcctId :: binary(), CallID :: binary()) -> flat_rate | per_min | non_existant).
 trunk_type(DB, AcctId, CallID) ->
-    case couch_mgr:get_results(DB, {"trunks", "trunk_type"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, <<"true">>}]) of
+    case couch_mgr:get_results(DB, <<"trunks/trunk_type">>, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, true}]) of
 	{ok, []} -> non_existant;
 	{ok, [{struct, [{<<"key">>,_}, {<<"value">>, <<"flat_rate">>}] }] } -> flat_rate;
 	{ok, [{struct, [{<<"key">>,_}, {<<"value">>, <<"per_min">>}] }] } -> per_min
@@ -479,7 +481,7 @@ transfer_acct(AcctId, RDB, WDB) ->
     {ok, _} = couch_mgr:save_doc(WDB, {struct, lists:keydelete(<<"_rev">>, 1, Acct1)}),
 
     %% update info_* doc with account balance
-    update_account(AcctId, Bal).
+    spawn(fun() -> update_account(AcctId, Bal) end).
 
 transfer_active_calls(AcctId, RDB, WDB) ->
     case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
@@ -504,8 +506,8 @@ transfer_active_calls(AcctId, RDB, WDB) ->
 update_from_couch(AcctId, WDB, RDB) ->
     {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
 
-    Acct = whapps_json:get_value(<<"account">>, JObj, {struct, []}),
-    Credits = whapps_json:get_value(<<"credits">>, Acct, {struct, []}),
+    Acct = whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
+    Credits = whapps_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
     Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(whapps_json:get_value(<<"prepay">>, Credits, 0.0))),
     Trunks = whistle_util:to_integer(whapps_json:get_value(<<"trunks">>, Acct, 0)),
 
@@ -531,8 +533,8 @@ update_from_couch(AcctId, WDB, RDB) ->
 
 update_account(AcctId, Bal) ->
     {ok, {struct, Doc}} = couch_mgr:open_doc(?TS_DB, AcctId),
-    {struct, Acct} = props:get_value(<<"account">>, Doc, {struct, []}),
-    {struct, Credits} = props:get_value(<<"credits">>, Acct, {struct, []}),
+    {struct, Acct} = props:get_value(<<"account">>, Doc, ?EMPTY_JSON_OBJECT),
+    {struct, Credits} = props:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
     Credits1 = [ {<<"prepay">>, ?UNITS_TO_DOLLARS(Bal)} | lists:keydelete(<<"prepay">>, 1, Credits)],
     Acct1 = [ {<<"credits">>, {struct, Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
     Doc1 = [ {<<"account">>, {struct, Acct1}} | lists:keydelete(<<"account">>, 1, Doc)],
@@ -545,8 +547,8 @@ load_account(AcctId, DB, Srv) ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
 		{error, not_found} -> ok;
 		{ok, JObj} ->
-		    Acct = whapps_json:get_value(<<"account">>, JObj, {struct, []}),
-		    Credits = whapps_json:get_value(<<"credits">>, Acct, {struct, []}),
+		    Acct = whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
+		    Credits = whapps_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
 		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(whapps_json:get_value(<<"prepay">>, Credits, 0.0))),
 		    Trunks = whistle_util:to_integer(whapps_json:get_value(<<"trunks">>, Acct, 0)),
 		    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),

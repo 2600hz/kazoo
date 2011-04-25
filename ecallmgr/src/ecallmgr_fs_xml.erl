@@ -195,7 +195,7 @@ get_channel_params(Prop) ->
 	      AG -> [io_lib:format(?REGISTER_CHANNEL_PARAM
 				   ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG]) | CV0]
 	  end,
-    {struct, Custom} = props:get_value(<<"Custom-Channel-Vars">>, Prop, {struct, []}),
+    {struct, Custom} = props:get_value(<<"Custom-Channel-Vars">>, Prop, ?EMPTY_JSON_OBJECT),
     lists:foldl(fun({K,V}, CV) ->
 			[io_lib:format(?REGISTER_CHANNEL_PARAM
 				       ,[list_to_binary([?CHANNEL_VAR_PREFIX, K]), V]) | CV]
