@@ -281,13 +281,13 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user-agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                      ,{<<"user_agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
                       ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept-charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept-endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept-language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                      ,{<<"accept_charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                      ,{<<"accept_endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                      ,{<<"accept_language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
                       ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep-alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                      ,{<<"keep_alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
                      ]},
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
