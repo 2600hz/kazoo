@@ -412,7 +412,9 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
             ServerId = whapps_json:get_value(<<"_id">>, JObj),                
             try 
                 Ip = whapps_json:get_value(<<"ip">>, JObj),
-                Roles = list_to_binary(lists:map(fun(E) -> <<E/binary, $ >> end, whapps_json:get_value(<<"roles">>, JObj))),
+                Roles = fun([H|T], Sep) -> 
+                                <<H/binary, (list_to_binary([<<(Sep)/binary, X/binary>> || X <- T]))/binary>> 
+                        end(whapps_json:get_value(<<"roles">>, JObj), <<", ">>),
                 Password = whapps_json:get_value(<<"password">>, Data),
                 Hostname = whapps_json:get_value(<<"hostname">>, JObj),
                 OS = whapps_json:get_value(<<"operating_system">>, JObj),
@@ -428,6 +430,7 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                                              ,$ , $" ,AccountId/binary, $"
                                              ,$ , $" ,(whapps_json:get_value(<<"pvt_cookie">>, JObj))/binary, $"
                                              ,$ , $" ,(whapps_json:get_value(<<"pvt_db_key">>, JObj))/binary, $"
+                                             ,$ , $" ,(Db)/binary, $"
                                            >>),                
                spawn(fun() -> 
                              try
