@@ -17,4 +17,5 @@ eval "echo \"$(cat ./deploy_data.tmpl)\"" > /tmp/${server_id}.json
 
 echo "$(date +%s) server[${server_id}] account[$account_id]: knife bootstrap ${ip_address} '${roles}' -x root -P ${password} -N ${node_name} -d ${operating_system}" >> run_log.txt
 
-knife bootstrap ${ip_address} '${roles}' -x root -P ${password} -N ${node_name} -d ${operating_system}
+sudo su - deploy -c "knife bootstrap ${ip_address} -r ${roles} -x root -P ${password} -N ${node_name} -d ${operating_system}"
+## knife bootstrap ${ip_address} '${roles}' -x root -P ${password} -N ${node_name} -d ${operating_system}
