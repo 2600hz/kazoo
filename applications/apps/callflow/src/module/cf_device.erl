@@ -47,14 +47,14 @@ get_endpoint({struct, _}=EP, Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Endpoint = [
-                         {<<"Invite-Format">>, whapps_json:get_value([<<"sip">>, <<"invite-format">>], JObj)}
+                         {<<"Invite-Format">>, whapps_json:get_value([<<"sip">>, <<"invite_format">>], JObj)}
                         ,{<<"To-User">>, whapps_json:get_value([<<"sip">>, <<"username">>], JObj)}
                         ,{<<"To-Realm">>, whapps_json:get_value([<<"sip">>, <<"realm">>], JObj)}
                         ,{<<"To-DID">>, whapps_json:get_value([<<"sip">>, <<"number">>], JObj)}
                         ,{<<"Route">>, whapps_json:get_value([<<"sip">>, <<"route">>], JObj)}
-                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value([<<"media">>, <<"ignore-early-media">>], JObj)}
-                        ,{<<"Bypass-Media">>, whapps_json:get_value([<<"media">>, <<"bypass-media">>], JObj)}
-                        ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value([<<"media">>, <<"progress-timeout">>], EP, <<"6">>)}
+                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj)}
+                        ,{<<"Bypass-Media">>, whapps_json:get_value([<<"media">>, <<"bypass_media">>], JObj)}
+                        ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value([<<"media">>, <<"progress_timeout">>], EP, <<"6">>)}
                         ,{<<"Codecs">>, whapps_json:get_value([<<"media">>, <<"codecs">>], JObj)}
                     ],
             {ok, {struct, [ KV || {_, V}=KV <- Endpoint, V =/= undefined ]} };

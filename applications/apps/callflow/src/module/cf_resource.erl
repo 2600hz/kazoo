@@ -59,8 +59,8 @@ create_endpoint(To, JObj) ->
                 ,{<<"Route">>, Route}
                 ,{<<"Auth-User">>, whapps_json:get_value(<<"username">>, JObj)}
                 ,{<<"Auth-Password">>, whapps_json:get_value(<<"password">>, JObj)}
-                ,{<<"Bypass-Media">>, whapps_json:get_value(<<"bypass-media">>, JObj)}
-                ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value(<<"progress-timeout">>, JObj, <<"6">>)}
+                ,{<<"Bypass-Media">>, whapps_json:get_value(<<"bypass_media">>, JObj)}
+                ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, whapps_json:get_value(<<"codecs">>, JObj)}
                ],
     {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}.

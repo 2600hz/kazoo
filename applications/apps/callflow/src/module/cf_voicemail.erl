@@ -472,9 +472,9 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{route_request=RR, a
 			   {<<"timestamp">>, new_timestamp()}
 			   ,{<<"from">>, whapps_json:get_value(<<"From">>, RR)}
 			   ,{<<"to">>, whapps_json:get_value(<<"To">>, RR)}
-			   ,{<<"caller-id-number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
-			   ,{<<"caller-id-name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
-			   ,{<<"call-id">>, whapps_json:get_value(<<"Call-ID">>, RR)}
+			   ,{<<"caller_id_number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
+			   ,{<<"caller_id_name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
+			   ,{<<"call_id">>, whapps_json:get_value(<<"Call-ID">>, RR)}
 			   ,{<<"folder">>, ?FOLDER_NEW}
 			   ,{<<"attachment">>, MediaName}
 			  ]
@@ -536,8 +536,8 @@ get_mailbox_profile(Data, #cf_call{account_db=Db}) ->
             Default=#mailbox{},
             #mailbox{
                        mailbox_id = Id
-                      ,skip_instructions = whapps_json:get_value(<<"skip-instructions">>, JObj, Default#mailbox.skip_instructions)
-                      ,skip_greeting = whapps_json:get_value(<<"skip-greeting">>, JObj, Default#mailbox.skip_greeting)
+                      ,skip_instructions = whapps_json:get_value(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
+                      ,skip_greeting = whapps_json:get_value(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
                       ,has_unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                       ,pin = whapps_json:get_value(<<"pin">>, JObj, <<>>)
                       ,timezone = whapps_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
