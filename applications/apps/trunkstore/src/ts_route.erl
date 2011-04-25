@@ -22,7 +22,7 @@
 -spec(handle_req/1 :: (ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(ApiJObj) ->
     %% logger:format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
-    wh_timer:start("ts_route"),
+    %% wh_timer:start("ts_route"),
     case whapps_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj) of
 	undefined ->
 	    {error, "No Custom Vars"};
@@ -42,7 +42,7 @@ handle_req(ApiJObj) ->
 %%%===================================================================
 -spec(inbound_handler/1 :: (ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 inbound_handler(ApiJObj) ->
-    wh_timer:tick("inbound_handler/1"),
+    %% wh_timer:tick("inbound_handler/1"),
     %% logger:format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
     [ToUser, _ToDomain] = binary:split(whapps_json:get_value(<<"To">>, ApiJObj), <<"@">>),
     Flags = create_flags(whistle_util:to_e164(ToUser), ApiJObj),
@@ -53,7 +53,7 @@ inbound_handler(ApiJObj) ->
 
 -spec(outbound_handler/1 :: (ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 outbound_handler(ApiJObj) ->
-    wh_timer:tick("outbound_handler/1"),
+    %% wh_timer:tick("outbound_handler/1"),
     %% logger:format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
     Did = whistle_util:to_e164(whapps_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)),
     Flags = create_flags(Did, ApiJObj),
@@ -62,7 +62,7 @@ outbound_handler(ApiJObj) ->
 
 -spec(lookup_user_flags/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, string())).
 lookup_user_flags(Name, Realm) ->
-    wh_timer:tick("lookup_user_flags/2"),
+    %% wh_timer:tick("lookup_user_flags/2"),
     case wh_cache:fetch({lookup_user_flags, Realm, Name}) of
 	{ok, _}=Result -> Result;
 	{error, not_found} ->
@@ -79,12 +79,14 @@ lookup_user_flags(Name, Realm) ->
 
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, json_object()) | tuple(error, string())).
 lookup_did(Did) ->
-    wh_timer:tick("lookup_did/1"),
-    Options = [{"keys", [Did]}],
+    %% wh_timer:tick("lookup_did/1"),
+    Options = [{"key", Did}],
     case wh_cache:fetch({lookup_did, Did}) of
-	{ok, _}=Resp -> wh_timer:tick("lookup_did/1 cache hit"), Resp;
+	{ok, _}=Resp ->
+	    %% wh_timer:tick("lookup_did/1 cache hit"),
+	    Resp;
 	{error, not_found} ->
-	    wh_timer:tick("lookup_did/1 cache miss"),
+	    %% wh_timer:tick("lookup_did/1 cache miss"),
 	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 		{error, _} ->
 		    %% logger:format_log(error, "TS_ROUTE(~p): No ~p view found while looking up ~p~n", [self(), ?TS_VIEW_DIDLOOKUP, Did]),
@@ -95,6 +97,7 @@ lookup_did(Did) ->
 		{ok, [{struct, _}=ViewJObj | _Rest]} ->
 		    ValueJObj = whapps_json:get_value(<<"value">>, ViewJObj),
 		    Resp = whapps_json:set_value(<<"id">>, whapps_json:get_value(<<"id">>, ViewJObj), ValueJObj),
+		    logger:format_log(info, "TS_ROUTE(~p): Caching did lookup ~p: ~p~n", [self(), {lookup_did, Did}, Resp]),
 		    wh_cache:store({lookup_did, Did}, Resp),
 		    {ok, Resp};
 		_Else ->
@@ -105,11 +108,11 @@ lookup_did(Did) ->
 
 -spec(process_routing/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 process_routing(Flags, ApiJObj) ->
-    wh_timer:tick("process_routing/2"),
+    %% wh_timer:tick("process_routing/2"),
     case ts_credit:check(Flags) of
 	{ok, Flags1} ->
 	    %% call may proceed
-	    wh_timer:tick("process_routing post credit"),
+	    %% wh_timer:tick("process_routing post credit"),
 	    find_route(Flags1, ApiJObj);
 	{error, entry_exists} ->
 	    %% logger:format_log(error, "TS_ROUTE(~p): Call-ID ~p has a trunk reserved already, aborting~n", [self(), Flags#route_flags.callid]),
@@ -124,7 +127,7 @@ process_routing(Flags, ApiJObj) ->
 
 -spec(find_route/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 find_route(Flags, ApiJObj) ->
-    wh_timer:tick("find_route/2"),
+    %% wh_timer:tick("find_route/2"),
     case Flags#route_flags.direction =:= <<"outbound">> of
 	false ->
 	    %% handle inbound routing
@@ -141,12 +144,14 @@ find_route(Flags, ApiJObj) ->
 
 -spec(find_outbound_route/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 find_outbound_route(Flags, ApiJObj) ->
+    %% wh_timer:tick("find_outbound_route/2"),
     try
 	[ToUser, _ToDomain] = binary:split(whapps_json:get_value(<<"To">>, ApiJObj), <<"@">>),
 	Did = whistle_util:to_e164(ToUser),
 
 	case lookup_did(Did) of
 	    {error, _} -> % if lookup_did(Did) failed
+		logger:format_log(info, "TS_ROUTE(~p): Didn't find ~p, routing over carriers~n", [self(), Did]),
 		route_over_carriers(Flags#route_flags{scenario=outbound}, ApiJObj);
 	    {ok, DidJObj} -> % out-in scenario
 		OrigAcctId = Flags#route_flags.account_doc_id,
@@ -161,7 +166,7 @@ find_outbound_route(Flags, ApiJObj) ->
 			%% logger:format_log(info, "TS_ROUTE(~p): Rerouting ~p back to known user ~s@~s~n", [self(), Did, FlagsIn#route_flags.auth_user, FlagsIn#route_flags.auth_realm]),
 			case inbound_route(FlagsIn) of
 			    {ok, Routes, FlagsIn2} ->
-				wh_timer:tick("found inbound route to route over instead"),
+				%% wh_timer:tick("found inbound route to route over instead"),
 				case FlagsIn#route_flags.scenario of
 				    inbound ->
 					response(Routes, ApiJObj, FlagsIn2#route_flags{routes_generated=Routes
@@ -197,27 +202,28 @@ find_outbound_route(Flags, ApiJObj) ->
 	end
     catch
 	_A:_B ->
-	    %% logger:format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), _A, _B]),
-	    %% logger:format_log(error, "TS_ROUTE(~p): Stacktrace: ~p~n", [self(), erlang:get_stacktrace()]),
+	    logger:format_log(error, "TS_ROUTE(~p): Exception when going outbound: ~p: ~p~n", [self(), _A, _B]),
+	    logger:format_log(error, "TS_ROUTE(~p): Stacktrace: ~p~n", [self(), erlang:get_stacktrace()]),
 	    _ = ts_acctmgr:release_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid, 0),
-	    response(503, ApiJObj, Flags)
+	    response(500, ApiJObj, Flags)
     end.
 
 -spec(route_over_carriers/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 route_over_carriers(Flags, ApiJObj) ->
-    wh_timer:tick("route_over_carriers/2"),
+    %% wh_timer:tick("route_over_carriers/2"),
     case ts_carrier:route(Flags) of
 	{ok, Routes} ->
+	    %% wh_timer:tick("routes found, response time"),
 	    response(Routes, ApiJObj, Flags#route_flags{routes_generated=Routes});
 	{error, _Error} ->
 	    %% logger:format_log(error, "TS_ROUTE(~p): Outbound Routing Error ~p~n", [self(), _Error]),
 	    {error, "We don't handle this route"}
     end.
 
--spec(inbound_route/1 :: (Flags :: #route_flags{}) -> tuple(ok, json_object(), #route_flags{}) | tuple(error, string())).
+-spec(inbound_route/1 :: (Flags :: #route_flags{}) -> tuple(ok, json_objects(), #route_flags{}) | tuple(error, string())).
 inbound_route(#route_flags{auth_user=U, auth_realm=R, to_user=To, inbound_format=InFormat, failover=Failover
 			   ,media_handling=MediaHandling, progress_timeout=ProgressTimeout}=Flags) ->
-    wh_timer:tick("inbound_route/1"),
+    %% wh_timer:tick("inbound_route/1"),
 
     InviteBase = [{<<"To-User">>, U}, {<<"To-Realm">>, R}],
 
@@ -242,8 +248,8 @@ inbound_route(#route_flags{auth_user=U, auth_realm=R, to_user=To, inbound_format
 
     case whistle_api:route_resp_route_v(Route1) of
 	true ->
-	    {Routes, Flags1} = add_failover_route(Failover, Flags, {struct, Route1}),
-	    {ok, {struct, Routes}, Flags1};
+	    logger:format_log(info, "TS_ROUTE(~p): Trying to add failover route ~p~n", [self(), Failover]),
+	    add_failover_route(Failover, Flags, {struct, Route1});
 	false ->
 	    %% logger:format_log(error, "TS_ROUTE(~p): Failed to validate Route ~p~n", [self(), Route1]),
 	    {error, "Inbound route validation failed"}
@@ -266,18 +272,19 @@ invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 
 -spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), Flags :: #route_flags{}, InboundRoute :: json_object()) ->
-				   tuple(json_objects(), #route_flags{})).
-add_failover_route({}, Flags, InboundRoute) -> {[InboundRoute], Flags#route_flags{scenario=inbound}};
+				   tuple(ok, json_objects(), #route_flags{})).
+add_failover_route({}, Flags, InboundRoute) -> {ok, [InboundRoute], Flags#route_flags{scenario=inbound}};
 %% route to a SIP URI
 add_failover_route({<<"sip">>, URI}, #route_flags{media_handling=MediaHandling}=Flags, InboundRoute) ->
-    { [InboundRoute, {struct, [{<<"Route">>, URI}
-			       ,{<<"Invite-Format">>, <<"route">>}
-			       ,{<<"Weight-Cost">>, <<"1">>}
-			       ,{<<"Weight-Location">>, <<"1">>}
-			       ,{<<"Failover-Route">>, <<"true">>}
-			       ,{<<"Media">>, ts_util:get_media_handling(MediaHandling)}
-			      ]}]
-      ,Flags#route_flags{scenario=inbound_failover}
+    logger:format_log(info, "TS_ROUTE(~p): Adding SIP failover~n", [self()]),
+    {ok, [InboundRoute, {struct, [{<<"Route">>, URI}
+				  ,{<<"Invite-Format">>, <<"route">>}
+				  ,{<<"Weight-Cost">>, <<"1">>}
+				  ,{<<"Weight-Location">>, <<"1">>}
+				  ,{<<"Failover-Route">>, <<"true">>}
+				  ,{<<"Media">>, ts_util:get_media_handling(MediaHandling)}
+				 ]}]
+     ,Flags#route_flags{scenario=inbound_failover}
     };
 %% route to a E.164 number - need to setup outbound for this sucker
 add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, InboundRoute) ->
@@ -289,16 +296,16 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 	{ok, OutBFlags1} ->
 	    case ts_carrier:route(OutBFlags1) of
 		{ok, Routes} ->
-		    %% logger:format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
-		    { [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
+		    logger:format_log(info, "TS_ROUTE(~p): Generated Outbound Routes For Failover~n~p~n", [self(), Routes]),
+		    { ok, [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
 		{error, _Error} ->
-		    %% logger:format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), _Error]),
+		    logger:format_log(error, "TS_ROUTE(~p): Outbound Routing Error For Failover ~p~n", [self(), _Error]),
 		    _ = ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
-		    { [InboundRoute], Flags#route_flags{scenario=inbound}}
+		    { ok, [InboundRoute], Flags#route_flags{scenario=inbound}}
 	    end;
 	{error, _Error} ->
-	    %% logger:format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, _Error]),
-	    {[InboundRoute], Flags#route_flags{scenario=inbound}}
+	    logger:format_log(error, "TS_ROUTE(~p): Failed to secure credit for failover DID(~p): ~p~n", [self(), DID, _Error]),
+	    {ok, [InboundRoute], Flags#route_flags{scenario=inbound}}
     end.
 
 -spec(inbound_features/1 :: (Flags :: #route_flags{}) -> #route_flags{}).
@@ -319,7 +326,7 @@ fold_features(Features, Flags) ->
 
 -spec(create_flags/2 :: (Did :: binary(), ApiJObj :: json_object()) -> #route_flags{}).
 create_flags(Did, ApiJObj) ->
-    wh_timer:tick("create_flags/2"),
+    %% wh_timer:tick("create_flags/2"),
     case lookup_did(Did) of
 	{ok, DidJObj} ->
 	    create_flags(Did, ApiJObj, DidJObj);
@@ -347,7 +354,7 @@ create_flags(_, ApiJObj, DidJObj) ->
 
 -spec(flags_from_api/3 :: (ApiJObj :: json_object(), ChannelVarsJObj :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_api(ApiJObj, ChannelVarsJObj, Flags) ->
-    wh_timer:tick("flags_from_api/3"),
+    %% wh_timer:tick("flags_from_api/3"),
     [ToUser, ToDomain] = binary:split(whapps_json:get_value(<<"To">>, ApiJObj), <<"@">>),
     [FromUser, FromDomain] = binary:split(whapps_json:get_value(<<"From">>, ApiJObj), <<"@">>),
 
@@ -372,7 +379,7 @@ flags_from_api(ApiJObj, ChannelVarsJObj, Flags) ->
 %% - Auth Realm
 -spec(flags_from_did/2 :: (DidJObj :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_did(DidJObj, Flags) ->
-    wh_timer:tick("flags_from_did/2"),
+    %% wh_timer:tick("flags_from_did/2"),
     DidOptions = whapps_json:get_value(<<"DID_Opts">>, DidJObj, {struct, []}),
     AuthOpts = whapps_json:get_value(<<"auth">>, DidJObj, {struct, []}),
 
@@ -398,7 +405,7 @@ flags_from_did(DidJObj, Flags) ->
 %% - 
 -spec(flags_from_srv/2 :: (Srv :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_srv(Srv, Flags) ->
-    wh_timer:tick("flags_from_srv/2"),
+    %% wh_timer:tick("flags_from_srv/2"),
     Options = whapps_json:get_value(<<"options">>, Srv, {struct, []}),
 
     F0 = Flags#route_flags{inbound_format = whapps_json:get_value(<<"inbound_format">>, Options, <<>>)
@@ -418,7 +425,7 @@ flags_from_srv(Srv, Flags) ->
 %% - Failover <- only if it hasn't been set at the server or DID level
 -spec(flags_from_account(Acct :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_account(Acct, Flags) ->
-    wh_timer:tick("flags_from_acct/2"),
+    %% wh_timer:tick("flags_from_acct/2"),
     F1 = add_caller_id(Flags, whapps_json:get_value(<<"caller_id">>, Acct, {struct, []})),
     F2 = add_failover(F1, whapps_json:get_value(<<"failover">>, Acct, {struct, []})),
     add_auth_realm(F2, whapps_json:get_value(<<"auth_realm">>, Acct)).
@@ -428,10 +435,18 @@ add_force_outbound(#route_flags{force_outbound=undefined}=F, Force) ->
     F#route_flags{force_outbound=whistle_util:to_boolean(Force)};
 add_force_outbound(F, _) -> F.
 
--spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: tuple(proplist())) -> #route_flags{}).
+-spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: json_object()) -> #route_flags{}).
 add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
-add_failover(#route_flags{failover={}}=F0, {struct, [{_K, _V}=FOver]}) ->
-    F0#route_flags{failover=FOver};
+add_failover(#route_flags{failover={}}=F0, Failover) ->
+    case whapps_json:get_value(<<"e164">>, Failover) of
+	undefined ->
+	    case whapps_json:get_value(<<"sip">>, Failover) of
+		undefined -> F0;
+		SipFail -> F0#route_flags{failover={<<"sip">>, SipFail}}
+	    end;
+	E164Fail ->
+	    F0#route_flags{failover={<<"e164">>, E164Fail}}
+    end;
 add_failover(F, _) -> F.
 
 -spec(add_auth_user/2 :: (F :: #route_flags{}, User :: binary() | undefined) -> #route_flags{}).
@@ -461,40 +476,55 @@ add_caller_id(#route_flags{caller_id={}}=F0, {struct, _}=CID) ->
 				,whapps_json:get_value(<<"cid_number">>, CID, <<>>)}};
 add_caller_id(F, _) -> F.
 
--spec(response/3 :: (Routes :: json_object() | json_objects() | integer(), JObj :: json_object(), Flags :: #route_flags{}) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(response/3 :: (Routes :: json_objects() | integer(), JObj :: json_object(), Flags :: #route_flags{}) -> tuple(ok, iolist()) | tuple(error, string())).
 response(ErrCode, JObj, _Flags) when is_integer(ErrCode) ->
+    %% wh_timer:tick("response/3 err code"),
+    logger:format_log(info, "TS_ROUTE(~p): Errcode: ~p, JObj: ~p~n", [self(), ErrCode, JObj]),
     JObj1 = {struct, [ {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, JObj)}
 	      | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
 	     },
     response(ErrCode, JObj1);
 response(Routes, JObj, Flags) ->
-    wh_timer:tick("response/3"),
+    %% wh_timer:tick("response/3 routes here"),
 
     {ok, Pid} = ts_call_sup:start_proc([Flags#route_flags.callid, Flags]),
+    %% wh_timer:tick("response/3 routes start_call_handler"),
     {ok, Q} = ts_call_handler:get_queue(Pid),
-
+    %% wh_timer:tick("response/3 routes got queue of call_handler"),
     JObj1 = {struct, [ {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, JObj)}
 		       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
 	    },
+    %% wh_timer:tick("response/3 new jobj"),
     response(Routes, JObj1).
 
 response(Routes, JObj) ->
+    %% wh_timer:tick("response/2"),
     whistle_api:route_resp(specific_response(Routes, JObj)).
 
--spec(specific_response/2 :: (CodeOrRoutes :: integer() | json_object(), Prop :: json_object()) -> json_object()).
+-spec(specific_response/2 :: (CodeOrRoutes :: integer() | json_objects(), Prop :: json_object()) -> json_object()).
 specific_response(404, {struct, Prop}) ->
+    %% wh_timer:tick("specific_response 404"),
     {struct, [{<<"Routes">>, []}
 	      ,{<<"Method">>, <<"error">>}
 	      ,{<<"Route-Error-Code">>, <<"404">>}
 	      ,{<<"Route-Error-Message">>, <<"Not Found">>}
 	      | Prop ]};
 specific_response(503, {struct, Prop}) ->
+    %% wh_timer:tick("specific_response 503"),
     {struct, [{<<"Routes">>, []}
 	      ,{<<"Method">>, <<"error">>}
 	      ,{<<"Route-Error-Code">>, <<"503">>}
 	      ,{<<"Route-Error-Message">>, <<"Insufficient Credit">>}
 	      | Prop]};
-specific_response({struct, Routes}, {struct, Prop}) ->
+specific_response(500, {struct, Prop}) ->
+    %% wh_timer:tick("specific_response 500"),
+    {struct, [{<<"Routes">>, []}
+	      ,{<<"Method">>, <<"error">>}
+	      ,{<<"Route-Error-Code">>, <<"500">>}
+	      ,{<<"Route-Error-Message">>, <<"Internal Server Error">>}
+	      | Prop]};
+specific_response(Routes, {struct, Prop}) ->
+    %% wh_timer:tick("specific_response routes"),
     {struct, [{<<"Routes">>, Routes}
 	      ,{<<"Method">>, <<"bridge">>}
 	      | Prop]}.

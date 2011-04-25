@@ -190,7 +190,7 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
     end;
 
 handle_info(call_hangup, #state{is_node_up=false, failed_node_checks=FNC}=State) ->
-    logger:format_log(info, "EVT(~p): call_hangup received, is_node_up is false; let's wait and see if FS restarts in time (tried ~s times already)~n", [self(), FNC]),
+    logger:format_log(info, "EVT(~p): call_hangup received, is_node_up is false; let's wait and see if FS restarts in time (tried ~p times already)~n", [self(), FNC]),
     {noreply, State};
 
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid, is_amqp_up=false, queued_events=Evts}=State) ->

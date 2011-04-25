@@ -19,9 +19,6 @@
 -import(cf_call_command, [wait_for_hangup/0]).
 -import(cf_call_command, [send_callctrl/2]).
 
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -29,10 +26,10 @@
 %% conference memebers
 %% @end
 %%--------------------------------------------------------------------
--spec(members/2 :: (Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(members/2 :: (Conference :: binary(), Call :: #cf_call{}) -> ok).
 -spec(b_members/2 :: (Conference :: binary(), Call :: #cf_call{}) -> list()).
 
-members(ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->        
+members(ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"members">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -47,11 +44,11 @@ b_members(ConfId, Call) ->
     members(ConfId, Call),
     case wait_for_message(<<"members">>, <<"response">>, <<"conference">>) of
         {ok, Response} ->
-            get_value(<<"Members">>, Response, []);
-        {error, _} -> 
+            whapps_json:get_value(<<"Members">>, Response, []);
+        {error, _} ->
             []
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -59,10 +56,10 @@ b_members(ConfId, Call) ->
 %% participants of a conference
 %% @end
 %%--------------------------------------------------------------------
--spec(play/3 :: (Media :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(play/4 :: (Media :: binary(), MemberId :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(play/3 :: (Media :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play/4 :: (Media :: binary(), MemberId :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok).
 
-play(Media, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
+play(Media, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"play">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -74,7 +71,7 @@ play(Media, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     {ok, Json} = whistle_api:conference_play_req(Command),
     send_callctrl(Json, Call).
 
-play(Media, MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
+play(Media, MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"play">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -86,17 +83,17 @@ play(Media, MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
               ],
     {ok, Json} = whistle_api:conference_play_req(Command),
     send_callctrl(Json, Call).
-        
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to mute a member of 
+%% Produces the low level whistle_api request to mute a member of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(mute/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(mute/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok).
 
-mute(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
+mute(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"mute">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -115,9 +112,9 @@ mute(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(unmute/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(unmute/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok).
 
-unmute(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
+unmute(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"unmute">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -136,9 +133,9 @@ unmute(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(deaf/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(deaf/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok).
 
-deaf(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
+deaf(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"deaf">>}
                ,{<<"Insert-At">>, <<"now">>}
@@ -157,9 +154,9 @@ deaf(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(undeaf/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(undeaf/3 :: (MemberID :: binary(), Conference :: binary(), Call :: #cf_call{}) -> ok).
 
-undeaf(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
+undeaf(MemberId, ConfId, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"undeaf">>}
                ,{<<"Insert-At">>, <<"now">>}

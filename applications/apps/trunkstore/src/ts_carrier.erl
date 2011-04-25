@@ -20,6 +20,7 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
+-define(REFRESH_MSG, timeout).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
 
 -type routes() :: json_objects().
@@ -38,11 +39,12 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+-spec(route/1 :: (Flags :: #route_flags{}) -> tuple(ok, routes()) | {error, string()}).
 route(Flags) ->
     gen_server:call(?MODULE, {route, Flags}).
 
 force_carrier_refresh() ->
-    ?MODULE ! refresh,
+    ?MODULE ! ?REFRESH_MSG,
     ok.
 
 %%%===================================================================
@@ -61,8 +63,7 @@ force_carrier_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, _} = timer:send_after(1000, ?MODULE, refresh),
-    {ok, []}.
+    {ok, [], 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,7 +109,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(refresh, OldCarriers) ->
+handle_info(?REFRESH_MSG, OldCarriers) ->
     case get_current_carriers() of
 	{ok, Carriers} ->
 	    {noreply, Carriers};
@@ -118,7 +119,7 @@ handle_info(refresh, OldCarriers) ->
     end;
 handle_info({document_changes, DocID, Changes}, Carriers) ->
     logger:format_log(info, "TS_CARRIER(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
-    CurrRev =props:get_value(<<"_rev">>, Carriers),
+    CurrRev = props:get_value(<<"_rev">>, Carriers),
     ChangedCarriers = lists:foldl(fun(ChangeProp, Cs) ->
 					  case props:get_value(<<"rev">>, ChangeProp) of
 					      undefined -> Cs;
@@ -130,6 +131,20 @@ handle_info({document_changes, DocID, Changes}, Carriers) ->
 				  end, Carriers, Changes),
     logger:format_log(info, "TS_CARRIER(~p): Changed carriers from ~p to ~p~n", [self(), CurrRev,props:get_value(<<"_rev">>, ChangedCarriers)]),
     {noreply, ChangedCarriers};
+handle_info({document_deleted, DocID}, Carriers) ->
+    CurrID = props:get_value(<<"_id">>, Carriers),
+    case DocID =:= CurrID of
+	true -> {stop, normal, Carriers};
+	false -> {noreply, Carriers}
+    end;
+
+handle_info({change_handler_terminating, _, DocID}, Carriers) ->
+    CurrID = props:get_value(<<"_id">>, Carriers),
+    case DocID =:= CurrID of
+	true -> {noreply, Carriers, 0};
+	false -> {noreply, Carriers}
+    end;
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -199,7 +214,7 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 		   ,{<<"options">>, lists:map(fun({struct, Gateway}) -> Gateway end, Gateways)}
 		   | proplists:delete(<<"routes">>, COs1)]}.
 
--spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, proplist()} | {error, string()}).
+-spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, routes()} | {error, string()}).
 get_routes(#route_flags{to_user=User}=Flags, Carriers) ->
     logger:format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
 
@@ -210,8 +225,10 @@ get_routes(#route_flags{to_user=User}=Flags, Carriers) ->
 			     end, props:delete(<<"_rev">>, props:delete(<<"_id">>, Carriers))),
     case Carriers1 of
 	[] ->
+	    logger:format_log(error, "TS_CARRIER(~p): No carriers matching ~p~n", [self(), User]),
 	    {error, "No carriers match outbound number"};
 	Cs ->
+	    logger:format_log(error, "TS_CARRIER(~p): Creating routes for ~p~n", [self(), User]),
 	    create_routes(Flags, lists:sort(fun sort_carriers/2, Cs))
     end.
 
@@ -234,8 +251,10 @@ create_routes(Flags, Carriers) ->
 
     case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID, ChannelVars}, Carriers) of
 	{[], _, _, _} ->
+	    logger:format_log(info, "TS_CARRIER(~p): Failed to create routes~n", [self()]),
 	    {error, "Failed to find routes for the call"};
 	{Routes, _, _, _} ->
+	    logger:format_log(info, "TS_CARRIER(~p): Found ~p routes~n", [self(), length(Routes)]),
 	    {ok, Routes}
     end.
 

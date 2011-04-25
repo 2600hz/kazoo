@@ -29,9 +29,8 @@
 -define(AUTH_QUEUE_NAME, <<"ts_responder.auth.queue">>).
 
 -record(state, {
-                my_q = <<>> :: binary() | tuple(error, term())
-		,is_amqp_up = true :: boolean()
-	       }).
+	  is_amqp_up = true :: boolean()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -109,26 +108,21 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, S) ->
     logger:format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
-    {noreply, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
+    {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
 
 handle_info({amqp_host_down, H}, S) ->
     logger:format_log(info, "TS_RESPONDER(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
     {ok, CQ} = start_amqp(),
-    {noreply, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)}, 1000};
+    {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
 
-handle_info(Req, #state{my_q={error, _}}=S) ->
+handle_info(_, #state{is_amqp_up=false}=S) ->
     logger:format_log(info, "TS_RESPONDER(~p): restarting amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
-    handle_info(Req, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)});
-
-handle_info(Req, #state{is_amqp_up=false}=S) ->
-    logger:format_log(info, "TS_RESPONDER(~p): restarting up amqp, will retry in a bit if doesn't work~n", [self()]),
-    {ok, CQ} = start_amqp(),
-    handle_info(Req, S#state{my_q=CQ, is_amqp_up=is_binary(CQ)});
+    {noreply, S#state{is_amqp_up=is_binary(CQ)}};
 
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    logger:format_log(info, "TS_RESPONDER(~p): Amqp Request recv ~p: ~s~n", [self(), Props, Payload]),
+    logger:format_log(info, "TS_RESPONDER(~p): Amqp Request recv: ~s~n", [self(), Payload]),
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
     {noreply, State};
 
@@ -151,8 +145,7 @@ handle_info(_Unhandled, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{my_q=CQ}) ->
-    amqp_util:queue_delete(CQ),
+terminate(_Reason, _) ->
     logger:format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]).
 
 %%--------------------------------------------------------------------
@@ -195,9 +188,11 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
 		    logger:format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
 	    end
     end;
+
 process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
     logger:format_log(info, "TS_RESPONDER.route(~p): Looking up route req~n", [self()]),
     Start = erlang:now(),
+    try
     case whistle_api:route_req_v(JObj) andalso ts_route:handle_req(JObj) of
 	false ->
 	    logger:format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
@@ -207,7 +202,11 @@ process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
 	    send_resp(JSON, RespQ);
 	{error, _Msg} ->
 	    logger:format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
+    end
+    catch
+	A:B -> logger:format_log(error, "TS_RESPONDER.route(~p): CATCH ~p:~p~n~p~n", [self(), A, B, erlang:get_stacktrace()])
     end;
+
 process_req(_MsgType, _Prop) ->
     io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
 
@@ -219,7 +218,10 @@ send_resp(JSON, RespQ) ->
 -spec(start_amqp/0 :: () -> tuple(ok, binary())).
 start_amqp() ->
     ReqQueue = amqp_util:new_callmgr_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
+
     ReqQueue1 = amqp_util:new_callmgr_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
+
+    amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
 
     %% Bind the queue to an exchange
     amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),

@@ -18,7 +18,7 @@
 -export([store/3, store/4, store/5]).
 -export([tones/2]).
 -export([play_and_collect_digit/2]).
--export([play_and_collect_digits/4, play_and_collect_digits/5, play_and_collect_digits/6, 
+-export([play_and_collect_digits/4, play_and_collect_digits/5, play_and_collect_digits/6,
          play_and_collect_digits/7, play_and_collect_digits/8, play_and_collect_digits/9]).
 -export([say/2, say/3, say/4, say/5]).
 -export([conference/2, conference/3, conference/4, conference/5]).
@@ -30,7 +30,7 @@
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_play_and_collect_digit/2]).
--export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6, 
+-export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6,
          b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9]).
 -export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
 -export([b_noop/1]).
@@ -42,16 +42,13 @@
 -export([wait_for_hangup/0]).
 -export([send_callctrl/2]).
 
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
-
 %%--------------------------------------------------------------------
 %% @pubic
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(audio_macro/2 :: (Commands :: proplist(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(audio_macro/3 :: (Commands :: proplist(), Call :: #cf_call{}, Queue :: json_objects()) -> ok | tuple(error, atom())).
+-spec(audio_macro/2 :: (Commands :: proplist(), Call :: #cf_call{}) -> ok).
+-spec(audio_macro/3 :: (Commands :: proplist(), Call :: #cf_call{}, Queue :: json_objects()) -> ok).
 
 audio_macro(Commands, Call) ->
     audio_macro(Commands, Call, []).
@@ -61,29 +58,30 @@ audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
                ,{<<"Commands">>, Queue}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
+              ],
     {ok, Payload} = whistle_api:queue_req(Command),
     send_callctrl(Payload, Call);
-audio_macro([{play, MediaName}|T], Call, Queue) ->    
+audio_macro([{play, MediaName}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, play_command(MediaName, ?ANY_DIGIT, Call)}|Queue]);
-audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->    
+audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, play_command(MediaName, Terminators, Call)}|Queue]);
-audio_macro([{say, Say}|T], Call, Queue) ->    
+audio_macro([{say, Say}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call)}|Queue]);
-audio_macro([{say, Say, Type}|T], Call, Queue) ->    
+audio_macro([{say, Say, Type}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, say_command(Say, Type, <<"pronounced">>, <<"en">>, Call)}|Queue]);
-audio_macro([{say, Say, Type, Method}|T], Call, Queue) ->    
+audio_macro([{say, Say, Type, Method}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, say_command(Say, Type, Method, <<"en">>, Call)}|Queue]);
-audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->    
+audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, say_command(Say, Type, Method, Language, Call)}|Queue]);
-audio_macro([{tones, Tones}|T], Call, Queue) ->    
-    audio_macro(T, Call, [{struct, tones_command(Tones, Call)}|Queue]).
+audio_macro([{tones, Tones}|T], Call, Queue) ->
+    audio_macro(T, Call, [ tones_command(Tones, Call)|Queue]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec(flush_dtmf/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 flush_dtmf(Call) ->
     b_play(<<"silence_stream://250">>, Call).
 
@@ -93,8 +91,8 @@ flush_dtmf(Call) ->
 %% Produces the low level whistle_api request to answer the channel
 %% @end
 %%--------------------------------------------------------------------
--spec(answer/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
--spec(b_answer/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
+-spec(answer/1 :: (Call :: #cf_call{}) -> ok).
+-spec(b_answer/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 
 answer(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
@@ -103,7 +101,7 @@ answer(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Payload} = whistle_api:answer_req(Command),
-    send_callctrl(Payload, Call).       
+    send_callctrl(Payload, Call).
 
 b_answer(Call) ->
     answer(Call),
@@ -116,8 +114,8 @@ b_answer(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec(hangup/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_hangup/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(hangup/1 :: (Call :: #cf_call{}) -> ok).
+-spec(b_hangup/1 :: (Call :: #cf_call{}) -> tuple(ok, channel_hungup) | tuple(error, execution_failure)).
 
 hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
@@ -125,7 +123,7 @@ hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
+              ],
     {ok, Payload} = whistle_api:hangup_req(Command),
     send_callctrl(Payload, Call).
 
@@ -133,27 +131,34 @@ b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Produces the low level whistle_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge/2 :: (Endpoints :: list(json_object()), Call :: #cf_call{}) -> ok).
--spec(bridge/3 :: (Endpoints :: list(json_object()), Timeout :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/4 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/5 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/6 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/7 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/8 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
--spec(b_bridge/2 :: (Endpoints :: list(json_object()), Call :: #cf_call{}) -> ok).
--spec(b_bridge/3 :: (Endpoints :: list(json_object()), Timeout :: binary(), Call :: #cf_call{}) -> ok).
--spec(b_bridge/4 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
--spec(b_bridge/5 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) -> ok).
--spec(b_bridge/6 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) -> ok).
--spec(b_bridge/7 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
--spec(b_bridge/8 :: (Endpoints :: list(json_object()), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> ok).
+-spec(bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/8 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+
+-spec(b_bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/8 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 
 bridge(Endpoints, Call) ->
     bridge(Endpoints, <<"26">>, Call).
@@ -203,14 +208,15 @@ b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback
 %% @private
 %% @doc
 %% Produces the low level whistle_api request to play media to the
-%% caller.  A list of terminators can be provided that the caller 
+%% caller.  A list of terminators can be provided that the caller
 %% can use to skip playback.
 %% @end
 %%--------------------------------------------------------------------
--spec(play/2 :: (Media :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(play/3 :: (Media :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_play/2 :: (Media :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_play/3 :: (Media :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(play/2 :: (Media :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play/3 :: (Media :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> ok).
+
+-spec(b_play/2 :: (Media :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_play/3 :: (Media :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 
 play(Media, Call) ->
     play(Media, ?ANY_DIGIT, Call).
@@ -226,7 +232,7 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
-    b_play(Media, ?ANY_DIGIT, Call).    
+    b_play(Media, ?ANY_DIGIT, Call).
 b_play(Media, Terminators, Call) ->
     play(Media, Terminators, Call),
     wait_for_message(<<"play">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, false).
@@ -237,7 +243,7 @@ play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
      ,{<<"Media-Name">>, Media}
      ,{<<"Terminators">>, Terminators}
      ,{<<"Call-ID">>, CallId}
-    ].    
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,16 +252,19 @@ play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
 %%--------------------------------------------------------------------
--spec(record/2 :: (MediaName :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(record/3 :: (MediaName :: binary(), Terminators :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(record/4 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(record/5 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(record/6 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_record/2 :: (MediaName :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_record/3 :: (MediaName :: binary(), Terminators :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_record/4 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_record/5 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(b_record/6 :: (MediaName :: binary(), Terminators :: binary(), TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(record/2 :: (MediaName :: binary(), Call :: #cf_call{}) -> ok).
+-spec(record/3 :: (MediaName :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> ok).
+-spec(record/4 :: (MediaName :: binary(), Terminators :: list(binary()), TimeLimit :: binary(), Call :: #cf_call{}) -> ok).
+-spec(record/5 :: (MediaName :: binary(), Terminators :: list(binary()), TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> ok).
+-spec(record/6 :: (MediaName :: binary(), Terminators :: list(binary()), TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> ok).
+
+-spec(b_record/2 :: (MediaName :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_record/3 :: (MediaName :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_record/4 :: (MediaName :: binary(), Terminators :: list(binary()), TimeLimit :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_record/5 :: (MediaName :: binary(), Terminators :: list(binary()), TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_record/6 :: (MediaName :: binary(), Terminators :: list(binary()), TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) ->
+			 tuple(ok, json_object()) | tuple(error, atom())).
 
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
@@ -275,7 +284,7 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
                ,{<<"Silence-Hits">>, SilenceHits}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
+              ],
     {ok, Payload} = whistle_api:record_req(Command),
     send_callctrl(Payload, Call).
 
@@ -288,9 +297,8 @@ b_record(MediaName, Terminators, TimeLimit, Call) ->
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
     b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
-    record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),  
+    record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -298,13 +306,13 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 %% Produces the low level whistle_api request to store the file
 %% @end
 %%--------------------------------------------------------------------
--spec(store/3 :: (MediaName :: binary(), Transfer :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(store/4 :: (MediaName :: binary(), Transfer :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(store/5 :: (MediaName :: binary(), Transfer :: binary(), Method :: binary(), Headers :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(store/3 :: (MediaName :: binary(), Transfer :: binary(), Call :: #cf_call{}) -> ok).
+-spec(store/4 :: (MediaName :: binary(), Transfer :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok).
+-spec(store/5 :: (MediaName :: binary(), Transfer :: binary(), Method :: binary(), Headers :: json_objects(), Call :: #cf_call{}) -> ok).
 
-store(MediaName, Transfer, Call) -> 
+store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
-store(MediaName, Transfer, Method, Call) -> 
+store(MediaName, Transfer, Method, Call) ->
     store(MediaName, Transfer, Method, [{struct, []}], Call).
 store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
@@ -316,18 +324,18 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
+              ],
     {ok, Payload} = whistle_api:store_req(Command),
     send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to play tones to the 
+%% Produces the low level whistle_api request to play tones to the
 %% caller
 %% @end
 %%--------------------------------------------------------------------
--spec(tones/2 :: (Tones :: list(json_object()), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(tones/2 :: (Tones :: json_objects(), Call :: #cf_call{}) -> ok).
 
 tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
@@ -335,16 +343,17 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Tones">>, Tones}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
+              ],
     {ok, Payload} = whistle_api:tones_req(Command),
     send_callctrl(Payload, Call).
 
+-spec(tones_command/2 :: (Tones :: list(integer()), Call :: #cf_call{}) -> json_object()).
 tones_command(Tones, #cf_call{call_id=CallId}) ->
-    [
-      {<<"Application-Name">>, <<"tones">>}
-     ,{<<"Tones">>, Tones}
-     ,{<<"Call-ID">>, CallId}
-    ].    
+    {struct, [
+	      {<<"Application-Name">>, <<"tones">>}
+	      ,{<<"Tones">>, Tones}
+	      ,{<<"Call-ID">>, CallId}
+	     ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -353,21 +362,22 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
 %% caller, and collect a number of DTMF events.
 %% @end
 %%--------------------------------------------------------------------
--spec(play_and_collect_digit/2 :: (Media :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(play_and_collect_digits/4 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(play_and_collect_digits/5 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(play_and_collect_digits/6 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(play_and_collect_digits/7 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(play_and_collect_digits/8 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(play_and_collect_digits/9 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Terminators :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(play_and_collect_digit/2 :: (Media :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play_and_collect_digits/4 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play_and_collect_digits/5 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play_and_collect_digits/6 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play_and_collect_digits/7 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play_and_collect_digits/8 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Call :: #cf_call{}) -> ok).
+-spec(play_and_collect_digits/9 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> ok).
+
 -spec(b_play_and_collect_digit/2 :: (Media :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
 -spec(b_play_and_collect_digits/4 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
 -spec(b_play_and_collect_digits/5 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
 -spec(b_play_and_collect_digits/6 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
 -spec(b_play_and_collect_digits/7 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
 -spec(b_play_and_collect_digits/8 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(b_play_and_collect_digits/9 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Terminators :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
- 
+-spec(b_play_and_collect_digits/9 :: (MinDigits :: binary(), MaxDigits :: binary(), Media :: binary(), Tries :: binary(), Timeout :: binary(), MediaInvalid :: binary(), Regex :: binary(), Terminators :: list(binary()), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
@@ -393,7 +403,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Digits-Regex">>, Regex}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],    
+              ],
     {ok, Payload} = whistle_api:play_collect_digits_req(Command),
     send_callctrl(Payload, Call).
 
@@ -413,8 +423,8 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call),
     Wait = (whistle_util:to_integer(Timeout) * whistle_util:to_integer(Tries)) + 5000,
     case wait_for_message(<<"play_and_collect_digits">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Wait) of
-        {ok, Msg} ->
-            {ok, get_value(<<"Application-Response">>, Msg)};
+        {ok, JObj} ->
+            {ok, whapps_json:get_value(<<"Application-Response">>, JObj, <<>>)};
         {error, _}=E ->
             E
     end.
@@ -425,18 +435,18 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %% Produces the low level whistle_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
--spec(say/2 :: (Say :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(say/3 :: (Say :: binary(), Type :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(say/4 :: (Say :: binary(), Type :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
--spec(say/5 :: (Say :: binary(), Type :: binary(), Method :: binary(), Language :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(say/2 :: (Say :: binary(), Call :: #cf_call{}) -> ok).
+-spec(say/3 :: (Say :: binary(), Type :: binary(), Call :: #cf_call{}) -> ok).
+-spec(say/4 :: (Say :: binary(), Type :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok).
+-spec(say/5 :: (Say :: binary(), Type :: binary(), Method :: binary(), Language :: binary(), Call :: #cf_call{}) -> ok).
 
-say(Say, Call) -> 
+say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
-say(Say, Type, Call) -> 
+say(Say, Type, Call) ->
     say(Say, Type, <<"pronounced">>, Call).
-say(Say, Type, Method, Call) -> 
+say(Say, Type, Method, Call) ->
     say(Say, Type, Method, <<"en">>, Call).
-say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) -> 
+say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"say">>}
                ,{<<"Say-Text">>, Say}
@@ -447,7 +457,7 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Payload} = whistle_api:say_req(Command),
-    send_callctrl(Payload, Call).       
+    send_callctrl(Payload, Call).
 
 say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
     [
@@ -457,23 +467,24 @@ say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
      ,{<<"Method">>, Method}
      ,{<<"Language">>, Language}
      ,{<<"Call-ID">>, CallId}
-    ].    
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc 
+%% @doc
 %% Produces the low level whistle_api request to bridge a caller
 %% with a conference, with optional entry flags
 %% @end
 %%--------------------------------------------------------------------
--spec(conference/2 :: (ConfId :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(conference/3 :: (ConfId :: binary(), Mute :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(conference/4 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(conference/5 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Moderator :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(b_conference/2 :: (ConfId :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(b_conference/3 :: (ConfId :: binary(), Mute :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(b_conference/4 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
--spec(b_conference/5 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Moderator :: binary(), Call :: #cf_call{}) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec(conference/2 :: (ConfId :: binary(), Call :: #cf_call{}) -> ok).
+-spec(conference/3 :: (ConfId :: binary(), Mute :: binary(), Call :: #cf_call{}) -> ok).
+-spec(conference/4 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Call :: #cf_call{}) -> ok).
+-spec(conference/5 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Moderator :: binary(), Call :: #cf_call{}) -> ok).
+
+-spec(b_conference/2 :: (ConfId :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_conference/3 :: (ConfId :: binary(), Mute :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_conference/4 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(b_conference/5 :: (ConfId :: binary(), Mute :: binary(), Deaf :: binary(), Moderator :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 
 conference(ConfId, Call) ->
     conference(ConfId, <<"false">>, Call).
@@ -481,7 +492,7 @@ conference(ConfId, Mute, Call) ->
     conference(ConfId, Mute, <<"false">>, Call).
 conference(ConfId, Mute, Deaf, Call) ->
     conference(ConfId, Mute, Deaf, <<"false">>, Call).
-conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->    
+conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
@@ -500,7 +511,7 @@ b_conference(ConfId, Mute, Call) ->
     b_conference(ConfId, Mute, <<"false">>, Call).
 b_conference(ConfId, Mute, Deaf, Call) ->
     b_conference(ConfId, Mute, Deaf, <<"false">>, Call).
-b_conference(ConfId, Mute, Deaf, Moderator, Call) ->    
+b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, Call),
     wait_for_message(<<"conference">>, <<"CHANNEL_EXECUTE">>).
 
@@ -510,8 +521,8 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
 %% Produces the low level whistle_api request to preform a noop
 %% @end
 %%--------------------------------------------------------------------
--spec(noop/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
--spec(b_noop/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
+-spec(noop/1 :: (Call :: #cf_call{}) -> ok).
+-spec(b_noop/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 
 noop(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
@@ -520,7 +531,7 @@ noop(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Payload} = whistle_api:noop_req(Command),
-    send_callctrl(Payload, Call).       
+    send_callctrl(Payload, Call).
 
 b_noop(Call) ->
     noop(Call),
@@ -529,11 +540,11 @@ b_noop(Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to flush the command 
+%% Produces the low level whistle_api request to flush the command
 %% queue
 %% @end
 %%--------------------------------------------------------------------
--spec(flush/1 :: (Call :: #cf_call{}) -> ok | tuple(error, atom())).                       
+-spec(flush/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 
 flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
@@ -541,7 +552,7 @@ flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Insert-At">>, <<"flush">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-              ],   
+              ],
     {ok, Payload} = whistle_api:noop_req(Command),
     send_callctrl(Payload, Call),
     wait_for_message(<<"noop">>).
@@ -557,40 +568,42 @@ flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
 -spec(wait_for_message/1 :: (Application :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 -spec(wait_for_message/2 :: (Application :: binary(), Event :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 -spec(wait_for_message/3 :: (Application :: binary(), Event :: binary(), Type :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
--spec(wait_for_message/4 :: (Application :: binary(), Event :: binary(), Type :: binary(), Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(wait_for_message/4 :: (Application :: binary(), Event :: binary(), Type :: binary(), Timeout :: integer() | false) -> tuple(ok, json_object()) | tuple(error, atom())).
 
 wait_for_message(Application) ->
-    wait_for_message(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).    
+    wait_for_message(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
 wait_for_message(Application, Event) ->
-    wait_for_message(Application, Event, <<"call_event">>).    
+    wait_for_message(Application, Event, <<"call_event">>).
 wait_for_message(Application, Event, Type) ->
-    wait_for_message(Application, Event, Type, 5000).    
+    wait_for_message(Application, Event, Type, 5000).
 wait_for_message(Application, Event, Type, false) ->
     receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
-                { Application, Event, Type } ->
-                    {ok, Msg};
+        {amqp_msg, {struct, _}=JObj} ->
+            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
                     {error, execution_failure};
-                _ ->
-                    wait_for_message(Application, Event, Type, false)
-            end
+                { Application, Event, Type } ->
+                    {ok, JObj};
+		_ ->
+		    wait_for_message(Application, Event, Type, false)
+	    end
     end;
 wait_for_message(Application, Event, Type, Timeout) ->
+    Start = erlang:now(),
     receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
-                { Application, Event, Type } ->
-                    {ok, Msg};
+        {amqp_msg, {struct, _}=JObj} ->
+            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
                     {error, execution_failure};
-                _ ->
-                    wait_for_message(Application, Event, Type, Timeout)
+                { Application, Event, Type } ->
+                    {ok, JObj};
+		_ ->
+		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    wait_for_message(Application, Event, Type, Timeout - (DiffMicro div 1000))
             end
     after
         Timeout ->
@@ -603,24 +616,26 @@ wait_for_message(Application, Event, Type, Timeout) ->
 %% Wait for a DTMF event and extract the digits when it comes
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_dtmf/1 :: (Timeout :: integer()) -> tuple(ok, binary()) | tuple(error, atom())).    
+-spec(wait_for_dtmf/1 :: (Timeout :: integer()) -> tuple(ok, binary()) | tuple(error, atom())).
 wait_for_dtmf(Timeout) ->
+    Start = erlang:now(),
     receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
+        {amqp_msg, {struct, _}=JObj} ->
+            case { whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
                 { <<"DTMF">>, <<"call_event">> } ->
-                    {ok, get_value(<<"DTMF-Digit">>, Msg)};
+                    {ok, whapps_json:get_value(<<"DTMF-Digit">>, JObj)};
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 {  _, <<"error">> } ->
                     {error, execution_failure};
                 _ ->
-                    wait_for_dtmf(Timeout)
+		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    wait_for_dtmf(Timeout - (DiffMicro div 1000))
             end
     after
         Timeout ->
             {error, timeout}
-    end.    
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -628,13 +643,14 @@ wait_for_dtmf(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_bridge/1 :: (Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).    
-wait_for_bridge(Timeout) -> 
+-spec(wait_for_bridge/1 :: (Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).
+wait_for_bridge(Timeout) ->
+    Start = erlang:now(),
     receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
+        {amqp_msg, {struct, _}=JObj} ->
+            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
-                    {ok, Msg};
+                    {ok, JObj};
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
@@ -642,7 +658,8 @@ wait_for_bridge(Timeout) ->
                 { _, _, <<"error">> } ->
                     {error, execution_failed};
                 _ ->
-                    wait_for_bridge(Timeout)
+		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    wait_for_bridge(Timeout - (DiffMicro div 1000))
             end
     after
         Timeout ->
@@ -655,27 +672,28 @@ wait_for_bridge(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_application_or_dtmf/2 :: (Application :: binary(), Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).    
-wait_for_application_or_dtmf(Application, Timeout) -> 
+-spec(wait_for_application_or_dtmf/2 :: (Application :: binary(), Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom()) | tuple(dtmf, binary())).
+wait_for_application_or_dtmf(Application, Timeout) ->
+    Start = erlang:now(),
     receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Application-Name">>, Msg), get_value(<<"Event-Name">>, Msg), get_value(<<"Event-Category">>, Msg) } of
+        {amqp_msg, {struct, _}=JObj} ->
+            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
                 { Application, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-                    {ok, Msg};
+                    {ok, JObj};
                 { _, <<"DTMF">>, <<"call_event">> } ->
-                    {dtmf, get_value(<<"DTMF-Digit">>, Msg)};
+                    {dtmf, whapps_json:get_value(<<"DTMF-Digit">>, JObj)};
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
                     {error, execution_failure};
                 _ ->
-                    wait_for_application_or_dtmf(Application, Timeout)
+		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
             end
     after
         Timeout ->
             {error, timeout}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -683,11 +701,11 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_unbridge/0 :: () -> tuple(ok, channel_hangup)).    
-wait_for_unbridge() -> 
+-spec(wait_for_unbridge/0 :: () -> tuple(ok, channel_hungup | channel_unbridge) | tuple(error, execution_failure)).
+wait_for_unbridge() ->
     receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
+        {amqp_msg, {struct, _}=JObj} ->
+            case { whapps_json:get_value(<<"Event-Category">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj) } of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
                     {ok, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
@@ -705,11 +723,11 @@ wait_for_unbridge() ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_hangup/0 :: () -> tuple(ok, channel_hangup)).    
-wait_for_hangup() -> 
+-spec(wait_for_hangup/0 :: () -> tuple(ok, channel_hungup) | tuple(error, execution_failure)).
+wait_for_hangup() ->
     receive
-        {amqp_msg, {struct, Msg}} ->
-            case { get_value(<<"Event-Category">>, Msg), get_value(<<"Event-Name">>, Msg) } of
+        {amqp_msg, {struct, _}=JObj} ->
+            case { whapps_json:get_value(<<"Event-Category">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj) } of
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
                 { <<"error">>, _ } ->
@@ -725,6 +743,6 @@ wait_for_hangup() ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec(send_callctrl/2 :: (Payload :: binary(), Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(send_callctrl/2 :: (Payload :: binary(), Call :: #cf_call{}) -> ok).
 send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
     amqp_util:callctl_publish(CtrlQ, Payload).

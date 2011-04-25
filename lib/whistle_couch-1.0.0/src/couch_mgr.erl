@@ -71,6 +71,13 @@ load_doc_from_file(DbName, App, File) ->
             {error, Reason}
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Overwrite the existing contents of a document with the contents of
+%% a file
+%% @end
+%%--------------------------------------------------------------------
 -spec(update_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
@@ -231,14 +238,14 @@ db_delete(DbName) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% open a document given a docid returns not_found or the Document
+%% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
--spec(open_doc/2 :: (DbName :: string(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
+-spec(open_doc/2 :: (DbName :: binary(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: string(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
+-spec(open_doc/3 :: (DbName :: binary(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
 open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
 open_doc(DbName, DocId, Options) ->
@@ -257,7 +264,7 @@ open_doc(DbName, DocId, Options) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec(lookup_doc_rev/2 :: (DbName :: string(), DocId :: binary()) -> tuple(error, term()) | tuple(ok, binary())).
+-spec(lookup_doc_rev/2 :: (DbName :: binary(), DocId :: binary()) -> tuple(error, term()) | tuple(ok, binary())).
 lookup_doc_rev(DbName, DocId) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
@@ -275,7 +282,7 @@ lookup_doc_rev(DbName, DocId) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec(save_doc/2 :: (DbName :: list(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(save_doc/2 :: (DbName :: binary(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 save_doc(DbName, [{struct, [_|_]}=Doc]) ->
     save_doc(DbName, Doc, []);
 save_doc(DbName, [{struct, _}|_]=Docs) ->
@@ -286,7 +293,7 @@ save_doc(DbName, Doc) ->
     save_doc(DbName, Doc, []).
 
 
--spec(save_doc/3 :: (DbName :: string(), Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(save_doc/3 :: (DbName :: binary(), Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(error, atom())).
 save_doc(DbName, {struct, _}=Doc, Opts) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
@@ -297,7 +304,7 @@ save_doc(DbName, {struct, _}=Doc, Opts) ->
             end
     end.
 
--spec(save_docs/3 :: (DbName :: string(), Docs :: json_objects(), Opts :: proplist()) -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(save_docs/3 :: (DbName :: binary(), Docs :: json_objects(), Opts :: proplist()) -> tuple(ok, json_objects()) | tuple(error, atom())).
 save_docs(DbName, Docs, Opts) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
@@ -314,7 +321,7 @@ save_docs(DbName, Docs, Opts) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: list(), Doc :: proplist()) -> tuple(ok, term()) | tuple(error, atom())).
+-spec(del_doc/2 :: (DbName :: binary(), Doc :: proplist()) -> tuple(ok, term()) | tuple(error, atom())).
 del_doc(DbName, Doc) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
@@ -328,7 +335,7 @@ del_doc(DbName, Doc) ->
 %%%===================================================================
 %%% Attachment Functions
 %%%===================================================================
--spec(fetch_attachment/3 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
+-spec(fetch_attachment/3 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
 fetch_attachment(DbName, DocId, AName) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
@@ -337,12 +344,12 @@ fetch_attachment(DbName, DocId, AName) ->
     end.
 
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
--spec(put_attachment/4 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
+-spec(put_attachment/4 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
 put_attachment(DbName, DocId, AName, Contents) ->
     {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
     put_attachment(DbName, DocId, AName, Contents, [{rev, Rev}]).
 
--spec(put_attachment/5 :: (DbName :: string(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary(), Options :: proplist()) -> tuple(ok, binary()) | tuple(error, term())).
+-spec(put_attachment/5 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary(), Options :: proplist()) -> tuple(ok, binary()) | tuple(error, term())).
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
@@ -350,9 +357,12 @@ put_attachment(DbName, DocId, AName, Contents, Options) ->
 	    couchbeam:put_attachment(Db, DocId, AName, Contents, Options)
     end.
 
+-spec(delete_attachment/3 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
 delete_attachment(DbName, DocId, AName) ->
     {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
     delete_attachment(DbName, DocId, AName, [{rev, Rev}]).
+
+-spec(delete_attachment/4 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary(), Options :: proplist()) -> tuple(ok, binary()) | tuple(error, term())).
 delete_attachment(DbName, DocId, AName, Options) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
@@ -370,12 +380,12 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec(get_all_results/2 :: (DbName :: list(), DesignDoc :: binary()) ->
+-spec(get_all_results/2 :: (DbName :: binary(), DesignDoc :: binary()) ->
 				tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
--spec(get_results/3 :: (DbName :: list(), DesignDoc :: binary(), ViewOptions :: proplist()) ->
+-spec(get_results/3 :: (DbName :: binary(), DesignDoc :: binary(), ViewOptions :: proplist()) ->
 			    tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
 get_results(DbName, DesignDoc, ViewOptions) ->
     case get_db(DbName) of
@@ -639,7 +649,7 @@ get_new_conn(Host, Port, Opts) ->
 %% an error in opening the db will cause a {{error, Err}, DBs} to be returned
 %% @end
 %%--------------------------------------------------------------------
--spec(open_db/2 :: (DbName :: string(), Conn :: #server{}) -> tuple(error, db_not_reachable) | #db{}).
+-spec(open_db/2 :: (DbName :: binary(), Conn :: #server{}) -> tuple(error, db_not_reachable) | #db{}).
 open_db(DbName, Conn) ->
     case couchbeam:open_db(Conn, DbName) of
         {error, _Error}=E -> E;

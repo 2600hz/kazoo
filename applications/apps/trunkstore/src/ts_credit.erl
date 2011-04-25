@@ -83,9 +83,9 @@ handle_call(Req, _From, []=R) ->
     {reply, no_rate_information, R};
 handle_call({check, Flags}, From, Rates) ->
     spawn(fun() ->
-		  wh_timer:start("ts_credit"),
-		  gen_server:reply(From, set_rate_flags(Flags, Rates)),
-		  wh_timer:stop("ts_Credit")
+		  %% wh_timer:start("ts_credit"),
+		  gen_server:reply(From, set_rate_flags(Flags, Rates))
+		  %% ,wh_timer:stop("ts_Credit")
 	  end),
     {noreply, Rates}.
 
@@ -207,20 +207,21 @@ set_rate_flags(Flags, Rates) ->
 							re:run(User, Regex) =/= nomatch
 						end, props:get_value(<<"routes">>, RateData))
 			  end, Rates0),
-    wh_timer:tick("post first filter"),
+    %% wh_timer:tick("post first filter"),
     %% Filter on Options - All flag options must be in Rate options
     Rates2 = lists:filter(fun({_RateName, RateData}) ->
 				  options_match(Flags#route_flags.route_options, props:get_value(<<"options">>, RateData, []))
 			  end, Rates1),
-    wh_timer:tick("post second filter"),
+    %% wh_timer:tick("post second filter"),
 
+    try
     case lists:usort(fun sort_rates/2, Rates2) of
 	[] ->
-	    wh_timer:tick("post usort empty"),
+	    %% wh_timer:tick("post usort empty"),
 	    logger:format_log(error, "TS_CREDIT(~p): No Rate found for ~p~n", [self(), User]),
 	    {error, no_route_found};
 	[{RateName, RateData} | _] ->
-	    wh_timer:tick("post usort data found"),
+	    %% wh_timer:tick("post usort data found"),
 	    logger:format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), RateName]),
 
 	    case ts_acctmgr:reserve_trunk(Flags#route_flags.account_doc_id, Flags#route_flags.callid
@@ -241,9 +242,16 @@ set_rate_flags(Flags, Rates) ->
 		    E2;
 		{error, no_callid}=E3 ->
 		    logger:format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
-		    E3
+		    E3;
+		{error, not_found}=E4 ->
+		    logger:format_log(error, "TS_CREDIT(~p): acctmgr get_results failed.~n", [self()]),
+		    E4
 	    end
+    end
+    catch A:B -> logger:format_log(error, "TS_CREDIT(~p): EXCEPTION: ~p:~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+		 {error, B}
     end.
+
 
 %% Return true of RateA has higher weight than RateB
 sort_rates({_RNameA, RateDataA}, {_RNameB, RateDataB}) ->
@@ -269,6 +277,7 @@ set_rate_flags(Flags, <<"outbound">>=Out, RateData, RateName) ->
       ,rate_name = RateName
       ,flat_rate_enabled = false
      }.
+
 
 set_flat_flags(Flags, <<"inbound">>=In) ->
     logger:format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [In]),

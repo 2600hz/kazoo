@@ -43,7 +43,7 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec(start_app/1 :: (App :: atom()) -> ok | tuple(error, term())).
+-spec(start_app/1 :: (App :: atom()) -> ok).
 start_app(App) when is_atom(App) ->
     gen_server:cast(?MODULE, {start_app, App}).
 
@@ -200,15 +200,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
+-spec(add_app/2 :: (App :: atom(), As :: list(atom())) -> no_return()).
 add_app(App, As) ->
     Srv = self(),
     spawn(fun() ->
 		  format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
-		  A = case not lists:member(App, As) andalso whistle_apps_sup:start_app(App) of
+		  A = case (not lists:member(App, As)) andalso whistle_apps_sup:start_app(App) of
 			  false -> undefined;
-			  {ok, _} -> application:start(App), App;
-			  {ok, _, _} -> application:start(App), App;
+			  {ok, _} -> _ = application:start(App), App;
+			  {ok, _, _} -> _ = application:start(App), App;
 			  _E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), undefined
 		      end,
 		  Srv ! {add_successful_app, A}
