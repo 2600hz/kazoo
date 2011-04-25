@@ -89,7 +89,7 @@ verify_resp(_, _, _) -> false.
 
 get_put_json(Stream, MaxEvts) ->
     mochijson2:encode({struct, [{<<"data">>, {struct, [{<<"stream">>, Stream}
-						       ,{<<"max-events">>, MaxEvts}
+						       ,{<<"max_events">>, MaxEvts}
 						      ]
 					     }
 				}
