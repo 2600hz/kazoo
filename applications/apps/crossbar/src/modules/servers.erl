@@ -100,7 +100,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.servers">>, {RD, Context, [_, <<"deploy">>]=Params}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.servers">>, {RD, Context, [_, <<"deployment">>]=Params}}, State) ->
     spawn(fun() ->
                   Pid ! {binding_result, true, {RD, content_types_provided(Context), Params}}
 	  end),
@@ -128,7 +128,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Contex
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.servers">>, [RD, Context | [_, <<"deploy">>]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
 	    spawn(fun() ->
 			  Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>, <<"text/plain">>}
 									,{<<"Content-Length">>
@@ -138,21 +138,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.servers">>, [RD, Con
 		  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb_context{doc=Doc0}=Context | [_, <<"deploy">>]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
     spawn(fun() ->
                   %% The validation will stop us before we get here if the deploy is running, 
                   %% and we will not execute unless we are able to update the document (using the doc
                   %% as a mutex basicly).  However, if a server achieves the 'lock' and dies nothing
                   %% cleans it up at the moment.
                   crossbar_util:binding_heartbeat(Pid),
-                  Doc1 = whapps_json:set_value(<<"pvt_deploy_status">>, <<"running">>, Doc0),
-                  case crossbar_doc:save(Context#cb_context{doc=Doc1}) of
-		      #cb_context{resp_status=success}=Context1 ->
-			  spawn(fun() -> execute_deploy_cmd(Context1, Params) end),
-			  Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data={struct, []}}, Params]};
-		      Else ->
-			  Pid ! {binding_result, true, [RD, Else, Params]}
-		  end
+                  Context1 = execute_deploy_cmd(Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -263,7 +257,7 @@ allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
-allowed_methods([_, <<"deploy">>]) ->
+allowed_methods([_, <<"deployment">>]) ->
     {true, ['PUT', 'GET']};
 allowed_methods(_) ->
     {false, []}.
@@ -281,7 +275,7 @@ resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
     {true, []};
-resource_exists([_, <<"deploy">>]) ->
+resource_exists([_, <<"deployment">>]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -304,7 +298,7 @@ validate([ServerId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_server(ServerId, Context);
 validate([ServerId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_server(ServerId, Context);
-validate([ServerId, <<"deploy">>], #cb_context{req_verb = <<"put">>}=Context) ->   
+validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context) ->   
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             case whapps_json:get_value(<<"pvt_deploy_status">>, JObj) of
@@ -316,7 +310,7 @@ validate([ServerId, <<"deploy">>], #cb_context{req_verb = <<"put">>}=Context) ->
         Else ->
             Else
     end;
-validate([ServerId, <<"deploy">>], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"get">>}=Context) ->
     crossbar_doc:load_attachment(ServerId, <<"deployment.log">>, Context);
 validate([ServerId], #cb_context{req_verb = <<"delete">>}=Context) ->
     load_server(ServerId, Context);
@@ -346,10 +340,12 @@ create_server(#cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            Doc1=whapps_json:set_value(<<"pvt_type">>, <<"server">>, JObj),
-            Doc2=whapps_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, Doc1),            
+            JObj1=whapps_json:set_value(<<"pvt_type">>, <<"server">>, JObj),
+            JObj2=whapps_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, JObj1),            
+            JObj3=whapps_json:set_value(<<"pvt_db_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(5))), JObj2),
+            JObj4=whapps_json:set_value(<<"pvt_cookie">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(24))), JObj3),
             Context#cb_context{
-                 doc=Doc2
+                 doc=JObj4
                 ,resp_status=success
             }
     end.
@@ -405,26 +401,53 @@ is_valid_doc(_JObj) ->
 %% @private
 %% @doc
 %% Execute the deploy command with the provided arguments, ensuring the 
-%% doc is updated afterward
+%% doc is updated afterward.  Because the doc is are mutex for the 
+%% deployment there are try..catches so any failures release the lock
 %% @end
 %%--------------------------------------------------------------------
--spec(execute_deploy_cmd/2 :: (Context :: #cb_context{}, Params :: list(binary())) -> 
-                                   tuple(ok, json_object()) | tuple(error, atom())).
-execute_deploy_cmd(#cb_context{db_name=Db, req_data=Request}, [ServerId, _]) ->
-    try
-        Port = start_deployment(
-                  whapps_json:get_value(<<"ip">>, Request, <<" ">>)
-                 ,list_to_binary(lists:map(fun(E) -> <<E/binary, $ >> end, whapps_json:get_value(<<"roles">>, Request, [])))
-                 ,whapps_json:get_value(<<"password">>, Request, <<" ">>)                
-                 ,whapps_json:get_value(<<"node_name">>, Request, <<" ">>)
-                 ,whapps_json:get_value(<<"operating_system">>, Request, <<" ">>)
-                ),
-        monitor_deployment(Port, Db, ServerId, <<>>)
-    catch 
-        _:_ -> 
-            ignore
-    end,
-    mark_deploy_complete(Db, ServerId).
+-spec(execute_deploy_cmd/1 :: (Context :: #cb_context{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj}=Context) ->
+    case couch_mgr:save_doc(Db, whapps_json:set_value(<<"pvt_deploy_status">>, <<"running">>, JObj)) of
+        {ok, _} ->
+            ServerId = whapps_json:get_value(<<"_id">>, JObj),                
+            try 
+                Ip = whapps_json:get_value(<<"ip">>, JObj),
+                Roles = list_to_binary(lists:map(fun(E) -> <<E/binary, $ >> end, whapps_json:get_value(<<"roles">>, JObj))),
+                Password = whapps_json:get_value(<<"password">>, JObj),
+                Hostname = whapps_json:get_value(<<"hostname">>, JObj),
+                OS = whapps_json:get_value(<<"operating_system">>, JObj),
+                AccountId = accounts:get_db_name(Db, raw),
+                Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
+                                             ,"/deploy.sh"
+                                             ,$ , $" ,Ip/binary, $"
+                                             ,$ , $" ,Roles/binary, $"
+                                             ,$ , $" ,Password/binary, $"
+                                             ,$ , $" ,Hostname/binary, $"
+                                             ,$ , $" ,OS/binary, $"
+                                             ,$ , $" ,ServerId/binary, $"
+                                             ,$ , $" ,AccountId/binary, $"
+                                             ,$ , $" ,(whapps_json:get_value(<<"pvt_cookie">>, JObj))/binary, $"
+                                             ,$ , $" ,(whapps_json:get_value(<<"pvt_db_key">>, JObj))/binary, $"
+                                           >>),                
+               spawn(fun() -> 
+                             try
+                                 Port = open_port({spawn, Cmd}, [stderr_to_stdout, {line, 256}, exit_status, binary]),
+                                 monitor_deployment(Port, Db, ServerId, <<>>)
+                             catch
+                                 _:_ ->
+                                     ignore
+                             end,
+                             mark_deploy_complete(Db, ServerId)
+                     end),
+                crossbar_util:response([], Context)
+            catch 
+                _:_ ->
+                    mark_deploy_complete(Db, ServerId),
+                    crossbar_util:response(error, <<"failed to start deployment">>, Context)
+            end;
+        {error, _} ->
+            crossbar_util:response(error, <<"could not lock deployment">>, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -442,24 +465,6 @@ mark_deploy_complete(Db, ServerId) ->
         Else ->
             Else
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------            
--spec(start_deployment/5 :: (IP :: binary(), Roles :: binary(), Password :: binary(), Name :: binary(), OS :: binary()) -> port()).
-start_deployment(IP, Roles, Password, Name, OS) ->
-    Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
-                                 ,"/deploy.sh"
-                                 ,$ , $" ,IP/binary, $"
-                                 ,$ , $" ,Roles/binary, $"
-                                 ,$ , $" ,Password/binary, $"
-                                 ,$ , $" ,Name/binary, $"
-                                 ,$ , $" ,OS/binary, $"
-                               >>),
-    logger:format_log(info, "Running ~p", [Cmd]),
-    open_port({spawn, Cmd}, [ stderr_to_stdout, {line, 256}, exit_status, binary]).
 
 %%--------------------------------------------------------------------
 %% @private

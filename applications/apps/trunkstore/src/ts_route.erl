@@ -80,7 +80,7 @@ lookup_user_flags(Name, Realm) ->
 -spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, json_object()) | tuple(error, string())).
 lookup_did(Did) ->
     %% wh_timer:tick("lookup_did/1"),
-    Options = [{"keys", [Did]}],
+    Options = [{"key", Did}],
     case wh_cache:fetch({lookup_did, Did}) of
 	{ok, _}=Resp ->
 	    %% wh_timer:tick("lookup_did/1 cache hit"),
@@ -435,10 +435,18 @@ add_force_outbound(#route_flags{force_outbound=undefined}=F, Force) ->
     F#route_flags{force_outbound=whistle_util:to_boolean(Force)};
 add_force_outbound(F, _) -> F.
 
--spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: tuple(proplist())) -> #route_flags{}).
+-spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: json_object()) -> #route_flags{}).
 add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
-add_failover(#route_flags{failover={}}=F0, {struct, [{_K, _V}=FOver]}) ->
-    F0#route_flags{failover=FOver};
+add_failover(#route_flags{failover={}}=F0, Failover) ->
+    case whapps_json:get_value(<<"e164">>, Failover) of
+	undefined ->
+	    case whapps_json:get_value(<<"sip">>, Failover) of
+		undefined -> F0;
+		SipFail -> F0#route_flags{failover={<<"sip">>, SipFail}}
+	    end;
+	E164Fail ->
+	    F0#route_flags{failover={<<"e164">>, E164Fail}}
+    end;
 add_failover(F, _) -> F.
 
 -spec(add_auth_user/2 :: (F :: #route_flags{}, User :: binary() | undefined) -> #route_flags{}).
