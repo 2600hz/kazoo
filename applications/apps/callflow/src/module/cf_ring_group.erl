@@ -53,15 +53,15 @@ get_endpoint(Data, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Endpoint = [
-                         {<<"Invite-Format">>, whapps_json:get_value([<<"sip">>, <<"invite-format">>], JObj)}
+                         {<<"Invite-Format">>, whapps_json:get_value([<<"sip">>, <<"invite_format">>], JObj)}
                         ,{<<"To-User">>, whapps_json:get_value([<<"sip">>, <<"username">>], JObj)}
                         ,{<<"To-Realm">>, whapps_json:get_value([<<"sip">>, <<"realm">>], JObj)}
                         ,{<<"To-DID">>, whapps_json:get_value([<<"sip">>, <<"number">>], JObj)}
                         ,{<<"Route">>, whapps_json:get_value([<<"sip">>, <<"url">>], JObj)}
-                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value([<<"media">>, <<"ignore-early-media">>], JObj)}
-                        ,{<<"Bypass-Media">>, whapps_json:get_value([<<"media">>, <<"bypass-media">>], JObj)}
+                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj)}
+                        ,{<<"Bypass-Media">>, whapps_json:get_value([<<"media">>, <<"bypass_media">>], JObj)}
                         ,{<<"Endpoint-Timeout">>, whapps_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT)}
-                        ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value(<<"progress-timeout">>, Data, <<"6">>)}
+                        ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value(<<"progress_timeout">>, Data, <<"6">>)}
                         ,{<<"Endpoint-Delay">>, whapps_json:get_value(<<"delay">>, Data)}
                         ,{<<"Codecs">>, whapps_json:get_value([<<"media">>, <<"codecs">>], JObj)}
                     ],
