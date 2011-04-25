@@ -53,17 +53,14 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Verb = get_http_verb(RD, Context1#cb_context.req_json),
     Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
 
-    logger:format_log(info, "v1: Processing new request ~p as ~p but treating as ~p", [
-                                                                                       wrq:raw_path(RD),
-                                                                                       wrq:method(RD),
-                                                                                       Verb
-                                                                                      ]),
-    logger:format_log(info, "v1: Payload ~p", [Context1#cb_context.req_json]),
+    logger:format_log(info, "v1: Processing new request ~p as ~p but treating as ~p"
+		      ,[ wrq:raw_path(RD), wrq:method(RD), Verb]),
+    logger:format_log(info, "v1: JSON Payload ~p", [Context1#cb_context.req_json]),
 
     case parse_path_tokens(Tokens) of
-        [{Mod, Params}|_] = Nouns ->            
+        [{Mod, Params}|_] = Nouns ->
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-            Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),            
+            Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),
             case is_cors_preflight(RD) of
                 true ->
 		    ?TIMER_TICK("v1.allowed_methods end OPTS"),
@@ -107,7 +104,7 @@ is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
 forbidden(RD, Context) ->
     ?TIMER_TICK("v1.forbidden start"),
     case is_authentic(RD, Context) of
-        {true, RD1, Context1} ->         
+        {true, RD1, Context1} ->
             case is_permitted(RD1, Context1) of
                 {true, RD2, Context2} ->
 		    ?TIMER_TICK("v1.forbidden false end"),
@@ -147,7 +144,7 @@ resource_exists(RD, Context) ->
 	    {false, RD, Context}
     end.
 
-options(RD, Context)->            
+options(RD, Context) ->
     {get_cors_headers(Context), RD, Context}.
 
 %% each successive cb module adds/removes the content types they provide (to be matched against the request Accept header)
@@ -374,8 +371,8 @@ extract_file(RD, Context) ->
     FileContents = whistle_util:to_binary(wrq:req_body(RD)),
     ContentType = wrq:get_req_header("Content-Type", RD),
     ContentSize = wrq:get_req_header("Content-Length", RD),
-    Context#cb_context{req_files=[{<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content-type">>, ContentType}
-											    ,{<<"content-length">>, ContentSize}
+    Context#cb_context{req_files=[{<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content_type">>, ContentType}
+											    ,{<<"content_length">>, ContentSize}
 											   ]}}
 								  ,{<<"contents">>, FileContents}
 								 ]}
@@ -507,11 +504,11 @@ is_authentic(RD, Context)->
             case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
                 [] ->
                     false;
-                [{true, {RD1, Context1}}|_] -> 
+                [{true, {RD1, Context1}}|_] ->
                     {true, RD1, Context1}
             end
     end.
-            
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -521,7 +518,7 @@ is_authentic(RD, Context)->
 %%--------------------------------------------------------------------
 -spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
 is_permitted(RD, Context)->
-    case wrq:method(RD) of 
+    case wrq:method(RD) of
         %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
         'OPTIONS' ->
             {true, RD, Context};
@@ -530,7 +527,7 @@ is_permitted(RD, Context)->
             case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
                 [] ->
             false;
-                [{true, {RD1, Context1}}|_] -> 
+                [{true, {RD1, Context1}}|_] ->
                     {true, RD1, Context1}
             end
     end.
@@ -718,8 +715,8 @@ fix_header(_, H, V) ->
 %%--------------------------------------------------------------------
 -spec(is_cors_request/1 :: (RD :: #wm_reqdata{}) -> boolean()).
 is_cors_request(RD) ->
-    wrq:get_req_header("Origin", RD) =/= 'undefined' 
-        orelse wrq:get_req_header("Access-Control-Request-Method", RD) =/= 'undefined' 
+    wrq:get_req_header("Origin", RD) =/= 'undefined'
+        orelse wrq:get_req_header("Access-Control-Request-Method", RD) =/= 'undefined'
         orelse wrq:get_req_header("Access-Control-Request-Headers", RD) =/= 'undefined'.
 
 %%--------------------------------------------------------------------
@@ -727,9 +724,9 @@ is_cors_request(RD) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(add_cors_headers/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).                                 
+-spec(add_cors_headers/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
 add_cors_headers(RD, Context) ->
-    case is_cors_request(RD) of 
+    case is_cors_request(RD) of
         true ->
             wrq:set_resp_headers(get_cors_headers(Context), RD);
         false ->
@@ -741,7 +738,7 @@ add_cors_headers(RD, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_cors_headers/1 :: (Context :: #cb_context{}) -> proplist()).                                 
+-spec(get_cors_headers/1 :: (Context :: #cb_context{}) -> proplist()).
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     [
       {"Access-Control-Allow-Origin", "*"}
@@ -749,7 +746,7 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
      ,{"Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token"}
      ,{"Access-Control-Max-Age", "86400"}
     ].
-   
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -768,39 +765,41 @@ is_cors_preflight(RD) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
-create_resp_envelope(#cb_context{resp_status = success}=C) ->
-    [{<<"auth-token">>, C#cb_context.auth_token}
+create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken}) ->
+    [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, success}
-     ,{<<"data">>, C#cb_context.resp_data}
+     ,{<<"data">>, RespData}
     ];
-create_resp_envelope(#cb_context{resp_error_code = undefined}=C) ->
-    Msg = case C#cb_context.resp_error_msg of
+create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_status=RespStatus
+				 ,resp_error_code=undefined, resp_error_msg=RespErrorMsg}) ->
+    Msg = case RespErrorMsg of
 	      undefined ->
-		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
+		  StatusBin = whistle_util:to_binary(RespStatus),
 		  <<"Unspecified server error: ", StatusBin/binary>>;
 	      Else ->
 		  whistle_util:to_binary(Else)
 	  end,
-    [{<<"auth-token">>, C#cb_context.auth_token}
-     ,{<<"status">>, C#cb_context.resp_status}
+    [{<<"auth_token">>, AuthToken}
+     ,{<<"status">>, RespStatus}
      ,{<<"message">>, Msg}
      ,{<<"error">>, 500}
-     ,{<<"data">>, C#cb_context.resp_data}
+     ,{<<"data">>, RespData}
     ];
-create_resp_envelope(C) ->
-    Msg = case C#cb_context.resp_error_msg of
+create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespStatus, resp_error_code=RespErrorCode
+				 ,resp_data=RespData, auth_token=AuthToken}) ->
+    Msg = case RespErrorMsg of
 	      undefined ->
-		  StatusBin = whistle_util:to_binary(C#cb_context.resp_status),
-		  ErrCodeBin = whistle_util:to_binary(C#cb_context.resp_error_code),
+		  StatusBin = whistle_util:to_binary(RespStatus),
+		  ErrCodeBin = whistle_util:to_binary(RespErrorCode),
 		  <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
 	      Else ->
 		  whistle_util:to_binary(Else)
 	  end,
-    [{<<"auth-token">>, C#cb_context.auth_token}
-     ,{<<"status">>, C#cb_context.resp_status}
+    [{<<"auth_token">>, AuthToken}
+     ,{<<"status">>, RespStatus}
      ,{<<"message">>, Msg}
-     ,{<<"error">>, C#cb_context.resp_error_code}
-     ,{<<"data">>, C#cb_context.resp_data}
+     ,{<<"error">>, RespErrorCode}
+     ,{<<"data">>, RespData}
     ].
 
 %%--------------------------------------------------------------------

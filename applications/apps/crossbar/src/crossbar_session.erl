@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 -define(MAX_AGE, 1800). % 30 minutes
 -define(VIEW_FILE, "views/sessions.json").
--define(COOKIE_NAME, "crossbar-session").
+-define(COOKIE_NAME, "crossbar_session").
 -define(SESSION_DB, "crossbar%2Fsessions").
 -define(SESSION_EXPIRED, {"session", "expired_time"}).
 
