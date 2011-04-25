@@ -36,6 +36,7 @@
 
 -define(VIEW_FILE, <<"views/signup.json">>).
 -define(VIEW_ACTIVATION_KEYS, <<"signups/listing_by_key">>).
+-define(VIEW_ACTIVATION_REALM, <<"signups/group_by_realm">>).
 
 %%%===================================================================
 %%% API
@@ -151,13 +152,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
+
                   Event1 = <<"v1_resource.execute.put.accounts">>,
                   Payload1 = [RD, Context#cb_context{doc=whapps_json:get_value(<<"account">>, JObj)}, [[]]],
                   [_, #cb_context{resp_status=success}=Context1 | _] = crossbar_bindings:fold(Event1, Payload1),
+
                   Event2 = <<"v1_resource.execute.put.users">>,
                   Payload2 = [RD, Context1#cb_context{doc=whapps_json:get_value(<<"user">>, JObj)}, [[]]],
                   crossbar_bindings:fold(Event2, Payload2),
-                  crossbar_doc:delete(Context),
+
+                  _ = crossbar_doc:delete(Context),
+
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -331,15 +336,22 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(create_activation_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_activation_request(#cb_context{req_data=JObj}=Context) ->
-    #cb_context{resp_status=success, doc=User} =
-        users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}),
-    #cb_context{resp_status=success, doc=Account} =
-        accounts:create_account(Context#cb_context{req_data=whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT)}),
-    Context#cb_context{resp_status=success, doc={struct, [
-							  {<<"pvt_user">>, User}
-							  ,{<<"pvt_account">>, Account}
-							  ,{<<"pvt_activation_key">>, create_activation_key()}
-                                                         ]}}.
+    case users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}) of
+	#cb_context{resp_status=success, doc=User} ->
+	    AcctObj = whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
+	    case is_unique_realm(Context, whapps_json:get_value(<<"realm">>, AcctObj)) andalso accounts:create_account(Context#cb_context{req_data=AcctObj}) of
+		false ->
+		    crossbar_util:response_invalid_data([<<"realm">>], Context);
+		#cb_context{resp_status=success, doc=Account}=Context1 ->
+		    Context1#cb_context{doc={struct, [
+						      {<<"pvt_user">>, User}
+						      ,{<<"pvt_account">>, Account}
+						      ,{<<"pvt_activation_key">>, create_activation_key()}
+						     ]}};
+		Context1 -> Context1
+	    end;
+	Context1 -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -388,3 +400,20 @@ send_confirmation_email(Email, First, Last, URL) ->
                                  ,$ , $", URL/binary, $"
                                >>),
     os:cmd(Cmd).
+
+is_unique_realm(_, undefined) -> false;
+is_unique_realm(Context, Realm) ->
+    V = case crossbar_doc:load_view(?VIEW_ACTIVATION_REALM, [{<<"key">>, Realm}
+							     ,{<<"reduce">>, <<"true">>}
+							    ]
+				    ,Context#cb_context{db_name=?SIGNUP_DB}) of
+	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[]} -> []
+	end,
+    is_unique_realm1(Realm, V).
+
+is_unique_realm1(undefined, [_]) -> false;
+is_unique_realm1(undefined, []) -> false;
+is_unique_realm1(_, []) -> true;
+is_unique_realm1(Realm, [Realm]) -> true;
+is_unique_realm1(_, _) -> false.

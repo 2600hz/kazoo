@@ -30,6 +30,9 @@
 -define(MD5_LIST, <<"user_auth/creds_by_md5">>).
 -define(SHA1_LIST, <<"user_auth/creds_by_sha">>).
 
+-define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
+-define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
+
 -define(AGG_DB, <<"user_auth">>).
 -define(AGG_FILTER, <<"users/export">>).
 
@@ -237,9 +240,10 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    authorize_user(Context, 
-                   whapps_json:get_value(<<"credentials">>, JObj), 
-                   whapps_json:get_value(<<"method">>, JObj, <<"md5">>)
+    authorize_user(Context
+		   ,whapps_json:get_value(<<"realm">>, JObj)
+                   ,whapps_json:get_value(<<"credentials">>, JObj)
+                   ,whapps_json:get_value(<<"method">>, JObj, <<"md5">>)
                   );
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -253,13 +257,25 @@ validate(_, Context) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec(authorize_user/3 :: (Context :: #cb_context{}, Credentials :: binary(), Method :: binary()) -> #cb_context{}).
-authorize_user(Context, Credentials, _) when not is_binary(Credentials) ->
-    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
-authorize_user(Context, <<"">>, _) ->
-    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
-authorize_user(Context, Credentials, <<"md5">>) ->
-    case crossbar_doc:load_view(?MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
+-spec(authorize_user/4 :: (Context :: #cb_context{}, Realm :: binary(), Credentials :: binary(), Method :: binary()) -> #cb_context{}).
+authorize_user(Context, _, Credentials, _) when not is_binary(Credentials) ->
+    crossbar_util:response_invalid_data([<<"credentials">>], Context);
+authorize_user(Context, Realm, _, _) when not is_binary(Realm) ->
+    crossbar_util:response_invalid_data([<<"realm">>], Context);
+authorize_user(Context, <<>>, <<>>, _) ->
+    crossbar_util:response_invalid_data([<<"realm">>, <<"credentials">>], Context);
+authorize_user(Context, <<>>, _, _) ->
+    crossbar_util:response_invalid_data([<<"realm">>], Context);
+authorize_user(Context, _, <<>>, _) ->
+    crossbar_util:response_invalid_data([<<"credentials">>], Context);
+authorize_user(Context, Realm, Credentials, Method) ->
+    case accounts:get_account_by_realm(Realm) of
+	{ok, AcctDB} -> authorize_user(Context, Realm, Credentials, Method, AcctDB);
+	{error, not_found} -> crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+    end.
+
+authorize_user(Context, _, Credentials, <<"md5">>, AcctDB) ->
+    case crossbar_doc:load_view(?ACCT_MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AcctDB}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
             Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
@@ -267,8 +283,8 @@ authorize_user(Context, Credentials, <<"md5">>) ->
         _ ->
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
-authorize_user(Context, Credentials, <<"sha">>) ->    
-    case crossbar_doc:load_view(?SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=?AGG_DB}) of
+authorize_user(Context, _, Credentials, <<"sha">>, AcctDB) ->
+    case crossbar_doc:load_view(?ACCT_SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AcctDB}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
             Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
@@ -276,7 +292,7 @@ authorize_user(Context, Credentials, <<"sha">>) ->
         _ ->
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
-authorize_user(Context, _, _) ->
+authorize_user(Context, _, _, _, _) ->
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context).    
 
 %%--------------------------------------------------------------------

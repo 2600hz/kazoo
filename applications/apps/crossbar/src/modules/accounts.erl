@@ -14,8 +14,10 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, update_all_accounts/1, replicate_from_accounts/2,
-         replicate_from_account/3, get_db_name/1, get_db_name/2, create_account/1]).
+-export([start_link/0, update_all_accounts/1, replicate_from_accounts/2
+         ,replicate_from_account/3, get_db_name/1, get_db_name/2, create_account/1
+	 ,get_account_by_realm/1
+	]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -34,6 +36,7 @@
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 -define(AGG_GROUP_BY_REALM, <<"accounts/group_by_realm">>).
+-define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_FILTER, <<"account/export">>).
 
 -define(REPLICATE_ENCODING, encoded).
@@ -86,7 +89,8 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                     ],
     lists:foreach(fun(SourceDb) ->
                           logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
-                          couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate])
+                          R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
+			  logger:format_log(info, "DB REPLICATE: ~p~n", [R])
                   end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account", _/binary>>) -> true; (_) -> false end(Db)]).
 
 %%--------------------------------------------------------------------
@@ -104,6 +108,19 @@ replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
                     ],
     logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Realms are one->one with accounts.
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_account_by_realm/1 :: (Realm :: binary()) -> tuple(ok, binary()) | tuple(error, not_found)).
+get_account_by_realm(Realm) ->
+    case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
+	{ok, [{struct, _}=V]} ->
+	    {ok, whapps_json:get_value([<<"value">>, <<"account_db">>], V)};
+	_ -> {error, not_found}
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -400,8 +417,9 @@ load_account_summary(AccountId, Context) ->
 -spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_account(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
+        {false, Fields} ->
+	    logger:format_log(info, "Is invalid Doc: ~p: ~p~n", [JObj, Fields]),
+            crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             case is_unique_realm(undefined, Context) of
                 true ->
@@ -410,6 +428,7 @@ create_account(#cb_context{req_data=JObj}=Context) ->
                       ,resp_status=success
                      };
                 false ->
+		    logger:format_log(info, "Invalid Realm for ~p~n", [JObj]),
                     crossbar_util:response_invalid_data([<<"realm">>], Context)
             end
     end.
@@ -560,8 +579,14 @@ is_valid_parent(_JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+is_valid_doc(JObj) ->
+    case whapps_json:get_value(<<"realm">>, JObj) of
+	undefined ->
+	    {false, [<<"realm">>]};
+	Realm when is_binary(Realm) ->
+	    {true, []}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -747,16 +772,33 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
-is_unique_realm(AccountId, Context) ->
-    Realm = whapps_json:get_value(<<"realm">>, Context#cb_context.req_data),
-    JObj = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}, {<<"reduce">>, <<"true">>}], Context#cb_context{db_name=?AGG_DB}) of
-               #cb_context{resp_status=success, doc=[J]} -> J;
-               #cb_context{resp_status=success, doc=[]} -> []
-           end,
-    Assignments = whapps_json:get_value(<<"value">>, JObj, []),
-    case AccountId of
-        undefined ->
-            Assignments =:= [];
-        Id ->
-            Assignments =:= [] orelse Assignments =:= [Id]
-    end.
+is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
+    is_unique_realm(AccountId, Context, whapps_json:get_value(<<"realm">>, JObj)).
+
+is_unique_realm(_, _, undefined) -> false;
+is_unique_realm(undefined, Context, Realm) ->
+    V = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}
+							  ,{<<"reduce">>, <<"true">>}
+							 ]
+				    ,Context#cb_context{db_name=?AGG_DB}) of
+	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[]} -> []
+	end,
+    logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, undefined, V]),
+    is_unique_realm1(Realm, V);
+is_unique_realm(AccountId, Context, Realm) ->
+    V = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}
+							  ,{<<"reduce">>, <<"true">>}
+							 ]
+				    ,Context#cb_context{db_name=?AGG_DB}) of
+	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[]} -> []
+	end,
+    logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, AccountId, V]),
+    is_unique_realm1(Realm, V).
+
+is_unique_realm1(undefined, [_]) -> false;
+is_unique_realm1(undefined, []) -> false;
+is_unique_realm1(_, []) -> true;
+is_unique_realm1(Realm, [Realm]) -> true;
+is_unique_realm1(_, _) -> false.
