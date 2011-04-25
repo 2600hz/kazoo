@@ -117,7 +117,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{a
                           ReqAccountId = hd(Params),
                           case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, [
                                                                                 {<<"startkey">>, [ReqAccountId]}
-                                                                                ,{<<"endkey">>, [ReqAccountId, {struct, []} ] } ] ) of
+                                                                                ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ] } ] ) of
                               {ok, []} ->
                                   Pid ! {binding_result, false, {RD, Context}};            
                               {ok, [JObj]} ->

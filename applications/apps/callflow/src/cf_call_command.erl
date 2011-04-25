@@ -313,7 +313,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
 store(MediaName, Transfer, Method, Call) ->
-    store(MediaName, Transfer, Method, [{struct, []}], Call).
+    store(MediaName, Transfer, Method, [?EMPTY_JSON_OBJECT], Call).
 store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"store">>}

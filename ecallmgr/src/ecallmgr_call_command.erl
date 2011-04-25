@@ -225,7 +225,7 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 	    {App, Data}
     end;
 get_fs_app(Node, UUID, JObj, <<"set">>=AppName) ->
-    {struct, Custom} = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj, {struct, []}),
+    {struct, Custom} = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
     lists:foreach(fun({K,V}) ->
 			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
 			  set(Node, UUID, Arg)
@@ -319,7 +319,7 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 -spec(stream_over_http/3 :: (File :: list(), Verb :: binary(), JObj :: proplist()) -> no_return()).
 stream_over_http(File, Verb, JObj) ->
     Url = whistle_util:to_list(whapps_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
-    {struct, AddHeaders} = whapps_json:get_value(<<"Additional-Headers">>, JObj, {struct, []}),
+    {struct, AddHeaders} = whapps_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT),
     Headers = [{"Content-Length", filelib:file_size(File)}
 	       | [ {whistle_util:to_list(K), V} || {K,V} <- AddHeaders] ],
     Method = whistle_util:to_atom(Verb, true),

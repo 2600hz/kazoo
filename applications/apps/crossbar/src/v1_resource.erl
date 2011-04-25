@@ -28,14 +28,17 @@
 %%% WebMachine API
 %%%===================================================================
 init(Opts) ->
+    ?TIMER_START("v1.init begin"),
     {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{start=now()}, Opts}),
+    ?TIMER_TICK("v1.init end"),
     {ok, Context}.
     %% {{trace, "/tmp"}, Context}.
     %% wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp"). % in your running shell to look at trace files
     %% binds http://host/wmtrace and stores the files in /tmp
     %% wmtrace_resource:remove_dispatch_rules/0 removes the trace rule
 
-allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->    
+allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
+    ?TIMER_TICK("v1.allowed_methods begin"),
     Context1 = case wrq:get_req_header("Content-Type", RD) of
 		   "multipart/form-data" ++ _ ->
 		       extract_files_and_params(RD, Context);
@@ -63,16 +66,20 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
             Methods1 = allow_methods(Responses, Methods, Verb, wrq:method(RD)),            
             case is_cors_preflight(RD) of
                 true ->
+		    ?TIMER_TICK("v1.allowed_methods end OPTS"),
                     {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}};
                 false ->
+		    ?TIMER_TICK("v1.allowed_methods end Meth1"),
                     {Methods1 , RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
             end;
         [] ->
+	    ?TIMER_TICK("v1.allowed_methods end Meths"),
             {Methods, RD, Context1#cb_context{req_verb=Verb}}
     end.
 
 -spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
 malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
+    ?TIMER_TICK("v1.malformed_request w/ bad JSON begin"),
     Context1 = Context#cb_context{
 		 resp_status = error
 		 ,resp_error_msg = <<"Invalid or malformed content: ", ErrBin/binary>>
@@ -80,28 +87,37 @@ malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
 		},
     Content = create_resp_content(RD, Context1),
     RD1 = wrq:set_resp_body(Content, RD),
+    ?TIMER_TICK("v1.malformed_request w/ bad JSON end"),
     {true, RD1, Context1};
 malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
+    ?TIMER_TICK("v1.malformed_request start"),
     Data = whapps_json:get_value(["data"], Json),
     Auth = get_auth_token(RD, whapps_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
+    ?TIMER_TICK("v1.malformed_request end"),
     {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
 
 is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
+    ?TIMER_TICK("v1.is_authorized start"),
     S0 = crossbar_session:start_session(AuthToken),
     Event = <<"v1_resource.start_session">>,
     S = crossbar_bindings:fold(Event, S0),
+    ?TIMER_TICK("v1.is_authorized end"),
     {true, RD, Context#cb_context{session=S}}.
 
 forbidden(RD, Context) ->
+    ?TIMER_TICK("v1.forbidden start"),
     case is_authentic(RD, Context) of
         {true, RD1, Context1} ->         
             case is_permitted(RD1, Context1) of
                 {true, RD2, Context2} ->
+		    ?TIMER_TICK("v1.forbidden false end"),
                     {false, RD2, Context2};
                 false ->
+		    ?TIMER_TICK("v1.forbidden true end"),
                     {true, RD1, Context1}
             end;
         false ->
+	    ?TIMER_TICK("v1.forbidden halt end"),
             {{halt, 401}, RD, Context}
     end.
 
@@ -109,6 +125,7 @@ resource_exists(RD, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
     logger:format_log(info, "v1: requested resource with no nouns", []),
     {false, RD, Context};
 resource_exists(RD, Context) ->
+    ?TIMER_TICK("v1.resource_exists start"),
     case does_resource_exist(RD, Context) of
 	true ->
             {RD1, Context1} = validate(RD, Context),
@@ -121,10 +138,12 @@ resource_exists(RD, Context) ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
                     ReturnCode = Context1#cb_context.resp_error_code,
+		    ?TIMER_TICK("v1.resource_exists halt end"),
                     {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
             end;
 	false ->
             logger:format_log(info, "v1: requested resource does not exist", []),
+	    ?TIMER_TICK("v1.resource_exists false end"),
 	    {false, RD, Context}
     end.
 
@@ -170,6 +189,7 @@ generate_etag(RD, Context) ->
     end.
 
 encodings_provided(RD, Context) ->
+    ?TIMER_TICK("enc_provided s & f"),
     { [ {"identity", fun(X) -> X end} ]
       ,RD, Context}.
 
@@ -188,14 +208,18 @@ delete_resource(RD, Context) ->
     create_push_response(RD, Context).
 
 finish_request(RD, #cb_context{start=T1, session=undefined}=Context) ->
+    ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
     logger:format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+    ?TIMER_STOP("v1.finish_request end"),
     {true, RD1, Context1};
 finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
+    ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
     logger:format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
+    ?TIMER_STOP("v1.finish_request end"),
     {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}.
 
 %%%===================================================================
@@ -535,6 +559,7 @@ validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
 %%--------------------------------------------------------------------
 -spec(execute_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(true|tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+    ?TIMER_TICK("v1.execute_request start"),
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [RD, Context] ++ Params,
     logger:format_log(info, "Execute request ~p", [Event]),
@@ -545,12 +570,15 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
             Content = create_resp_content(RD1, Context1),
             RD2 = wrq:append_to_response_body(Content, RD1),
             ReturnCode = Context1#cb_context.resp_error_code,
+	    ?TIMER_TICK("v1.execute_request halt end"),
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
         true ->
             logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
 	    {Verb =/= <<"put">>, RD1, Context1}
     end;
 execute_request(RD, Context) ->
+    ?TIMER_TICK("v1.execute_request false end"),
     {false, RD, Context}.
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
@@ -717,7 +745,7 @@ add_cors_headers(RD, Context) ->
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     [
       {"Access-Control-Allow-Origin", "*"}
-     ,{"Access-Control-Allow-Methods", string:join([atom_to_list(A) || A <- Allowed], ", ")}
+     ,{"Access-Control-Allow-Methods", string:join([whistle_util:to_list(A) || A <- Allowed], ", ")}
      ,{"Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token"}
      ,{"Access-Control-Max-Age", "86400"}
     ].

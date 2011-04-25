@@ -36,13 +36,13 @@
            content_types_provided = ?CONTENT_PROVIDED :: list(crossbar_content_handler()) | []
           ,content_types_accepted = ?CONTENT_ACCEPTED :: list(crossbar_content_handler()) | []
 	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
-          ,allow_methods = ?ALLOWED_METHODS :: list() | []
+          ,allow_methods = ?ALLOWED_METHODS :: list(atom()) | []
 	  ,session = undefined :: undefined | #session{}
           ,auth_token = <<"">> :: binary()
-          ,auth_doc = undefined :: json_object() | undefined                        
+          ,auth_doc = undefined :: json_object() | undefined
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
-          ,req_json = {struct, []} :: json_object() | tuple(malformed, binary())
+          ,req_json = ?EMPTY_JSON_OBJECT :: json_object() | tuple(malformed, binary())
 	  ,req_files = [] :: list(tuple(binary(), json_object())) | []
           ,req_data = [] :: mochijson()
           ,account_id = undefined :: binary() | undefined
@@ -58,3 +58,13 @@
           ,storage = [] :: proplist()
           ,start = undefined
 	 }).
+
+-ifdef(PROFILE).
+-define(TIMER_START(Str), wh_timer:start(Str)).
+-define(TIMER_TICK(Str), wh_timer:tick(Str)).
+-define(TIMER_STOP(Str), wh_timer:stop(Str)).
+-else.
+-define(TIMER_START(Str), ok).
+-define(TIMER_TICK(Str), ok).
+-define(TIMER_STOP(Str), ok).
+-endif.
