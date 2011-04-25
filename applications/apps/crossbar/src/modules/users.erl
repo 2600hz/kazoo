@@ -28,9 +28,6 @@
 -define(VIEW_BY_ID, <<"users/listing_by_id">>).
 -define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
 
--define(AGG_DB, <<"user_auth">>).
--define(AGG_FILTER, <<"users/export">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -129,16 +126,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(hash_password(Context)),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(hash_password(Context)),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -160,7 +155,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -347,7 +341,7 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
 is_valid_doc(JObj) ->
     case whapps_json:get_value(<<"email">>, JObj) of
 	undefined -> {false, [<<"email">>]};

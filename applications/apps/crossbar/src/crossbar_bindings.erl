@@ -3,7 +3,7 @@
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Store routing keys/pid bindings. When a binding is fired,
-%%% pass the payload to the pid for evaluation, accumulating 
+%%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
 %%% foo.erl -> bind("module.init").
@@ -51,7 +51,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% return [ {Result, Payload1} ], a list of tuples, the first element 
+%% return [ {Result, Payload1} ], a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified
 %% @end
@@ -83,10 +83,10 @@ any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
 -spec(failed/1 :: (Res :: proplist()) -> proplist()).
-failed(Res) when is_list(Res) -> lists:filter(fun filter_out_succeeded/1, Res).
+failed(Res) when is_list(Res) -> [R || R <- Res, filter_out_succeeded(R)].
 
 -spec(succeeded/1 :: (Res :: proplist()) -> proplist()).
-succeeded(Res) when is_list(Res) -> lists:filter(fun filter_out_failed/1, Res).
+succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -145,23 +145,26 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({map, Routing, Payload}, From , State) ->
+handle_call({map, Routing, Payload}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
+		  ?TIMER_START(list_to_binary(["bindings.map ", Routing])),
                   logger:format_log(info, "Running map: ~p", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
                                     case binding_matches(B, Routing) of
-                                        true -> 
+                                        true ->
                                             map_bind_results(Ps, Payload, Acc, Routing);
-                                        false -> 
+                                        false ->
                                             Acc
                                     end
-                            end, [], get_bindings()),
-                  gen_server:reply(From, Reply)                  
+                            end, [], Bs),
+		  ?TIMER_STOP("bindings.map"),
+                  gen_server:reply(From, Reply)
           end),
     {noreply, State};
-handle_call({fold, Routing, Payload}, From , State) ->
+handle_call({fold, Routing, Payload}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
+		  ?TIMER_START(list_to_binary(["bindings.fold ", Routing])),
                   logger:format_log(info, "Running fold: ~p", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
@@ -169,8 +172,9 @@ handle_call({fold, Routing, Payload}, From , State) ->
                                         true -> fold_bind_results(Ps, Acc, Routing);
                                         false -> Acc
                                     end
-                            end, Payload, get_bindings()),
-                  gen_server:reply(From, Reply)                  
+                            end, Payload, Bs),
+		  ?TIMER_STOP("bindings.fold"),
+                  gen_server:reply(From, Reply)
           end),
     {noreply, State};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
@@ -345,7 +349,7 @@ matches(_, _) -> false.
 %%--------------------------------------------------------------------
 -spec(map_bind_results/4 :: (Pids :: queue(), Payload :: term(), Results :: list(binding_result()), Route :: binary()) -> list(tuple(term() | timeout, term()))).
 map_bind_results(Pids, Payload, Results, Route) ->
-    lists:foldr(fun(Pid, Acc) ->                        
+    lists:foldr(fun(Pid, Acc) ->
 		      Pid ! {binding_fired, self(), Route, Payload},
                       case wait_for_map_binding() of
                           {ok,  Resp, Pay1} -> [{Resp, Pay1} | Acc];
@@ -371,7 +375,7 @@ wait_for_map_binding() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% If a binding_result uses 'eoq' for its response, the payload is 
+%% If a binding_result uses 'eoq' for its response, the payload is
 %% ignored and the subscriber is re-inserted into the queue, with the
 %% previous payload being passed to the next invocation.
 %% @end
@@ -456,7 +460,7 @@ filter_out_failed({_, _}) -> false.
 -spec(filter_out_succeeded/1 :: (tuple(boolean(), _)) -> boolean()).
 filter_out_succeeded({true, _}) -> false;
 filter_out_succeeded({_, _}) -> true.
-	    
+
 %% EUNIT TESTING
 
 -include_lib("eunit/include/eunit.hrl").
