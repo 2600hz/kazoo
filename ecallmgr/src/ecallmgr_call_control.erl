@@ -308,7 +308,7 @@ insert_command(State, <<"now">>, JObj) ->
 	<<"queue">> ->
 	    true = whistle_api:queue_req_v(JObj),
 	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
-	    lists:foreach(fun({struct, []}) -> ok;
+	    lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
 			     ({struct, Cmd}) ->
 				  AppCmd = {struct, DefProp ++ Cmd},
 				  true = whistle_api:dialplan_req_v(AppCmd),
@@ -349,7 +349,7 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 	<<"queue">> -> %% list of commands that need to be added
 	    true = whistle_api:queue_req_v(JObj),
 	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
-	    lists:foldl(fun({struct, []}, TmpQ) -> TmpQ;
+	    lists:foldl(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
 			   ({struct, Cmd}, TmpQ) ->
 				AppCmd = {struct, DefProp ++ Cmd},
 				true = whistle_api:dialplan_req_v(AppCmd),

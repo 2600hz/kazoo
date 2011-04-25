@@ -84,7 +84,7 @@ set_value1([Key|T], Value, {struct, Props}) ->
         {Key1, _} ->
             %% This is not the final key and the objects property should just be
             %% replaced so continue looping the keys creating the necessary json as we go
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, {struct, []})})};
+            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, ?EMPTY_JSON_OBJECT)})};
         false when T == [] ->
             %% This is the final key and doesnt already exist, just add it to this
             %% objects existing properties
@@ -92,7 +92,7 @@ set_value1([Key|T], Value, {struct, Props}) ->
         false ->
             %% This is not the final key and this object does not have this key
             %% so continue looping the keys creating the necessary json as we go
-            {struct, Props ++ [{Key1, set_value1(T, Value, {struct, []})}]}
+            {struct, Props ++ [{Key1, set_value1(T, Value, ?EMPTY_JSON_OBJECT)}]}
     end;
 %% There are no more keys to iterate through! Override the value here...
 set_value1([], Value, _Doc) -> Value.
@@ -110,20 +110,20 @@ set_value1([], Value, _Doc) -> Value.
 -spec(get_value_test/0 :: () -> no_return()).
 get_value_test() ->
     %% Basic first level key
-    ?assertEqual(undefined, get_value(["d1k1"], {struct, []})),
+    ?assertEqual(undefined, get_value(["d1k1"], ?EMPTY_JSON_OBJECT)),
     ?assertEqual("d1v1",    get_value(["d1k1"], ?D1)),
     ?assertEqual(undefined, get_value(["d1k1"], ?D2)),
     ?assertEqual(undefined, get_value(["d1k1"], ?D3)),
     ?assertEqual(undefined, get_value(["d1k1"], ?D4)),
     %% Basic nested key
-    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], {struct, []})),
+    ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?EMPTY_JSON_OBJECT)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D1)),
     ?assertEqual(d1v2,      get_value(["sub_d1", "d1k2"], ?D2)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D3)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D4)),
     %% Get the value in an object in an array in another object that is part of
     %% an array of objects
-    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], {struct, []})),
+    ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?EMPTY_JSON_OBJECT)),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D1)),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D2)),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D3)),

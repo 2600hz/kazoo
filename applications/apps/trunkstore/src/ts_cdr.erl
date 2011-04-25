@@ -75,15 +75,15 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 				    false -> Acc
 				end
 			end
-		end, {struct, []}, Routes);
-find_route_used(<<"inbound">>, _, _) -> {struct, []}.
+		end, ?EMPTY_JSON_OBJECT, Routes);
+find_route_used(<<"inbound">>, _, _) -> ?EMPTY_JSON_OBJECT.
 
 -spec(fetch_cdr/2 :: (CallID :: binary(), DB :: binary()) -> {error, not_found} | {ok, json_object()}).
 fetch_cdr(CallID, DB) ->
     case couch_mgr:open_doc(DB, CallID) of
 	{error, _} ->
 	    {error, not_found};
-	{ok, {struct, []}} ->
+	{ok, ?EMPTY_JSON_OBJECT} ->
 	    {error, not_found};
 	{ok, Doc} ->
 	    Doc

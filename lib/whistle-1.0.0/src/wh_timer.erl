@@ -102,7 +102,7 @@ handle_call({stop, Msg}, {Pid, _}, S) ->
     case dict:find(Pid, S) of
 	{ok, {Start, L}} ->
 	    lists:foreach(fun(D) -> io:format(D, []) end, lists:reverse(L)),
-	    io:format("TS_TIMER(~p): ~10.w micros: End: ~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg]),
+	    io:format("TS_TIMER(~p): ~10.w: End: ~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg]),
 	    {reply, ok, dict:erase(Pid, S)};
 	error -> {reply, {error, not_started}, S}
     end.

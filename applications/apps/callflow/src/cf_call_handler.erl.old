@@ -295,7 +295,7 @@ get_amqp_queue ( AHost, CallId ) ->
 %% @end
 %%-----------------------------------------------------------------------------
 execute ( #state{flow=[]}=State )   ->
-   execute( State#state{flow=[{<<"module">>, <<"hangup">>}, {<<"data">>, {struct, []}}]} );
+   execute( State#state{flow=[{<<"module">>, <<"hangup">>}, {<<"data">>, ?EMPTY_JSON_OBJECT}]} );
 execute ( #state{flow=Flow}=State ) ->
    Module = proplists:get_value(<<"module">>, Flow),
    {struct, Data} = proplists:get_value(<<"data">>, Flow),

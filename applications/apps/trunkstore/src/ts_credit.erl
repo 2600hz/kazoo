@@ -191,7 +191,7 @@ process_rates({<<"_id">>, _}=ID) -> ID;
 process_rates({<<"_rev">>, _}=Rev) -> Rev;
 process_rates({RouteName, {struct, RouteOptions}}) ->
     RoutesRegexStrs = props:get_value(<<"routes">>, RouteOptions, []),
-    {struct, Options} = props:get_value(<<"options">>, RouteOptions, {struct, []}),
+    {struct, Options} = props:get_value(<<"options">>, RouteOptions, ?EMPTY_JSON_OBJECT),
     ROs0 = props:delete(<<"routes">>, RouteOptions),
     {RouteName, [{<<"routes">>, lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs)}
 		 ,{<<"options">>, Options}

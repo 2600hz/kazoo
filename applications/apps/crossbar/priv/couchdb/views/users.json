@@ -7,7 +7,17 @@
         }
         ,"listing_by_name": {
             "map": "function(doc) { if (doc.pvt_type != 'user' || doc.pvt_deleted) return; emit([doc.first_name, doc.last_name],  {'id': doc._id, 'first_name': doc.first_name, 'last_name': doc.last_name}); }"
-        }       
+        },
+        "group_by_username": {
+          "map": "function(doc) { if(doc.pvt_type != 'user' || doc.pvt_deleted) return; emit( doc.username, doc._id ); }",
+          "reduce": "function(key, values, rereduce) { if (rereduce) return values; else return values[0]; }"        
+        },
+       "creds_by_md5": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc.pvt_md5_auth, {'id': doc._id, 'account_db': doc.pvt_account_db} ); }"
+       },
+       "creds_by_sha": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc.pvt_sha1_auth, {'id': doc._id, 'account_db': doc.pvt_account_db} ); }"
+       }
     }
     ,"filters": {
         "export":"function(doc, req) { return ( doc.pvt_type == 'user' ); }"
