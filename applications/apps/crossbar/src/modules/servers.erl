@@ -405,7 +405,7 @@ is_valid_doc(_JObj) ->
 %% deployment there are try..catches so any failures release the lock
 %% @end
 %%--------------------------------------------------------------------
--spec(execute_deploy_cmd/1 :: (Context :: #cb_context{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(execute_deploy_cmd/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
     case couch_mgr:save_doc(Db, whapps_json:set_value(<<"pvt_deploy_status">>, <<"running">>, JObj)) of
         {ok, _} ->
