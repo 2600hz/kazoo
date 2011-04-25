@@ -428,6 +428,7 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                                              ,$ , $" ,AccountId/binary, $"
                                              ,$ , $" ,(whapps_json:get_value(<<"pvt_cookie">>, JObj))/binary, $"
                                              ,$ , $" ,(whapps_json:get_value(<<"pvt_db_key">>, JObj))/binary, $"
+                                             ,$ , $" ,(Db)/binary, $"
                                            >>),                
                spawn(fun() -> 
                              try
