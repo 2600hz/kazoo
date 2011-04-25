@@ -252,7 +252,7 @@ handle_info(_Info, S) ->
 %%--------------------------------------------------------------------
 terminate(shutdown, #state{route_flags=Flags, start_time=StartT, call_activity_ref=Ref}) ->
     _ = stop_call_activity_ref(Ref),
-    Duration = get_call_duration({struct, []}, Flags, StartT),
+    Duration = get_call_duration(?EMPTY_JSON_OBJECT, Flags, StartT),
     logger:format_log(error, "TS_CALL(~p): terminating via shutdown, releasing trunk and billing for ~p seconds"
 	       ,[self(), Duration]),
     update_account(Duration, Flags); % charge for minimmum seconds since we apparently messed up

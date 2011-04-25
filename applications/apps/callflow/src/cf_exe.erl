@@ -76,7 +76,7 @@ wait(Call, Flow, Pid) ->
                undefined ->
                    logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
                    hangup(Call);
-               {struct, []} ->
+               ?EMPTY_JSON_OBJECT ->
                    logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
                    hangup(Call);
                NewFlow ->
@@ -96,7 +96,7 @@ wait(Call, Flow, Pid) ->
                undefined ->
                    Pid ! {attempt_resp, {error, undefined}},
                    wait(Call, Flow, Pid);
-               {struct, []} ->
+               ?EMPTY_JSON_OBJECT ->
                    Pid ! {attempt_resp, {error, empty}},
                    wait(Call, Flow, Pid);
                NewFlow ->

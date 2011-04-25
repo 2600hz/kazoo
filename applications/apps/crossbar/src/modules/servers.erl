@@ -149,7 +149,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb
                   case crossbar_doc:save(Context#cb_context{doc=Doc1}) of
 		      #cb_context{resp_status=success}=Context1 ->
 			  spawn(fun() -> execute_deploy_cmd(Context1, Params) end),
-			  Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data={struct, []}}, Params]};
+			  Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=?EMPTY_JSON_OBJECT}, Params]};
 		      Else ->
 			  Pid ! {binding_result, true, [RD, Else, Params]}
 		  end

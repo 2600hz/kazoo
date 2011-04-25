@@ -26,7 +26,7 @@
 -define(MAX_STREAM_EVENTS, 10). % how many events to store for a stream at a time
 -define(MAX_AMQP_RETRIES, 5). % how many times to retry connecting to the host before just going down
 -define(EMPTY_STREAMS, []).
--define(EMPTY_EVENTS, {struct, []}).
+-define(EMPTY_EVENTS, ?EMPTY_JSON_OBJECT).
 
 %% {SessionId, PidToQueueHandlingProc}
 -type evtsub_subscriber() :: tuple( binary(), pid()).

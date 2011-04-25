@@ -42,7 +42,7 @@
           ,auth_doc = undefined :: json_object() | undefined                        
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>
           ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
-          ,req_json = {struct, []} :: json_object() | tuple(malformed, binary())
+          ,req_json = ?EMPTY_JSON_OBJECT :: json_object() | tuple(malformed, binary())
 	  ,req_files = [] :: list(tuple(binary(), json_object())) | []
           ,req_data = [] :: mochijson()
           ,account_id = undefined :: binary() | undefined
