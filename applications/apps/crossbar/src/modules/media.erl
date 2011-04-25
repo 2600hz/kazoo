@@ -32,7 +32,7 @@
 
 -define(METADATA_FIELDS, [<<"display_name">>, <<"description">>, <<"media_type">>
 			      ,<<"status">>, <<"content_size">>, <<"size">>
-			      ,<<"content-type">>, <<"content-length">>
+			      ,<<"content_type">>, <<"content_length">>
 			      ,<<"streamable">>, <<"format">>, <<"sample">>
 			]). % until validation is in place
 
