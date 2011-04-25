@@ -414,7 +414,7 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                 Ip = whapps_json:get_value(<<"ip">>, JObj),
                 Roles = fun([H|T], Sep) -> 
                                 <<H/binary, (list_to_binary([<<(Sep)/binary, X/binary>> || X <- T]))/binary>> 
-                        end(whapps_json:get_value(<<"roles">>, JObj), <<", ">>),
+                        end(whapps_json:get_value(<<"roles">>, JObj), <<",">>),
                 Password = whapps_json:get_value(<<"password">>, Data),
                 Hostname = whapps_json:get_value(<<"hostname">>, JObj),
                 OS = whapps_json:get_value(<<"operating_system">>, JObj),
