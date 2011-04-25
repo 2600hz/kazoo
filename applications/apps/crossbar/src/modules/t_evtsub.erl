@@ -1,5 +1,7 @@
 -module(t_evtsub).
 
+-include("crossbar.hrl").
+
 %% Test the full API using ibrowse to make calls to the rest endpoint
 -export([start_full_test/0]).
 
@@ -14,7 +16,7 @@ start_full_test() ->
 	      ],
 
     EmptyEvtSubResp = [{[<<"data">>, <<"streams">>], []}
-		       ,{[<<"data">>, <<"events">>], {struct, []}}
+		       ,{[<<"data">>, <<"events">>], ?EMPTY_JSON_OBJECT}
 		      ],
 
     MaxEvents = 5,

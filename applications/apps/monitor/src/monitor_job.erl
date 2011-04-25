@@ -14,7 +14,7 @@
 -include("monitor_couch.hrl").
 
 -import(logger, [format_log/3]).
--import(proplists, [get_value/2, get_value/3]).
+-import(props, [get_value/2, get_value/3]).
 -import(timer, [send_interval/2, cancel/1]).
 -import(whistle_util, [to_list/1, to_binary/1]).
 
@@ -147,7 +147,7 @@ handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval
     Tasks = lists:foldl(fun({struct, Task}, TasksIn) -> 
                                 Task_ID = to_list(get_value(<<"task_id">>, Task)),
                                 Type    = to_list(get_value(<<"type">>, Task)),
-                                {struct, Opt} = get_value(<<"options">>, Task, {struct, []}),
+                                {struct, Opt} = get_value(<<"options">>, Task, ?EMPTY_JSON_OBJECT),
                                 [{Task_ID, #task{type = Type, options = Opt}} | TasksIn]
                         end, [], whapps_json:get_value(["tasks"], Job, [])),
     format_log(info, "MONITOR_JOB(~p): Job ~p imported ~p tasks for execution every ~p", [self(), Job_ID, length(Tasks), Interval]),

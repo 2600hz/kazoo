@@ -4,13 +4,13 @@
 %%% @doc
 %%% Signup module
 %%%
-%%% Handle client requests for new account on-boarding.  This is a 
+%%% Handle client requests for new account on-boarding.  This is a
 %%% special, one-off module because:
 %%%
 %%% * it authenticates and authorizes itself
 %%% * it has a completely unique role
 %%% * it operates without an account id (or account db)
-%%% * it breaks the REST API (prefoming a GET on the confirmation link 
+%%% * it breaks the REST API (prefoming a GET on the confirmation link
 %%%           has significant side-effects)
 %%%
 %%% @end
@@ -156,7 +156,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_
                   [_, #cb_context{resp_status=success}=Context1 | _] = crossbar_bindings:fold(Event1, Payload1),
                   Event2 = <<"v1_resource.execute.put.users">>,
                   Payload2 = [RD, Context1#cb_context{doc=whapps_json:get_value(<<"user">>, JObj)}, [[]]],
-                  crossbar_bindings:fold(Event2, Payload2),                  
+                  crossbar_bindings:fold(Event2, Payload2),
                   crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -331,14 +331,14 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(create_activation_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_activation_request(#cb_context{req_data=JObj}=Context) ->
-    #cb_context{resp_status=success, doc=User} = 
-        users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, [])}),
-    #cb_context{resp_status=success, doc=Account} = 
-        accounts:create_account(Context#cb_context{req_data=whapps_json:get_value(<<"account">>, JObj, [])}),
-    Context#cb_context{resp_status=success, doc={struct, [    
-                                                               {<<"pvt_user">>, User}
-                                                              ,{<<"pvt_account">>, Account}
-                                                              ,{<<"pvt_activation_key">>, create_activation_key()}              
+    #cb_context{resp_status=success, doc=User} =
+        users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}),
+    #cb_context{resp_status=success, doc=Account} =
+        accounts:create_account(Context#cb_context{req_data=whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT)}),
+    Context#cb_context{resp_status=success, doc={struct, [
+							  {<<"pvt_user">>, User}
+							  ,{<<"pvt_account">>, Account}
+							  ,{<<"pvt_activation_key">>, create_activation_key()}
                                                          ]}}.
 
 %%--------------------------------------------------------------------
@@ -354,8 +354,8 @@ create_activation_key() ->
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------            
--spec(confirmation_email/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> no_return()).                                   
+%%--------------------------------------------------------------------
+-spec(confirmation_email/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> no_return()).
 confirmation_email(RD, #cb_context{doc=JObj}) ->
     Port = case wrq:port(RD) of
 	       80 -> "";
@@ -377,8 +377,8 @@ confirmation_email(RD, #cb_context{doc=JObj}) ->
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------            
--spec(send_confirmation_email/4 :: (Email :: binary(), First :: binary(), Last :: binary(), URL :: binary()) -> no_return()).                                        
+%%--------------------------------------------------------------------
+-spec(send_confirmation_email/4 :: (Email :: binary(), First :: binary(), Last :: binary(), URL :: binary()) -> no_return()).
 send_confirmation_email(Email, First, Last, URL) ->
     Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
                                  ,"/confirmation_email.sh"

@@ -168,7 +168,7 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 		    {ok, {struct, RegResp}} ->
 			true = whistle_api:reg_query_resp_v(RegResp),
 
-			{struct, RegFields} = props:get_value(<<"Fields">>, RegResp, {struct, []}),
+			{struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
 			?SERVER ! {cache_registrations, Realm, User, RegFields},
 
 			lists:foldr(FilterFun, [], RegFields);

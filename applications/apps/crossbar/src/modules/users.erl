@@ -25,7 +25,8 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/users.json">>).
--define(USERS_LIST, <<"users/listing_by_id">>).
+-define(VIEW_BY_ID, <<"users/listing_by_id">>).
+-define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
 
 -define(AGG_DB, <<"user_auth">>).
 -define(AGG_FILTER, <<"users/export">>).
@@ -255,12 +256,12 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_user_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_user(Context);
-validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_user(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_user(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_user(DocId, Context);
+validate([UserId], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_user(UserId, Context);
+validate([UserId], #cb_context{req_verb = <<"post">>}=Context) ->
+    update_user(UserId, Context);
+validate([UserId], #cb_context{req_verb = <<"delete">>}=Context) ->
+    load_user(UserId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -273,7 +274,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_user_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_user_summary(Context) ->
-    crossbar_doc:load_view(?USERS_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?VIEW_BY_ID, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -287,10 +288,15 @@ create_user(#cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            Context#cb_context{
-                 doc=whapps_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
-                ,resp_status=success
-            }
+            case is_unique_username(undefined, Context) of
+                true ->
+                    Context#cb_context{
+                      doc=whapps_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
+                      ,resp_status=success
+                     };
+                false ->
+                    crossbar_util:response_invalid_data([<<"username">>], Context)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -299,9 +305,9 @@ create_user(#cb_context{req_data=JObj}=Context) ->
 %% Load a user document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_user/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_user(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+-spec(load_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_user(UserId, Context) ->
+    crossbar_doc:load(UserId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,13 +316,18 @@ load_user(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_user/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_user(DocId, #cb_context{req_data=JObj}=Context) ->
+-spec(update_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_user(UserId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
+            case is_unique_username(UserId, Context) of
+                true ->
+                    crossbar_doc:load_merge(UserId, JObj, Context);
+                false ->
+                    crossbar_util:response_invalid_data([<<"username">>], Context)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -358,8 +369,28 @@ hash_password(#cb_context{doc=JObj}=Context) ->
             MD5 = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Creds))),
             JObj1 = whapps_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
             {struct, Props} = whapps_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
-            logger:format_log(info, "CREATE ~p", [{struct, props:delete(<<"password">>, Props)}]),
             Context#cb_context{doc={struct, props:delete(<<"password">>, Props)}}
     end.
-            
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will determine if the username in the request is 
+%% unique or belongs to the request being made
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_unique_username/2 :: (UserId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).            
+is_unique_username(UserId, Context) ->
+    Username = whapps_json:get_value(<<"username">>, Context#cb_context.req_data),
+    JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of
+               #cb_context{resp_status=success, doc=[J]} -> J;
+               _ -> []
+           end,
+    Assignments = whapps_json:get_value(<<"value">>, JObj, []),
+    case UserId of
+        undefined ->
+            Assignments =:= [];
+        Id ->
+            Assignments =:= [] orelse Assignments =:= [Id]
+    end.
+        

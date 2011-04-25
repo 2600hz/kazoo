@@ -26,7 +26,7 @@ handle_req(ApiJObj) ->
     case whapps_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj) of
 	undefined ->
 	    {error, "No Custom Vars"};
-	{struct, []} -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
+	?EMPTY_JSON_OBJECT -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
 	    inbound_handler(whapps_json:set_value([<<"Direction">>], <<"inbound">>, ApiJObj));
 	{struct, _}=CCVs ->
 	    case whapps_json:get_value(<<"Direction">>, CCVs) of
@@ -331,14 +331,14 @@ create_flags(Did, ApiJObj) ->
 	{ok, DidJObj} ->
 	    create_flags(Did, ApiJObj, DidJObj);
 	{error, _E} ->
-	    create_flags(Did, ApiJObj, {struct, []})
+	    create_flags(Did, ApiJObj, ?EMPTY_JSON_OBJECT)
     end.
 
 create_flags(_, ApiJObj, DidJObj) ->
-    ChannelVars = whapps_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, {struct, []}),
+    ChannelVars = whapps_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, ?EMPTY_JSON_OBJECT),
 
     F1 = case DidJObj of
-	     {struct, []} -> add_auth_user(add_auth_realm(#route_flags{}, whapps_json:get_value(<<"Realm">>, ChannelVars)), whapps_json:get_value(<<"Username">>, ChannelVars));
+	     ?EMPTY_JSON_OBJECT -> add_auth_user(add_auth_realm(#route_flags{}, whapps_json:get_value(<<"Realm">>, ChannelVars)), whapps_json:get_value(<<"Username">>, ChannelVars));
 	     _ -> add_auth_realm(flags_from_did(DidJObj, #route_flags{}), whapps_json:get_value(<<"Realm">>, ChannelVars))
 	 end,
 
@@ -348,8 +348,8 @@ create_flags(_, ApiJObj, DidJObj) ->
     {ok, D} = lookup_user_flags(AuthUser, Realm),
     Id = whapps_json:get_value(<<"id">>, D),
 
-    F2 = flags_from_srv(whapps_json:get_value(<<"server">>, D, {struct, []}), F1#route_flags{account_doc_id = Id}),
-    F3 = flags_from_account(whapps_json:get_value(<<"account">>, D, {struct, []}), F2),
+    F2 = flags_from_srv(whapps_json:get_value(<<"server">>, D, ?EMPTY_JSON_OBJECT), F1#route_flags{account_doc_id = Id}),
+    F3 = flags_from_account(whapps_json:get_value(<<"account">>, D, ?EMPTY_JSON_OBJECT), F2),
     flags_from_api(ApiJObj, ChannelVars, F3).
 
 -spec(flags_from_api/3 :: (ApiJObj :: json_object(), ChannelVarsJObj :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
@@ -380,14 +380,14 @@ flags_from_api(ApiJObj, ChannelVarsJObj, Flags) ->
 -spec(flags_from_did/2 :: (DidJObj :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_did(DidJObj, Flags) ->
     %% wh_timer:tick("flags_from_did/2"),
-    DidOptions = whapps_json:get_value(<<"DID_Opts">>, DidJObj, {struct, []}),
-    AuthOpts = whapps_json:get_value(<<"auth">>, DidJObj, {struct, []}),
+    DidOptions = whapps_json:get_value(<<"DID_Opts">>, DidJObj, ?EMPTY_JSON_OBJECT),
+    AuthOpts = whapps_json:get_value(<<"auth">>, DidJObj, ?EMPTY_JSON_OBJECT),
 
-    Opts = whapps_json:get_value(<<"options">>, DidJObj, {struct, []}),
-    Acct = whapps_json:get_value(<<"account">>, DidJObj, {struct, []}),
+    Opts = whapps_json:get_value(<<"options">>, DidJObj, ?EMPTY_JSON_OBJECT),
+    Acct = whapps_json:get_value(<<"account">>, DidJObj, ?EMPTY_JSON_OBJECT),
 
-    F0 = add_failover(Flags, whapps_json:get_value(<<"failover">>, DidOptions, {struct, []})),
-    F1 = add_caller_id(F0, whapps_json:get_value(<<"caller_id">>, DidOptions, {struct, []})),
+    F0 = add_failover(Flags, whapps_json:get_value(<<"failover">>, DidOptions, ?EMPTY_JSON_OBJECT)),
+    F1 = add_caller_id(F0, whapps_json:get_value(<<"caller_id">>, DidOptions, ?EMPTY_JSON_OBJECT)),
     F2 = F1#route_flags{route_options = Opts
 			,account_doc_id = whapps_json:get_value(<<"id">>, DidJObj)
 		       },
@@ -406,15 +406,15 @@ flags_from_did(DidJObj, Flags) ->
 -spec(flags_from_srv/2 :: (Srv :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_srv(Srv, Flags) ->
     %% wh_timer:tick("flags_from_srv/2"),
-    Options = whapps_json:get_value(<<"options">>, Srv, {struct, []}),
+    Options = whapps_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
 
     F0 = Flags#route_flags{inbound_format = whapps_json:get_value(<<"inbound_format">>, Options, <<>>)
 			   ,codecs = whapps_json:get_value(<<"codecs">>, Srv, [])
 			   ,media_handling = whapps_json:get_value(<<"media_handling">>, Options)
 			   ,progress_timeout = whapps_json:get_value(<<"progress_timeout">>, Options, none)
 			  },
-    F1 = add_caller_id(F0, whapps_json:get_value(<<"caller_id">>, Srv, {struct, []})),
-    F2 = add_failover(F1, whapps_json:get_value(<<"failover">>, Srv, {struct, []})),
+    F1 = add_caller_id(F0, whapps_json:get_value(<<"caller_id">>, Srv, ?EMPTY_JSON_OBJECT)),
+    F2 = add_failover(F1, whapps_json:get_value(<<"failover">>, Srv, ?EMPTY_JSON_OBJECT)),
     add_force_outbound(F2, whapps_json:get_value(<<"force_outbound">>, Options, false)).
 
 %% Flags from the Account
@@ -426,8 +426,8 @@ flags_from_srv(Srv, Flags) ->
 -spec(flags_from_account(Acct :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_account(Acct, Flags) ->
     %% wh_timer:tick("flags_from_acct/2"),
-    F1 = add_caller_id(Flags, whapps_json:get_value(<<"caller_id">>, Acct, {struct, []})),
-    F2 = add_failover(F1, whapps_json:get_value(<<"failover">>, Acct, {struct, []})),
+    F1 = add_caller_id(Flags, whapps_json:get_value(<<"caller_id">>, Acct, ?EMPTY_JSON_OBJECT)),
+    F2 = add_failover(F1, whapps_json:get_value(<<"failover">>, Acct, ?EMPTY_JSON_OBJECT)),
     add_auth_realm(F2, whapps_json:get_value(<<"auth_realm">>, Acct)).
 
 -spec(add_force_outbound/2 :: (F :: #route_flags{}, Force :: boolean()) -> #route_flags{}).
@@ -436,7 +436,7 @@ add_force_outbound(#route_flags{force_outbound=undefined}=F, Force) ->
 add_force_outbound(F, _) -> F.
 
 -spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: json_object()) -> #route_flags{}).
-add_failover(#route_flags{failover={}}=F0, {struct, []}) -> F0;
+add_failover(#route_flags{failover={}}=F0, ?EMPTY_JSON_OBJECT) -> F0;
 add_failover(#route_flags{failover={}}=F0, Failover) ->
     case whapps_json:get_value(<<"e164">>, Failover) of
 	undefined ->
@@ -470,7 +470,7 @@ add_auth_realm(F, _Realm) ->
     F.
 
 -spec(add_caller_id/2 :: (F0 :: #route_flags{}, CID :: json_object()) -> #route_flags{}).
-add_caller_id(#route_flags{caller_id={}}=F0, {struct, []}) -> F0;
+add_caller_id(#route_flags{caller_id={}}=F0, ?EMPTY_JSON_OBJECT) -> F0;
 add_caller_id(#route_flags{caller_id={}}=F0, {struct, _}=CID) ->
     F0#route_flags{caller_id = {whapps_json:get_value(<<"cid_name">>, CID, <<>>)
 				,whapps_json:get_value(<<"cid_number">>, CID, <<>>)}};

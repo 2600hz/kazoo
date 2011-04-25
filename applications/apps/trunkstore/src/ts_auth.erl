@@ -103,7 +103,7 @@ lookup_user(Name, Realm) ->
     end.
 
 -spec(response/2 :: (AuthJObj :: json_object() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
-response({struct, []}, Prop) ->
+response(?EMPTY_JSON_OBJECT, Prop) ->
     Data = lists:umerge(specific_response(403), Prop),
     whistle_api:auth_resp(Data);
 response(AuthJObj, Prop) ->
