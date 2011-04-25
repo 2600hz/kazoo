@@ -12,8 +12,6 @@
 
 -export([handle/2]).
 
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
 -import(cf_call_command, [
                            answer/1, b_play_and_collect_digits/6, b_play/2
                           ,store/3, b_record/2, audio_macro/2, wait_for_dtmf/1
@@ -31,7 +29,7 @@
 
 -record(prompts, {
            generic_prompt = <<"/system_media/ivr-no_menu_items">>
-          ,hunt_transfer = <<"/system_media/ivr-hold_connect_call">>              
+          ,hunt_transfer = <<"/system_media/ivr-hold_connect_call">>
           ,invalid_entry = <<"/system_media/ivr-that_was_an_invalid_entry">>
           ,exit = <<"/system_media/ivr-call_being_transferred">>
 
@@ -51,7 +49,7 @@
           ,tone_spec = [{struct, [{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}]}]
          }).
 
--record(menu, {           
+-record(menu, {
            menu_id = undefined :: binary() | undefined
           ,s_prompt = false :: boolean()
           ,retries = 3 :: pos_integer()
@@ -72,7 +70,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> stop | continue).
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(Data, Call) ->
     Menu = get_menu_profile(Data, Call#cf_call.account_db),
     answer(Call),
@@ -86,33 +84,30 @@ handle(Data, Call) ->
 %% digits are routable
 %% @end
 %%--------------------------------------------------------------------
--spec(menu_loop/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> ok).
+-spec(menu_loop/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> no_return()).
 menu_loop(#menu{retries=Retries, prompts=Prompts}, #cf_call{cf_pid=CFPid} = Call) when Retries =< 0 ->
-    if 
-        Prompts#prompts.exit =/= <<>> ->
-            b_play(Prompts#prompts.exit, Call);
-        true ->
-            ok
-    end,
-    CFPid ! {continue};
-menu_loop(#menu{max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
-    try 
-        {ok, Digits} = 
-            b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call),
-        if
-            Digits =:= <<>> ->
-                throw(no_digits_collected);
-            Digits =:= RecordPin ->
+    Prompts#prompts.exit =/= <<>> andalso b_play(Prompts#prompts.exit, Call),
+    CFPid ! {continue}; %% too many retries, we're out
+menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
+    try
+	case b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
+	    {ok, <<>>} ->
+		throw(no_digits_collected);
+	    {ok, RecordPin} ->
                 M = record_prompt(tmp_file(), Menu, Call),
-                b_play(Prompts#prompts.return_to_ivr, Call),
+                _ = b_play(Prompts#prompts.return_to_ivr, Call),
                 menu_loop(M, Call);
-            true ->
+            {ok, Digits} ->
+		%% this try_match_digits calls hunt_for_callflow() based on the digits dialed
+		%% if it finds a callflow, the main CFPid will move on to it and try_match_digits
+		%% will return true, matching here, and causing menu_loop to exit; this is
+		%% expected behaviour as CFPid has moved on from this invocation
                 true = try_match_digits(Digits, Menu, Call)
         end
     catch
         _:_ ->
-            play_invalid_prompt(Menu, Call),
-            menu_loop(Menu#menu{retries=Menu#menu.retries-1}, Call)
+            _ = play_invalid_prompt(Menu, Call),
+            menu_loop(Menu#menu{retries=Retries-1}, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -124,10 +119,10 @@ menu_loop(#menu{max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, pro
 -spec(try_match_digits/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 try_match_digits(Digits, Menu, Call) ->
     is_callflow_child(Digits, Menu, Call)
-        orelse (is_hunt_enabled(Digits, Menu, Call) 
-        andalso is_hunt_allowed(Digits, Menu, Call) 
-        andalso not is_hunt_denied(Digits, Menu, Call)
-        andalso hunt_for_callflow(Digits, Menu, Call)).
+        orelse (is_hunt_enabled(Digits, Menu, Call)
+		andalso is_hunt_allowed(Digits, Menu, Call)
+		andalso not is_hunt_denied(Digits, Menu, Call)
+		andalso hunt_for_callflow(Digits, Menu, Call)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,13 +130,13 @@ try_match_digits(Digits, Menu, Call) ->
 %% Check if the digits are a exact match for the auto-attendant children
 %% @end
 %%--------------------------------------------------------------------
--spec(is_callflow_child/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).                                
+-spec(is_callflow_child/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_callflow_child(Digits, _, #cf_call{cf_pid=CFPid}) ->
     CFPid ! {attempt, Digits},
-    ok =:= receive 
-               {attempt_resp, Resp} -> Resp 
-           after 1000 -> 
-                   {error, timeout} 
+    ok =:= receive
+               {attempt_resp, Resp} -> Resp
+           after 1000 ->
+                   {error, timeout}
            end.
 
 %%--------------------------------------------------------------------
@@ -150,9 +145,9 @@ is_callflow_child(Digits, _, #cf_call{cf_pid=CFPid}) ->
 %% Check if hunting is enabled
 %% @end
 %%--------------------------------------------------------------------
--spec(is_hunt_enabled/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).                                
+-spec(is_hunt_enabled/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_hunt_enabled(_, #menu{hunt=Hunt}, _) ->
-    Hunt.
+    whistle_util:is_true(Hunt).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -160,19 +155,15 @@ is_hunt_enabled(_, #menu{hunt=Hunt}, _) ->
 %% Check whitelist hunt digit patterns
 %% @end
 %%--------------------------------------------------------------------
--spec(is_hunt_allowed/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).                                
+-spec(is_hunt_allowed/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_hunt_allowed(_, #menu{hunt_allow = <<>>}, _) ->
     true;
 is_hunt_allowed(Digits, #menu{hunt_allow=RegEx}, _) ->
     try
-        {match, _} = re:run(
-                       whistle_util:to_list(Digits),
-                       whistle_util:to_list(RegEx)
-                      ), 
+        {match, _} = re:run(Digits, RegEx),
         true
     catch
-        _:_ ->
-            false
+        _:_ -> false
     end.
 
 %%--------------------------------------------------------------------
@@ -180,20 +171,16 @@ is_hunt_allowed(Digits, #menu{hunt_allow=RegEx}, _) ->
 %% @doc
 %% Check blacklisted hunt digit patterns
 %% @end
-%%--------------------------------------------------------------------            
--spec(is_hunt_denied/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).                                
+%%--------------------------------------------------------------------
+-spec(is_hunt_denied/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_hunt_denied(_, #menu{hunt_deny = <<>>}, _) ->
     false;
 is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
     try
-        {match, _} = re:run(
-                       whistle_util:to_list(Digits),
-                       whistle_util:to_list(RegEx)
-                      ), 
+        {match, _} = re:run(Digits, RegEx),
         true
     catch
-        _:_ ->
-            false
+        _:_ -> false
     end.
 
 %%--------------------------------------------------------------------
@@ -202,13 +189,13 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% Hunt for a callflow with these numbers
 %% @end
 %%--------------------------------------------------------------------
--spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).                                
+-spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{from_realm=To, cf_pid=CFPid, cf_responder=CFRPid}=Call) ->
     case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, To/binary>>}, 2000) of
-        {ok, JObj} ->
-            cf_call_command:flush_dtmf(Call),
-            b_play(Prompts#prompts.hunt_transfer, Call),
-            CFPid ! {branch, whapps_json:get_value(<<"flow">>, JObj)},
+        {ok, Flow} ->
+            _ = cf_call_command:flush_dtmf(Call),
+            _ = b_play(Prompts#prompts.hunt_transfer, Call),
+            CFPid ! {branch, Flow},
             true;
         _ ->
             false
@@ -217,12 +204,12 @@ hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{from_realm=To, cf_pid
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec(play_invalid_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> ok|tuple(error, atom())).
+-spec(play_invalid_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 play_invalid_prompt(#menu{s_prompt=true, retries=1}, Call) ->
-    cf_call_command:hangup(Call);   
+    cf_call_command:hangup(Call);
 play_invalid_prompt(#menu{s_prompt=true, retries=2}, Call) ->
     b_play(<<"/system_media/ivr-one_more_mistake">>, Call);
 play_invalid_prompt(#menu{s_prompt=true, retries=3}, Call) ->
@@ -230,21 +217,16 @@ play_invalid_prompt(#menu{s_prompt=true, retries=3}, Call) ->
 play_invalid_prompt(#menu{s_prompt=true}, Call) ->
     b_play(<<"/system_media/ivr-did_you_mean_to_press_key">>, Call);
 play_invalid_prompt(#menu{prompts=Prompts}, Call) ->
-    if 
-        Prompts#prompts.invalid_entry =/= <<>> ->
-            b_play(Prompts#prompts.invalid_entry, Call);
-        true ->
-            ok
-    end.
+    Prompts#prompts.invalid_entry =/= <<>> andalso b_play(Prompts#prompts.invalid_entry, Call).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec(record_prompt/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> #menu{}).
-record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) -> 
+record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
     audio_macro([
                   {play,  Prompts#prompts.record_prompt}
                  ,{tones, Prompts#prompts.tone_spec}
@@ -255,54 +237,54 @@ record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
                 {ok, record} ->
                     record_prompt(MediaName, Menu, Call);
                 {ok, save} ->
-                    b_play(Prompts#prompts.message_saved, Call),
+                    _ = b_play(Prompts#prompts.message_saved, Call),
                     store_recording(MediaName, ?MEDIA_PROMPT, Menu, Call),
-                    Menu#menu{has_prompt_media=true};                
+                    Menu#menu{has_prompt_media=true};
                 _Else ->
-                    b_play(Prompts#prompts.message_deleted, Call),
+                    _ = b_play(Prompts#prompts.message_deleted, Call),
                     Menu
-            end;                
-        _Else ->                
+            end;
+        _Else ->
             Menu
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec(review_recording/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> stop | continue).
-review_recording(MediaName, #menu{prompts=Prompts, keys=Keys}=Menu, Call) ->
+-spec(review_recording/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> tuple(ok, record | save) | tuple(error, term())).
+review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     audio_macro([
                   {play, Prompts#prompts.press}
-                 ,{say,  Keys#keys.listen}
+                 ,{say,  ListenKey}
                  ,{play, Prompts#prompts.to_listen}
 
                  ,{play, Prompts#prompts.press}
-                 ,{say,  Keys#keys.save}
+                 ,{say,  SaveKey}
                  ,{play, Prompts#prompts.to_save}
 
                  ,{play, Prompts#prompts.press}
-                 ,{say,  Keys#keys.record}
+                 ,{say,  RecordKey}
                  ,{play, Prompts#prompts.to_rerecord}
                 ], Call),
     case wait_for_dtmf(5000) of
         {error, _}=E ->
             E;
-        {ok, Digit} ->
-            flush(Call),
-            if 
-                Digit == Keys#keys.listen ->
-                    b_play(MediaName, Call),
-                    review_recording(MediaName, Menu, Call);
-                Digit == Keys#keys.record -> 
-                    {ok, record};
-                Digit == Keys#keys.save ->                   
-                    {ok, save};
-                true ->
-                    review_recording(MediaName, Menu, Call)
-            end
+        {ok, ListenKey} ->
+            _ = flush(Call),
+	    _ = b_play(MediaName, Call),
+	    review_recording(MediaName, Menu, Call);
+	{ok, RecordKey} ->
+	    _ = flush(Call),
+	    {ok, record};
+	{ok, SaveKey} ->
+	    _ = flush(Call),
+	    {ok, save};
+	_ ->
+	    _ = flush(Call),
+	    review_recording(MediaName, Menu, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -310,7 +292,7 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=Keys}=Menu, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> ok | tuple(error, atom())).
+-spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> ok).
 store_recording(MediaName, DestName, Menu, Call) ->
     store(MediaName, get_attachment_path(DestName, Menu, Call), Call).
 
@@ -321,11 +303,12 @@ store_recording(MediaName, DestName, Menu, Call) ->
 %%--------------------------------------------------------------------
 -spec(get_attachment_path/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> binary()).
 get_attachment_path(MediaName, #menu{menu_id=Id}, #cf_call{account_db=Db}) ->
-    <<(couch_mgr:get_url())/binary
-      ,Db/binary
-      ,$/, Id/binary
-      ,$/, MediaName/binary
-      ,"?rev=", (couch_mgr:lookup_doc_rev(Db, Id))/binary>>.   
+    {ok, Rev} = couch_mgr:lookup_doc_rev(Db, Id),
+	<<(couch_mgr:get_url())/binary
+	  ,Db/binary
+	  ,$/, Id/binary
+	  ,$/, MediaName/binary
+	  ,"?rev=", Rev/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -339,30 +322,30 @@ tmp_file() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> binary()).
 get_prompt(#menu{has_prompt_media=false, prompts=Prompts}, _) ->
     Prompts#prompts.generic_prompt;
-get_prompt(#menu{menu_id=Id}, #cf_call{account_db=Db}) ->                            
+get_prompt(#menu{menu_id=Id}, #cf_call{account_db=Db}) ->
     Prompt = ?MEDIA_PROMPT,
     <<$/, Db/binary, $/, Id/binary, $/, Prompt/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_menu_profile/2 :: (Data :: json_object(), Db :: binary()) -> #menu{}).                                  
+-spec(get_menu_profile/2 :: (Data :: json_object(), Db :: binary()) -> #menu{}).
 get_menu_profile(Data, Db) ->
     Id = whapps_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Default=#menu{},
-            #menu{         
-                    menu_id = Id
+            #menu{
+		   menu_id = Id
                    ,retries = whapps_json:get_value(<<"retries">>, JObj, Default#menu.retries)
                    ,timeout = whapps_json:get_value(<<"timeout">>, JObj, Default#menu.timeout)
                    ,max_length = whapps_json:get_value(<<"max-extension-length">>, JObj, Default#menu.max_length)
@@ -373,7 +356,6 @@ get_menu_profile(Data, Db) ->
                    ,has_prompt_media = whapps_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
                    ,s_prompt = whapps_json:get_value(<<115,97,115,115,121,45,109,111,100,101>>, JObj) =/= undefined
                  };
-        _ -> 
+        _ ->
             #menu{}
     end.
-    

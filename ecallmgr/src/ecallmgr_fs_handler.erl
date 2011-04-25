@@ -202,9 +202,9 @@ init([]) ->
 handle_call({is_node_up, Node}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
 		  IsUp = lists:foldl(fun(#node_handler{node=FSNode, node_watch_pid=NWP}, _) when FSNode =:= Node ->
-					     not (erlang:is_pid(NWP) andalso erlang:is_process_alive(NWP));
+					     not erlang:is_pid(NWP);
 					(_, A) -> A
-				     end, true, Nodes),
+				     end, false, Nodes),
 		  gen_server:reply(From, IsUp)
 	  end),
     {noreply, State};
@@ -338,7 +338,7 @@ is_node_up(Node, Opts, Timeout) ->
 	    ?MODULE:add_fs_node(Node, Opts);
 	pang ->
 	    receive
-		shutdown -> logger:format_log(info, "FS_HANDLER(~p): watcher going down for ~p~n", [self(), Node])
+		shutdown -> logger:format_log(info, "FS_HANDLER.is_node_up(~p): watcher going down for ~p~n", [self(), Node])
 	    after
 		Timeout ->
 		    logger:format_log(info, "FS_HANDLER.is_node_up(~p): trying ~p again, then waiting for ~p secs~n", [self(), Node, Timeout div 1000]),
@@ -459,14 +459,18 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 							     ,auth_handler_pid=AHP
 							     ,route_handler_pid=RHP
 							     ,node_handler_pid=NHP
+							     ,node_watch_pid=undefined
 							    }
 					       | Nodes]}};
 		pang ->
 		    logger:format_log(error, "FS_HANDLER(~p): ~p not responding~n", [self(), Node]),
 		    {{error, no_connection}, State}
 	    end;
-	[#node_handler{node=Node, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}=N] ->
+	[#node_handler{node=Node, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP, node_watch_pid=NWP}=N] ->
 	    logger:format_log(info, "FS_HANDLER(~p): handlers known ~p~n", [self(), N]),
+
+	    erlang:is_pid(NWP) andalso erlang:is_process_alive(NWP) andalso NWP ! shutdown,
+
 	    Restart = fun(Pid, _StartFun) when is_pid(Pid) ->
 			      Pid ! {update_options, Options},
 			      Pid;
@@ -481,7 +485,9 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 	    {ok, State#state{fs_nodes=[N#node_handler{auth_handler_pid=Restart(AHP, fun start_auth_handler/2)
 						      ,route_handler_pid=Restart(RHP, fun start_route_handler/1)
 						      ,node_handler_pid=Restart(NHP, fun start_node_handler/2)
-						      ,options=Options}
+						      ,node_watch_pid=undefined
+						      ,options=Options
+						     }
 				       | lists:keydelete(Node, 2, Nodes)]}}
     end.
 

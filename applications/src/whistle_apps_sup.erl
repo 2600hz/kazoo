@@ -17,7 +17,6 @@
 %% ===================================================================
 
 start_link() ->
-    wh_cache:start_link(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 -spec(start_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
@@ -25,7 +24,7 @@ start_app(App) ->
     supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
 
 stop_app(App) ->
-    supervisor:terminate_child(?MODULE, App),
+    _ = supervisor:terminate_child(?MODULE, App),
     supervisor:delete_child(?MODULE, App).
 
 %% ===================================================================
@@ -33,4 +32,10 @@ stop_app(App) ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(whapps_controller, worker)]} }.
+    {ok, { {one_for_one, 5, 10}
+	   , [
+	      ?CHILD(whapps_controller, worker)
+	      ,?CHILD(wh_cache, worker)
+	      ,?CHILD(wh_timer, worker)
+	     ]
+	 } }.
