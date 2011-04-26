@@ -149,7 +149,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
 
@@ -249,7 +249,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods([_]) ->
-    {true, ['PUT']};
+    {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -281,7 +281,7 @@ resource_exists(_) ->
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     signup_new_account(Context);
-validate([ActivationKey], #cb_context{req_verb = <<"put">>}=Context) ->
+validate([ActivationKey], #cb_context{req_verb = <<"get">>}=Context) ->
     check_activation_key(ActivationKey, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
