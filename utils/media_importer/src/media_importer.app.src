@@ -1,0 +1,12 @@
+{application, media_importer,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { media_importer_app, []}},
+  {env, []}
+ ]}.

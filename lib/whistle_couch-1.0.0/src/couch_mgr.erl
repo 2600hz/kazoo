@@ -715,11 +715,13 @@ save_config(H, Port) ->
 
 -spec(save_config/4 :: (H :: string(), Port :: integer(), U :: string(), P :: string()) -> no_return()).
 save_config(H, Port, U, P) ->
-    {ok, Config} = get_startup_config(),
-    file:write_file(?STARTUP_FILE
-		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
-				 , "", [{couch_host, H, Port, U, P} | lists:keydelete(couch_host, 1, Config)])
-		   ).
+    spawn(fun() ->
+                  {ok, Config} = get_startup_config(),    
+                  file:write_file(?STARTUP_FILE
+                                  ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
+                                               , "", [{couch_host, H, Port, U, P} | lists:keydelete(couch_host, 1, Config)])
+                                 )
+          end).
 
 -spec(remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict()).
 remove_ref(Ref, CH) ->
