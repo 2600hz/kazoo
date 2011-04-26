@@ -149,7 +149,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
 
@@ -249,7 +249,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods([_]) ->
-    {true, ['GET']};
+    {true, ['PUT']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -281,7 +281,7 @@ resource_exists(_) ->
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     signup_new_account(Context);
-validate([ActivationKey], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([ActivationKey], #cb_context{req_verb = <<"put">>}=Context) ->
     check_activation_key(ActivationKey, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -398,7 +398,6 @@ send_confirmation_email(Email, First, Last, BaseURL, Key) ->
                                  ,$ , $", BaseURL/binary, $"
                                  ," \"v1/signup/\""
                                  ,$ , $", Key/binary, $"
-
                                >>),
     os:cmd(Cmd).
 
