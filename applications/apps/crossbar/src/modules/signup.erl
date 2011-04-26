@@ -378,11 +378,8 @@ confirmation_email(RD, #cb_context{doc=JObj}) ->
        whapps_json:get_value([<<"pvt_user">>, <<"email">>], JObj)
       ,whapps_json:get_value([<<"pvt_user">>, <<"first_name">>], JObj)
       ,whapps_json:get_value([<<"pvt_user">>, <<"last_name">>], JObj)
-      ,<<
-          (whistle_util:to_binary(Host))/binary
-         ,"v1/signup/"
-         ,(whapps_json:get_value(<<"pvt_activation_key">>, JObj, <<>>))/binary
-       >>
+      ,<<(whistle_util:to_binary(Host))/binary>>
+      ,whapps_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)
      ).
 
 %%--------------------------------------------------------------------
@@ -390,14 +387,18 @@ confirmation_email(RD, #cb_context{doc=JObj}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(send_confirmation_email/4 :: (Email :: binary(), First :: binary(), Last :: binary(), URL :: binary()) -> no_return()).
-send_confirmation_email(Email, First, Last, URL) ->
+-spec(send_confirmation_email/5 :: (Email :: binary(), First :: binary(), Last :: binary()
+                                    ,BaseURL :: binary(), Key :: binary()) -> no_return()).
+send_confirmation_email(Email, First, Last, BaseURL, Key) ->
     Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
                                  ,"/confirmation_email.sh"
                                  ,$ , $", Email/binary, $"
                                  ,$ , $", First/binary, $"
                                  ,$ , $", Last/binary, $"
-                                 ,$ , $", URL/binary, $"
+                                 ,$ , $", BaseURL/binary, $"
+                                 ," \"v1/signup/\""
+                                 ,$ , $", Key/binary, $"
+
                                >>),
     os:cmd(Cmd).
 
