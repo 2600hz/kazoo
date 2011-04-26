@@ -5,7 +5,11 @@ cd `dirname $0`
 export email_address="$1"
 export first_name="$2"
 export last_name="$3"
-export registration_link="$4"
+export base_url="$4"
+export segment_url="$5"
+export activation_key="$6"
+
+export registration_link="${base_url}${segment_url}${activation_key}"
 
 template_file="./signup_email.tmpl"
 
