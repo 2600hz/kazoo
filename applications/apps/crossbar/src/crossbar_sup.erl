@@ -18,6 +18,7 @@
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 -define(CHILD(I, Type, Args), {I, {I, start, [Args]}, permanent, 5000, Type, dynamic}).
 -define(DISPATCH_FILE, [code:lib_dir(crossbar, priv), "/dispatch.conf"]).
+-define(WEBMACHINE_CONF, [code:lib_dir(crossbar, priv), "/webmachine.conf"]).
 -define(LOG_DIR, code:lib_dir(crossbar, log)).
 
 %% ===================================================================
@@ -48,13 +49,28 @@ upgrade() ->
 %% ===================================================================
 
 init([]) ->
-    Ip = case os:getenv("WEBMACHINE_IP") of false -> "0.0.0.0"; Any -> Any end,
     {ok, Dispatch} = file:consult(?DISPATCH_FILE),
-    WebConfig = [
-                 {ip, Ip},
-                 {port, 8000},
-                 {log_dir, ?LOG_DIR},
-                 {dispatch, Dispatch}],
+    {ok, Configuration} = file:consult(?WEBMACHINE_CONF),
+    WebConfig = case props:get_value(ssl, Configuration, false) of
+                    true ->
+                        [{ip, props:get_value(ip, Configuration, "0.0.0.0")}
+                         ,{port, props:get_value(port, Configuration, "8000")}
+                         ,{name, props:get_value(name, Configuration, "crossbar")}
+                         ,{log_dir,  props:get_value(log_dir, Configuration, ?LOG_DIR)}
+                         ,{dispatch, Dispatch}
+                         ,{ssl, true}
+                         ,{ssl_opts, [
+                                       {certfile, props:get_value("certfile", Configuration, "server_cert.pem")}
+                                      ,{keyfile, props:get_value("keyfile", Configuration, "server_key.pem")}
+                                     ]}];
+                    false ->
+                        [{ip, props:get_value(ip, Configuration, "0.0.0.0")},
+                         {port, props:get_value(port, Configuration, "8000")},
+                         {name, props:get_value(name, Configuration, "crossbar")},
+                         {log_dir,  props:get_value(log_dir, Configuration, ?LOG_DIR)},
+                         {dispatch, Dispatch}]
+                end,
+    logger:format_log(info, "Starting webmachine ~p", [WebConfig]),
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
     ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
     BindingServer = ?CHILD(crossbar_bindings, worker),
