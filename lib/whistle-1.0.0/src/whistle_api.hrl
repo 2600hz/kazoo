@@ -186,7 +186,7 @@
 
 %% Route Responses - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
--define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>, <<"SIP-Headers">>]).
+-define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
 			    ,{<<"Event-Name">>, <<"route_resp">>}
 			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
@@ -196,7 +196,6 @@
 			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
 					      (_) -> false
 					   end}
-			   ,{<<"SIP-Headers">>, fun is_list/1}
 			  ]).
 
 %% Route Winner - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.22Winning.22_Application_Response_from_Call_Manager
