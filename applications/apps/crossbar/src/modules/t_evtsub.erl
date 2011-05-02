@@ -27,7 +27,7 @@ start_full_test() ->
     logger:format_log(info, "GET ~s~n", [UrlBase]),
     {ok, "200", _, JSON} = ibrowse:send_req(UrlBase, Headers, get),
     AcctJObj = mochijson2:decode(JSON),
-    AcctId = whapps_json:get_value([<<"data">>, 1, <<"id">>], AcctJObj),
+    AcctId = wh_json:get_value([<<"data">>, 1, <<"id">>], AcctJObj),
 
     UrlEvtBase = lists:flatten([UrlBase, "/", whistle_util:to_list(AcctId), "/evtsub/"]),
 
@@ -78,10 +78,10 @@ verify_resp({_,Code,_,JSON}, Code, Rules) ->
     JObj = mochijson2:decode(JSON),
     lists:all(
       fun({KeyPath, Fun}) when is_function(Fun) ->
-	      V = whapps_json:get_value(KeyPath, JObj),
+	      V = wh_json:get_value(KeyPath, JObj),
 	      Fun(V);
 	 ({KeyPath, Result}) ->
-	      V = whapps_json:get_value(KeyPath, JObj),
+	      V = wh_json:get_value(KeyPath, JObj),
 	      logger:format_log(info, "~p: Is ~p == ~p~n", [KeyPath, V, Result]),
 	      V == Result
       end, Rules);

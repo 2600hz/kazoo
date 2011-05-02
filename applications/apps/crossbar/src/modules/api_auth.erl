@@ -236,7 +236,7 @@ resource_exists(_) ->
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
     authorize_api_key(Context,
-                   whapps_json:get_value(<<"api_key">>, JObj)
+                   wh_json:get_value(<<"api_key">>, JObj)
                   );
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -258,9 +258,9 @@ authorize_api_key(Context, <<"">>) ->
 authorize_api_key(Context, ApiKey) ->
     case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=[JObj|_]}->
-            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
+            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
-            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
+            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
     end.
@@ -275,7 +275,7 @@ authorize_api_key(Context, ApiKey) ->
 create_token(_, #cb_context{doc=undefined}=Context) ->
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
-    AccountId = whapps_json:get_value(<<"account_id">>, JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, JObj),
     Token = {struct, [
                        {<<"account_id">>, AccountId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
@@ -291,7 +291,7 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
                      ]},
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
-            AuthToken = whapps_json:get_value(<<"_id">>, Doc),
+            AuthToken = wh_json:get_value(<<"_id">>, Doc),
             crossbar_util:response(
               {struct, [{<<"account_id">>, AccountId}]}
               ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});

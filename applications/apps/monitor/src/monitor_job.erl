@@ -135,7 +135,7 @@ handle_call({run_job}, _From, #state{tref = CurTRef, interval = Interval} = Stat
     {reply, cycle_started, State#state{tref = TRef}};
 
 handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval = CurInterval} = State) ->
-    {{ok, TRef}, Interval} = case whapps_json:get_value(["interval"], Job) of
+    {{ok, TRef}, Interval} = case wh_json:get_value(["interval"], Job) of
                                  undefined ->
                                      {{ok, CurTRef}, CurInterval};
                                  JobInterval when JobInterval /= CurInterval ->
@@ -149,7 +149,7 @@ handle_call({sync, Job}, _From, #state{job_id = Job_ID, tref = CurTRef, interval
                                 Type    = to_list(get_value(<<"type">>, Task)),
                                 {struct, Opt} = get_value(<<"options">>, Task, ?EMPTY_JSON_OBJECT),
                                 [{Task_ID, #task{type = Type, options = Opt}} | TasksIn]
-                        end, [], whapps_json:get_value(["tasks"], Job, [])),
+                        end, [], wh_json:get_value(["tasks"], Job, [])),
     format_log(info, "MONITOR_JOB(~p): Job ~p imported ~p tasks for execution every ~p", [self(), Job_ID, length(Tasks), Interval]),
     {reply, ok, State#state{tref = TRef, interval = Interval, tasks = Tasks}};
 

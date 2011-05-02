@@ -50,18 +50,18 @@ bridge_to_gateways([{To, Gateways}|T], Call) ->
 -spec(create_endpoint/2 :: (To :: binary(), Gateway :: json_object()) -> json_object()).
 create_endpoint(To, JObj) ->
     Route = <<"sip:"
-              ,(whapps_json:get_value(<<"prefix">>, JObj, <<>>))/binary
+              ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
               ,To/binary
-              ,(whapps_json:get_value(<<"suffix">>, JObj, <<>>))/binary
-              ,$@ ,(whapps_json:get_value(<<"server">>, JObj))/binary>>,
+              ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
+              ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     Endpoint = [
                  {<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Route}
-                ,{<<"Auth-User">>, whapps_json:get_value(<<"username">>, JObj)}
-                ,{<<"Auth-Password">>, whapps_json:get_value(<<"password">>, JObj)}
-                ,{<<"Bypass-Media">>, whapps_json:get_value(<<"bypass_media">>, JObj)}
-                ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
-                ,{<<"Codecs">>, whapps_json:get_value(<<"codecs">>, JObj)}
+                ,{<<"Auth-User">>, wh_json:get_value(<<"username">>, JObj)}
+                ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, JObj)}
+                ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
+                ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
+                ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                ],
     {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}.
 
@@ -74,9 +74,9 @@ create_endpoint(To, JObj) ->
 find_gateways(#cf_call{account_db=Db, to_number=To}) ->
     case couch_mgr:get_results(Db, ?VIEW_BY_ROUTE, []) of
         {ok, Resources} ->
-            {ok, [ {Number, whapps_json:get_value([<<"value">>, <<"gateways">>], Resource, [])} ||
+            {ok, [ {Number, wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])} ||
 		     Resource <- Resources
-			 , Number <- evaluate_route(whapps_json:get_value(<<"key">>, Resource), To)
+			 , Number <- evaluate_route(wh_json:get_value(<<"key">>, Resource), To)
 			 , Number =/= []
                  ]};
         {error, _}=E ->

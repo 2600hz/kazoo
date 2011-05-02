@@ -301,7 +301,7 @@ validate([ServerId], #cb_context{req_verb = <<"post">>}=Context) ->
 validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context) ->   
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            case whapps_json:get_value(<<"pvt_deploy_status">>, JObj) of
+            case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
                 <<"running">> ->
                     crossbar_util:response(error, <<"deployment already running">>, 409, Context1);
                _Else ->
@@ -340,10 +340,10 @@ create_server(#cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            JObj1=whapps_json:set_value(<<"pvt_type">>, <<"server">>, JObj),
-            JObj2=whapps_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, JObj1),            
-            JObj3=whapps_json:set_value(<<"pvt_db_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(5))), JObj2),
-            JObj4=whapps_json:set_value(<<"pvt_cookie">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(24))), JObj3),
+            JObj1=wh_json:set_value(<<"pvt_type">>, <<"server">>, JObj),
+            JObj2=wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, JObj1),            
+            JObj3=wh_json:set_value(<<"pvt_db_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(5))), JObj2),
+            JObj4=wh_json:set_value(<<"pvt_cookie">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(24))), JObj3),
             Context#cb_context{
                  doc=JObj4
                 ,resp_status=success
@@ -384,7 +384,7 @@ update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -407,17 +407,17 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(execute_deploy_cmd/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
-    case couch_mgr:save_doc(Db, whapps_json:set_value(<<"pvt_deploy_status">>, <<"running">>, JObj)) of
+    case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deploy_status">>, <<"running">>, JObj)) of
         {ok, _} ->
-            ServerId = whapps_json:get_value(<<"_id">>, JObj),                
+            ServerId = wh_json:get_value(<<"_id">>, JObj),                
             try 
-                Ip = whapps_json:get_value(<<"ip">>, JObj),
+                Ip = wh_json:get_value(<<"ip">>, JObj),
                 Roles = fun([H|T], Sep) -> 
                                 <<H/binary, (list_to_binary([<<(Sep)/binary, X/binary>> || X <- T]))/binary>> 
-                        end(whapps_json:get_value(<<"roles">>, JObj), <<",">>),
-                Password = whapps_json:get_value(<<"password">>, Data),
-                Hostname = whapps_json:get_value(<<"hostname">>, JObj),
-                OS = whapps_json:get_value(<<"operating_system">>, JObj),
+                        end(wh_json:get_value(<<"roles">>, JObj), <<",">>),
+                Password = wh_json:get_value(<<"password">>, Data),
+                Hostname = wh_json:get_value(<<"hostname">>, JObj),
+                OS = wh_json:get_value(<<"operating_system">>, JObj),
                 AccountId = accounts:get_db_name(Db, raw),
                 Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
                                              ,"/deploy.sh"
@@ -428,8 +428,8 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                                              ,$ , $" ,OS/binary, $"
                                              ,$ , $" ,ServerId/binary, $"
                                              ,$ , $" ,AccountId/binary, $"
-                                             ,$ , $" ,(whapps_json:get_value(<<"pvt_cookie">>, JObj))/binary, $"
-                                             ,$ , $" ,(whapps_json:get_value(<<"pvt_db_key">>, JObj))/binary, $"
+                                             ,$ , $" ,(wh_json:get_value(<<"pvt_cookie">>, JObj))/binary, $"
+                                             ,$ , $" ,(wh_json:get_value(<<"pvt_db_key">>, JObj))/binary, $"
                                              ,$ , $" ,(Db)/binary, $"
                                            >>),                
                spawn(fun() -> 
@@ -462,7 +462,7 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                           tuple(ok, json_object()) | tuple(error, atom())).
 mark_deploy_complete(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
-    case couch_mgr:save_doc(Db, whapps_json:set_value(<<"pvt_deploy_status">>, <<"idle">>, JObj)) of
+    case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deploy_status">>, <<"idle">>, JObj)) of
         {error, conflict} ->
             mark_deploy_complete(Db, ServerId);
         Else ->

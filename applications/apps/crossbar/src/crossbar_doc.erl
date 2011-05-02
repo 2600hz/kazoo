@@ -190,7 +190,7 @@ save(#cb_context{db_name=DB, doc=JObj}=Context) ->
             Context#cb_context{
                  doc=JObj1
                 ,resp_status=success
-                ,resp_headers=[{"Location", whapps_json:get_value(<<"_id">>, JObj1)} | Context#cb_context.resp_headers]
+                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | Context#cb_context.resp_headers]
                 ,resp_data=public_fields(JObj1)
                 ,resp_etag=rev_to_etag(JObj1)
             };
@@ -270,7 +270,7 @@ delete(#cb_context{db_name=undefined}=Context) ->
     crossbar_util:response_db_missing(Context);
 delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
     JObj0 = update_pvt_parameters(JObj, Context),
-    JObj1 = whapps_json:set_value(<<"pvt_deleted">>, true, JObj0),
+    JObj1 = wh_json:set_value(<<"pvt_deleted">>, true, JObj0),
     case couch_mgr:save_doc(DB, JObj1) of
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
@@ -409,11 +409,11 @@ rev_to_etag(_Json) ->
 -spec(update_pvt_parameters/2 :: (JObj0 :: json_object(), Context :: #cb_context{}) -> json_object()).
 update_pvt_parameters(JObj0, Context) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    JObj1 = whapps_json:set_value(<<"pvt_account_db">>, Context#cb_context.db_name, JObj0),
-    case whapps_json:get_value(<<"pvt_created">>, JObj1) of
+    JObj1 = wh_json:set_value(<<"pvt_account_db">>, Context#cb_context.db_name, JObj0),
+    case wh_json:get_value(<<"pvt_created">>, JObj1) of
         undefined ->                                    
-            JObj2 = whapps_json:set_value(<<"pvt_created">>, Timestamp, JObj1),
-            whapps_json:set_value(<<"pvt_modified">>, Timestamp, JObj2);
+            JObj2 = wh_json:set_value(<<"pvt_created">>, Timestamp, JObj1),
+            wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj2);
         _ -> 
-            whapps_json:set_value(<<"pvt_modified">>, Timestamp, JObj0)
+            wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj0)
     end.

@@ -26,8 +26,8 @@
 %%--------------------------------------------------------------------
 -spec(handle_req/1 :: (JObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(JObj) ->
-    AuthU = whapps_json:get_value(<<"Auth-User">>, JObj),
-    AuthR0 = whapps_json:get_value(<<"Auth-Domain">>, JObj),
+    AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
+    AuthR0 = wh_json:get_value(<<"Auth-Domain">>, JObj),
 
     %% if we're authing, it's an outbound call; no auth means carrier authed by ACL, hence inbound
     %% until we introduce IP-based auth
@@ -35,7 +35,7 @@ handle_req(JObj) ->
 
     AuthR = case ts_util:is_ipv4(AuthR0) of
 		true ->
-		    [_ToUser, ToDomain] = binary:split(whapps_json:get_value(<<"To">>, JObj), <<"@">>),
+		    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
 		    logger:format_log(info, "TS_AUTH(~p): Auth-Realm (~p) not a hostname, trying To-Domain(~p)~n", [self(), AuthR0, ToDomain]),
 		    ToDomain;
 		false ->
@@ -44,7 +44,7 @@ handle_req(JObj) ->
 
     {ok, AuthJObj} = lookup_user(AuthU, AuthR),
 
-    Defaults = [{<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, JObj)}
+    Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, [
 						       {<<"Direction">>, Direction}
 						       ,{<<"Username">>, AuthU}
@@ -52,7 +52,7 @@ handle_req(JObj) ->
 						      ]
 					     }}
 		| whistle_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
-					      ,whapps_json:get_value(<<"Event-Category">>, JObj)
+					      ,wh_json:get_value(<<"Event-Category">>, JObj)
 					      ,<<"auth_resp">>
 					      ,?APP_NAME
 					      ,?APP_VERSION)],
@@ -98,7 +98,7 @@ lookup_user(Name, Realm) ->
 	{error, _}=E -> E;
 	{ok, []} -> {error, "No user/realm found"};
 	{ok, [{struct, _}=User|_]} ->
-	    Auth = whapps_json:get_value(<<"value">>, User),
+	    Auth = wh_json:get_value(<<"value">>, User),
 	    {ok, Auth}
     end.
 
@@ -112,12 +112,12 @@ response(AuthJObj, Prop) ->
 
 -spec(specific_response/1 :: (AuthJObj :: json_object() | integer()) -> proplist()).
 specific_response({struct, _}=AuthJObj) ->
-    Method = whistle_util:to_binary(string:to_lower(whistle_util:to_list(whapps_json:get_value(<<"auth_method">>, AuthJObj)))),
-    [{<<"Auth-Password">>, whapps_json:get_value(<<"auth_password">>, AuthJObj)}
+    Method = whistle_util:to_binary(string:to_lower(whistle_util:to_list(wh_json:get_value(<<"auth_method">>, AuthJObj)))),
+    [{<<"Auth-Password">>, wh_json:get_value(<<"auth_password">>, AuthJObj)}
      ,{<<"Auth-Method">>, Method}
      ,{<<"Event-Name">>, <<"auth_resp">>}
-     ,{<<"Access-Group">>, whapps_json:get_value(<<"Access-Group">>, AuthJObj, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, whapps_json:get_value(<<"Tenant-ID">>, AuthJObj, <<"ignore">>)}
+     ,{<<"Access-Group">>, wh_json:get_value(<<"Access-Group">>, AuthJObj, <<"ignore">>)}
+     ,{<<"Tenant-ID">>, wh_json:get_value(<<"Tenant-ID">>, AuthJObj, <<"ignore">>)}
     ];
 specific_response(403) ->
     [{<<"Auth-Method">>, <<"error">>}

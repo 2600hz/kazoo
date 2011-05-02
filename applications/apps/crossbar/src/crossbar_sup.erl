@@ -50,6 +50,7 @@ upgrade() ->
 
 init([]) ->
     {ok, Dispatch} = file:consult(?DISPATCH_FILE),
+
     {ok, Configuration} = file:consult(?WEBMACHINE_CONF),
     WebConfig = case props:get_value(ssl, Configuration, false) of
                     true ->
@@ -71,6 +72,7 @@ init([]) ->
                          {dispatch, Dispatch}]
                 end,
     logger:format_log(info, "Starting webmachine ~p", [WebConfig]),
+
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
     ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
     BindingServer = ?CHILD(crossbar_bindings, worker),

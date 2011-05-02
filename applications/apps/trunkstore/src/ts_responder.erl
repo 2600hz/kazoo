@@ -172,7 +172,7 @@ handle_req(_ContentType, _Payload) ->
 
 -spec(get_msg_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary())).
 get_msg_type(JObj) ->
-    { whapps_json:get_value(<<"Event-Category">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj) }.
+    { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
 -spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object()) -> no_return()).
 process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
@@ -182,7 +182,7 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
 	true ->
 	    case ts_auth:handle_req(JObj) of
 		{ok, JSON} ->
-		    RespQ = whapps_json:get_value(<<"Server-ID">>, JObj),
+		    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
 		    send_resp(JSON, RespQ);
 		{error, _Msg} ->
 		    logger:format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
@@ -198,7 +198,7 @@ process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
 	    logger:format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
 	{ok, JSON} ->
 	    logger:format_log(info, "TS_RESPONDER.route(~p): Took ~p micro to find route~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
-	    RespQ = whapps_json:get_value(<<"Server-ID">>, JObj),
+	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
 	    send_resp(JSON, RespQ);
 	{error, _Msg} ->
 	    logger:format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
