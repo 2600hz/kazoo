@@ -171,6 +171,7 @@
 						 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
 						 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
 						 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
+						 ,<<"SIP-Headers">>
 					   ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
 				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
@@ -180,11 +181,12 @@
 				  ,{<<"Route">>, fun is_binary/1}
 				  ,{<<"To-User">>, fun is_binary/1}
 				  ,{<<"To-Realm">>, fun is_binary/1}
+				  ,{<<"SIP-Headers">>, fun is_list/1}
 				]).
 
 %% Route Responses - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
--define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
+-define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>, <<"SIP-Headers">>]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
 			    ,{<<"Event-Name">>, <<"route_resp">>}
 			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
@@ -194,6 +196,7 @@
 			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
 					      (_) -> false
 					   end}
+			   ,{<<"SIP-Headers">>, fun is_list/1}
 			  ]).
 
 %% Route Winner - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.22Winning.22_Application_Response_from_Call_Manager
@@ -207,7 +210,7 @@
 %% Resource Request - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
-					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>, <<"SIP-Headers">>
 				       ]).
 -define(RESOURCE_REQ_VALUES, [
 			      {<<"Event-Category">>, <<"originate">>}
@@ -219,6 +222,7 @@
 			     ,{<<"Route">>, fun is_binary/1}
 			     ,{<<"To-User">>, fun is_binary/1}
 			     ,{<<"To-Realm">>, fun is_binary/1}
+			     ,{<<"SIP-Headers">>, fun is_list/1}
 			    ]).
 
 %% Resource Response - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Response
@@ -383,6 +387,7 @@
 -define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>
                                       ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
                                       ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
+				      ,<<"SIP-Headers">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
@@ -391,7 +396,10 @@
 			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
 			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
 			   ]).
--define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}]).
+-define(BRIDGE_REQ_TYPES, [
+			   {<<"Endpoints">>, fun is_list/1}
+			   ,{<<"SIP-Headers">>, fun is_list/1}
+			  ]).
 
 %% Endpoints - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#.3CEndpoint.3E
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
@@ -399,13 +407,13 @@
 						    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                                     ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>
+                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>
 					      ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [{<<"Invite-Format">>, [<<"username">>, <<"npan">>, <<"1npan">>, <<"e164">>, <<"route">>]}
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                     ]).
--define(BRIDGE_REQ_ENDPOINT_TYPES, []).
+-define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun is_list/1}]).
 
 %% Answer - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Answer
 -define(ANSWER_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
