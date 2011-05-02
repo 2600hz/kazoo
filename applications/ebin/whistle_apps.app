@@ -5,6 +5,6 @@
               {applications,[kernel,stdlib]},
               {mod,{whistle_apps_app,[]}},
               {env,[]},
-              {modules,[whapps_controller,whapps_json,whistle_apps,
-                        whistle_apps_app,whistle_apps_cli,whistle_apps_deps,
+              {modules,[whapps_controller,whistle_apps,whistle_apps_app,
+                        whistle_apps_cli,whistle_apps_deps,
                         whistle_apps_sup]}]}.
