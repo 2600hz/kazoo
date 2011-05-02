@@ -41,7 +41,7 @@ validate(Schema, JObj) ->
 %%--------------------------------------------------------------------
 -spec(check/4 :: (Rules :: validator_rules(), Path :: [binary()] | binary(), JObj :: mochijson(), Acc0 :: json_objects()) -> json_objects()).
 check(Rules, Path, JObj, Acc0) ->
-    Value = whapps_json:get_value(Path, JObj),
+    Value = wh_json:get_value(Path, JObj),
     lists:foldl(fun({Validator, Params}, Results) ->
 			case apply(?MODULE, Validator, [Value] ++ Params) of
 			    true ->

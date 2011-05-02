@@ -205,9 +205,9 @@ lookup_remote(MediaName, StreamType) ->
     try
 	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
 	true = whistle_api:media_resp_v(MediaResp),
-	MediaName = whapps_json:get_value(<<"Media-Name">>, MediaResp),
+	MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
 
-	whapps_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)
+	wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)
     catch
 	_:B ->
 	    {error, B}

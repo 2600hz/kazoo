@@ -2,11 +2,11 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%%
+%%% proplists-like interface to json objects
 %%% @end
 %%% Created : 2 Feb 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(whapps_json).
+-module(wh_json).
 
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).

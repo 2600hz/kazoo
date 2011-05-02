@@ -340,21 +340,21 @@ get_prompt(#menu{menu_id=Id}, #cf_call{account_db=Db}) ->
 %%--------------------------------------------------------------------
 -spec(get_menu_profile/2 :: (Data :: json_object(), Db :: binary()) -> #menu{}).
 get_menu_profile(Data, Db) ->
-    Id = whapps_json:get_value(<<"id">>, Data),
+    Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Default=#menu{},
             #menu{
 		   menu_id = Id
-                   ,retries = whapps_json:get_value(<<"retries">>, JObj, Default#menu.retries)
-                   ,timeout = whapps_json:get_value(<<"timeout">>, JObj, Default#menu.timeout)
-                   ,max_length = whapps_json:get_value(<<"max_extension_length">>, JObj, Default#menu.max_length)
-                   ,hunt = whapps_json:get_value(<<"hunt">>, JObj, Default#menu.hunt)
-                   ,hunt_deny = whapps_json:get_value(<<"hunt_deny">>, JObj, Default#menu.hunt_deny)
-                   ,hunt_allow = whapps_json:get_value(<<"hunt_allow">>, JObj, Default#menu.hunt_allow)
-                   ,record_pin = whapps_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
-                   ,has_prompt_media = whapps_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
-                   ,s_prompt = whapps_json:get_value(<<115,97,115,115,121,95,109,111,100,101>>, JObj) =/= undefined
+                   ,retries = wh_json:get_value(<<"retries">>, JObj, Default#menu.retries)
+                   ,timeout = wh_json:get_value(<<"timeout">>, JObj, Default#menu.timeout)
+                   ,max_length = wh_json:get_value(<<"max_extension_length">>, JObj, Default#menu.max_length)
+                   ,hunt = wh_json:get_value(<<"hunt">>, JObj, Default#menu.hunt)
+                   ,hunt_deny = wh_json:get_value(<<"hunt_deny">>, JObj, Default#menu.hunt_deny)
+                   ,hunt_allow = wh_json:get_value(<<"hunt_allow">>, JObj, Default#menu.hunt_allow)
+                   ,record_pin = wh_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
+                   ,has_prompt_media = wh_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
+                   ,s_prompt = wh_json:get_value(<<115,97,115,115,121,95,109,111,100,101>>, JObj) =/= undefined
                  };
         _ ->
             #menu{}

@@ -149,7 +149,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Conte
 	[_MediaID, ?BIN_DATA] ->
 	    spawn(fun() ->
 			  Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>
-									     ,whapps_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
+									     ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
 									,{<<"Content-Length">>
 									      ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
 									| Context#cb_context.resp_headers]},
@@ -177,8 +177,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, Cont
 	    spawn(fun() ->
 			  crossbar_util:binding_heartbeat(Pid),
 			  [MediaID, ?BIN_DATA] = Params,
-			  {struct, Headers} = whapps_json:get_value(<<"headers">>, FileObj),
-			  Contents = whapps_json:get_value(<<"contents">>, FileObj),
+			  {struct, Headers} = wh_json:get_value(<<"headers">>, FileObj),
+			  Contents = wh_json:get_value(<<"contents">>, FileObj),
 
 			  Context1 = update_media_binary(MediaID, Contents, Context, Headers),
 			  spawn(fun() ->
@@ -196,7 +196,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.media">>, [RD, Conte
 		      undefined ->
 			  {Context1, Resp} = case create_media_meta(Context#cb_context.req_data, Context) of
 						 #cb_context{resp_status=success, resp_data=RespData, resp_headers=RHs}=Context2 ->
-						     DocID = whapps_json:get_value(<<"id">>, RespData),
+						     DocID = wh_json:get_value(<<"id">>, RespData),
 						     {Context2#cb_context{resp_data=[], resp_headers=[{"Location", DocID} | RHs]}, true};
 						 Context3 ->
 						     logger:format_log(info, "MEDIA.v.PUT: ERROR~n", []),
@@ -364,13 +364,13 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     lookup_media(Context);
 
 validate([], #cb_context{req_verb = <<"put">>, req_data=Data}=Context) ->
-    Name = whapps_json:get_value(<<"display_name">>, Data),
+    Name = wh_json:get_value(<<"display_name">>, Data),
 
     case Name =/= undefined andalso lookup_media_by_name(Name, Context) of
 	false ->
 	    crossbar_util:response_invalid_data([<<"display_name">>], Context);
 	#cb_context{resp_status=success, doc=[{struct, _}=Doc|_], resp_headers=RHs}=Context1 ->
-	    DocID = whapps_json:get_value(<<"id">>, Doc),
+	    DocID = wh_json:get_value(<<"id">>, Doc),
 	    Context1#cb_context{resp_headers=[{"Location", DocID} | RHs]};
 	_ ->
 	    Context#cb_context{resp_status=success}
@@ -380,7 +380,7 @@ validate([MediaID], #cb_context{req_verb = <<"get">>}=Context) ->
     get_media_doc(MediaID, Context);
 
 validate([MediaID], #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
-    case whapps_json:get_value(<<"display_name">>, Data) =/= undefined of
+    case wh_json:get_value(<<"display_name">>, Data) =/= undefined of
 	true ->
 	    crossbar_doc:load_merge(MediaID, Data, Context);
 	false ->
@@ -396,7 +396,7 @@ validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
 validate([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[]}=Context) ->
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context) ->
-    Contents = whapps_json:get_value([<<"contents">>], FileObj),
+    Contents = wh_json:get_value([<<"contents">>], FileObj),
     case Contents of
 	<<>> ->
 	    crossbar_util:response_invalid_data([<<"empty_file">>], Context);
@@ -410,7 +410,7 @@ validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context
 
 create_media_meta(Data, Context) ->
     Doc1 = lists:foldr(fun(Meta, DocAcc) ->
-			       case whapps_json:get_value(Meta, Data) of
+			       case wh_json:get_value(Meta, Data) of
 				   undefined -> [{Meta, <<>>} | DocAcc];
 				   V -> [{Meta, whistle_util:to_binary(V)} | DocAcc]
 			       end
@@ -424,7 +424,7 @@ update_media_binary(MediaID, Contents, Context, Options) ->
     case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Opts) of
 	#cb_context{resp_status=success}=Context1 ->
 	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
-	    Doc1 = lists:foldl(fun({K,V}, D0) -> whapps_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0) end, Doc, Options),
+	    Doc1 = lists:foldl(fun({K,V}, D0) -> wh_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0) end, Doc, Options),
 	    crossbar_doc:save(Context1#cb_context{doc=Doc1});
 	C -> C
     end.
@@ -434,7 +434,7 @@ update_media_binary(MediaID, Contents, Context, Options) ->
 lookup_media(Context) ->
     case crossbar_doc:load_view(<<"media_doc/listing_by_name">>, [], Context) of
 	#cb_context{resp_status=success, doc=Doc}=Context1 ->
-	    Resp = [ whapps_json:get_value(<<"value">>, ViewObj) || ViewObj <- Doc ],
+	    Resp = [ wh_json:get_value(<<"value">>, ViewObj) || ViewObj <- Doc ],
 	    crossbar_util:response(Resp, Context1);
 	C -> C
     end.

@@ -19,9 +19,9 @@ to_couch(Dir) ->
                           F = whistle_util:to_binary(File),
                           case couch_mgr:save_doc(?DB, create_doc(F)) of
                               {ok, JOBj} ->
-                                  DocId = whapps_json:get_value(<<"_id">>, JOBj),
-                                  AName = whapps_json:get_value(<<"display_name">>, JOBj),
-                                  Rev = whapps_json:get_value(<<"_rev">>, JOBj),
+                                  DocId = wh_json:get_value(<<"_id">>, JOBj),
+                                  AName = wh_json:get_value(<<"display_name">>, JOBj),
+                                  Rev = wh_json:get_value(<<"_rev">>, JOBj),
                                   {ok, Content} = file:read_file(File),                                  
                                   couch_mgr:put_attachment(?DB, DocId, AName, Content, [{'content_type', "audio/x-wav"}, {'rev', Rev}]),
                                   io:format("File: ~p Return: ~p~n", [File, JOBj]);

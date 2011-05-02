@@ -23,17 +23,17 @@
 handle_req(ApiJObj) ->
     %% logger:format_log(info, "TS_ROUTE(~p): Handling Route Request~n", [self()]),
     %% wh_timer:start("ts_route"),
-    case whapps_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj) of
+    case wh_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj) of
 	undefined ->
 	    {error, "No Custom Vars"};
 	?EMPTY_JSON_OBJECT -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
-	    inbound_handler(whapps_json:set_value([<<"Direction">>], <<"inbound">>, ApiJObj));
+	    inbound_handler(wh_json:set_value([<<"Direction">>], <<"inbound">>, ApiJObj));
 	{struct, _}=CCVs ->
-	    case whapps_json:get_value(<<"Direction">>, CCVs) of
+	    case wh_json:get_value(<<"Direction">>, CCVs) of
 		<<"outbound">>=D ->
-		    outbound_handler(whapps_json:set_value([<<"Direction">>], D, ApiJObj));
+		    outbound_handler(wh_json:set_value([<<"Direction">>], D, ApiJObj));
 		<<"inbound">>=D ->
-		    inbound_handler(whapps_json:set_value([<<"Direction">>], D, ApiJObj))
+		    inbound_handler(wh_json:set_value([<<"Direction">>], D, ApiJObj))
 	    end
     end.
 
@@ -44,7 +44,7 @@ handle_req(ApiJObj) ->
 inbound_handler(ApiJObj) ->
     %% wh_timer:tick("inbound_handler/1"),
     %% logger:format_log(info, "TS_ROUTE(~p): Inbound handler starting...~n", [self()]),
-    [ToUser, _ToDomain] = binary:split(whapps_json:get_value(<<"To">>, ApiJObj), <<"@">>),
+    [ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
     Flags = create_flags(whistle_util:to_e164(ToUser), ApiJObj),
     case Flags#route_flags.account_doc_id of
 	<<>> -> response(404, ApiJObj, Flags);
@@ -55,7 +55,7 @@ inbound_handler(ApiJObj) ->
 outbound_handler(ApiJObj) ->
     %% wh_timer:tick("outbound_handler/1"),
     %% logger:format_log(info, "TS_ROUTE(~p): Outbound handler starting...~n", [self()]),
-    Did = whistle_util:to_e164(whapps_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)),
+    Did = whistle_util:to_e164(wh_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)),
     Flags = create_flags(Did, ApiJObj),
     %% logger:format_log(info, "TS_ROUTE(~p): Flags acctid: ~p~n", [self(), Flags#route_flags.account_doc_id]),
     process_routing(outbound_features(Flags), ApiJObj).
@@ -70,8 +70,8 @@ lookup_user_flags(Name, Realm) ->
 		{error, _}=E -> E;
 		{ok, []} -> {error, "No user@realm found"};
 		{ok, [User|_]} ->
-		    ValJObj = whapps_json:get_value(<<"value">>, User),
-		    JObj = whapps_json:set_value(<<"id">>, whapps_json:get_value(<<"id">>, User), ValJObj),
+		    ValJObj = wh_json:get_value(<<"value">>, User),
+		    JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
 		    wh_cache:store({lookup_user_flags, Realm, Name}, JObj),
 		    {ok, JObj}
 	    end
@@ -95,8 +95,8 @@ lookup_did(Did) ->
 		    %% logger:format_log(info, "TS_ROUTE(~p): No DID(s) matching ~p~n", [self(), Options]),
 		    {error, "No matching DID"};
 		{ok, [{struct, _}=ViewJObj | _Rest]} ->
-		    ValueJObj = whapps_json:get_value(<<"value">>, ViewJObj),
-		    Resp = whapps_json:set_value(<<"id">>, whapps_json:get_value(<<"id">>, ViewJObj), ValueJObj),
+		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
+		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
 		    logger:format_log(info, "TS_ROUTE(~p): Caching did lookup ~p: ~p~n", [self(), {lookup_did, Did}, Resp]),
 		    wh_cache:store({lookup_did, Did}, Resp),
 		    {ok, Resp};
@@ -146,7 +146,7 @@ find_route(Flags, ApiJObj) ->
 find_outbound_route(Flags, ApiJObj) ->
     %% wh_timer:tick("find_outbound_route/2"),
     try
-	[ToUser, _ToDomain] = binary:split(whapps_json:get_value(<<"To">>, ApiJObj), <<"@">>),
+	[ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
 	Did = whistle_util:to_e164(ToUser),
 
 	case lookup_did(Did) of
@@ -335,42 +335,42 @@ create_flags(Did, ApiJObj) ->
     end.
 
 create_flags(_, ApiJObj, DidJObj) ->
-    ChannelVars = whapps_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, ?EMPTY_JSON_OBJECT),
+    ChannelVars = wh_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, ?EMPTY_JSON_OBJECT),
 
     F1 = case DidJObj of
-	     ?EMPTY_JSON_OBJECT -> add_auth_user(add_auth_realm(#route_flags{}, whapps_json:get_value(<<"Realm">>, ChannelVars)), whapps_json:get_value(<<"Username">>, ChannelVars));
-	     _ -> add_auth_realm(flags_from_did(DidJObj, #route_flags{}), whapps_json:get_value(<<"Realm">>, ChannelVars))
+	     ?EMPTY_JSON_OBJECT -> add_auth_user(add_auth_realm(#route_flags{}, wh_json:get_value(<<"Realm">>, ChannelVars)), wh_json:get_value(<<"Username">>, ChannelVars));
+	     _ -> add_auth_realm(flags_from_did(DidJObj, #route_flags{}), wh_json:get_value(<<"Realm">>, ChannelVars))
 	 end,
 
     AuthUser = F1#route_flags.auth_user,
     Realm = F1#route_flags.auth_realm,
 
     {ok, D} = lookup_user_flags(AuthUser, Realm),
-    Id = whapps_json:get_value(<<"id">>, D),
+    Id = wh_json:get_value(<<"id">>, D),
 
-    F2 = flags_from_srv(whapps_json:get_value(<<"server">>, D, ?EMPTY_JSON_OBJECT), F1#route_flags{account_doc_id = Id}),
-    F3 = flags_from_account(whapps_json:get_value(<<"account">>, D, ?EMPTY_JSON_OBJECT), F2),
+    F2 = flags_from_srv(wh_json:get_value(<<"server">>, D, ?EMPTY_JSON_OBJECT), F1#route_flags{account_doc_id = Id}),
+    F3 = flags_from_account(wh_json:get_value(<<"account">>, D, ?EMPTY_JSON_OBJECT), F2),
     flags_from_api(ApiJObj, ChannelVars, F3).
 
 -spec(flags_from_api/3 :: (ApiJObj :: json_object(), ChannelVarsJObj :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_api(ApiJObj, ChannelVarsJObj, Flags) ->
     %% wh_timer:tick("flags_from_api/3"),
-    [ToUser, ToDomain] = binary:split(whapps_json:get_value(<<"To">>, ApiJObj), <<"@">>),
-    [FromUser, FromDomain] = binary:split(whapps_json:get_value(<<"From">>, ApiJObj), <<"@">>),
+    [ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
+    [FromUser, FromDomain] = binary:split(wh_json:get_value(<<"From">>, ApiJObj), <<"@">>),
 
-    F0 = add_caller_id(Flags, {struct, [ {<<"cid_name">>, whapps_json:get_value(<<"Caller-ID-Name">>, ApiJObj, <<>>)}
-					 ,{<<"cid_number">>, whapps_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)}
+    F0 = add_caller_id(Flags, {struct, [ {<<"cid_name">>, wh_json:get_value(<<"Caller-ID-Name">>, ApiJObj, <<>>)}
+					 ,{<<"cid_number">>, wh_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)}
 				       ]
 			      }),
     F1 = F0#route_flags{
-	   callid = whapps_json:get_value(<<"Call-ID">>, ApiJObj)
+	   callid = wh_json:get_value(<<"Call-ID">>, ApiJObj)
 	   ,to_user = whistle_util:to_e164(ToUser)
 	   ,to_domain = ToDomain
 	   ,from_user = whistle_util:to_e164(FromUser)
 	   ,from_domain = FromDomain
-	   ,direction = whapps_json:get_value(<<"Direction">>, ChannelVarsJObj, <<"inbound">>)
+	   ,direction = wh_json:get_value(<<"Direction">>, ChannelVarsJObj, <<"inbound">>)
 	  },
-    add_auth_user(F1, whapps_json:get_value(<<"Auth-User">>, ChannelVarsJObj)).
+    add_auth_user(F1, wh_json:get_value(<<"Auth-User">>, ChannelVarsJObj)).
 
 %% Flags from the DID
 %% - Failover
@@ -380,20 +380,20 @@ flags_from_api(ApiJObj, ChannelVarsJObj, Flags) ->
 -spec(flags_from_did/2 :: (DidJObj :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_did(DidJObj, Flags) ->
     %% wh_timer:tick("flags_from_did/2"),
-    DidOptions = whapps_json:get_value(<<"DID_Opts">>, DidJObj, ?EMPTY_JSON_OBJECT),
-    AuthOpts = whapps_json:get_value(<<"auth">>, DidJObj, ?EMPTY_JSON_OBJECT),
+    DidOptions = wh_json:get_value(<<"DID_Opts">>, DidJObj, ?EMPTY_JSON_OBJECT),
+    AuthOpts = wh_json:get_value(<<"auth">>, DidJObj, ?EMPTY_JSON_OBJECT),
 
-    Opts = whapps_json:get_value(<<"options">>, DidJObj, ?EMPTY_JSON_OBJECT),
-    Acct = whapps_json:get_value(<<"account">>, DidJObj, ?EMPTY_JSON_OBJECT),
+    Opts = wh_json:get_value(<<"options">>, DidJObj, ?EMPTY_JSON_OBJECT),
+    Acct = wh_json:get_value(<<"account">>, DidJObj, ?EMPTY_JSON_OBJECT),
 
-    F0 = add_failover(Flags, whapps_json:get_value(<<"failover">>, DidOptions, ?EMPTY_JSON_OBJECT)),
-    F1 = add_caller_id(F0, whapps_json:get_value(<<"caller_id">>, DidOptions, ?EMPTY_JSON_OBJECT)),
+    F0 = add_failover(Flags, wh_json:get_value(<<"failover">>, DidOptions, ?EMPTY_JSON_OBJECT)),
+    F1 = add_caller_id(F0, wh_json:get_value(<<"caller_id">>, DidOptions, ?EMPTY_JSON_OBJECT)),
     F2 = F1#route_flags{route_options = Opts
-			,account_doc_id = whapps_json:get_value(<<"id">>, DidJObj)
+			,account_doc_id = wh_json:get_value(<<"id">>, DidJObj)
 		       },
-    F3 = add_auth_user(F2, whapps_json:get_value(<<"auth_user">>, AuthOpts)),
-    F4 = add_auth_realm(F3, whapps_json:get_value(<<"auth_realm">>, AuthOpts, whapps_json:get_value(<<"auth_realm">>, Acct))),
-    add_force_outbound(F4, whapps_json:get_value(<<"force_outbound">>, DidOptions, false)).
+    F3 = add_auth_user(F2, wh_json:get_value(<<"auth_user">>, AuthOpts)),
+    F4 = add_auth_realm(F3, wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct))),
+    add_force_outbound(F4, wh_json:get_value(<<"force_outbound">>, DidOptions, false)).
 
 %% Flags from the Server
 %% - Inbound Format <- what format does the server expect the inbound caller-id in?
@@ -406,16 +406,16 @@ flags_from_did(DidJObj, Flags) ->
 -spec(flags_from_srv/2 :: (Srv :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_srv(Srv, Flags) ->
     %% wh_timer:tick("flags_from_srv/2"),
-    Options = whapps_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
+    Options = wh_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
 
-    F0 = Flags#route_flags{inbound_format = whapps_json:get_value(<<"inbound_format">>, Options, <<>>)
-			   ,codecs = whapps_json:get_value(<<"codecs">>, Srv, [])
-			   ,media_handling = whapps_json:get_value(<<"media_handling">>, Options)
-			   ,progress_timeout = whapps_json:get_value(<<"progress_timeout">>, Options, none)
+    F0 = Flags#route_flags{inbound_format = wh_json:get_value(<<"inbound_format">>, Options, <<>>)
+			   ,codecs = wh_json:get_value(<<"codecs">>, Srv, [])
+			   ,media_handling = wh_json:get_value(<<"media_handling">>, Options)
+			   ,progress_timeout = wh_json:get_value(<<"progress_timeout">>, Options, none)
 			  },
-    F1 = add_caller_id(F0, whapps_json:get_value(<<"caller_id">>, Srv, ?EMPTY_JSON_OBJECT)),
-    F2 = add_failover(F1, whapps_json:get_value(<<"failover">>, Srv, ?EMPTY_JSON_OBJECT)),
-    add_force_outbound(F2, whapps_json:get_value(<<"force_outbound">>, Options, false)).
+    F1 = add_caller_id(F0, wh_json:get_value(<<"caller_id">>, Srv, ?EMPTY_JSON_OBJECT)),
+    F2 = add_failover(F1, wh_json:get_value(<<"failover">>, Srv, ?EMPTY_JSON_OBJECT)),
+    add_force_outbound(F2, wh_json:get_value(<<"force_outbound">>, Options, false)).
 
 %% Flags from the Account
 %% - Credit available
@@ -426,9 +426,9 @@ flags_from_srv(Srv, Flags) ->
 -spec(flags_from_account(Acct :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_account(Acct, Flags) ->
     %% wh_timer:tick("flags_from_acct/2"),
-    F1 = add_caller_id(Flags, whapps_json:get_value(<<"caller_id">>, Acct, ?EMPTY_JSON_OBJECT)),
-    F2 = add_failover(F1, whapps_json:get_value(<<"failover">>, Acct, ?EMPTY_JSON_OBJECT)),
-    add_auth_realm(F2, whapps_json:get_value(<<"auth_realm">>, Acct)).
+    F1 = add_caller_id(Flags, wh_json:get_value(<<"caller_id">>, Acct, ?EMPTY_JSON_OBJECT)),
+    F2 = add_failover(F1, wh_json:get_value(<<"failover">>, Acct, ?EMPTY_JSON_OBJECT)),
+    add_auth_realm(F2, wh_json:get_value(<<"auth_realm">>, Acct)).
 
 -spec(add_force_outbound/2 :: (F :: #route_flags{}, Force :: boolean()) -> #route_flags{}).
 add_force_outbound(#route_flags{force_outbound=undefined}=F, Force) ->
@@ -438,9 +438,9 @@ add_force_outbound(F, _) -> F.
 -spec(add_failover/2 :: (F0 :: #route_flags{}, FOver :: json_object()) -> #route_flags{}).
 add_failover(#route_flags{failover={}}=F0, ?EMPTY_JSON_OBJECT) -> F0;
 add_failover(#route_flags{failover={}}=F0, Failover) ->
-    case whapps_json:get_value(<<"e164">>, Failover) of
+    case wh_json:get_value(<<"e164">>, Failover) of
 	undefined ->
-	    case whapps_json:get_value(<<"sip">>, Failover) of
+	    case wh_json:get_value(<<"sip">>, Failover) of
 		undefined -> F0;
 		SipFail -> F0#route_flags{failover={<<"sip">>, SipFail}}
 	    end;
@@ -472,15 +472,15 @@ add_auth_realm(F, _Realm) ->
 -spec(add_caller_id/2 :: (F0 :: #route_flags{}, CID :: json_object()) -> #route_flags{}).
 add_caller_id(#route_flags{caller_id={}}=F0, ?EMPTY_JSON_OBJECT) -> F0;
 add_caller_id(#route_flags{caller_id={}}=F0, {struct, _}=CID) ->
-    F0#route_flags{caller_id = {whapps_json:get_value(<<"cid_name">>, CID, <<>>)
-				,whapps_json:get_value(<<"cid_number">>, CID, <<>>)}};
+    F0#route_flags{caller_id = {wh_json:get_value(<<"cid_name">>, CID, <<>>)
+				,wh_json:get_value(<<"cid_number">>, CID, <<>>)}};
 add_caller_id(F, _) -> F.
 
 -spec(response/3 :: (Routes :: json_objects() | integer(), JObj :: json_object(), Flags :: #route_flags{}) -> tuple(ok, iolist()) | tuple(error, string())).
 response(ErrCode, JObj, _Flags) when is_integer(ErrCode) ->
     %% wh_timer:tick("response/3 err code"),
     logger:format_log(info, "TS_ROUTE(~p): Errcode: ~p, JObj: ~p~n", [self(), ErrCode, JObj]),
-    JObj1 = {struct, [ {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, JObj)}
+    JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 	      | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
 	     },
     response(ErrCode, JObj1);
@@ -491,7 +491,7 @@ response(Routes, JObj, Flags) ->
     %% wh_timer:tick("response/3 routes start_call_handler"),
     {ok, Q} = ts_call_handler:get_queue(Pid),
     %% wh_timer:tick("response/3 routes got queue of call_handler"),
-    JObj1 = {struct, [ {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, JObj)}
+    JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
 	    },
     %% wh_timer:tick("response/3 new jobj"),

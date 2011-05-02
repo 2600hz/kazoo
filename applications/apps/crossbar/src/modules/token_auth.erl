@@ -199,7 +199,7 @@ authenticate_token(AuthToken) ->
 update_token_doc(JObj, _) ->
     spawn(fun() ->
                   Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-                  couch_mgr:save_doc(?TOKEN_DB,  whapps_json:set_value(<<"modified">>, Now, JObj))
+                  couch_mgr:save_doc(?TOKEN_DB,  wh_json:set_value(<<"modified">>, Now, JObj))
           end).
 
 %% TODO:

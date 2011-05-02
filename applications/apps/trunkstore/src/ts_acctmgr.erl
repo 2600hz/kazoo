@@ -190,13 +190,13 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 			  logger:format_log(info, "TS_ACCTMGR.reserve: no_funds for ~p:~p~n", [AcctId, CallID]),
 			  gen_server:reply(From, {error, no_account});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
-			  case whapps_json:get_value(<<"trunks">>, Funds, 0) > 0 of
+			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
 				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
 				  logger:format_log(info, "TS_ACCTMGR.reserve: flat_rate for ~p:~p~n", [AcctId, CallID]),
 				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
-				  case whapps_json:get_value(<<"credit">>, Funds, 0) > Amt of
+				  case wh_json:get_value(<<"credit">>, Funds, 0) > Amt of
 				      true ->
 					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
 					  logger:format_log(info, "TS_ACCTMGR.reserve: per_min for ~p:~p~n", [AcctId, CallID]),
@@ -466,7 +466,7 @@ debit_doc(AcctId, Extra) ->
 get_accts(DB) ->
     case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
 	{ok, []} -> [];
-	{ok, AcctsDoc} -> lists:map(fun(AcctJObj) -> whapps_json:get_value(<<"key">>, AcctJObj) end, AcctsDoc)
+	{ok, AcctsDoc} -> lists:map(fun(AcctJObj) -> wh_json:get_value(<<"key">>, AcctJObj) end, AcctsDoc)
     end.
 
 transfer_acct(AcctId, RDB, WDB) ->
@@ -506,14 +506,14 @@ transfer_active_calls(AcctId, RDB, WDB) ->
 update_from_couch(AcctId, WDB, RDB) ->
     {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
 
-    Acct = whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
-    Credits = whapps_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
-    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(whapps_json:get_value(<<"prepay">>, Credits, 0.0))),
-    Trunks = whistle_util:to_integer(whapps_json:get_value(<<"trunks">>, Acct, 0)),
+    Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
+    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
+    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0))),
+    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
 
     {ok, UsageJObj} = couch_mgr:open_doc(RDB, AcctId),
-    T0 = whapps_json:get_value(<<"trunks">>, UsageJObj),
-    C0 = whapps_json:get_value(<<"amount">>, UsageJObj),
+    T0 = wh_json:get_value(<<"trunks">>, UsageJObj),
+    C0 = wh_json:get_value(<<"amount">>, UsageJObj),
 
     %% account trunks minus what the day started with to get diff
     %% So 5->7 in account, started day with 5, credit 2 trunks
@@ -547,10 +547,10 @@ load_account(AcctId, DB, Srv) ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
 		{error, not_found} -> ok;
 		{ok, JObj} ->
-		    Acct = whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
-		    Credits = whapps_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
-		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(whapps_json:get_value(<<"prepay">>, Credits, 0.0))),
-		    Trunks = whistle_util:to_integer(whapps_json:get_value(<<"trunks">>, Acct, 0)),
+		    Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
+		    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
+		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0))),
+		    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
 		    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
 		    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
 		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5)
@@ -608,7 +608,7 @@ release_trunk_error(AcctId, CallID, DB) ->
 	per_min ->
 	    Amt = case ts_cdr:fetch_cdr(binary:replace(DB, ?TS_USAGE_PREFIX, ?TS_CDR_PREFIX), CallID) of
 		      {error, not_found} -> 0;
-		      {ok, CDR} -> whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, CDR, 0))
+		      {ok, CDR} -> whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, CDR, 0))
 		  end,
 	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, per_min, Amt))
     end.

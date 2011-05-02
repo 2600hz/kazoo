@@ -282,7 +282,7 @@ create_vmbox(#cb_context{req_data=JObj}=Context) ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
-                 doc=whapps_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
+                 doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
                 ,resp_status=success
             }
     end.
@@ -321,7 +321,7 @@ update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private

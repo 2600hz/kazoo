@@ -14,12 +14,12 @@
 
 -spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | tuple(error, string())).
 exec_cmd(Node, UUID, JObj) ->
-    DestID = whapps_json:get_value(<<"Call-ID">>, JObj),
+    DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
 	true ->
 	    true = whistle_api:fs_req_v(JObj),
-	    AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
-	    AppArgs = whapps_json:get_value(<<"Args">>, JObj),
+	    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
+	    AppArgs = wh_json:get_value(<<"Args">>, JObj),
 	    {ok, _} = freeswitch:api(Node, AppName, AppArgs),
 	    ok;
 	false ->

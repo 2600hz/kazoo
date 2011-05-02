@@ -88,8 +88,8 @@ malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     {true, RD1, Context1};
 malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     ?TIMER_TICK("v1.malformed_request start"),
-    Data = whapps_json:get_value(["data"], Json),
-    Auth = get_auth_token(RD, whapps_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
+    Data = wh_json:get_value(["data"], Json),
+    Auth = get_auth_token(RD, wh_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
     ?TIMER_TICK("v1.malformed_request end"),
     {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
 
@@ -313,7 +313,7 @@ get_http_verb(RD, JSON) ->
 
 -spec(override_verb/3 :: (RD :: #wm_reqdata{}, JSON :: json_object(), Verb :: binary()) -> tuple(true, binary()) | false).
 override_verb(RD, JSON, <<"post">>) ->
-    case whapps_json:get_value(<<"verb">>, JSON) of
+    case wh_json:get_value(<<"verb">>, JSON) of
 	undefined ->
 	    case wrq:get_qs_value("verb", RD) of
 		undefined -> false;
@@ -469,7 +469,7 @@ get_auth_token(RD, JsonToken, Verb) ->
 %%--------------------------------------------------------------------
 -spec(is_valid_request_envelope/1 :: (JSON :: json_object()) -> boolean()).
 is_valid_request_envelope(JSON) ->
-    whapps_json:get_value([<<"data">>], JSON, not_found) =/= not_found.
+    wh_json:get_value([<<"data">>], JSON, not_found) =/= not_found.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -609,7 +609,7 @@ create_resp_content(RD, #cb_context{req_json=ReqJson}=Context) ->
         json ->
 	    Prop = create_resp_envelope(Context),
             JSON = mochijson2:encode({struct, Prop}),
-	    case whapps_json:get_value(<<"jsonp">>, ReqJson) of
+	    case wh_json:get_value(<<"jsonp">>, ReqJson) of
 		undefined -> JSON;
 		JsonFun when is_binary(JsonFun) ->
 		    [JsonFun, "(", JSON, ");"]
