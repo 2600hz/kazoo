@@ -118,7 +118,7 @@ replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
 get_account_by_realm(Realm) ->
     case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
 	{ok, [{struct, _}=V]} ->
-	    {ok, whapps_json:get_value([<<"value">>, <<"account_db">>], V)};
+	    {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
 	_ -> {error, not_found}
     end.
 
@@ -479,7 +479,7 @@ load_parent(AccountId, Context) ->
         ], Context),
     case View#cb_context.doc of
         [JObj|_] ->
-            Parent = whapps_json:get_value([<<"value">>, <<"id">>], JObj),
+            Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_account_summary(Parent, Context);
         _Else ->
             crossbar_util:response_bad_identifier(AccountId, Context)
@@ -544,7 +544,7 @@ load_siblings(AccountId, Context) ->
         ], Context),
     case View#cb_context.doc of
         [JObj|_] ->
-            Parent = whapps_json:get_value([<<"value">>, <<"id">>], JObj),
+            Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_children(Parent, Context);
         _Else ->
             crossbar_util:response_bad_identifier(AccountId, Context)
@@ -558,7 +558,7 @@ load_siblings(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -580,7 +580,7 @@ is_valid_parent(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
 is_valid_doc(JObj) ->
-    case whapps_json:get_value(<<"realm">>, JObj) of
+    case wh_json:get_value(<<"realm">>, JObj) of
 	undefined ->
 	    {false, [<<"realm">>]};
 	Realm when is_binary(Realm) ->
@@ -607,7 +607,7 @@ update_tree(AccountId, ParentId, Context) ->
                 #cb_context{resp_status=success, doc=[]} ->
                     crossbar_util:response_bad_identifier(AccountId, Context);
                 #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                    Tree = whapps_json:get_value(<<"pvt_tree">>, Parent) ++ [ParentId, AccountId],
+                    Tree = wh_json:get_value(<<"pvt_tree">>, Parent) ++ [ParentId, AccountId],
                     Updater = fun(Update, Acc) -> update_doc_tree(Tree, Update, Acc) end,
                     Updates = lists:foldr(Updater, [], Doc),
                     Context1#cb_context{doc=Updates}
@@ -628,13 +628,13 @@ update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
     ParentId = lists:last(ParentTree),
     case crossbar_doc:load(AccountId, #cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
-            Tree = whapps_json:get_value(<<"pvt_tree">>, Doc),
+            Tree = wh_json:get_value(<<"pvt_tree">>, Doc),
             SubTree =
                 case lists:dropwhile(fun(E)-> E =/= ParentId end, Tree) of
                     [] -> [];
                     List -> lists:nthtail(1,List)
                 end,
-            [whapps_json:set_value(<<"pvt_tree">>, [E || E <- ParentTree ++ SubTree, E =/= AccountId], Doc) | Acc];
+            [wh_json:set_value(<<"pvt_tree">>, [E || E <- ParentTree ++ SubTree, E =/= AccountId], Doc) | Acc];
         _Else ->
             Acc
     end;
@@ -650,8 +650,8 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 %%--------------------------------------------------------------------
 -spec(set_private_fields/1 :: (JObj :: json_object()) -> json_object()).
 set_private_fields(JObj) ->
-    JObj1 = whapps_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
-    JObj2 = whapps_json:set_value(<<"pvt_tree">>, [], JObj1),
+    JObj1 = wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
+    JObj2 = wh_json:set_value(<<"pvt_tree">>, [], JObj1),
     set_api_keys(JObj2).
 
 %%--------------------------------------------------------------------
@@ -663,7 +663,7 @@ set_private_fields(JObj) ->
 %%--------------------------------------------------------------------
 -spec(set_api_keys/1 :: (JObj :: json_object()) -> json_object()).
 set_api_keys(JObj) ->
-    whapps_json:set_value(<<"pvt_api_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))), JObj).
+    wh_json:set_value(<<"pvt_api_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))), JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -678,7 +678,7 @@ set_api_keys(JObj) ->
 get_db_name(Doc) -> get_db_name(Doc, unencoded).
 
 get_db_name({struct, _}=Doc, Encoding) ->
-    get_db_name([whapps_json:get_value(["_id"], Doc)], Encoding);
+    get_db_name([wh_json:get_value(["_id"], Doc)], Encoding);
 get_db_name([AccountId], Encoding) ->
     get_db_name(AccountId, Encoding);
 get_db_name(AccountId, Encoding) when not is_binary(AccountId) ->
@@ -748,7 +748,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
             crossbar_util:response_db_fatal(Context);
         true ->
             logger:format_log(info, "ACCOUNTS(~p): Created DB for account id ~p", [self(), get_db_name(DbName, raw)]),
-            JObj = whapps_json:set_value(<<"_id">>, get_db_name(DbName, raw), Doc),
+            JObj = wh_json:set_value(<<"_id">>, get_db_name(DbName, raw), Doc),
             case crossbar_doc:save(Context#cb_context{db_name=DbName, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
                     spawn(fun() ->
@@ -773,7 +773,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 %%--------------------------------------------------------------------
 -spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
-    is_unique_realm(AccountId, Context, whapps_json:get_value(<<"realm">>, JObj)).
+    is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
 
 is_unique_realm(_, _, undefined) -> false;
 is_unique_realm(undefined, Context, Realm) ->
@@ -781,7 +781,7 @@ is_unique_realm(undefined, Context, Realm) ->
 							  ,{<<"reduce">>, <<"true">>}
 							 ]
 				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
 	    #cb_context{resp_status=success, doc=[]} -> []
 	end,
     logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, undefined, V]),
@@ -791,7 +791,7 @@ is_unique_realm(AccountId, Context, Realm) ->
 							  ,{<<"reduce">>, <<"true">>}
 							 ]
 				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
 	    #cb_context{resp_status=success, doc=[]} -> []
 	end,
     logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, AccountId, V]),

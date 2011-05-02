@@ -322,12 +322,12 @@ validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data, r
 		 {error, undefined} -> start_subscription_handler(Session)
 	     end,
 
-    Stream = whapps_json:get_value(<<"stream">>, Data),
+    Stream = wh_json:get_value(<<"stream">>, Data),
     case Stream of
 	undefined ->
 	    crossbar_util:response_faulty_request(Context);
 	_ ->
-	    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
+	    MaxEvents = constrain_max_events(wh_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
 	    add_stream(SubPid, Stream, MaxEvents),
 	    Streams = get_streams(SubPid),
 	    crossbar_util:response({struct, [{<<"streams">>, Streams}]}
@@ -336,7 +336,7 @@ validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data, r
 validate([], #cb_context{req_verb = <<"delete">>, session=Session, req_data=Data}=Context) ->
     {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
 		   {ok, SubPid} ->
-		       Flush = whapps_json:get_value(<<"flush">>, Data, false),
+		       Flush = wh_json:get_value(<<"flush">>, Data, false),
 		       rm_stream(SubPid, all, whistle_util:to_boolean(Flush));
 		   {error, undefined} ->
 		       start_subscription_handler(Session),
@@ -360,7 +360,7 @@ validate([Stream], #cb_context{req_verb = <<"post">>, session=Session, req_data=
 		 {error, undefined} -> start_subscription_handler(Session)
 	     end,
 
-    MaxEvents = constrain_max_events(whapps_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
+    MaxEvents = constrain_max_events(wh_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
 
     logger:format_log(info, "Attempting to update ~p(~p) to ~p~n", [Stream, MaxEvents, SubPid]),
     update_stream(SubPid, Stream, MaxEvents),
@@ -370,7 +370,7 @@ validate([Stream], #cb_context{req_verb = <<"delete">>, session=Session, req_dat
     %% remove stream from subscriber
     {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
 		   {ok, SubPid} ->
-		       Flush = whapps_json:get_value(<<"flush">>, Data, false),
+		       Flush = wh_json:get_value(<<"flush">>, Data, false),
 		       rm_stream(SubPid, Stream, whistle_util:to_boolean(Flush));
 		   {error, undefined} ->
 		       start_subscription_handler(Session),

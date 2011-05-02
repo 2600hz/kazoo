@@ -224,7 +224,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
     JObj = mochijson2:decode(binary_to_list(Payload)),
     logger:format_log(info, "EVT(~p): AMQP Msg ~s~n", [self(), Payload]),
     IsUp = is_node_up(Node, UUID),
-    spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, IsUp) end),
+    spawn(fun() -> handle_amqp_prop(wh_json:get_value(<<"Event-Name">>, JObj), JObj, IsUp) end),
 
     case IsUp of
 	true ->
@@ -413,7 +413,7 @@ event_specific(_Evt, _Prop) ->
 handle_amqp_prop(<<"status_req">>, JObj, IsNodeUp) ->
     try
 	true = whistle_api:call_status_req_v(JObj),
-	CallID = whapps_json:get_value(<<"Call-ID">>, JObj),
+	CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 	logger:format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
 
 	{Status, ErrMsg} = case IsNodeUp of
@@ -425,7 +425,7 @@ handle_amqp_prop(<<"status_req">>, JObj, IsNodeUp) ->
 		    ,{<<"Status">>, Status}
 		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
 	{ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
-	SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
+	SrvID = wh_json:get_value(<<"Server-ID">>, JObj),
 	logger:format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
 
 	amqp_util:targeted_publish(SrvID, JSON)

@@ -40,8 +40,8 @@ start(Call, Flow) ->
 %%--------------------------------------------------------------------
 -spec(next/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> ok).
 next(Call, Flow) ->
-    Module = <<"cf_", (whapps_json:get_value(<<"module">>, Flow))/binary>>,
-    Data = whapps_json:get_value(<<"data">>, Flow),
+    Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
+    Data = wh_json:get_value(<<"data">>, Flow),
     try list_to_existing_atom(binary_to_list(Module)) of
         CF_Module ->
             logger:format_log(info, "CF EXECUTIONER (~p): Executing ~p...", [self(), Module]),
@@ -72,7 +72,7 @@ wait(Call, Flow, Pid) ->
            wait(Call, Flow, Pid);
        {continue, Key} ->
            logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
-           case whapps_json:get_value([<<"children">>, Key], Flow) of
+           case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
                    logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
                    hangup(Call);
@@ -92,7 +92,7 @@ wait(Call, Flow, Pid) ->
            self() ! {attempt, <<"_">>},
            wait(Call, Flow, Pid);
        {attempt, Key} ->
-           case whapps_json:get_value([<<"children">>, Key], Flow) of
+           case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
                    Pid ! {attempt_resp, {error, undefined}},
                    wait(Call, Flow, Pid);
@@ -113,7 +113,7 @@ wait(Call, Flow, Pid) ->
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
            is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
-           case whapps_json:get_value(<<"Event-Name">>, Msg) of
+           case wh_json:get_value(<<"Event-Name">>, Msg) of
                <<"CHANNEL_HANGUP_COMPLETE">> ->
                    receive
                        {_, #amqp_msg{props = Props, payload = Payload}}=Message when Props#'P_basic'.content_type == <<"application/json">> ->

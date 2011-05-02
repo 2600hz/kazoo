@@ -106,7 +106,7 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#
     Parent = self(),
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-                  handle_req(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State)
+                  handle_req(wh_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State)
           end),
     {noreply, State};
 handle_info(_Info, State) ->
@@ -176,23 +176,23 @@ start_amqp() ->
 %%-----------------------------------------------------------------------------
 -spec(handle_req/4 :: (EventName :: binary()|undefined, JObj:: json_object(), Parent :: pid(), State :: #state{}) -> ok|tuple(error, atom())).
 handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
-    <<"dialplan">> = whapps_json:get_value(<<"Event-Category">>, JObj),
-    CallId = whapps_json:get_value(<<"Call-ID">>, JObj),
-    To = whapps_json:get_value(<<"To">>, JObj),
-    From = whapps_json:get_value(<<"From">>, JObj),
+    <<"dialplan">> = wh_json:get_value(<<"Event-Category">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    To = wh_json:get_value(<<"To">>, JObj),
+    From = wh_json:get_value(<<"From">>, JObj),
     true = hunt_to(To) orelse hunt_no_match(To),
     wh_cache:store({cf_call, CallId}, {To, From, JObj}, 5),
     Resp = [
-             {<<"Msg-ID">>, whapps_json:get_value(<<"Msg-ID">>, JObj)}
+             {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             | whistle_api:default_headers(CQ, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
     {ok, Payload} = whistle_api:route_resp(Resp),
-    amqp_util:targeted_publish(whapps_json:get_value(<<"Server-ID">>, JObj), Payload);
+    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
 
 handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
-    CallId = whapps_json:get_value(<<"Call-ID">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     {ok, {To, From, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
     {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, To}),
     [ToNumber, ToRealm] = binary:split(To, <<"@">>),
@@ -202,7 +202,7 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
       ,flow_id=FlowId
       ,cf_responder=Parent
       ,bdst_q=CQ
-      ,ctrl_q=whapps_json:get_value(<<"Control-Queue">>, JObj)
+      ,ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
       ,account_db=AccountDb
       ,to=To
       ,to_number=ToNumber
@@ -249,9 +249,9 @@ lookup_flow(To) ->
         {ok, [JObj]} ->
             format_log(info, "CF_RESP(~p): Retreived callflow for ~p: ~p", [self(), To, JObj]),
             wh_cache:store({cf_flow, To}, {
-                             whapps_json:get_value(<<"id">>, JObj),
-                             whapps_json:get_value([<<"value">>, <<"flow">>], JObj),
-                             whapps_json:get_value([<<"value">>, <<"account_db">>], JObj)
+                             wh_json:get_value(<<"id">>, JObj),
+                             wh_json:get_value([<<"value">>, <<"flow">>], JObj),
+                             wh_json:get_value([<<"value">>, <<"account_db">>], JObj)
                             }, 500),
             true;
         {error, _}=E ->

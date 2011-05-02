@@ -193,7 +193,7 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 
     JObj = mochijson2:decode(binary_to_list(Payload)),
 
-    case whapps_json:get_value(<<"Event-Name">>, JObj) of
+    case wh_json:get_value(<<"Event-Name">>, JObj) of
 	<<"cdr">> ->
 	    spawn(fun() ->
 			  logger:format_log(info, "TS_CALL(~p): Scenario(~p) for ~p~n", [self(), Flags#route_flags.scenario, Flags#route_flags.callid]),
@@ -205,10 +205,10 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{route_flag
 	<<"route_win">> ->
 	    true = whistle_api:route_win_v(JObj),
 	    logger:format_log(info, "TS_CALL(~p): route win received~n~p~n", [self(), JObj]),
-	    {noreply, S#state{ctl_q=whapps_json:get_value(<<"Control-Queue">>, JObj), call_activity_ref=call_activity_ref(), call_status=up}};
+	    {noreply, S#state{ctl_q=wh_json:get_value(<<"Control-Queue">>, JObj), call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(JObj),
-	    OtherCallID = whapps_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+	    OtherCallID = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
 	    OtherAcctID = Flags#route_flags.diverted_account_doc_id,
 	    AcctID = Flags#route_flags.account_doc_id, % don't lose the old account, in case of a failover route
 
@@ -337,7 +337,7 @@ close_down_call(JObj, #route_flags{diverted_account_doc_id = Acct2ID, callid=Cal
 
     %% Because the call may have never bridged, we need to go ahead and clear this second trunk
     %% If it did bridge, ts_acctmgr will just error when the B-leg ts_call_handler tries to clear the trunk
-    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
 
     {R, RI, RM, S} = get_rate_data(CCVs, Flags),
 
@@ -349,12 +349,12 @@ close_down_call(_JObj, #route_flags{scenario=inbound}, _LegNo) ->
 close_down_call(_JObj, #route_flags{scenario=outbound}, _LegNo) ->
     ok; %% a-leg takes care of it all, nothing to do
 close_down_call(JObj, #route_flags{scenario=inbound_failover, diverted_account_doc_id=AAcctID}=Flags, _LegNo) ->
-    ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
+    ACallID = wh_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
     FailCallID = <<ACallID/binary, "-failover">>, % A-leg
 
-    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
 
-    case whistle_util:to_boolean(whapps_json:get_value(<<"Failover-Route">>, CCVs, false)) of
+    case whistle_util:to_boolean(wh_json:get_value(<<"Failover-Route">>, CCVs, false)) of
 	false -> %% inbound route bridged
 	    ts_acctmgr:release_trunk(AAcctID, FailCallID, 0);
 	true -> %% failover route bridged
@@ -364,10 +364,10 @@ close_down_call(JObj, #route_flags{scenario=inbound_failover, diverted_account_d
 	    ts_acctmgr:release_trunk(AAcctID, FailCallID, calculate_cost(R, RI, RM, S, Duration))
     end;
 close_down_call(JObj, #route_flags{scenario=outbound_inbound, account_doc_id=Acct2ID}=Flags, _LegNo) ->
-    BCallID = whapps_json:get_value([<<"Call-ID">>], JObj),
-    ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
+    BCallID = wh_json:get_value([<<"Call-ID">>], JObj),
+    ACallID = wh_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
 
-    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     {R, RI, RM, S} = get_rate_data(CCVs, Flags),
 
     Duration = get_call_duration(JObj, Flags),
@@ -378,14 +378,14 @@ close_down_call(JObj, #route_flags{scenario=outbound_inbound, account_doc_id=Acc
     ts_acctmgr:release_trunk(Acct2ID, BCallID, calculate_cost(R, RI, RM, S, Duration));
 
 close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_doc_id=Acct2ID}=Flags, _LegNumber) ->
-    BCallID = whapps_json:get_value([<<"Call-ID">>], JObj),
-    ACallID = whapps_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
+    BCallID = wh_json:get_value([<<"Call-ID">>], JObj),
+    ACallID = wh_json:get_value([<<"Other-Leg-Call-ID">>], JObj),
 
-    CCVs = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
 
     {R, RI, RM, S} = get_rate_data(CCVs, Flags),
 
-    IsFailoverRoute = whistle_util:to_boolean(whapps_json:get_value(<<"Failover-Route">>, CCVs, false)),
+    IsFailoverRoute = whistle_util:to_boolean(wh_json:get_value(<<"Failover-Route">>, CCVs, false)),
 
     Duration = get_call_duration(JObj, Flags),
 
@@ -403,10 +403,10 @@ close_down_call(JObj, #route_flags{scenario=outbound_inbound_failover, account_d
 -spec(get_rate_data/2 :: (CCVs :: json_object(), Flags :: #route_flags{}) -> tuple(float(), integer(), integer(), float())).
 get_rate_data(CCVs, #route_flags{rate=R, rate_increment=RI, rate_minimum=RM, surcharge=S}) ->
     {
-      whistle_util:to_float(whapps_json:get_value(<<"Rate">>, CCVs, R))
-      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Increment">>, CCVs, RI))
-      ,whistle_util:to_integer(whapps_json:get_value(<<"Rate-Minimum">>, CCVs, RM))
-      ,whistle_util:to_float(whapps_json:get_value(<<"Surcharge">>, CCVs, S))
+      whistle_util:to_float(wh_json:get_value(<<"Rate">>, CCVs, R))
+      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Increment">>, CCVs, RI))
+      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Minimum">>, CCVs, RM))
+      ,whistle_util:to_float(wh_json:get_value(<<"Surcharge">>, CCVs, S))
     }.
 
 -spec(get_call_duration/2 :: (JObj :: json_object(), Flags :: #route_flags{}) -> integer()).
@@ -424,5 +424,5 @@ get_call_duration(JObj, #route_flags{rate_minimum=RM}, StartTime) ->
 		Z -> Z
 	    end,
     logger:format_log(info, "TS_CALL(~p): get_call_d: BillSecs: ~p, StartTime: ~p, Now: ~p, Guess: ~p~n"
-	       ,[self(), whapps_json:get_value(<<"Billing-Seconds">>, JObj), StartTime, Now, Guess]),
-    whistle_util:to_integer(whapps_json:get_value(<<"Billing-Seconds">>, JObj, Guess)).
+	       ,[self(), wh_json:get_value(<<"Billing-Seconds">>, JObj), StartTime, Now, Guess]),
+    whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, Guess)).

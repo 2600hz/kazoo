@@ -18,10 +18,10 @@
 
 -spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | tuple(error, string())).
 exec_cmd(Node, UUID, JObj) ->
-    DestID = whapps_json:get_value(<<"Call-ID">>, JObj),
+    DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
 	true ->
-	    AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
+	    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
 	    case get_fs_app(Node, UUID, JObj, AppName) of
 		{error, _Msg}=Err -> Err;
                 {return, Result} -> Result;
@@ -40,7 +40,7 @@ exec_cmd(Node, UUID, JObj) ->
                     Event = [
                               {<<"Timestamp">>, ETS}
                              ,{<<"Application-Name">>, <<"noop">>}
-                             ,{<<"Application-Response">>, whapps_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                             ,{<<"Application-Response">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                              ,{<<"Channel-Call-State">>, CCS}
                              ,{<<"Call-ID">>, UUID}
                              | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
@@ -64,8 +64,8 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case whistle_api:play_req_v(JObj) of
 	false -> {error, "play failed to execute as JObj did not validate."};
 	true ->
-	    F = media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID),
-	    ok = set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
+	    F = media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
+	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"playback">>, F}
     end;
 get_fs_app(_Node, _UUID, _JObj, <<"hangup">>=App) ->
@@ -74,14 +74,14 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case whistle_api:play_collect_digits_req_v(JObj) of
 	false -> {error, "play_and_collect_digits failed to execute as JObj did not validate."};
 	true ->
-	    Min = whapps_json:get_value(<<"Minimum-Digits">>, JObj),
-	    Max = whapps_json:get_value(<<"Maximum-Digits">>, JObj),
-	    Timeout = whapps_json:get_value(<<"Timeout">>, JObj),
-	    Terminators = whapps_json:get_value(<<"Terminators">>, JObj),
-	    Media = <<$', (media_path(whapps_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
-	    InvalidMedia = <<$', (media_path(whapps_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
-	    Tries = whapps_json:get_value(<<"Media-Tries">>, JObj),
-	    Regex = whapps_json:get_value(<<"Digits-Regex">>, JObj),
+	    Min = wh_json:get_value(<<"Minimum-Digits">>, JObj),
+	    Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
+	    Timeout = wh_json:get_value(<<"Timeout">>, JObj),
+	    Terminators = wh_json:get_value(<<"Terminators">>, JObj),
+	    Media = <<$', (media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
+	    InvalidMedia = <<$', (media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
+	    Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
+	    Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
 	    Storage = <<"collected_digits">>,
 	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " ",
 				   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
@@ -91,28 +91,28 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
     case whistle_api:record_req_v(JObj) of
 	false -> {error, "record failed to execute as JObj did not validate."};
 	true ->
-	    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
+	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 	    RecArg = binary_to_list(list_to_binary([Media, " "
-						    ,whapps_json:get_value(<<"Time-Limit">>, JObj, "20"), " "
-						    ,whapps_json:get_value(<<"Silence-Threshold">>, JObj, "200"), " "
-						    ,whapps_json:get_value(<<"Silence-Hits">>, JObj, "3")
+						    ,wh_json:get_value(<<"Time-Limit">>, JObj, "20"), " "
+						    ,wh_json:get_value(<<"Silence-Threshold">>, JObj, "200"), " "
+						    ,wh_json:get_value(<<"Silence-Hits">>, JObj, "3")
 						   ])),
-	    ok = set_terminators(Node, UUID, whapps_json:get_value(<<"Terminators">>, JObj)),
+	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"record">>, RecArg}
     end;
 get_fs_app(_Node, UUID, JObj, <<"store">>) ->
     case whistle_api:store_req_v(JObj) of
 	false -> {error, "store failed to execute as JObj did not validate."};
 	true ->
-	    MediaName = whapps_json:get_value(<<"Media-Name">>, JObj),
+	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
 	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
 		false ->
 		    logger:format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
 		Media ->
                     M = whistle_util:to_list(Media),
 		    case filelib:is_regular(M)
-                        andalso whapps_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                        andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
 			<<"stream">> ->
 			    %% stream file over AMQP
 			    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
@@ -139,20 +139,20 @@ get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
 	false -> {error, "tones failed to execute as JObj did not validate."};
 	true ->
-	    Tones = whapps_json:get_value(<<"Tones">>, JObj, []),
+	    Tones = wh_json:get_value(<<"Tones">>, JObj, []),
 	    FSTones = [begin
-			   Vol = case whapps_json:get_value(<<"Volume">>, Tone) of
+			   Vol = case wh_json:get_value(<<"Volume">>, Tone) of
 				     undefined -> [];
 				     %% need to map V (0-100) to FS values
 				     V -> list_to_binary(["v=", whistle_util:to_list(V), ";"])
 				 end,
-			   Repeat = case whapps_json:get_value(<<"Repeat">>, Tone) of
+			   Repeat = case wh_json:get_value(<<"Repeat">>, Tone) of
 					undefined -> [];
 					R -> list_to_binary(["l=", whistle_util:to_list(R), ";"])
 				    end,
-			   Freqs = string:join([ whistle_util:to_list(V) || V <- whapps_json:get_value(<<"Frequencies">>, Tone) ], ","),
-			   On = whistle_util:to_list(whapps_json:get_value(<<"Duration-ON">>, Tone)),
-			   Off = whistle_util:to_list(whapps_json:get_value(<<"Duration-OFF">>, Tone)),
+			   Freqs = string:join([ whistle_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone) ], ","),
+			   On = whistle_util:to_list(wh_json:get_value(<<"Duration-ON">>, Tone)),
+			   Off = whistle_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
 			   whistle_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
 		       end || Tone <- Tones],
 	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
@@ -165,16 +165,16 @@ get_fs_app(_Node, _UUID, _JObj, <<"park">>=App) ->
 get_fs_app(_Node, _UUID, JObj, <<"sleep">>=App) ->
     case whistle_api:sleep_req_v(JObj) of
 	false -> {error, "sleep failed to execute as JObj did not validate."};
-	true -> {App, whistle_util:to_binary(whapps_json:get_value(<<"Time">>, JObj))}
+	true -> {App, whistle_util:to_binary(wh_json:get_value(<<"Time">>, JObj))}
     end;
 get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
     case whistle_api:say_req_v(JObj) of
 	false -> {error, "say failed to execute as JObj did not validate."};
 	true ->
-	    Lang = whapps_json:get_value(<<"Language">>, JObj),
-	    Type = whapps_json:get_value(<<"Type">>, JObj),
-	    Method = whapps_json:get_value(<<"Method">>, JObj),
-	    Txt = whapps_json:get_value(<<"Say-Text">>, JObj),
+	    Lang = wh_json:get_value(<<"Language">>, JObj),
+	    Type = wh_json:get_value(<<"Type">>, JObj),
+	    Method = wh_json:get_value(<<"Method">>, JObj),
+	    Txt = wh_json:get_value(<<"Say-Text">>, JObj),
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
             logger:format_log(info, "BUILT COMMAND: conference ~p", [Arg]),
 	    {App, Arg}
@@ -183,18 +183,18 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(JObj) of
 	false -> {error, "bridge failed to execute as JObj did not validate."};
 	true ->
-	    ok = set_timeout(Node, UUID, whapps_json:get_value(<<"Timeout">>, JObj)),
-	    ok = set_continue_on_fail(Node, UUID, whapps_json:get_value(<<"Continue-On-Fail">>, JObj)),
-	    ok = set_eff_call_id_name(Node, UUID, whapps_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
-	    ok = set_eff_call_id_number(Node, UUID, whapps_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
-	    ok = set_ringback(Node, UUID, whapps_json:get_value(<<"Ringback">>, JObj)),
+	    ok = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
+	    ok = set_continue_on_fail(Node, UUID, wh_json:get_value(<<"Continue-On-Fail">>, JObj)),
+	    ok = set_eff_call_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
+	    ok = set_eff_call_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
+	    ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
 
-	    DialSeparator = case whapps_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
+	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
 				<<"simultaneous">> -> ",";
 				<<"single">> -> "|"
 			    end,
 
-	    DialStrings = [ DS || DS <- [get_bridge_endpoint(EP) || EP <- whapps_json:get_value(<<"Endpoints">>, JObj, [])], DS =/= "" ],
+	    DialStrings = [ DS || DS <- [get_bridge_endpoint(EP) || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])], DS =/= "" ],
 
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
 	    {App, BridgeCmd}
@@ -203,21 +203,21 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
     case whistle_api:tone_detect_req_v(JObj) of
 	false -> {error, "tone detect failed to execute as JObj did not validate"};
 	true ->
-	    Key = whapps_json:get_value(<<"Tone-Detect-Name">>, JObj),
-	    Freqs = [ whistle_util:to_list(V) || V <- whapps_json:get_value(<<"Frequencies">>, JObj) ],
+	    Key = wh_json:get_value(<<"Tone-Detect-Name">>, JObj),
+	    Freqs = [ whistle_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, JObj) ],
 	    FreqsStr = string:join(Freqs, ","),
-	    Flags = case whapps_json:get_value(<<"Sniff-Direction">>, JObj, <<"read">>) of
+	    Flags = case wh_json:get_value(<<"Sniff-Direction">>, JObj, <<"read">>) of
 			<<"read">> -> <<"r">>;
 			<<"write">> -> <<"w">>
 		    end,
-	    Timeout = whapps_json:get_value(<<"Timeout">>, JObj, <<"+1000">>),
-	    HitsNeeded = whapps_json:get_value(<<"Hits-Needed">>, JObj, <<"1">>),
+	    Timeout = wh_json:get_value(<<"Timeout">>, JObj, <<"+1000">>),
+	    HitsNeeded = wh_json:get_value(<<"Hits-Needed">>, JObj, <<"1">>),
 
-	    SuccessJObj = case whapps_json:get_value(<<"On-Success">>, JObj, []) of
+	    SuccessJObj = case wh_json:get_value(<<"On-Success">>, JObj, []) of
 			      [] -> [{<<"Application-Name">>, <<"park">>} | whistle_api:extract_defaults(JObj)]; % default to parking the call
 			      AppJObj -> {struct, AppJObj ++ whistle_api:extract_defaults(JObj)}
 			  end,
-	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, whapps_json:get_value(<<"Application-Name">>, SuccessJObj)) of
+	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of
 					       {error, _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
 					       {_, _}=Success -> Success
 					   end,
@@ -225,7 +225,7 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 	    {App, Data}
     end;
 get_fs_app(Node, UUID, JObj, <<"set">>=AppName) ->
-    {struct, Custom} = whapps_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
+    {struct, Custom} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
     lists:foreach(fun({K,V}) ->
 			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
 			  set(Node, UUID, Arg)
@@ -235,7 +235,7 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
 	false -> {error, "conference failed to execute as JObj did not validate."};
 	true ->
-	    ConfName = whapps_json:get_value(<<"Conference-ID">>, JObj),
+	    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
 	    Flags = get_conference_flags(JObj),
 	    Arg = list_to_binary([ConfName, "@default", Flags]),
 	    {App, Arg}
@@ -261,7 +261,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 %% and create the dial string ([origination_caller_id_name=Name,origination_caller_id_number=Num]Endpoint)
 -spec(get_bridge_endpoint/1 :: (JObj :: json_object()) -> string()).
 get_bridge_endpoint(JObj) ->
-    case ecallmgr_fs_xml:build_route(JObj, whapps_json:get_value(<<"Invite-Format">>, JObj)) of
+    case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
 	{error, timeout} -> "";
 	EndPoint ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
@@ -285,11 +285,11 @@ get_fs_playback(Url) ->
 
 -spec(stream_over_amqp/3 :: (File :: list(), JObj :: proplist(), Headers :: proplist()) -> no_return()).
 stream_over_amqp(File, JObj, Headers) ->
-    DestQ = case whapps_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
+    DestQ = case wh_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
 		undefined ->
-		    whapps_json:get_value(<<"Server-ID">>, JObj);
+		    wh_json:get_value(<<"Server-ID">>, JObj);
 		<<"">> ->
-		    whapps_json:get_value(<<"Server-ID">>, JObj);
+		    wh_json:get_value(<<"Server-ID">>, JObj);
 		Q ->
 		    Q
 	    end,
@@ -318,16 +318,16 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 
 -spec(stream_over_http/3 :: (File :: list(), Verb :: binary(), JObj :: proplist()) -> no_return()).
 stream_over_http(File, Verb, JObj) ->
-    Url = whistle_util:to_list(whapps_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
-    {struct, AddHeaders} = whapps_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT),
+    Url = whistle_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    {struct, AddHeaders} = wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT),
     Headers = [{"Content-Length", filelib:file_size(File)}
 	       | [ {whistle_util:to_list(K), V} || {K,V} <- AddHeaders] ],
     Method = whistle_util:to_atom(Verb, true),
     Body = {fun stream_file/1, {undefined, File}},
-    AppQ = whapps_json:get_value(<<"Server-ID">>, JObj),
+    AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
     case ibrowse:send_req(Url, Headers, Method, Body) of
 	{ok, StatusCode, RespHeaders, RespBody} ->
-	    case whistle_api:store_http_resp(whapps_json:set_value(<<"Media-Transfer-Results">>
+	    case whistle_api:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>
 								       ,{struct, [{<<"Status-Code">>, StatusCode}
 										  ,{<<"Headers">>, {struct, RespHeaders}}
 										  ,{<<"Body">>, whistle_util:to_binary(RespBody)}
@@ -435,7 +435,7 @@ get_conference_flags(JObj) ->
     Flags = [
              <<Flag/binary, Delim/binary>>
                  || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
-			,whistle_util:to_boolean(whapps_json:get_value(Parameter, JObj, false))
+			,whistle_util:to_boolean(wh_json:get_value(Parameter, JObj, false))
             ],
     case list_to_binary(Flags) of
         <<>> ->

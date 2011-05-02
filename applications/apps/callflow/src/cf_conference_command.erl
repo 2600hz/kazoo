@@ -44,7 +44,7 @@ b_members(ConfId, Call) ->
     members(ConfId, Call),
     case wait_for_message(<<"members">>, <<"response">>, <<"conference">>) of
         {ok, Response} ->
-            whapps_json:get_value(<<"Members">>, Response, []);
+            wh_json:get_value(<<"Members">>, Response, []);
         {error, _} ->
             []
     end.

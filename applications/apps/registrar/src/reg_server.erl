@@ -318,12 +318,12 @@ auth_specific_response(403) ->
      ,{<<"Tenant-ID">>, <<"ignore">>}];
 auth_specific_response(AuthInfo) ->
     logger:format_log(info, "AuthInfo: ~p~n", [AuthInfo]),
-    Method = list_to_binary(string:to_lower(binary_to_list(whapps_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
-    [{<<"Auth-Password">>, whapps_json:get_value(<<"password">>, AuthInfo)}
+    Method = list_to_binary(string:to_lower(binary_to_list(wh_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
+    [{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
      ,{<<"Auth-Method">>, Method}
      ,{<<"Event-Name">>, <<"auth_resp">>}
-     ,{<<"Access-Group">>, whapps_json:get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, whapps_json:get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Access-Group">>, wh_json:get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Tenant-ID">>, wh_json:get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
     ].
 
 send_resp(Payload, RespQ) ->

@@ -424,7 +424,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
     Wait = (whistle_util:to_integer(Timeout) * whistle_util:to_integer(Tries)) + 5000,
     case wait_for_message(<<"play_and_collect_digits">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Wait) of
         {ok, JObj} ->
-            {ok, whapps_json:get_value(<<"Application-Response">>, JObj, <<>>)};
+            {ok, wh_json:get_value(<<"Application-Response">>, JObj, <<>>)};
         {error, _}=E ->
             E
     end.
@@ -579,7 +579,7 @@ wait_for_message(Application, Event, Type) ->
 wait_for_message(Application, Event, Type, false) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
@@ -594,7 +594,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
@@ -621,9 +621,9 @@ wait_for_dtmf(Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { <<"DTMF">>, <<"call_event">> } ->
-                    {ok, whapps_json:get_value(<<"DTMF-Digit">>, JObj)};
+                    {ok, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 {  _, <<"error">> } ->
@@ -648,7 +648,7 @@ wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
                     {ok, JObj};
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
@@ -677,11 +677,11 @@ wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { Application, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
                     {ok, JObj};
                 { _, <<"DTMF">>, <<"call_event">> } ->
-                    {dtmf, whapps_json:get_value(<<"DTMF-Digit">>, JObj)};
+                    {dtmf, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
@@ -705,7 +705,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 wait_for_unbridge() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Event-Category">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj) } of
+            case { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) } of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
                     {ok, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
@@ -727,7 +727,7 @@ wait_for_unbridge() ->
 wait_for_hangup() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Event-Category">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj) } of
+            case { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) } of
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
                 { <<"error">>, _ } ->
