@@ -181,7 +181,7 @@ bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Ringback, #cf_call
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:bridge_req(Command),
+    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -222,7 +222,7 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_req(Command),
+    {ok, Payload} = whistle_api:play_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
@@ -279,7 +279,7 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:record_req(Command),
+    {ok, Payload} = whistle_api:record_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_record(MediaName, Call) ->
@@ -319,7 +319,7 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:store_req(Command),
+    {ok, Payload} = whistle_api:store_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
@@ -398,7 +398,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_collect_digits_req(Command),
+    {ok, Payload} = whistle_api:play_collect_digits_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play_and_collect_digit(Media, Call) ->
@@ -450,7 +450,7 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:say_req(Command),
+    {ok, Payload} = whistle_api:say_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
@@ -496,7 +496,7 @@ conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_req(Command),
+    {ok, Payload} = whistle_api:conference_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_conference(ConfId, Call) ->
@@ -745,6 +745,8 @@ send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 -spec(find_callerid/2 :: (Type :: binary(), Call :: #cf_call{}) -> tuple(binary(), binary())).
+find_callerid(raw, _) ->
+    {undefined, undefined};
 find_callerid(Type, #cf_call{authorizing_id=RootId, account_db=Db}) ->
     case couch_mgr:get_all_results(Db, <<"callerid/find_caller_id">>) of 
         {ok, JObj} ->
