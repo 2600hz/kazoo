@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, store/2, store/3, fetch/1, erase/1]).
+-export([start_link/0, store/2, store/3, fetch/1, erase/1, flush/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -49,6 +49,10 @@ fetch(K) ->
 -spec(erase/1 :: (K :: term()) -> no_return()).
 erase(K) ->
     gen_server:cast(?SERVER, {erase, K}).
+
+-spec(flush/0 :: () -> no_return()).
+flush() ->
+    gen_server:cast(?SERVER, {flush}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -102,7 +106,9 @@ handle_call({fetch, K}, _, Dict) ->
 handle_cast({store, K, V, T}, Dict) ->
     {noreply, dict:store(K, {whistle_util:current_tstamp()+T, V, T}, Dict)};
 handle_cast({erase, K}, Dict) ->
-    {noreply, dict:erase(K, Dict)}.
+    {noreply, dict:erase(K, Dict)};
+handle_cast({flush}, _) ->
+    {noreply, dict:new()}.
 
 %%--------------------------------------------------------------------
 %% @private
