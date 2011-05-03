@@ -4,6 +4,7 @@
 %%% @doc
 %%% VMBoxes module
 %%%
+%%%
 %%% Handle client requests for vmbox documents
 %%%
 %%% @end
