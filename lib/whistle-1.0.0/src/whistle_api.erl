@@ -41,6 +41,9 @@
 %% FS command
 -export([fs_req/1, fs_req_v/1]).
 
+%% Maintenance API calls
+-export([mwi_update/1]).
+
 % Conference Members
 -export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1, 
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1, 
@@ -58,7 +61,7 @@
 	 ,media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1, conference_members_req_v/1
          ,conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1, conference_undeaf_req_v/1
          ,conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1, conference_move_req_v/1
-         ,noop_req_v/1
+         ,noop_req_v/1, mwi_update_v/1
 	]).
 
 %% FS-specific routines
@@ -903,7 +906,7 @@ sleep_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(noop_req/1 :: ( Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(noop_req/1 :: ( Prop :: proplist() | json_object() ) -> tuple(ok, iolist()) | tuple(error, string())).
 noop_req({struct, Prop}) ->
     noop_req(Prop);
 noop_req(Prop) ->
@@ -917,6 +920,26 @@ noop_req_v({struct, Prop}) ->
     noop_req_v(Prop);
 noop_req_v(Prop) ->
     validate(Prop, ?NOOP_REQ_HEADERS, ?NOOP_REQ_VALUES, ?NOOP_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(mwi_update/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+mwi_update({struct, Prop}) ->
+    mwi_update(Prop);
+mwi_update(Prop) ->
+    case mwi_update_v(Prop) of
+	true -> build_message(Prop, ?MWI_REQ_HEADERS, ?OPTIONAL_MWI_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for mwi_req"}
+    end.
+
+-spec(mwi_update_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+mwi_update_v({struct, Prop}) ->
+    mwi_update_v(Prop);
+mwi_update_v(Prop) ->
+    validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference - Sends caller to a conference - see wiki
@@ -1308,11 +1331,14 @@ type_check(Prop, Types) ->
     lists:all(fun({Key, Fun}) ->
 		      case get_value(Key, Prop) of
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
-			  Value -> case Fun(Value) of % returns boolean
-				       true -> true;
-				       false ->
-					   io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
-					   false
+			  Value -> try case Fun(Value) of % returns boolean
+					   true -> true;
+					   false ->
+					       io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
+					       false
+				       end
+				   catch _:_ -> io:format("WHISTLE_API.type_check: K: ~p V: ~p threw exception~n", [Key, Value]),
+						false
 				   end
 		      end
 	      end, Types).

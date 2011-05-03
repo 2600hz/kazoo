@@ -6,6 +6,12 @@
 %% When an event occurs, we include all prefixed vars in the API message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 
+%% For dialplan messages, an optional insert-at tuple is common across all requests
+-define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
+
+%% For dialplan messages, what does the Invite-Format param accept as values?
+-define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
+
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTH_REQ, AUTH_RESP, etc, for *) to be considered valid.
 %%%
@@ -100,7 +106,9 @@
 				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
 				 , <<"Username">>, <<"Realm">>
 			    ]).
--define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>]).
+-define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
+					   ,<<"FreeSWITCH-Hostname">>
+				      ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			    ,{<<"Event-Name">>, <<"reg_success">>}
 			   ]).
@@ -174,7 +182,7 @@
 					   ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
 				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
-				  ,{<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}
+				  ,?INVITE_FORMAT_TUPLE
 				 ]).
 -define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
 				  ,{<<"Route">>, fun is_binary/1}
@@ -213,7 +221,7 @@
 			      {<<"Event-Category">>, <<"originate">>}
 			      ,{<<"Event-Name">>, <<"resource_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
-			      ,{<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}
+			      ,?INVITE_FORMAT_TUPLE
 			     ]).
 -define(RESOURCE_REQ_TYPES, [{<<"Invite-Format">>, fun is_binary/1}
 			     ,{<<"Route">>, fun is_binary/1}
@@ -302,7 +310,7 @@
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"store">>}
 			   ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
 
@@ -336,7 +344,7 @@
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"tones">>}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}]).
 
@@ -354,7 +362,7 @@
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"tone_detect">>}
 				 ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
-				 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+				 ,?INSERT_AT_TUPLE
 				]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
 				,{<<"Timeout">>, fun(<<"+", T/binary>>) ->
@@ -374,7 +382,7 @@
 -define(QUEUE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"queue">>}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(QUEUE_REQ_TYPES, [{<<"Commands">>, fun is_list/1}]).
 
@@ -389,7 +397,7 @@
 			    ,{<<"Application-Name">>, <<"bridge">>}
 			    ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
 			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}]).
 
@@ -401,7 +409,7 @@
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>
 					      ]).
--define(BRIDGE_REQ_ENDPOINT_VALUES, [{<<"Invite-Format">>, [<<"username">>, <<"npan">>, <<"1npan">>, <<"e164">>, <<"route">>]}
+-define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                     ]).
@@ -413,7 +421,7 @@
 -define(ANSWER_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"answer">>}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(ANSWER_REQ_TYPES, []).
 
@@ -423,7 +431,7 @@
 -define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"hangup">>}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(HANGUP_REQ_TYPES, []).
 
@@ -433,7 +441,7 @@
 -define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"park">>}
-			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			  ,?INSERT_AT_TUPLE
 			 ]).
 -define(PARK_REQ_TYPES, []).
 
@@ -443,7 +451,7 @@
 -define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			 ,{<<"Event-Name">>, <<"command">>}
 			 ,{<<"Application-Name">>, <<"set">>}
-			 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			 ,?INSERT_AT_TUPLE
 			 ]).
 -define(SET_REQ_TYPES, [
 			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
@@ -461,7 +469,7 @@
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"call_pickup">>}
-				 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+				 ,?INSERT_AT_TUPLE
 				]).
 -define(CALL_PICKUP_REQ_TYPES, []).
 
@@ -472,7 +480,7 @@
 -define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"play">>}
-			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			  ,?INSERT_AT_TUPLE
 			 ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
@@ -512,7 +520,7 @@
 -define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"record">>}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
@@ -525,7 +533,7 @@
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 					 ,{<<"Event-Name">>, <<"command">>}
 					 ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
-					 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+					 ,?INSERT_AT_TUPLE
 					]).
 -define(PLAY_COLLECT_DIGITS_REQ_TYPES, []).
 
@@ -541,7 +549,7 @@
 					    ,<<"url">>, <<"ip_address">>, <<"e-mail_address">>, <<"postal_address">>
 					    ,<<"account_number">>, <<"name_spelled">>, <<"name_phonetic">>, <<"short_date_time">>]}
 			 ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
-			 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			 ,?INSERT_AT_TUPLE
 			]).
 -define(SAY_REQ_TYPES, []).
 
@@ -551,7 +559,7 @@
 -define(SLEEP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"sleep">>}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(SLEEP_REQ_TYPES, []).
 
@@ -562,7 +570,7 @@
 -define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
                                 ,{<<"Application-Name">>, <<"conference">>}
-                                ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+                                ,?INSERT_AT_TUPLE
                                 ,{<<"Mute">>, [<<"true">>, <<"false">>]}
                                 ,{<<"Deaf">>, [<<"true">>, <<"false">>]}
                                 ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
@@ -687,9 +695,22 @@
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}
-                          ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+                          ,?INSERT_AT_TUPLE
                          ]).
 -define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
+
+%% MWI request
+-define(MWI_REQ_HEADERS, [<<"Messages-Waiting">>, <<"Message-Account-User">>, <<"Message-Account-Realm">>]).
+-define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-New">>, <<"Messages-Saved">>, <<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).
+-define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"maintenance">>}
+			 ,{<<"Event-Name">>, <<"mwi">>}
+			 ,{<<"Messages-Waiting">>,[ <<"yes">>, <<"no">> ]}
+			 ]).
+-define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+			,{<<"Messages-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+			,{<<"Messages-Urgent">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+			,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+		       ]).
 
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
