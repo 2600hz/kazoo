@@ -76,7 +76,7 @@ find_gateways(#cf_call{account_db=Db, to_number=To}) ->
         {ok, Resources} ->
             {ok, [ {Number
                     ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
-                    ,wh_json:get_value([<<"value">>, <<"callerid_options">>, <<"type">>], Resource, <<"external">>)}
+                    ,wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>)}
                    || Resource <- Resources
 			 , Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), To)
 			 , Number =/= []
