@@ -10,7 +10,7 @@
 
 -include("callflow.hrl").
 
--export([audio_macro/2, flush_dtmf/1, find_callerid/2]).
+-export([audio_macro/2, flush_dtmf/1]).
 -export([answer/1, hangup/1]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([play/2, play/3]).
@@ -41,6 +41,9 @@
 -export([wait_for_application_or_dtmf/2]).
 -export([wait_for_hangup/0]).
 -export([send_callctrl/2]).
+
+-export([get_caller_id_option/3, get_caller_id_options/2]).
+-export([get_caller_id/3, get_caller_ids/2]).
 
 %%--------------------------------------------------------------------
 %% @pubic
@@ -86,7 +89,7 @@ flush_dtmf(Call) ->
     b_play(<<"silence_stream://250">>, Call).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to answer the channel
 %% @end
@@ -108,7 +111,7 @@ b_answer(Call) ->
     wait_for_message(<<"answer">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to hangup the channel.
 %% This request will execute immediately
@@ -132,43 +135,46 @@ b_hangup(Call) ->
     wait_for_hangup().
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
 -spec(bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> ok).
 -spec(bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
 
 -spec(b_bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 -spec(b_bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
                          tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 
 bridge(Endpoints, Call) ->
     bridge(Endpoints, <<"26">>, Call).
 bridge(Endpoints, Timeout, Call) ->
     bridge(Endpoints, Timeout, <<"default">>, Call).
-bridge(Endpoints, Timeout, CIDType, Call) ->
-    bridge(Endpoints, Timeout, CIDType, <<"single">>, Call).
-bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
-    bridge(Endpoints, Timeout, CIDType, Strategy, <<"true">>, Call).
-bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Call) ->
-    bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, <<"us-ring">>, Call).
-bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    {CIDNum, CIDName} = find_callerid(CIDType, Call),
+bridge(Endpoints, Timeout, CID, Call) ->
+    bridge(Endpoints, Timeout, CID, <<"single">>, Call).
+bridge(Endpoints, Timeout, CID, Strategy, Call) ->
+    bridge(Endpoints, Timeout, CID, Strategy, <<"true">>, Call).
+bridge(Endpoints, Timeout, CID, Strategy, ContinueOnFail, Call) ->
+    bridge(Endpoints, Timeout, CID, Strategy, ContinueOnFail, <<"us-ring">>, Call).
+bridge(Endpoints, Timeout, CID, Strategy, ContinueOnFail, Ringback, Call) when not is_tuple(CID) ->
+    bridge(Endpoints, Timeout
+           ,get_caller_id(Call#cf_call.authorizing_id, CID, Call)
+           ,Strategy, ContinueOnFail, Ringback, Call);
+bridge(Endpoints, Timeout, {CIDNum, CIDName}, Strategy, ContinueOnFail, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
@@ -188,18 +194,18 @@ b_bridge(Endpoints, Call) ->
     b_bridge(Endpoints, <<"26">>, Call).
 b_bridge(Endpoints, Timeout, Call) ->
     b_bridge(Endpoints, Timeout, <<"default">>, Call).
-b_bridge(Endpoints, Timeout, CIDType, Call) ->
-    b_bridge(Endpoints, Timeout, CIDType, <<"single">>, Call).
-b_bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
-    b_bridge(Endpoints, Timeout, CIDType, Strategy, <<"true">>, Call).
-b_bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Call) ->
-    b_bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, <<"us-ring">>, Call).
-b_bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Ringback, Call) ->
-    bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Ringback, Call),
+b_bridge(Endpoints, Timeout, CID, Call) ->
+    b_bridge(Endpoints, Timeout, CID, <<"single">>, Call).
+b_bridge(Endpoints, Timeout, CID, Strategy, Call) ->
+    b_bridge(Endpoints, Timeout, CID, Strategy, <<"true">>, Call).
+b_bridge(Endpoints, Timeout, CID, Strategy, ContinueOnFail, Call) ->
+    b_bridge(Endpoints, Timeout, CID, Strategy, ContinueOnFail, <<"us-ring">>, Call).
+b_bridge(Endpoints, Timeout, CID, Strategy, ContinueOnFail, Ringback, Call) ->
+    bridge(Endpoints, Timeout, CID, Strategy, ContinueOnFail, Ringback, Call),
     wait_for_bridge((whistle_util:to_integer(Timeout)*1000) + 5000).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to play media to the
 %% caller.  A list of terminators can be provided that the caller
@@ -240,7 +246,7 @@ play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to record a file.
 %% A list of keys can be used as the terminator or a silence threshold.
@@ -295,7 +301,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
     wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to store the file
 %% @end
@@ -323,7 +329,7 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
     send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to play tones to the
 %% caller
@@ -350,7 +356,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
 	     ]}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to play media to a
 %% caller, and collect a number of DTMF events.
@@ -424,7 +430,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to say text to a caller
 %% @end
@@ -464,7 +470,7 @@ say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to bridge a caller
 %% with a conference, with optional entry flags
@@ -510,7 +516,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
     wait_for_message(<<"conference">>, <<"CHANNEL_EXECUTE">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to preform a noop
 %% @end
@@ -532,7 +538,7 @@ b_noop(Call) ->
     wait_for_message(<<"noop">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to flush the command
 %% queue
@@ -552,7 +558,7 @@ flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     wait_for_message(<<"noop">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Low level function to consume call events, looping until a specific
 %% one occurs.  If the channel is hungup or no call events are recieved
@@ -605,7 +611,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Wait for a DTMF event and extract the digits when it comes
 %% @end
@@ -632,7 +638,7 @@ wait_for_dtmf(Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Waits for and determines the status of the bridge command
 %% @end
@@ -664,7 +670,7 @@ wait_for_bridge(Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Waits for and determines the status of the bridge command
 %% @end
@@ -693,7 +699,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Wait forever for the channel to hangup
 %% @end
@@ -715,7 +721,7 @@ wait_for_unbridge() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Wait forever for the channel to hangup
 %% @end
@@ -735,7 +741,7 @@ wait_for_hangup() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Sends call commands to the appropriate call control process
 %% @end
@@ -744,31 +750,142 @@ wait_for_hangup() ->
 send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
     amqp_util:callctl_publish(CtrlQ, Payload).
 
--spec(find_callerid/2 :: (Type :: binary(), Call :: #cf_call{}) -> tuple(binary(), binary())).
-find_callerid(raw, _) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Finds the specific type of caller id beloning to 'For' or the 
+%% account default if no match is found
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_caller_id/3 :: (For :: binary(), Type :: binary(), Call :: #cf_call{}) -> 
+                                   tuple(binary()|undefined, binary()|undefined)).
+get_caller_id(_, raw, _) ->
     {undefined, undefined};
-find_callerid(Type, #cf_call{authorizing_id=RootId, account_db=Db}) ->
-    case couch_mgr:get_all_results(Db, <<"callerid/find_caller_id">>) of 
-        {ok, JObj} ->
-            CIDs = [
-                    {wh_json:get_value(<<"key">>, C), wh_json:get_value(<<"value">>, C)}
-                    || C <- JObj
-                  ],
-            CID = search_for_callerid(RootId, Type, CIDs),
-            {wh_json:get_value(<<"number">>, CID, <<>>), wh_json:get_value(<<"name">>, CID, <<>>)};
-        {error, _} ->
-            {<<>>, <<>>}
+get_caller_id(For, Type, Call) ->
+    logger:format_log(info, "FIND CALLERID TYPE ~p FOR ~p", [Type, For]),
+    case props:get_value(Type, get_caller_ids(For, Call)) of
+        undefined when Type =/= <<"default">> ->             
+            get_caller_id(For, <<"default">>, Call);
+        undefined ->
+            {undefined, undefined};
+        CID ->
+            {wh_json:get_value(<<"number">>, CID), wh_json:get_value(<<"name">>, CID)}
     end.
 
--spec(search_for_callerid/3 :: (NodeId :: binary(), Type :: binary(), CIDs :: proplist()) -> undefined | json_object()).
-search_for_callerid(NodeId, Type, CIDs) ->
-    logger:format_log(info, "Looking on ~p for ~p", [NodeId, Type]),
-    Node = props:get_value(NodeId, CIDs),
-    case wh_json:get_value([<<"callerid">>, Type], Node) of
-        undefined when NodeId =/= <<"account">> ->
-            search_for_callerid(wh_json:get_value(<<"next">>, Node, <<"account">>), Type, CIDs);
-        undefined ->
-            wh_json:get_value([<<"callerid">>, <<"default">>], Node);
-        CID ->
-            CID
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Gets a proplist of all the caller ids that belong to 'For'
+%% @end
+%%--------------------------------------------------------------------    
+-spec(get_caller_ids/2 :: (For :: binary(), Call :: #cf_call{}) -> proplist()).
+get_caller_ids(For, #cf_call{account_db=Db}) ->
+    try
+        {ok, C1} = wh_cache:fetch({caller_ids, For}), C1        
+    catch
+        _:_ ->
+            case couch_mgr:get_all_results(Db, <<"caller_id/find_caller_id">>) of 
+                {ok, JObj} ->
+                    AllTypes = [{wh_json:get_value(<<"key">>, Result), wh_json:get_value(<<"value">>, Result)}
+                                || Result <- JObj
+                               ],
+                    C2 = merge_caller_id_types(For, AllTypes, []),
+                    logger:format_log(info, "Loading caller-ids for ~p with ~p", [For, C2]),
+                    wh_cache:store({caller_ids, For}, C2), C2;
+                {error, _} ->
+                    []
+            end
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Follows the caller id tree and merges the caller id types 
+%% @end
+%%--------------------------------------------------------------------
+-spec(merge_caller_id_types/3 :: (NodeId :: binary(), AllTypes :: proplist(), 
+                                    Types :: proplist()) -> proplist()).
+merge_caller_id_types(NodeId, AllTypes, Types) when NodeId =:= <<"account">> ->
+    Node = props:get_value(NodeId, AllTypes),
+    {struct, NodeOpts} = wh_json:get_value(<<"caller_id">>, Node, ?EMPTY_JSON_OBJECT),
+    propmerge(Types, NodeOpts);
+merge_caller_id_types(NodeId, AllTypes, Types) ->
+    Node = props:get_value(NodeId, AllTypes),
+    {struct, NodeTypes} = wh_json:get_value(<<"caller_id">>, Node, ?EMPTY_JSON_OBJECT),
+    merge_caller_id_types(
+       wh_json:get_value(<<"next">>, Node, <<"account">>)
+      ,AllTypes
+      ,propmerge(Types, NodeTypes)
+     ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Gets the value of a specific caller id option that belong to 'For'
+%% @end
+%%--------------------------------------------------------------------    
+-spec(get_caller_id_option/3 :: (For :: binary(), Key :: binary(), Call :: #cf_call{}) -> undefined|binary()).
+get_caller_id_option(For, Key, Call) ->
+    props:get_value(Key, get_caller_id_options(For, Call)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Gets a proplist of all caller id options that belong to 'For'
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_caller_id_options/2 :: (For :: binary(), Call :: #cf_call{}) -> proplist()).
+get_caller_id_options(For, #cf_call{account_db=Db}) ->
+    try
+        {ok, O1} = wh_cache:fetch({caller_id_options, For}), O1
+    catch
+        _:_ ->
+            case couch_mgr:get_all_results(Db, <<"caller_id/find_caller_id_options">>) of 
+                {ok, JObj} ->
+                    AllOptions = [{wh_json:get_value(<<"key">>, Result), wh_json:get_value(<<"value">>, Result)}
+                                  || Result <- JObj
+                                 ],
+                    O2 = merge_caller_id_options(For, AllOptions, []),
+                    logger:format_log(info, "Loading caller-id options for ~p with ~p", [For, O2]),
+                    wh_cache:store({caller_id_options, For}, O2), O2;
+                {error, _} ->
+                    []
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Follows the caller id options tree and merges them into one proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec(merge_caller_id_options/3 :: (NodeId :: binary(), AllOptions :: proplist(), 
+                                    Options :: proplist()) -> proplist()).
+merge_caller_id_options(NodeId, AllOptions, Options) when NodeId =:= <<"account">> ->
+    Node = props:get_value(NodeId, AllOptions),
+    {struct, NodeOpts} = wh_json:get_value(<<"caller_id_options">>, Node, ?EMPTY_JSON_OBJECT),
+    propmerge(Options, NodeOpts);
+merge_caller_id_options(NodeId, AllOptions, Options) ->
+    Node = props:get_value(NodeId, AllOptions),
+    {struct, NodeOpts} = wh_json:get_value(<<"caller_id_options">>, Node, ?EMPTY_JSON_OBJECT),
+    merge_caller_id_options(
+       wh_json:get_value(<<"next">>, Node, <<"account">>)
+      ,AllOptions
+      ,propmerge(Options, NodeOpts)
+     ).
+
+%% TAKEN FOR COUCHBEAM_UTIL.ERL (5/3/2011)
+%% released under the MIT license
+
+%% @doc merge 2 proplists. All the Key - Value pairs from both proplists
+%% are included in the new proplists. If a key occurs in both dictionaries 
+%% then Fun is called with the key and both values to return a new
+%% value. This a wreapper around dict:merge
+propmerge(F, L1, L2) ->    
+    dict:to_list(dict:merge(F, dict:from_list(L1), dict:from_list(L2))).
+
+%% @doc Update a proplist with values of the second. In case the same
+%% key is in 2 proplists, the value from the first are kept.
+propmerge(L1, L2) ->   
+    propmerge(fun(_, V1, _) ->
+                       V1 end, L1, L2).
