@@ -204,6 +204,7 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
       ,cf_responder=Parent
       ,bdst_q=CQ
       ,ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
+      ,authorizing_id=wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], RouteReq)
       ,account_db=AccountDb
       ,to=To
       ,to_number=ToNumber
