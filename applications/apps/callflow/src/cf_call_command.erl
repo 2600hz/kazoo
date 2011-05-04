@@ -10,9 +10,9 @@
 
 -include("callflow.hrl").
 
--export([audio_macro/2, flush_dtmf/1]).
+-export([audio_macro/2, flush_dtmf/1, find_callerid/2]).
 -export([answer/1, hangup/1]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8]).
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
@@ -26,7 +26,7 @@
 -export([flush/1]).
 
 -export([b_answer/1, b_hangup/1]).
--export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8]).
+-export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_play_and_collect_digit/2]).
@@ -139,40 +139,36 @@ b_hangup(Call) ->
 %%--------------------------------------------------------------------
 -spec(bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> ok).
 -spec(bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/8 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
 
 -spec(b_bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 -spec(b_bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
+                         tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) ->
-			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) ->
-			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/8 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CIDType :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 
 bridge(Endpoints, Call) ->
     bridge(Endpoints, <<"26">>, Call).
 bridge(Endpoints, Timeout, Call) ->
-    bridge(Endpoints, Timeout, <<"single">>, Call).
-bridge(Endpoints, Timeout, Strategy, Call) ->
-    bridge(Endpoints, Timeout, Strategy, <<>>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, <<>>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, <<"true">>, <<"us-ring">>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, <<"us-ring">>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    bridge(Endpoints, Timeout, <<"default">>, Call).
+bridge(Endpoints, Timeout, CIDType, Call) ->
+    bridge(Endpoints, Timeout, CIDType, <<"single">>, Call).
+bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
+    bridge(Endpoints, Timeout, CIDType, Strategy, <<"true">>, Call).
+bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Call) ->
+    bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, <<"us-ring">>, Call).
+bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    {CIDNum, CIDName} = find_callerid(CIDType, Call),
     Command = [
                 {<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
@@ -185,23 +181,21 @@ bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, 
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:bridge_req(Command),
+    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_bridge(Endpoints, Call) ->
     b_bridge(Endpoints, <<"26">>, Call).
 b_bridge(Endpoints, Timeout, Call) ->
-    b_bridge(Endpoints, Timeout, <<"single">>, Call).
-b_bridge(Endpoints, Timeout, Strategy, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, <<>>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, CIDNum, <<>>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, <<"true">>, <<"us-ring">>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, <<"us-ring">>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, Call),
+    b_bridge(Endpoints, Timeout, <<"default">>, Call).
+b_bridge(Endpoints, Timeout, CIDType, Call) ->
+    b_bridge(Endpoints, Timeout, CIDType, <<"single">>, Call).
+b_bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
+    b_bridge(Endpoints, Timeout, CIDType, Strategy, <<"true">>, Call).
+b_bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Call) ->
+    b_bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, <<"us-ring">>, Call).
+b_bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Ringback, Call) ->
+    bridge(Endpoints, Timeout, CIDType, Strategy, ContinueOnFail, Ringback, Call),
     wait_for_bridge((whistle_util:to_integer(Timeout)*1000) + 5000).
 
 %%--------------------------------------------------------------------
@@ -228,7 +222,7 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_req(Command),
+    {ok, Payload} = whistle_api:play_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
@@ -285,7 +279,7 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:record_req(Command),
+    {ok, Payload} = whistle_api:record_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_record(MediaName, Call) ->
@@ -325,7 +319,7 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:store_req(Command),
+    {ok, Payload} = whistle_api:store_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
@@ -404,7 +398,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_collect_digits_req(Command),
+    {ok, Payload} = whistle_api:play_collect_digits_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play_and_collect_digit(Media, Call) ->
@@ -456,7 +450,7 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:say_req(Command),
+    {ok, Payload} = whistle_api:say_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
@@ -502,7 +496,7 @@ conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_req(Command),
+    {ok, Payload} = whistle_api:conference_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_conference(ConfId, Call) ->
@@ -749,3 +743,32 @@ wait_for_hangup() ->
 -spec(send_callctrl/2 :: (Payload :: binary(), Call :: #cf_call{}) -> ok).
 send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
     amqp_util:callctl_publish(CtrlQ, Payload).
+
+-spec(find_callerid/2 :: (Type :: binary(), Call :: #cf_call{}) -> tuple(binary(), binary())).
+find_callerid(raw, _) ->
+    {undefined, undefined};
+find_callerid(Type, #cf_call{authorizing_id=RootId, account_db=Db}) ->
+    case couch_mgr:get_all_results(Db, <<"callerid/find_caller_id">>) of 
+        {ok, JObj} ->
+            CIDs = [
+                    {wh_json:get_value(<<"key">>, C), wh_json:get_value(<<"value">>, C)}
+                    || C <- JObj
+                  ],
+            CID = search_for_callerid(RootId, Type, CIDs),
+            {wh_json:get_value(<<"number">>, CID, <<>>), wh_json:get_value(<<"name">>, CID, <<>>)};
+        {error, _} ->
+            {<<>>, <<>>}
+    end.
+
+-spec(search_for_callerid/3 :: (NodeId :: binary(), Type :: binary(), CIDs :: proplist()) -> undefined | json_object()).
+search_for_callerid(NodeId, Type, CIDs) ->
+    logger:format_log(info, "Looking on ~p for ~p", [NodeId, Type]),
+    Node = props:get_value(NodeId, CIDs),
+    case wh_json:get_value([<<"callerid">>, Type], Node) of
+        undefined when NodeId =/= <<"account">> ->
+            search_for_callerid(wh_json:get_value(<<"next">>, Node, <<"account">>), Type, CIDs);
+        undefined ->
+            wh_json:get_value([<<"callerid">>, <<"default">>], Node);
+        CID ->
+            CID
+    end.

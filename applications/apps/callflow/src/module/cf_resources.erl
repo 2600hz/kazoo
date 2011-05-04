@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/3, wait_for_bridge/1, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0]).
 
 -define(VIEW_BY_RULES, <<"resources/listing_active_by_rules">>).
 
@@ -34,8 +34,8 @@ handle(_, #cf_call{cf_pid=CFPid}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(bridge_to_gateways/2 :: (Resources :: proplist(), Call :: #cf_call{}) -> no_return()).
-bridge_to_gateways([{To, Gateways}|T], Call) ->
-    case b_bridge([create_endpoint(To, Gtw) || Gtw <- Gateways], <<"60">>, Call) of
+bridge_to_gateways([{To, Gateways, CIDType}|T], Call) ->
+    case b_bridge([create_endpoint(To, Gtw) || Gtw <- Gateways], <<"60">>, CIDType, Call) of
         {ok, _} ->
             wait_for_unbridge();
         {error, _} ->
@@ -74,8 +74,10 @@ create_endpoint(To, JObj) ->
 find_gateways(#cf_call{account_db=Db, to_number=To}) ->
     case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
-            {ok, [ {Number, wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])} ||
-		     Resource <- Resources
+            {ok, [ {Number
+                    ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
+                    ,wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>)}
+                   || Resource <- Resources
 			 , Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), To)
 			 , Number =/= []
                  ]};
@@ -90,9 +92,10 @@ find_gateways(#cf_call{account_db=Db, to_number=To}) ->
 %%--------------------------------------------------------------------
 -spec(evaluate_rules/2 :: (Key :: list(), To :: binary()) -> list()).
 evaluate_rules([_, Regex], To) ->
-    try
-        {match, Number} = re:run(To, Regex, [{capture, [1], binary}]),
-        case Number of [<<>>] -> [To]; Else -> Else end
-    catch
-        _:_ -> []
+    case re:run(To, Regex) of
+        {match, [_, {Start,End}|_]} ->
+            [binary:part(To, Start, End)];
+        {match, _} ->
+            [To];
+        _ -> []
     end.

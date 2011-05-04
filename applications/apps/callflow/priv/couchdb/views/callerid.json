@@ -1,0 +1,11 @@
+{
+    "_id": "_design/caller_id"
+    ,"language": "javascript"
+    ,"views": {
+       "find_caller_id": {
+           "map": "function(doc) { if(doc.pvt_deleted || typeof(doc.caller_id) == 'undefined') return; switch(doc.pvt_type) {case 'device': emit( doc._id, {'caller_id': doc.caller_id, 'next': doc.owner} ); break;case 'user': emit( doc._id, {'caller_id': doc.caller_id, 'next': 'account'} ); break;case 'account': emit( 'account', {'caller_id': doc.caller_id} ); break;}}"
+       }
+    }
+}
+
+
