@@ -181,6 +181,7 @@ handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
     To = wh_json:get_value(<<"To">>, JObj),
     From = wh_json:get_value(<<"From">>, JObj),
     true = hunt_to(To) orelse hunt_no_match(To),
+    logger:format_log(info, "CF_RESP(~p): Affirmative routing response for ~p", [self(), To]),
     wh_cache:store({cf_call, CallId}, {To, From, JObj}, 5),
     Resp = [
              {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -231,23 +232,20 @@ hunt_to(To) ->
 -spec(hunt_no_match/1 :: (To :: binary()) -> boolean()).
 hunt_no_match(To) ->    
     [_, ToRealm] = binary:split(To, <<"@">>),
-    NoMatch = <<"no_match@", ToRealm/binary>>,
-    case wh_cache:fetch({cf_flow, To}) of
-        {ok, _} ->
-            format_log(info, "CF_RESP(~p): Callflow for ~p exists in cache...", [self(), NoMatch]),
-            true;
-        {error, _} ->
-            lookup_flow(NoMatch)
-    end.    
+    lookup_flow(To, <<"no_match@", ToRealm/binary>>).
 
 -spec(lookup_flow/1 :: (To :: binary()) -> boolean()).
 lookup_flow(To) ->
-    case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, To}]) of
+    lookup_flow(To, To).
+
+-spec(lookup_flow/2 :: (To :: binary(), Key :: binary()) -> boolean()).
+lookup_flow(To, Key) ->
+    case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, Key}]) of
         {ok, []} ->
-            format_log(info, "CF_RESP(~p): Could not find callflow for ~p", [self(), To]),
+            format_log(info, "CF_RESP(~p): Could not find callflow for ~p to ~p", [self(), Key, To]),
             false;
         {ok, [JObj]} ->
-            format_log(info, "CF_RESP(~p): Retreived callflow for ~p: ~p", [self(), To, JObj]),
+            format_log(info, "CF_RESP(~p): Retreived callflow for ~p to ~p", [self(), Key, To]),
             wh_cache:store({cf_flow, To}, {
                              wh_json:get_value(<<"id">>, JObj),
                              wh_json:get_value([<<"value">>, <<"flow">>], JObj),
@@ -255,7 +253,7 @@ lookup_flow(To) ->
                             }, 500),
             true;
         {error, _}=E ->
-            format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p", [self(), E, To]),
+            format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p to ~p", [self(), E, Key, To]),
             false
     end.    
 %%%

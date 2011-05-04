@@ -105,8 +105,6 @@ wait(Call, Flow, Pid) ->
            end;
        {branch, NewFlow} ->
            next(Call, NewFlow);
-       {heartbeat} ->
-           wait(Call, Flow, Pid);
        {stop} ->
            logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]),
            hangup(Call);
@@ -129,10 +127,6 @@ wait(Call, Flow, Pid) ->
                _Else ->
                    wait(Call, Flow, Pid)
            end
-   after
-       120000 ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Callflow timeout!", [self()]),
-           hangup(Call)
    end.
 
 %%--------------------------------------------------------------------

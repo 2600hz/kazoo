@@ -352,6 +352,10 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
 	    [{<<"Application-Name">>, <<"play_and_collect_digits">>} 
 	     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
 	    ];
+        <<"bridge">> ->
+	    [{<<"Application-Name">>, <<"bridge">>} 
+	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
+	    ];
 	AppName ->
 	    [{<<"Application-Name">>, AppName}
 	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}

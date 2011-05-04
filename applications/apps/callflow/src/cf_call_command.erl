@@ -651,10 +651,13 @@ wait_for_bridge(Timeout) ->
             case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
                     {ok, JObj};
+                { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+                    case wh_json:get_value(<<"Application-Response">>, JObj) of
+                        <<"SUCCESS">> -> {ok, JObj};
+                        Cause -> {error, {bridge_failed, Cause}}
+                    end;
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
-                { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-                    {error, bridge_failed};
                 { _, _, <<"error">> } ->
                     {error, execution_failed};
                 _ ->
