@@ -199,19 +199,22 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
     [ToNumber, ToRealm] = binary:split(To, <<"@">>),
     [FromNumber, FromRealm] = binary:split(From, <<"@">>),
     Call = #cf_call {
-       call_id=CallId
-      ,flow_id=FlowId
-      ,cf_responder=Parent
+       ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
       ,bdst_q=CQ
-      ,ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
+      ,call_id=CallId
+      ,cf_responder=Parent
       ,account_db=AccountDb
-      ,to=To
-      ,to_number=ToNumber
-      ,to_realm=ToRealm
+      ,authorizing_id=wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], RouteReq)
+      ,flow_id=FlowId
+      ,cid_name=wh_json:get_value(<<"Caller-ID-Name">>, RouteReq)
+      ,cid_number=wh_json:get_value(<<"Caller-ID-Number">>, RouteReq)
       ,from=From
       ,from_number=FromNumber
       ,from_realm=FromRealm
-      ,route_request=RouteReq
+      ,to=To
+      ,to_number=ToNumber
+      ,to_realm=ToRealm
+      ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
      },
     format_log(info, "CF_RESP(~p): Executing callflow for ~p(~p)", [self(), To, CallId]),
     spawn(fun() -> cf_exe:start(Call, Flow) end);
