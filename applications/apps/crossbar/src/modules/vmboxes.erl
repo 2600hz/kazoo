@@ -20,6 +20,7 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
+-export([load_message_summary/2, find_message/2]).
 
 -include("../../include/crossbar.hrl").
 
@@ -27,7 +28,6 @@
 
 -define(VIEW_FILE, <<"views/vmboxes.json">>).
 -define(VMBOXES_LIST, <<"vmboxes/listing_by_id">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -117,10 +117,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.vmboxes">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+		  crossbar_util:binding_heartbeat(Pid),
+		  Context1 = validate(Params, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Context | Params]}, State) ->
@@ -217,6 +217,10 @@ allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
+allowed_methods([_, <<"messages">>]) ->
+    {true, ['GET', 'PUT']};
+allowed_methods([_, <<"messages">>, _]) ->
+    {true, ['GET', 'POST', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -232,6 +236,10 @@ allowed_methods(_) ->
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
+    {true, []};
+resource_exists([_, <<"messages">>])->
+    {true, []};
+resource_exists([_, <<"messages">>, _])->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -256,6 +264,10 @@ validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_vmbox(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
     load_vmbox(DocId, Context);
+validate([DocId, <<"messages">>], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_message_summary(DocId, Context);
+validate([DocId, <<"messages">>, AttachmentId], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_message(DocId, AttachmentId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -283,9 +295,9 @@ create_vmbox(#cb_context{req_data=JObj}=Context) ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
-                ,resp_status=success
-            }
+	      doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
+	      ,resp_status=success
+	     }
     end.
 
 %%--------------------------------------------------------------------
@@ -333,3 +345,61 @@ normalize_view_results(JObj, Acc) ->
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get messages summary for a given mailbox
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_message_summary/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_message_summary(DocId, Context) ->
+    Vmbox = crossbar_doc:load(DocId, Context),
+    crossbar_util:response(
+      wh_json:get_value(<<"messages">>, Vmbox#cb_context.doc)
+      ,Context
+     ).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get message by its attachment ID (ie attachmentid.wav)
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_message(DocId, AttachmentId, Context) ->
+    Vmbox = crossbar_doc:load(DocId, Context),
+
+    Messages =  wh_json:get_value(<<"messages">> , Vmbox#cb_context.doc),
+
+	    logger:format_log(info, "Messages: ~p", [Messages]),
+
+    Message = find_message(Messages, AttachmentId),
+
+    case  Message of
+	[] ->
+	    crossbar_util:response(error, attachment_does_not_exist, Context);
+	_ ->
+	    crossbar_util:response(Message,Context)
+    end.
+find_message([], _) ->
+    [];
+
+find_message(Messages, AttachmentId) ->
+    [CurrentMessage | OtherMessages] = Messages,
+
+    AttachmentNameFromDoc = wh_json:get_value(<<"attachment">>, CurrentMessage),
+    
+    case <<AttachmentId/binary, ".wav">> =:= AttachmentNameFromDoc of
+	true ->
+	    logger:format_log(info, "Current Message: ~p", [CurrentMessage]),
+	    CurrentMessage;
+	false ->
+	    logger:format_log(info, "Other Messages: ~p", [OtherMessages]),
+	   find_message(OtherMessages, AttachmentId)
+    end.
+
+download_message(AttachmentId) ->
+    ok.
+    
