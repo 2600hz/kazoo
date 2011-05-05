@@ -449,12 +449,10 @@ set_continue_on_fail(Node, UUID, <<"false">>) ->
 
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
-    logger:format_log(info, "CONTROL(~p): Set custom var ~p", [self(), Arg]), 
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
 
 -spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 export(Node, UUID, Arg) ->
-    logger:format_log(info, "CONTROL(~p): Export custom var ~p", [self(), Arg]), 
     send_cmd(Node, UUID, "export", whistle_util:to_list(Arg)).
 
 %% builds a FS specific flag string for the conference command
