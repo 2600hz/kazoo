@@ -97,12 +97,13 @@ flush_dtmf(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(set/3 :: (ChannelVars :: proplist(), CallVars :: proplist(), Call :: #cf_call{}) -> ok).
-set(undefined, undefined, _) ->
-    ok;
+
 set(undefined, CallVars, Call) ->
     set(?EMPTY_JSON_OBJECT, CallVars, Call);
 set(ChannelVars, undefined, Call) ->
     set(ChannelVars, ?EMPTY_JSON_OBJECT, Call);
+set(ChannelVars, undefined, Call) ->
+    set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, Call);
 set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"set">>}
