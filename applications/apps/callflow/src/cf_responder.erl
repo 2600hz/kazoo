@@ -269,7 +269,7 @@ lookup_flow(To, Key) ->
 -spec(destination_uri/1 :: (JObj :: json_object()) -> binary()).
 destination_uri(JObj) ->    
     [ToNumber, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"unknown@nodomain">>), <<"@">>), 
-    <<(wh_json:get_value(<<"Destination-Number">>, JObj, ToNumber))/binary, $@, (wh_json:get_value(<<"Custom-Channel-Vars", "Realm">>, JObj, ToRealm))/binary>>.
+    <<(wh_json:get_value(<<"Destination-Number">>, JObj, ToNumber))/binary, $@, (wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Realm">>], JObj, ToRealm))/binary>>.
 
 %%%
 %%%============================================================================
