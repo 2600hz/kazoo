@@ -99,6 +99,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
 						    ,wh_json:get_value(<<"Silence-Hits">>, JObj, "3")
 						   ])),
 	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+	    
 	    {<<"record">>, RecArg}
     end;
 get_fs_app(_Node, UUID, JObj, <<"store">>) ->

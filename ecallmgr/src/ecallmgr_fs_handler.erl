@@ -233,8 +233,8 @@ handle_call({diagnostics}, _From, #state{fs_nodes=Nodes}=State) ->
 	   ],
     {reply, Resp, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
-    {Resp, State1} = add_fs_node(Node, check_options(Options), State),
-    {reply, Resp, State1};
+	{Resp, State1} = add_fs_node(Node, check_options(Options), State),
+	{reply, Resp, State1};
 handle_call({rm_fs_node, Node}, _From, State) ->
     {Resp, State1} = rm_fs_node(Node, State),
     {reply, Resp, State1};
@@ -441,13 +441,14 @@ diagnostics_query(Pid) when is_pid(Pid) ->
 diagnostics_query(X) ->
     {error, handler_down, X}.
 
--spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: tuple()) -> tuple(ok, tuple()) | tuple(tuple(error, atom()), tuple())).
+-spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: #state{}) -> tuple(ok, #state{}) | tuple(tuple(error, no_connection), #state{})).
 add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
     case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
 	[] ->
 	    case net_adm:ping(Node) of
 		pong ->
 		    erlang:monitor_node(Node, true),
+		    logger:format_log(info, "FS_HANDLER(~p): No node matching ~p found, adding~n", [self(), Node]),
 		    Restart = fun(StartFun) -> restart_handler(Node, Options, undefined, undefined, StartFun) end,
 		    
 		    AHP = Restart(fun start_auth_handler/2),
@@ -467,13 +468,23 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 		    {{error, no_connection}, State}
 	    end;
 	[#node_handler{node=Node, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP, node_watch_pid=NWP}=N] ->
-	    logger:format_log(info, "FS_HANDLER(~p): handlers known ~p~n", [self(), N]),
+	    logger:format_log(info, "FS_HANDLER(~p): handlers known for node ~p: ~p~n", [self(), Node, N]),
 
-	    erlang:is_pid(NWP) andalso erlang:is_process_alive(NWP) andalso NWP ! shutdown,
+	    erlang:is_pid(NWP) andalso ( erlang:is_process_alive(NWP) andalso NWP ! shutdown ),
 
-	    Restart = fun(Pid, _StartFun) when is_pid(Pid) ->
-			      Pid ! {update_options, Options},
-			      Pid;
+	    Restart = fun(Pid, StartFun) when is_pid(Pid) ->
+			      case erlang:is_process_alive(Pid) of
+				  true ->
+				      Pid ! {update_options, Options},
+				      Pid;
+				  false ->
+				      case StartFun(Node, Options) of
+					  {error, E} ->
+					      logger:format_log(error, "FS_HANDLER.add(~p): Handler start on ~p failed because ~p~n", [self(), Node, E]),
+					      undefined;
+					  NewPid -> NewPid
+				      end
+			      end;
 			 (_, StartFun) ->
 			      case StartFun(Node, Options) of
 				  {error, E} ->
@@ -482,6 +493,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 				  Pid -> Pid
 			      end
 		      end,
+
 	    {ok, State#state{fs_nodes=[N#node_handler{auth_handler_pid=Restart(AHP, fun start_auth_handler/2)
 						      ,route_handler_pid=Restart(RHP, fun start_route_handler/1)
 						      ,node_handler_pid=Restart(NHP, fun start_node_handler/2)

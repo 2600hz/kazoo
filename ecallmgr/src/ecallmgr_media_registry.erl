@@ -86,16 +86,28 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+    try
+    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, ~p, ~p}", [self(), MediaName, CallId]),
     case dict:find({Pid, CallId, MediaName}, Dict) of
 	error ->
 	    link(Pid),
 	    Path = generate_local_path(MediaName),
-	    {reply, Path, dict:store({Pid, CallId, MediaName}, Path, Dict)};
+	    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, Path, ~p}~n", [self(), Path]),
+	    RecvSrv = ecallmgr_shout_sup:start_srv(Path),
+	    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, RecvSrv, ~p}~n", [self(), RecvSrv]),
+	    Url = ecallmgr_shout:get_stream_url(RecvSrv),
+	    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, Url, ~p}~n", [self(), Url]),
+	    {reply, Url, dict:store({Pid, CallId, MediaName}, Path, Dict)};
 	{ok, Path} ->
 	    {reply, Path, Dict}
+    end
+    catch
+	A:B -> logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, Catch, ~p, ~p}~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+	       {noreply, Dict}
     end;
 
 handle_call({lookup_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+    logger:format_log(info, "ECALL_MEDREG(~p): {lookup_local, ~p, ~p}", [self(), MediaName, CallId]),
     case dict:find({Pid, CallId, MediaName}, Dict) of
         error ->
             {reply, {error, not_local}, Dict};        
@@ -104,6 +116,7 @@ handle_call({lookup_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
     end;
 
 handle_call({is_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+    logger:format_log(info, "ECALL_MEDREG(~p): {is_local, ~p, ~p}", [self(), MediaName, CallId]),
     case dict:find({Pid, CallId, MediaName}, Dict) of
         error ->
             {reply, false, Dict};
