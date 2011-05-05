@@ -730,6 +730,7 @@
 				 ,{<<"playback">>, <<"tones">>}
 				 ,{<<"park">>, <<"park">>}
 				 ,{<<"set">>, <<"set">>}
+				 ,{<<"export">>, <<"set">>}
 				 ,{<<"say">>, <<"say">>}
 				 ,{<<"sleep">>, <<"sleep">>}
 				 ,{<<"bridge">>, <<"bridge">>}
