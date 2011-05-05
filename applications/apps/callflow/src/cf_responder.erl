@@ -178,11 +178,10 @@ start_amqp() ->
 handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
     <<"dialplan">> = wh_json:get_value(<<"Event-Category">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    To = wh_json:get_value(<<"To">>, JObj),
-    From = wh_json:get_value(<<"From">>, JObj),
-    true = hunt_to(To) orelse hunt_no_match(To),
-    logger:format_log(info, "CF_RESP(~p): Affirmative routing response for ~p", [self(), To]),
-    wh_cache:store({cf_call, CallId}, {To, From, JObj}, 5),
+    Dest = destination_uri(JObj),
+    true = hunt_to(Dest) orelse hunt_no_match(Dest),
+    logger:format_log(info, "CF_RESP(~p): Affirmative routing response for ~p", [self(), Dest]),
+    wh_cache:store({cf_call, CallId}, {Dest, JObj}, 5),
     Resp = [
              {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
@@ -194,10 +193,13 @@ handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
 
 handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    {ok, {To, From, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
-    {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, To}),
+    {ok, {Dest, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
+    {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, Dest}),
+    To = wh_json:get_value(<<"To">>, RouteReq),
+    From = wh_json:get_value(<<"From">>, RouteReq),
     [ToNumber, ToRealm] = binary:split(To, <<"@">>),
     [FromNumber, FromRealm] = binary:split(From, <<"@">>),
+    [DestNumber, DestRealm] = binary:split(Dest, <<"@">>),
     Call = #cf_call {
        ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
       ,bdst_q=CQ
@@ -208,6 +210,9 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
       ,flow_id=FlowId
       ,cid_name=wh_json:get_value(<<"Caller-ID-Name">>, RouteReq)
       ,cid_number=wh_json:get_value(<<"Caller-ID-Number">>, RouteReq)
+      ,destination=Dest
+      ,dest_number=DestNumber
+      ,dest_realm=DestRealm
       ,from=From
       ,from_number=FromNumber
       ,from_realm=FromRealm
@@ -216,6 +221,7 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
       ,to_realm=ToRealm
       ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
      },
+    cf_call_command:set(undefined, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq), Call),
     format_log(info, "CF_RESP(~p): Executing callflow for ~p(~p)", [self(), To, CallId]),
     spawn(fun() -> cf_exe:start(Call, Flow) end);
 
@@ -259,6 +265,12 @@ lookup_flow(To, Key) ->
             format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p to ~p", [self(), E, Key, To]),
             false
     end.    
+
+-spec(destination_uri/1 :: (JObj :: json_object()) -> binary()).
+destination_uri(JObj) ->    
+    [ToNumber, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"unknown@nodomain">>), <<"@">>), 
+    <<(wh_json:get_value(<<"Destination-Number">>, JObj, ToNumber))/binary, $@, (wh_json:get_value(<<"Custom-Channel-Vars", "Realm">>, JObj, ToRealm))/binary>>.
+
 %%%
 %%%============================================================================
 %%%== END =====

@@ -35,6 +35,9 @@
             ,flow_id = undefined :: binary() | undefined            %% The ID of the callflow that was intially executed (does not reflect branches, or hunts)
             ,cid_name = <<>> :: binary()                            %% The CID name provided on the route req
             ,cid_number = <<>> :: binary()                          %% The CID number provided on the route req
+            ,destination = <<>> :: binary()
+            ,dest_number = <<>> :: binary()
+            ,dest_realm = <<>> :: binary()
             ,from = <<>> :: binary()                                %% Result of sip_from_user + @ + sip_from_host
             ,from_number = <<>>  :: binary()                        %% SIP from user
             ,from_realm = <<>> :: binary()                          %% SIP from host
