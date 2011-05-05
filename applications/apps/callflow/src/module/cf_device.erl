@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0, get_caller_id_option/3]).
+-import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0, get_caller_id_option/3, get_caller_id/3]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
-    {ok, Endpoint} = get_endpoint(Data, Call#cf_call.account_db),
+    {ok, Endpoint} = get_endpoint(Data, Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),  
     case b_bridge([Endpoint], Timeout, format_caller_id(Data, Call), Call) of
         {ok, _} ->
@@ -42,16 +42,19 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_endpoint/2 :: (JObj :: json_object(), Db :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
-get_endpoint({struct, _}=EP, Db) ->
+get_endpoint({struct, _}=EP, #cf_call{account_db=Db}=Call) ->
     Id = wh_json:get_value(<<"id">>, EP),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
+            {CalleeNumber, CalleeName} = get_caller_id(Id, <<"internal">>, Call),            
             Endpoint = [
                          {<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], JObj)}
                         ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], JObj)}
                         ,{<<"To-Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], JObj)}
                         ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], JObj)}
                         ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], JObj)}
+                        ,{<<"Callee-ID-Number">>, CalleeNumber}
+                        ,{<<"Callee-ID-Name">>, CalleeName}
                         ,{<<"Ignore-Early-Media">>, wh_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj)}
                         ,{<<"Bypass-Media">>, wh_json:get_value([<<"media">>, <<"bypass_media">>], JObj)}
                         ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value([<<"media">>, <<"progress_timeout">>], EP, <<"6">>)}
@@ -60,7 +63,7 @@ get_endpoint({struct, _}=EP, Db) ->
             {ok, {struct, [ KV || {_, V}=KV <- Endpoint, V =/= undefined ]} };
         {error, _}=E ->
             logger:format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Id, Db, E]),
-           E
+            E
     end.
 
 %%--------------------------------------------------------------------
