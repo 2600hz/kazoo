@@ -11,7 +11,7 @@
 -include("callflow.hrl").
 
 -export([audio_macro/2, flush_dtmf/1]).
--export([answer/1, hangup/1]).
+-export([answer/1, hangup/1, set/3]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -87,6 +87,33 @@ audio_macro([{tones, Tones}|T], Call, Queue) ->
 -spec(flush_dtmf/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
 flush_dtmf(Call) ->
     b_play(<<"silence_stream://250">>, Call).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level whistle_api request to set channel/call vars
+%% NOTICE: These are 'custom' channel vars for state info only, and
+%%   can not be used to set system settings
+%% @end
+%%--------------------------------------------------------------------
+-spec(set/3 :: (ChannelVars :: proplist(), CallVars :: proplist(), Call :: #cf_call{}) -> ok).
+
+set(undefined, CallVars, Call) ->
+    set(?EMPTY_JSON_OBJECT, CallVars, Call);
+set(ChannelVars, undefined, Call) ->
+    set(ChannelVars, ?EMPTY_JSON_OBJECT, Call);
+set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, _) ->
+    ok;
+set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"set">>}
+               ,{<<"Custom-Channel-Vars">>, ChannelVars}
+               ,{<<"Custom-Call-Vars">>, CallVars}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = whistle_api:set_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -761,7 +788,7 @@ send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
                                    tuple(binary()|undefined, binary()|undefined)).
 get_caller_id(_, raw, _) ->
     {undefined, undefined};
-get_caller_id(For, Type, Call) ->
+get_caller_id(For, Type, #cf_call{dest_number=DestNum}=Call) ->
     logger:format_log(info, "FIND CALLERID TYPE ~p FOR ~p", [Type, For]),
     case props:get_value(Type, get_caller_ids(For, Call)) of
         undefined when Type =/= <<"default">> ->             
@@ -769,7 +796,7 @@ get_caller_id(For, Type, Call) ->
         undefined ->
             {undefined, undefined};
         CID ->
-            {wh_json:get_value(<<"number">>, CID), wh_json:get_value(<<"name">>, CID)}
+            {wh_json:get_value(<<"number">>, CID, DestNum), wh_json:get_value(<<"name">>, CID)}
     end.
 
 %%--------------------------------------------------------------------
