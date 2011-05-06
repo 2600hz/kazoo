@@ -96,11 +96,11 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add_fs_node/1, add_fs_node/2, rm_fs_node/1, diagnostics/0, set_amqp_host/1]).
+-export([start_link/0, add_fs_node/1, add_fs_node/2, rm_fs_node/1, diagnostics/0]).
 -export([is_node_up/1]).
 
 %% Resource allotment
--export([request_resource/2]).
+-export([request_resource/2, request_node/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -143,10 +143,6 @@ rm_fs_node(Node) ->
 diagnostics() ->
     gen_server:call(?MODULE, {diagnostics}, infinity).
 
-set_amqp_host(Host) ->
-    amqp_manager:set_host(Host),
-    ok.
-
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}, infinity).
 
@@ -160,6 +156,10 @@ is_node_up(Node) ->
 -spec(request_resource/2 :: (Type :: binary(), Options :: proplist()) -> list(proplist())).
 request_resource(Type, Options) ->
     gen_server:call(?MODULE, {request_resource, Type, Options}).
+
+-spec(request_node/1 :: (Type :: binary()) -> tuple(ok, atom()) | tuple(error, binary())).
+request_node(Type) ->
+    gen_server:call(?MODULE, {request_node, Type}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -178,11 +178,7 @@ request_resource(Type, Options) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    try
-	{ok, #state{}}
-    catch
-	_:_ -> {ok, #state{}}
-    end.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -199,6 +195,16 @@ init([]) ->
 %% @end
 %% #state{fs_nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+handle_call({request_node, <<"audio">>}, From, #state{fs_nodes=Nodes}=State) ->
+    spawn(fun() ->
+		  try
+		      {_, Node} = hd(lists:keysort(1, [ {random:uniform(), Node} || #node_handler{node=Node} <- Nodes ])),
+		      gen_server:reply(From, {ok, Node})
+		  catch
+		      _:E -> gen_server:reply(From, {error, E})
+		  end
+	  end),
+    {noreply, State};
 handle_call({is_node_up, Node}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
 		  IsUp = lists:foldl(fun(#node_handler{node=FSNode, node_watch_pid=NWP}, _) when FSNode =:= Node ->
@@ -209,39 +215,44 @@ handle_call({is_node_up, Node}, From, #state{fs_nodes=Nodes}=State) ->
 	  end),
     {noreply, State};
 
-handle_call({diagnostics}, _From, #state{fs_nodes=Nodes}=State) ->
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
-    {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}
-					     ,{KN, HD}) ->
-						 AuthHandlerD = diagnostics_query(AHP),
-						 RteHandlerD = diagnostics_query(RHP),
-						 NodeHandlerD = diagnostics_query(NHP),
-						 {[FSNode | KN], [{FSNode
-								   ,{auth_handler, AuthHandlerD}
-								   ,{route_handler, RteHandlerD}
-								   ,{node_handler, NodeHandlerD}
-								  }
-								  | HD]}
-					 end, {[], []}, Nodes),
-    Resp = [{gen_server, ?MODULE}
-	    ,{host, net_adm:localhost()}
-	    ,{version, Vsn}
-	    ,{known_fs_nodes, KnownNodes}
-	    ,{handler_diagnostics, HandlerD}
-	    ,{recorded, erlang:now()}
-	    ,{amqp_host, amqp_manager:get_host()}
-	   ],
-    {reply, Resp, State};
+handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
+    spawn(fun() ->
+		  {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}
+							   ,{KN, HD}) ->
+							       AuthHandlerD = diagnostics_query(AHP),
+							       RteHandlerD = diagnostics_query(RHP),
+							       NodeHandlerD = diagnostics_query(NHP),
+							       {[FSNode | KN], [{FSNode
+										 ,{auth_handler, AuthHandlerD}
+										 ,{route_handler, RteHandlerD}
+										 ,{node_handler, NodeHandlerD}
+										}
+										| HD]}
+						       end, {[], []}, Nodes),
+		  Resp = [{gen_server, ?MODULE}
+			  ,{host, net_adm:localhost()}
+			  ,{version, ?APP_VERSION}
+			  ,{known_fs_nodes, KnownNodes}
+			  ,{handler_diagnostics, HandlerD}
+			  ,{recorded, erlang:now()}
+			  ,{amqp_host, amqp_manager:get_host()}
+			 ],
+		  gen_server:reply(From, Resp)
+	  end),
+    {noreply, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
 	{Resp, State1} = add_fs_node(Node, check_options(Options), State),
 	{reply, Resp, State1};
 handle_call({rm_fs_node, Node}, _From, State) ->
     {Resp, State1} = rm_fs_node(Node, State),
     {reply, Resp, State1};
-handle_call({request_resource, Type, Options}, _From, #state{fs_nodes=Nodes}=State) ->
-    Resp = process_resource_request(Type, Nodes, Options),
-    logger:format_log(info, "FS_HANDLER(~p): Resource Resp: ~p~n", [self(), Resp]),
-    {reply, Resp, State};
+handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=State) ->
+    spawn(fun() ->
+		  Resp = process_resource_request(Type, Nodes, Options),
+		  logger:format_log(info, "FS_HANDLER(~p): Resource Resp: ~p~n", [self(), Resp]),
+		  gen_server:reply(From, Resp)
+	  end),
+    {noreply, State};
 handle_call(_Request, _From, State) ->
     logger:format_log(error, "FS_HANDLER(~p): Unhandled call ~p~n", [self(), _Request]),
     {reply, {error, unhandled_request}, State}.
