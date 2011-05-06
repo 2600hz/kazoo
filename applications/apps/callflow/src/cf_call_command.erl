@@ -788,7 +788,7 @@ send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
                                    tuple(binary()|undefined, binary()|undefined)).
 get_caller_id(_, raw, _) ->
     {undefined, undefined};
-get_caller_id(For, Type, Call) ->
+get_caller_id(For, Type, #cf_call{dest_number=DestNum}=Call) ->
     logger:format_log(info, "FIND CALLERID TYPE ~p FOR ~p", [Type, For]),
     case props:get_value(Type, get_caller_ids(For, Call)) of
         undefined when Type =/= <<"default">> ->             
@@ -796,7 +796,7 @@ get_caller_id(For, Type, Call) ->
         undefined ->
             {undefined, undefined};
         CID ->
-            {wh_json:get_value(<<"number">>, CID), wh_json:get_value(<<"name">>, CID)}
+            {wh_json:get_value(<<"number">>, CID, DestNum), wh_json:get_value(<<"name">>, CID)}
     end.
 
 %%--------------------------------------------------------------------

@@ -26,7 +26,7 @@
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
     {ok, Endpoint} = get_endpoint(Data, Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),  
-    case b_bridge([Endpoint], Timeout, format_caller_id(Data, Call), Call) of
+    case b_bridge([Endpoint], Timeout, {undefined, undefined}, Call) of
         {ok, _} ->
             _ = wait_for_unbridge(),
             CFPid ! { stop };
@@ -44,21 +44,28 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 -spec(get_endpoint/2 :: (JObj :: json_object(), Db :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 get_endpoint({struct, _}=EP, #cf_call{account_db=Db}=Call) ->
     Id = wh_json:get_value(<<"id">>, EP),
-    case couch_mgr:open_doc(Db, Id) of
-        {ok, JObj} ->
-            {CalleeNumber, CalleeName} = get_caller_id(Id, <<"internal">>, Call),            
+    case couch_mgr:get_results(Db, <<"devices/listing_with_owner">>, [{<<"include_docs">>, true}, {<<"key">>, Id}]) of
+        {ok, [JObj]} ->
+            Device = wh_json:get_value([<<"value">>, <<"device">>], JObj, ?EMPTY_JSON_OBJECT),
+            Owner = wh_json:get_value([<<"value">>, <<"doc">>], JObj, ?EMPTY_JSON_OBJECT),
+            %% Get the internal caller id for this devices
+            {CallerNumber, CallerName} = get_caller_id(Id, Call),            
+            {CalleeNumber, CalleeName} = get_callee_id(Id, Call),            
             Endpoint = [
-                         {<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], JObj)}
-                        ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], JObj)}
-                        ,{<<"To-Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], JObj)}
-                        ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], JObj)}
-                        ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], JObj)}
+                         {<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Device)}
+                        ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Device)}
+                        ,{<<"To-Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], Device)}
+                        ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Device)}
+                        ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Device)}
+                        ,{<<"Caller-ID-Number">>, CallerNumber}
+                        ,{<<"Caller-ID-Name">>, CallerName}
                         ,{<<"Callee-ID-Number">>, CalleeNumber}
                         ,{<<"Callee-ID-Name">>, CalleeName}
-                        ,{<<"Ignore-Early-Media">>, wh_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj)}
-                        ,{<<"Bypass-Media">>, wh_json:get_value([<<"media">>, <<"bypass_media">>], JObj)}
+                        ,{<<"Ignore-Early-Media">>, wh_json:get_value([<<"media">>, <<"ignore_early_media">>], Device)}
+                        ,{<<"Bypass-Media">>, wh_json:get_value([<<"media">>, <<"bypass_media">>], Device)}
                         ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value([<<"media">>, <<"progress_timeout">>], EP, <<"6">>)}
-                        ,{<<"Codecs">>, wh_json:get_value([<<"media">>, <<"codecs">>], JObj)}
+                        ,{<<"Codecs">>, wh_json:get_value([<<"media">>, <<"codecs">>], Device)}
+                        ,{<<"Custom-Channel-Vars">>, get_custom_channel_vars(Device, Owner)}
                     ],
             {ok, {struct, [ KV || {_, V}=KV <- Endpoint, V =/= undefined ]} };
         {error, _}=E ->
@@ -69,8 +76,41 @@ get_endpoint({struct, _}=EP, #cf_call{account_db=Db}=Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will either look up the internal caller id or
-%% optionally reformat the provided.
+%% This function will collect and set the appropriate custom channel
+%% vars.  It is very important that Custom-Channel-Vars never be
+%% set to an empty json object! 
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_custom_channel_vars/2 :: (Device :: json_object(), Owner :: json_object()) -> proplist() | undefined).
+get_custom_channel_vars(Device, Owner) ->
+    case wh_json:get_value([<<"sip">>, <<"realm">>], Device) of 
+        undefined ->
+            undefined;
+        Realm ->
+            {struct, [{<<"Realm">>, Realm}]}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If the call is from a carrier (ie PSTN) then the callee is the same
+%% as the caller id.  If the call is from a local endpoint, then the
+%% callee of the bridge (the b-leg) is the devices being bridged to.
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_callee_id/2 :: (Id :: binary(), Call :: #cf_call{}) -> tuple(binary(), binary())).
+get_callee_id(Id, #cf_call{authorizing_id=undefined}=Call) ->
+    get_caller_id(Id, Call);
+get_callee_id(Id, Call) ->
+    cf_call_command:get_caller_id(Id, <<"internal">>, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If the call is from a carrier (ie PSTN) then the caller id is 
+%% the reformated caller id recieved from the carrier.  Otherwise,
+%% the caller id of the bridge (the b-leg) is the device that started
+%% the call.
 %%
 %% NOTE:
 %% If there was no authorizing_id then this call originated externally
@@ -78,9 +118,9 @@ get_endpoint({struct, _}=EP, #cf_call{account_db=Db}=Call) ->
 %% ACL internally then we will be given an id for external auth.
 %% @end
 %%--------------------------------------------------------------------
-format_caller_id(Data, #cf_call{cid_name=Name, cid_number=Number, authorizing_id=undefined}=Call) ->
+-spec(get_caller_id/2 :: (Id :: binary(), Call :: #cf_call{}) -> tuple(binary(), binary())).
+get_caller_id(Id, #cf_call{cid_number=Number, cid_name=Name, authorizing_id=undefined}=Call) ->
     try        
-        Id = wh_json:get_value(<<"id">>, Data),
         Reformat = get_caller_id_option(Id, <<"reformat">>, Call),
         {match, Positions} = re:run(Number, Reformat),
         %% find the largest matching group if present by sorting the position of the 
@@ -89,7 +129,7 @@ format_caller_id(Data, #cf_call{cid_name=Name, cid_number=Number, authorizing_id
         {binary:part(Number, Start, End), Name}
     catch
         _:_ ->
-            raw
+            {Number, Name}
     end;
-format_caller_id(_, _) ->
-    <<"internal">>.
+get_caller_id(_, #cf_call{authorizing_id=Id}=Call) ->
+    cf_call_command:get_caller_id(Id, <<"internal">>, Call).
