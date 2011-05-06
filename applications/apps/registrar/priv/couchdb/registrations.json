@@ -10,7 +10,7 @@
       ,"reduce": "function(k, vs) { var max = {'expiration':0}; for (i in vs ) { if ( max.expiration == 0 ) max = vs[i]; else if ( max.expiration < vs[i].expiration ) max = vs[i]; } return max; }"
     }
     ,"expirations":{
-      "map": "function(doc) { var t = doc['Reg-Server-Timestamp'] || doc['Event-Timestamp']; var expires = parseInt(t) + parseInt(doc['Expires']); emit(expires, null); }"
+      "map": "function(doc) { var t = doc['Reg-Server-Timestamp'] || doc['Event-Timestamp']; var expires = parseInt(t) + parseInt(doc['Expires']) + 120; emit(expires, null); }"
     }
   }
 }
