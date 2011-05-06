@@ -43,12 +43,15 @@ start_link() ->
 register_local_media(MediaName, CallId) ->
     gen_server:call(?MODULE, {register_local_media, MediaName, CallId}).
 
+-spec(lookup_media/2 :: (MediaName :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
 lookup_media(MediaName, CallId) ->
     request_media(MediaName, CallId).
 
+-spec(lookup_media/3 :: (MediaName :: binary(), Type :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
 lookup_media(MediaName, Type, CallId) ->
     request_media(MediaName, Type, CallId).
 
+-spec(is_local/2 :: (MediaName :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
 is_local(MediaName, CallId) ->
     gen_server:call(?MODULE, {is_local, MediaName, CallId}).
 
@@ -86,42 +89,47 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
-    try
-    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, ~p, ~p}", [self(), MediaName, CallId]),
-    case dict:find({Pid, CallId, MediaName}, Dict) of
-	error ->
+    Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
+				true;
+			   (_, _) -> false
+			end, Dict),
+    case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
+	false ->
 	    link(Pid),
-	    Path = generate_local_path(MediaName),
-	    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, Path, ~p}~n", [self(), Path]),
-	    RecvSrv = ecallmgr_shout_sup:start_srv(Path),
-	    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, RecvSrv, ~p}~n", [self(), RecvSrv]),
+	    Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
+	    {ok, RecvSrv} = ecallmgr_shout_sup:start_srv(Path),
 	    Url = ecallmgr_shout:get_stream_url(RecvSrv),
-	    logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, Url, ~p}~n", [self(), Url]),
-	    {reply, Url, dict:store({Pid, CallId, MediaName}, Path, Dict)};
-	{ok, Path} ->
+	    {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, Path, Dict)};
+	[{_, Path}] ->
 	    {reply, Path, Dict}
-    end
-    catch
-	A:B -> logger:format_log(info, "ECALL_MEDREG(~p): {register_local_media, Catch, ~p, ~p}~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
-	       {noreply, Dict}
     end;
 
-handle_call({lookup_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+handle_call({lookup_local, MediaName, CallId}, {Pid, _Ref}=From, Dict) ->
     logger:format_log(info, "ECALL_MEDREG(~p): {lookup_local, ~p, ~p}", [self(), MediaName, CallId]),
-    case dict:find({Pid, CallId, MediaName}, Dict) of
-        error ->
+    Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
+				true;
+			   (_, _) -> false
+			end, Dict),
+    case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
+        false ->
             {reply, {error, not_local}, Dict};        
-        {ok, Path} ->
-            {reply, {ok, Path}, Dict}
+	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
+	    spawn(fun() -> wait_for_fs_media(From, Path, RecvSrv) end),
+	    {noreply, Dict}
     end;
 
-handle_call({is_local, MediaName, CallId}, {Pid, _Ref}, Dict) ->
+handle_call({is_local, MediaName, CallId}, {Pid, _Ref}=From, Dict) ->
     logger:format_log(info, "ECALL_MEDREG(~p): {is_local, ~p, ~p}", [self(), MediaName, CallId]),
-    case dict:find({Pid, CallId, MediaName}, Dict) of
-        error ->
-            {reply, false, Dict};
-        {ok, Path} ->
-            {reply, Path, Dict}
+    Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
+				true;
+			   (_, _) -> false
+			end, Dict),
+    case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
+        false ->
+            {reply, {error, not_local}, Dict};        
+	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
+	    spawn(fun() -> wait_for_fs_media(From, Path, RecvSrv) end),
+	    {noreply, Dict}
     end;
 
 handle_call(_Request, _From, Dict) ->
@@ -197,13 +205,15 @@ generate_local_path(MediaName) ->
     M = whistle_util:to_binary(MediaName),
     <<?LOCAL_MEDIA_PATH, M/binary>>.
 
+-spec(request_media/2 :: (MediaName :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
 request_media(MediaName, CallId) ->
     request_media(MediaName, <<"new">>, CallId).
 
+-spec(request_media/3 :: (MediaName :: binary(), Type :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
 request_media(MediaName, Type, CallId) ->
-    case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}) of
+    case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}, infinity) of
         {ok, Path} ->
-            Path;
+            {ok, Path};
         {error, _} ->
             lookup_remote(MediaName, Type)
     end.
@@ -220,8 +230,17 @@ lookup_remote(MediaName, StreamType) ->
 	true = whistle_api:media_resp_v(MediaResp),
 	MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
 
-	wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)
+	{ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
     catch
 	_:B ->
 	    {error, B}
+    end.
+
+wait_for_fs_media(From, Path, RecvSrv) ->
+    case erlang:is_process_alive(RecvSrv) of
+	true ->
+	    timer:sleep(100),
+	    wait_for_fs_media(From, Path, RecvSrv);
+	false ->
+	    gen_server:reply(From, {ok, Path})
     end.

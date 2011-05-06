@@ -108,9 +108,9 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 	true ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
 	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
-		false ->
+		{error, not_local} ->
 		    logger:format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
-		Media ->
+		{ok, Media} ->
                     M = whistle_util:to_list(Media),
 		    case filelib:is_regular(M)
                         andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
@@ -272,12 +272,12 @@ get_bridge_endpoint(JObj) ->
 	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))
     end.
 
--spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
+-spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} ->
             MediaName;
-        Url ->
+        {ok, Url} ->
             get_fs_playback(Url)
     end.
 
