@@ -18,6 +18,8 @@
 -define(KEY_REG_SUCCESS, <<"registration.success">>).
 -define(KEY_REG_QUERY, <<"registration.query">>).
 
+-define(KEY_MWI_UPDATE, <<"mwi.update">>).
+
 %% To listen for auth requests, bind your queue in the CallMgr Exchange with the <<"auth.req">> routing key.
 %% To listen for route requests, bind your queue in the CallMgr Exchange with the <<"route.req">> routing key.
 
