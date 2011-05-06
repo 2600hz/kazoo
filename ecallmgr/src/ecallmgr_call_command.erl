@@ -228,11 +228,16 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 	    {App, Data}
     end;
 get_fs_app(Node, UUID, JObj, <<"set">>=AppName) ->
-    {struct, Custom} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
+    {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
     lists:foreach(fun({K,V}) ->
 			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
 			  set(Node, UUID, Arg)
-		  end, Custom),
+		  end, ChannelVars),
+    {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
+    lists:foreach(fun({K,V}) ->
+			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
+			  export(Node, UUID, Arg)
+		  end, CallVars),
     {AppName, noop};
 get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
@@ -445,6 +450,10 @@ set_continue_on_fail(Node, UUID, <<"false">>) ->
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
+
+-spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
+export(Node, UUID, Arg) ->
+    send_cmd(Node, UUID, "export", whistle_util:to_list(Arg)).
 
 %% builds a FS specific flag string for the conference command
 -spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).

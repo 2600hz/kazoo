@@ -130,7 +130,7 @@
 -define(REG_QUERY_RESP_TYPES, []).
 
 %% Route Requests - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
+-define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Destination-Number">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 			   ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
@@ -143,6 +143,7 @@
 			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
 			  ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+                          ,{<<"Destination-Number">>, fun is_binary/1}
 			  ,{<<"To">>, fun is_binary/1}
 			  ,{<<"From">>, fun is_binary/1}
 			  ,{<<"Call-ID">>, fun is_binary/1}
@@ -440,7 +441,7 @@
 -define(PARK_REQ_TYPES, []).
 
 %% Set - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FSet
--define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>]).
+-define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>, <<"Custom-Call-Vars">>]).
 -define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			 ,{<<"Event-Name">>, <<"command">>}
@@ -449,6 +450,13 @@
 			 ]).
 -define(SET_REQ_TYPES, [
 			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
+							    lists:all(fun({K, V}) when is_binary(K) andalso
+										       (is_binary(V) orelse is_number(V)) -> true;
+									 (_) -> false
+								      end, L);
+						       (_) -> false
+						    end},
+			{<<"Custom-Call-Vars">>, fun({struct, L}) when is_list(L) ->
 							    lists:all(fun({K, V}) when is_binary(K) andalso
 										       (is_binary(V) orelse is_number(V)) -> true;
 									 (_) -> false
@@ -722,6 +730,7 @@
 				 ,{<<"playback">>, <<"tones">>}
 				 ,{<<"park">>, <<"park">>}
 				 ,{<<"set">>, <<"set">>}
+				 ,{<<"export">>, <<"set">>}
 				 ,{<<"say">>, <<"say">>}
 				 ,{<<"sleep">>, <<"sleep">>}
 				 ,{<<"bridge">>, <<"bridge">>}
