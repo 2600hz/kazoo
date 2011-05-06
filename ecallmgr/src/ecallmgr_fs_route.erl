@@ -222,6 +222,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(handle_route_req/4 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist()) -> no_return()).
 handle_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
+	       ,{<<"Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, FSData)}
 	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
 	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
 	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}

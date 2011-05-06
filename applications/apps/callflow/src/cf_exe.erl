@@ -14,8 +14,6 @@
 %% API
 -export([start/2]).
 
--import(cf_call_command, [hangup/1]).
-
 -include("callflow.hrl").
 
 %%--------------------------------------------------------------------
@@ -74,11 +72,9 @@ wait(Call, Flow, Pid) ->
            logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
-                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
-                   hangup(Call);
+                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]);
                ?EMPTY_JSON_OBJECT ->
-                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
-                   hangup(Call);
+                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]);
                NewFlow ->
                    next(Call, NewFlow)
            end;
@@ -105,11 +101,8 @@ wait(Call, Flow, Pid) ->
            end;
        {branch, NewFlow} ->
            next(Call, NewFlow);
-       {heartbeat} ->
-           wait(Call, Flow, Pid);
        {stop} ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]),
-           hangup(Call);
+           logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]);
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
            is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
@@ -129,10 +122,6 @@ wait(Call, Flow, Pid) ->
                _Else ->
                    wait(Call, Flow, Pid)
            end
-   after
-       120000 ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Callflow timeout!", [self()]),
-           hangup(Call)
    end.
 
 %%--------------------------------------------------------------------

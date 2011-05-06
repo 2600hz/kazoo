@@ -178,10 +178,10 @@ start_amqp() ->
 handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
     <<"dialplan">> = wh_json:get_value(<<"Event-Category">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    To = wh_json:get_value(<<"To">>, JObj),
-    From = wh_json:get_value(<<"From">>, JObj),
-    true = hunt_to(To) orelse hunt_no_match(To),
-    wh_cache:store({cf_call, CallId}, {To, From, JObj}, 5),
+    Dest = destination_uri(JObj),
+    true = hunt_to(Dest) orelse hunt_no_match(Dest),
+    logger:format_log(info, "CF_RESP(~p): Affirmative routing response for ~p", [self(), Dest]),
+    wh_cache:store({cf_call, CallId}, {Dest, JObj}, 5),
     Resp = [
              {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
@@ -193,25 +193,35 @@ handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
 
 handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    {ok, {To, From, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
-    {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, To}),
+    {ok, {Dest, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
+    {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, Dest}),
+    To = wh_json:get_value(<<"To">>, RouteReq),
+    From = wh_json:get_value(<<"From">>, RouteReq),
     [ToNumber, ToRealm] = binary:split(To, <<"@">>),
     [FromNumber, FromRealm] = binary:split(From, <<"@">>),
+    [DestNumber, DestRealm] = binary:split(Dest, <<"@">>),
     Call = #cf_call {
-       call_id=CallId
-      ,flow_id=FlowId
-      ,cf_responder=Parent
+       ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
       ,bdst_q=CQ
-      ,ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
+      ,call_id=CallId
+      ,cf_responder=Parent
       ,account_db=AccountDb
-      ,to=To
-      ,to_number=ToNumber
-      ,to_realm=ToRealm
+      ,authorizing_id=wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], RouteReq)
+      ,flow_id=FlowId
+      ,cid_name=wh_json:get_value(<<"Caller-ID-Name">>, RouteReq)
+      ,cid_number=wh_json:get_value(<<"Caller-ID-Number">>, RouteReq)
+      ,destination=Dest
+      ,dest_number=DestNumber
+      ,dest_realm=DestRealm
       ,from=From
       ,from_number=FromNumber
       ,from_realm=FromRealm
-      ,route_request=RouteReq
+      ,to=To
+      ,to_number=ToNumber
+      ,to_realm=ToRealm
+      ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
      },
+    cf_call_command:set(undefined, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq), Call),
     format_log(info, "CF_RESP(~p): Executing callflow for ~p(~p)", [self(), To, CallId]),
     spawn(fun() -> cf_exe:start(Call, Flow) end);
 
@@ -231,23 +241,20 @@ hunt_to(To) ->
 -spec(hunt_no_match/1 :: (To :: binary()) -> boolean()).
 hunt_no_match(To) ->    
     [_, ToRealm] = binary:split(To, <<"@">>),
-    NoMatch = <<"no_match@", ToRealm/binary>>,
-    case wh_cache:fetch({cf_flow, To}) of
-        {ok, _} ->
-            format_log(info, "CF_RESP(~p): Callflow for ~p exists in cache...", [self(), NoMatch]),
-            true;
-        {error, _} ->
-            lookup_flow(NoMatch)
-    end.    
+    lookup_flow(To, <<"no_match@", ToRealm/binary>>).
 
 -spec(lookup_flow/1 :: (To :: binary()) -> boolean()).
 lookup_flow(To) ->
-    case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, To}]) of
+    lookup_flow(To, To).
+
+-spec(lookup_flow/2 :: (To :: binary(), Key :: binary()) -> boolean()).
+lookup_flow(To, Key) ->
+    case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, Key}]) of
         {ok, []} ->
-            format_log(info, "CF_RESP(~p): Could not find callflow for ~p", [self(), To]),
+            format_log(info, "CF_RESP(~p): Could not find callflow for ~p to ~p", [self(), Key, To]),
             false;
         {ok, [JObj]} ->
-            format_log(info, "CF_RESP(~p): Retreived callflow for ~p: ~p", [self(), To, JObj]),
+            format_log(info, "CF_RESP(~p): Retreived callflow for ~p to ~p", [self(), Key, To]),
             wh_cache:store({cf_flow, To}, {
                              wh_json:get_value(<<"id">>, JObj),
                              wh_json:get_value([<<"value">>, <<"flow">>], JObj),
@@ -255,9 +262,15 @@ lookup_flow(To) ->
                             }, 500),
             true;
         {error, _}=E ->
-            format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p", [self(), E, To]),
+            format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p to ~p", [self(), E, Key, To]),
             false
     end.    
+
+-spec(destination_uri/1 :: (JObj :: json_object()) -> binary()).
+destination_uri(JObj) ->    
+    [ToNumber, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"unknown@nodomain">>), <<"@">>), 
+    <<(wh_json:get_value(<<"Destination-Number">>, JObj, ToNumber))/binary, $@, (wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Realm">>], JObj, ToRealm))/binary>>.
+
 %%%
 %%%============================================================================
 %%%== END =====

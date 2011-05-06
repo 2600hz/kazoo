@@ -185,8 +185,10 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
 	true ->
 	    ok = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
 	    ok = set_continue_on_fail(Node, UUID, wh_json:get_value(<<"Continue-On-Fail">>, JObj)),
-	    ok = set_eff_call_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
-	    ok = set_eff_call_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
+	    ok = set_eff_caller_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
+	    ok = set_eff_caller_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
+	    ok = set_eff_callee_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Callee-ID-Name">>, JObj)),
+	    ok = set_eff_callee_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Callee-ID-Number">>, JObj)),
 	    ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
 
 	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
@@ -197,6 +199,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
 	    DialStrings = [ DS || DS <- [get_bridge_endpoint(EP) || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])], DS =/= "" ],
 
 	    BridgeCmd = string:join(DialStrings, DialSeparator),
+
 	    {App, BridgeCmd}
     end;
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
@@ -225,11 +228,16 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 	    {App, Data}
     end;
 get_fs_app(Node, UUID, JObj, <<"set">>=AppName) ->
-    {struct, Custom} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
+    {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
     lists:foreach(fun({K,V}) ->
 			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
 			  set(Node, UUID, Arg)
-		  end, Custom),
+		  end, ChannelVars),
+    {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
+    lists:foreach(fun({K,V}) ->
+			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
+			  export(Node, UUID, Arg)
+		  end, CallVars),
     {AppName, noop};
 get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
@@ -357,18 +365,32 @@ stream_file({Iod, _File}=State) ->
 	    eof
     end.
 
--spec(set_eff_call_id_name/3 :: (Node :: atom(), UUID :: binary(), Name :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_eff_call_id_name(_Node, _UUID, undefined) ->
+-spec(set_eff_caller_id_name/3 :: (Node :: atom(), UUID :: binary(), Name :: undefined | binary()) -> ok | timeout | {error, string()}).
+set_eff_caller_id_name(_Node, _UUID, undefined) ->
     ok;
-set_eff_call_id_name(Node, UUID, Name) ->
+set_eff_caller_id_name(Node, UUID, Name) ->
     N = list_to_binary(["effective_caller_id_name=", Name]),
     set(Node, UUID, N).
 
--spec(set_eff_call_id_number/3 :: (Node :: atom(), UUID :: binary(), Num :: undefined | integer() | list() | binary()) -> ok | timeout | {error, string()}).
-set_eff_call_id_number(_Node, _UUID, undefined) ->
+-spec(set_eff_caller_id_number/3 :: (Node :: atom(), UUID :: binary(), Num :: undefined | integer() | list() | binary()) -> ok | timeout | {error, string()}).
+set_eff_caller_id_number(_Node, _UUID, undefined) ->
     ok;
-set_eff_call_id_number(Node, UUID, Num) ->
+set_eff_caller_id_number(Node, UUID, Num) ->
     N = list_to_binary(["effective_caller_id_number=", whistle_util:to_list(Num)]),
+    set(Node, UUID, N).
+
+-spec(set_eff_callee_id_name/3 :: (Node :: atom(), UUID :: binary(), Name :: undefined | binary()) -> ok | timeout | {error, string()}).
+set_eff_callee_id_name(_Node, _UUID, undefined) ->
+    ok;
+set_eff_callee_id_name(Node, UUID, Name) ->
+    N = list_to_binary(["sip_callee_id_name=", Name]),
+    set(Node, UUID, N).
+
+-spec(set_eff_callee_id_number/3 :: (Node :: atom(), UUID :: binary(), Num :: undefined | integer() | list() | binary()) -> ok | timeout | {error, string()}).
+set_eff_callee_id_number(_Node, _UUID, undefined) ->
+    ok;
+set_eff_callee_id_number(Node, UUID, Num) ->
+    N = list_to_binary(["sip_callee_id_number=", whistle_util:to_list(Num)]),
     set(Node, UUID, N).
 
 %% -spec(set_bypass_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
@@ -428,6 +450,10 @@ set_continue_on_fail(Node, UUID, <<"false">>) ->
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
+
+-spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
+export(Node, UUID, Arg) ->
+    send_cmd(Node, UUID, "export", whistle_util:to_list(Arg)).
 
 %% builds a FS specific flag string for the conference command
 -spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).

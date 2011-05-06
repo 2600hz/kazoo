@@ -464,17 +464,17 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 %% @end
 %%--------------------------------------------------------------------
 -spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{route_request=RR, account_db=Db}=Call) ->
+new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
     store_recording(MediaName, Box, Call),
     receive after 5000 -> ok end,
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     NewMessages=[{struct, [
 			   {<<"timestamp">>, new_timestamp()}
-			   ,{<<"from">>, wh_json:get_value(<<"From">>, RR)}
-			   ,{<<"to">>, wh_json:get_value(<<"To">>, RR)}
-			   ,{<<"caller_id_number">>, wh_json:get_value(<<"Caller-ID-Number">>, RR)}
-			   ,{<<"caller_id_name">>, wh_json:get_value(<<"Caller-ID-Name">>, RR)}
-			   ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, RR)}
+			   ,{<<"from">>, Call#cf_call.from}
+			   ,{<<"to">>, Call#cf_call.to}
+			   ,{<<"caller_id_number">>, Call#cf_call.cid_number}
+			   ,{<<"caller_id_name">>, Call#cf_call.cid_name}
+			   ,{<<"call_id">>, Call#cf_call.call_id}
 			   ,{<<"folder">>, ?FOLDER_NEW}
 			   ,{<<"attachment">>, MediaName}
 			  ]
