@@ -94,9 +94,9 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 	    RecArg = binary_to_list(list_to_binary([Media, " "
-						    ,wh_json:get_value(<<"Time-Limit">>, JObj, "20"), " "
-						    ,wh_json:get_value(<<"Silence-Threshold">>, JObj, "200"), " "
-						    ,wh_json:get_value(<<"Silence-Hits">>, JObj, "3")
+						    ,whistle_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
+						    ,whistle_util:to_list(wh_json:get_value(<<"Silence-Threshold">>, JObj, "500")), " "
+						    ,whistle_util:to_list(wh_json:get_value(<<"Silence-Hits">>, JObj, "5"))
 						   ])),
 	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 	    

@@ -57,7 +57,7 @@ start_srv(FilePath) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Restart = transient,
+    Restart = temporary,
     Shutdown = 2000,
     Type = worker,
 

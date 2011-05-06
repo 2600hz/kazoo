@@ -271,9 +271,9 @@ record(MediaName, Call) ->
 record(MediaName, Terminators, Call) ->
     record(MediaName, Terminators, <<"120">>, Call).
 record(MediaName, Terminators, TimeLimit, Call) ->
-    record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
+    record(MediaName, Terminators, TimeLimit, <<"500">>,  Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
+    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"record">>}
@@ -293,9 +293,9 @@ b_record(MediaName, Call) ->
 b_record(MediaName, Terminators, Call) ->
     b_record(MediaName, Terminators, <<"120">>, Call).
 b_record(MediaName, Terminators, TimeLimit, Call) ->
-    b_record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
+    b_record(MediaName, Terminators, TimeLimit, <<"500">>,  Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
+    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false).

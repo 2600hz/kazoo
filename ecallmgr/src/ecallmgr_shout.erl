@@ -146,6 +146,7 @@ is_auth_req_header(Headers, Path) ->
     lists:all(fun(H) -> is_auth_req_headers(H, Base) end, binary:split(Headers, <<"\r\n">>, [global])).
 
 is_auth_req_headers(<<"SOURCE /", Rest/binary>>, Base) ->
+    logger:format_log(info, "SHOUT: SOURCE: ~p : ~p~n", [Rest, Base]),
     binary:longest_common_prefix([Rest, Base]) =:= byte_size(Base);
 is_auth_req_headers(<<"Authorization: Basic ", Base64/binary>>, _) ->
     Base64 =:= ?PW_ENCODED;
