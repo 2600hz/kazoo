@@ -102,7 +102,7 @@ set(undefined, CallVars, Call) ->
     set(?EMPTY_JSON_OBJECT, CallVars, Call);
 set(ChannelVars, undefined, Call) ->
     set(ChannelVars, ?EMPTY_JSON_OBJECT, Call);
-set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, Call) ->
+set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, _) ->
     ok;
 set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
