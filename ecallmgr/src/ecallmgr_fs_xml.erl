@@ -118,8 +118,7 @@ format_did(DID, <<"1npan">>) ->
 -spec(get_leg_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
 get_leg_vars({struct, Prop}) -> get_leg_vars(Prop);
 get_leg_vars(Prop) ->
-    Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
-    lists:flatten(["[", string:join([binary_to_list(V) || V <- Vars], ","), "]"]).
+    ["[", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"].
 
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
@@ -180,6 +179,12 @@ get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
 			[ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
 		end, Vars, Custom);
+
+get_channel_vars({<<"SIP-Headers">>, {struct, [_]}=SIPHeaders}, Vars) ->
+    lists:foldl(fun({K,V}, Vars0) ->
+			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
+		end, Vars, SIPHeaders);
+
 get_channel_vars({_K, _V}, Vars) ->
     %logger:format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
