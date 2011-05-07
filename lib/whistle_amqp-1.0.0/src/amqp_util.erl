@@ -73,7 +73,9 @@ callevt_publish(CallId, Payload, event) ->
 callevt_publish(CallId, Payload, status_req) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallId/binary>>, Payload, <<"application/json">>);
 callevt_publish(CallId, Payload, cdr) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>).
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>);
+callevt_publish(CallId, Payload, RoutingKey) ->
+    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, <<"application/json">>).
 
 broadcast_publish(Payload) ->
     broadcast_publish(Payload, undefined).

@@ -64,6 +64,9 @@
          ,noop_req_v/1, mwi_update_v/1
 	]).
 
+%% Other AMQP API validators can use these helpers
+-export([build_message/3, validate/4]).
+
 %% FS-specific routines
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 
