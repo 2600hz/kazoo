@@ -87,7 +87,7 @@ build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->
     case props:get_value(<<"Route">>, RouteProp) of 
-        <<"sip:", _/binary>> = R1 -> logger:format_log(info, "THIS MATCHED?! ~p", [R1]),  <<?SIP_INTERFACE, (R1)/binary>>; 
+        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>; 
         R2 -> R2
     end;
 build_route(RouteProp, <<"username">>) ->

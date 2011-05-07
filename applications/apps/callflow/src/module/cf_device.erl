@@ -134,7 +134,8 @@ get_ignore_early_media(Device, Owner) ->
 get_custom_channel_vars(Device, Owner) ->
     ChannelVars = [
                     {<<"Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], Device)}
-                   ,{<<"CallForward">>, wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner)}
+                   ,{<<"Call-Forward">>, wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner)}
+                   ,{<<"CF-Keep-On-System">>, get_ignore_early_media(Device, Owner)}
                   ],
     {struct, [ KV || {_, V}=KV <- ChannelVars, V =/= undefined ]}.
 
