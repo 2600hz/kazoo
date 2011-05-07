@@ -174,6 +174,7 @@ writer_loop(Sock, Data, Parent, SrvRef) ->
 	    Path = ecallmgr_shout:get_path(Parent),
 	    logger:format_log(info, "WRITER: size of Data: ~p~n", [byte_size(iolist_to_binary(Data))]),
 	    ok = file:write_file(Path, lists:reverse(Data)),
+	    logger:format_log(info, "WRITER: wrote to ~p~n", [Path]),
 	    gen_tcp:close(Sock),
 	    Parent ! {done, SrvRef};
 	_Other ->

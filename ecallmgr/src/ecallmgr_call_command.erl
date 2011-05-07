@@ -94,7 +94,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
-	    set(Node, UUID, "enable_file_write_buffering=false"), % disable buffering to see if we get all the media
+	    _ = set(Node, UUID, "enable_file_write_buffering=false"), % disable buffering to see if we get all the media
 	    
 	    RecArg = binary_to_list(list_to_binary([Media, " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
@@ -114,30 +114,33 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 		{error, not_local} ->
 		    logger:format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
 		{ok, Media} ->
-                    M = whistle_util:to_list(Media),
-		    case filelib:is_regular(M)
-                        andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+		    logger:format_log(info, "CONTROL(~p): Streaming media ~p~n", [self(), Media]),
+		    case filelib:is_regular(Media) andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
 			<<"stream">> ->
 			    %% stream file over AMQP
 			    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
 				       ,{<<"Media-Name">>, MediaName}
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
-			    spawn(fun() -> stream_over_amqp(M, JObj, Headers) end);
+			    spawn_link(fun() -> stream_over_amqp(Media, JObj, Headers) end),
+			    {return, ok};
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
-			    spawn(fun() -> stream_over_http(M, Verb, JObj) end);
+			    spawn_link(fun() -> stream_over_http(Media, Verb, JObj) end),
+			    {return, ok};
 			<<"post">>=Verb ->
 			    %% stream file over HTTP PUSH
-			    spawn(fun() -> stream_over_http(M, Verb, JObj) end);
+			    spawn_link(fun() -> stream_over_http(Media, Verb, JObj) end),
+			    {return, ok};
 			false ->
-			    logger:format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]);
+			    logger:format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]),
+			    {return, error};
 			_Method ->
 			    %% unhandled method
-			    logger:format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method])
+			    logger:format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method]),
+			    {return, error}
 		    end
-	    end,
-            {return, ok}
+	    end
     end;
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
@@ -296,7 +299,7 @@ get_fs_playback(<<"http://", _/binary>>=Url) ->
 get_fs_playback(Url) ->
     Url.
 
--spec(stream_over_amqp/3 :: (File :: list(), JObj :: proplist(), Headers :: proplist()) -> no_return()).
+-spec(stream_over_amqp/3 :: (File :: binary(), JObj :: proplist(), Headers :: proplist()) -> no_return()).
 stream_over_amqp(File, JObj, Headers) ->
     DestQ = case wh_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
 		undefined ->
@@ -311,6 +314,7 @@ stream_over_amqp(File, JObj, Headers) ->
 %% get a chunk of the file and send it in an AMQP message to the DestQ
 -spec(stream_over_amqp/5 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer()) -> no_return()).
 stream_over_amqp(DestQ, F, State, Headers, Seq) ->
+    logger:format_log(info, "CONTROL(~p): Streaming via AMQP to ~p~n", [self(), DestQ]),
     case F(State) of
 	{ok, Data, State1} ->
 	    %% send msg
@@ -329,9 +333,10 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 	    eof
     end.
 
--spec(stream_over_http/3 :: (File :: list(), Verb :: binary(), JObj :: proplist()) -> no_return()).
+-spec(stream_over_http/3 :: (File :: binary(), Verb :: binary(), JObj :: proplist()) -> no_return()).
 stream_over_http(File, Verb, JObj) ->
     Url = whistle_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    logger:format_log(info, "CONTROL(~p): Streaming via HTTP(~p) to ~p~n", [self(), Verb, Url]),
     {struct, AddHeaders} = wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT),
     Headers = [{"Content-Length", filelib:file_size(File)}
 	       | [ {whistle_util:to_list(K), V} || {K,V} <- AddHeaders] ],
@@ -342,11 +347,12 @@ stream_over_http(File, Verb, JObj) ->
 	{ok, StatusCode, RespHeaders, RespBody} ->
 	    case whistle_api:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>
 								       ,{struct, [{<<"Status-Code">>, StatusCode}
-										  ,{<<"Headers">>, {struct, RespHeaders}}
+										  ,{<<"Headers">>, {struct, [ {whistle_util:to_binary(K), whistle_util:to_binary(V)} || {K,V} <- RespHeaders ]}}
 										  ,{<<"Body">>, whistle_util:to_binary(RespBody)}
 										 ]}
 								   ,JObj)) of
 		{ok, Payload} ->
+		    logger:format_log(info, "CONTROL(~p): ibrowse OKed with ~p publishing to ~p: ~s~n", [self(), StatusCode, AppQ, Payload]),
 		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
 		{error, Msg} ->
 		    logger:format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
@@ -357,8 +363,9 @@ stream_over_http(File, Verb, JObj) ->
 	    logger:format_log(error, "CONTROL(~p): Ibrowse_req_id: ~p~n", [self(), ReqId])
     end.
 
--spec(stream_file/1 :: ({undefined | io_device(), string()}) -> {ok, list(), tuple()} | eof).
+-spec(stream_file/1 :: ({undefined | io_device(), binary()}) -> {ok, list(), tuple()} | eof).
 stream_file({undefined, File}) ->
+    true = filelib:is_regular(File),
     {ok, Iod} = file:open(File, [read, raw]),
     stream_file({Iod, File});
 stream_file({Iod, _File}=State) ->
