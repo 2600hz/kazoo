@@ -149,6 +149,8 @@ get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
+get_channel_vars({<<"Codecs">>, []}, Vars) ->
+    Vars;
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     Codecs = [ binary_to_list(C) || C <- Cs ],
     CodecStr = string:join(Codecs, ","),

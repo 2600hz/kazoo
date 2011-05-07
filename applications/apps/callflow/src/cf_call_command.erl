@@ -169,8 +169,8 @@ b_hangup(Call) ->
 -spec(bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) -> ok).
 -spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Call :: #cf_call{}) -> ok).
 -spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
 
 -spec(b_bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
@@ -180,9 +180,9 @@ b_hangup(Call) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 -spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
                          tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 
 bridge(Endpoints, Call) ->
@@ -192,19 +192,19 @@ bridge(Endpoints, Timeout, Call) ->
 bridge(Endpoints, Timeout, CallerID, Call) ->
     bridge(Endpoints, Timeout, CallerID, <<"single">>, Call).
 bridge(Endpoints, Timeout, CallerID, Strategy, Call) ->
-    bridge(Endpoints, Timeout, CallerID, Strategy, <<"true">>, Call).
-bridge(Endpoints, Timeout, CallerID, Strategy, ContinueOnFail, Call) ->
-    bridge(Endpoints, Timeout, CallerID, Strategy, ContinueOnFail, <<"us-ring">>, Call).
-bridge(Endpoints, Timeout, CallerID, Strategy, ContinueOnFail, Ringback, Call) when not is_tuple(CallerID) ->
+    bridge(Endpoints, Timeout, CallerID, Strategy, <<"false">>, Call).
+bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Call) ->
+    bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, <<"us-ring">>, Call).
+bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Ringback, Call) when not is_tuple(CallerID) ->
     bridge(Endpoints, Timeout
            ,cf_endpoint:get_endpoint_caller_id(Call#cf_call.authorizing_id, CallerID, Call)
-           ,Strategy, ContinueOnFail, Ringback, Call);
-bridge(Endpoints, Timeout, {CallerIDNum, CallerIDName}, Strategy, ContinueOnFail, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+           ,Strategy, IgnoreEarlyMedia, Ringback, Call);
+bridge(Endpoints, Timeout, {CallerIDNum, CallerIDName}, Strategy, IgnoreEarlyMedia, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
-               ,{<<"Continue-On-Fail">>, ContinueOnFail}
+               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
                ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
                ,{<<"Ringback">>, Ringback}
@@ -223,10 +223,10 @@ b_bridge(Endpoints, Timeout, CallerID, Call) ->
     b_bridge(Endpoints, Timeout, CallerID, <<"single">>, Call).
 b_bridge(Endpoints, Timeout, CallerID, Strategy, Call) ->
     b_bridge(Endpoints, Timeout, CallerID, Strategy, <<"true">>, Call).
-b_bridge(Endpoints, Timeout, CallerID, Strategy, ContinueOnFail, Call) ->
-    b_bridge(Endpoints, Timeout, CallerID, Strategy, ContinueOnFail, <<"us-ring">>, Call).
-b_bridge(Endpoints, Timeout, CallerID, Strategy, ContinueOnFail, Ringback, Call) ->
-    bridge(Endpoints, Timeout, CallerID, Strategy, ContinueOnFail, Ringback, Call),
+b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Call) ->
+    b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, <<"us-ring">>, Call).
+b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
+    bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Ringback, Call),
     wait_for_bridge((whistle_util:to_integer(Timeout)*1000) + 5000).
 
 %%--------------------------------------------------------------------

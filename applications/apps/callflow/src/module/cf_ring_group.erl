@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/5, wait_for_bridge/1, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_bridge/1, wait_for_unbridge/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -31,12 +31,12 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
                                                 undefined -> [E|Acc];
                                                 Delay -> [{struct, [{<<"Endpoint-Delay">>, Delay}|Props]}|Acc]
                                             end;
-                                        _=E -> logger:format_log(info, "GOT SOMETHING ELSE: ~p", [E]), Acc
+                                        _ -> Acc
                                     end
                             end, [], wh_json:get_value([<<"endpoints">>], Data, [])),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
-    case b_bridge(Endpoints, Timeout, {undefined, undefined}, Strategy, Call) of
+    case b_bridge(Endpoints, Timeout, {undefined, undefined}, Strategy, <<"true">>, Call) of
         {ok, _} ->
             _ = wait_for_unbridge(),
             CFPid ! { stop };

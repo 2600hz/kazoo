@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_bridge/1, wait_for_unbridge/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -26,7 +26,8 @@
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
     {ok, Endpoint} = cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),  
-    case b_bridge([Endpoint], Timeout, {undefined, undefined}, Call) of
+    IgnoreEarlyMedia = wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint),
+    case b_bridge([Endpoint], Timeout, {undefined, undefined}, <<"single">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             _ = wait_for_unbridge(),
             CFPid ! { stop };
