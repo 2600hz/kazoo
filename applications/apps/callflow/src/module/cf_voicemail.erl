@@ -574,6 +574,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
     _ = flush(Call),
     case Digit of
 	Listen ->
+	    logger:format_log(info, "CF_VOICEMAIL(~p): Recv ~p, playing ~p~n", [self(), Listen, MediaName]),
 	    _ = b_play(MediaName, Call),
 	    review_recording(MediaName, Box, Call);
 	Record ->

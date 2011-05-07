@@ -445,7 +445,7 @@ set_ringback(Node, UUID, RingBack) ->
 set_sip_req_headers(_Node, _UUID, undefined) ->
     ok;
 set_sip_req_headers(Node, UUID, [_]=SIPHeaders) ->
-    [ set(Node, UUID, list_to_binary(["sip_h_", K, "=", V])) || {K, V} <- SIPHeaders ],
+    _ = [ set(Node, UUID, list_to_binary(["sip_h_", K, "=", V])) || {K, V} <- SIPHeaders ],
     ok.
 
 -spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).

@@ -10,10 +10,13 @@
 -module(ecallmgr_shout).
 
 %% API
--export([start_link/1, get_stream_url/1, get_path/1]).
+-export([start_link/2, get_stream_url/1, get_path/1]).
 
 %% gen_server callbacks
--export([init/2]).
+-export([init_recv/2, init_srv/2]).
+
+-include("ecallmgr.hrl").
+-include_lib("whistle/include/wh_media.hrl").
 
 -define(SERVER, ?MODULE).
 -define(PORT_OPTIONS, [binary, {packet,0}, {active,false}, {reuseaddr, true}]).
@@ -33,10 +36,11 @@
 %% @end
 %%--------------------------------------------------------------------
 
--spec(start_link/1 :: (Path :: binary()) -> tuple(ok, pid())).
-start_link(Path) ->
-    logger:format_log(info, "SHOUT start link for ~p", [Path]),
-    proc_lib:start_link(?MODULE, init, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]).
+-spec(start_link/2 :: (Path :: binary(), Type :: srv | recv) -> tuple(ok, pid())).
+start_link(Path, recv) ->
+    proc_lib:start_link(?MODULE, init_recv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]);
+start_link(Path, srv) ->
+    proc_lib:start_link(?MODULE, init_srv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]).
 
 -spec(get_stream_url/1 :: (Srv :: pid()) -> binary() | timeout).
 get_stream_url(Srv) ->
@@ -58,106 +62,168 @@ get_path(Srv) ->
 	    timeout
     end.
 
-init(Parent, Path) ->
+%% start the receiving socket for a "record" stream
+init_recv(Parent, Path) ->
     {ok, LSock} = gen_tcp:listen(0, ?PORT_OPTIONS),
     proc_lib:init_ack(Parent, {ok, self()}),
 
     {ok, Port} = inet:port(LSock),
-    WriterRef = make_ref(),
+    SrvRef = make_ref(),
     Self = self(),
 
     spawn_link(fun() ->
 		       {ok, S} = gen_tcp:accept(LSock),
-		       auth_loop(S, [], Self, WriterRef)
+		       auth_loop(S, [], Self, SrvRef)
 	       end),
-    loop(Path, Port, WriterRef, LSock).
+    main_loop(Path, Port, SrvRef, LSock).
 
--spec(loop/4 :: (Path :: binary(), Port :: integer(), WriterRef :: reference(), LSock :: port()) -> no_return()).
-loop(Path, Port, WriterRef, LSock) ->
+%% start a socket to stream a local file for "playback"
+init_srv(Parent, Path) ->
+    {ok, LSock} = gen_tcp:listen(0, ?PORT_OPTIONS),
+    proc_lib:init_ack(Parent, {ok, self()}),
+
+    {ok, Port} = inet:port(LSock),
+    SrvRef = make_ref(),
+    Self = self(),
+
+    spawn_link(fun() ->
+		       {ok, S} = gen_tcp:accept(LSock),
+		       send_loop(S, Path, Self, SrvRef)
+	       end),
+    main_loop(Path, Port, SrvRef, LSock).
+
+%% the server's main loop, so other processing can get info about this shout server
+-spec(main_loop/4 :: (Path :: binary(), Port :: integer(), SrvRef :: reference(), LSock :: port()) -> no_return()).
+main_loop(Path, Port, SrvRef, LSock) ->
     receive
 	{Sender, Ref, get_path} ->
 	    Sender ! {Ref, Path},
-	    loop(Path, Port, WriterRef, LSock);
+	    main_loop(Path, Port, SrvRef, LSock);
 	{Sender, Ref, get_url} ->
 	    Host = whistle_util:to_binary(net_adm:localhost()),
 	    PortBin = whistle_util:to_binary(Port),
 	    Base = filename:basename(Path),
 	    Url = <<"shout://foo:bar@", Host/binary, ":", PortBin/binary, "/", Base/binary>>,
 	    Sender ! {Ref, Url},
-	    loop(Path, Port, WriterRef, LSock);
-	{Sender, WriterRef, lsock} ->
-	    Sender ! {WriterRef, LSock},
-	    loop(Path, Port, WriterRef, LSock);
-	{error, WriterRef} ->
+	    main_loop(Path, Port, SrvRef, LSock);
+	{Sender, SrvRef, lsock} ->
+	    Sender ! {SrvRef, LSock},
+	    main_loop(Path, Port, SrvRef, LSock);
+	{error, SrvRef} ->
 	    logger:format_log(info, "SHOUT main loop for path: ~p: error, going down~n", [Path]),
 	    gen_tcp:close(LSock),
 	    throw(shout_writer_error);
-	{done, WriterRef} ->
+	{done, SrvRef} ->
 	    logger:format_log(info, "SHOUT main loop for path: ~p: done, going down~n", [Path]),
 	    gen_tcp:close(LSock),
 	    ok;
 	_Other ->
 	    logger:format_log(info, "SHOUT main loop for path: ~p: Other ~p~n", [Path, _Other]),
-	    loop(Path, Port, WriterRef, LSock)
+	    main_loop(Path, Port, SrvRef, LSock)
     end.
 
--spec(auth_loop/4 :: (Sock :: port(), Data :: list(), Parent :: pid(), WriterRef :: reference()) -> no_return()).
-auth_loop(Sock, Data, Parent, WriterRef) ->
-    inet:setopts(Sock, [{active,once}, binary]),
+%% receive the auth request and header(s) from FreeSWITCH, respond, and receive mp3 data
+-spec(auth_loop/4 :: (Sock :: port(), Data :: iolist(), Parent :: pid(), SrvRef :: reference()) -> no_return()).
+auth_loop(Sock, Data, Parent, SrvRef) ->
+    ok = inet:setopts(Sock, [{active,once}, binary]),
     receive
 	{tcp, Sock, Bin} ->
-	    Headers = whistle_util:to_binary(lists:reverse([Bin | Data])),
+	    Headers = list_to_binary(lists:reverse([Bin | Data])),
 	    Path = ?MODULE:get_path(Parent),
 
-	    case is_auth_req_header(Headers, Path) of
+	    case is_auth_req_headers(Headers, Path) of
 		true ->
 		    ok = gen_tcp:send(Sock, ?AUTH_RESP),
-		    writer_loop(Sock, [], Parent, WriterRef);
+		    writer_loop(Sock, [], Parent, SrvRef);
 		false ->
-		    auth_loop(Sock, [Bin | Data], Parent, WriterRef)
+		    auth_loop(Sock, [Bin | Data], Parent, SrvRef)
 	    end;
 	{tcp_closed, Sock} ->
-	    gen_tcp:close(Sock),
-	    exit(shout_auth_socket_closed)
+	    gen_tcp:close(Sock)
     after ?TIMEOUT ->
 	    exit(timeout)
     end.
 
--spec(writer_loop/4 :: (Sock :: port(), Data :: list(), Parent :: pid(), WriterRef :: reference()) -> no_return()).
-writer_loop(Sock, Data, Parent, WriterRef) ->
-    inet:setopts(Sock, [{active,once}, binary]),
+%% recv mp3 data from FreeSWITCH and write to local storage
+-spec(writer_loop/4 :: (Sock :: port(), Data :: list(), Parent :: pid(), SrvRef :: reference()) -> no_return()).
+writer_loop(Sock, Data, Parent, SrvRef) ->
+    ok = inet:setopts(Sock, [{active,once}, binary]),
     receive
 	{tcp, Sock, Bin} ->
-	    writer_loop(Sock, [Bin | Data], Parent, WriterRef);
+	    writer_loop(Sock, [Bin | Data], Parent, SrvRef);
 	{tcp_closed, Sock} ->
 	    Path = ecallmgr_shout:get_path(Parent),
 	    ok = file:write_file(Path, lists:reverse(Data)),
 	    gen_tcp:close(Sock),
-	    Parent ! {done, WriterRef};
+	    Parent ! {done, SrvRef};
 	_Other ->
-	    writer_loop(Sock, Data, Parent, WriterRef)
+	    writer_loop(Sock, Data, Parent, SrvRef)
     after ?TIMEOUT ->
 	    exit(timeout)
     end.
 
-is_auth_req_header(Headers, Path) ->
+-spec(send_loop/4 :: (Sock :: port(), Path :: binary(), Parent :: pid(), SrvRef :: reference()) -> no_return()).
+send_loop(Sock, Path, Parent, SrvRef) ->
+    case wh_shout:get_request(Sock) of
+	void ->
+	    logger:format_log(info, "SHOUT.accept(~p): Socket ~p closed~n", [self(), Sock]),
+	    gen_tcp:close(Sock);
+	Request ->
+	    logger:format_log(info, "SHOUT.accept(~p): Request for data received: ~p~n", [self(), Request]),
+	    {ok, Contents} = file:read_file(Path),
+
+	    Size = byte_size(Contents),
+	    ChunkSize = case ?CHUNKSIZE > Size of
+			    true -> Size;
+			    false -> ?CHUNKSIZE
+			end,
+
+	    StreamUrl = ?MODULE:get_stream_url(Parent),
+	    MediaName = filename:basename(Path),
+	    CT = <<"audio/mpeg">>,
+
+	    Resp = wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
+	    Header = wh_shout:get_header(MediaName, StreamUrl),
+
+	    ok = gen_tcp:send(Sock, [Resp]),
+
+	    MediaFile = #media_file{stream_url=StreamUrl, contents=Contents, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
+				,shout_header={0,Header}},
+	    play_media(MediaFile, Sock),
+
+	    Parent ! {done, SrvRef}
+    end.
+
+play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile, Sock) ->
+    play_media(MediaFile, Sock, 0, byte_size(Contents), <<>>, Header).
+
+play_media(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
+    case wh_shout:play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
+	{Socks1, Header1, Offset1, SoFar1} ->
+	    play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);
+	{done, _} ->
+	    ok
+    end.
+
+%% check the headers
+is_auth_req_headers(Headers, Path) ->
     Base = filename:basename(Path),
 
-    lists:all(fun(H) -> is_auth_req_headers(H, Base) end, binary:split(Headers, <<"\r\n">>, [global])).
+    lists:all(fun(H) -> is_auth_req_header(H, Base) end, binary:split(Headers, <<"\r\n">>, [global])).
 
-is_auth_req_headers(<<"SOURCE /", Rest/binary>>, Base) ->
-    logger:format_log(info, "SHOUT: SOURCE: ~p : ~p~n", [Rest, Base]),
+%% check a header
+is_auth_req_header(<<"SOURCE /", Rest/binary>>, Base) ->
     binary:longest_common_prefix([Rest, Base]) =:= byte_size(Base);
-is_auth_req_headers(<<"Authorization: Basic ", Base64/binary>>, _) ->
+is_auth_req_header(<<"Authorization: Basic ", Base64/binary>>, _) ->
     Base64 =:= ?PW_ENCODED;
-is_auth_req_headers(<<"User-Agent: libshout/2.2.2">>, _) ->
+is_auth_req_header(<<"User-Agent: libshout/2.2.2">>, _) ->
     true;
-is_auth_req_headers(<<"Content-Type: audio/mpeg">>, _) ->
+is_auth_req_header(<<"Content-Type: audio/mpeg">>, _) ->
     true;
-is_auth_req_headers(<<>>, _) ->
+is_auth_req_header(<<>>, _) ->
     true;
-is_auth_req_headers(<<"ice-", _/binary>>, _) ->
+is_auth_req_header(<<"ice-", _/binary>>, _) ->
     true;
-is_auth_req_headers(H, _) ->
+is_auth_req_header(H, _) ->
     logger:format_log(error, "IS_AUTH_REQ_H: unknown h: ~p~n", [H]),
     false.

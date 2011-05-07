@@ -12,7 +12,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_srv/1]).
+-export([start_link/0, start_srv/1, start_recv/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -33,11 +33,11 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
+start_recv(FilePath) ->
+    supervisor:start_child(?SERVER, [FilePath, recv]).
+
 start_srv(FilePath) ->
-    logger:format_log(info, "shout_sup(~p): ~p~n", [self(), FilePath]),
-    Res = supervisor:start_child(?SERVER, [FilePath]),
-    logger:format_log(info, "shout_sup(~p): ~p~n", [self(), Res]),
-    Res.
+    supervisor:start_child(?SERVER, [FilePath, srv]).
 
 %%%===================================================================
 %%% Supervisor callbacks

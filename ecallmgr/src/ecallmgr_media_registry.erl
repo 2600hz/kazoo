@@ -97,7 +97,7 @@ handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
 	false ->
 	    link(Pid),
 	    Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
-	    {ok, RecvSrv} = ecallmgr_shout_sup:start_srv(Path),
+	    {ok, RecvSrv} = ecallmgr_shout_sup:start_recv(Path),
 	    Url = ecallmgr_shout:get_stream_url(RecvSrv),
 	    {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, Path, Dict)};
 	[{_, Path}] ->
@@ -168,7 +168,7 @@ handle_info({'EXIT', Pid, _Reason}, Dict) ->
 				      true -> true;
 				      false ->
 					  format_log(info, "MEDIA_REG(~p): Pid ~p exited, Reason ~p, cleaning up ~p...~n", [self(), Pid, _Reason, Path]),
-					  file:delete(Path),
+					  _ = file:delete(Path),
 					  false
 				  end
 			  end, Dict)};
@@ -217,7 +217,9 @@ request_media(MediaName, CallId) ->
 request_media(MediaName, Type, CallId) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}, infinity) of
         {ok, Path} ->
-            {ok, Path};
+	    {ok, Srv} = ecallmgr_shout_sup:start_srv(Path),
+	    Url = ecallmgr_shout:get_stream_url(Srv),
+            {ok, Url};
         {error, _} ->
             lookup_remote(MediaName, Type)
     end.
