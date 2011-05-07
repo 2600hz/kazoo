@@ -197,6 +197,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
 	    ok = set_eff_callee_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Callee-ID-Name">>, JObj)),
 	    ok = set_eff_callee_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Callee-ID-Number">>, JObj)),
 	    ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
+	    ok = set_ignore_early_media(Node, UUID, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)),
 	    ok = set_sip_req_headers(Node, UUID, wh_json:get_value(<<"SIP-Headers">>, JObj)),
 
 	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
@@ -406,20 +407,16 @@ set_eff_callee_id_number(Node, UUID, Num) ->
     set(Node, UUID, N).
 
 %% -spec(set_bypass_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
-%% set_bypass_media(_Node, _UUID, undefined) ->
-%%     ok;
 %% set_bypass_media(Node, UUID, <<"true">>) ->
 %%     set(Node, UUID, "bypass_media=true");
-%% set_bypass_media(Node, UUID, <<"false">>) ->
-%%     set(Node, UUID, "bypass_media=false").
+%% set_bypass_media(Node, UUID, _) ->
+%%     ok.
 
-%% -spec(set_ignore_early_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
-%% set_ignore_early_media(_Node, _UUID, undefined) ->
-%%     ok;
-%% set_ignore_early_media(Node, UUID, <<"true">>) ->
-%%     set(Node, UUID, "ignore_early_media=true");
-%% set_ignore_early_media(Node, UUID, <<"false">>) ->
-%%     set(Node, UUID, "ignore_early_media=false").
+ -spec(set_ignore_early_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
+set_ignore_early_media(Node, UUID, <<"true">>) ->
+    set(Node, UUID, "ignore_early_media=true");
+set_ignore_early_media(_Node, _UUID, _) ->
+     ok.
 
 -spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
 set_timeout(_Node, _UUID, undefined) ->

@@ -26,7 +26,10 @@
 -export([get_endpoint_caller_id_options/2, get_endpoint_caller_id_option/3]).
 
 -define(VIEW_WITH_OWNER, <<"devices/listing_with_owner">>).
+-define(VIEW_CALLER_ID, <<"caller_id/find_caller_id">>).
+-define(VIEW_CALLER_ID_OPTIONS, <<"caller_id/find_caller_id_options">>).
 -define(CONFIRM_FILE, <<"/opt/freeswitch/sounds/en/us/callie/ivr/8000/ivr-accept_reject_voicemail.wav">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -181,26 +184,42 @@ get_codecs(Endpoint, _) ->
 %%--------------------------------------------------------------------
 -spec(get_custom_channel_vars/2 :: (Endpoint :: json_object(), Owner :: json_object()) -> proplist() | undefined).
 get_custom_channel_vars(Endpoint, Owner) ->
-    CV1 = [
-            {<<"Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint)}
-           ,{<<"Call-Forward">>, whistle_util:to_binary(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner))}
-          ],
-    CV2 = case whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner)) 
-              andalso whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"require_keypress">>], Owner)) of
-              true ->
-                  [
-                    {<<"Confirm-Key">>, <<"1">>}
-                   ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
-                   ,{<<"Confirm-Cancel-Timeout">>, ?CONFIRM_FILE}
-                   ,{<<"CF-Keep-Caller-ID">>, wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner)}
-                  | CV1];
-              false -> 
-                  [
-                   {<<"CF-Keep-Caller-ID">>, wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner)}
-                   | CV1]
-          end,
-    logger:format_log(info, "TEST ~p", [CV2]),
-    {struct, [ KV || {_, V}=KV <- CV2, V =/= undefined ]}.
+    Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint),
+    case { whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner))
+          ,whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"require_keypress">>], Owner)) } of
+        {false, _} when Realm =:= undefined ->
+            undefined;
+        {false, _} ->
+            {struct, [{<<"Realm">>, Realm}]};
+        {true, false} when Realm =:= undefined ->
+            {struct, [
+                       {<<"Call-Forward">>, <<"true">>}
+                      ,{<<"CF-Keep-Caller-ID">>, wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner)}
+                     ]};
+        {true, false} ->
+            {struct, [
+                       {<<"Realm">>, Realm}
+                      ,{<<"Call-Forward">>, <<"true">>}
+                      ,{<<"CF-Keep-Caller-ID">>, wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner)}
+                     ]};
+        {true, true} when Realm =:= undefined ->
+            {struct, [
+                       {<<"Call-Forward">>, <<"true">>}
+                      ,{<<"CF-Keep-Caller-ID">>, wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner)}
+                      ,{<<"Confirm-Key">>, <<"1">>}
+                      ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
+                      ,{<<"Confirm-File">>, ?CONFIRM_FILE}
+                     ]};
+        {true, true} ->
+            {struct, [
+                       {<<"Realm">>, Realm}
+                      ,{<<"Call-Forward">>, <<"true">>}
+                      ,{<<"CF-Keep-Caller-ID">>, wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner)}
+                      ,{<<"Confirm-Key">>, <<"1">>}
+                      ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
+                      ,{<<"Confirm-File">>, ?CONFIRM_FILE}
+                     ]}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -258,7 +277,6 @@ get_caller_id(_, #cf_call{authorizing_id=Id}=Call) ->
 get_endpoint_caller_id(_, raw, _) ->
     {undefined, undefined};
 get_endpoint_caller_id(For, Type, #cf_call{dest_number=DestNum}=Call) ->
-    logger:format_log(info, "FIND CALLERID TYPE ~p FOR ~p", [Type, For]),
     case props:get_value(Type, get_endpoint_caller_ids(For, Call)) of
         undefined when Type =/= <<"default">> ->             
             get_endpoint_caller_id(For, <<"default">>, Call);
@@ -280,13 +298,12 @@ get_endpoint_caller_ids(For, #cf_call{account_db=Db}) ->
         {ok, C1} = wh_cache:fetch({caller_ids, For}), C1        
     catch
         _:_ ->
-            case couch_mgr:get_all_results(Db, <<"caller_id/find_caller_id">>) of 
+            case couch_mgr:get_all_results(Db, ?VIEW_CALLER_ID) of 
                 {ok, JObj} ->
                     AllTypes = [{wh_json:get_value(<<"key">>, Result), wh_json:get_value(<<"value">>, Result)}
                                 || Result <- JObj
                                ],
                     C2 = merge_endpoint_caller_id_types(For, AllTypes, []),
-                    logger:format_log(info, "Loading caller-ids for ~p with ~p", [For, C2]),
                     wh_cache:store({caller_ids, For}, C2), C2;
                 {error, _} ->
                     []
@@ -336,7 +353,7 @@ get_endpoint_caller_id_options(For, #cf_call{account_db=Db}) ->
         {ok, O1} = wh_cache:fetch({caller_id_options, For}), O1
     catch
         _:_ ->
-            case couch_mgr:get_all_results(Db, <<"caller_id/find_caller_id_options">>) of 
+            case couch_mgr:get_all_results(Db, ?VIEW_CALLER_ID_OPTIONS) of 
                 {ok, JObj} ->
                     AllOptions = [{wh_json:get_value(<<"key">>, Result), wh_json:get_value(<<"value">>, Result)}
                                   || Result <- JObj
