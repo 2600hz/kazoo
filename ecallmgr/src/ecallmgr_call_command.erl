@@ -273,7 +273,7 @@ get_bridge_endpoint(JObj) ->
 	{error, timeout} -> "";
 	EndPoint ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
-	    whistle_util:to_list(list_to_binary([CVs, "sofia/sipinterface_1/", EndPoint]))
+	    whistle_util:to_list(list_to_binary([CVs, EndPoint]))
     end.
 
 -spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
