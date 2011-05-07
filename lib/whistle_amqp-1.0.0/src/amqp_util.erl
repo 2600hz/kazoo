@@ -74,7 +74,7 @@ callevt_publish(CallId, Payload, status_req) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallId/binary>>, Payload, <<"application/json">>);
 callevt_publish(CallId, Payload, cdr) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>);
-callevt_publish(CallId, Payload, RoutingKey) ->
+callevt_publish(_CallId, Payload, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, <<"application/json">>).
 
 broadcast_publish(Payload) ->
@@ -222,7 +222,9 @@ bind_q_to_callevt(Queue, CallId, events) ->
 bind_q_to_callevt(Queue, CallID, status_req) ->
     bind_q_to_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallId, cdr) ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_CDR/binary, CallId/binary>>, ?EXCHANGE_CALLEVT).
+    bind_q_to_exchange(Queue, <<?KEY_CALL_CDR/binary, CallId/binary>>, ?EXCHANGE_CALLEVT);
+bind_q_to_callevt(Queue, Routing, other) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
 bind_q_to_broadcast(Queue) ->
     bind_q_to_broadcast(Queue, <<"#">>).
