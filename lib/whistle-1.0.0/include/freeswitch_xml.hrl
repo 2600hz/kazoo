@@ -53,7 +53,7 @@
 </document>").
 
 %% [IndexNum :: integer(), BypassMedia :: boolean
-%% ,ChannelVars :: "{var=val}"
+%% ,ChannelVars :: "[var=val]"
 %% ,Route :: "sip:+12038293150@sip.flowroute.com"]
 -define(ROUTE_BRIDGE_EXT,
 "<extension name=\"match_~p\" continue=\"true\">
@@ -61,7 +61,7 @@
     <action application=\"set\" data=\"bypass_media=~s\"/>
     <action application=\"set\" data=\"hangup_after_bridge=true\"/>
     <action application=\"set\" data=\"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH\"/>
-    <action application=\"bridge\" data=\"~ssofia/sipinterface_1/~s\" />
+    <action application=\"bridge\" data=\"~s~s\" />
   </condition>
 </extension>").
 

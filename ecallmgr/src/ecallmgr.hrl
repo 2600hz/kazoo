@@ -24,3 +24,5 @@
 
 -define(APP_NAME, <<"ecallmgr">>).
 -define(APP_VERSION, <<"0.7.2">>).
+
+-define(SIP_INTERFACE, "sofia/sipinterface_1/").
