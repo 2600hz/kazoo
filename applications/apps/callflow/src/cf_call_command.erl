@@ -40,6 +40,7 @@
 -export([wait_for_dtmf/1]).
 -export([wait_for_application_or_dtmf/2]).
 -export([wait_for_hangup/0]).
+-export([wait_for_store/1]).
 -export([send_callctrl/2]).
 
 %%--------------------------------------------------------------------
@@ -762,6 +763,29 @@ wait_for_hangup() ->
                 _ ->
                     wait_for_hangup()
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Wait forever for the channel to hangup
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_store/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
+wait_for_store(#cf_call{cf_pid=CFPid}=Call) ->
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case wh_json:get_value(<<"Application-Name">>, JObj) of
+                <<"store">> ->
+		    {ok, JObj};
+		<<"error">> ->
+		    {error, execution_failure};
+                _O ->
+                    wait_for_store(Call)
+            end
+    after 100 ->
+	    CFPid ! {heartbeat},
+	    wait_for_store(Call)
     end.
 
 %%--------------------------------------------------------------------

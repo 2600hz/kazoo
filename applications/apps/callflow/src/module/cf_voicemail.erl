@@ -275,8 +275,11 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
                 _Else ->
                     new_message(MediaName, Box, Call)
             end;
-        _Else ->
-            new_message(MediaName, Box, Call)
+        {error, channel_hungup} ->
+	    cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
+            new_message(MediaName, Box, Call);
+	{error, execution_failure} ->
+	    ok %% something happened Whistle-side, nothing to do for now
     end.
 
 %%--------------------------------------------------------------------
@@ -465,8 +468,7 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 %%--------------------------------------------------------------------
 -spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
-    store_recording(MediaName, Box, Call),
-    receive after 5000 -> ok end,
+    {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     NewMessages=[{struct, [
 			   {<<"timestamp">>, new_timestamp()}
@@ -480,6 +482,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call
 			  ]
 		 }] ++ wh_json:get_value([<<"messages">>], JObj, []),
     couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)).
+%%% PUBLISH AMQP message alerting anyone of new voicemail for Db/Id (account/vmbox)    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -597,12 +600,13 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(store_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
--spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+-spec(store_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> json_object()).
+-spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> json_object()).
 store_recording(MediaName, Box, Call) ->
     store_recording(MediaName, MediaName, Box, Call).
 store_recording(MediaName, DestName, Box, Call) ->
-    store(MediaName, get_attachment_path(DestName, Box, Call), Call).
+    store(MediaName, get_attachment_path(DestName, Box, Call), Call),
+    cf_call_command:wait_for_store(Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -727,7 +731,7 @@ update_folder1(Message, _, _, _) ->
 %%--------------------------------------------------------------------
 -spec(tmp_file/0 :: () -> binary()).
 tmp_file() ->
-     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".wav">>.
+     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private

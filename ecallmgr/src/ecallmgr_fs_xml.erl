@@ -125,7 +125,7 @@ get_leg_vars({struct, Prop}) -> get_leg_vars(Prop);
 get_leg_vars(Prop) ->
     ["[", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"].
 
--spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
+-spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> list(string())).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
     ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
@@ -193,7 +193,7 @@ get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
                        [ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
                end, Vars, Custom);
 %% SPECIAL CASE: SIP Headers
-get_channel_vars({<<"SIP-Headers">>, {struct, [_]}=SIPHeaders}, Vars) ->
+get_channel_vars({<<"SIP-Headers">>, {struct, [_]=SIPHeaders}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
 			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
 		end, Vars, SIPHeaders);
