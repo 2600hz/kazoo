@@ -128,8 +128,7 @@ get_leg_vars(Prop) ->
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
-    Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
-    lists:flatten(["{", string:join([binary_to_list(V) || V <- Vars], ","), "}"]).
+    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
 get_channel_vars({<<"Auth-User">>, V}, Vars) ->
@@ -178,18 +177,26 @@ get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
     [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->   
     [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
-
-%% list of Channel Vars
+%% SPECIAL CASE: Custom Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
+    lists:foldl(fun
+                    %% These are a temporary abstraction leak until we can locate a call via the API, originate 
+                    %% on the located server only and transfer to an existing UUID...
+                    ({<<"Confirm-File">>, V}, Vars0) ->
+                        [ list_to_binary([<<"group_confirm_file=">>, whistle_util:to_list(V)]) | Vars0];
+                    ({<<"Confirm-Key">>, V}, Vars0) ->
+                       [ list_to_binary([<<"group_confirm_key=">>, whistle_util:to_list(V)]) | Vars0];
+                    ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->   
+                       [ list_to_binary([<<"group_confirm_cancel_timeout=">>, whistle_util:to_list(V)]) | Vars0];
+                    %% end of leak
+                    ({K,V}, Vars0) ->                        
+                       [ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
+               end, Vars, Custom);
+%% SPECIAL CASE: SIP Headers
+get_channel_vars({<<"SIP-Headers">>, {struct, [_]}=SIPHeaders}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
-			[ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
-		end, Vars, Custom);
-
-get_channel_vars({<<"SIP-Headers">>, {struct, [_]=SIPHeaders}}, Vars) ->
-    lists:foldr(fun({K,V}, Vars0) ->
 			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
 		end, Vars, SIPHeaders);
-
 get_channel_vars({_K, _V}, Vars) ->
     %logger:format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
