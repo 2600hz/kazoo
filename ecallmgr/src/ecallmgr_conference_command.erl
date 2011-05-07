@@ -115,12 +115,12 @@ api(Node, AppName, Args) ->
     format_log(info, "CONFERENCE_COMMAND(~p): FS-API -> Node: ~p Api: ~p ~p~n", [self(), Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
 
--spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
+-spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} ->
             MediaName;
-        Url ->
+        {ok, Url} ->
             get_fs_playback(Url)
     end.
 

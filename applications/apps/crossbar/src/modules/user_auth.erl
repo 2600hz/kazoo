@@ -305,7 +305,7 @@ authorize_user(Context, _, _, _, _) ->
 create_token(_, #cb_context{doc=undefined}=Context) ->
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
-    AccountId = accounts:get_db_name(wh_json:get_value(<<"account_db">>, JObj), raw),
+    AccountId = whapps_util:get_db_name(wh_json:get_value(<<"account_db">>, JObj), raw),
     Token = {struct, [
                        {<<"account_id">>, AccountId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
