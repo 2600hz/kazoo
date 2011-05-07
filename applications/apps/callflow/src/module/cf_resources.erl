@@ -41,7 +41,7 @@ handle(_, #cf_call{cf_pid=CFPid}=Call) ->
 %%--------------------------------------------------------------------
 -spec(bridge_to_gateways/2 :: (Resources :: proplist(), Call :: #cf_call{}) -> no_return()).
 bridge_to_gateways([{DestNum, Gateways, CIDType}|T], Call) ->
-    case b_bridge([create_endpoint(DestNum, Gtw, Call) || Gtw <- Gateways], <<"60">>, CIDType, Call) of
+    case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways], <<"60">>, CIDType, Call) of
         {ok, _} ->
             wait_for_unbridge();
         {error, _} ->
@@ -55,8 +55,8 @@ bridge_to_gateways([{DestNum, Gateways, CIDType}|T], Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec(create_endpoint/3 :: (DestNum :: binary(), Gateway :: json_object(), Call :: #cf_call{}) -> json_object()).
-create_endpoint(DestNum, JObj, Call) ->
+-spec(create_endpoint/2 :: (DestNum :: binary(), Gateway :: json_object()) -> json_object()).
+create_endpoint(DestNum, JObj) ->
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
               ,DestNum/binary
@@ -69,10 +69,9 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, JObj)}
                 ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
-                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"CF-Keep-On-System">>, Call#cf_call.channel_vars)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                ],
-    {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}.
+    {struct, [ KV || {_, V}=KV <- Endpoint, V =/= undefined ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,18 +82,25 @@ create_endpoint(DestNum, JObj, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(find_gateways/1 :: (Call :: #cf_call{}) -> tuple(ok, proplist()) | tuple(error, atom())).
-find_gateways(#cf_call{account_db=Db, dest_number=DestNum}) ->
+find_gateways(#cf_call{account_db=Db, dest_number=DestNum}=Call) ->
     case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             {ok, [ {Number
                     ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
-                    ,wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>)}
+                    ,get_caller_id_type(Resource, Call)}
                    || Resource <- Resources
 			 , Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), DestNum)
 			 , Number =/= []
                  ]};
         {error, _}=E ->
             E
+    end.
+
+-spec(get_caller_id_type/2 :: (Resource :: json_object(), Call :: #cf_call{}) -> raw | binary()).
+get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
+    case whistle_util:is_true(wh_json:get_value(<<"CF-Keep-Caller-ID">>, CVs)) of
+        false -> wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>);
+        true -> raw
     end.
 
 %%--------------------------------------------------------------------
