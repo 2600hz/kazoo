@@ -18,7 +18,7 @@
                           ,flush/1
                          ]).
 
--define(MEDIA_PROMPT, <<"prompt.wav">>).
+-define(MEDIA_PROMPT, <<"prompt.mp3">>).
 
 -record(keys, {
            %% Record Review
@@ -317,7 +317,7 @@ get_attachment_path(MediaName, #menu{menu_id=Id}, #cf_call{account_db=Db}) ->
 %%--------------------------------------------------------------------
 -spec(tmp_file/0 :: () -> binary()).
 tmp_file() ->
-     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".wav">>.
+     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
