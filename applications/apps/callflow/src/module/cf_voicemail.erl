@@ -276,7 +276,7 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
                     new_message(MediaName, Box, Call)
             end;
         {error, channel_hungup} ->
-	    cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
+	    _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
             new_message(MediaName, Box, Call);
 	{error, execution_failure} ->
 	    ok %% something happened Whistle-side, nothing to do for now
@@ -428,7 +428,7 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
 	    record_unavailable_greeting(tmp_file(), Box, Call),
 	    config_menu(Box, Call);
 	RecName ->
-	    record_name(tmp_file(), Box, Call),
+	    _ = record_name(tmp_file(), Box, Call),
 	    config_menu(Box, Call);
 	SetPin ->
 	    change_pin(Box, Call),
@@ -467,22 +467,38 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 %% @end
 %%--------------------------------------------------------------------
 -spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
+new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from=From, to=To
+							     ,cid_name=CIDName, cid_number=CIDNumber
+							     ,call_id=CallID}=Call) ->
     {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     NewMessages=[{struct, [
 			   {<<"timestamp">>, new_timestamp()}
-			   ,{<<"from">>, Call#cf_call.from}
-			   ,{<<"to">>, Call#cf_call.to}
-			   ,{<<"caller_id_number">>, Call#cf_call.cid_number}
-			   ,{<<"caller_id_name">>, Call#cf_call.cid_name}
-			   ,{<<"call_id">>, Call#cf_call.call_id}
+			   ,{<<"from">>, From}
+			   ,{<<"to">>, To}
+			   ,{<<"caller_id_number">>, CIDNumber}
+			   ,{<<"caller_id_name">>, CIDName}
+			   ,{<<"call_id">>, CallID}
 			   ,{<<"folder">>, ?FOLDER_NEW}
 			   ,{<<"attachment">>, MediaName}
 			  ]
 		 }] ++ wh_json:get_value([<<"messages">>], JObj, []),
-    couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)).
-%%% PUBLISH AMQP message alerting anyone of new voicemail for Db/Id (account/vmbox)    
+    {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)),
+
+    [FromU, FromR] = binary:split(From, <<"@">>),
+    [ToU, ToR] = binary:split(To, <<"@">>),
+
+    {ok, JSON} = cf_api:new_voicemail([{<<"From-User">>, FromU}
+				       ,{<<"From-Realm">>, FromR}
+				       ,{<<"To-User">>, ToU}
+				       ,{<<"To-Realm">>, ToR}
+				       ,{<<"Account-DB">>, Db}
+				       ,{<<"Voicemail-Box">>, Id}
+				       ,{<<"Voicemail-Name">>, MediaName}
+				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
+				      ]),
+    logger:format_log(info, "CF_VOICEMAIL(~p): API send ~s~n", [self(), JSON]),
+    amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -490,7 +506,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
+-spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object())).
 record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec}}=Box, Call) ->
     audio_macro([
                   {play,  RecordName}
@@ -600,8 +616,8 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(store_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> json_object()).
--spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> json_object()).
+-spec(store_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
+-spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
 store_recording(MediaName, Box, Call) ->
     store_recording(MediaName, MediaName, Box, Call).
 store_recording(MediaName, DestName, Box, Call) ->

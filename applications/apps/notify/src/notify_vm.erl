@@ -18,6 +18,7 @@
 	 terminate/2, code_change/3]).
 
 -include("notify.hrl").
+-include_lib("callflow/include/cf_amqp.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -96,33 +97,25 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, _) ->
-    Boxes = find_all_vmboxes(),
-    [ couch_mgr:add_change_handler(Db, Box) || {Db, Box, _} <- Boxes ],
-    {noreply, Boxes};
+    start_amqp(),
+    {noreply, ok};
 
-handle_info({document_changes, DocID, Changes}, Boxes) ->
+handle_info({_, #amqp_msg{props=#'P_basic'{content_type= <<"application/json">>}, payload=Payload}}, State) ->
+    logger:format_log(info, "NOTIFY_VM(~p): AMQP Recv ~s~n", [self(), Payload]),
     spawn(fun() ->
-		  logger:format_log(info, "VM_NOTIFY(~p): change on ~p: ~p~n", [self(), DocID, Changes]),
-		  {Db, _, Rev} = lists:keyfind(DocID, 2, Boxes),
-		  case Changes of
-		      [[{<<"rev">>, NewRev}]] when NewRev > Rev ->
-			  {ok, Doc} = couch_mgr:open_doc(Db, DocID);
-		      _ -> ok
+		  try
+		  JObj = mochijson2:decode(Payload),
+		  true = validate(JObj),
+		  update_mwi(JObj),
+		  send_vm_to_email(JObj)
+		  catch A:B -> logger:format_log(info, "NOTIFY_VM: Exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()])
 		  end
 	  end),
-    {noreply, Boxes};
+    {noreply, State};
 
-handle_info({document_deleted, DocID}, Boxes) ->
-    logger:format_log(info, "VM_NOTIFY(~p): ~p was deleted~n", [self(), DocID]),
-    {noreply, Boxes};
-
-handle_info({change_handler_terminating, Db, Doc}, Boxes) ->
-    logger:format_log(info, "VM_NOTIFY(~p): change handler down on ~p: ~p~n", [self(), Db, Doc]),
-    couch_mgr:add_change_handler(Db, Doc),
-    {noreply, Boxes};
-
-handle_info(_Info, Boxes) ->
-    {noreply, Boxes}.
+handle_info(_Info, State) ->
+    logger:format_log(info, "NOTIFY_VM(~p): Unhandled ~p~n", [self(), _Info]),
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,18 +146,47 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-%% Return a list of {account DB, vmbox ID, vmbox REV} tuples
--spec(find_all_vmboxes/0 :: () -> list(tuple(binary(), binary(), binary()))).
-find_all_vmboxes() ->
-    {ok, AcctView} = couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_id">>, []),
-    AcctDBs = [ whapps_util:get_db_name(wh_json:get_value([<<"value">>, <<"id">>], Acct), encoded) || Acct <- AcctView],
-    lists:foldr(fun(AcctDB, Acc0) ->
-			try
-			{ok, VMBoxView} = couch_mgr:get_results(AcctDB, <<"vmboxes/listing_by_id">>, []),
-			lists:foldr(fun(VMB, Acc1) ->
-					    Id = wh_json:get_value([<<"value">>, <<"id">>], VMB),
-					    {ok, Rev} = couch_mgr:lookup_doc_rev(AcctDB, Id),
-					    [ {AcctDB, Id, Rev} | Acc1 ]
-				    end, Acc0, VMBoxView)
-			catch A:B -> logger:format_log(info, "outer fold ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]) end
-		end, [], AcctDBs).
+start_amqp() ->
+    Q = amqp_util:new_queue(),
+    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
+    amqp_util:basic_consume(Q).
+
+validate(JObj) ->
+    validate(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
+
+validate(JObj, <<"new_voicemail">>) ->
+    cf_api:new_voicemail_v(JObj);
+validate(_, _) ->
+    false.
+
+update_mwi(_JObj) ->
+    not_implemented_yet.
+
+send_vm_to_email(JObj) ->
+    {ok, VMBox} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Voicemail-Box">>, JObj)),
+    {ok, UserJObj} = case wh_json:get_value(<<"user_id">>, VMBox) of
+			 undefined ->
+			     find_user_doc(JObj);
+			 Id ->
+			     couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), Id)
+		     end,
+    case wh_json:get_value(<<"email">>, UserJObj) of
+	undefined ->
+	    logger:format_log(info, "NOTIFY_VM(~p): No email found for user ~p~n", [self(), wh_json:get_value(<<"username">>, UserJObj)]);
+	Email ->
+	    send_vm_to_email(Email, VMBox, wh_json:get_value(<<"Voicemail-Name">>, JObj))
+    end.
+
+send_vm_to_email(Email, VMBox, AttachmentId) ->
+    Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
+                                 ,"/confirmation_email.sh"
+                                 ,$ , $", Email/binary, $"
+                                 ,$ , $", First/binary, $"
+                                 ,$ , $", Last/binary, $"
+                                 ,$ , $", BaseURL/binary, $"
+                                 ," \"v1/signup/\""
+                                 ,$ , $", Key/binary, $"
+                               >>),
+    os:cmd(Cmd).
+
+%% {"Voicemail-Name":"459c6a174613865ae15c0c5cdcd55967.mp3","Voicemail-Box":"512ee49571d867398ff5b94c8b0fe136","Account-DB":"account%2F4f%2Ffc%2F59464ffb3b43011d08761f258266","To-Realm":"james.thinky64.d-man.org","To-User":"1001","From-Realm":"james.thinky64.d-man.org","From-User":"twinkly","App-Version":"0.7.4","App-Name":"callflow","Event-Name":"new_voicemail","Event-Category":"notification","Server-ID":""}
