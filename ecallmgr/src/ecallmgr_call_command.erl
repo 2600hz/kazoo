@@ -93,6 +93,9 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
 	true ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
+
+	    set(Node, UUID, "enable_file_write_buffering=false"), % disable buffering to see if we get all the media
+	    
 	    RecArg = binary_to_list(list_to_binary([Media, " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Silence-Threshold">>, JObj, "500")), " "

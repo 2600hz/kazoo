@@ -10,7 +10,7 @@
 -module(ecallmgr_shout).
 
 %% API
--export([start_link/2, get_stream_url/1, get_path/1]).
+-export([start_link/2, get_recv_url/1, get_srv_url/1, get_path/1]).
 
 %% gen_server callbacks
 -export([init_recv/2, init_srv/2]).
@@ -42,9 +42,19 @@ start_link(Path, recv) ->
 start_link(Path, srv) ->
     proc_lib:start_link(?MODULE, init_srv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]).
 
--spec(get_stream_url/1 :: (Srv :: pid()) -> binary() | timeout).
-get_stream_url(Srv) ->
-    Srv ! {self(), Ref=make_ref(), get_url},
+-spec(get_recv_url/1 :: (Srv :: pid()) -> binary() | timeout).
+get_recv_url(Srv) ->
+    Srv ! {self(), Ref=make_ref(), get_recv_url},
+    receive
+	{Ref, Url} ->
+	    Url
+    after 5000 ->
+	    timeout
+    end.
+
+-spec(get_srv_url/1 :: (Srv :: pid()) -> binary() | timeout).
+get_srv_url(Srv) ->
+    Srv ! {self(), Ref=make_ref(), get_srv_url},
     receive
 	{Ref, Url} ->
 	    Url
@@ -73,6 +83,7 @@ init_recv(Parent, Path) ->
 
     spawn_link(fun() ->
 		       {ok, S} = gen_tcp:accept(LSock),
+		       gen_tcp:controlling_process(S, self()),
 		       auth_loop(S, [], Self, SrvRef)
 	       end),
     main_loop(Path, Port, SrvRef, LSock).
@@ -88,6 +99,7 @@ init_srv(Parent, Path) ->
 
     spawn_link(fun() ->
 		       {ok, S} = gen_tcp:accept(LSock),
+		       gen_tcp:controlling_process(S, self()),
 		       send_loop(S, Path, Self, SrvRef)
 	       end),
     main_loop(Path, Port, SrvRef, LSock).
@@ -99,15 +111,22 @@ main_loop(Path, Port, SrvRef, LSock) ->
 	{Sender, Ref, get_path} ->
 	    Sender ! {Ref, Path},
 	    main_loop(Path, Port, SrvRef, LSock);
-	{Sender, Ref, get_url} ->
+	{Sender, Ref, get_recv_url} ->
 	    Host = whistle_util:to_binary(net_adm:localhost()),
 	    PortBin = whistle_util:to_binary(Port),
 	    Base = filename:basename(Path),
-	    Url = <<"shout://foo:bar@", Host/binary, ":", PortBin/binary, "/", Base/binary>>,
+	    Url = <<"shout://foo:bar@", Host/binary, ":", PortBin/binary, "/fs_", Base/binary>>,
 	    Sender ! {Ref, Url},
 	    main_loop(Path, Port, SrvRef, LSock);
 	{Sender, SrvRef, lsock} ->
 	    Sender ! {SrvRef, LSock},
+	    main_loop(Path, Port, SrvRef, LSock);
+	{Sender, Ref, get_srv_url} ->
+	    Host = whistle_util:to_binary(net_adm:localhost()),
+	    PortBin = whistle_util:to_binary(Port),
+	    Base = filename:basename(Path),
+	    Url = <<"shout://", Host/binary, ":", PortBin/binary, "/", Base/binary>>,
+	    Sender ! {Ref, Url},
 	    main_loop(Path, Port, SrvRef, LSock);
 	{error, SrvRef} ->
 	    logger:format_log(info, "SHOUT main loop for path: ~p: error, going down~n", [Path]),
@@ -153,6 +172,7 @@ writer_loop(Sock, Data, Parent, SrvRef) ->
 	    writer_loop(Sock, [Bin | Data], Parent, SrvRef);
 	{tcp_closed, Sock} ->
 	    Path = ecallmgr_shout:get_path(Parent),
+	    logger:format_log(info, "WRITER: size of Data: ~p~n", [byte_size(iolist_to_binary(Data))]),
 	    ok = file:write_file(Path, lists:reverse(Data)),
 	    gen_tcp:close(Sock),
 	    Parent ! {done, SrvRef};
@@ -170,7 +190,10 @@ send_loop(Sock, Path, Parent, SrvRef) ->
 	    gen_tcp:close(Sock);
 	Request ->
 	    logger:format_log(info, "SHOUT.accept(~p): Request for data received: ~p~n", [self(), Request]),
+
 	    {ok, Contents} = file:read_file(Path),
+
+	    logger:format_log(info, "SHOUT.accept(~p): Contents read ~p~n", [self(), Contents]),
 
 	    Size = byte_size(Contents),
 	    ChunkSize = case ?CHUNKSIZE > Size of
@@ -178,18 +201,30 @@ send_loop(Sock, Path, Parent, SrvRef) ->
 			    false -> ?CHUNKSIZE
 			end,
 
-	    StreamUrl = ?MODULE:get_stream_url(Parent),
+	    logger:format_log(info, "SHOUT.accept(~p): chuck size ~p~n", [self(), ChunkSize]),
+
+	    StreamUrl = ?MODULE:get_srv_url(Parent),
+
+	    logger:format_log(info, "SHOUT.accept(~p): Url ~p~n", [self(), StreamUrl]),
+
 	    MediaName = filename:basename(Path),
+
+	    logger:format_log(info, "SHOUT.accept(~p): Name ~p~n", [self(), MediaName]),
+
 	    CT = <<"audio/mpeg">>,
 
 	    Resp = wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
+	    logger:format_log(info, "SHOUT.accept(~p): Resp ~p~n", [self(), Resp]),
+
 	    Header = wh_shout:get_header(MediaName, StreamUrl),
 
 	    ok = gen_tcp:send(Sock, [Resp]),
+	    logger:format_log(info, "SHOUT.send ~p~n", [Resp]),
 
 	    MediaFile = #media_file{stream_url=StreamUrl, contents=Contents, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 				,shout_header={0,Header}},
 	    play_media(MediaFile, Sock),
+	    gen_tcp:close(Sock),
 
 	    Parent ! {done, SrvRef}
     end.
@@ -197,8 +232,9 @@ send_loop(Sock, Path, Parent, SrvRef) ->
 play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile, Sock) ->
     play_media(MediaFile, Sock, 0, byte_size(Contents), <<>>, Header).
 
-play_media(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
-    case wh_shout:play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
+play_media(MediaFile, Sock, Offset, Stop, SoFar, Header) ->
+    logger:format_log(info, "SHOUT: play_media Offset: ~p Stop: ~p~n", [Offset, Stop]),
+    case wh_shout:play_chunk(MediaFile, Sock, Offset, Stop, SoFar, Header) of
 	{Socks1, Header1, Offset1, SoFar1} ->
 	    play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);
 	{done, _} ->
@@ -213,7 +249,8 @@ is_auth_req_headers(Headers, Path) ->
 
 %% check a header
 is_auth_req_header(<<"SOURCE /", Rest/binary>>, Base) ->
-    binary:longest_common_prefix([Rest, Base]) =:= byte_size(Base);
+    Base1 = <<"fs_", Base/binary>>,
+    binary:longest_common_prefix([Rest, Base1]) =:= byte_size(Base1);
 is_auth_req_header(<<"Authorization: Basic ", Base64/binary>>, _) ->
     Base64 =:= ?PW_ENCODED;
 is_auth_req_header(<<"User-Agent: libshout/2.2.2">>, _) ->

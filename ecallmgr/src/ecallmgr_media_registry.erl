@@ -98,7 +98,7 @@ handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
 	    link(Pid),
 	    Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
 	    {ok, RecvSrv} = ecallmgr_shout_sup:start_recv(Path),
-	    Url = ecallmgr_shout:get_stream_url(RecvSrv),
+	    Url = ecallmgr_shout:get_recv_url(RecvSrv),
 	    {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, Path, Dict)};
 	[{_, Path}] ->
 	    {reply, Path, Dict}
@@ -218,7 +218,7 @@ request_media(MediaName, Type, CallId) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}, infinity) of
         {ok, Path} ->
 	    {ok, Srv} = ecallmgr_shout_sup:start_srv(Path),
-	    Url = ecallmgr_shout:get_stream_url(Srv),
+	    Url = ecallmgr_shout:get_srv_url(Srv),
             {ok, Url};
         {error, _} ->
             lookup_remote(MediaName, Type)
