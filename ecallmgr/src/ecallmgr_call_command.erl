@@ -93,6 +93,9 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
 	true ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
+
+	    set(Node, UUID, "enable_file_write_buffering=false"), % disable buffering to see if we get all the media
+	    
 	    RecArg = binary_to_list(list_to_binary([Media, " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Silence-Threshold">>, JObj, "500")), " "
@@ -445,7 +448,7 @@ set_ringback(Node, UUID, RingBack) ->
 set_sip_req_headers(_Node, _UUID, undefined) ->
     ok;
 set_sip_req_headers(Node, UUID, [_]=SIPHeaders) ->
-    [ set(Node, UUID, list_to_binary(["sip_h_", K, "=", V])) || {K, V} <- SIPHeaders ],
+    _ = [ set(Node, UUID, list_to_binary(["sip_h_", K, "=", V])) || {K, V} <- SIPHeaders ],
     ok.
 
 -spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).

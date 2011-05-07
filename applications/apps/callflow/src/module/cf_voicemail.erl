@@ -569,19 +569,27 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
                  ,{say,  Record}
                  ,{play, ToRerecord}
                 ], Call),
-    {ok, Digit} = wait_for_dtmf(5000),
 
-    _ = flush(Call),
-    case Digit of
-	Listen ->
-	    _ = b_play(MediaName, Call),
+    case wait_for_dtmf(5000) of
+	{error, timeout} ->
+	    _ = flush(Call),
 	    review_recording(MediaName, Box, Call);
-	Record ->
-	    {ok, record};
-	Save ->
+	{error, channel_hungup} ->
 	    {ok, save};
-	_ ->
-	    review_recording(MediaName, Box, Call)
+	{ok, Digit} ->
+	    _ = flush(Call),
+	    case Digit of
+		Listen ->
+		    logger:format_log(info, "CF_VOICEMAIL(~p): Recv ~p, playing ~p~n", [self(), Listen, MediaName]),
+		    _ = b_play(MediaName, Call),
+		    review_recording(MediaName, Box, Call);
+		Record ->
+		    {ok, record};
+		Save ->
+		    {ok, save};
+		_ ->
+		    review_recording(MediaName, Box, Call)
+	    end
     end.
 
 %%--------------------------------------------------------------------

@@ -154,8 +154,8 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 			false -> ?CHUNKSIZE
 		    end,
 
-	Resp = response(MediaName, ChunkSize, StreamUrl, CT),
-	Header = get_header(MediaName, StreamUrl),
+	Resp = wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
+	Header = wh_shout:get_header(MediaName, StreamUrl),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous)},
@@ -247,7 +247,7 @@ start_acceptor(Parent, LSock) ->
 	{ok, S} ->
 	    spawn(fun() -> start_acceptor(Parent, LSock) end),
 	    logger:format_log(info, "SHOUT.accept(~p): Listening on ~p~n", [self(), S]),
-	    case get_request(S, []) of
+	    case wh_shout:get_request(S) of
 		void ->
 		    logger:format_log(info, "SHOUT.accept(~p): Socket ~p closed~n", [self(), S]),
 		    gen_tcp:close(S);
@@ -259,55 +259,8 @@ start_acceptor(Parent, LSock) ->
 	_ -> ok
     end.
 
--spec(get_request/2 :: (S :: port(), L :: list()) -> no_return()).
-get_request(S, L) ->
-    inet:setopts(S, [{active,once}, binary]),
-    receive
-	{tcp, S, Bin} ->
-	    L1 = L ++ binary_to_list(Bin),
-	    %% split checks if the header is complete
-	    case split(L1, []) of
-		more ->
-		    %% the header is incomplete we need more data
-		    get_request(S, L1);
-		{Request, _Rest} ->
-		    %% header is complete
-		    Request
-	    end;
-
-	{tcp_closed, _Socket} ->
-	    void;
-
-	_Any  ->
-	    %% skip this
-	    get_request(S, L)
-    end.
-
-split("\r\n\r\n" ++ T, L) -> {lists:reverse(L), T};
-split([H|T], L)           -> split(T, [H|L]);
-split([], _)              -> more.
-
-response(MediaName, ChunkSize, Url, CT) ->
-    ["ICY 200 OK\r\n",
-     "icy-notice1: MediaMgr WhApp SHOUTcast<BR>\r\n",
-     "icy-name: ", whistle_util:to_list(MediaName), "\r\n",
-     "icy-genre: Whistle Media\r\n",
-     "icy-url: ", whistle_util:to_list(Url) ,"\r\n",
-     "content-type: ", whistle_util:to_list(CT), "\r\n",
-     "icy-pub: 1\r\n",
-     "icy-metaint: ",integer_to_list(ChunkSize),"\r\n",
-     "icy-br: 96\r\n\r\n"].
-
-get_header(MediaName, Url) ->
-    Bin = list_to_binary(["StreamTitle='",whistle_util:to_list(MediaName)
-			  ,"';StreamUrl='",whistle_util:to_list(Url) ,"';"]),
-    Nblocks = ((byte_size(Bin) - 1) div 16) + 1,
-    NPad = Nblocks*16 - byte_size(Bin),
-    Extra = lists:duplicate(NPad, 0),
-    list_to_binary([Nblocks, Bin, Extra]).
-
-play_media(MediaFile) ->
-    play_media(MediaFile, [], 0, byte_size(MediaFile#media_file.contents), <<>>, MediaFile#media_file.shout_header).
+play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile) ->
+    play_media(MediaFile, [], 0, byte_size(Contents), <<>>, Header).
 
 play_media(MediaFile, [], _, Stop, _, _) ->
     receive
@@ -333,7 +286,7 @@ play_media(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
 	    exit(ok)
     after 0 ->
 	    %% logger:format_log(info, "SHOUT.mloop(~p): Playing from ~p (~p)~n", [self(), Offset, Stop]),
-	    case play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
+	    case wh_shout:play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
 		{Socks1, Header1, Offset1, SoFar1} ->
 		    %% logger:format_log(info, "SHOUT.mloop(~p): Continue with ~p (~p)~n", [self(), Offset1, Stop]),
 		    play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);
@@ -347,60 +300,4 @@ play_media(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
 			    exit(ok)
 		    end
 	    end
-    end.
-
-%% OffSet = first byte to play
-%% Stop   = The last byte we can play
-play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
-    Need = MediaFile#media_file.chunk_size - byte_size(SoFar),
-    Last = Offset + Need,
-    case Last >= Stop of
-	true ->
-	    %% not enough data so read as much as possible and return
-	    Max = Stop - Offset,
-	    Bin = binary:part(MediaFile#media_file.contents, Offset, Max),
-	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
-	    {done, StillActive};
-	false ->
-	    Bin = binary:part(MediaFile#media_file.contents, Offset, Need),
-	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
-	    {StillActive, bump(Header), Offset + Need, <<>>}
-    end.
-
-
-write_data(Sockets, B0, B1, Header, ChunkSize) ->
-    %% Check that we really have got a block of the right size
-    %% this is a very useful check that our program logic is
-    %% correct
-    case byte_size(B0) + byte_size(B1) of
-	ChunkSize ->
-	    Send = [B0, B1, the_header(Header)],
-	    [S || S <- Sockets,
-		  begin
-		      Write = gen_tcp:send(S, Send),
-		      logger:format_log(info, "write_Data: ~p: ~p~n", [S, Send]),
-		      Write =:= ok
-		  end];
-	Size when Size < ChunkSize ->
-	    H = the_header(Header),
-	    Padding = binary:copy(<<0>>, ChunkSize-Size-byte_size(H)),
-	    Send = [B0, B1, H, Padding],
-	    [ S || S <- Sockets,
-		   begin
-		       Write = gen_tcp:send(S, Send),
-		       logger:format_log(info, "write_Data1: ~p: ~p~n", [S, Send]),
-		       Write =:= ok
-		   end ];
-	_Other ->
-	    %% don't send the block - report an error
-	    logger:format_log(info, "Block length Error: B0 = ~p b1=~p~n", [byte_size(B0), byte_size(B1)]),
-	    Sockets
-    end.
-
-bump({K, H}) -> {K+1, H}.
-
-the_header({K, H}) ->
-    case K rem 5 of
-	0 -> H;
-	_ -> <<0>>
     end.

@@ -1184,7 +1184,7 @@ find_all_apps(EvtName, [_ | SAs], Apps) ->
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
--spec(convert_whistle_app_name/1 :: (App :: binary()) -> binary()).
+-spec(convert_whistle_app_name/1 :: (App :: binary()) -> list(binary()) | []).
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?SUPPORTED_APPLICATIONS, App =:= AppName].
 
