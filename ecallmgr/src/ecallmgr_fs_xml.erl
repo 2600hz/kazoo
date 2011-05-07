@@ -86,13 +86,17 @@ route_resp_xml(<<"error">>, _Routes, Prop) ->
 build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->
-    props:get_value(<<"Route">>, RouteProp);
+    case props:get_value(<<"Route">>, RouteProp) of 
+        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>; 
+        R2 -> R2
+    end;
 build_route(RouteProp, <<"username">>) ->
     User = props:get_value(<<"To-User">>, RouteProp),
     Realm = props:get_value(<<"To-Realm">>, RouteProp),
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
 	[{<<"Contact">>, Contact}] ->
-	    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>);
+	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
+            <<?SIP_INTERFACE, (RURI)/binary>>;
 	{error, timeout}=E ->
 	    E
     end;
@@ -102,7 +106,8 @@ build_route(RouteProp, DIDFormat) ->
     DID = format_did(props:get_value(<<"To-DID">>, RouteProp), DIDFormat),
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
 	[{<<"Contact">>, Contact}] ->
-	    binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>);
+	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
+            <<?SIP_INTERFACE, (RURI)/binary>>;
 	{error, timeout}=E ->
 	    E
     end.
@@ -136,9 +141,9 @@ get_channel_vars({<<"Caller-ID-Name">>, V}, Vars) ->
 get_channel_vars({<<"Caller-ID-Number">>, V}, Vars) ->
     [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["sip_callee_id_name='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_callee_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["sip_callee_id_number='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_callee_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
