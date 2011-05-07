@@ -113,9 +113,6 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type= <<"application/json">>}
 	  end),
     {noreply, State};
 
-%% {"Voicemail-Name":"459c6a174613865ae15c0c5cdcd55967.mp3","Voicemail-Box":"512ee49571d867398ff5b94c8b0fe136","Account-DB":"account%2F4f%2Ffc%2F59464ffb3b43011d08761f258266","To-Realm":"james.thinky64.d-man.org","To-User":"1001","From-Realm":"james.thinky64.d-man.org","From-User":"twinkly","App-Version":"0.7.4","App-Name":"callflow","Event-Name":"new_voicemail","Event-Category":"notification","Server-ID":""}
-
-
 handle_info(_Info, State) ->
     logger:format_log(info, "NOTIFY_VM(~p): Unhandled ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -162,8 +159,34 @@ validate(JObj, <<"new_voicemail">>) ->
 validate(_, _) ->
     false.
 
-update_mwi(JObj) ->
-    ok.
+update_mwi(_JObj) ->
+    not_implemented_yet.
 
 send_vm_to_email(JObj) ->
-    ok.
+    {ok, VMBox} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Voicemail-Box">>, JObj)),
+    {ok, UserJObj} = case wh_json:get_value(<<"user_id">>, VMBox) of
+			 undefined ->
+			     find_user_doc(JObj);
+			 Id ->
+			     couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), Id)
+		     end,
+    case wh_json:get_value(<<"email">>, UserJObj) of
+	undefined ->
+	    logger:format_log(info, "NOTIFY_VM(~p): No email found for user ~p~n", [self(), wh_json:get_value(<<"username">>, UserJObj)]);
+	Email ->
+	    send_vm_to_email(Email, VMBox, wh_json:get_value(<<"Voicemail-Name">>, JObj))
+    end.
+
+send_vm_to_email(Email, VMBox, AttachmentId) ->
+    Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
+                                 ,"/confirmation_email.sh"
+                                 ,$ , $", Email/binary, $"
+                                 ,$ , $", First/binary, $"
+                                 ,$ , $", Last/binary, $"
+                                 ,$ , $", BaseURL/binary, $"
+                                 ," \"v1/signup/\""
+                                 ,$ , $", Key/binary, $"
+                               >>),
+    os:cmd(Cmd).
+
+%% {"Voicemail-Name":"459c6a174613865ae15c0c5cdcd55967.mp3","Voicemail-Box":"512ee49571d867398ff5b94c8b0fe136","Account-DB":"account%2F4f%2Ffc%2F59464ffb3b43011d08761f258266","To-Realm":"james.thinky64.d-man.org","To-User":"1001","From-Realm":"james.thinky64.d-man.org","From-User":"twinkly","App-Version":"0.7.4","App-Name":"callflow","Event-Name":"new_voicemail","Event-Category":"notification","Server-ID":""}

@@ -2,7 +2,7 @@
 
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
--export([to_boolean/1, is_true/1, binary_to_lower/1]).
+-export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0]).
 
@@ -128,6 +128,12 @@ is_true(<<"true">>) -> true;
 is_true("true") -> true;
 is_true(true) -> true;
 is_true(_) -> false.
+
+-spec(is_false/1 :: (X :: term()) -> boolean()).
+is_false(<<"false">>) -> true;
+is_false("false") -> true;
+is_false(false) -> true;
+is_false(_) -> false.
 
 -spec(binary_to_lower/1 :: (B :: binary()) -> binary()).
 binary_to_lower(B) when is_binary(B) ->
