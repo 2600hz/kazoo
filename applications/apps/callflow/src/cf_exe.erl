@@ -27,6 +27,7 @@
 start(Call, Flow) ->
     process_flag(trap_exit, true),
     AmqpQ = init_amqp(Call),
+    cache_account(Call),
     next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow).
 
 %%--------------------------------------------------------------------
@@ -137,3 +138,23 @@ init_amqp(#cf_call{call_id=CallId}) ->
     amqp_util:bind_q_to_targeted(AmqpQ),
     amqp_util:basic_consume(AmqpQ),
     AmqpQ.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load the account into the cache for use by the callflow modules
+%% (primarily for default values)
+%% @end
+%%--------------------------------------------------------------------
+-spec(cache_account/1 :: (Call :: #cf_call{}) -> no_return()).
+cache_account(#cf_call{account_db=Db}) ->
+    spawn(fun() ->
+                  case wh_cache:fetch({account, Db}) =/= {error, not_found}
+                      orelse couch_mgr:get_results(Db, <<"account/listing_by_id">>, [{<<"include_docs">>, true}]) of
+                      {ok, [JObj]} -> wh_cache:store({account, Db}, wh_json:get_value(<<"doc">>, JObj));
+                      true -> ok;
+                      {error, _} -> ok
+                  end
+          end).
+
+    
