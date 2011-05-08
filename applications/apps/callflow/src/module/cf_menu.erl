@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
@@ -58,6 +59,7 @@
           ,hunt = <<"false">> :: binary()
           ,hunt_deny = <<>> :: binary()
           ,hunt_allow = <<>> :: binary()
+          ,hunt_realm = <<>> :: binary()
           ,record_pin = <<>> :: binary()
           ,has_prompt_media = false :: boolean()
           ,prompts = #prompts{} :: #prompts{}
@@ -190,8 +192,10 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
-hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{from_realm=To, cf_pid=CFPid, cf_responder=CFRPid}=Call) ->
-    case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, To/binary>>}, 2000) of
+hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=To}=Call) when To =/= <<>> ->    
+    hunt_for_callflow(Digits, Menu#menu{hunt_realm=To}, Call);
+hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid}=Call) ->    
+    case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, Realm/binary>>}, 2000) of
         {ok, Flow} ->
             _ = cf_call_command:flush_dtmf(Call),
             _ = b_play(Prompts#prompts.hunt_transfer, Call),
@@ -352,6 +356,7 @@ get_menu_profile(Data, Db) ->
                    ,hunt = wh_json:get_value(<<"hunt">>, JObj, Default#menu.hunt)
                    ,hunt_deny = wh_json:get_value(<<"hunt_deny">>, JObj, Default#menu.hunt_deny)
                    ,hunt_allow = wh_json:get_value(<<"hunt_allow">>, JObj, Default#menu.hunt_allow)
+                   ,hunt_realm = wh_json:get_value(<<"hunt_realm">>, JObj, <<>>)
                    ,record_pin = wh_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
                    ,has_prompt_media = wh_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
                    ,s_prompt = wh_json:get_value(<<115,97,115,115,121,95,109,111,100,101>>, JObj) =/= undefined
