@@ -84,7 +84,7 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     BaseReplicate = [{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, true}
-                     ,{<<"continuous">>, true}
+%%                     ,{<<"continuous">>, true}
                     ],
     lists:foreach(fun(SourceDb) ->
                           logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
@@ -103,7 +103,7 @@ replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
                      ,{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, true}
-                     ,{<<"continuous">>, true}
+%%                     ,{<<"continuous">>, true}
                     ],
     logger:format_log(info, "Replicate ~p to ~p using filter ~p", [whapps_util:get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate).
