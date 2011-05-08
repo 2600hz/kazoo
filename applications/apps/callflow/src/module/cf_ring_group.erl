@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6, wait_for_bridge/1, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_bridge/1, wait_for_unbridge/0, set/3, b_fetch/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -37,10 +37,36 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
     case b_bridge(Endpoints, Timeout, {undefined, undefined}, Strategy, <<"true">>, Call) of
-        {ok, JObj} ->
-            logger:format_log(info, "Custom Channel Vars: ~p", [wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)]),
+        {ok, _} ->
+            update_call_realm(Call),
             _ = wait_for_unbridge(),
             CFPid ! { stop };
         {error, _} ->
             CFPid ! { continue }
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% When the bridge is successfull this is used to set the realm of 
+%% the endpoint on the a-leg.  This is necessary, for example, in 
+%% blind transfers to external numbers where the a-leg is seen
+%% as the 'orginator'. 
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_call_realm/1 :: (Call :: #cf_call{}) -> no_return()).
+update_call_realm(Call) ->
+    case b_fetch(true, Call) of
+        {error, _} ->
+            ok;
+        {ok, undefined} ->
+            ok;
+        {ok, Vars} ->
+            case wh_json:get_value(<<"Realm">>, Vars) of 
+                undefined -> ok;
+                <<>> -> ok;
+                Realm -> set(undefined, {struct, [{<<"Realm">>, Realm}]}, Call)
+            end
+    end.
+
+   
