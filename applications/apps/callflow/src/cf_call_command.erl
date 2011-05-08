@@ -11,7 +11,7 @@
 -include("callflow.hrl").
 
 -export([audio_macro/2, flush_dtmf/1]).
--export([answer/1, hangup/1, set/3]).
+-export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -25,7 +25,7 @@
 -export([noop/1]).
 -export([flush/1]).
 
--export([b_answer/1, b_hangup/1]).
+-export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
@@ -112,6 +112,44 @@ set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
               ],
     {ok, Payload} = whistle_api:set_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level whistle_api request to fetch channe vars
+%% NOTICE: These are 'custom' channel vars for state info only, and
+%%   can not the switch vars
+%% @end
+%%--------------------------------------------------------------------
+-spec(fetch/1 :: (Call :: #cf_call{}) -> ok).
+-spec(fetch/2 :: (FromOtherLeg :: boolean(), Call :: #cf_call{}) -> ok).
+
+-spec(b_fetch/1 :: (Call :: #cf_call{}) -> ok).
+-spec(b_fetch/2 :: (FromOtherLeg :: boolean(), Call :: #cf_call{}) -> ok).
+
+fetch(Call) ->
+    fetch(false, Call).
+fetch(FromOtherLeg, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"fetch">>}
+               ,{<<"From-Other-Leg">>, FromOtherLeg}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = whistle_api:fetch_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    send_callctrl(Payload, Call).
+
+b_fetch(Call) ->
+    b_fetch(false, Call).
+b_fetch(FromOtherLeg, Call) ->
+    fetch(FromOtherLeg, Call),
+    case wait_for_message(<<"fetch">>) of
+        {ok, JObj} ->
+            {ok, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)};
+        {error, _}=E ->
+            E
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
