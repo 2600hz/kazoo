@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, Karl Anderson
@@ -54,9 +53,9 @@
            menu_id = undefined :: binary() | undefined
           ,s_prompt = false :: boolean()
           ,retries = 3 :: pos_integer()
-          ,timeout = <<"4000">> :: binary()
-          ,max_length = <<"1">> :: binary()
-          ,hunt = <<"false">> :: binary()
+          ,timeout = <<"2000">> :: binary()
+          ,max_length = <<"4">> :: binary()
+          ,hunt = false :: binary()
           ,hunt_deny = <<>> :: binary()
           ,hunt_allow = <<>> :: binary()
           ,hunt_realm = <<>> :: binary()
@@ -109,6 +108,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
     catch
         _:_ ->
             _ = play_invalid_prompt(Menu, Call),
+            b_play(<<"silence_stream://250">>, Call),
             menu_loop(Menu#menu{retries=Retries-1}, Call)
     end.
 
@@ -165,7 +165,8 @@ is_hunt_allowed(Digits, #menu{hunt_allow=RegEx}, _) ->
         {match, _} = re:run(Digits, RegEx),
         true
     catch
-        _:_ -> false
+        _:_ -> 
+            false
     end.
 
 %%--------------------------------------------------------------------
@@ -182,7 +183,8 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
         {match, _} = re:run(Digits, RegEx),
         true
     catch
-        _:_ -> false
+        _:_ -> 
+            false
     end.
 
 %%--------------------------------------------------------------------
@@ -192,8 +194,17 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
-hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=To}=Call) when To =/= <<>> ->    
-    hunt_for_callflow(Digits, Menu#menu{hunt_realm=To}, Call);
+hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=To, account_db=Db}=Call) ->        
+    case wh_cache:fetch({account, Db}) of
+        {ok, Account} when To =:= <<>> ->
+            hunt_for_callflow(Digits, Menu#menu{hunt_realm=(wh_json:get_value(<<"realm">>, Account, <<"norealm">>))}, Call);
+        {ok, Account} ->
+            hunt_for_callflow(Digits, Menu#menu{hunt_realm=(wh_json:get_value(<<"realm">>, Account, To))}, Call);
+        {error, _} when To =:= <<>> ->
+            hunt_for_callflow(Digits, Menu#menu{hunt_realm = <<"norealm">>}, Call);            
+        {error, _} ->
+            hunt_for_callflow(Digits, Menu#menu{hunt_realm = To}, Call)
+    end;
 hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid}=Call) ->    
     case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, Realm/binary>>}, 2000) of
         {ok, Flow} ->
