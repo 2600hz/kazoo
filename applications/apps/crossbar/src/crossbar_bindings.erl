@@ -353,7 +353,8 @@ map_bind_results(Pids, Payload, Results, Route) ->
 		      Pid ! {binding_fired, self(), Route, Payload},
                       case wait_for_map_binding() of
                           {ok,  Resp, Pay1} -> [{Resp, Pay1} | Acc];
-                          timeout -> [{timeout, Payload} | Acc]
+                          timeout -> [{timeout, Payload} | Acc];
+			  {error, E} -> [{error, E, Pid}|Acc]
                       end
 		end, Results, queue:to_list(Pids)).
 
@@ -363,10 +364,11 @@ map_bind_results(Pids, Payload, Results, Route) ->
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_map_binding/0 :: () -> tuple(ok, atom(), term()) | timeout).
+-spec(wait_for_map_binding/0 :: () -> tuple(ok, atom(), term()) | timeout | tuple(error, atom())).
 wait_for_map_binding() ->
     receive
-        {binding_result,  Resp, Pay} -> {ok,  Resp, Pay};
+        {binding_result, Resp, Pay} -> {ok, Resp, Pay};
+	{binding_error, Error} -> {error, Error};
         heartbeat -> wait_for_map_binding()
     after
         1000 -> timeout
@@ -381,6 +383,7 @@ wait_for_map_binding() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(fold_bind_results/3 :: (Pids :: queue(), Payload :: term(), Route :: binary()) -> term()).
+fold_bind_results(_, {error, _}=E, _) -> E;
 fold_bind_results(Pids, Payload, Route) ->
     fold_bind_results(Pids, Payload, Route, queue:len(Pids), queue:new()).
 
@@ -403,7 +406,8 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
             case wait_for_fold_binding() of
                 {ok, Pay1} -> fold_bind_results(Pids1, Pay1, Route);
                 eoq -> fold_bind_results(queue:in(P, Pids1), Payload, Route);
-                timeout -> fold_bind_results(Pids1, Payload, Route)
+                timeout -> fold_bind_results(Pids1, Payload, Route);
+		{error, _}=E -> E
             end
     end.
 
@@ -413,11 +417,12 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_fold_binding/0 :: () -> tuple(ok, term())|timeout|eoq).
+-spec(wait_for_fold_binding/0 :: () -> tuple(ok, term())|timeout|eoq|tuple(error, atom())).
 wait_for_fold_binding() ->
     receive
         {binding_result, eoq, _} -> eoq;
         {binding_result, _, Pay} -> {ok, Pay};
+	{binding_error, Error} -> {error, Error};
         heartbeat -> wait_for_fold_binding()
     after
         1000 -> timeout
