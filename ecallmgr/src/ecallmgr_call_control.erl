@@ -378,6 +378,17 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
                                    >>),
         Mod:exec_cmd(Node, UUID, Cmd)
     catch
+	badmatch:{error,nosession} ->
+	    logger:format_log(error, "CONTROL.exe (~p): Error session down for ~p~n~p~n", [self(), UUID, erlang:get_stacktrace()]),
+	    Resp = [
+		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
+		    ,{<<"Error-Message">>, <<"Channel was hungup before completing command ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
+		    | whistle_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+		   ],
+            {ok, Payload} = whistle_api:error_resp(Resp),
+            amqp_util:callevt_publish(UUID, Payload, event),
+            self() ! {hangup, undefined, UUID},
+	    ok;
         _:_=E ->
             logger:format_log(error, "CONTROL.exe (~p): Error ~p executing request for call ~p~n~p~n", [self(), E, UUID, erlang:get_stacktrace()]),
             Resp = [

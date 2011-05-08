@@ -190,9 +190,9 @@ handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
     MediaLoop ! {add_socket, Socket},
     {noreply, S};
 
-handle_info({'EXIT', From, ok}, #state{media_loop=MediaLoop}=S) when From =:= MediaLoop ->
+handle_info({'EXIT', From, ok}, #state{media_loop=MediaLoop}) when From =:= MediaLoop ->
     logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down ok, stopping~n", [self(), From]),
-    {stop, media_finished, S};
+    {stop, normal, #state{}};
 handle_info({'EXIT', From, Reason}, #state{media_loop=MediaLoop, media_file=MediaFile}=S) when From =:= MediaLoop ->
     logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down: ~p~n", [self(), From, Reason]),
     MediaLoop1 = spawn_link(fun() -> play_media(MediaFile) end),

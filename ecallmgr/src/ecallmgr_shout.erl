@@ -172,9 +172,7 @@ writer_loop(Sock, Data, Parent, SrvRef) ->
 	    writer_loop(Sock, [Bin | Data], Parent, SrvRef);
 	{tcp_closed, Sock} ->
 	    Path = ecallmgr_shout:get_path(Parent),
-	    logger:format_log(info, "WRITER: size of Data: ~p~n", [byte_size(iolist_to_binary(Data))]),
 	    ok = file:write_file(Path, lists:reverse(Data)),
-	    logger:format_log(info, "WRITER: wrote to ~p~n", [Path]),
 	    gen_tcp:close(Sock),
 	    Parent ! {done, SrvRef};
 	_Other ->
@@ -189,12 +187,8 @@ send_loop(Sock, Path, Parent, SrvRef) ->
 	void ->
 	    logger:format_log(info, "SHOUT.accept(~p): Socket ~p closed~n", [self(), Sock]),
 	    gen_tcp:close(Sock);
-	Request ->
-	    logger:format_log(info, "SHOUT.accept(~p): Request for data received: ~p~n", [self(), Request]),
-
+	_Request ->
 	    {ok, Contents} = file:read_file(Path),
-
-	    logger:format_log(info, "SHOUT.accept(~p): Contents read ~p~n", [self(), Contents]),
 
 	    Size = byte_size(Contents),
 	    ChunkSize = case ?CHUNKSIZE > Size of
@@ -202,25 +196,13 @@ send_loop(Sock, Path, Parent, SrvRef) ->
 			    false -> ?CHUNKSIZE
 			end,
 
-	    logger:format_log(info, "SHOUT.accept(~p): chuck size ~p~n", [self(), ChunkSize]),
-
 	    StreamUrl = ?MODULE:get_srv_url(Parent),
-
-	    logger:format_log(info, "SHOUT.accept(~p): Url ~p~n", [self(), StreamUrl]),
-
 	    MediaName = filename:basename(Path),
-
-	    logger:format_log(info, "SHOUT.accept(~p): Name ~p~n", [self(), MediaName]),
-
 	    CT = <<"audio/mpeg">>,
-
 	    Resp = wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
-	    logger:format_log(info, "SHOUT.accept(~p): Resp ~p~n", [self(), Resp]),
-
 	    Header = wh_shout:get_header(MediaName, StreamUrl),
 
 	    ok = gen_tcp:send(Sock, [Resp]),
-	    logger:format_log(info, "SHOUT.send ~p~n", [Resp]),
 
 	    MediaFile = #media_file{stream_url=StreamUrl, contents=Contents, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 				,shout_header={0,Header}},
@@ -234,7 +216,6 @@ play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile, Sock) 
     play_media(MediaFile, Sock, 0, byte_size(Contents), <<>>, Header).
 
 play_media(MediaFile, Sock, Offset, Stop, SoFar, Header) ->
-    logger:format_log(info, "SHOUT: play_media Offset: ~p Stop: ~p~n", [Offset, Stop]),
     case wh_shout:play_chunk(MediaFile, Sock, Offset, Stop, SoFar, Header) of
 	{Socks1, Header1, Offset1, SoFar1} ->
 	    play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);

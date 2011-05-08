@@ -272,8 +272,8 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
             case review_recording(MediaName, Box, Call) of
                 {ok, record} ->
                     record_voicemail(MediaName, Box, Call);
-                _Else ->
-                    new_message(MediaName, Box, Call)
+		{ok, save} ->
+		    new_message(MediaName, Box, Call)
             end;
         {error, channel_hungup} ->
 	    _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
@@ -594,6 +594,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 	    _ = flush(Call),
 	    review_recording(MediaName, Box, Call);
 	{error, channel_hungup} ->
+	    logger:format_log(info, "CF_VOICEMAIL(~p): review was waiting for dtmf, got hungup, so let's save", [self()]),
 	    {ok, save};
 	{ok, Digit} ->
 	    _ = flush(Call),
