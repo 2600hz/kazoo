@@ -560,23 +560,31 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [RD, Context] ++ Params,
     logger:format_log(info, "Execute request ~p", [Event]),
-    [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
-    case succeeded(Context1) of
-        false ->
-            logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
-            Content = create_resp_content(RD1, Context1),
-            RD2 = wrq:append_to_response_body(Content, RD1),
-            ReturnCode = Context1#cb_context.resp_error_code,
-	    ?TIMER_TICK("v1.execute_request halt end"),
-            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
-        true ->
-            logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
-	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
-	    {Verb =/= <<"put">>, RD1, Context1}
+    case crossbar_bindings:fold(Event, Payload) of
+	[RD1, Context1 | _] ->
+	    execute_request_results(RD1, Context1);
+	{error, _E} ->
+	    logger:format_log(info, "v1.exec_req error: ~p, 500 the request~n", [_E]),
+	    {{halt, 500}, RD, Context}
     end;
 execute_request(RD, Context) ->
     ?TIMER_TICK("v1.execute_request false end"),
     {false, RD, Context}.
+
+execute_request_results(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+    case succeeded(Context) of
+        false ->
+            logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+            Content = create_resp_content(RD, Context),
+            RD1 = wrq:append_to_response_body(Content, RD),
+            ReturnCode = Context#cb_context.resp_error_code,
+	    ?TIMER_TICK("v1.execute_request halt end"),
+            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD1), Context};
+        true ->
+            logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
+	    {Verb =/= <<"put">>, RD, Context}
+    end.
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
 %% AKA, 201 Created header set
