@@ -164,29 +164,34 @@ update_mwi(_JObj) ->
 
 send_vm_to_email(JObj) ->
     {ok, VMBox} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Voicemail-Box">>, JObj)),
-    {ok, UserJObj} = case wh_json:get_value(<<"user_id">>, VMBox) of
-			 undefined ->
-			     find_user_doc(JObj);
-			 Id ->
-			     couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), Id)
-		     end,
+    {ok, UserJObj} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"owner_id">>, VMBox)),
     case wh_json:get_value(<<"email">>, UserJObj) of
 	undefined ->
 	    logger:format_log(info, "NOTIFY_VM(~p): No email found for user ~p~n", [self(), wh_json:get_value(<<"username">>, UserJObj)]);
 	Email ->
-	    send_vm_to_email(Email, VMBox, wh_json:get_value(<<"Voicemail-Name">>, JObj))
+	    send_vm_to_email(Email, JObj)
     end.
 
-send_vm_to_email(Email, VMBox, AttachmentId) ->
-    Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
-                                 ,"/confirmation_email.sh"
-                                 ,$ , $", Email/binary, $"
-                                 ,$ , $", First/binary, $"
-                                 ,$ , $", Last/binary, $"
-                                 ,$ , $", BaseURL/binary, $"
-                                 ," \"v1/signup/\""
-                                 ,$ , $", Key/binary, $"
-                               >>),
-    os:cmd(Cmd).
+send_vm_to_email(To, JObj) ->
+    Subject = <<"A new voicemail left for ", (wh_json:get_value(<<"To-User">>, JObj))/binary, " from ", (wh_json:get_value(<<"From-User">>, JObj))/binary, "\r\n">>,
+    Body = <<"Hey, this should be more cooler better awesome-sauce. For now, you may want to check your voicemail.\n\nWhistle\n">>,
 
-%% {"Voicemail-Name":"459c6a174613865ae15c0c5cdcd55967.mp3","Voicemail-Box":"512ee49571d867398ff5b94c8b0fe136","Account-DB":"account%2F4f%2Ffc%2F59464ffb3b43011d08761f258266","To-Realm":"james.thinky64.d-man.org","To-User":"1001","From-Realm":"james.thinky64.d-man.org","From-User":"twinkly","App-Version":"0.7.4","App-Name":"callflow","Event-Name":"new_voicemail","Event-Category":"notification","Server-ID":""}
+    DB = wh_json:get_value(<<"Account-DB">>, JObj),
+    Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
+    AttachmentId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
+
+    {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
+
+    Email = {<<"multipart">>, <<"alternative">>
+		 ,[
+		   {<<"From">>, <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>},
+		   {<<"To">>, To},
+		   {<<"Subject">>, Subject}
+		  ],
+	     [],
+	     [{<<"text">>, <<"plain">>, [], [], Body}
+	      ,{<<"audio">>, <<"mpeg">>, [], [], AttachmentBin}]
+	    },
+
+    Res = gen_smtp_client:send(mimemail:encode(Email), [{relay, net_adm:localhost()}]),
+    logger:format_log(info, "Sent mail, returned ~p~n", [Res]).

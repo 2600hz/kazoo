@@ -51,20 +51,16 @@ play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
     Need = MediaFile#media_file.chunk_size - byte_size(SoFar),
     Last = Offset + Need,
 
-    logger:format_log(info, "WH_SHOUT: Offset: ~p Stop: ~p Need: ~p, Last: ~p~n", [Offset, Stop, Need, Last]),
-
     case Last >= Stop of
 	true ->
 	    %% not enough data so read as much as possible and return
 	    Max = Stop - Offset,
 	    Bin = binary:part(MediaFile#media_file.contents, Offset, Max),
 	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
-	    logger:format_log(info, "WH_SHOUT: Done: ~p~n", [StillActive]),
 	    {done, StillActive};
 	false ->
 	    Bin = binary:part(MediaFile#media_file.contents, Offset, Need),
 	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
-	    logger:format_log(info, "WH_SHOUT: More to play: ~p~n", [StillActive]),
 	    {StillActive, bump(Header), Offset + Need, <<>>}
     end.
 
