@@ -315,7 +315,6 @@ publish_msg(UUID, Prop) ->
                         ,{<<"Call-ID">>, UUID}
                         ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
-                        ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(Prop)}}
 		       | event_specific(EvtName, Prop) ],
 	    EvtProp1 = EvtProp0 ++ whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
