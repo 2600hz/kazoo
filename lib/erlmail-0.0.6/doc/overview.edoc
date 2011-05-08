@@ -1,0 +1,10 @@
+@author Stuart K. Jackson <simpleenigmainc@gmail.com> [http://erlsoft.org]
+@copyright 2007 Simple Enigma, Inc.
+@version 0.0.6
+@reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+@reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
+@title ErlMail a complete email server written in Erlang
+@doc ErlMail is an ongoing project to create a complete RFC compiant Email server written in Erlang using OTP best practices.
+
+For more information about this project you can look at [http://erlsoft.org ErlSoft.org] or the [http://code.google.com/p/erlmail/wiki/ErlMail Google Code Wiki] for the project.
+@end
