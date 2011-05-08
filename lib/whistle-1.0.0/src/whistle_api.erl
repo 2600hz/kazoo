@@ -35,7 +35,7 @@
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
 	 ,sleep_req/1, tone_detect_req/1, set_req/1, media_req/1, media_resp/1, media_error/1
-         ,conference_req/1, noop_req/1
+         ,conference_req/1, noop_req/1, fetch_req/1
         ]).
 
 %% FS command
@@ -61,7 +61,7 @@
 	 ,media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1, conference_members_req_v/1
          ,conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1, conference_undeaf_req_v/1
          ,conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1, conference_move_req_v/1
-         ,noop_req_v/1, mwi_update_v/1
+         ,noop_req_v/1, fetch_req_v/1, mwi_update_v/1
 	]).
 
 %% Other AMQP API validators can use these helpers
@@ -823,6 +823,26 @@ set_req_v({struct, Prop}) ->
     set_req_v(Prop);
 set_req_v(Prop) ->
     validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Fetch Custom Channel variables - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(fetch_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+fetch_req({struct, Prop}) ->
+    fetch_req(Prop);
+fetch_req(Prop) ->
+    case fetch_req_v(Prop) of
+	true -> build_message(Prop, ?FETCH_REQ_HEADERS, ?OPTIONAL_FETCH_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for fetch_req"}
+    end.
+
+-spec(fetch_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+fetch_req_v({struct, Prop}) ->
+    fetch_req_v(Prop);
+fetch_req_v(Prop) ->
+    validate(Prop, ?FETCH_REQ_HEADERS, ?FETCH_REQ_VALUES, ?FETCH_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Play media and record digits - see wiki
