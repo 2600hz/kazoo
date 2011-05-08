@@ -37,7 +37,8 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
     case b_bridge(Endpoints, Timeout, {undefined, undefined}, Strategy, <<"true">>, Call) of
-        {ok, _} ->
+        {ok, JObj} ->
+            logger:format_log(info, "Custom Channel Vars: ~p", [wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)]),
             _ = wait_for_unbridge(),
             CFPid ! { stop };
         {error, _} ->
