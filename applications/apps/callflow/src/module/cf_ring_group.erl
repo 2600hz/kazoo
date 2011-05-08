@@ -37,33 +37,10 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
     case b_bridge(Endpoints, Timeout, {undefined, undefined}, Strategy, <<"true">>, Call) of
-        {ok, _} ->
-            get_channel_status(Call),
+        {ok, JObj} ->
+            logger:format_log(info, "Custom Channel Vars: ~p", [wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)]),
             _ = wait_for_unbridge(),
             CFPid ! { stop };
         {error, _} ->
             CFPid ! { continue }
-    end.
-
--spec(get_channel_status/1 :: (Call :: #cf_call{}) -> no_return()).
-get_channel_status(#cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Payload} = whistle_api:call_status_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    cf_call_common:send_callctrl(Payload, Call),
-    wait_for_channel_status().
-
-wait_for_channel_status() ->
-    receive
-        {amqp_msg, {struct, _}=JObj} ->
-            case wh_json:get_value(<<"Event-Name">>, JObj) of
-                <<"status_resp">> ->
-                    logger:format_log(info, "CHANNEL_STATUS: ~p", [JObj]);
-                _ ->
-                    wait_for_channel_status()
-            end
-    after 5000 ->
-            ok
     end.
