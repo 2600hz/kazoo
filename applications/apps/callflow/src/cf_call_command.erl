@@ -105,6 +105,7 @@ set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, _) ->
 set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"set">>}
+               ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Custom-Channel-Vars">>, ChannelVars}
                ,{<<"Custom-Call-Vars">>, CallVars}
                ,{<<"Call-ID">>, CallId}
@@ -132,8 +133,8 @@ fetch(Call) ->
 fetch(FromOtherLeg, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"fetch">>}
-               ,{<<"From-Other-Leg">>, FromOtherLeg}
                ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"From-Other-Leg">>, FromOtherLeg}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
