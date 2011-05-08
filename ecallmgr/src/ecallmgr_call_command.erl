@@ -9,15 +9,15 @@
 
 -module(ecallmgr_call_command).
 
--export([exec_cmd/3]).
+-export([exec_cmd/4]).
 
 -include("ecallmgr.hrl").
 
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
--spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | tuple(error, string())).
-exec_cmd(Node, UUID, JObj) ->
+-spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), ControlPID :: pid()) -> ok | timeout | tuple(error, string())).
+exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
 	true ->
@@ -25,28 +25,8 @@ exec_cmd(Node, UUID, JObj) ->
 	    case get_fs_app(Node, UUID, JObj, AppName) of
 		{error, _Msg}=Err -> Err;
                 {return, Result} -> Result;
-		{_, noop} ->
-                    logger:format_log(info, "CONTROL(~p): Noop for ~p~n", [self(), AppName]),
-                    {CCS, ETS} = try
-                                     {ok, CS} =
-                                         freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${channel-call-state}">>)),
-                                     {ok, TS} =
-                                         freeswitch:api(Node, eval, whistle_util:to_list(<<"uuid:", UUID/binary, " ${Event-Date-Timestamp}">>)),
-                                     {CS, TS}
-                                 catch
-                                     _:_ ->
-                                         {<<>>, <<>>}
-                                 end,
-                    Event = [
-                              {<<"Timestamp">>, ETS}
-                             ,{<<"Application-Name">>, <<"noop">>}
-                             ,{<<"Application-Response">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                             ,{<<"Channel-Call-State">>, CCS}
-                             ,{<<"Call-ID">>, UUID}
-                             | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-                            ],
-                    {ok, Payload} = whistle_api:call_event(Event),
-                    amqp_util:callevt_publish(UUID, Payload, event);
+		{App, noop} ->
+                    ControlPID ! {execute_complete, UUID, App};
 		{App, AppData} ->
                     send_cmd(Node, UUID, App, AppData)
 	    end;
@@ -58,8 +38,11 @@ exec_cmd(Node, UUID, JObj) ->
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
 -spec(get_fs_app/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), Application :: binary()) ->
 			   tuple(binary(), binary() | noop) | tuple(return, ok) | tuple(error, string())).
-get_fs_app(_Node, _UUID, _JObj, <<"noop">>) ->
-    {ok, noop};
+get_fs_app(Node, UUID, JObj, <<"noop">>) ->
+    spawn(fun() ->
+                  send_noop_call_event(Node, UUID, JObj)
+          end),
+    {<<"noop">>, noop};
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case whistle_api:play_req_v(JObj) of
 	false -> {error, "play failed to execute as JObj did not validate."};
@@ -122,16 +105,16 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 				       ,{<<"Media-Name">>, MediaName}
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
-			    spawn_link(fun() -> stream_over_amqp(Media, JObj, Headers) end),
-			    {return, ok};
+			    stream_over_amqp(Media, JObj, Headers),
+			    {<<"store">>, noop};
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
-			    spawn_link(fun() -> stream_over_http(Media, Verb, JObj) end),
-			    {return, ok};
+			    stream_over_http(Media, Verb, JObj),
+			    {<<"store">>, noop};
 			<<"post">>=Verb ->
 			    %% stream file over HTTP PUSH
-			    spawn_link(fun() -> stream_over_http(Media, Verb, JObj) end),
-			    {return, ok};
+			    stream_over_http(Media, Verb, JObj),
+			    {<<"store">>, noop};
 			false ->
 			    logger:format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]),
 			    {return, error};
@@ -248,14 +231,17 @@ get_fs_app(Node, UUID, JObj, <<"set">>=AppName) ->
 			  export(Node, UUID, Arg)
 		  end, CallVars),
     {AppName, noop};
+get_fs_app(Node, UUID, JObj, <<"fetch">>=AppName) ->
+    spawn(fun() ->
+                  send_fetch_call_event(Node, UUID, JObj)
+          end),
+    {AppName, noop};
 get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
 	false -> {error, "conference failed to execute as JObj did not validate."};
 	true ->
 	    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-	    Flags = get_conference_flags(JObj),
-	    Arg = list_to_binary([ConfName, "@default", Flags]),
-	    {App, Arg}
+	    {App, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     logger:format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
@@ -484,4 +470,78 @@ get_conference_flags(JObj) ->
             <<>>;
         F ->
             <<"+flags{", (binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
+    end.
+
+-spec(send_fetch_call_event/3 :: (Node :: binary(), UUID :: binary(), JObj :: json_object()) -> no_return()).
+send_fetch_call_event(Node, UUID, JObj) ->
+    try
+        Prop = case whistle_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
+                   true ->
+                       {ok, OtherUUID} = freeswitch:api(Node, uuid_getvar, whistle_util:to_list(<<UUID/binary, " signal_bond">>)),
+                       {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(OtherUUID)),           
+                       ecallmgr_util:eventstr_to_proplist(Dump);
+                   false ->
+                       {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(UUID)),
+                       ecallmgr_util:eventstr_to_proplist(Dump)
+                           
+               end,
+        EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                    ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                    ,{<<"Call-ID">>, UUID}
+                    ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
+                    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
+                    ,{<<"Application-Name">>, <<"fetch">>}
+                    ,{<<"Application-Response">>, <<>>}
+                    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                   ],
+        EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
+                       [] -> EvtProp1;
+                       CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+                   end,
+        {ok, P1} = whistle_api:call_event(EvtProp2),
+        amqp_util:callevt_publish(UUID, P1, event)
+    catch
+        Type:Reason ->
+            Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                     ,{<<"Error-Message">>, whistle_util:to_binary(Reason)}
+                     ,{<<"Call-ID">>, UUID}
+                     ,{<<"Application-Name">>, <<"fetch">>}
+                     ,{<<"Application-Response">>, <<>>}
+                     | whistle_api:default_headers(<<>>, <<"error">>, whistle_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
+                    ],
+            {ok, P2} = whistle_api:error_resp(Error),
+            amqp_util:callevt_publish(UUID, P2, event)
+    end.
+
+-spec(send_noop_call_event/3 :: (Node :: binary(), UUID :: binary(), JObj :: json_object()) -> no_return()).
+send_noop_call_event(Node, UUID, JObj) ->
+    try
+        {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(UUID)),            
+        Prop = ecallmgr_util:eventstr_to_proplist(Dump),
+        EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                    ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                    ,{<<"Call-ID">>, UUID}
+                    ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
+                    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
+                    ,{<<"Application-Name">>, <<"noop">>}
+                    ,{<<"Application-Response">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                   ],
+        EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
+                       [] -> EvtProp1;
+                       CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+                   end,
+        {ok, P1} = whistle_api:call_event(EvtProp2),
+        amqp_util:callevt_publish(UUID, P1, event)
+    catch
+        Type:Reason ->
+            Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                     ,{<<"Error-Message">>, whistle_util:to_binary(Reason)}
+                     ,{<<"Call-ID">>, UUID}
+                     ,{<<"Application-Name">>, <<"noop">>}
+                     ,{<<"Application-Response">>, <<>>}
+                     | whistle_api:default_headers(<<>>, <<"error">>, whistle_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
+                    ],
+            {ok, P2} = whistle_api:error_resp(Error),
+            amqp_util:callevt_publish(UUID, P2, event)
     end.
