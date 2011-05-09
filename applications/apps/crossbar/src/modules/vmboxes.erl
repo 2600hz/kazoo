@@ -428,9 +428,7 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(load_message_summary/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_message_summary(DocId, Context) ->
-    Messages = load_messages_from_doc(DocId, Context),
-
-    case Messages of
+    case Messages = load_messages_from_doc(DocId, Context) of
 	?EMPTY_JSON_OBJECT ->
 	    crossbar_util:response(error, no_messages_attached, Context);
 	_ ->
@@ -447,18 +445,18 @@ load_message_summary(DocId, Context) ->
 -spec(load_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_message(DocId, AttachmentId, Context) ->
     Messages = load_messages_from_doc(DocId, Context),
-    Message = load_message(AttachmentId, Messages),
+    Attachment = attachment_name(AttachmentId),
 
-    case Message of
-	[_] ->
+    case Message = load_message(Attachment, Messages) of
+	{struct, _} ->
 	    crossbar_util:response(Message,Context);
 	_ ->
 	    crossbar_util:response_bad_identifier(AttachmentId, Context)
     end.
 
-load_message(MessageId, Messages) ->
-    SearchFun = fun (Message) -> wh_json:get_value(<<"attachment">>, Message ) =:= attachment_name(MessageId) end,
-    lists:filter(SearchFun, Messages).
+load_message(Attachment, Messages) ->
+    [Mess | _] = [Message || Message <- Messages, wh_json:get_value(<<"attachment">>, Message ) =:= Attachment],
+    Mess.
 
 %%--------------------------------------------------------------------
 %% @private
