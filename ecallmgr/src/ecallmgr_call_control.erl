@@ -199,6 +199,7 @@ handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ,
         false -> 
             {noreply, State}; 
         true ->
+            logger:format_log(info, "CONTROL(~p): Command ~p execution complete, advance call-id ~p running ~p", [self(), EvtName, UUID, CurrApp]),
 	    case INU andalso queue:out(CmdQ) of
 		false ->
 		    %% if the node is down, don't inject the next FS event
@@ -211,8 +212,8 @@ handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ,
 	    end       
     end;
 
-handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU}=State) ->
-    logger:format_log(error, "CONTROL(~p): Forced queue advance for call-id ~p", [self(), UUID]),
+handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU, current_app=CurrApp}=State) ->
+    logger:format_log(info, "CONTROL(~p): Forced queue advance for call-id ~p running ~p", [self(), UUID, CurrApp]),
     case INU andalso queue:out(CmdQ) of
         false ->
             %% if the node is down, don't inject the next FS event
@@ -367,16 +368,12 @@ post_hangup_commands(CmdQ) ->
 
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     try
-        _ = case wh_json:get_value(<<"Application-Name">>, Cmd) of
-		<<"noop">> -> self() ! {execute_complete, UUID, <<"noop">>};
-		_ -> ok
-	    end,
         Mod = whistle_util:to_atom(<<"ecallmgr_"
                                      ,(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                      ,"_"
                                      ,(wh_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
                                    >>),
-        Mod:exec_cmd(Node, UUID, Cmd)
+        Mod:exec_cmd(Node, UUID, Cmd, self())
     catch
 	badmatch:{error,nosession} ->
 	    logger:format_log(error, "CONTROL.exe (~p): Error session down for ~p~n~p~n", [self(), UUID, erlang:get_stacktrace()]),
