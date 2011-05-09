@@ -526,7 +526,7 @@ is_permitted(RD, Context)->
             Event = <<"v1_resource.authorize">>,
             case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
                 [] ->
-            false;
+		    false;
                 [{true, {RD1, Context1}}|_] ->
                     {true, RD1, Context1}
             end
