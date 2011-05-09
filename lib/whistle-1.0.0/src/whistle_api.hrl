@@ -6,6 +6,12 @@
 %% When an event occurs, we include all prefixed vars in the API message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 
+%% For dialplan messages, an optional insert-at tuple is common across all requests
+-define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
+
+%% For dialplan messages, what does the Invite-Format param accept as values?
+-define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
+
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTH_REQ, AUTH_RESP, etc, for *) to be considered valid.
 %%%
@@ -41,7 +47,7 @@
 %%%
 %%% All four macros must be defined; OPTIONAL, VALUES, and TYPES can be empty lists.
 
-%% Default Headers - http://corp.switchfreedom.com/mediawiki/index.php/General_Concepts
+%% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
 			      , <<"App-Name">>, <<"App-Version">>]).
@@ -61,7 +67,7 @@
 			,{<<"Tenant-ID">>, fun is_binary/1}
 			]).
 
-%% Authentication Requests - http://corp.switchfreedom.com/mediawiki/index.php/Call_Authentication#Authentication_APIs
+%% Authentication Requests
 -define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
 			       , <<"Auth-User">>, <<"Auth-Domain">>]).
 -define(OPTIONAL_AUTH_REQ_HEADERS, []).
@@ -76,7 +82,7 @@
 			 ,{<<"Auth-Domain">>, fun is_binary/1}
 			]).
 
-%% Authentication Responses - http://corp.switchfreedom.com/mediawiki/index.php/Call_Authentication#Authentication_APIs
+%% Authentication Responses
 -define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTH_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
 -define(AUTH_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
@@ -100,7 +106,9 @@
 				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
 				 , <<"Username">>, <<"Realm">>
 			    ]).
--define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>]).
+-define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
+					   ,<<"FreeSWITCH-Hostname">>
+				      ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			    ,{<<"Event-Name">>, <<"reg_success">>}
 			   ]).
@@ -129,8 +137,8 @@
 			       ]).
 -define(REG_QUERY_RESP_TYPES, []).
 
-%% Route Requests - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
+%% Route Requests
+-define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Destination-Number">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 			   ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
@@ -143,6 +151,7 @@
 			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
 			  ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+                          ,{<<"Destination-Number">>, fun is_binary/1}
 			  ,{<<"To">>, fun is_binary/1}
 			  ,{<<"From">>, fun is_binary/1}
 			  ,{<<"Call-ID">>, fun is_binary/1}
@@ -164,25 +173,27 @@
 				    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
 			       ]).
 
-%% Route Responses - Sub-section Route - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.3CRoute.3E
+%% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
 						 ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
 						 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
 						 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
 						 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
+						 ,<<"SIP-Headers">>
 					   ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
 				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
-				  ,{<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}
+				  ,?INVITE_FORMAT_TUPLE
 				 ]).
 -define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
 				  ,{<<"Route">>, fun is_binary/1}
 				  ,{<<"To-User">>, fun is_binary/1}
 				  ,{<<"To-Realm">>, fun is_binary/1}
+				  ,{<<"SIP-Headers">>, fun is_list/1}
 				]).
 
-%% Route Responses - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29
+%% Route Responses
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
@@ -196,7 +207,7 @@
 					   end}
 			  ]).
 
-%% Route Winner - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#.22Winning.22_Application_Response_from_Call_Manager
+%% Route Winner
 -define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, []).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
@@ -204,24 +215,25 @@
 			  ,{<<"Control-Queue">>, fun is_binary/1}
 			 ]).
 
-%% Resource Request - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Request
+%% Resource Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
-					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>, <<"SIP-Headers">>
 				       ]).
 -define(RESOURCE_REQ_VALUES, [
 			      {<<"Event-Category">>, <<"originate">>}
 			      ,{<<"Event-Name">>, <<"resource_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
-			      ,{<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}
+			      ,?INVITE_FORMAT_TUPLE
 			     ]).
 -define(RESOURCE_REQ_TYPES, [{<<"Invite-Format">>, fun is_binary/1}
 			     ,{<<"Route">>, fun is_binary/1}
 			     ,{<<"To-User">>, fun is_binary/1}
 			     ,{<<"To-Realm">>, fun is_binary/1}
+			     ,{<<"SIP-Headers">>, fun is_list/1}
 			    ]).
 
-%% Resource Response - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Response
+%% Resource Response
 -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_RESOURCE_RESP_HEADERS, []).
 -define(RESOURCE_RESP_VALUES, [
@@ -230,13 +242,13 @@
 			      ]).
 -define(RESOURCE_RESP_TYPES, []).
 
-%% Resource Error - http://corp.switchfreedom.com/mediawiki/index.php/Resource_Control_%28Call_Setup_/_Teardown%29#Originate_Call_Error_Response
+%% Resource Error
 -define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>]).
 -define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>]).
 -define(RESOURCE_ERROR_VALUES, [{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}]).
 -define(RESOURCE_ERROR_TYPES, []).
 
-%% Call Events - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Receiving_Call_Events
+%% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
 					  ,<<"Msg-ID">>
@@ -269,7 +281,7 @@
 				 ]).
 -define(CALL_STATUS_RESP_TYPES, []).
 
-%% Call CDR - http://corp.switchfreedom.com/mediawiki/index.php/CallmgrCDRSpec
+%% Call CDR
 -define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
 			       ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
 			       ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
@@ -286,7 +298,7 @@
 			 ]).
 -define(CALL_CDR_TYPES, []).
 
-%% Error Responses - http://corp.switchfreedom.com/mediawiki/index.php/General_Concepts#StandardAPIFormat
+%% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
 -define(OPTIONAL_ERROR_RESP_HEADERS, []).
 -define(ERROR_RESP_VALUES, [{<<"Event-Category">>, <<"error">>}]).
@@ -294,7 +306,7 @@
 
 %%% Dialplan Commands and related definitions
 
-%% Store Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Store
+%% Store Request
 -define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Media-Transfer-Method">>
 				,<<"Media-Transfer-Destination">>]).
 -define(OPTIONAL_STORE_REQ_HEADERS, [<<"Media-Additional-Headers">>, <<"Insert-At">>]).
@@ -302,11 +314,11 @@
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"store">>}
 			   ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
 
-%% Store (via AMQP) Response - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Media_File_Store_Response_-_AMQP
+%% Store (via AMQP) Response
 -define(STORE_AMQP_RESP_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Media-Transfer-Method">>
 				      ,<<"Media-Name">>, <<"Media-Sequence-ID">>, <<"Media-Content">>
 				 ]).
@@ -318,7 +330,7 @@
 				,{<<"Media-Name">>, fun is_binary/1}
 			       ]).
 
-%% Store (via HTTP) Response - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Media_File_Store_Response_-_HTTP
+%% Store (via HTTP) Response
 -define(STORE_HTTP_RESP_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Media-Transfer-Method">>,
 				  <<"Media-Name">>, <<"Media-Transfer-Results">>]).
 -define(OPTIONAL_STORE_HTTP_RESP_HEADERS, []).
@@ -330,13 +342,13 @@
                                                                   (_) -> false
                                                                end}]).
 
-%% Tones Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Generate_Tone
+%% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
 -define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>]).
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"tones">>}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}]).
 
@@ -347,14 +359,14 @@
 			       ]).
 -define(TONES_REQ_TONE_TYPES, []).
 
-%% Tone Detect - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Tone_Detection
+%% Tone Detect
 -define(TONE_DETECT_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tone-Detect-Name">>, <<"Frequencies">>]).
 -define(OPTIONAL_TONE_DETECT_REQ_HEADERS, [<<"Sniff-Direction">>, <<"Timeout">>, <<"On-Success">>, <<"Hits-Needed">>, <<"Insert-At">>]).
 -define(TONE_DETECT_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"tone_detect">>}
 				 ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
-				 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+				 ,?INSERT_AT_TUPLE
 				]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
 				,{<<"Timeout">>, fun(<<"+", T/binary>>) ->
@@ -368,82 +380,88 @@
 						 end}
 			       ]).
 
-%% Queue Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Queue
+%% Queue Request
 -define(QUEUE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Commands">>]).
 -define(OPTIONAL_QUEUE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(QUEUE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"queue">>}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(QUEUE_REQ_TYPES, [{<<"Commands">>, fun is_list/1}]).
 
-%% Bridge Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Bridge
+%% Bridge Request
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
--define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>
+-define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
                                       ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                      ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
                                       ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
+				      ,<<"SIP-Headers">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"bridge">>}
 			    ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
 			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
--define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}]).
+-define(BRIDGE_REQ_TYPES, [
+			   {<<"Endpoints">>, fun is_list/1}
+			   ,{<<"SIP-Headers">>, fun is_list/1}
+			  ]).
 
-%% Endpoints - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#.3CEndpoint.3E
+%% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
 						    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+						    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                                     ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>
+                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>
 					      ]).
--define(BRIDGE_REQ_ENDPOINT_VALUES, [{<<"Invite-Format">>, [<<"username">>, <<"npan">>, <<"1npan">>, <<"e164">>, <<"route">>]}
+-define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                     ]).
--define(BRIDGE_REQ_ENDPOINT_TYPES, []).
+-define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun is_list/1}]).
 
-%% Answer - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Answer
+%% Answer
 -define(ANSWER_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_ANSWER_REQ_HEADERS, [<<"Insert-At">>]).
 -define(ANSWER_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"answer">>}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(ANSWER_REQ_TYPES, []).
 
-%% Hangup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hangup
+%% Hangup
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>]).
 -define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"hangup">>}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(HANGUP_REQ_TYPES, []).
 
-%% Park - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FPark
+%% Park
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>]).
 -define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"park">>}
-			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			  ,?INSERT_AT_TUPLE
 			 ]).
 -define(PARK_REQ_TYPES, []).
 
-%% Set - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Hold.2FSet
--define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>]).
+%% Set
+-define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>, <<"Custom-Call-Vars">>]).
 -define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			 ,{<<"Event-Name">>, <<"command">>}
 			 ,{<<"Application-Name">>, <<"set">>}
-			 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			 ,?INSERT_AT_TUPLE
 			 ]).
 -define(SET_REQ_TYPES, [
 			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
@@ -452,27 +470,46 @@
 									 (_) -> false
 								      end, L);
 						       (_) -> false
+						    end},
+			{<<"Custom-Call-Vars">>, fun({struct, L}) when is_list(L) ->
+							    lists:all(fun({K, V}) when is_binary(K) andalso
+										       (is_binary(V) orelse is_number(V)) -> true;
+									 (_) -> false
+								      end, L);
+						       (_) -> false
 						    end}
 		       ]).
 
-%% Call Pickup - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Call_Pickup
+%% Fetch
+-define(FETCH_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_FETCH_REQ_HEADERS, [<<"Insert-At">>, <<"From-Other-Leg">>]).
+-define(FETCH_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+			 ,{<<"Event-Name">>, <<"command">>}
+			 ,{<<"Application-Name">>, <<"fetch">>}
+			 ,?INSERT_AT_TUPLE
+			 ]).
+-define(FETCH_REQ_TYPES, [
+                           {<<"From-Other-Leg">>, fun is_boolean/1}
+                         ]).
+
+%% Call Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"call_pickup">>}
-				 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+				 ,?INSERT_AT_TUPLE
 				]).
 -define(CALL_PICKUP_REQ_TYPES, []).
 
 
-%% Play Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Play
+%% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>]).
 -define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			  ,{<<"Event-Name">>, <<"command">>}
 			  ,{<<"Application-Name">>, <<"play">>}
-			  ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			  ,?INSERT_AT_TUPLE
 			 ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
@@ -504,7 +541,7 @@
 			     ]).
 -define(MEDIA_ERROR_TYPES, []).
 
-%% Record Request - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Record
+%% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
 					  ,<<"Silence-Hits">>, <<"Insert-At">>
@@ -512,11 +549,11 @@
 -define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"record">>}
-			    ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
-%% Play and Record Digits - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Play_and_Collect_Digits
+%% Play and Record Digits
 -define(PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>, <<"Maximum-Digits">>
 				 ,<<"Timeout">>, <<"Terminators">>, <<"Media-Name">>, <<"Media-Tries">>
 				 ,<<"Failed-Media-Name">>, <<"Digits-Regex">>
@@ -525,11 +562,11 @@
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 					 ,{<<"Event-Name">>, <<"command">>}
 					 ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
-					 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+					 ,?INSERT_AT_TUPLE
 					]).
 -define(PLAY_COLLECT_DIGITS_REQ_TYPES, []).
 
-%% Say - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Say
+%% Say
 -define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
 -define(OPTIONAL_SAY_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -541,28 +578,28 @@
 					    ,<<"url">>, <<"ip_address">>, <<"e-mail_address">>, <<"postal_address">>
 					    ,<<"account_number">>, <<"name_spelled">>, <<"name_phonetic">>, <<"short_date_time">>]}
 			 ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
-			 ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			 ,?INSERT_AT_TUPLE
 			]).
 -define(SAY_REQ_TYPES, []).
 
-%% Sleep - http://corp.switchfreedom.com/mediawiki/index.php/Dialplan_Actions#Sleep
+%% Sleep
 -define(SLEEP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Time">>]).
 -define(OPTIONAL_SLEEP_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SLEEP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			   ,{<<"Event-Name">>, <<"command">>}
 			   ,{<<"Application-Name">>, <<"sleep">>}
-			   ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(SLEEP_REQ_TYPES, []).
 
 
-%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).
 -define(OPTIONAL_CONFERENCE_REQ_HEADERS, [<<"Insert-At">>, <<"Mute">>, <<"Deaf">>, <<"Moderator">>]).
 -define(CONFERENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
                                 ,{<<"Application-Name">>, <<"conference">>}
-                                ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+                                ,?INSERT_AT_TUPLE
                                 ,{<<"Mute">>, [<<"true">>, <<"false">>]}
                                 ,{<<"Deaf">>, [<<"true">>, <<"false">>]}
                                 ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
@@ -571,7 +608,7 @@
                                ,{<<"Conference-ID">>, fun is_binary/1}
                               ]).
 
-%% Conference::Members - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Members
 -define(CONF_MEMBERS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
 -define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_MEMBERS_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -589,7 +626,7 @@
 -define(CONF_MEMBERS_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 
-%% Conference::Play - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Play
 -define(CONF_PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_CONF_PLAY_REQ_HEADERS, [<<"Insert-At">>, <<"Member-ID">>]).
 -define(CONF_PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -601,7 +638,7 @@
                               ,{<<"Member-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference:: - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Deaf Member
 -define(CONF_DEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_DEAF_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_DEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -612,7 +649,7 @@
                               ,{<<"Member-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Undeaf Member
 -define(CONF_UNDEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_UNDEAF_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_UNDEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -623,7 +660,7 @@
                                 ,{<<"Member-ID">>, fun is_binary/1}
                                ]).
 
-%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Mute Member
 -define(CONF_MUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_MUTE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_MUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -634,7 +671,7 @@
                               ,{<<"Member-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Unmute Member
 -define(CONF_UNMUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_UNMUTE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_UNMUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -645,7 +682,7 @@
                                 ,{<<"Member-ID">>, fun is_binary/1}
                                ]).
 
-%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Kick Member
 -define(CONF_KICK_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_KICK_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_KICK_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -656,7 +693,7 @@
                               ,{<<"Member-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Move Member
 -define(CONF_MOVE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-From">>, <<"Conference-To">>, <<"Member-ID">>]).
 -define(OPTIONAL_CONF_MOVE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_MOVE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -668,7 +705,7 @@
                                ,{<<"Member-ID">>, fun is_binary/1}
                               ]).
 
-%% Conference - http://wiki.2600hz.org/display/whistle/Conferences
+%% Conference Relate Member
 -define(CONF_RELATE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>, <<"Correlate-ID">>]).
 -define(OPTIONAL_CONF_RELATE_REQ_HEADERS, [<<"Insert-At">>, <<"Relationship">>]).
 -define(CONF_RELATE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -687,9 +724,22 @@
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}
-                          ,{<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}
+                          ,?INSERT_AT_TUPLE
                          ]).
 -define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
+
+%% MWI request
+-define(MWI_REQ_HEADERS, [<<"Messages-Waiting">>, <<"Message-Account-User">>, <<"Message-Account-Realm">>]).
+-define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-New">>, <<"Messages-Saved">>, <<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).
+-define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
+			 ,{<<"Event-Name">>, <<"mwi">>}
+			 ]).
+-define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+			,{<<"Messages-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+			,{<<"Messages-Urgent">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+			,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+			,{<<"Messages-Waiting">>, fun(I) -> whistle_util:is_true(I) xor whistle_util:is_false(I) end}
+		       ]).
 
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
@@ -720,6 +770,7 @@
 				 ,{<<"playback">>, <<"tones">>}
 				 ,{<<"park">>, <<"park">>}
 				 ,{<<"set">>, <<"set">>}
+				 ,{<<"export">>, <<"set">>}
 				 ,{<<"say">>, <<"say">>}
 				 ,{<<"sleep">>, <<"sleep">>}
 				 ,{<<"bridge">>, <<"bridge">>}

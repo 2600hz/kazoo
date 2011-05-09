@@ -9,14 +9,14 @@
 
 -module(ecallmgr_conference_command).
 
--export([exec_cmd/3]).
+-export([exec_cmd/4]).
 
 -import(logger, [log/2, format_log/3]).
 
 -include("ecallmgr.hrl").
 
--spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | tuple(error, bad_reply | string())).
-exec_cmd(Node, CallId, JObj) ->
+-spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), ControlPID :: pid()) -> ok | timeout | tuple(error, bad_reply | string())).
+exec_cmd(Node, CallId, JObj, _) ->
     AppName = wh_json:get_value(<<"Application-Name">>, JObj),
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     case get_fs_app(Node, ConfName, JObj, AppName) of
@@ -115,12 +115,12 @@ api(Node, AppName, Args) ->
     format_log(info, "CONFERENCE_COMMAND(~p): FS-API -> Node: ~p Api: ~p ~p~n", [self(), Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
 
--spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
+-spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} ->
             MediaName;
-        Url ->
+        {ok, Url} ->
             get_fs_playback(Url)
     end.
 

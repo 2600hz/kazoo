@@ -75,13 +75,14 @@ load_merge(_DocId, _Data, #cb_context{db_name=undefined}=Context) ->
 load_merge(DocId, {struct, Data}, Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
-            Doc1 = {struct, private_fields(Doc) ++ Data},
+	    {stuct, PrivProp} = private_fields(Doc),
+            Doc1 = {struct, PrivProp ++ Data},
             Context1#cb_context{
-                 doc=Doc1
-                ,resp_status=success
-                ,resp_data=public_fields(Doc1)
-                ,resp_etag=rev_to_etag(Doc1)
-            };
+	      doc=Doc1
+	      ,resp_status=success
+	      ,resp_data=public_fields(Doc1)
+	      ,resp_etag=rev_to_etag(Doc1)
+	     };
         Else ->
             Else
     end.
@@ -327,16 +328,13 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 -spec(public_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
 public_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
-public_fields({struct, Json}) ->
-    PubDoc =
-        lists:filter(fun({K, _}) ->
-                            not is_private_key(K)
-                     end, Json),
-    case props:get_value(<<"_id">>, Json) of
+public_fields({struct, Prop}) ->
+    PubJObj = {struct, [ Tuple || {K, _}=Tuple <- Prop, not is_private_key(K)]},
+    case wh_json:get_value(<<"_id">>, PubJObj) of
         undefined ->
-            {struct, PubDoc};
+	    PubJObj;
         Id ->
-            {struct, PubDoc ++ [{<<"id">>, Id}]}
+	    wh_json:set_value(<<"id">>, Id, PubJObj)
     end;
 public_fields(Json) ->
     logger:format_log(error, "Unhandled Json format in public_fields:~n~p~n", [Json]),
@@ -352,10 +350,8 @@ public_fields(Json) ->
 -spec(private_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
 private_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
-private_fields({struct, Json}) ->
-    lists:filter(fun({K, _}) ->
-                        is_private_key(K)
-                 end, Json);
+private_fields({struct, Prop}) ->
+    {struct, [ Tuple || {K,_}=Tuple <- Prop, is_private_key(K)]};
 private_fields(Json) ->
     logger:format_log(error, "Unhandled Json format in private fields:~n~p~n", [Json]),
     Json.
@@ -417,3 +413,6 @@ update_pvt_parameters(JObj0, Context) ->
         _ -> 
             wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj0)
     end.
+
+
+%% ADD Unit Tests for private/public field filtering and merging

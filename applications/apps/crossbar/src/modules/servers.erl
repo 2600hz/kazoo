@@ -418,7 +418,7 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                 Password = wh_json:get_value(<<"password">>, Data),
                 Hostname = wh_json:get_value(<<"hostname">>, JObj),
                 OS = wh_json:get_value(<<"operating_system">>, JObj),
-                AccountId = accounts:get_db_name(Db, raw),
+                AccountId = whapps_util:get_db_name(Db, raw),
                 Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
                                              ,"/deploy.sh"
                                              ,$ , $" ,Ip/binary, $"

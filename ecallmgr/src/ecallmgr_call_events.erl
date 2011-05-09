@@ -311,10 +311,10 @@ publish_msg(UUID, Prop) ->
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
 	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-		       ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-		       ,{<<"Call-ID">>, UUID}
-		       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
-		       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
+                        ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                        ,{<<"Call-ID">>, UUID}
+                        ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
+                        ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
 		       | event_specific(EvtName, Prop) ],
 	    EvtProp1 = EvtProp0 ++ whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of

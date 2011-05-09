@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
@@ -195,10 +195,11 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
     end;
 
 handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
-    case whistle_api:convert_whistle_app_name(CurrApp) of
-	<<>> ->
-	    {noreply, State};
-	EvtName ->
+    case lists:member(EvtName, whistle_api:convert_whistle_app_name(CurrApp)) of 
+        false -> 
+            {noreply, State}; 
+        true ->
+            logger:format_log(info, "CONTROL(~p): Command ~p execution complete, advance call-id ~p running ~p", [self(), EvtName, UUID, CurrApp]),
 	    case INU andalso queue:out(CmdQ) of
 		false ->
 		    %% if the node is down, don't inject the next FS event
@@ -208,13 +209,11 @@ handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ,
 		{{value, Cmd}, CmdQ1} ->
 		    execute_control_request(Cmd, State),
 		    {noreply, State#state{command_q = CmdQ1, current_app = wh_json:get_value(<<"Application-Name">>, Cmd)}}
-	    end;
-	_OtherEvt ->
-	    {noreply, State}
+	    end       
     end;
 
-handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU}=State) ->
-    logger:format_log(error, "CONTROL(~p): Forced queue advance for call-id ~p", [self(), UUID]),
+handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU, current_app=CurrApp}=State) ->
+    logger:format_log(info, "CONTROL(~p): Forced queue advance for call-id ~p running ~p", [self(), UUID, CurrApp]),
     case INU andalso queue:out(CmdQ) of
         false ->
             %% if the node is down, don't inject the next FS event
@@ -369,19 +368,26 @@ post_hangup_commands(CmdQ) ->
 
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     try
-        _ = case wh_json:get_value(<<"Application-Name">>, Cmd) of
-		<<"noop">> -> self() ! {execute_complete, UUID, <<"noop">>};
-		_ -> ok
-	    end,
         Mod = whistle_util:to_atom(<<"ecallmgr_"
                                      ,(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                      ,"_"
                                      ,(wh_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
                                    >>),
-        Mod:exec_cmd(Node, UUID, Cmd)
+        Mod:exec_cmd(Node, UUID, Cmd, self())
     catch
+	badmatch:{error,nosession} ->
+	    logger:format_log(error, "CONTROL.exe (~p): Error session down for ~p~n~p~n", [self(), UUID, erlang:get_stacktrace()]),
+	    Resp = [
+		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
+		    ,{<<"Error-Message">>, <<"Channel was hungup before completing command ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
+		    | whistle_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+		   ],
+            {ok, Payload} = whistle_api:error_resp(Resp),
+            amqp_util:callevt_publish(UUID, Payload, event),
+            self() ! {hangup, undefined, UUID},
+	    ok;
         _:_=E ->
-            logger:format_log(error, "CONTROL.exe (~p): Error ~p executing request for call ~p", [self(), E, UUID]),
+            logger:format_log(error, "CONTROL.exe (~p): Error ~p executing request for call ~p~n~p~n", [self(), E, UUID, erlang:get_stacktrace()]),
             Resp = [
 		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
 		    ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}

@@ -223,6 +223,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 						       {<<"Direction">>, Direction}
 						       ,{<<"Username">>, AuthU}
 						       ,{<<"Realm">>, AuthR}
+                                                       ,{<<"Authorizing-ID">>, wh_json:get_value(<<"authorizing_id">>, AuthProp, <<"ignore">>)}
 						      ]
 					     }}
 		| whistle_api:default_headers(State#state.my_q % serverID is not important, though we may want to define it eventually
@@ -322,8 +323,8 @@ auth_specific_response(AuthInfo) ->
     [{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
      ,{<<"Auth-Method">>, Method}
      ,{<<"Event-Name">>, <<"auth_resp">>}
-     ,{<<"Access-Group">>, wh_json:get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, wh_json:get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
     ].
 
 send_resp(Payload, RespQ) ->

@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_amqp_host/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -25,9 +25,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {amqp_host = "" :: string()
-		,callmgr_q = <<>> :: binary()
-	       }).
+-record(state, {callmgr_q = <<>> :: binary()}).
 
 %%%===================================================================
 %%% API
@@ -42,9 +40,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-set_amqp_host(Host) ->
-    gen_server:cast(?MODULE, {set_amqp_host, Host}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -63,9 +58,7 @@ set_amqp_host(Host) ->
 %%--------------------------------------------------------------------
 init([]) ->
     try
-	H = net_adm:localhost(),
-	Q = start_amqp(H, "", <<>>),
-	{ok, #state{amqp_host=H, callmgr_q=Q}}
+	{ok, #state{callmgr_q=start_amqp()}}
     catch
 	_:_ -> {ok, #state{}}
     end.
@@ -85,8 +78,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,10 +90,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({set_amqp_host, Host}, #state{amqp_host=OldHost, callmgr_q=OldQ}=State) ->
-    NewQ = start_amqp(Host, OldHost, OldQ),
-    format_log(info, "RSCMGR(~p): Change Amqp from ~p to ~p: ~p~n", [self(), OldHost, Host, NewQ]),
-    {noreply, State#state{amqp_host=Host, callmgr_q=NewQ}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -116,8 +104,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
-					   ,payload = Payload}}, #state{amqp_host=AmqpHost}=State) ->
-    spawn(fun() -> handle_resource_req(Payload, AmqpHost) end),
+					   ,payload = Payload}}, State) ->
+    spawn(fun() -> handle_resource_req(Payload) end),
     {noreply, State};
 handle_info(_Info, State) ->
     format_log(info, "RSCMGR(~p): Unhandled info ~p~n", [self(), _Info]),
@@ -134,10 +122,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_host=Host, callmgr_q=Q}) ->
-    format_log(info, "RSCMGR(~p): Going down(~p). H: ~p Q: ~p~n", [self(), _Reason, Host, Q]),
-    amqp_util:delete_callmgr_queue(Host, Q),
-    ok.
+terminate(_Reason, #state{callmgr_q=Q}) ->
+    format_log(info, "RSCMGR(~p): Going down(~p). Q: ~p~n", [self(), _Reason, Q]),
+    amqp_util:queue_delete(Q).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,38 +140,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/3 :: (Host :: string(), OldHost :: string(), OldQ :: binary()) -> binary()).
-start_amqp(Host, "", <<>>) ->
-    amqp_util:callmgr_exchange(Host),
-    amqp_util:targeted_exchange(Host),
-    Q = amqp_util:new_callmgr_queue(Host, <<>>),
-    amqp_util:bind_q_to_callmgr(Host, Q, ?KEY_RESOURCE_REQ),
-    amqp_util:basic_consume(Host, Q),
-    Q;
-start_amqp(Host, _, OldQ) ->
-    amqp_util:delete_callmgr_queue(OldQ),
-    start_amqp(Host, "", <<>>).
+-spec(start_amqp/0 :: () -> binary()).
+start_amqp() ->
+    Q = amqp_util:new_callmgr_queue(<<>>),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_RESOURCE_REQ),
+    amqp_util:basic_consume(Q),
+    Q.
 
--spec(handle_resource_req/2 :: (Payload :: binary(), AmqpHost :: string()) -> no_return()).
-handle_resource_req(Payload, AmqpHost) ->
-    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-    case whistle_api:resource_req_v(Prop) of
+-spec(handle_resource_req/1 :: (Payload :: binary()) -> no_return()).
+handle_resource_req(Payload) ->
+    JObj = mochijson2:decode(binary_to_list(Payload)),
+    case whistle_api:resource_req_v(JObj) of
 	true ->
-	    format_log(info, "RSCMGR.h_res_req(~p): Req: ~p~n", [self(), Prop]),
-	    Options = get_request_options(Prop),
-	    Nodes = get_resources(request_type(Prop), Options),
+	    Options = get_request_options(JObj),
+	    Nodes = get_resources(request_type(JObj), Options),
 
-	    Min = whistle_util:to_integer(get_value(min_channels_requested, Options)),
-	    Max = whistle_util:to_integer(get_value(max_channels_requested, Options)),
-	    Route = ecallmgr_fs_xml:build_route([{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], get_value(<<"Invite-Format">>, Prop)),
-	    case start_channels(Nodes, {AmqpHost, Prop}, Route, Min, Max-Min) of
+	    Min = whistle_util:to_integer(props:get_value(min_channels_requested, Options)),
+	    Max = whistle_util:to_integer(props:get_value(max_channels_requested, Options)),
+
+	    {struct, Prop} = JObj,
+	    Route = ecallmgr_fs_xml:build_route([{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], wh_json:get_value(<<"Invite-Format">>, JObj)),
+
+	    case start_channels(Nodes, JObj, Route, Min, Max-Min) of
 		{error, failed_starting, Failed} ->
-		    send_failed_req(Prop, AmqpHost, Failed),
+		    send_failed_req(JObj, Failed),
 		    fail;
 		ok -> ok
 	    end;
 	false ->
-	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validate ~p~n", [self(), Prop])
+	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validate ~s~n", [self(), Payload])
     end.
 
 -spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
@@ -196,87 +180,84 @@ get_resources(_Type, _Options) ->
     format_log(error, "RSCMGR.get_res(~p): Unknown request type ~p~n", [self(), _Type]),
     [].
 
--spec(request_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary(), binary())).
-request_type(Prop) ->
-    {get_value(<<"Event-Category">>, Prop), get_value(<<"Event-Name">>, Prop), get_value(<<"Resource-Type">>, Prop)}.
+-spec(request_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary(), binary())).
+request_type(JObj) ->
+    {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Resource-Type">>, JObj)}.
 
--spec(get_request_options/1 :: (Prop :: proplist()) -> proplist()).
-get_request_options(Prop) ->
-    Min = whistle_util:to_integer(get_value(<<"Resource-Minimum">>, Prop, 1)),
+-spec(get_request_options/1 :: (JObj :: json_object()) -> proplist()).
+get_request_options(JObj) ->
+    Min = whistle_util:to_integer(wh_json:get_value(<<"Resource-Minimum">>, JObj, 1)),
     [{min_channels_requested, Min}
-     ,{max_channels_requested, whistle_util:to_integer(get_value(<<"Resource-Maximum">>, Prop, Min))}
+     ,{max_channels_requested, whistle_util:to_integer(wh_json:get_value(<<"Resource-Maximum">>, JObj, Min))}
     ].
 
--spec(start_channels/5 :: (Nodes :: list(), Amqp :: tuple(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> tuple(error, failed_starting, integer()) | ok).
-start_channels(_Ns, _Amqp, _Route, 0, 0) -> ok; %% started all channels requested
-start_channels([], _Amqp, _Route, 0, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
-start_channels([], _Amqp, _Route, M, _) -> {error, failed_starting, M}; %% failed to start the minimum channels before server resources ran out
-start_channels([N | Ns]=Nodes, Amqp, Route, 0, Max) -> %% these are bonus channels not required but desired
-    case start_channel(N, Route, Amqp) of
-	{ok, 0} -> start_channels(Ns, Amqp, Route, 0, Max-1);
-	{ok, _} -> start_channels(Nodes, Amqp, Route, 0, Max-1);
-	{error, _} -> start_channels(Ns, Amqp, Route, 0, Max)
+-spec(start_channels/5 :: (Nodes :: list(), JObj :: json_object(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> tuple(error, failed_starting, integer()) | ok).
+start_channels(_Ns, _JObj, _Route, 0, 0) -> ok; %% started all channels requested
+start_channels([], _JObj, _Route, 0, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
+start_channels([], _JObj, _Route, M, _) -> {error, failed_starting, M}; %% failed to start the minimum channels before server resources ran out
+start_channels([N | Ns]=Nodes, JObj, Route, 0, Max) -> %% these are bonus channels not required but desired
+    case start_channel(N, Route, JObj) of
+	{ok, 0} -> start_channels(Ns, JObj, Route, 0, Max-1);
+	{ok, _} -> start_channels(Nodes, JObj, Route, 0, Max-1);
+	{error, _} -> start_channels(Ns, JObj, Route, 0, Max)
     end;
-start_channels([N | Ns]=Nodes, Amqp, Route, Min, Max) -> %% start the minimum channels
-    case start_channel(N, Route, Amqp) of
-	{ok, 0} -> start_channels(Ns, Amqp, Route, Min-1, Max);
-	{ok, _} -> start_channels(Nodes, Amqp, Route, Min-1, Max);
-	{error, _} -> start_channels(Ns, Amqp, Route, Min, Max)
+start_channels([N | Ns]=Nodes, JObj, Route, Min, Max) -> %% start the minimum channels
+    case start_channel(N, Route, JObj) of
+	{ok, 0} -> start_channels(Ns, JObj, Route, Min-1, Max);
+	{ok, _} -> start_channels(Nodes, JObj, Route, Min-1, Max);
+	{error, _} -> start_channels(Ns, JObj, Route, Min, Max)
     end.
 
--spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), Amqp :: tuple()) -> tuple(ok, integer()) | tuple(error, timeout | binary())).
-start_channel(N, Route, Amqp) ->
+-spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), JObj :: json_object()) -> tuple(ok, integer()) | tuple(error, timeout | binary())).
+start_channel(N, Route, JObj) ->
     Pid = get_value(node, N),
     case ecallmgr_fs_node:resource_consume(Pid, Route) of
 	{resource_consumed, UUID, CtlQ, AvailableChan} ->
-	    spawn(fun() -> send_uuid_to_app(Amqp, UUID, CtlQ) end),
+	    spawn(fun() -> send_uuid_to_app(JObj, UUID, CtlQ) end),
 	    {ok, AvailableChan};
 	{resource_error, E} ->
 	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
-	    spawn(fun() -> send_failed_consume(Route, Amqp, E) end),
+	    spawn(fun() -> send_failed_consume(Route, JObj, E) end),
 	    {error, E}
     end.
 
--spec(send_uuid_to_app/3 :: (Amqp :: tuple(string(), proplist()), UUID :: binary(), CtlQ :: binary()) -> no_return()).
-send_uuid_to_app({Host, Prop}, UUID, CtlQ) ->
-    Msg = get_value(<<"Msg-ID">>, Prop),
-    AppQ = get_value(<<"Server-ID">>, Prop),
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+-spec(send_uuid_to_app/3 :: (JObj :: json_object(), UUID :: binary(), CtlQ :: binary()) -> no_return()).
+send_uuid_to_app(JObj, UUID, CtlQ) ->
+    Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
+    AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
 
     RespProp = [{<<"Msg-ID">>, Msg}
 	       ,{<<"Call-ID">>, UUID}
 	       ,{<<"Control-Queue">>, CtlQ}
-		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, <<"resource_mgr">>, whistle_util:to_binary(Vsn))],
+		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
     format_log(info, "RSC_MGR: Sending resp to ~p: ~s~n", [AppQ, JSON]),
-    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
--spec(send_failed_req/3 :: (Prop :: proplist(), Host :: string(), Failed :: integer()) -> no_return()).
-send_failed_req(Prop, Host, Failed) ->
-    Msg = get_value(<<"Msg-ID">>, Prop),
-    AppQ = get_value(<<"Server-ID">>, Prop),
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+-spec(send_failed_req/2 :: (JObj :: json_object(), Failed :: integer()) -> no_return()).
+send_failed_req(JObj, Failed) ->
+    Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
+    AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
 
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Attempts">>, Failed}
-		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, <<"resource_mgr">>, Vsn)],
+		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
-    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
--spec(send_failed_consume/3 :: (Route :: binary() | list(), Amqp :: tuple(Host :: string(), Prop :: proplist()), E :: binary()) -> no_return()).
-send_failed_consume(Route, {Host, Prop}, E) ->
-    Msg = get_value(<<"Msg-ID">>, Prop),
-    AppQ = get_value(<<"Server-ID">>, Prop),
-    {ok, Vsn} = application:get_key(ecallmgr, vsn),
+-spec(send_failed_consume/3 :: (Route :: binary() | list(), JObj :: json_object(), E :: binary()) -> no_return()).
+send_failed_consume(Route, JObj, E) ->
+    Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
+    AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
 
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Route">>, Route}
 		,{<<"Failure-Message">>, whistle_util:to_binary(E)}
-		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, <<"resource_mgr">>, Vsn)],
+		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
-    amqp_util:targeted_publish(Host, AppQ, JSON, <<"application/json">>).
+    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
 %% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first) 
 %% [

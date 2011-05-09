@@ -14,8 +14,6 @@
 %% API
 -export([start/2]).
 
--import(cf_call_command, [hangup/1]).
-
 -include("callflow.hrl").
 
 %%--------------------------------------------------------------------
@@ -29,6 +27,7 @@
 start(Call, Flow) ->
     process_flag(trap_exit, true),
     AmqpQ = init_amqp(Call),
+    cache_account(Call),
     next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow).
 
 %%--------------------------------------------------------------------
@@ -74,11 +73,9 @@ wait(Call, Flow, Pid) ->
            logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
-                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
-                   hangup(Call);
+                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]);
                ?EMPTY_JSON_OBJECT ->
-                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
-                   hangup(Call);
+                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]);
                NewFlow ->
                    next(Call, NewFlow)
            end;
@@ -106,8 +103,7 @@ wait(Call, Flow, Pid) ->
        {branch, NewFlow} ->
            next(Call, NewFlow);
        {stop} ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]),
-           hangup(Call);
+           logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]);
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
            is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
@@ -142,3 +138,23 @@ init_amqp(#cf_call{call_id=CallId}) ->
     amqp_util:bind_q_to_targeted(AmqpQ),
     amqp_util:basic_consume(AmqpQ),
     AmqpQ.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load the account into the cache for use by the callflow modules
+%% (primarily for default values)
+%% @end
+%%--------------------------------------------------------------------
+-spec(cache_account/1 :: (Call :: #cf_call{}) -> no_return()).
+cache_account(#cf_call{account_db=Db}) ->
+    spawn(fun() ->
+                  case wh_cache:fetch({account, Db}) =/= {error, not_found}
+                      orelse couch_mgr:get_results(Db, <<"account/listing_by_id">>, [{<<"include_docs">>, true}]) of
+                      {ok, [JObj]} -> wh_cache:store({account, Db}, wh_json:get_value(<<"doc">>, JObj));
+                      true -> ok;
+                      {error, _} -> ok
+                  end
+          end).
+
+    

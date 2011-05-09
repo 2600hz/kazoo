@@ -48,7 +48,7 @@ custom_channel_vars(Prop) ->
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
 -spec(eventstr_to_proplist/1 :: (EvtStr :: string()) -> proplist()).
-eventstr_to_proplist(EvtStr) when is_list(EvtStr) ->
+eventstr_to_proplist(EvtStr) ->
     [begin
 	 [K, V] = string:tokens(X, ": "),
 	 [{V1,[]}] = mochiweb_util:parse_qs(V),
