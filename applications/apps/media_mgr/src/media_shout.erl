@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -134,11 +134,17 @@ handle_cast(stop, State) ->
 handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName
 			    ,lsocket=LSocket, send_to=SendTo, stream_type=StreamType}=S) ->
     try
-	CT = <<"audio/mpeg">>,
+	{ok, PortNo} = inet:port(LSocket),
 	{ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
 
-	{ok, PortNo} = inet:port(LSocket),
-	StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
+	Extension = filename:extension(Attachment),
+
+	CT = case Extension of
+		 <<".mp3">> -> <<"audio/mpeg">>;
+		 <<".wav">> -> <<"audio/x-wav">>
+	     end,
+
+	StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream", Extension]),
 	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, SendTo]),
 
 	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
@@ -154,8 +160,13 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 			false -> ?CHUNKSIZE
 		    end,
 
-	Resp = wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
-	Header = wh_shout:get_header(MediaName, StreamUrl),
+	{Resp, Header} = case Extension of
+			     <<".mp3">> ->
+				 {wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT)
+				  ,wh_shout:get_header(MediaName, StreamUrl)};
+			     <<".wav">> ->
+				 {<<>>,<<>>}
+			 end,
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous)},
