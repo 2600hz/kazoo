@@ -53,7 +53,7 @@ start_shout(Media, To, Type, Port) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Restart = transient,
+    Restart = temporary,
     Shutdown = 2000,
     Type = worker,
 

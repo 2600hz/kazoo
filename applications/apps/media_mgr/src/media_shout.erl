@@ -159,7 +159,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 				 <<".wav">> ->
 				     Self = self(),
 				     spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
-				     {get_http_response_headers(?CONTENT_TYPE_WAV, Size),<<0>>,?CONTENT_TYPE_WAV}
+				     {<<>>,<<0>>,?CONTENT_TYPE_WAV}
 			     end,
 
 	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
@@ -286,11 +286,11 @@ start_stream_acceptor(Parent, LSock) ->
 play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile) ->
     play_media(MediaFile, [], 0, byte_size(Contents), <<>>, Header).
 
-play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile, [], _, Stop, _, _) ->
+play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader, content_type=CT}=MediaFile, [], _, Stop, _, _) ->
     receive
 	{add_socket, S} ->
 	    logger:format_log(info, "SHOUT.mloop(~p): Adding first socket: ~p~n", [self(), S]),
-	    gen_tcp:send(S, [ShoutResponse]),
+	    CT =:= ?CONTENT_TYPE_MP3 andalso gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
 	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
@@ -299,12 +299,12 @@ play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=M
 	    logger:format_log(info, "SHOUT.mloop(~p): have heard from anyone in ~p ms, going down~n", [self(), ?MAX_WAIT_FOR_LISTENERS]),
 	    ok
     end;
-play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile
+play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader, content_type=CT}=MediaFile
 	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
 	    logger:format_log(info, "SHOUT.mloop(~p): Adding socket: ~p~n", [self(), S]),
-	    gen_tcp:send(S, [ShoutResponse]),
+	    CT =:= ?CONTENT_TYPE_MP3 andalso gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
 	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
