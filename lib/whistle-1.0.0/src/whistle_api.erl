@@ -35,11 +35,14 @@
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
 	 ,sleep_req/1, tone_detect_req/1, set_req/1, media_req/1, media_resp/1, media_error/1
-         ,conference_req/1, noop_req/1
+         ,conference_req/1, noop_req/1, fetch_req/1
         ]).
 
 %% FS command
 -export([fs_req/1, fs_req_v/1]).
+
+%% Maintenance API calls
+-export([mwi_update/1]).
 
 % Conference Members
 -export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1, 
@@ -58,8 +61,11 @@
 	 ,media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1, conference_members_req_v/1
          ,conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1, conference_undeaf_req_v/1
          ,conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1, conference_move_req_v/1
-         ,noop_req_v/1
+         ,noop_req_v/1, fetch_req_v/1, mwi_update_v/1
 	]).
+
+%% Other AMQP API validators can use these helpers
+-export([build_message/3, validate/4]).
 
 %% FS-specific routines
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
@@ -819,6 +825,26 @@ set_req_v(Prop) ->
     validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES).
 
 %%--------------------------------------------------------------------
+%% @doc Fetch Custom Channel variables - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(fetch_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+fetch_req({struct, Prop}) ->
+    fetch_req(Prop);
+fetch_req(Prop) ->
+    case fetch_req_v(Prop) of
+	true -> build_message(Prop, ?FETCH_REQ_HEADERS, ?OPTIONAL_FETCH_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for fetch_req"}
+    end.
+
+-spec(fetch_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+fetch_req_v({struct, Prop}) ->
+    fetch_req_v(Prop);
+fetch_req_v(Prop) ->
+    validate(Prop, ?FETCH_REQ_HEADERS, ?FETCH_REQ_VALUES, ?FETCH_REQ_TYPES).
+
+%%--------------------------------------------------------------------
 %% @doc Play media and record digits - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -903,7 +929,7 @@ sleep_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(noop_req/1 :: ( Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(noop_req/1 :: ( Prop :: proplist() | json_object() ) -> tuple(ok, iolist()) | tuple(error, string())).
 noop_req({struct, Prop}) ->
     noop_req(Prop);
 noop_req(Prop) ->
@@ -917,6 +943,26 @@ noop_req_v({struct, Prop}) ->
     noop_req_v(Prop);
 noop_req_v(Prop) ->
     validate(Prop, ?NOOP_REQ_HEADERS, ?NOOP_REQ_VALUES, ?NOOP_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(mwi_update/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+mwi_update({struct, Prop}) ->
+    mwi_update(Prop);
+mwi_update(Prop) ->
+    case mwi_update_v(Prop) of
+	true -> build_message(Prop, ?MWI_REQ_HEADERS, ?OPTIONAL_MWI_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for mwi_req"}
+    end.
+
+-spec(mwi_update_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+mwi_update_v({struct, Prop}) ->
+    mwi_update_v(Prop);
+mwi_update_v(Prop) ->
+    validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference - Sends caller to a conference - see wiki
@@ -1161,12 +1207,9 @@ find_all_apps(EvtName, [_ | SAs], Apps) ->
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
--spec(convert_whistle_app_name/1 :: (AppName :: binary()) -> binary()).
-convert_whistle_app_name(AppName) ->
-    case lists:keyfind(AppName, 2, ?SUPPORTED_APPLICATIONS) of
-	false -> <<>>;
-	{EvtName, AppName} -> EvtName
-    end.
+-spec(convert_whistle_app_name/1 :: (App :: binary()) -> list(binary()) | []).
+convert_whistle_app_name(App) ->
+    [EvtName || {EvtName, AppName} <- ?SUPPORTED_APPLICATIONS, App =:= AppName].
 
 %%%===================================================================
 %%% Internal functions
@@ -1308,11 +1351,14 @@ type_check(Prop, Types) ->
     lists:all(fun({Key, Fun}) ->
 		      case get_value(Key, Prop) of
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
-			  Value -> case Fun(Value) of % returns boolean
-				       true -> true;
-				       false ->
-					   io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
-					   false
+			  Value -> try case Fun(Value) of % returns boolean
+					   true -> true;
+					   false ->
+					       io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
+					       false
+				       end
+				   catch _:_ -> io:format("WHISTLE_API.type_check: K: ~p V: ~p threw exception~n", [Key, Value]),
+						false
 				   end
 		      end
 	      end, Types).

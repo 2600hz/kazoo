@@ -154,11 +154,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_
                   crossbar_util:binding_heartbeat(Pid),
 
                   Event1 = <<"v1_resource.execute.put.accounts">>,
-                  Payload1 = [RD, Context#cb_context{doc=whapps_json:get_value(<<"account">>, JObj)}, [[]]],
+                  Payload1 = [RD, Context#cb_context{doc=wh_json:get_value(<<"account">>, JObj)}, [[]]],
                   [_, #cb_context{resp_status=success}=Context1 | _] = crossbar_bindings:fold(Event1, Payload1),
 
                   Event2 = <<"v1_resource.execute.put.users">>,
-                  Payload2 = [RD, Context1#cb_context{doc=whapps_json:get_value(<<"user">>, JObj)}, [[]]],
+                  Payload2 = [RD, Context1#cb_context{doc=wh_json:get_value(<<"user">>, JObj)}, [[]]],
                   crossbar_bindings:fold(Event2, Payload2),
 
                   _ = crossbar_doc:delete(Context),
@@ -311,9 +311,9 @@ signup_new_account(#cb_context{req_data=JObj}=Context) ->
 check_activation_key(ActivationKey, Context) ->
     case crossbar_doc:load_view(?VIEW_ACTIVATION_KEYS, [{<<"key">>, ActivationKey}], Context#cb_context{db_name=?SIGNUP_DB}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
-            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
+            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= [] ->
-            Context#cb_context{resp_status=success, doc=whapps_json:get_value(<<"value">>, JObj)};
+            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
             crossbar_util:response(error, <<"invalid activation key">>, 403, Context)
     end.
@@ -336,10 +336,10 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(create_activation_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_activation_request(#cb_context{req_data=JObj}=Context) ->
-    case users:create_user(Context#cb_context{req_data=whapps_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}) of
+    case users:create_user(Context#cb_context{req_data=wh_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}) of
 	#cb_context{resp_status=success, doc=User} ->
-	    AcctObj = whapps_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
-	    case is_unique_realm(Context, whapps_json:get_value(<<"realm">>, AcctObj)) andalso accounts:create_account(Context#cb_context{req_data=AcctObj}) of
+	    AcctObj = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
+	    case is_unique_realm(Context, wh_json:get_value(<<"realm">>, AcctObj)) andalso accounts:create_account(Context#cb_context{req_data=AcctObj}) of
 		false ->
 		    crossbar_util:response_invalid_data([<<"realm">>], Context);
 		#cb_context{resp_status=success, doc=Account}=Context1 ->
@@ -375,14 +375,11 @@ confirmation_email(RD, #cb_context{doc=JObj}) ->
 	   end,
     Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
     send_confirmation_email(
-       whapps_json:get_value([<<"pvt_user">>, <<"email">>], JObj)
-      ,whapps_json:get_value([<<"pvt_user">>, <<"first_name">>], JObj)
-      ,whapps_json:get_value([<<"pvt_user">>, <<"last_name">>], JObj)
-      ,<<
-          (whistle_util:to_binary(Host))/binary
-         ,"v1/signup/"
-         ,(whapps_json:get_value(<<"pvt_activation_key">>, JObj, <<>>))/binary
-       >>
+       wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj)
+      ,wh_json:get_value([<<"pvt_user">>, <<"first_name">>], JObj)
+      ,wh_json:get_value([<<"pvt_user">>, <<"last_name">>], JObj)
+      ,<<(whistle_util:to_binary(Host))/binary>>
+      ,wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)
      ).
 
 %%--------------------------------------------------------------------
@@ -390,14 +387,17 @@ confirmation_email(RD, #cb_context{doc=JObj}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(send_confirmation_email/4 :: (Email :: binary(), First :: binary(), Last :: binary(), URL :: binary()) -> no_return()).
-send_confirmation_email(Email, First, Last, URL) ->
+-spec(send_confirmation_email/5 :: (Email :: binary(), First :: binary(), Last :: binary()
+                                    ,BaseURL :: binary(), Key :: binary()) -> no_return()).
+send_confirmation_email(Email, First, Last, BaseURL, Key) ->
     Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
                                  ,"/confirmation_email.sh"
                                  ,$ , $", Email/binary, $"
                                  ,$ , $", First/binary, $"
                                  ,$ , $", Last/binary, $"
-                                 ,$ , $", URL/binary, $"
+                                 ,$ , $", BaseURL/binary, $"
+                                 ," \"v1/signup/\""
+                                 ,$ , $", Key/binary, $"
                                >>),
     os:cmd(Cmd).
 
@@ -407,7 +407,7 @@ is_unique_realm(Context, Realm) ->
 							     ,{<<"reduce">>, <<"true">>}
 							    ]
 				    ,Context#cb_context{db_name=?SIGNUP_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
 	    #cb_context{resp_status=success, doc=[]} -> []
 	end,
     is_unique_realm1(Realm, V).

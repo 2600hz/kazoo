@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_bridge/1, wait_for_unbridge/0, set/3, b_fetch/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -24,16 +24,21 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    Endpoints = lists:foldr(fun(Endpoint, Acc) ->
-                                    case get_endpoint(Endpoint, Call) of
-                                        {ok, E} -> [E|Acc];
+    Endpoints = lists:foldr(fun(Member, Acc) ->
+                                    case cf_endpoint:build(wh_json:get_value(<<"id">>, Member), Call) of
+                                        {ok, {struct, Props}=E} -> 
+                                            case wh_json:get_value(<<"delay">>, Member) of
+                                                undefined -> [E|Acc];
+                                                Delay -> [{struct, [{<<"Endpoint-Delay">>, Delay}|Props]}|Acc]
+                                            end;
                                         _ -> Acc
                                     end
-                            end, [], whapps_json:get_value([<<"endpoints">>], Data, [])),
-    Timeout = whapps_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-    Strategy = whapps_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
-    case b_bridge(Endpoints, Timeout, Strategy, Call) of
+                            end, [], wh_json:get_value([<<"endpoints">>], Data, [])),
+    Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+    Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
+    case b_bridge(Endpoints, Timeout, {undefined, undefined}, Strategy, <<"true">>, Call) of
         {ok, _} ->
+            update_call_realm(Call),
             _ = wait_for_unbridge(),
             CFPid ! { stop };
         {error, _} ->
@@ -43,30 +48,25 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Fetches a endpoint defintion from the database and returns the
-%% whistle_api endpoint json
+%% When the bridge is successfull this is used to set the realm of 
+%% the endpoint on the a-leg.  This is necessary, for example, in 
+%% blind transfers to external numbers where the a-leg is seen
+%% as the 'orginator'. 
 %% @end
 %%--------------------------------------------------------------------
--spec(get_endpoint/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
-get_endpoint(Data, #cf_call{account_db=Db}) ->
-    Id = whapps_json:get_value(<<"id">>, Data),
-    case couch_mgr:open_doc(Db, Id) of
-        {ok, JObj} ->
-            Endpoint = [
-                         {<<"Invite-Format">>, whapps_json:get_value([<<"sip">>, <<"invite_format">>], JObj)}
-                        ,{<<"To-User">>, whapps_json:get_value([<<"sip">>, <<"username">>], JObj)}
-                        ,{<<"To-Realm">>, whapps_json:get_value([<<"sip">>, <<"realm">>], JObj)}
-                        ,{<<"To-DID">>, whapps_json:get_value([<<"sip">>, <<"number">>], JObj)}
-                        ,{<<"Route">>, whapps_json:get_value([<<"sip">>, <<"url">>], JObj)}
-                        ,{<<"Ignore-Early-Media">>, whapps_json:get_value([<<"media">>, <<"ignore_early_media">>], JObj)}
-                        ,{<<"Bypass-Media">>, whapps_json:get_value([<<"media">>, <<"bypass_media">>], JObj)}
-                        ,{<<"Endpoint-Timeout">>, whapps_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT)}
-                        ,{<<"Endpoint-Progress-Timeout">>, whapps_json:get_value(<<"progress_timeout">>, Data, <<"6">>)}
-                        ,{<<"Endpoint-Delay">>, whapps_json:get_value(<<"delay">>, Data)}
-                        ,{<<"Codecs">>, whapps_json:get_value([<<"media">>, <<"codecs">>], JObj)}
-                    ],
-            {ok, {struct, lists:filter(fun({_, undefined}) -> false; (_) -> true end, Endpoint)}};
-        {error, _}=E ->
-            logger:format_log(error, "CF_DEVICES(~p): Could not locate endpoint ~p in ~p (~p)~n", [self(), Id, Db, E]),
-            E
+-spec(update_call_realm/1 :: (Call :: #cf_call{}) -> no_return()).
+update_call_realm(Call) ->
+    case b_fetch(true, Call) of
+        {error, _} ->
+            ok;
+        {ok, undefined} ->
+            ok;
+        {ok, Vars} ->
+            case wh_json:get_value(<<"Realm">>, Vars) of 
+                undefined -> ok;
+                <<>> -> ok;
+                Realm -> set(undefined, {struct, [{<<"Realm">>, Realm}]}, Call)
+            end
     end.
+
+   

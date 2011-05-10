@@ -224,7 +224,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
     JObj = mochijson2:decode(binary_to_list(Payload)),
     logger:format_log(info, "EVT(~p): AMQP Msg ~s~n", [self(), Payload]),
     IsUp = is_node_up(Node, UUID),
-    spawn(fun() -> handle_amqp_prop(whapps_json:get_value(<<"Event-Name">>, JObj), JObj, IsUp) end),
+    spawn(fun() -> handle_amqp_prop(wh_json:get_value(<<"Event-Name">>, JObj), JObj, IsUp) end),
 
     case IsUp of
 	true ->
@@ -311,10 +311,10 @@ publish_msg(UUID, Prop) ->
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
 	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-		       ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-		       ,{<<"Call-ID">>, UUID}
-		       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
-		       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
+                        ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                        ,{<<"Call-ID">>, UUID}
+                        ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
+                        ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
 		       | event_specific(EvtName, Prop) ],
 	    EvtProp1 = EvtProp0 ++ whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
@@ -351,6 +351,10 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
         <<"play_and_collect_digits">> ->
 	    [{<<"Application-Name">>, <<"play_and_collect_digits">>} 
 	     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
+	    ];
+        <<"bridge">> ->
+	    [{<<"Application-Name">>, <<"bridge">>} 
+	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
 	    ];
 	AppName ->
 	    [{<<"Application-Name">>, AppName}
@@ -413,7 +417,7 @@ event_specific(_Evt, _Prop) ->
 handle_amqp_prop(<<"status_req">>, JObj, IsNodeUp) ->
     try
 	true = whistle_api:call_status_req_v(JObj),
-	CallID = whapps_json:get_value(<<"Call-ID">>, JObj),
+	CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 	logger:format_log(info, "EVT.call_status for ~p is up, responding~n", [CallID]),
 
 	{Status, ErrMsg} = case IsNodeUp of
@@ -425,7 +429,7 @@ handle_amqp_prop(<<"status_req">>, JObj, IsNodeUp) ->
 		    ,{<<"Status">>, Status}
 		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
 	{ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
-	SrvID = whapps_json:get_value(<<"Server-ID">>, JObj),
+	SrvID = wh_json:get_value(<<"Server-ID">>, JObj),
 	logger:format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
 
 	amqp_util:targeted_publish(SrvID, JSON)

@@ -195,10 +195,17 @@ response_db_fatal(Context) ->
 %%--------------------------------------------------------------------
 -spec(binding_heartbeat/1 :: (BPid :: pid()) -> pid()).
 binding_heartbeat(BPid) ->
-    PPid=self(),
+    PPid = self(),
     spawn(fun() ->
-        erlang:monitor(process, PPid),
-        {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
-        receive _ -> ok after 10000 -> ok end,
-        timer:cancel(Tref)
-    end).
+		  Ref = erlang:monitor(process, PPid),
+		  {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
+		  receive
+		      {'DOWN', Ref, process, _, normal} ->
+			  ok;
+		      {'DOWN', Ref, process, _, Reason} ->
+			  BPid ! {binding_error, Reason};
+		      _ -> ok
+		  after 10000 -> ok
+		  end,
+		  timer:cancel(Tref)
+	  end).

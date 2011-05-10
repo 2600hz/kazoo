@@ -113,7 +113,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{a
                       undefined ->
                           Pid ! {binding_result, false, {RD, Context}};
                       Params ->
-                          AuthAccountId = whapps_json:get_value(<<"account_id">>, AuthDoc),
+                          AuthAccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
                           ReqAccountId = hd(Params),
                           case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, [
                                                                                 {<<"startkey">>, [ReqAccountId]}
@@ -121,7 +121,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{a
                               {ok, []} ->
                                   Pid ! {binding_result, false, {RD, Context}};            
                               {ok, [JObj]} ->
-                                  [_, Tree] = whapps_json:get_value(<<"key">>, JObj),
+                                  [_, Tree] = wh_json:get_value(<<"key">>, JObj),
                                   Pid ! {binding_result, lists:member(AuthAccountId, Tree), {RD, Context}};
                               {error, _} ->
                                   Pid ! {binding_result, false, {RD, Context}}

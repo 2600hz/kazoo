@@ -199,21 +199,21 @@ announce_leave(#conf{prompts=Prompts, id=ConfId}, Call) ->
 %%--------------------------------------------------------------------
 -spec(get_conference_profile/2 :: (Data :: json_object(), Db :: binary()) -> #conf{}).
 get_conference_profile(Data, Db) ->
-    Id = whapps_json:get_value(<<"id">>, Data),
+    Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Default=#conf{},
             #conf{
                  id = Id
-                ,member_pins = whapps_json:get_value(<<"member_pins">>, JObj, [])
-                ,moderator_pins = whapps_json:get_value(<<"moderator_pins">>, JObj, [])
-                ,member_join_muted = whapps_json:get_value(<<"member_join_muted">>, JObj, Default#conf.member_join_muted)
-                ,member_join_deaf = whapps_json:get_value(<<"member_join_deaf">>, JObj, Default#conf.member_join_deaf)
-                ,moderator_join_muted = whapps_json:get_value(<<"moderator_join_muted">>, JObj, Default#conf.moderator_join_muted)
-                ,moderator_join_deaf = whapps_json:get_value(<<"moderator_join_deaf">>, JObj, Default#conf.moderator_join_deaf)
-                ,max_members = whapps_json:get_value(<<"max_members">>, JObj, Default#conf.max_members)
-                ,require_moderator = whapps_json:get_value(<<"require_moderator">>, JObj, Default#conf.require_moderator)
-                ,wait_for_moderator = whapps_json:get_value(<<"wait_for_moderator">>, JObj, Default#conf.wait_for_moderator)
+                ,member_pins = wh_json:get_value(<<"member_pins">>, JObj, [])
+                ,moderator_pins = wh_json:get_value(<<"moderator_pins">>, JObj, [])
+                ,member_join_muted = wh_json:get_value(<<"member_join_muted">>, JObj, Default#conf.member_join_muted)
+                ,member_join_deaf = wh_json:get_value(<<"member_join_deaf">>, JObj, Default#conf.member_join_deaf)
+                ,moderator_join_muted = wh_json:get_value(<<"moderator_join_muted">>, JObj, Default#conf.moderator_join_muted)
+                ,moderator_join_deaf = wh_json:get_value(<<"moderator_join_deaf">>, JObj, Default#conf.moderator_join_deaf)
+                ,max_members = wh_json:get_value(<<"max_members">>, JObj, Default#conf.max_members)
+                ,require_moderator = wh_json:get_value(<<"require_moderator">>, JObj, Default#conf.require_moderator)
+                ,wait_for_moderator = wh_json:get_value(<<"wait_for_moderator">>, JObj, Default#conf.wait_for_moderator)
          };
         _ ->
             #conf{}
@@ -265,7 +265,7 @@ caller_controls(#conf{control=Control} = Conf, Call) ->
 -spec(toggle_mute/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 toggle_mute(Conf, Call) ->
     C1 = update_members(Conf, Call),
-    case binary:match(whapps_json:get_value(<<"Status">>, C1#conf.member), <<"speak">>) of
+    case binary:match(wh_json:get_value(<<"Status">>, C1#conf.member), <<"speak">>) of
         nomatch ->
             unmute_caller(C1, Call);
         _ ->
@@ -282,7 +282,7 @@ toggle_mute(Conf, Call) ->
 -spec(toggle_deaf/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 toggle_deaf(Conf, Call) ->
     C1 = update_members(Conf, Call),
-    case binary:match(whapps_json:get_value(<<"Status">>, C1#conf.member), <<"hear">>) of
+    case binary:match(wh_json:get_value(<<"Status">>, C1#conf.member), <<"hear">>) of
         nomatch ->
             undeaf_caller(C1, Call);
         _ ->
@@ -297,7 +297,7 @@ toggle_deaf(Conf, Call) ->
 %%--------------------------------------------------------------------
 -spec(mute_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 mute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
-    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    MemberId = wh_json:get_value(<<"Member-ID">>, Member),
     cf_conference_command:mute(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.muted, MemberId, ConfId, Call).
 
@@ -309,7 +309,7 @@ mute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
 %%--------------------------------------------------------------------
 -spec(unmute_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 unmute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
-    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    MemberId = wh_json:get_value(<<"Member-ID">>, Member),
     cf_conference_command:unmute(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.unmuted, MemberId, ConfId, Call).
 
@@ -321,7 +321,7 @@ unmute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
 %%--------------------------------------------------------------------
 -spec(deaf_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 deaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
-    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    MemberId = wh_json:get_value(<<"Member-ID">>, Member),
     cf_conference_command:deaf(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.deaf, MemberId, ConfId, Call).
 
@@ -333,7 +333,7 @@ deaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
 %%--------------------------------------------------------------------
 -spec(undeaf_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 undeaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
-    MemberId = whapps_json:get_value(<<"Member-ID">>, Member),
+    MemberId = wh_json:get_value(<<"Member-ID">>, Member),
     cf_conference_command:undeaf(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.undeaf, MemberId, ConfId, Call).
 
@@ -356,10 +356,9 @@ update_members(#conf{id=ConfId} = Conf, Call) ->
 %% @end
 %%-------------------------------------------------------------------
 -spec(find_call_member/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> #conf{}).
-find_call_member(Conf, #cf_call{route_request=RR}) ->
-    CallId = whapps_json:get_value(<<"Call-ID">>, RR),
+find_call_member(Conf, #cf_call{call_id=CallId}) ->
     Member = lists:foldr(fun (Member, Acc) ->
-                                 case whapps_json:get_value(<<"Call-ID">>, Member) of
+                                 case wh_json:get_value(<<"Call-ID">>, Member) of
                                      CallId ->
                                          Member;
                                      _ ->

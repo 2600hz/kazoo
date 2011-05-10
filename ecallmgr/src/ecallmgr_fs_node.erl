@@ -213,9 +213,12 @@ publish_register_event(Data, AppVsn) ->
     Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
     DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, whistle_util:to_binary(?MODULE), AppVsn),
     ApiProp = lists:foldl(fun(K, Api) ->
-				  Lk = whistle_util:binary_to_lower(K),
-				  case props:get_value(Lk, Data) of
-				      undefined -> Api;
+				  case props:get_value(whistle_util:binary_to_lower(K), Data) of
+				      undefined ->
+					  case props:get_value(K, Data) of
+					      undefined -> Api;
+					      V -> [{K, V} | Api]
+					  end;
 				      V -> [{K, V} | Api]
 				  end
 			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),

@@ -88,8 +88,8 @@ malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     {true, RD1, Context1};
 malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     ?TIMER_TICK("v1.malformed_request start"),
-    Data = whapps_json:get_value(["data"], Json),
-    Auth = get_auth_token(RD, whapps_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
+    Data = wh_json:get_value(["data"], Json),
+    Auth = get_auth_token(RD, wh_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
     ?TIMER_TICK("v1.malformed_request end"),
     {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
 
@@ -313,7 +313,7 @@ get_http_verb(RD, JSON) ->
 
 -spec(override_verb/3 :: (RD :: #wm_reqdata{}, JSON :: json_object(), Verb :: binary()) -> tuple(true, binary()) | false).
 override_verb(RD, JSON, <<"post">>) ->
-    case whapps_json:get_value(<<"verb">>, JSON) of
+    case wh_json:get_value(<<"verb">>, JSON) of
 	undefined ->
 	    case wrq:get_qs_value("verb", RD) of
 		undefined -> false;
@@ -469,7 +469,7 @@ get_auth_token(RD, JsonToken, Verb) ->
 %%--------------------------------------------------------------------
 -spec(is_valid_request_envelope/1 :: (JSON :: json_object()) -> boolean()).
 is_valid_request_envelope(JSON) ->
-    whapps_json:get_value([<<"data">>], JSON, not_found) =/= not_found.
+    wh_json:get_value([<<"data">>], JSON, not_found) =/= not_found.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -526,7 +526,7 @@ is_permitted(RD, Context)->
             Event = <<"v1_resource.authorize">>,
             case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
                 [] ->
-            false;
+		    false;
                 [{true, {RD1, Context1}}|_] ->
                     {true, RD1, Context1}
             end
@@ -560,23 +560,31 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [RD, Context] ++ Params,
     logger:format_log(info, "Execute request ~p", [Event]),
-    [RD1, Context1 | _] = crossbar_bindings:fold(Event, Payload),
-    case succeeded(Context1) of
-        false ->
-            logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
-            Content = create_resp_content(RD1, Context1),
-            RD2 = wrq:append_to_response_body(Content, RD1),
-            ReturnCode = Context1#cb_context.resp_error_code,
-	    ?TIMER_TICK("v1.execute_request halt end"),
-            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1};
-        true ->
-            logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
-	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
-	    {Verb =/= <<"put">>, RD1, Context1}
+    case crossbar_bindings:fold(Event, Payload) of
+	[RD1, Context1 | _] ->
+	    execute_request_results(RD1, Context1);
+	{error, _E} ->
+	    logger:format_log(info, "v1.exec_req error: ~p, 500 the request~n", [_E]),
+	    {{halt, 500}, RD, Context}
     end;
 execute_request(RD, Context) ->
     ?TIMER_TICK("v1.execute_request false end"),
     {false, RD, Context}.
+
+execute_request_results(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+    case succeeded(Context) of
+        false ->
+            logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+            Content = create_resp_content(RD, Context),
+            RD1 = wrq:append_to_response_body(Content, RD),
+            ReturnCode = Context#cb_context.resp_error_code,
+	    ?TIMER_TICK("v1.execute_request halt end"),
+            {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD1), Context};
+        true ->
+            logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
+	    {Verb =/= <<"put">>, RD, Context}
+    end.
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
 %% AKA, 201 Created header set
@@ -609,7 +617,7 @@ create_resp_content(RD, #cb_context{req_json=ReqJson}=Context) ->
         json ->
 	    Prop = create_resp_envelope(Context),
             JSON = mochijson2:encode({struct, Prop}),
-	    case whapps_json:get_value(<<"jsonp">>, ReqJson) of
+	    case wh_json:get_value(<<"jsonp">>, ReqJson) of
 		undefined -> JSON;
 		JsonFun when is_binary(JsonFun) ->
 		    [JsonFun, "(", JSON, ");"]

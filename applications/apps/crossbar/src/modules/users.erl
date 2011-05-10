@@ -285,7 +285,7 @@ create_user(#cb_context{req_data=JObj}=Context) ->
             case is_unique_username(undefined, Context) of
                 true ->
                     Context#cb_context{
-                      doc=whapps_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
+                      doc=wh_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
                       ,resp_status=success
                      };
                 false ->
@@ -332,7 +332,7 @@ update_user(UserId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -343,7 +343,7 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
 is_valid_doc(JObj) ->
-    case whapps_json:get_value(<<"email">>, JObj) of
+    case wh_json:get_value(<<"email">>, JObj) of
 	undefined -> {false, [<<"email">>]};
 	Email when is_binary(Email) -> {true, []}
     end.
@@ -357,15 +357,15 @@ is_valid_doc(JObj) ->
 %%--------------------------------------------------------------------
 -spec(hash_password/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 hash_password(#cb_context{doc=JObj}=Context) ->
-    case whapps_json:get_value(<<"password">>, JObj) of
+    case wh_json:get_value(<<"password">>, JObj) of
         undefined ->
             Context;
         Password ->
-            Creds = <<(whapps_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
+            Creds = <<(wh_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
             SHA1 = whistle_util:to_binary(whistle_util:to_hex(crypto:sha(Creds))),
             MD5 = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Creds))),
-            JObj1 = whapps_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
-            {struct, Props} = whapps_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
+            JObj1 = wh_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
+            {struct, Props} = wh_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
             Context#cb_context{doc={struct, props:delete(<<"password">>, Props)}}
     end.
 
@@ -378,12 +378,12 @@ hash_password(#cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(is_unique_username/2 :: (UserId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).            
 is_unique_username(UserId, Context) ->
-    Username = whapps_json:get_value(<<"username">>, Context#cb_context.req_data),
+    Username = wh_json:get_value(<<"username">>, Context#cb_context.req_data),
     JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of
                #cb_context{resp_status=success, doc=[J]} -> J;
                _ -> []
            end,
-    Assignments = whapps_json:get_value(<<"value">>, JObj, []),
+    Assignments = wh_json:get_value(<<"value">>, JObj, []),
     case UserId of
         undefined ->
             Assignments =:= [];

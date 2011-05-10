@@ -153,6 +153,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
     Count = case WC-queue:len(Ws) of X when X < 0 -> 0; Y -> Y end,
+    logger:format_log(info, "worker count: ~p count: ~p~n", [WC, Count]),
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
     {ok, _} = timer:send_interval(?BACKOFF_PERIOD, reduce_labor_force),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
@@ -160,10 +161,10 @@ handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
 handle_info({worker_free, W}, #state{workers=Ws}=State) ->
     {noreply, State#state{workers=queue:in(W, Ws)}};
 
-handle_info({'EXIT', W, Reason}, #state{workers=Ws}=State) ->
-    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
-    logger:format_log(info, "CALL_POOL(~p): Worker ~p down: ~p~n", [self(), W, Reason]),
-    {noreply, State#state{workers=queue:in(start_worker(), Ws1)}};
+handle_info({'EXIT', W, Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) ->
+    Ws1 = queue:in(start_worker(), queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws)),
+    logger:format_log(info, "CALL_POOL(~p): Worker ~p down: ~p: WC: ~p: OWC: ~p~n", [self(), W, Reason, WC, OWC]),
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
 handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC ->
     Reduct = erlang:max(OWC, WC-RP),
@@ -253,8 +254,8 @@ worker_busy(Q, From, Ref, Parent) ->
 	{_, #amqp_msg{payload = Payload}} ->
 	    logger:format_log(info, "WORKER-B(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
-	{'DOWN', Ref, process, Pid, Info} ->
-	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
+	{'DOWN', Ref, process, Pid, _Info} ->
+	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down~n", [self(), Pid])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},

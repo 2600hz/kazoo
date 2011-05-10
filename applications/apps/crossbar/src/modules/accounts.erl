@@ -15,8 +15,7 @@
 
 %% API
 -export([start_link/0, update_all_accounts/1, replicate_from_accounts/2
-         ,replicate_from_account/3, get_db_name/1, get_db_name/2, create_account/1
-	 ,get_account_by_realm/1
+         ,replicate_from_account/3, create_account/1, get_account_by_realm/1
 	]).
 
 %% gen_server callbacks
@@ -72,7 +71,7 @@ update_all_accounts(File) ->
                                   couch_mgr:load_doc_from_file(ClientDb, crossbar, File);
                               {ok, _} -> ok
                           end
-                  end, [get_db_name(Db, encoded) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
+                  end, [whapps_util:get_db_name(Db, encoded) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,13 +84,13 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     BaseReplicate = [{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, true}
-                     ,{<<"continuous">>, true}
+%%                     ,{<<"continuous">>, true}
                     ],
     lists:foreach(fun(SourceDb) ->
                           logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
                           R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
 			  logger:format_log(info, "DB REPLICATE: ~p~n", [R])
-                  end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account", _/binary>>) -> true; (_) -> false end(Db)]).
+                  end, [whapps_util:get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account", _/binary>>) -> true; (_) -> false end(Db)]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -100,13 +99,13 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %%--------------------------------------------------------------------
 -spec(replicate_from_account/3 :: (SourceDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
-    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, ?REPLICATE_ENCODING)}
+    BaseReplicate = [{<<"source">>, whapps_util:get_db_name(SourceDb, ?REPLICATE_ENCODING)}
                      ,{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, true}
-                     ,{<<"continuous">>, true}
+%%                     ,{<<"continuous">>, true}
                     ],
-    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
+    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [whapps_util:get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate).
 
 %%--------------------------------------------------------------------
@@ -118,7 +117,7 @@ replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
 get_account_by_realm(Realm) ->
     case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
 	{ok, [{struct, _}=V]} ->
-	    {ok, whapps_json:get_value([<<"value">>, <<"account_db">>], V)};
+	    {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
 	_ -> {error, not_found}
     end.
 
@@ -214,7 +213,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Conte
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId, <<"parent">>]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
-                  case crossbar_doc:save(Context#cb_context{db_name=get_db_name(AccountId, encoded)}) of
+                  case crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}) of
                       #cb_context{resp_status=success}=Context1 ->
                           Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=?EMPTY_JSON_OBJECT}, Params]};
                       Else ->
@@ -226,7 +225,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = crossbar_doc:save(Context#cb_context{db_name=get_db_name(AccountId, encoded)}),
+                  Context1 = crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
@@ -479,7 +478,7 @@ load_parent(AccountId, Context) ->
         ], Context),
     case View#cb_context.doc of
         [JObj|_] ->
-            Parent = whapps_json:get_value([<<"value">>, <<"id">>], JObj),
+            Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_account_summary(Parent, Context);
         _Else ->
             crossbar_util:response_bad_identifier(AccountId, Context)
@@ -544,7 +543,7 @@ load_siblings(AccountId, Context) ->
         ], Context),
     case View#cb_context.doc of
         [JObj|_] ->
-            Parent = whapps_json:get_value([<<"value">>, <<"id">>], JObj),
+            Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_children(Parent, Context);
         _Else ->
             crossbar_util:response_bad_identifier(AccountId, Context)
@@ -558,7 +557,7 @@ load_siblings(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [whapps_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -580,7 +579,7 @@ is_valid_parent(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
 is_valid_doc(JObj) ->
-    case whapps_json:get_value(<<"realm">>, JObj) of
+    case wh_json:get_value(<<"realm">>, JObj) of
 	undefined ->
 	    {false, [<<"realm">>]};
 	Realm when is_binary(Realm) ->
@@ -607,7 +606,7 @@ update_tree(AccountId, ParentId, Context) ->
                 #cb_context{resp_status=success, doc=[]} ->
                     crossbar_util:response_bad_identifier(AccountId, Context);
                 #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                    Tree = whapps_json:get_value(<<"pvt_tree">>, Parent) ++ [ParentId, AccountId],
+                    Tree = wh_json:get_value(<<"pvt_tree">>, Parent) ++ [ParentId, AccountId],
                     Updater = fun(Update, Acc) -> update_doc_tree(Tree, Update, Acc) end,
                     Updates = lists:foldr(Updater, [], Doc),
                     Context1#cb_context{doc=Updates}
@@ -628,13 +627,13 @@ update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
     ParentId = lists:last(ParentTree),
     case crossbar_doc:load(AccountId, #cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
-            Tree = whapps_json:get_value(<<"pvt_tree">>, Doc),
+            Tree = wh_json:get_value(<<"pvt_tree">>, Doc),
             SubTree =
                 case lists:dropwhile(fun(E)-> E =/= ParentId end, Tree) of
                     [] -> [];
                     List -> lists:nthtail(1,List)
                 end,
-            [whapps_json:set_value(<<"pvt_tree">>, [E || E <- ParentTree ++ SubTree, E =/= AccountId], Doc) | Acc];
+            [wh_json:set_value(<<"pvt_tree">>, [E || E <- ParentTree ++ SubTree, E =/= AccountId], Doc) | Acc];
         _Else ->
             Acc
     end;
@@ -650,8 +649,8 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 %%--------------------------------------------------------------------
 -spec(set_private_fields/1 :: (JObj :: json_object()) -> json_object()).
 set_private_fields(JObj) ->
-    JObj1 = whapps_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
-    JObj2 = whapps_json:set_value(<<"pvt_tree">>, [], JObj1),
+    JObj1 = wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
+    JObj2 = wh_json:set_value(<<"pvt_tree">>, [], JObj1),
     set_api_keys(JObj2).
 
 %%--------------------------------------------------------------------
@@ -663,50 +662,7 @@ set_private_fields(JObj) ->
 %%--------------------------------------------------------------------
 -spec(set_api_keys/1 :: (JObj :: json_object()) -> json_object()).
 set_api_keys(JObj) ->
-    whapps_json:set_value(<<"pvt_api_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))), JObj).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will verify an account id is valid, and if so return
-%% the name of the account database
-%% @end
-%%--------------------------------------------------------------------
--spec(get_db_name/1 :: (AccountId :: list(binary()) | json_object() | binary()) -> binary()).
--spec(get_db_name/2 :: (AccountId :: list(binary()) | binary() | json_object(), Encoding :: unencoded | encoded | raw) -> binary()).
-
-get_db_name(Doc) -> get_db_name(Doc, unencoded).
-
-get_db_name({struct, _}=Doc, Encoding) ->
-    get_db_name([whapps_json:get_value(["_id"], Doc)], Encoding);
-get_db_name([AccountId], Encoding) ->
-    get_db_name(AccountId, Encoding);
-get_db_name(AccountId, Encoding) when not is_binary(AccountId) ->
-    get_db_name(whistle_util:to_binary(AccountId), Encoding);
-get_db_name(<<"accounts">>, _) ->
-    <<"accounts">>;
-%% unencode the account db name
-get_db_name(<<"account/", _/binary>>=DbName, unencoded) ->
-    DbName;
-get_db_name(<<"account%2F", _/binary>>=DbName, unencoded) ->
-    binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
-get_db_name(AccountId, unencoded) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(AccountId),
-    whistle_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
-%% encode the account db name
-get_db_name(<<"account%2F", _/binary>>=DbName, encoded) ->
-    DbName;
-get_db_name(<<"account/", _/binary>>=DbName, encoded) ->
-    binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
-get_db_name(AccountId, encoded) when is_binary(AccountId) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(AccountId),
-    whistle_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
-%% get just the account ID from the account db name
-get_db_name(<<"account%2F", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
-get_db_name(<<"account/", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"/">>, <<>>, [global]).
-
+    wh_json:set_value(<<"pvt_api_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))), JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -717,7 +673,7 @@ get_db_name(<<"account/", AccountId/binary>>, raw) ->
 %%--------------------------------------------------------------------
 -spec(load_account_db/2 :: (AccountId :: list(binary()) | json_object(), #cb_context{}) -> #cb_context{}).
 load_account_db(AccountId, Context)->
-    DbName = get_db_name(AccountId, encoded),
+    DbName = whapps_util:get_db_name(AccountId, encoded),
     logger:format_log(info, "Account determined that db name ~p", [DbName]),
     case couch_mgr:db_exists(DbName) of
         false ->
@@ -741,21 +697,21 @@ load_account_db(AccountId, Context)->
 %%--------------------------------------------------------------------
 -spec(create_new_account_db/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_new_account_db(#cb_context{doc=Doc}=Context) ->
-    DbName = get_db_name(couch_mgr:get_uuid(), encoded),
+    DbName = whapps_util:get_db_name(couch_mgr:get_uuid(), encoded),
     case couch_mgr:db_create(DbName) of
         false ->
             logger:format_log(error, "ACCOUNTS(~p): Failed to create database: ~p", [self(), DbName]),
             crossbar_util:response_db_fatal(Context);
         true ->
-            logger:format_log(info, "ACCOUNTS(~p): Created DB for account id ~p", [self(), get_db_name(DbName, raw)]),
-            JObj = whapps_json:set_value(<<"_id">>, get_db_name(DbName, raw), Doc),
+            logger:format_log(info, "ACCOUNTS(~p): Created DB for account id ~p", [self(), whapps_util:get_db_name(DbName, raw)]),
+            JObj = wh_json:set_value(<<"_id">>, whapps_util:get_db_name(DbName, raw), Doc),
             case crossbar_doc:save(Context#cb_context{db_name=DbName, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
                     spawn(fun() ->
                                   couch_mgr:load_doc_from_file(DbName, crossbar, ?VIEW_FILE),
                                   Responses = crossbar_bindings:map(<<"account.created">>, DbName),
                                   _ = [couch_mgr:load_doc_from_file(DbName, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
-                                  replicate_from_account(get_db_name(DbName, unencoded), ?AGG_DB, ?AGG_FILTER)
+                                  replicate_from_account(whapps_util:get_db_name(DbName, unencoded), ?AGG_DB, ?AGG_FILTER)
                              end),
                     Context1;
                 Else ->
@@ -773,7 +729,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 %%--------------------------------------------------------------------
 -spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
-    is_unique_realm(AccountId, Context, whapps_json:get_value(<<"realm">>, JObj)).
+    is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
 
 is_unique_realm(_, _, undefined) -> false;
 is_unique_realm(undefined, Context, Realm) ->
@@ -781,7 +737,7 @@ is_unique_realm(undefined, Context, Realm) ->
 							  ,{<<"reduce">>, <<"true">>}
 							 ]
 				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
 	    #cb_context{resp_status=success, doc=[]} -> []
 	end,
     logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, undefined, V]),
@@ -791,7 +747,7 @@ is_unique_realm(AccountId, Context, Realm) ->
 							  ,{<<"reduce">>, <<"true">>}
 							 ]
 				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> whapps_json:get_value(<<"value">>, J, []);
+	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
 	    #cb_context{resp_status=success, doc=[]} -> []
 	end,
     logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, AccountId, V]),

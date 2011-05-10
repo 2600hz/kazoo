@@ -223,6 +223,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
 						       {<<"Direction">>, Direction}
 						       ,{<<"Username">>, AuthU}
 						       ,{<<"Realm">>, AuthR}
+                                                       ,{<<"Authorizing-ID">>, wh_json:get_value(<<"authorizing_id">>, AuthProp, <<"ignore">>)}
 						      ]
 					     }}
 		| whistle_api:default_headers(State#state.my_q % serverID is not important, though we may want to define it eventually
@@ -252,44 +253,41 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
     Domain = props:get_value(<<"Realm">>, Prop),
     User = props:get_value(<<"Username">>, Prop),
 
-    case couch_mgr:get_results("registrations"
-			       ,{"registrations", "newest"}
-			       ,[{<<"key">>, [Domain, User]}
-				 ,{<<"group">>, <<"true">>}
-				]) of
+    case couch_mgr:get_results("registrations", <<"registrations/newest">>
+				   ,[{<<"key">>, [Domain, User]}, {<<"group">>, true}]) of
 	{ok, []} -> format_log(info, "REG_SRV: no req_query_resp for ~s@~s~n", [User, Domain]);
-	{ok, [{struct, ViewRes} | _]} ->
-	    {struct, Value} = props:get_value(<<"value">>, ViewRes),
-	    DocId = props:get_value(<<"id">>, Value),
-	    {ok, {struct, RegDoc}} = couch_mgr:open_doc(?REG_DB, DocId),
+	{ok, [ViewRes | _]} ->
+	    Value = wh_json:get_value(<<"value">>, ViewRes),
+	    DocId = wh_json:get_value(<<"id">>, Value),
+	    {ok, RegJObj} = couch_mgr:open_doc(?REG_DB, DocId),
 
 	    RespFields = case props:get_value(<<"Fields">>, Prop) of
 			     [] ->
+				 {struct, RegDoc} = RegJObj,
 				 lists:keydelete(<<"_rev">>, 1, lists:keydelete(<<"_id">>, 1, RegDoc));
 			     Fields ->
 				 lists:foldl(fun(F, Acc) ->
-						     [ {F, props:get_value(F, RegDoc)} | Acc]
+						     [ {F, wh_json:get_value(F, RegJObj)} | Acc]
 					     end, [], Fields)
 			 end,
 
 	    {ok, JSON} = whistle_api:reg_query_resp([ {<<"Fields">>, {struct, RespFields}}
 						      | whistle_api:default_headers(State#state.my_q
 										    ,<<"directory">>
-											,<<"reg_query_resp">>
-											,?APP_NAME
+										    ,<<"reg_query_resp">>
+										    ,?APP_NAME
 										    ,?APP_VERSION)
 						    ]),
 
 	    RespServer = props:get_value(<<"Server-ID">>, Prop),
 	    amqp_util:targeted_publish(RespServer, JSON, <<"application/json">>)
-    end,
-    ok;
+    end;
 process_req(_,_,_) ->
     not_handled.
 
 cleanup_registrations() ->
     %% get all documents with one or more tstamps < Now
-    {ok, Expired} = couch_mgr:get_results("registrations", {"registrations", "expirations"}, [{<<"endkey">>, whistle_util:current_tstamp()}]),
+    {ok, Expired} = couch_mgr:get_results("registrations", <<"registrations/expirations">>, [{<<"endkey">>, whistle_util:current_tstamp()}]),
     lists:foreach(fun({struct, Doc}) ->
 			  {ok, D} = couch_mgr:open_doc(?REG_DB, props:get_value(<<"id">>, Doc)),
 			  couch_mgr:del_doc(?REG_DB, D)
@@ -301,8 +299,8 @@ lookup_auth_user(Name, Realm) ->
     case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
 	{ok, []} -> {error, "No user/realm found"};
-	{ok, [{struct, User}|_]} ->
-	    {ok, props:get_value(<<"value">>, User)}
+	{ok, [User|_]} ->
+	    {ok, wh_json:get_value(<<"value">>, User)}
     end.
 
 -spec(auth_response/2 :: (AuthInfo :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
@@ -321,12 +319,12 @@ auth_specific_response(403) ->
      ,{<<"Tenant-ID">>, <<"ignore">>}];
 auth_specific_response(AuthInfo) ->
     logger:format_log(info, "AuthInfo: ~p~n", [AuthInfo]),
-    Method = list_to_binary(string:to_lower(binary_to_list(whapps_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
-    [{<<"Auth-Password">>, whapps_json:get_value(<<"password">>, AuthInfo)}
+    Method = list_to_binary(string:to_lower(binary_to_list(wh_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
+    [{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
      ,{<<"Auth-Method">>, Method}
      ,{<<"Event-Name">>, <<"auth_resp">>}
-     ,{<<"Access-Group">>, whapps_json:get_value(<<"Access-Group">>, AuthInfo, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, whapps_json:get_value(<<"Tenant-ID">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
+     ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
     ].
 
 send_resp(Payload, RespQ) ->

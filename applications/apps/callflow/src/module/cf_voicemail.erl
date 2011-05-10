@@ -127,14 +127,14 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    case whapps_json:get_value(<<"action">>, Data) of
+    case wh_json:get_value(<<"action">>, Data) of
         <<"compose">> ->
             answer(Call),
             _ = compose_voicemail(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         <<"check">> ->
             answer(Call),
-            _ = case whapps_json:get_value(<<"id">>, Data) of
+            _ = case wh_json:get_value(<<"id">>, Data) of
 		    undefined ->
 			find_mailbox(Call);
 		    _ ->
@@ -192,7 +192,7 @@ find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
         {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_mailbox, <<"1">>, <<"8000">>, Call),
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_password, <<"1">>, <<"8000">>, Call),
         {ok, [JObj]} = couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, Mailbox}]),
-        Box = get_mailbox_profile({struct, [{<<"id">>, whapps_json:get_value(<<"id">>, JObj)}]}, Call ),
+        Box = get_mailbox_profile({struct, [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]}, Call ),
         Pin = Box#mailbox.pin,
         main_menu(Box, Call)
     catch
@@ -272,11 +272,14 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
             case review_recording(MediaName, Box, Call) of
                 {ok, record} ->
                     record_voicemail(MediaName, Box, Call);
-                _Else ->
-                    new_message(MediaName, Box, Call)
+		{ok, save} ->
+		    new_message(MediaName, Box, Call)
             end;
-        _Else ->
-            new_message(MediaName, Box, Call)
+        {error, channel_hungup} ->
+	    _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
+            new_message(MediaName, Box, Call);
+	{error, execution_failure} ->
+	    ok %% something happened Whistle-side, nothing to do for now
     end.
 
 %%--------------------------------------------------------------------
@@ -350,7 +353,7 @@ play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
     Message = get_message(H, Box, Call),
     audio_macro([
                   {play, Received}
-                 ,{say,  get_unix_epoch(whapps_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+                 ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
                  ,{play, Message}
 
                  ,{play, ToReplay}
@@ -425,7 +428,7 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
 	    record_unavailable_greeting(tmp_file(), Box, Call),
 	    config_menu(Box, Call);
 	RecName ->
-	    record_name(tmp_file(), Box, Call),
+	    _ = record_name(tmp_file(), Box, Call),
 	    config_menu(Box, Call);
 	SetPin ->
 	    change_pin(Box, Call),
@@ -464,22 +467,38 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 %% @end
 %%--------------------------------------------------------------------
 -spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{route_request=RR, account_db=Db}=Call) ->
-    store_recording(MediaName, Box, Call),
-    receive after 5000 -> ok end,
+new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from=From, to=To
+							     ,cid_name=CIDName, cid_number=CIDNumber
+							     ,call_id=CallID}=Call) ->
+    {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     NewMessages=[{struct, [
 			   {<<"timestamp">>, new_timestamp()}
-			   ,{<<"from">>, whapps_json:get_value(<<"From">>, RR)}
-			   ,{<<"to">>, whapps_json:get_value(<<"To">>, RR)}
-			   ,{<<"caller_id_number">>, whapps_json:get_value(<<"Caller-ID-Number">>, RR)}
-			   ,{<<"caller_id_name">>, whapps_json:get_value(<<"Caller-ID-Name">>, RR)}
-			   ,{<<"call_id">>, whapps_json:get_value(<<"Call-ID">>, RR)}
+			   ,{<<"from">>, From}
+			   ,{<<"to">>, To}
+			   ,{<<"caller_id_number">>, CIDNumber}
+			   ,{<<"caller_id_name">>, CIDName}
+			   ,{<<"call_id">>, CallID}
 			   ,{<<"folder">>, ?FOLDER_NEW}
 			   ,{<<"attachment">>, MediaName}
 			  ]
-		 }] ++ whapps_json:get_value([<<"messages">>], JObj, []),
-    couch_mgr:save_doc(Db, whapps_json:set_value([<<"messages">>], NewMessages, JObj)).
+		 }] ++ wh_json:get_value([<<"messages">>], JObj, []),
+    {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)),
+
+    [FromU, FromR] = binary:split(From, <<"@">>),
+    [ToU, ToR] = binary:split(To, <<"@">>),
+
+    {ok, JSON} = cf_api:new_voicemail([{<<"From-User">>, FromU}
+				       ,{<<"From-Realm">>, FromR}
+				       ,{<<"To-User">>, ToU}
+				       ,{<<"To-Realm">>, ToR}
+				       ,{<<"Account-DB">>, Db}
+				       ,{<<"Voicemail-Box">>, Id}
+				       ,{<<"Voicemail-Name">>, MediaName}
+				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
+				      ]),
+    logger:format_log(info, "CF_VOICEMAIL(~p): API send ~s~n", [self(), JSON]),
+    amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -487,7 +506,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{route_request=RR, a
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
+-spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object())).
 record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec}}=Box, Call) ->
     audio_macro([
                   {play,  RecordName}
@@ -515,7 +534,7 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, <<"8000">>, Call),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        couch_mgr:save_doc(Db, whapps_json:set_value(<<"pin">>, Pin, JObj))
+        couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj))
     catch
         _:_ ->
             change_pin(Box, Call)
@@ -530,17 +549,17 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
 %%--------------------------------------------------------------------
 -spec(get_mailbox_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #mailbox{}).
 get_mailbox_profile(Data, #cf_call{account_db=Db}) ->
-    Id = whapps_json:get_value(<<"id">>, Data),
+    Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Default=#mailbox{},
             #mailbox{
                        mailbox_id = Id
-                      ,skip_instructions = whapps_json:get_value(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
-                      ,skip_greeting = whapps_json:get_value(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
-                      ,has_unavailable_greeting = whapps_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
-                      ,pin = whapps_json:get_value(<<"pin">>, JObj, <<>>)
-                      ,timezone = whapps_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
+                      ,skip_instructions = wh_json:get_value(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
+                      ,skip_greeting = wh_json:get_value(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
+                      ,has_unavailable_greeting = wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
+                      ,pin = wh_json:get_value(<<"pin">>, JObj, <<>>)
+                      ,timezone = wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
                       ,exists=true
                     };
         _ ->
@@ -569,19 +588,28 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
                  ,{say,  Record}
                  ,{play, ToRerecord}
                 ], Call),
-    {ok, Digit} = wait_for_dtmf(5000),
 
-    _ = flush(Call),
-    case Digit of
-	Listen ->
-	    _ = b_play(MediaName, Call),
+    case wait_for_dtmf(5000) of
+	{error, timeout} ->
+	    _ = flush(Call),
 	    review_recording(MediaName, Box, Call);
-	Record ->
-	    {ok, record};
-	Save ->
+	{error, channel_hungup} ->
+	    logger:format_log(info, "CF_VOICEMAIL(~p): review was waiting for dtmf, got hungup, so let's save", [self()]),
 	    {ok, save};
-	_ ->
-	    review_recording(MediaName, Box, Call)
+	{ok, Digit} ->
+	    _ = flush(Call),
+	    case Digit of
+		Listen ->
+		    logger:format_log(info, "CF_VOICEMAIL(~p): Recv ~p, playing ~p~n", [self(), Listen, MediaName]),
+		    _ = b_play(MediaName, Call),
+		    review_recording(MediaName, Box, Call);
+		Record ->
+		    {ok, record};
+		Save ->
+		    {ok, save};
+		_ ->
+		    review_recording(MediaName, Box, Call)
+	    end
     end.
 
 %%--------------------------------------------------------------------
@@ -589,12 +617,13 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(store_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
--spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+-spec(store_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
+-spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
 store_recording(MediaName, Box, Call) ->
     store_recording(MediaName, MediaName, Box, Call).
 store_recording(MediaName, DestName, Box, Call) ->
-    store(MediaName, get_attachment_path(DestName, Box, Call), Call).
+    store(MediaName, get_attachment_path(DestName, Box, Call), Call),
+    cf_call_command:wait_for_store(Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -628,7 +657,7 @@ lookup_doc_rev(Db, Id) ->
 get_messages(#mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-            whapps_json:get_value(<<"messages">>, JObj, []);
+            wh_json:get_value(<<"messages">>, JObj, []);
         _ ->
             []
     end.
@@ -641,7 +670,7 @@ get_messages(#mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
 %%--------------------------------------------------------------------
 -spec(get_message/3 :: (Message :: json_object(), Mailbox :: #mailbox{}, Call :: #cf_call{}) -> binary()).
 get_message(Message, #mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
-    <<$/, Db/binary, $/, Id/binary, $/, (whapps_json:get_value(<<"attachment">>, Message))/binary>>.
+    <<$/, Db/binary, $/, Id/binary, $/, (wh_json:get_value(<<"attachment">>, Message))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -652,7 +681,7 @@ get_message(Message, #mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
 -spec(count_messages/2 :: (Message :: json_objects(), Folder :: binary()) -> integer()).
 count_messages(Messages, Folder) ->
     lists:foldr(fun(Message, Count) ->
-                       case whapps_json:get_value(<<"folder">>, Message) of
+                       case wh_json:get_value(<<"folder">>, Message) of
                            Folder ->
                                Count + 1;
                            _ ->
@@ -669,7 +698,7 @@ count_messages(Messages, Folder) ->
 -spec(get_folder/2 :: (Messages :: json_objects(), Folder :: binary()) -> json_objects()).
 get_folder(Messages, Folder) ->
     lists:foldr(fun(Message, Acc) ->
-                       case whapps_json:get_value(<<"folder">>, Message) of
+                       case wh_json:get_value(<<"folder">>, Message) of
                            Folder ->
                                [Message|Acc];
                            _ ->
@@ -685,8 +714,8 @@ get_folder(Messages, Folder) ->
 %%--------------------------------------------------------------------
 -spec(set_folder/4 :: (Folder :: binary(), Message :: json_object(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 set_folder(Folder, Message, Box, Call) ->
-    not (whapps_json:get_value(<<"folder">>, Message) =:= Folder) andalso
-	update_folder(Folder, whapps_json:get_value(<<"attachment">>, Message), Box, Call).
+    not (wh_json:get_value(<<"folder">>, Message) =:= Folder) andalso
+	update_folder(Folder, wh_json:get_value(<<"attachment">>, Message), Box, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -700,15 +729,15 @@ update_folder(_, undefined, _, _) ->
 update_folder(Folder, Attachment, #mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-            Messages = [ update_folder1(Message, Folder, Attachment, whapps_json:get_value(<<"attachment">>, Message))
-			 || Message <- whapps_json:get_value(<<"messages">>, JObj, []) ],
-            couch_mgr:save_doc(Db, whapps_json:set_value(<<"messages">>, Messages, JObj));
+            Messages = [ update_folder1(Message, Folder, Attachment, wh_json:get_value(<<"attachment">>, Message))
+			 || Message <- wh_json:get_value(<<"messages">>, JObj, []) ],
+            couch_mgr:save_doc(Db, wh_json:set_value(<<"messages">>, Messages, JObj));
         {error, _}=E ->
             E
     end.
 
 update_folder1(Message, Folder, Attachment, Attachment) ->
-    whapps_json:set_value(<<"folder">>, Folder, Message);
+    wh_json:set_value(<<"folder">>, Folder, Message);
 update_folder1(Message, _, _, _) ->
     Message.
 
@@ -719,7 +748,7 @@ update_folder1(Message, _, _, _) ->
 %%--------------------------------------------------------------------
 -spec(tmp_file/0 :: () -> binary()).
 tmp_file() ->
-     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".wav">>.
+     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private

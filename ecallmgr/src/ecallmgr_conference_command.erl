@@ -9,23 +9,23 @@
 
 -module(ecallmgr_conference_command).
 
--export([exec_cmd/3]).
+-export([exec_cmd/4]).
 
 -import(logger, [log/2, format_log/3]).
 
 -include("ecallmgr.hrl").
 
--spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | timeout | tuple(error, bad_reply | string())).
-exec_cmd(Node, CallId, JObj) ->
-    AppName = whapps_json:get_value(<<"Application-Name">>, JObj),
-    ConfName = whapps_json:get_value(<<"Conference-ID">>, JObj),
+-spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), ControlPID :: pid()) -> ok | timeout | tuple(error, bad_reply | string())).
+exec_cmd(Node, CallId, JObj, _) ->
+    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
+    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
     case get_fs_app(Node, ConfName, JObj, AppName) of
         {error, _Msg}=Err ->
             Err;
         Args ->
             case api(Node, <<"conference">>, <<ConfName/binary, " ", Args/binary>>) of
                 {ok, Reply} when AppName =:= <<"members">> ->
-                    spawn(fun() -> members_response(Reply, ConfName, CallId, whapps_json:get_value(<<"Server-ID">>, JObj)) end), ok;
+                    spawn(fun() -> members_response(Reply, ConfName, CallId, wh_json:get_value(<<"Server-ID">>, JObj)) end), ok;
                 {ok, _} -> ok;
 		timeout -> timeout;
                 {error, _} -> {error, bad_reply}
@@ -50,8 +50,8 @@ get_fs_app(_Node, ConfName, JObj, <<"play">>) ->
 	false ->
             {error, "conference play failed to execute as JObj did not validate."};
 	true ->
-            Media = <<$', (media_path(whapps_json:get_value(<<"Media-Name">>, JObj), ConfName))/binary, $'>>,
-            case whapps_json:get_value(<<"Member-ID">>, JObj) of
+            Media = <<$', (media_path(wh_json:get_value(<<"Media-Name">>, JObj), ConfName))/binary, $'>>,
+            case wh_json:get_value(<<"Member-ID">>, JObj) of
                 MemberId when is_binary(MemberId) ->
                     <<"play ", Media/binary, " ", MemberId/binary>>;
                 _ ->
@@ -63,42 +63,42 @@ get_fs_app(_Node, _ConfName, JObj, <<"deaf">>) ->
 	false ->
             {error, "conference deaf failed to execute as JObj did not validate."};
 	true ->
-            <<"deaf ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"deaf ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"undeaf">>) ->
     case whistle_api:conference_undeaf_req_v(JObj) of
 	false ->
             {error, "conference undeaf failed to execute as JObj did not validate."};
 	true ->
-            <<"undeaf ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"undeaf ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"mute">>) ->
     case whistle_api:conference_mute_req_v(JObj) of
 	false ->
             {error, "conference mute failed to execute as JObj did not validate."};
 	true ->
-            <<"mute ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"mute ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"unmute">>) ->
     case whistle_api:conference_unmute_req_v(JObj) of
 	false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
 	true ->
-            <<"unmute ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"unmute ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"kick">>) ->
     case whistle_api:conference_kick_req_v(JObj) of
 	false ->
             {error, "conference kick failed to execute as JObj did not validate."};
 	true ->
-            <<"kick ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"kick ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"move">>) ->
     case whistle_api:conference_move_req_v(JObj) of
 	false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
 	true ->
-            <<"transfer ", (whapps_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"transfer ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     format_log(error, "CONFERENCE_COMMAND(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
@@ -115,12 +115,12 @@ api(Node, AppName, Args) ->
     format_log(info, "CONFERENCE_COMMAND(~p): FS-API -> Node: ~p Api: ~p ~p~n", [self(), Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
 
--spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> list()).
+-spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} ->
             MediaName;
-        Url ->
+        {ok, Url} ->
             get_fs_playback(Url)
     end.
 

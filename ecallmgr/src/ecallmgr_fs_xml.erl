@@ -86,13 +86,17 @@ route_resp_xml(<<"error">>, _Routes, Prop) ->
 build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->
-    props:get_value(<<"Route">>, RouteProp);
+    case props:get_value(<<"Route">>, RouteProp) of 
+        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>; 
+        R2 -> R2
+    end;
 build_route(RouteProp, <<"username">>) ->
     User = props:get_value(<<"To-User">>, RouteProp),
     Realm = props:get_value(<<"To-Realm">>, RouteProp),
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
 	[{<<"Contact">>, Contact}] ->
-	    binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>);
+	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
+            <<?SIP_INTERFACE, (RURI)/binary>>;
 	{error, timeout}=E ->
 	    E
     end;
@@ -102,7 +106,8 @@ build_route(RouteProp, DIDFormat) ->
     DID = format_did(props:get_value(<<"To-DID">>, RouteProp), DIDFormat),
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
 	[{<<"Contact">>, Contact}] ->
-	    binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>);
+	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
+            <<?SIP_INTERFACE, (RURI)/binary>>;
 	{error, timeout}=E ->
 	    E
     end.
@@ -115,17 +120,15 @@ format_did(DID, <<"npan">>) ->
 format_did(DID, <<"1npan">>) ->
     whistle_util:to_1npan(DID).
 
--spec(get_leg_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
+-spec(get_leg_vars/1 :: (JObj :: json_object() | proplist()) -> iolist()).
 get_leg_vars({struct, Prop}) -> get_leg_vars(Prop);
 get_leg_vars(Prop) ->
-    Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
-    lists:flatten(["[", string:join([binary_to_list(V) || V <- Vars], ","), "]"]).
+    ["[", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"].
 
--spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> string()).
+-spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> list(string())).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
-    Vars = lists:foldr(fun get_channel_vars/2, [], Prop),
-    lists:flatten(["{", string:join([binary_to_list(V) || V <- Vars], ","), "}"]).
+    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
 get_channel_vars({<<"Auth-User">>, V}, Vars) ->
@@ -137,15 +140,17 @@ get_channel_vars({<<"Caller-ID-Name">>, V}, Vars) ->
 get_channel_vars({<<"Caller-ID-Number">>, V}, Vars) ->
     [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["sip_callee_id_name='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_callee_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["sip_callee_id_number='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_callee_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
+get_channel_vars({<<"Codecs">>, []}, Vars) ->
+    Vars;
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     Codecs = [ binary_to_list(C) || C <- Cs ],
     CodecStr = string:join(Codecs, ","),
@@ -174,12 +179,26 @@ get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
     [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->   
     [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
-
-%% list of Channel Vars
+%% SPECIAL CASE: Custom Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
+    lists:foldl(fun
+                    %% These are a temporary abstraction leak until we can locate a call via the API, originate 
+                    %% on the located server only and transfer to an existing UUID...
+                    ({<<"Confirm-File">>, V}, Vars0) ->
+                        [ list_to_binary([<<"group_confirm_file=">>, whistle_util:to_list(V)]) | Vars0];
+                    ({<<"Confirm-Key">>, V}, Vars0) ->
+                       [ list_to_binary([<<"group_confirm_key=">>, whistle_util:to_list(V)]) | Vars0];
+                    ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->   
+                       [ list_to_binary([<<"group_confirm_cancel_timeout=">>, whistle_util:to_list(V)]) | Vars0];
+                    %% end of leak
+                    ({K,V}, Vars0) ->                        
+                       [ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
+               end, Vars, Custom);
+%% SPECIAL CASE: SIP Headers
+get_channel_vars({<<"SIP-Headers">>, {struct, [_]=SIPHeaders}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
-			[ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
-		end, Vars, Custom);
+			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
+		end, Vars, SIPHeaders);
 get_channel_vars({_K, _V}, Vars) ->
     %logger:format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.

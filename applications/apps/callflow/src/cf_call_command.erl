@@ -11,8 +11,8 @@
 -include("callflow.hrl").
 
 -export([audio_macro/2, flush_dtmf/1]).
--export([answer/1, hangup/1]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7, bridge/8]).
+-export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
@@ -25,8 +25,8 @@
 -export([noop/1]).
 -export([flush/1]).
 
--export([b_answer/1, b_hangup/1]).
--export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8]).
+-export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
+-export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_play_and_collect_digit/2]).
@@ -40,6 +40,7 @@
 -export([wait_for_dtmf/1]).
 -export([wait_for_application_or_dtmf/2]).
 -export([wait_for_hangup/0]).
+-export([wait_for_store/1]).
 -export([send_callctrl/2]).
 
 %%--------------------------------------------------------------------
@@ -86,7 +87,73 @@ flush_dtmf(Call) ->
     b_play(<<"silence_stream://250">>, Call).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
+%% @doc
+%% Produces the low level whistle_api request to set channel/call vars
+%% NOTICE: These are 'custom' channel vars for state info only, and
+%%   can not be used to set system settings
+%% @end
+%%--------------------------------------------------------------------
+-spec(set/3 :: (ChannelVars :: proplist(), CallVars :: proplist(), Call :: #cf_call{}) -> ok).
+
+set(undefined, CallVars, Call) ->
+    set(?EMPTY_JSON_OBJECT, CallVars, Call);
+set(ChannelVars, undefined, Call) ->
+    set(ChannelVars, ?EMPTY_JSON_OBJECT, Call);
+set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, _) ->
+    ok;
+set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"set">>}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Custom-Channel-Vars">>, ChannelVars}
+               ,{<<"Custom-Call-Vars">>, CallVars}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = whistle_api:set_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    send_callctrl(Payload, Call).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level whistle_api request to fetch channe vars
+%% NOTICE: These are 'custom' channel vars for state info only, and
+%%   can not the switch vars
+%% @end
+%%--------------------------------------------------------------------
+-spec(fetch/1 :: (Call :: #cf_call{}) -> ok).
+-spec(fetch/2 :: (FromOtherLeg :: boolean(), Call :: #cf_call{}) -> ok).
+
+-spec(b_fetch/1 :: (Call :: #cf_call{}) -> ok).
+-spec(b_fetch/2 :: (FromOtherLeg :: boolean(), Call :: #cf_call{}) -> ok).
+
+fetch(Call) ->
+    fetch(false, Call).
+fetch(FromOtherLeg, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
+    Command = [
+                {<<"Application-Name">>, <<"fetch">>}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"From-Other-Leg">>, FromOtherLeg}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = whistle_api:fetch_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    send_callctrl(Payload, Call).
+
+b_fetch(Call) ->
+    b_fetch(false, Call).
+b_fetch(FromOtherLeg, Call) ->
+    fetch(FromOtherLeg, Call),
+    case wait_for_message(<<"fetch">>) of
+        {ok, JObj} ->
+            {ok, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)};
+        {error, _}=E ->
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to answer the channel
 %% @end
@@ -108,7 +175,7 @@ b_answer(Call) ->
     wait_for_message(<<"answer">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to hangup the channel.
 %% This request will execute immediately
@@ -132,80 +199,77 @@ b_hangup(Call) ->
     wait_for_hangup().
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
 -spec(bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> ok).
 -spec(bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) -> ok).
--spec(bridge/8 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Call :: #cf_call{}) -> ok).
+-spec(bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Ringback :: binary(), Call :: #cf_call{}) -> ok).
 
 -spec(b_bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 -spec(b_bridge/3 :: (Endpoints :: json_objects(), Timeout :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), Call :: #cf_call{}) ->
+                         tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
+-spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), Call :: #cf_call{}) ->
-			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Call :: #cf_call{}) ->
-			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
--spec(b_bridge/8 :: (Endpoints :: json_objects(), Timeout :: binary(), Strategy :: binary(), CIDNum :: binary(), CIDName :: binary(), ContinueOnFail :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
+-spec(b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: binary(), CallerID :: binary(), Strategy :: binary(), IgnoreEarlyMedia :: binary(), Ringback :: binary(), Call :: #cf_call{}) ->
 			 tuple(ok, json_object()) | tuple(error, bridge_failed | channel_hungup | execution_failed | timeout)).
 
 bridge(Endpoints, Call) ->
     bridge(Endpoints, <<"26">>, Call).
 bridge(Endpoints, Timeout, Call) ->
-    bridge(Endpoints, Timeout, <<"single">>, Call).
-bridge(Endpoints, Timeout, Strategy, Call) ->
-    bridge(Endpoints, Timeout, Strategy, <<>>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, <<>>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, <<"true">>, <<"us-ring">>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, <<"us-ring">>, Call).
-bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    bridge(Endpoints, Timeout, <<"default">>, Call).
+bridge(Endpoints, Timeout, CallerID, Call) ->
+    bridge(Endpoints, Timeout, CallerID, <<"single">>, Call).
+bridge(Endpoints, Timeout, CallerID, Strategy, Call) ->
+    bridge(Endpoints, Timeout, CallerID, Strategy, <<"false">>, Call).
+bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Call) ->
+    bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, <<"us-ring">>, Call).
+bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Ringback, Call) when not is_tuple(CallerID) ->
+    bridge(Endpoints, Timeout
+           ,cf_endpoint:get_endpoint_caller_id(Call#cf_call.authorizing_id, CallerID, Call)
+           ,Strategy, IgnoreEarlyMedia, Ringback, Call);
+bridge(Endpoints, Timeout, {CallerIDNum, CallerIDName}, Strategy, IgnoreEarlyMedia, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [
                 {<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
-               ,{<<"Continue-On-Fail">>, ContinueOnFail}
-               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
-               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+               ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
+               ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
                ,{<<"Ringback">>, Ringback}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:bridge_req(Command),
+    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_bridge(Endpoints, Call) ->
     b_bridge(Endpoints, <<"26">>, Call).
 b_bridge(Endpoints, Timeout, Call) ->
-    b_bridge(Endpoints, Timeout, <<"single">>, Call).
-b_bridge(Endpoints, Timeout, Strategy, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, <<>>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, CIDNum, <<>>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, <<"true">>, <<"us-ring">>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, <<"us-ring">>, Call).
-b_bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, Call) ->
-    bridge(Endpoints, Timeout, Strategy, CIDNum, CIDName, ContinueOnFail, Ringback, Call),
+    b_bridge(Endpoints, Timeout, <<"default">>, Call).
+b_bridge(Endpoints, Timeout, CallerID, Call) ->
+    b_bridge(Endpoints, Timeout, CallerID, <<"single">>, Call).
+b_bridge(Endpoints, Timeout, CallerID, Strategy, Call) ->
+    b_bridge(Endpoints, Timeout, CallerID, Strategy, <<"true">>, Call).
+b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Call) ->
+    b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, <<"us-ring">>, Call).
+b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
+    bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Ringback, Call),
     wait_for_bridge((whistle_util:to_integer(Timeout)*1000) + 5000).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to play media to the
 %% caller.  A list of terminators can be provided that the caller
@@ -228,7 +292,7 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_req(Command),
+    {ok, Payload} = whistle_api:play_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
@@ -246,7 +310,7 @@ play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to record a file.
 %% A list of keys can be used as the terminator or a silence threshold.
@@ -271,9 +335,9 @@ record(MediaName, Call) ->
 record(MediaName, Terminators, Call) ->
     record(MediaName, Terminators, <<"120">>, Call).
 record(MediaName, Terminators, TimeLimit, Call) ->
-    record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
+    record(MediaName, Terminators, TimeLimit, <<"500">>,  Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
+    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [
                 {<<"Application-Name">>, <<"record">>}
@@ -285,7 +349,7 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:record_req(Command),
+    {ok, Payload} = whistle_api:record_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_record(MediaName, Call) ->
@@ -293,15 +357,15 @@ b_record(MediaName, Call) ->
 b_record(MediaName, Terminators, Call) ->
     b_record(MediaName, Terminators, <<"120">>, Call).
 b_record(MediaName, Terminators, TimeLimit, Call) ->
-    b_record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
+    b_record(MediaName, Terminators, TimeLimit, <<"500">>,  Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
+    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to store the file
 %% @end
@@ -325,11 +389,11 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:store_req(Command),
+    {ok, Payload} = whistle_api:store_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to play tones to the
 %% caller
@@ -356,7 +420,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
 	     ]}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to play media to a
 %% caller, and collect a number of DTMF events.
@@ -404,7 +468,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_collect_digits_req(Command),
+    {ok, Payload} = whistle_api:play_collect_digits_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play_and_collect_digit(Media, Call) ->
@@ -421,16 +485,15 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, [<<"#">>], Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call),
-    Wait = (whistle_util:to_integer(Timeout) * whistle_util:to_integer(Tries)) + 5000,
-    case wait_for_message(<<"play_and_collect_digits">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Wait) of
+    case wait_for_message(<<"play_and_collect_digits">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, false) of
         {ok, JObj} ->
-            {ok, whapps_json:get_value(<<"Application-Response">>, JObj, <<>>)};
+            {ok, wh_json:get_value(<<"Application-Response">>, JObj, <<>>)};
         {error, _}=E ->
             E
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to say text to a caller
 %% @end
@@ -456,7 +519,7 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:say_req(Command),
+    {ok, Payload} = whistle_api:say_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
@@ -470,7 +533,7 @@ say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to bridge a caller
 %% with a conference, with optional entry flags
@@ -502,7 +565,7 @@ conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_req(Command),
+    {ok, Payload} = whistle_api:conference_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_conference(ConfId, Call) ->
@@ -516,7 +579,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
     wait_for_message(<<"conference">>, <<"CHANNEL_EXECUTE">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to preform a noop
 %% @end
@@ -538,7 +601,7 @@ b_noop(Call) ->
     wait_for_message(<<"noop">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Produces the low level whistle_api request to flush the command
 %% queue
@@ -558,7 +621,7 @@ flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     wait_for_message(<<"noop">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Low level function to consume call events, looping until a specific
 %% one occurs.  If the channel is hungup or no call events are recieved
@@ -579,7 +642,7 @@ wait_for_message(Application, Event, Type) ->
 wait_for_message(Application, Event, Type, false) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
@@ -594,7 +657,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
@@ -611,7 +674,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Wait for a DTMF event and extract the digits when it comes
 %% @end
@@ -621,9 +684,9 @@ wait_for_dtmf(Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { <<"DTMF">>, <<"call_event">> } ->
-                    {ok, whapps_json:get_value(<<"DTMF-Digit">>, JObj)};
+                    {ok, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 {  _, <<"error">> } ->
@@ -638,7 +701,7 @@ wait_for_dtmf(Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Waits for and determines the status of the bridge command
 %% @end
@@ -648,13 +711,16 @@ wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
                     {ok, JObj};
+                { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+                    case wh_json:get_value(<<"Application-Response">>, JObj) of
+                        <<"SUCCESS">> -> {ok, JObj};
+                        Cause -> {error, {bridge_failed, Cause}}
+                    end;
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
-                { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-                    {error, bridge_failed};
                 { _, _, <<"error">> } ->
                     {error, execution_failed};
                 _ ->
@@ -667,7 +733,7 @@ wait_for_bridge(Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Waits for and determines the status of the bridge command
 %% @end
@@ -677,11 +743,11 @@ wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Application-Name">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj), whapps_json:get_value(<<"Event-Category">>, JObj) } of
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { Application, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
                     {ok, JObj};
                 { _, <<"DTMF">>, <<"call_event">> } ->
-                    {dtmf, whapps_json:get_value(<<"DTMF-Digit">>, JObj)};
+                    {dtmf, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, _, <<"error">> } ->
@@ -696,7 +762,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Wait forever for the channel to hangup
 %% @end
@@ -705,7 +771,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 wait_for_unbridge() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Event-Category">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj) } of
+            case { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) } of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
                     {ok, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
@@ -718,7 +784,7 @@ wait_for_unbridge() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Wait forever for the channel to hangup
 %% @end
@@ -727,7 +793,7 @@ wait_for_unbridge() ->
 wait_for_hangup() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { whapps_json:get_value(<<"Event-Category">>, JObj), whapps_json:get_value(<<"Event-Name">>, JObj) } of
+            case { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) } of
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
                 { <<"error">>, _ } ->
@@ -738,7 +804,30 @@ wait_for_hangup() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
+%% @doc
+%% Wait forever for the channel to hangup
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_store/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
+wait_for_store(#cf_call{cf_pid=CFPid}=Call) ->
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case wh_json:get_value(<<"Application-Name">>, JObj) of
+                <<"store">> ->
+		    {ok, JObj};
+		<<"error">> ->
+		    {error, execution_failure};
+                _O ->
+                    wait_for_store(Call)
+            end
+    after 100 ->
+	    CFPid ! {heartbeat},
+	    wait_for_store(Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% Sends call commands to the appropriate call control process
 %% @end
