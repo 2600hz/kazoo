@@ -161,7 +161,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 				     Self = self(),
 				     spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
 
-				     {<<>>,<<>>,?CONTENT_TYPE_WAV}
+				     {<<>>,<<0>>,?CONTENT_TYPE_WAV}
 			     end,
 
 	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
@@ -318,7 +318,7 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
 			    play_media(MediaFile, Socks1, 0, Stop, <<>>, ShoutHeader);
 			false ->
 			    %% logger:format_log(info, "SHOUT.mloop(~p): done playing, bye!~n", [self()]),
-			    exit(ok)
+			    exit(normal)
 		    end
 	    end
     end.
