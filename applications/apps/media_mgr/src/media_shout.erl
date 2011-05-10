@@ -325,6 +325,6 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
     end.
 
 get_http_response_headers(CT, CL) ->
-    ["HTTP/1.0 200 OK\r\n"
+    ["HTTP/1.0 200 OK\r\n\r\n"
      ,"content-type: ", whistle_util:to_list(CT), "\r\n"
      ,"content-length: ", whistle_util:to_list(CL), "\r\n"].
