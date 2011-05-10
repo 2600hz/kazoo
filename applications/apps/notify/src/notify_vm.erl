@@ -182,15 +182,21 @@ send_vm_to_email(To, JObj) ->
 
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
 
-    Email = {<<"multipart">>, <<"alternative">>
+    Email = {<<"multipart">>, <<"mixed">>
 		 ,[
 		   {<<"From">>, <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>},
 		   {<<"To">>, To},
 		   {<<"Subject">>, Subject}
 		  ],
 	     [],
-	     [{<<"text">>, <<"plain">>, [], [], Body}
-	      ,{<<"audio">>, <<"mpeg">>, [], [], AttachmentBin}]
+	     [{<<"multipart">>, <<"alternative">>, [], [], [{<<"text">>, <<"plain">>, [], [], Body}]}
+	      ,{<<"audio">>, <<"mpeg">>
+		    , [
+		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
+		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
+		       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+		      ]
+		,[], AttachmentBin}]
 	    },
 
     Res = gen_smtp_client:send(mimemail:encode(Email), [{relay, net_adm:localhost()}]),
