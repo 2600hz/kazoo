@@ -10,7 +10,7 @@
 
 -include_lib("wh_media.hrl").
 
--export([get_request/1, play_chunk/6, get_srv_response/5, get_header/2]).
+-export([get_request/1, play_chunk/6, get_shout_srv_response/5, get_shout_header/2]).
 
 -spec(get_request/1 :: (S :: port()) -> void | list()).
 get_request(S) ->
@@ -65,9 +65,9 @@ play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
     end.
 
 %% return the res
--spec(get_srv_response/5 :: (SrvName :: binary() | string(), MediaName :: binary() | string(), ChunkSize :: integer(), Url :: binary() | string(), CT :: binary() | string()) ->
+-spec(get_shout_srv_response/5 :: (SrvName :: binary() | string(), MediaName :: binary() | string(), ChunkSize :: integer(), Url :: binary() | string(), CT :: binary() | string()) ->
 			 iolist()).
-get_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
+get_shout_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
     ["ICY 200 OK\r\n",
      "icy-notice1: ", whistle_util:to_list(SrvName), "<BR>\r\n",
      "icy-name: ", whistle_util:to_list(MediaName), "\r\n",
@@ -78,8 +78,8 @@ get_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
      "icy-metaint: ",integer_to_list(ChunkSize),"\r\n",
      "icy-br: 8\r\n\r\n"].
 
--spec(get_header/2 :: (MediaName :: string() | binary(), Url :: string() | binary()) -> binary()).
-get_header(MediaName, Url) ->
+-spec(get_shout_header/2 :: (MediaName :: string() | binary(), Url :: string() | binary()) -> binary()).
+get_shout_header(MediaName, Url) ->
     Bin = list_to_binary(["StreamTitle='",whistle_util:to_list(MediaName)
 			  ,"';StreamUrl='",whistle_util:to_list(Url) ,"';"]),
     Nblocks = ((byte_size(Bin) - 1) div 16) + 1,

@@ -199,8 +199,8 @@ send_loop(Sock, Path, Parent, SrvRef) ->
 	    StreamUrl = ?MODULE:get_srv_url(Parent),
 	    MediaName = filename:basename(Path),
 	    CT = <<"audio/mpeg">>,
-	    Resp = wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
-	    Header = wh_shout:get_header(MediaName, StreamUrl),
+	    Resp = wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
+	    Header = wh_shout:get_shout_header(MediaName, StreamUrl),
 
 	    ok = gen_tcp:send(Sock, [Resp]),
 
