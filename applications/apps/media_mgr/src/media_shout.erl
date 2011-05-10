@@ -138,29 +138,36 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 	{ok, PortNo} = inet:port(LSocket),
 	{ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
 
-	Extension = filename:extension(Attachment),
-
-	StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream", Extension]),
-	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, SendTo]),
-
 	Size = byte_size(Content),
 	ChunkSize = case ?CHUNKSIZE > Size of
 			true -> Size;
 			false -> ?CHUNKSIZE
 		    end,
 
-	{Resp, Header, CT} = case Extension of
-				 <<".mp3">> ->
-				     Self = self(),
-				     spawn(fun() -> start_shout_acceptor(Self, LSocket) end),
-				     {wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, ?CONTENT_TYPE_MP3)
-				      ,wh_shout:get_shout_header(MediaName, StreamUrl)
-				      ,?CONTENT_TYPE_MP3};
-				 <<".wav">> ->
-				     Self = self(),
-				     spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
-				     {<<>>,<<0>>,?CONTENT_TYPE_WAV}
-			     end,
+	{Resp, Header, CT, StreamUrl} = case filename:extension(Attachment) of
+					    <<".mp3">> ->
+						Self = self(),
+						spawn(fun() -> start_shout_acceptor(Self, LSocket) end),
+						Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
+
+						{
+						  wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, Url, ?CONTENT_TYPE_MP3)
+						 ,wh_shout:get_shout_header(MediaName, Url)
+						 ,?CONTENT_TYPE_MP3
+						 ,Url
+						};
+					    <<".wav">> ->
+						Self = self(),
+						spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
+						{
+						  get_http_response_headers(?CONTENT_TYPE_WAV, Size)
+						 ,<<0>>
+						 ,?CONTENT_TYPE_WAV
+						 ,list_to_binary(["http://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.wav"])
+						}
+					end,
+
+	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, SendTo]),
 
 	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
