@@ -75,7 +75,7 @@ load_merge(_DocId, _Data, #cb_context{db_name=undefined}=Context) ->
 load_merge(DocId, {struct, Data}, Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
-	    {stuct, PrivProp} = private_fields(Doc),
+	    {struct, PrivProp} = private_fields(Doc),
             Doc1 = {struct, PrivProp ++ Data},
             Context1#cb_context{
 	      doc=Doc1
