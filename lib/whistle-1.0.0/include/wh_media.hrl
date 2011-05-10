@@ -9,4 +9,5 @@
          ,shout_response = "" :: iolist()
          ,shout_header = {0, <<>>} :: tuple(integer(), binary())
          ,continuous = false :: boolean()
+         ,pad_response = true :: boolean()
 	 }).
