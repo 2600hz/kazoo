@@ -151,9 +151,6 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
 	logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
 
-	Self = self(),
-	spawn(fun() -> start_acceptor(Self, LSocket) end),
-
 	Size = byte_size(Content),
 	ChunkSize = case ?CHUNKSIZE > Size of
 			true -> Size;
@@ -162,6 +159,9 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
 	{Resp, Header} = case Extension of
 			     <<".mp3">> ->
+				 Self = self(),
+				 spawn(fun() -> start_acceptor(Self, LSocket) end),
+
 				 {wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT)
 				  ,wh_shout:get_header(MediaName, StreamUrl)};
 			     <<".wav">> ->
