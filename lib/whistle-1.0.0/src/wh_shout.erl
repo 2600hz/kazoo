@@ -47,25 +47,27 @@ get_request(S, L) ->
 			   tuple(list(port()), tuple(), integer(), binary())). %% more media to play
 play_chunk(MediaFile, Sock, Offset, Stop, SoFar, Header) when is_port(Sock) ->
     play_chunk(MediaFile, [Sock], Offset, Stop, SoFar, Header);
-play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
-    Need = MediaFile#media_file.chunk_size - byte_size(SoFar),
+play_chunk(#media_file{contents=Contents, chunk_size=ChunkSize, pad_response=ToPad}=MediaFile, Socks, Offset, Stop, SoFar, Header) ->
+    Need = ChunkSize - byte_size(SoFar),
     Last = Offset + Need,
 
     case Last >= Stop of
 	true ->
 	    %% not enough data so read as much as possible and return
 	    Max = Stop - Offset,
-	    Bin = binary:part(MediaFile#media_file.contents, Offset, Max),
-	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
+	    Bin = binary:part(Contents, Offset, Max),
+	    StillActive = write_data(Socks, SoFar, Bin, Header, ChunkSize, ToPad),
 	    {done, StillActive};
 	false ->
 	    Bin = binary:part(MediaFile#media_file.contents, Offset, Need),
-	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
+	    StillActive = write_data(Socks, SoFar, Bin, Header, ChunkSize, ToPad),
 	    {StillActive, bump(Header), Offset + Need, <<>>}
     end.
 
 %% return the res
--spec(get_shout_srv_response/5 :: (SrvName :: binary() | string(), MediaName :: binary() | string(), ChunkSize :: integer(), Url :: binary() | string(), CT :: binary() | string()) ->
+-spec(get_shout_srv_response/5 :: (SrvName :: binary() | string(), MediaName :: binary() | string()
+				  ,ChunkSize :: integer(), Url :: binary() | string()
+				  ,CT :: binary() | string()) ->
 			 iolist()).
 get_shout_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
     ["ICY 200 OK\r\n",
@@ -92,7 +94,7 @@ split("\r\n\r\n" ++ T, L) -> {lists:reverse(L), T};
 split([H|T], L)           -> split(T, [H|L]);
 split([], _)              -> more.
 
-write_data(Sockets, B0, B1, Header, ChunkSize) ->
+write_data(Sockets, B0, B1, Header, ChunkSize, ToPad) ->
     %% Check that we really have got a block of the right size
     %% this is a very useful check that our program logic is
     %% correct
@@ -104,10 +106,17 @@ write_data(Sockets, B0, B1, Header, ChunkSize) ->
 		      Write = gen_tcp:send(S, Send),
 		      Write =:= ok
 		  end];
-	Size when Size < ChunkSize ->
+	Size when (Size < ChunkSize) andalso ToPad ->
 	    H = the_header(Header),
 	    Padding = binary:copy(<<0>>, ChunkSize-Size-byte_size(H)),
 	    Send = [B0, B1, H, Padding],
+	    [ S || S <- Sockets,
+		   begin
+		       Write = gen_tcp:send(S, Send),
+		       Write =:= ok
+		   end ];
+	Size when (Size < ChunkSize) ->
+	    Send = [B0, B1, the_header(Header)],
 	    [ S || S <- Sockets,
 		   begin
 		       Write = gen_tcp:send(S, Send),

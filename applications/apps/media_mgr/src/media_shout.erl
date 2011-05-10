@@ -172,7 +172,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
-				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous)},
+				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
 	MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
 
 	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
