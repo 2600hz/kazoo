@@ -276,7 +276,7 @@ allowed_methods([]) ->
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods([_, ?MESSAGES_RESOURCE]) ->
-    {true, ['GET', 'PUT']};
+    {true, ['GET']};
 allowed_methods([_, ?MESSAGES_RESOURCE, _]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods([_, ?MESSAGES_RESOURCE, _, ?BIN_DATA]) ->   
