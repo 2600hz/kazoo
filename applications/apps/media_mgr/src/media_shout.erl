@@ -274,7 +274,10 @@ start_stream_acceptor(Parent, LSock) ->
     case gen_tcp:accept(LSock) of
 	{ok, S} ->
 	    spawn(fun() -> start_stream_acceptor(Parent, LSock) end),
-	    logger:format_log(info, "SHOUT.accept(~p): Listening on ~p~n", [self(), S]),
+
+	    _Req = wh_shout:get_request(S),
+
+	    logger:format_log(info, "SHOUT.accept(~p): Listening on ~p: Req: ~p~n", [self(), S, _Req]),
 	    gen_tcp:controlling_process(S, Parent),
 	    Parent ! {send_media, S};
 	_ -> ok
@@ -325,6 +328,6 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
     end.
 
 get_http_response_headers(CT, CL) ->
-    ["HTTP/1.0 200 OK\r\n\r\n"
+    ["HTTP/1.0 200 OK\r\n"
      ,"content-type: ", whistle_util:to_list(CT), "\r\n"
-     ,"content-length: ", whistle_util:to_list(CL), "\r\n"].
+     ,"content-length: ", whistle_util:to_list(CL), "\r\n\r\n"].

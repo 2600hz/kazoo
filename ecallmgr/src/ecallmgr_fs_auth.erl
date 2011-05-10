@@ -180,8 +180,8 @@ handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
     Pid ! Resp,
     {noreply, State};
 
-handle_info({'EXIT', LU, Reason}, #state{lookups=LUs}=State) ->
-    logger:format_log(info, "FS_AUTH(~p): Lookup ~p exited: ~p~n", [self(), LU, Reason]),
+handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
+    logger:format_log(info, "FS_AUTH(~p): Lookup ~p exited~n", [self(), LU]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
 
 handle_info(_Info, State) ->

@@ -183,8 +183,8 @@ handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     Pid ! Resp,
     {noreply, State};
 
-handle_info({'EXIT', LU, Reason}, #state{lookups=LUs}=State) ->
-    logger:format_log(info, "FS_ROUTE(~p): lookup ~p exited: ~p~n", [self(), LU, Reason]),
+handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
+    logger:format_log(info, "FS_ROUTE(~p): lookup ~p exited~n", [self(), LU]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
 
 handle_info(Other, State) ->
