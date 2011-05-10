@@ -152,7 +152,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
 						{
 						  wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, Url, ?CONTENT_TYPE_MP3)
-						 ,wh_shout:get_shout_header(MediaName, Url)
+						  ,{0,wh_shout:get_shout_header(MediaName, Url)}
 						 ,?CONTENT_TYPE_MP3
 						 ,Url
 						};
@@ -161,7 +161,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 						spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
 						{
 						  get_http_response_headers(?CONTENT_TYPE_WAV, Size)
-						 ,<<0>>
+						 ,undefined
 						 ,?CONTENT_TYPE_WAV
 						 ,list_to_binary(["http://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.wav"])
 						}
@@ -172,7 +172,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
-				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
+				,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
 	MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
 
 	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
