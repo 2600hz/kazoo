@@ -428,9 +428,7 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(load_message_summary/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_message_summary(DocId, Context) ->
-    Messages = load_messages_from_doc(DocId, Context),
-
-    case Messages of
+    case Messages = load_messages_from_doc(DocId, Context) of
 	?EMPTY_JSON_OBJECT ->
 	    crossbar_util:response(error, no_messages_attached, Context);
 	_ ->
@@ -447,18 +445,18 @@ load_message_summary(DocId, Context) ->
 -spec(load_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_message(DocId, AttachmentId, Context) ->
     Messages = load_messages_from_doc(DocId, Context),
-    Message = load_message(AttachmentId, Messages),
+    Attachment = attachment_name(AttachmentId),
 
-    case Message of
-	[_] ->
+    case Message = load_message(Attachment, Messages) of
+	{struct, _} ->
 	    crossbar_util:response(Message,Context);
 	_ ->
 	    crossbar_util:response_bad_identifier(AttachmentId, Context)
     end.
 
-load_message(MessageId, Messages) ->
-    SearchFun = fun (Message) -> wh_json:get_value(<<"attachment">>, Message ) =:= attachment_name(MessageId) end,
-    lists:filter(SearchFun, Messages).
+load_message(Attachment, Messages) ->
+    [Mess | _] = [Message || Message <- Messages, wh_json:get_value(<<"attachment">>, Message ) =:= Attachment],
+    Mess.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -487,12 +485,12 @@ attachment_name(AttachmentId) ->
 %%--------------------------------------------------------------------\
 -spec(delete_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 delete_message(DocId, AttachmentId, Context) ->
-    Context1 = crossbar_doc:load(DocId, Context),
-    Messages = wh_json:get_value(<<"messages">>, Context1#cb_context.doc),
+    Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
+    Messages = wh_json:get_value(<<"messages">>, Doc),
 
     case get_message_index(AttachmentId, Messages) of 
 	Index when Index > 0 ->  
-	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, Context1#cb_context.doc),
+	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, Doc),
 	    Context1#cb_context{doc=Doc1};
 	0 ->
 	    crossbar_util:response_bad_identifier(AttachmentId, Context)
@@ -541,16 +539,17 @@ update_message(DocId, AttachmentId, #cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-	    ok
-    end,
+	    update_message1(DocId, AttachmentId, Context)
+    end.
 
+update_message1(DocId, AttachmentId, Context) ->
     RequestedValue = wh_json:get_value(<<"folder">>, Context#cb_context.req_data),
-    Context1 = crossbar_doc:load(DocId, Context),
-    Messages = wh_json:get_value(<<"messages">>, Context1#cb_context.doc),
+    Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
+    Messages = wh_json:get_value(<<"messages">>, Doc),
 
     case get_message_index(AttachmentId, Messages) of 
   	Index when Index > 0 ->  
-	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, Context1#cb_context.doc),
+	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, Doc),
 	    Context1#cb_context{doc=Doc1};
 	0 ->
 	    crossbar_util:response_bad_identifier(AttachmentId, Context)
@@ -564,6 +563,6 @@ update_message(DocId, AttachmentId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(load_messages_from_doc/2 :: (DocId :: binary(), Context :: #cb_context{}) -> json_objects()).
 load_messages_from_doc(DocId, Context) ->
-    Doc = crossbar_doc:load(DocId, Context),
-    wh_json:get_value(<<"messages">>, Doc#cb_context.doc).
+    #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
+    wh_json:get_value(<<"messages">>, Doc).
 
