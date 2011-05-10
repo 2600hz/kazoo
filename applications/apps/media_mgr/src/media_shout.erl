@@ -20,6 +20,8 @@
 -include("media.hrl").
 
 -define(SERVER, ?MODULE).
+-define(CONTENT_TYPE_MP3, <<"audio/mpeg">>).
+-define(CONTENT_TYPE_WAV, <<"audio/x-wav">>).
 
 -record(state, {
 	  media_file = #media_file{} :: #media_file{}
@@ -138,17 +140,8 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
 	Extension = filename:extension(Attachment),
 
-	CT = case Extension of
-		 <<".mp3">> -> <<"audio/mpeg">>;
-		 <<".wav">> -> <<"audio/x-wav">>
-	     end,
-
 	StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream", Extension]),
 	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, SendTo]),
-
-	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
-
-	logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
 
 	Size = byte_size(Content),
 	ChunkSize = case ?CHUNKSIZE > Size of
@@ -156,19 +149,22 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 			false -> ?CHUNKSIZE
 		    end,
 
-	{Resp, Header} = case Extension of
-			     <<".mp3">> ->
-				 Self = self(),
-				 spawn(fun() -> start_shout_acceptor(Self, LSocket) end),
+	{Resp, Header, CT} = case Extension of
+				 <<".mp3">> ->
+				     Self = self(),
+				     spawn(fun() -> start_shout_acceptor(Self, LSocket) end),
 
-				 {wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT)
-				  ,wh_shout:get_header(MediaName, StreamUrl)};
-			     <<".wav">> ->
-				 Self = self(),
-				 spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
+				     {wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, ?CONTENT_TYPE_MP3)
+				      ,wh_shout:get_header(MediaName, StreamUrl)
+				      ,?CONTENT_TYPE_MP3};
+				 <<".wav">> ->
+				     Self = self(),
+				     spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
 
-				 {<<>>,<<>>}
-			 end,
+				     {<<>>,<<>>,?CONTENT_TYPE_WAV}
+			     end,
+
+	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous)},
@@ -286,11 +282,11 @@ start_stream_acceptor(Parent, LSock) ->
 play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile) ->
     play_media(MediaFile, [], 0, byte_size(Contents), <<>>, Header).
 
-play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile, [], _, Stop, _, _) ->
+play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader, content_type=CT}=MediaFile, [], _, Stop, _, _) ->
     receive
 	{add_socket, S} ->
 	    logger:format_log(info, "SHOUT.mloop(~p): Adding first socket: ~p~n", [self(), S]),
-	    gen_tcp:send(S, [ShoutResponse]),
+	    CT =:= ?CONTENT_TYPE_MP3 andalso gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
 	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
@@ -299,12 +295,12 @@ play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=M
 	    logger:format_log(info, "SHOUT.mloop(~p): have heard from anyone in ~p ms, going down~n", [self(), ?MAX_WAIT_FOR_LISTENERS]),
 	    ok
     end;
-play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile
+play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader, content_type=CT}=MediaFile
 	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
 	    logger:format_log(info, "SHOUT.mloop(~p): Adding socket: ~p~n", [self(), S]),
-	    gen_tcp:send(S, [ShoutResponse]),
+	    CT =:= ?CONTENT_TYPE_MP3 andalso gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
 	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
