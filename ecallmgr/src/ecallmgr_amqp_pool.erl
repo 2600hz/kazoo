@@ -254,8 +254,8 @@ worker_busy(Q, From, Ref, Parent) ->
 	{_, #amqp_msg{payload = Payload}} ->
 	    logger:format_log(info, "WORKER-B(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
-	{'DOWN', Ref, process, Pid, Info} ->
-	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
+	{'DOWN', Ref, process, Pid, _Info} ->
+	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down~n", [self(), Pid])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},
