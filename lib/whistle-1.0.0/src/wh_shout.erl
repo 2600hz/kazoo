@@ -47,7 +47,7 @@ get_request(S, L) ->
 			   tuple(list(port()), tuple(), integer(), binary())). %% more media to play
 play_chunk(MediaFile, Sock, Offset, Stop, SoFar, Header) when is_port(Sock) ->
     play_chunk(MediaFile, [Sock], Offset, Stop, SoFar, Header);
-play_chunk(#media_file{contents=Contents, chunk_size=ChunkSize, pad_response=ToPad}=MediaFile, Socks, Offset, Stop, SoFar, Header) ->
+play_chunk(#media_file{contents=Contents, chunk_size=ChunkSize, pad_response=ToPad}, Socks, Offset, Stop, SoFar, Header) ->
     Need = ChunkSize - byte_size(SoFar),
     Last = Offset + Need,
 
@@ -59,7 +59,7 @@ play_chunk(#media_file{contents=Contents, chunk_size=ChunkSize, pad_response=ToP
 	    StillActive = write_data(Socks, SoFar, Bin, Header, ChunkSize, ToPad),
 	    {done, StillActive};
 	false ->
-	    Bin = binary:part(MediaFile#media_file.contents, Offset, Need),
+	    Bin = binary:part(Contents, Offset, Need),
 	    StillActive = write_data(Socks, SoFar, Bin, Header, ChunkSize, ToPad),
 	    {StillActive, bump(Header), Offset + Need, <<>>}
     end.
@@ -126,8 +126,11 @@ write_data(Sockets, B0, B1, Header, ChunkSize, ToPad) ->
 	    Sockets
     end.
 
+bump(undefined) -> undefined;
 bump({K, H}) -> {K+1, H}.
 
+the_header(undefined) ->
+    <<>>;
 the_header({K, H}) ->
     case K rem 5 of
 	0 -> H;
