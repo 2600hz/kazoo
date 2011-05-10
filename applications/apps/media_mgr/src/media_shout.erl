@@ -296,40 +296,37 @@ play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile) ->
 play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile, [], _, Stop, _, _) ->
     receive
 	{add_socket, S} ->
-	    logger:format_log(info, "SHOUT.mloop(~p): Adding first socket: ~p~n", [self(), S]),
+	    logger:format_log(info, "SHOUT.mloop(~p): Adding first socket: ~p Sending Resp Headers: ~p~n", [self(), S, ShoutResponse]),
 	    gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
-	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
-	    exit(ok)
+	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()])
     after ?MAX_WAIT_FOR_LISTENERS ->
-	    logger:format_log(info, "SHOUT.mloop(~p): have heard from anyone in ~p ms, going down~n", [self(), ?MAX_WAIT_FOR_LISTENERS]),
-	    ok
+	    logger:format_log(info, "SHOUT.mloop(~p): have heard from anyone in ~p ms, going down~n", [self(), ?MAX_WAIT_FOR_LISTENERS])
     end;
 play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile
 	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
-	    logger:format_log(info, "SHOUT.mloop(~p): Adding socket: ~p~n", [self(), S]),
+	    logger:format_log(info, "SHOUT.mloop(~p): Adding socket: ~p and sending Resp Headers: ~p~n", [self(), S, ShoutResponse]),
 	    gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
-	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
-	    exit(ok)
+	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()])
     after 0 ->
-	    %% logger:format_log(info, "SHOUT.mloop(~p): Playing from ~p (~p)~n", [self(), Offset, Stop]),
+	    logger:format_log(info, "SHOUT.mloop(~p): Playing from ~p (~p)~n", [self(), Offset, Stop]),
 	    case wh_shout:play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
 		{Socks1, Header1, Offset1, SoFar1} ->
-		    %% logger:format_log(info, "SHOUT.mloop(~p): Continue with ~p (~p)~n", [self(), Offset1, Stop]),
+		    logger:format_log(info, "SHOUT.mloop(~p): Continue with ~p (~p)~n", [self(), Offset1, Stop]),
 		    play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);
 		{done, Socks1} ->
 		    case Continuous of
 			true ->
-			    %% logger:format_log(info, "SHOUT.mloop(~p): looping to play again~n", [self()]),
+			    logger:format_log(info, "SHOUT.mloop(~p): looping to play again~n", [self()]),
 			    play_media(MediaFile, Socks1, 0, Stop, <<>>, ShoutHeader);
 			false ->
-			    %% logger:format_log(info, "SHOUT.mloop(~p): done playing, bye!~n", [self()]),
-			    exit(normal)
+			    logger:format_log(info, "SHOUT.mloop(~p): done playing, bye!~n", [self()]),
+			    [gen_tcp:close(S) || S <- Socks1]
 		    end
 	    end
     end.
