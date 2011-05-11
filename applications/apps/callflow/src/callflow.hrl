@@ -16,7 +16,7 @@
 -define(VIEW_FILE, <<"views/callflows.json">>).
 -define(VIEW_BY_URI, {?CALLFLOW_DB, <<"listing_by_uri">>}).
 
--define(DEFAULT_TIMEOUT, 30).
+-define(DEFAULT_TIMEOUT, 20).
 -define(ANY_DIGIT, [
                      <<"1">>, <<"2">>, <<"3">>
                     ,<<"4">>, <<"5">>, <<"6">>    

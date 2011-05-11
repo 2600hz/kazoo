@@ -22,7 +22,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
+-define(HANGUP_EVENT_NAME, <<"CHANNEL_HANGUP_COMPLETE">>).
 
 -record(state, {
 	  node = undefined :: atom()
@@ -67,11 +68,7 @@ start_link(Node, UUID, CtlPid) ->
 %%--------------------------------------------------------------------
 init([Node, UUID, CtlPid]) ->
     process_flag(trap_exit, true),
-    case CtlPid of
-	undefined -> ok;
-	_ -> link(CtlPid) %% CtlPid goes down if we go down
-    end,
-
+    is_pid(CtlPid) andalso link(CtlPid),
     {ok, #state{node=Node, uuid=UUID, ctlpid=CtlPid}, 0}.
 
 %%--------------------------------------------------------------------
@@ -89,8 +86,7 @@ init([Node, UUID, CtlPid]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -195,7 +191,7 @@ handle_info(call_hangup, #state{is_node_up=false, failed_node_checks=FNC}=State)
 
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid, is_amqp_up=false, queued_events=Evts}=State) ->
     logger:format_log(info, "EVT(~p): call_hangup received, is_amqp_up is false; sending queued if amqp comes back up.~n", [self()]),
-    spawn(fun() -> send_queued(UUID, Evts, 0) end),
+    spawn(fun() -> send_queued(UUID, Evts) end),
     shutdown(CtlPid, UUID),
     {stop, normal, State};
 
@@ -209,11 +205,12 @@ handle_info({amqp_host_down, H}, State) ->
     {ok, _} = timer:send_after(1000, self(), is_amqp_up),
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
-handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={error, _}}=State) ->
+handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={error, _}, queued_events=Evts}=State) ->
     Q1 = add_amqp_listener(UUID),
     case is_binary(Q1) of
 	true ->
-	    {noreply, State#state{amqp_q = Q1, is_amqp_up = true}};
+	    spawn(fun() -> send_queued(UUID, Evts) end),
+	    {noreply, State#state{amqp_q = Q1, is_amqp_up = true, queued_events=[]}};
 	false ->
 	    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
 	    {noreply, State}
@@ -280,33 +277,22 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec(shutdown/2 :: (CtlPid :: pid() | undefined, UUID :: binary()) -> no_return()).
 shutdown(CtlPid, UUID) ->
-    case CtlPid of
-	undefined ->
-	    ok;
-	_ ->
-	    CtlPid ! {hangup, self(), UUID},
-	    ok
-    end,
+    is_pid(CtlPid) andalso CtlPid ! {hangup, self(), UUID},
     logger:format_log(info, "EVT(~p): Call Hangup for ~p, going down now~n", [self(), UUID]).
 
 %% let the ctl process know a command finished executing
 -spec(send_ctl_event/4 :: (CtlPid :: pid() | undefined, UUID :: binary(), Evt :: binary(), AppName :: binary()) -> no_return()).
 send_ctl_event(undefined, _, _, _) -> ok;
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pid(CtlPid) ->
-    case erlang:is_process_alive(CtlPid) of
-	true ->
-	    logger:format_log(info, "EVT.send_ctl(~p): Pid: ~p UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName]),
-	    CtlPid ! {execute_complete, UUID, AppName};
-	false ->
-	    logger:format_log(info, "EVT.send_ctl(~p): Pid: ~p(dead) UUID: ~p ExecComplete App: ~p~n", [self(), CtlPid, UUID, AppName])
-    end;
+    erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName};
 send_ctl_event(_, _, _, _) -> ok.
 
--spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist()) -> ok).
+-spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist() | []) -> no_return()).
+publish_msg(_, []) -> ok;
 publish_msg(UUID, Prop) ->
     EvtName = props:get_value(<<"Event-Name">>, Prop),
 
-    spawn(fun() -> send_cdr(UUID, EvtName, Prop) end),
+    (EvtName =:= ?HANGUP_EVENT_NAME) andalso spawn(fun() -> ecallmgr_call_cdr:new_cdr(UUID, Prop) end),
 
     case lists:member(EvtName, ?FS_EVENTS) of
 	true ->
@@ -326,8 +312,7 @@ publish_msg(UUID, Prop) ->
 	    amqp_util:callevt_publish(UUID, JSON, event);
 	false ->
 	    logger:format_log(info, "EVT(~p): Skipped event ~p~n", [self(), EvtName])
-    end,
-    ok.
+    end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
 -spec(add_amqp_listener/1 :: (CallID :: binary()) -> binary() | tuple(error, term())).
@@ -438,31 +423,29 @@ handle_amqp_prop(<<"status_req">>, JObj, IsNodeUp) ->
 	    logger:format_log(error, "EVT.call_status err ~p: ~p", [E, R])
     end.
 
--spec(send_cdr/3 :: (UUID :: binary(), EvtName :: binary(), Data :: proplist()) -> no_return()).
-send_cdr(UUID, <<"CHANNEL_HANGUP_COMPLETE">>, Data) ->
-    ecallmgr_call_cdr:new_cdr(UUID, Data);
-send_cdr( _, _, _) -> ok.
-
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
--spec(send_queued/3 :: (UUID :: binary(), Evts :: list(proplist()) | [], Tries :: integer()) -> no_return()).
+
+-spec(send_queued/2 :: (UUID :: binary(), Evts :: list()) -> no_return()).
+send_queued(UUID, Evts) ->
+    send_queued(UUID, lists:reverse(Evts), 0).
+
+-spec(send_queued/3 :: (UUID :: binary(), Evts :: list(), Tries :: integer()) -> no_return()).
 send_queued(_, _, 10) ->
     logger:format_log(info, "EVT.send_queued(~p): Failed after 10 times, going down~n", [self()]);
 send_queued(_, [], _) ->
     logger:format_log(info, "EVT.send_queued(~p): No queued events.~n", [self()]);
-send_queued(UUID, Evts, Tries) ->
+send_queued(UUID, [_|_]=Evts, Tries) ->
     case amqp_util:is_host_available() of
 	false ->
-	    ok = timer:sleep(1000),
-	    send_queued(UUID, Evts, Tries+1);
+	    receive after 1000 -> send_queued(UUID, Evts, Tries+1) end;
 	true ->
 	    logger:format_log(info, "EVT.send_queued(~p): Sending queued events on try ~p~n", [self(), Tries]),
-	    lists:foreach(fun(E) -> publish_msg(UUID, E) end, lists:reverse(Evts)),
-	    ok
+	    [ _ = publish_msg(UUID, E) || E <- Evts ]
     end.
 
 -spec(is_node_up/2 :: (Node :: atom(), UUID :: binary()) -> boolean()).
 is_node_up(Node, UUID) ->
-    case freeswitch:api(Node, uuid_exists, whistle_util:to_list(UUID)) of
+    case ecallmgr_fs_handler:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, whistle_util:to_list(UUID)) of
 	{ok, IsUp} -> whistle_util:to_boolean(IsUp);
 	_ -> false
     end.
