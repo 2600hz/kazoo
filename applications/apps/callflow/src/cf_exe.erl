@@ -73,9 +73,11 @@ wait(Call, Flow, Pid) ->
            logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
-                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]);
+                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
+                   cf_call_command:hangup(Call);
                ?EMPTY_JSON_OBJECT ->
-                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]);
+                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
+                   cf_call_command:hangup(Call);
                NewFlow ->
                    next(Call, NewFlow)
            end;

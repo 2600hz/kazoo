@@ -25,13 +25,15 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
     Endpoints = lists:foldr(fun(Member, Acc) ->
-                                    case cf_endpoint:build(wh_json:get_value(<<"id">>, Member), Call) of
-                                        {ok, {struct, Props}=E} -> 
-                                            case wh_json:get_value(<<"delay">>, Member) of
-                                                undefined -> [E|Acc];
-                                                Delay -> [{struct, [{<<"Endpoint-Delay">>, Delay}|Props]}|Acc]
-                                            end;
-                                        _ -> Acc
+                                    try
+                                        {ok, {struct, Props}=E} = cf_endpoint:build(wh_json:get_value(<<"id">>, Member), Call),
+                                        case wh_json:get_value(<<"delay">>, Member) of
+                                            undefined -> [E|Acc];
+                                            Delay -> [{struct, [{<<"Endpoint-Delay">>, Delay}|Props]}|Acc]
+                                        end
+                                    catch
+                                        _:_ -> Acc
+                                                   
                                     end
                             end, [], wh_json:get_value([<<"endpoints">>], Data, [])),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
