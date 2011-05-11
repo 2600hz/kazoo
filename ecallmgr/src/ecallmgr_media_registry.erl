@@ -243,12 +243,11 @@ lookup_remote(MediaName, StreamType) ->
     end.
 
 wait_for_fs_media(Path, RecvSrv) ->
+    logger:format_log(info, "waiting for ~p to die for ~p: ~p~n", [RecvSrv, Path, erlang:is_process_alive(RecvSrv)]),
     case erlang:is_process_alive(RecvSrv) of
 	true ->
-	    timer:sleep(100),
-	    logger:format_log(info, "wait for fs media contents timer: ~p recvsrv: ~p~n", [Path, RecvSrv]),
+	    timer:sleep(250),
 	    wait_for_fs_media(Path, RecvSrv);
 	false ->
-	    logger:format_log(info, "wait for fs media contents: ~p: ~p~n", [Path, file:read_file(Path)]),
 	    {ok, Path}
     end.
