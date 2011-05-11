@@ -182,22 +182,25 @@ send_vm_to_email(To, JObj) ->
 
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
 
-    Email = {<<"multipart">>, <<"mixed">>
+    Email = {<<"multipart">>, <<"alternative">>
 		 ,[
 		   {<<"From">>, <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>},
 		   {<<"To">>, To},
 		   {<<"Subject">>, Subject}
 		  ],
 	     [],
-	     [{<<"multipart">>, <<"alternative">>, [], [], [{<<"text">>, <<"plain">>, [], [], Body}]}
+	     [{<<"text">>, <<"plain">>, [], [], Body}
 	      ,{<<"audio">>, <<"mpeg">>
 		    , [
 		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
 		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
 		       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
 		      ]
-		,[], AttachmentBin}]
+		,[], AttachmentBin}
+	     ]
 	    },
 
-    Res = gen_smtp_client:send(mimemail:encode(Email), [{relay, net_adm:localhost()}]),
-    logger:format_log(info, "Sent mail, returned ~p~n", [Res]).
+    Encoded = mimemail:encode(Email),
+    SmartHost = smtp_util:guess_FQDN(),
+    Res = gen_smtp_client:send(Encoded, [{relay, SmartHost}], fun(X) -> logger:format_log(info, "Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end),
+    logger:format_log(info, "Sent mail to ~p via ~p, returned ~p: ~p ~n", [To, SmartHost, Res, Res]).
