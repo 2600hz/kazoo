@@ -171,8 +171,8 @@ handle_info({'EXIT', W, Reason}, #state{workers=Ws, worker_count=WC, orig_worker
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
-handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC ->
-    logger:format_log(info, "CALL_POOL(~p): Reducing back to original labor force of ~p~n", [self(), OWC]),
+handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC andalso WC > OWC ->
+    logger:format_log(info, "CALL_POOL(~p): Reducing back to original labor force of ~p from ~p~n", [self(), OWC, WC]),
     Ws1 = lists:foldl(fun(_, Q0) ->
 			      case queue:len(Q0) =< OWC of
 				  true -> Q0;
@@ -184,8 +184,8 @@ handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per
 		      end, Ws, lists:seq(1,WC-OWC)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
 
-handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC ->
-    logger:format_log(info, "CALL_POOL(~p): Scaling back labor force of from ~p to ~p~n", [self(), WC, WC-RP]),
+handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC andalso WC > OWC ->
+    logger:format_log(info, "CALL_POOL(~p): Scaling back labor force from ~p to ~p~n", [self(), WC, WC-RP]),
     Ws1 = lists:foldl(fun(_, Q0) ->
 			      case queue:len(Q0) =< OWC of
 				  true -> Q0;
