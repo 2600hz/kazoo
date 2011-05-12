@@ -565,7 +565,7 @@ ensure_content_headers([Header | Tail], Type, SubType, Parameters, Headers, Body
 			end,
 
 			%CTP = proplists:get_value(<<"content-type-params">>, Parameters, [guess_charset(Body)]),
-			CTH = binstr:join([CT | encode_parameters(CTP)], ";\r\n\t"),
+			CTH = binstr:join([CT | encode_parameters(CTP)], ";"),
 			NewParameters = [{<<"content-type-params">>, CTP} | proplists:delete(<<"content-type-params">>, Parameters)],
 			ensure_content_headers(Tail, Type, SubType, NewParameters, [{<<"Content-Type">>, CTH} | Headers], Body, Toplevel);
 		undefined when Header == <<"Content-Type">> ->
@@ -582,7 +582,7 @@ ensure_content_headers([Header | Tail], Type, SubType, Parameters, Headers, Body
 					ensure_content_headers(Tail, Type, SubType, Parameters, Headers, Body, Toplevel);
 				_ ->
 					CTP = [{<<"charset">>, Charset} | proplists:delete(<<"charset">>, proplists:get_value(<<"content-type-params">>, Parameters, []))],
-					CTH = binstr:join([<<"text/plain">> | encode_parameters(CTP)], ";\r\n\t"),
+					CTH = binstr:join([<<"text/plain">> | encode_parameters(CTP)], ";"),
 					NewParameters = [{<<"content-type-params">>, CTP} | proplists:delete(<<"content-type-params">>, Parameters)],
 					ensure_content_headers(Tail, Type, SubType, NewParameters, [{<<"Content-Type">>, CTH} | Headers], Body, Toplevel)
 			end;
@@ -602,7 +602,7 @@ ensure_content_headers([Header | Tail], Type, SubType, Parameters, Headers, Body
 		undefined when Header == <<"Content-Disposition">>, Toplevel == false ->
 			CD = proplists:get_value(<<"disposition">>, Parameters, <<"inline">>),
 			CDP = proplists:get_value(<<"disposition-params">>, Parameters, []),
-			CDH = binstr:join([CD | encode_parameters(CDP)], ";\r\n\t"),
+			CDH = binstr:join([CD | encode_parameters(CDP)], ";"),
 			ensure_content_headers(Tail, Type, SubType, Parameters, [{<<"Content-Disposition">>, CDH} | Headers], Body, Toplevel);
 		_ ->
 			ensure_content_headers(Tail, Type, SubType, Parameters, Headers, Body, Toplevel)
