@@ -193,24 +193,26 @@ send_vm_to_email(To, JObj) ->
 
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
 
-    Email = {<<"multipart">>, <<"alternative">>
-		 ,[
+    Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
+		 ,[ %% Headers
 		   {<<"From">>, From},
 		   {<<"To">>, To},
 		   {<<"Subject">>, Subject}
-		  ],
-	     [],
-	     [{<<"text">>, <<"plain">>, [], [], Body}
-	      ,{<<"audio">>, <<"mpeg">>
-		    , [
+		  ]
+	     ,[] %% Parameters
+	     ,[ %% Body
+	       {<<"text">>, <<"plain">>, [], [], Body} %% Content Type, Subtype, Headers, Parameters, Body
+	       ,{<<"audio">>, <<"mpeg">>
+		     ,[
 		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
 		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
 		      ]
-		,[], AttachmentBin}
-	     ]
+		 ,[], AttachmentBin}
+	      ]
 	    },
 
     Encoded = mimemail:encode(Email),
     SmartHost = smtp_util:guess_FQDN(),
     Res = gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}], fun(X) -> logger:format_log(info, "Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end),
-    logger:format_log(info, "Sent mail to ~p via ~p, returned ~p: ~p ~n", [To, SmartHost, Res, Res]).
+    logger:format_log(info, "Sent mail to ~p via ~p, returned ~p: ~p ~n", [To, SmartHost, Res, Res]),
+    [ logger:format_log(info, "~p", [P]) || P <- binary:split(Encoded, <<"\n">>) ].
