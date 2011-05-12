@@ -128,7 +128,7 @@ send_it(Email, Options) ->
 		_ ->
 			smtp_util:mxlookup(RelayDomain)
 	end,
-	logger:format_log(info, "GEN_SMTP_CLIENT: MX records for ~s are ~p~n", [RelayDomain, MXRecords]),
+	%% logger:format_log(info, "GEN_SMTP_CLIENT: MX records for ~s are ~p~n", [RelayDomain, MXRecords]),
 	Hosts = case MXRecords of
 		[] ->
 			[{0, RelayDomain}]; % maybe we're supposed to relay to a host directly
@@ -150,11 +150,11 @@ try_smtp_sessions([{Distance, Host} | Tail], Email, Options, RetryList) ->
 			case proplists:get_value(Host, RetryList) of
 				RetryCount when is_integer(RetryCount), RetryCount >= Retries ->
 					% out of chances
-					logger:format_log(info, "GEN_SMTP_CLIENT: retries for ~s exceeded (~p of ~p)~n", [Host, RetryCount, Retries]),
+					%% logger:format_log(info, "GEN_SMTP_CLIENT: retries for ~s exceeded (~p of ~p)~n", [Host, RetryCount, Retries]),
 					NewHosts = Tail,
 					NewRetryList = lists:keydelete(Host, 1, RetryList);
 				RetryCount when is_integer(RetryCount) ->
-					logger:format_log(info, "GEN_SMTP_CLIENT: scheduling ~s for retry (~p of ~p)~n", [Host, RetryCount, Retries]),
+					%% logger:format_log(info, "GEN_SMTP_CLIENT: scheduling ~s for retry (~p of ~p)~n", [Host, RetryCount, Retries]),
 					NewHosts = Tail ++ [{Distance, Host}],
 					NewRetryList = lists:keydelete(Host, 1, RetryList) ++ [{Host, RetryCount + 1}];
 				_ when Retries == 0 ->
@@ -163,7 +163,7 @@ try_smtp_sessions([{Distance, Host} | Tail], Email, Options, RetryList) ->
 					NewRetryList = lists:keydelete(Host, 1, RetryList);
 				_ ->
 					% otherwise...
-					logger:format_log(info, "GEN_SMTP_CLIENT: scheduling ~s for retry (~p of ~p)~n", [Host, 1, Retries]),
+					%% logger:format_log(info, "GEN_SMTP_CLIENT: scheduling ~s for retry (~p of ~p)~n", [Host, 1, Retries]),
 					NewHosts = Tail ++ [{Distance, Host}],
 					NewRetryList = lists:keydelete(Host, 1, RetryList) ++ [{Host, 1}]
 			end,
@@ -178,15 +178,15 @@ try_smtp_sessions([{Distance, Host} | Tail], Email, Options, RetryList) ->
 -spec do_smtp_session(Host :: string(), Email :: email(), Options :: list()) -> binary().
 do_smtp_session(Host, Email, Options) ->
 	{ok, Socket, _Host, _Banner} = connect(Host, Options),
-    logger:format_log(info, "GEN_SMTP_CLIENT: connected to ~s; banner was ~s~n", [Host, _Banner]),
+    %% logger:format_log(info, "GEN_SMTP_CLIENT: connected to ~s; banner was ~s~n", [Host, _Banner]),
 	{ok, Extensions} = try_EHLO(Socket, Options),
-	logger:format_log(info, "GEN_SMTP_CLIENT: Extensions are ~p~n", [Extensions]),
+	%% logger:format_log(info, "GEN_SMTP_CLIENT: Extensions are ~p~n", [Extensions]),
 	{Socket2, Extensions2} = try_STARTTLS(Socket, Options, Extensions),
-	logger:format_log(info, "GEN_SMTP_CLIENT: Extensions are ~p~n", [Extensions2]),
+	%% logger:format_log(info, "GEN_SMTP_CLIENT: Extensions are ~p~n", [Extensions2]),
 	_Authed = try_AUTH(Socket2, Options, proplists:get_value(<<"AUTH">>, Extensions2)),
-    logger:format_log(info, "GEN_SMTP_CLIENT: Authentication status is ~p~n", [_Authed]),
+    %% logger:format_log(info, "GEN_SMTP_CLIENT: Authentication status is ~p~n", [_Authed]),
 	Receipt = try_sending_it(Email, Socket2, Extensions2),
-	logger:format_log(info, "GEN_SMTP_CLIENT: Mail sending successful~n", []),
+	%% logger:format_log(info, "GEN_SMTP_CLIENT: Mail sending successful~n", []),
 	quit(Socket2),
 	Receipt.
 
@@ -209,7 +209,7 @@ try_MAIL_FROM("<" ++ _ = From, Socket, _Extensions) ->
 			quit(Socket),
 			throw({temporary_failure, Msg});
 		{ok, Msg} ->
-			logger:format_log(info, "GEN_SMTP_CLIENT: Mail FROM rejected: ~p~n", [Msg]),
+			%% logger:format_log(info, "GEN_SMTP_CLIENT: Mail FROM rejected: ~p~n", [Msg]),
 			quit(Socket),
 			throw({permanant_failure, Msg})
 	end;
@@ -298,7 +298,7 @@ try_AUTH(Socket, Options, AuthTypes) ->
 		true ->
 			Username = proplists:get_value(username, Options),
 			Password = proplists:get_value(password, Options),
-			logger:format_log(info, "GEN_SMTP_CLIENT: Auth types: ~p~n", [AuthTypes]),
+			%% logger:format_log(info, "GEN_SMTP_CLIENT: Auth types: ~p~n", [AuthTypes]),
 			Types = re:split(AuthTypes, " ", [{return, list}, trim]),
 			case do_AUTH(Socket, Username, Password, Types) of
 				false ->
@@ -317,9 +317,9 @@ try_AUTH(Socket, Options, AuthTypes) ->
 -spec do_AUTH(Socket :: socket:socket(), Username :: string(), Password :: string(), Types :: [string()]) -> boolean().
 do_AUTH(Socket, Username, Password, Types) ->
 	FixedTypes = [string:to_upper(X) || X <- Types],
-	logger:format_log(info, "GEN_SMTP_CLIENT: Fixed types: ~p~n", [FixedTypes]),
+	%% logger:format_log(info, "GEN_SMTP_CLIENT: Fixed types: ~p~n", [FixedTypes]),
 	AllowedTypes = [X  || X <- ?AUTH_PREFERENCE, lists:member(X, FixedTypes)],
-	logger:format_log(info, "GEN_SMTP_CLIENT: available authentication types, in order of preference: ~p~n", [AllowedTypes]),
+	%% logger:format_log(info, "GEN_SMTP_CLIENT: available authentication types, in order of preference: ~p~n", [AllowedTypes]),
 	do_AUTH_each(Socket, Username, Password, AllowedTypes).
 
 -spec do_AUTH_each(Socket :: socket:socket(), Username :: string() | binary(), Password :: string() | binary(), AuthTypes :: [string()]) -> boolean().
@@ -336,42 +336,42 @@ do_AUTH_each(Socket, Username, Password, ["CRAM-MD5" | Tail]) ->
 	    socket:send(Socket, [String, "\r\n"]),
 	    case read_possible_multiline_reply(Socket) of
 		{ok, <<"235", _Rest/binary>>} ->
-		    logger:format_log(info, "GEN_SMTP_CLIENT: authentication accepted~n", []),
+		    %% logger:format_log(info, "GEN_SMTP_CLIENT: authentication accepted~n", []),
 		    true;
 		{ok, _Msg} ->
-		    logger:format_log(info, "GEN_SMTP_CLIENT: authentication rejected: ~s~n", [_Msg]),
+		    %% logger:format_log(info, "GEN_SMTP_CLIENT: authentication rejected: ~s~n", [_Msg]),
 		    do_AUTH_each(Socket, Username, Password, Tail)
 	    end;
 	{ok, _Something} ->
-	    logger:format_log(info, "GEN_SMTP_CLIENT: got ~s~n", [_Something]),
+	    %% logger:format_log(info, "GEN_SMTP_CLIENT: got ~s~n", [_Something]),
 	    do_AUTH_each(Socket, Username, Password, Tail)
     end;
 do_AUTH_each(Socket, Username, Password, ["LOGIN" | Tail]) ->
     socket:send(Socket, "AUTH LOGIN\r\n"),
     case read_possible_multiline_reply(Socket) of
 	{ok, <<"334 VXNlcm5hbWU6\r\n">>} ->
-	    logger:format_log(info, "GEN_SMTP_CLIENT: username prompt~n", []),
+	    %% logger:format_log(info, "GEN_SMTP_CLIENT: username prompt~n", []),
 	    U = base64:encode(Username),
 	    socket:send(Socket, [U,"\r\n"]),
 	    case read_possible_multiline_reply(Socket) of
 		{ok, <<"334 UGFzc3dvcmQ6\r\n">>} ->
-		    logger:format_log(info, "GEN_SMTP_CLIENT: password prompt~n", []),
+		    %% logger:format_log(info, "GEN_SMTP_CLIENT: password prompt~n", []),
 		    P = base64:encode(Password),
 		    socket:send(Socket, [P,"\r\n"]),
 		    case read_possible_multiline_reply(Socket) of
 			{ok, <<"235 ", _Rest/binary>>} ->
-			    logger:format_log(info, "GEN_SMTP_CLIENT: authentication accepted~n", []),
+			    %% logger:format_log(info, "GEN_SMTP_CLIENT: authentication accepted~n", []),
 			    true;
 			{ok, _Msg} ->
-			    logger:format_log(info, "GEN_SMTP_CLIENT: password rejected: ~s", [_Msg]),
+			    %% logger:format_log(info, "GEN_SMTP_CLIENT: password rejected: ~s", [_Msg]),
 			    do_AUTH_each(Socket, Username, Password, Tail)
 		    end;
 		{ok, _Msg2} ->
-		    logger:format_log(info, "GEN_SMTP_CLIENT: username rejected: ~s", [_Msg2]),
+		    %% logger:format_log(info, "GEN_SMTP_CLIENT: username rejected: ~s", [_Msg2]),
 		    do_AUTH_each(Socket, Username, Password, Tail)
 	    end;
 	{ok, _Something} ->
-	    logger:format_log(info, "GEN_SMTP_CLIENT: got ~s~n", [_Something]),
+	    %% logger:format_log(info, "GEN_SMTP_CLIENT: got ~s~n", [_Something]),
 	    do_AUTH_each(Socket, Username, Password, Tail)
     end;
 do_AUTH_each(Socket, Username, Password, ["PLAIN" | Tail]) ->
@@ -379,16 +379,16 @@ do_AUTH_each(Socket, Username, Password, ["PLAIN" | Tail]) ->
     socket:send(Socket, ["AUTH PLAIN ", AuthString, "\r\n"]),
     case read_possible_multiline_reply(Socket) of
 	{ok, <<"235", _Rest/binary>>} ->
-	    logger:format_log(info, "GEN_SMTP_CLIENT: authentication accepted~n", []),
+	    %% logger:format_log(info, "GEN_SMTP_CLIENT: authentication accepted~n", []),
 	    true;
 	_Else ->
 						% TODO do we need to bother trying the multi-step PLAIN?
-	    logger:format_log(info, "GEN_SMTP_CLIENT: authentication rejected~n", []),
-	    logger:format_log(info, "GEN_SMTP_CLIENT: ~p~n", [_Else]),
+	    %% logger:format_log(info, "GEN_SMTP_CLIENT: authentication rejected~n", []),
+	    %% logger:format_log(info, "GEN_SMTP_CLIENT: ~p~n", [_Else]),
 	    do_AUTH_each(Socket, Username, Password, Tail)
     end;
 do_AUTH_each(Socket, Username, Password, [_Type | Tail]) ->
-    logger:format_log(info, "GEN_SMTP_CLIENT: unsupported AUTH type ~s~n", [_Type]),
+    %% logger:format_log(info, "GEN_SMTP_CLIENT: unsupported AUTH type ~s~n", [_Type]),
     do_AUTH_each(Socket, Username, Password, Tail).
 
 -spec try_EHLO(Socket :: socket:socket(), Options :: list()) -> {ok, list()}.
@@ -405,17 +405,17 @@ try_STARTTLS(Socket, Options, Extensions) ->
 		case {proplists:get_value(tls, Options),
 				proplists:get_value(<<"STARTTLS">>, Extensions)} of
 			{Atom, true} when Atom =:= always; Atom =:= if_available ->
-			logger:format_log(info, "GEN_SMTP_CLIENT: Starting TLS~n", []),
+			%% logger:format_log(info, "GEN_SMTP_CLIENT: Starting TLS~n", []),
 			case {do_STARTTLS(Socket, Options), Atom} of
 				{false, always} ->
-					logger:format_log(info, "GEN_SMTP_CLIENT: TLS failed~n", []),
+					%% logger:format_log(info, "GEN_SMTP_CLIENT: TLS failed~n", []),
 					quit(Socket),
 					erlang:throw({temporary_failure, tls_failed});
 				{false, if_available} ->
-					logger:format_log(info, "GEN_SMTP_CLIENT: TLS failed~n", []),
+					%% logger:format_log(info, "GEN_SMTP_CLIENT: TLS failed~n", []),
 					{Socket, Extensions};
 				{{S, E}, _} ->
-					logger:format_log(info, "GEN_SMTP_CLIENT: TLS started~n", []),
+					%% logger:format_log(info, "GEN_SMTP_CLIENT: TLS started~n", []),
 					{S, E}
 			end;
 		{always, _} ->
@@ -440,7 +440,7 @@ do_STARTTLS(Socket, Options) ->
 					{ok, Extensions} = try_EHLO(NewSocket, Options),
 					{NewSocket, Extensions};
 				_Else ->
-					logger:format_log(info, "GEN_SMTP_CLIENT: ~p~n", [_Else]),
+					%% logger:format_log(info, "GEN_SMTP_CLIENT: ~p~n", [_Else]),
 					false
 			end;
 		{ok, <<"4", _Rest/binary>> = Msg} ->
@@ -561,7 +561,7 @@ parse_extensions(Reply) ->
 							0 ->
 								{binstr:to_upper(Body), true};
 							_ ->
-								logger:format_log(info, "GEN_SMTP_CLIENT: discarding option ~p~n", [Body]),
+								%% logger:format_log(info, "GEN_SMTP_CLIENT: discarding option ~p~n", [Body]),
 								[]
 						end
 				end

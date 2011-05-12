@@ -103,13 +103,10 @@ handle_info(timeout, _) ->
 handle_info({_, #amqp_msg{props=#'P_basic'{content_type= <<"application/json">>}, payload=Payload}}, State) ->
     logger:format_log(info, "NOTIFY_VM(~p): AMQP Recv ~s~n", [self(), Payload]),
     spawn(fun() ->
-		  try
 		  JObj = mochijson2:decode(Payload),
 		  true = validate(JObj),
 		  update_mwi(JObj),
 		  send_vm_to_email(JObj)
-		  catch A:B -> logger:format_log(info, "NOTIFY_VM: Exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()])
-		  end
 	  end),
     {noreply, State};
 
@@ -213,5 +210,5 @@ send_vm_to_email(To, JObj) ->
 	    },
     Encoded = mimemail:encode(Email),
     SmartHost = smtp_util:guess_FQDN(),
-    Res = gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}], fun(X) -> logger:format_log(info, "Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end),
-    logger:format_log(info, "Sent mail to ~p via ~p, returned ~p: ~p ~n", [To, SmartHost, Res, Res]).
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
+			 ,fun(X) -> logger:format_log(info, "NOTIFY_VM: Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end).
