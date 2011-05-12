@@ -3,7 +3,7 @@
 
 -define(NEW_VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
 				    ,<<"Account-DB">>, <<"Voicemail-Box">>, <<"Voicemail-Name">>]).
--define(OPTIONAL_NEW_VOICEMAIL_HEADERS, []).
+-define(OPTIONAL_NEW_VOICEMAIL_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>]).
 -define(NEW_VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
 			       ,{<<"Event-Name">>, <<"new_voicemail">>}
 			      ]).
