@@ -182,7 +182,7 @@ send_vm_to_email(To, JObj) ->
 			      CID -> CID
 			  end,
 
-    Subject = <<"New voicemail left for ", (wh_json:get_value(<<"To-User">>, JObj))/binary, " from ", CIDName/binary, "\r\n">>,
+    Subject = <<"New voicemail left for ", (wh_json:get_value(<<"To-User">>, JObj))/binary, " from ", CIDName/binary>>,
     Body = <<"You've received an email from ", CIDName/binary, " (", CIDNumber/binary, "). It should be attached to this email as an mp3.\n\nWhistle\n">>,
 
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
@@ -195,24 +195,23 @@ send_vm_to_email(To, JObj) ->
 
     Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
 		 ,[ %% Headers
-		   {<<"From">>, From},
-		   {<<"To">>, To},
-		   {<<"Subject">>, Subject}
+		    {<<"From">>, From},
+		    {<<"To">>, To},
+		    {<<"Subject">>, Subject}
 		  ]
 	     ,[] %% Parameters
 	     ,[ %% Body
-	       {<<"text">>, <<"plain">>, [], [], Body} %% Content Type, Subtype, Headers, Parameters, Body
-	       ,{<<"audio">>, <<"mpeg">>
-		     ,[
-		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
-		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
-		      ]
-		 ,[], AttachmentBin}
+		{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], Body} %% Content Type, Subtype, Headers, Parameters, Body
+		,{<<"audio">>, <<"mpeg">>
+		      ,[
+			{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
+			,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
+		       ]
+		  ,[], AttachmentBin
+		 }
 	      ]
 	    },
-
     Encoded = mimemail:encode(Email),
     SmartHost = smtp_util:guess_FQDN(),
     Res = gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}], fun(X) -> logger:format_log(info, "Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end),
-    logger:format_log(info, "Sent mail to ~p via ~p, returned ~p: ~p ~n", [To, SmartHost, Res, Res]),
-    [ logger:format_log(info, "~p", [P]) || P <- binary:split(Encoded, <<"\n">>) ].
+    logger:format_log(info, "Sent mail to ~p via ~p, returned ~p: ~p ~n", [To, SmartHost, Res, Res]).
