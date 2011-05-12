@@ -205,7 +205,6 @@ send_vm_to_email(To, JObj) ->
 		    , [
 		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
 		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
-		       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
 		      ]
 		,[], AttachmentBin}
 	     ]
