@@ -114,7 +114,7 @@ handle_call({lookup_local, MediaName, CallId}, {Pid, _Ref}=From, Dict) ->
         false ->
             {reply, {error, not_local}, Dict};        
 	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
-	    spawn(fun() -> wait_for_fs_media(Path, RecvSrv), gen_server:reply(From, {ok, Path}) end),
+	    spawn(fun() -> _ = wait_for_fs_media(Path, RecvSrv), gen_server:reply(From, {ok, Path}) end),
 	    {noreply, Dict}
     end;
 
@@ -243,12 +243,11 @@ lookup_remote(MediaName, StreamType) ->
     end.
 
 wait_for_fs_media(Path, RecvSrv) ->
+    logger:format_log(info, "waiting for ~p to die for ~p: ~p~n", [RecvSrv, Path, erlang:is_process_alive(RecvSrv)]),
     case erlang:is_process_alive(RecvSrv) of
 	true ->
-	    timer:sleep(100),
-	    logger:format_log(info, "wait for fs media contents timer: ~p~n", [Path]),
+	    timer:sleep(250),
 	    wait_for_fs_media(Path, RecvSrv);
 	false ->
-	    logger:format_log(info, "wait for fs media contents: ~p: ~p~n", [Path, file:read_file(Path)]),
 	    {ok, Path}
     end.

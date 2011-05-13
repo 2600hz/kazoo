@@ -261,7 +261,7 @@ b_bridge(Endpoints, Timeout, Call) ->
 b_bridge(Endpoints, Timeout, CallerID, Call) ->
     b_bridge(Endpoints, Timeout, CallerID, <<"single">>, Call).
 b_bridge(Endpoints, Timeout, CallerID, Strategy, Call) ->
-    b_bridge(Endpoints, Timeout, CallerID, Strategy, <<"true">>, Call).
+    b_bridge(Endpoints, Timeout, CallerID, Strategy, <<"false">>, Call).
 b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Call) ->
     b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, <<"us-ring">>, Call).
 b_bridge(Endpoints, Timeout, CallerID, Strategy, IgnoreEarlyMedia, Ringback, Call) ->

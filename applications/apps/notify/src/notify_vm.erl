@@ -103,13 +103,10 @@ handle_info(timeout, _) ->
 handle_info({_, #amqp_msg{props=#'P_basic'{content_type= <<"application/json">>}, payload=Payload}}, State) ->
     logger:format_log(info, "NOTIFY_VM(~p): AMQP Recv ~s~n", [self(), Payload]),
     spawn(fun() ->
-		  try
 		  JObj = mochijson2:decode(Payload),
 		  true = validate(JObj),
 		  update_mwi(JObj),
 		  send_vm_to_email(JObj)
-		  catch A:B -> logger:format_log(info, "NOTIFY_VM: Exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()])
-		  end
 	  end),
     {noreply, State};
 
@@ -165,33 +162,53 @@ update_mwi(_JObj) ->
 send_vm_to_email(JObj) ->
     {ok, VMBox} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Voicemail-Box">>, JObj)),
     {ok, UserJObj} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"owner_id">>, VMBox)),
-    case wh_json:get_value(<<"email">>, UserJObj) of
-	undefined ->
+    case {wh_json:get_value(<<"email">>, UserJObj), whistle_util:is_true(wh_json:get_value(<<"vm_to_email_enabled">>, UserJObj))} of
+	{undefined, _} ->
 	    logger:format_log(info, "NOTIFY_VM(~p): No email found for user ~p~n", [self(), wh_json:get_value(<<"username">>, UserJObj)]);
-	Email ->
+	{_Email, false} ->
+	    logger:format_log(info, "NOTIFY_VM(~p): Voicemail to email disabled for ~p~n", [self(), _Email]);
+	{Email, true} ->
 	    send_vm_to_email(Email, JObj)
     end.
 
 send_vm_to_email(To, JObj) ->
-    Subject = <<"A new voicemail left for ", (wh_json:get_value(<<"To-User">>, JObj))/binary, " from ", (wh_json:get_value(<<"From-User">>, JObj))/binary, "\r\n">>,
-    Body = <<"Hey, this should be more cooler better awesome-sauce. For now, you may want to check your voicemail.\n\nWhistle\n">>,
+    {CIDName,CIDNumber} = case {wh_json:get_value(<<"Caller-ID-Name">>, JObj), wh_json:get_value(<<"Caller-ID-Number">>, JObj)} of
+			      {undefined, undefined} -> {wh_json:get_value(<<"From-User">>, JObj), <<>>};
+			      {undefined, N} -> {wh_json:get_value(<<"From-User">>, JObj), N};
+			      {N, undefined} -> {N, <<>>};
+			      CID -> CID
+			  end,
+
+    Subject = <<"New voicemail left for ", (wh_json:get_value(<<"To-User">>, JObj))/binary, " from ", CIDName/binary>>,
+    Body = <<"You've received an email from ", CIDName/binary, " (", CIDNumber/binary, "). It should be attached to this email as an mp3.\n\nWhistle\n">>,
 
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
     Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     AttachmentId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
 
+    From = <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>,
+
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
 
-    Email = {<<"multipart">>, <<"alternative">>
-		 ,[
-		   {<<"From">>, <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>},
-		   {<<"To">>, To},
-		   {<<"Subject">>, Subject}
-		  ],
-	     [],
-	     [{<<"text">>, <<"plain">>, [], [], Body}
-	      ,{<<"audio">>, <<"mpeg">>, [], [], AttachmentBin}]
+    Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
+		 ,[ %% Headers
+		    {<<"From">>, From},
+		    {<<"To">>, To},
+		    {<<"Subject">>, Subject}
+		  ]
+	     ,[] %% Parameters
+	     ,[ %% Body
+		{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], Body} %% Content Type, Subtype, Headers, Parameters, Body
+		,{<<"audio">>, <<"mpeg">>
+		      ,[
+			{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
+			,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
+		       ]
+		  ,[], AttachmentBin
+		 }
+	      ]
 	    },
-
-    Res = gen_smtp_client:send(mimemail:encode(Email), [{relay, net_adm:localhost()}]),
-    logger:format_log(info, "Sent mail, returned ~p~n", [Res]).
+    Encoded = mimemail:encode(Email),
+    SmartHost = smtp_util:guess_FQDN(),
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
+			 ,fun(X) -> logger:format_log(info, "NOTIFY_VM: Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end).

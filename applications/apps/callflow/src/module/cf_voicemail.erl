@@ -495,6 +495,8 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 				       ,{<<"Account-DB">>, Db}
 				       ,{<<"Voicemail-Box">>, Id}
 				       ,{<<"Voicemail-Name">>, MediaName}
+				       ,{<<"Caller-ID-Name">>, CIDName}
+				       ,{<<"Caller-ID-Number">>, CIDNumber}
 				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     logger:format_log(info, "CF_VOICEMAIL(~p): API send ~s~n", [self(), JSON]),
