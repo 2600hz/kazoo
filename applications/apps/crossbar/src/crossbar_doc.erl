@@ -330,7 +330,7 @@ public_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
 public_fields({struct, Prop}) ->
     PubJObj = {struct, [ Tuple || {K, _}=Tuple <- Prop, not is_private_key(K)]},
-    case wh_json:get_value(<<"_id">>, PubJObj) of
+    case props:get_value(<<"_id">>, Prop) of
         undefined ->
 	    PubJObj;
         Id ->
@@ -355,7 +355,7 @@ private_fields({struct, Prop}) ->
 private_fields(Json) ->
     logger:format_log(error, "Unhandled Json format in private fields:~n~p~n", [Json]),
     Json.
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -407,10 +407,10 @@ update_pvt_parameters(JObj0, Context) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     JObj1 = wh_json:set_value(<<"pvt_account_db">>, Context#cb_context.db_name, JObj0),
     case wh_json:get_value(<<"pvt_created">>, JObj1) of
-        undefined ->                                    
+        undefined ->
             JObj2 = wh_json:set_value(<<"pvt_created">>, Timestamp, JObj1),
             wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj2);
-        _ -> 
+        _ ->
             wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj0)
     end.
 
