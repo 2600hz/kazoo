@@ -9,11 +9,18 @@
 -module(whapps_util).
 
 -export([get_db_name/1, get_db_name/2]).
+-export([update_all_accounts/1]).
+-export([replicate_from_accounts/2, replicate_from_account/3]).
+-export([get_account_by_realm/1]).
 
 -include_lib("whistle/include/whistle_types.hrl").
 
+-define(REPLICATE_ENCODING, encoded).
+-define(AGG_DB, <<"accounts">>).
+-define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
+
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function will verify an account id is valid, and if so return
 %% the name of the account database
@@ -53,3 +60,72 @@ get_db_name(<<"account%2F", AccountId/binary>>, raw) ->
     binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
 get_db_name(<<"account/", AccountId/binary>>, raw) ->
     binary:replace(AccountId, <<"/">>, <<>>, [global]).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Update a document in each crossbar account database with the
+%% file contents.  This is intended for _design docs....
+%%
+%% @spec update_all_accounts() -> ok | error
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
+update_all_accounts(File) ->
+    {ok, Databases} = couch_mgr:db_info(),
+    lists:foreach(fun(ClientDb) ->
+                          case couch_mgr:update_doc_from_file(ClientDb, crossbar, File) of
+                              {error, _} ->
+                                  couch_mgr:load_doc_from_file(ClientDb, crossbar, File);
+                              {ok, _} -> ok
+                          end
+                  end, [get_db_name(Db, encoded) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will replicate the results of the filter from each
+%% account db into the target database
+%% @end
+%%--------------------------------------------------------------------
+-spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
+replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
+    {ok, Databases} = couch_mgr:db_info(),
+    BaseReplicate = [{<<"target">>, TargetDb}
+                     ,{<<"filter">>, FilterDoc}
+                     ,{<<"create_target">>, true}
+                    ],
+    lists:foreach(fun(SourceDb) ->
+                          logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
+                          R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
+			  logger:format_log(info, "DB REPLICATE: ~p~n", [R])
+                  end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account", _/binary>>) -> true; (_) -> false end(Db)]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will replicate the results of the filter from the 
+%% source database into the target database
+%% @end
+%%--------------------------------------------------------------------
+-spec(replicate_from_account/3 :: (SourceDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
+replicate_from_account(SourceDb, TargetDb, FilterDoc) ->
+    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, ?REPLICATE_ENCODING)}
+                     ,{<<"target">>, TargetDb}
+                     ,{<<"filter">>, FilterDoc}
+                     ,{<<"create_target">>, true}
+                    ],
+    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
+    couch_mgr:db_replicate(BaseReplicate).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Realms are one->one with accounts.
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_account_by_realm/1 :: (Realm :: binary()) -> tuple(ok, binary()) | tuple(error, not_found)).
+get_account_by_realm(Realm) ->
+    case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
+	{ok, [{struct, _}=V]} ->
+	    {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
+	_ -> {error, not_found}
+    end.
