@@ -182,7 +182,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, Cont
 
 			  Context1 = update_media_binary(MediaID, Contents, Context, Headers),
 			  spawn(fun() ->
-					accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+					whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 				end),
 			  Pid ! {binding_result, (Context1#cb_context.resp_status =:= success), [RD, Context1, Params]}
 		  end)
@@ -228,7 +228,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"account.created">>, _}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
-    accounts:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
+    whapps_util:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -237,8 +237,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     couch_mgr:db_create(?AGG_DB),
-    accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
+    whapps_util:update_all_accounts(?VIEW_FILE),
+    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     bind_to_crossbar(),
     {noreply, State};
 

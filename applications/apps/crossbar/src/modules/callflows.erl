@@ -111,7 +111,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, 
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-                  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
 
@@ -119,7 +119,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, C
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-                  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
 
@@ -140,8 +140,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
+    whapps_util:update_all_accounts(?VIEW_FILE),
+    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info (_Info, State) ->
