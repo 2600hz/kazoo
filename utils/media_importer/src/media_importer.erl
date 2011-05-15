@@ -32,8 +32,8 @@ main(Args) ->
         couch_mgr:db_create(Db),
         [to_couch(Dir, Db) || Dir <- Paths]
     catch
-        _:_ ->
-            io:format("~n~nERROR: unable to connect to datastore~n", [])
+        _:_=E ->
+            io:format("~n~nERROR: unable to connect to datastore: ~p~n", [E])
     end,
     erlang:halt().    
 
