@@ -153,7 +153,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    couch_mgr:rm_change_handler(?TS_DB, ?TS_RATES_DOC),
+    couch_mgr:rm_change_handler(?TS_RATES_DB),
     ok.
 
 %%--------------------------------------------------------------------
@@ -171,21 +171,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 get_current_rates() ->
-    case couch_mgr:open_doc(?TS_DB, ?TS_RATES_DOC) of
-	{error, not_found} ->
-	    logger:format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
-	    {error, "No matching rates"};
-	{error, db_not_reachable} ->
-	    logger:format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
-	    {error, "No database host"};
-	{ok, []} ->
-	    logger:format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
-	    {error, "No matching rates"};
-	{ok, {struct, Rates}} when is_list(Rates) ->
-	    logger:format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), props:get_value(<<"_rev">>, Rates)]),
-	    couch_mgr:add_change_handler(?TS_DB, ?TS_RATES_DOC),
-	    {ok, lists:map(fun process_rates/1, Rates)}
-    end.
+    [].
+    %% case couch_mgr:open_doc(?TS_DB, ?TS_RATES_DOC) of
+    %% 	{error, not_found} ->
+    %% 	    logger:format_log(info, "TS_CREDIT(~p): No document(~p) found~n", [self(), ?TS_RATES_DOC]),
+    %% 	    {error, "No matching rates"};
+    %% 	{error, db_not_reachable} ->
+    %% 	    logger:format_log(info, "TS_CREDIT(~p): No host set for couch. Call couch_mgr:set_host/1~n", [self()]),
+    %% 	    {error, "No database host"};
+    %% 	{ok, []} ->
+    %% 	    logger:format_log(info, "TS_CREDIT(~p): No Rates defined~n", [self()]),
+    %% 	    {error, "No matching rates"};
+    %% 	{ok, {struct, Rates}} when is_list(Rates) ->
+    %% 	    logger:format_log(info, "TS_CREDIT(~p): Rates pulled. Rev: ~p~n", [self(), props:get_value(<<"_rev">>, Rates)]),
+    %% 	    couch_mgr:add_change_handler(?TS_DB, ?TS_RATES_DOC),
+    %% 	    {ok, lists:map(fun process_rates/1, Rates)}
+    %% end.
 
 process_rates({<<"_id">>, _}=ID) -> ID;
 process_rates({<<"_rev">>, _}=Rev) -> Rev;
