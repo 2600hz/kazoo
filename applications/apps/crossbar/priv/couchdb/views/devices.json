@@ -12,7 +12,7 @@
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit([doc.sip.realm, doc.sip.username], doc.sip); }"
         }
         ,"listing_with_owner": {
-           "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'_id': doc.owner, 'device': doc}); }"
+           "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted || !doc.owner) return; emit(doc._id, {'_id': doc.owner, 'device': doc}); }"
        }
     }
     ,"filters": {
