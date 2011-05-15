@@ -108,6 +108,7 @@
 -record(mailbox, {
            has_unavailable_greeting = false
           ,mailbox_id = undefined
+          ,mailbox_number = <<>>
           ,exists = false
           ,skip_instructions = <<"false">>
           ,skip_greeting = <<"false">>
@@ -249,10 +250,10 @@ compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipIns
 %%--------------------------------------------------------------------
 -spec(play_greeting/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 play_greeting(#mailbox{prompts=#prompts{person_at_exten=PersonAtExten, not_available=NotAvailable}
-		       ,has_unavailable_greeting=false}, #cf_call{to_number=Exten} = Call) ->
+		       ,has_unavailable_greeting=false, mailbox_number=Mailbox}, Call) ->
     audio_macro([
                   {play, PersonAtExten}
-                 ,{say,  Exten}
+                 ,{say,  Mailbox}
                  ,{play, NotAvailable}
                 ], Call);
 play_greeting(#mailbox{mailbox_id=Id, has_unavailable_greeting=true}, #cf_call{account_db=Db}=Call) ->
@@ -550,7 +551,7 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_mailbox_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #mailbox{}).
-get_mailbox_profile(Data, #cf_call{account_db=Db}) ->
+get_mailbox_profile(Data, #cf_call{account_db=Db, dest_number=Dest}) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
@@ -562,6 +563,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db}) ->
                       ,has_unavailable_greeting = wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                       ,pin = wh_json:get_value(<<"pin">>, JObj, <<>>)
                       ,timezone = wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
+                      ,mailbox_number = wh_json:get_value(<<"mailbox">>, JObj, Dest)
                       ,exists=true
                     };
         _ ->
