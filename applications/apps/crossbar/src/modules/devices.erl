@@ -131,7 +131,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
 
@@ -139,7 +139,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-		  accounts:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
 	  end),
     {noreply, State};
 
@@ -161,8 +161,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?AGG_DB),
-    accounts:update_all_accounts(?VIEW_FILE),
-    accounts:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
+    whapps_util:update_all_accounts(?VIEW_FILE),
+    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
