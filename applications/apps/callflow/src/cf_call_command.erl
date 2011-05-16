@@ -828,7 +828,7 @@ wait_for_hangup() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(wait_for_store/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
-wait_for_store(#cf_call{cf_pid=CFPid}=Call) ->
+wait_for_store(Call) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case wh_json:get_value(<<"Application-Name">>, JObj) of
@@ -839,9 +839,6 @@ wait_for_store(#cf_call{cf_pid=CFPid}=Call) ->
                 _O ->
                     wait_for_store(Call)
             end
-    after 100 ->
-	    CFPid ! {heartbeat},
-	    wait_for_store(Call)
     end.
 
 %%--------------------------------------------------------------------
