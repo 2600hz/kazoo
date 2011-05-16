@@ -473,8 +473,9 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 							     ,call_id=CallID}=Call) ->
     {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
+    Tstamp = new_timestamp(),
     NewMessages=[{struct, [
-			   {<<"timestamp">>, new_timestamp()}
+			   {<<"timestamp">>, Tstamp}
 			   ,{<<"from">>, From}
 			   ,{<<"to">>, To}
 			   ,{<<"caller_id_number">>, CIDNumber}
@@ -498,6 +499,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 				       ,{<<"Voicemail-Name">>, MediaName}
 				       ,{<<"Caller-ID-Name">>, CIDName}
 				       ,{<<"Caller-ID-Number">>, CIDNumber}
+				       ,{<<"Voicemail-Timestamp">>, Tstamp}
 				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     logger:format_log(info, "CF_VOICEMAIL(~p): API send ~s~n", [self(), JSON]),
