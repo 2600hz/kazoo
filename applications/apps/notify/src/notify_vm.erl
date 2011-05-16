@@ -21,6 +21,7 @@
 -include_lib("callflow/include/cf_amqp.hrl").
 
 -define(SERVER, ?MODULE).
+-define(DEFAULT_VM_TEMPLATE, <<"New Voicemail Message\n\nCaller ID: {caller_id_number}\nCaller Name: {caller_id_name}\n\nCalled To: {to_user}   (Originally dialed number)\nCalled On: {date_called}\n\n\nFor help or questions using your phone or voicemail, please contact support at (415) 886-7950 or email support@2600hz.com">>).
 
 -record(state, {}).
 
@@ -168,19 +169,17 @@ send_vm_to_email(JObj) ->
 	{_Email, false} ->
 	    logger:format_log(info, "NOTIFY_VM(~p): Voicemail to email disabled for ~p~n", [self(), _Email]);
 	{Email, true} ->
-	    send_vm_to_email(Email, JObj)
+	    VMTemplate = case wh_json:get_value(<<"vm_to_email_template">>, UserJObj) of
+			     undefined -> ?DEFAULT_VM_TEMPLATE;
+			     Tmpl -> Tmpl
+			 end,
+				 
+	    send_vm_to_email(Email, VMTemplate, JObj)
     end.
 
-send_vm_to_email(To, JObj) ->
-    {CIDName,CIDNumber} = case {wh_json:get_value(<<"Caller-ID-Name">>, JObj), wh_json:get_value(<<"Caller-ID-Number">>, JObj)} of
-			      {undefined, undefined} -> {wh_json:get_value(<<"From-User">>, JObj), <<>>};
-			      {undefined, N} -> {wh_json:get_value(<<"From-User">>, JObj), N};
-			      {N, undefined} -> {N, <<>>};
-			      CID -> CID
-			  end,
-
-    Subject = <<"New voicemail left for ", (wh_json:get_value(<<"To-User">>, JObj))/binary, " from ", CIDName/binary>>,
-    Body = <<"You've received an email from ", CIDName/binary, " (", CIDNumber/binary, "). It should be attached to this email as an mp3.\n\nWhistle\n">>,
+send_vm_to_email(To, Tmpl, JObj) ->
+    Subject = <<"New voicemail received">>,
+    Body = format_plaintext(JObj, Tmpl),
 
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
     Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
@@ -212,3 +211,18 @@ send_vm_to_email(To, JObj) ->
     SmartHost = smtp_util:guess_FQDN(),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
 			 ,fun(X) -> logger:format_log(info, "NOTIFY_VM: Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end).
+
+format_plaintext(JObj, Tmpl) ->
+    CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
+    CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
+    ToE164 = whistle_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
+    DateCalled = wh_json:get_value(<<"Voicemail-Timestamp">>, JObj),
+
+    lists:foldr(fun({K, V}, Tmpl0) ->
+			binary:replace(Tmpl0, K, V, [global])
+		end, Tmpl, [{<<"{caller_id_number}">>, CIDNum}
+			    ,{<<"{caller_id_name}">>, CIDName}
+			    ,{<<"{to_user}">>, ToE164}
+			    ,{<<"{date_called}">>, DateCalled}
+			    ]).
+%% Monday, March XX, 2010 at 05:12 pm
