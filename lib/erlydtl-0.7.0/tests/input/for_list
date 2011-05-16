@@ -1,0 +1,3 @@
+{% for singular, plural, price in fruit_list %}
+More than one {{ singular }} is called "{{ plural }}". Only {{ price }} each!
+{% endfor %}

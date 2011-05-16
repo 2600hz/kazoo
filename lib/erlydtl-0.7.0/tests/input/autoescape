@@ -1,0 +1,8 @@
+{% autoescape on %}
+    This is escaped: {{ var1 }}
+    {% autoescape off %}
+    This is not escaped: {{ var1 }}
+
+    This is escaped: {{ var1|escape }}
+    {% endautoescape %}
+{% endautoescape %}

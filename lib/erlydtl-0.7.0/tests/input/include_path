@@ -1,0 +1,5 @@
+main file
+
+{% ssi "path1/template1" parsed %}
+
+{{ base_var }}

@@ -1,0 +1,3 @@
+{% extends "base" %}
+{% block title %}replacing the base title{% endblock %}
+{% block content %}replacing the base content - variable: {{ test_var }} after variable {% endblock %}

@@ -1,0 +1,21 @@
+<object id="{{ dom_id }}" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="{{ width }}" height="{{ height }}">
+	<param name="movie" value="{{ static }}/mediaplayer.swf">
+    <param name="allowfullscreen" value="true">
+    <param name="menu" value="false">
+    <param name="flashvars" value="file={{ path_to_video }}&image={{ path_to_preview_image }}">
+    <!--[if !IE]>-->
+    <object type="application/x-shockwave-flash" data="{{ static }}/mediaplayer.swf" width="800" height="620">
+    <param name="allowfullscreen" value="true">
+    <param name="menu" value="false">
+    <param name="flashvars" value="file={{ path_to_video }}&image={{ path_to_preview_image }}">
+    <!--<![endif]-->
+    <h2>To view the Video:</h2>
+    <p>
+    	<a href="http://www.adobe.com/go/getflashplayer">
+        	<img src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif"alt="Get Adobe Flash player">
+    	</a>
+    </p>
+    <!--[if !IE]>-->
+    </object>
+    <!--<![endif]-->
+</object>
