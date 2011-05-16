@@ -21,7 +21,9 @@
 -include_lib("callflow/include/cf_amqp.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_VM_TEMPLATE, <<"New Voicemail Message\n\nCaller ID: {caller_id_number}\nCaller Name: {caller_id_name}\n\nCalled To: {to_user}   (Originally dialed number)\nCalled On: {date_called}\n\n\nFor help or questions using your phone or voicemail, please contact support at (415) 886-7950 or email support@2600hz.com">>).
+-define(DEFAULT_VM_TEMPLATE, <<"New Voicemail Message\n\nCaller ID: {{caller_id_number}}\nCaller Name: {{caller_id_name}}\n\nCalled To: {{to_user}}   (Originally dialed number)\nCalled On: {{date_called|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{support_number}} or email {{support_email}}">>).
+-define(DEFAULT_SUPPORT_NUMBER, <<"(415) 886-7950">>).
+-define(DEFAULT_SUPPORT_EMAIL, <<"support@2600hz.com">>).
 
 -record(state, {}).
 
@@ -99,6 +101,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, _) ->
     start_amqp(),
+    {ok, notify_vm_tmpl} = erlydtl:compile(?DEFAULT_VM_TEMPLATE, notify_vm_tmpl),
     {noreply, ok};
 
 handle_info({_, #amqp_msg{props=#'P_basic'{content_type= <<"application/json">>}, payload=Payload}}, State) ->
@@ -161,25 +164,34 @@ update_mwi(_JObj) ->
     not_implemented_yet.
 
 send_vm_to_email(JObj) ->
-    {ok, VMBox} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Voicemail-Box">>, JObj)),
-    {ok, UserJObj} = couch_mgr:open_doc(wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"owner_id">>, VMBox)),
+    AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
+    {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
+    {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
     case {wh_json:get_value(<<"email">>, UserJObj), whistle_util:is_true(wh_json:get_value(<<"vm_to_email_enabled">>, UserJObj))} of
 	{undefined, _} ->
 	    logger:format_log(info, "NOTIFY_VM(~p): No email found for user ~p~n", [self(), wh_json:get_value(<<"username">>, UserJObj)]);
 	{_Email, false} ->
 	    logger:format_log(info, "NOTIFY_VM(~p): Voicemail to email disabled for ~p~n", [self(), _Email]);
 	{Email, true} ->
-	    VMTemplate = case wh_json:get_value(<<"vm_to_email_template">>, UserJObj) of
-			     undefined -> ?DEFAULT_VM_TEMPLATE;
-			     Tmpl -> Tmpl
+	    {ok, AcctObj} = couch_mgr:open_doc(AcctDB, whapps_util:get_db_name(AcctDB, raw)),
+	    VMTemplate = case wh_json:get_value(<<"vm_to_email_template">>, AcctObj) of
+			     undefined -> notify_vm_tmpl;
+			     Tmpl ->
+				 try
+				     {ok, notify_vm_custom_tmpl} = erlydtl:compile(Tmpl, notify_vm_custom_tmpl),
+				     notify_vm_custom_tmpl
+				 catch
+				     _:E ->
+					 logger:format_log(error, "NOTIFY_VM(~p): Error compiling template for Acct ~p: ~p~n", [AcctDB, E]),
+					 notify_vm_tmpl
+				 end
 			 end,
-				 
 	    send_vm_to_email(Email, VMTemplate, JObj)
     end.
 
 send_vm_to_email(To, Tmpl, JObj) ->
     Subject = <<"New voicemail received">>,
-    Body = format_plaintext(JObj, Tmpl),
+    {ok, Body} = format_plaintext(JObj, Tmpl),
 
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
     Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
@@ -212,17 +224,26 @@ send_vm_to_email(To, Tmpl, JObj) ->
     gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
 			 ,fun(X) -> logger:format_log(info, "NOTIFY_VM: Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end).
 
+-spec(format_plaintext/2 :: (JObj :: json_object(), Tmpl :: atom()) -> tuple(ok, iolist())).
 format_plaintext(JObj, Tmpl) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
     ToE164 = whistle_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
-    DateCalled = wh_json:get_value(<<"Voicemail-Timestamp">>, JObj),
+    DateCalled = whistle_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
 
-    lists:foldr(fun({K, V}, Tmpl0) ->
-			binary:replace(Tmpl0, K, V, [global])
-		end, Tmpl, [{<<"{caller_id_number}">>, CIDNum}
-			    ,{<<"{caller_id_name}">>, CIDName}
-			    ,{<<"{to_user}">>, ToE164}
-			    ,{<<"{date_called}">>, DateCalled}
-			    ]).
-%% Monday, March XX, 2010 at 05:12 pm
+    Tmpl:render([{caller_id_number, pretty_print_did(CIDNum)}
+		 ,{caller_id_name, CIDName}
+		 ,{to_user, pretty_print_did(ToE164)}
+		 ,{date_called, calendar:gregorian_seconds_to_datetime(DateCalled)}
+		 ,{support_number, ?DEFAULT_SUPPORT_NUMBER}
+		 ,{support_email, ?DEFAULT_SUPPORT_EMAIL}
+		]).
+
+pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
+    <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
+pretty_print_did(<<"011", Rest/binary>>) ->
+    pretty_print_did(wh_util:to_e164(Rest));
+pretty_print_did(Other) ->
+    Other.
+
+
