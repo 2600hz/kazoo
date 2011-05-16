@@ -15,6 +15,8 @@ to_hex(S) ->
 
 %% +18001234567 -> +18001234567
 -spec(to_e164/1 :: (DID :: binary()) -> binary()).
+to_e164(<<"011", N/binary>>) ->
+    to_e164(N);
 to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) =:= 80 -> % 8bits/ch * 10ch
     E164;
 %% 18001234567 -> +18001234567
@@ -28,6 +30,8 @@ to_e164(Other) ->
 
 %% end up with 8001234567 from 1NPAN and E.164
 -spec(to_npan/1 :: (NPAN :: binary()) -> binary()).
+to_npan(<<"011", N/binary>>) ->
+    to_npan(N);
 to_npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
 to_npan(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
@@ -38,6 +42,8 @@ to_npan(Other) ->
     Other.
 
 -spec(to_1npan/1 :: (NPAN :: binary()) -> binary()).
+to_1npan(<<"011", N/binary>>) ->
+    to_1npan(N);
 to_1npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     <<$1, N/bitstring>>;
 to_1npan(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) =:= 80 ->

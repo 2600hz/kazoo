@@ -30,6 +30,7 @@ init([]) ->
 	      ,?CHILD(ts_responder_sup, supervisor)
 	      ,?CHILD(ts_acctmgr, worker)
 	      ,?CHILD(ts_carrier, worker)
+	      ,?CHILD(ts_credit, worker)
               ,?CHILD(ts_cdr, worker)
 	     ]} }.
 
