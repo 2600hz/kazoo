@@ -1,0 +1,5 @@
+This is template 1.
+
+{{ test_var }}
+
+{% include "path2/template2" %}

@@ -1,0 +1,1 @@
+Including another file: {% include "include.html" with var1=var1 only %}

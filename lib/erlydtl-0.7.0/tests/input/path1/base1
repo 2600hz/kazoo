@@ -1,0 +1,6 @@
+{% extends "path2/base2" %}
+
+{% block title2 %}block title 2 from  base1 {% endblock %}
+
+
+

@@ -1,0 +1,14 @@
+{{ base_var }}
+
+base2 template
+
+{% block title %}block title in base2, should be hidden by main template{% endblock %}
+{% block title2 %}block title2 in base2, should be hidden by base1{% endblock %}
+
+more of base2 template
+
+{% block content %}block content in base 2, should be overwritten{% endblock %}
+
+{% block content2 %}block content2 in base 2, should pass through{% endblock %}
+
+end of base2 template

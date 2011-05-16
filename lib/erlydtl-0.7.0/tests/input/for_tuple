@@ -1,0 +1,3 @@
+{% for singular, plural in fruit_list %}
+One {{ singular }}, two {{ plural }}!
+{% endfor %}
