@@ -174,7 +174,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
 	false -> {error, "bridge failed to execute as JObj did not validate."};
 	true ->
 	    ok = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
-	    ok = set_continue_on_fail(Node, UUID, wh_json:get_value(<<"Continue-On-Fail">>, JObj)),
+	    ok = set_continue_on_fail(Node, UUID, whistle_util:is_true(wh_json:get_value(<<"Continue-On-Fail">>, JObj, true))),
 	    ok = set_eff_caller_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
 	    ok = set_eff_caller_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
 	    ok = set_eff_callee_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Callee-ID-Name">>, JObj)),
@@ -445,13 +445,11 @@ set_sip_req_headers(Node, UUID, [_]=SIPHeaders) ->
     _ = [ set(Node, UUID, list_to_binary(["sip_h_", K, "=", V])) || {K, V} <- SIPHeaders ],
     ok.
 
--spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_continue_on_fail(_Node, _UUID, undefined) ->
-    ok;
-set_continue_on_fail(Node, UUID, <<"true">>) ->
-    set(Node, UUID, "continue_on_fail=true");
-set_continue_on_fail(Node, UUID, <<"false">>) ->
-    set(Node, UUID, "continue_on_fail=false").
+-spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: boolean()) -> ok | timeout | {error, string()}).
+set_continue_on_fail(Node, UUID, false) ->
+    set(Node, UUID, "continue_on_fail=false");
+set_continue_on_fail(Node, UUID, true) ->
+    set(Node, UUID, "continue_on_fail=true").
 
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
