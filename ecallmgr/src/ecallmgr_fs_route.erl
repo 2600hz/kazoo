@@ -19,7 +19,6 @@
 
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
--define(VSN, <<"0.5.0">>).
 
 -include("ecallmgr.hrl").
 
@@ -229,7 +228,7 @@ handle_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, ?VSN)],
+	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
     {ok, RespProp} = ecallmgr_amqp_pool:route_req(DefProp),
 
@@ -249,7 +248,7 @@ start_control_and_events(Node, CallID, SendTo) ->
     CtlProp = [{<<"Msg-ID">>, CallID}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Control-Queue">>, CtlQ}
-	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, <<"ecallmgr.route">>, ?VSN)],
+	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
     send_control_queue(SendTo, CtlProp).
 
 send_control_queue(SendTo, CtlProp) ->
