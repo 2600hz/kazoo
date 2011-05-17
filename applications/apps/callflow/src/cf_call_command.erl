@@ -32,6 +32,7 @@
 -export([b_play_and_collect_digit/2]).
 -export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6,
          b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9]).
+-export([b_say/2, b_say/3, b_say/4, b_say/5]).
 -export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
 -export([b_noop/1]).
 
@@ -445,7 +446,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, <<"3">>,  Call).
+    play_and_collect_digits(MinDigits, MaxDigits, Media, <<"1">>,  Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, <<"3000">>, Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
@@ -503,6 +504,12 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 -spec(say/4 :: (Say :: binary(), Type :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok).
 -spec(say/5 :: (Say :: binary(), Type :: binary(), Method :: binary(), Language :: binary(), Call :: #cf_call{}) -> ok).
 
+-spec(b_say/2 :: (Say :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_say/3 :: (Say :: binary(), Type :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_say/4 :: (Say :: binary(), Type :: binary(), Method :: binary(), Call :: #cf_call{}) -> ok).
+-spec(b_say/5 :: (Say :: binary(), Type :: binary(), Method :: binary(), Language :: binary(), Call :: #cf_call{}) -> ok).
+
+
 say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
 say(Say, Type, Call) ->
@@ -531,6 +538,17 @@ say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
      ,{<<"Language">>, Language}
      ,{<<"Call-ID">>, CallId}
     ].
+
+
+b_say(Say, Call) ->
+    b_say(Say, <<"name_spelled">>, Call).
+b_say(Say, Type, Call) ->
+    b_say(Say, Type, <<"pronounced">>, Call).
+b_say(Say, Type, Method, Call) ->
+    b_say(Say, Type, Method, <<"en">>, Call).
+b_say(Say, Type, Method, Language, Call) ->
+    say(Say, Type, Method, Language, Call),
+    wait_for_message(<<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, false).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -810,7 +828,7 @@ wait_for_hangup() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(wait_for_store/1 :: (Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, execution_failure)).
-wait_for_store(#cf_call{cf_pid=CFPid}=Call) ->
+wait_for_store(Call) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case wh_json:get_value(<<"Application-Name">>, JObj) of
@@ -821,9 +839,6 @@ wait_for_store(#cf_call{cf_pid=CFPid}=Call) ->
                 _O ->
                     wait_for_store(Call)
             end
-    after 100 ->
-	    CFPid ! {heartbeat},
-	    wait_for_store(Call)
     end.
 
 %%--------------------------------------------------------------------

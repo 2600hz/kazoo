@@ -17,7 +17,7 @@
 -export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
 
 %% Document manipulation
--export([save_doc/2, save_doc/3, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
+-export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 %% attachments
@@ -304,15 +304,14 @@ save_doc(DbName, {struct, _}=Doc, Opts) ->
             end
     end.
 
+save_docs(DbName, Docs) ->
+    save_docs(DbName, Docs, []).
+
 -spec(save_docs/3 :: (DbName :: binary(), Docs :: json_objects(), Opts :: proplist()) -> tuple(ok, json_objects()) | tuple(error, atom())).
 save_docs(DbName, Docs, Opts) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
-	Db ->
-            case couchbeam:save_docs(Db, Docs, Opts) of
-                {error, _Error}=E -> E;
-                {ok, Docs1} ->{ok, Docs1}
-            end
+	Db -> couchbeam:save_docs(Db, Docs, Opts)
     end.
 
 %%--------------------------------------------------------------------

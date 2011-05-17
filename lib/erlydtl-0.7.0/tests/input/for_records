@@ -1,0 +1,9 @@
+before
+
+<ul>
+{% for iterator in link_list %}
+	<li><a href="{{ iterator.url }}">{{ iterator.name }}</a></li>
+{% endfor %}
+</ul>
+
+after

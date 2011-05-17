@@ -1,0 +1,29 @@
+from erlport import Port, Protocol, String, Atom
+from erlport.erlterms import decode
+from django.template import Context, Template
+from django.conf import settings
+import types
+from erlydtl_python_test import ErlydtlProtocol as proto
+settings.configure(DEBUG=True, TEMPLATE_DEBUG=True)
+ep = proto()
+
+ep.handle_template([u"{{ value|date }}",u"object,datetime,datetime.date.today()"])
+ep.handle_template([u"{{ value|time:\"H:i\" }}",u"object,datetime,datetime.datetime.now()"])
+
+
+DateFormat = erlydtl_filters_tests:erlydtl_render("{{ value|random }}", [ {value, ["b","c","d","D","F","j","l","L","m","M","n","N","t","w","W","y","Y","z"]} ] ).
+Template = "{{ value|date:\"" ++ DateFormat ++ "\" }}".
+Value =  { {2010,12,1}, {10,11,12} }.
+Port = erlydtl_python_test:start().
+PyDate = lists:flatten(io_lib:format("object|datetime|~s", [erlydtl_filters_tests:python_datetime_encode(Value)])).
+erlydtl_filters_tests:py_template(Port, Template, PyDate).
+
+
+from django.template import Context, Template
+from django.conf import settings
+settings.configure(DEBUG=True, TEMPLATE_DEBUG=True)
+from erlydtl_python_test import ErlydtlProtocol as proto
+ep = proto()
+c = Context({"value": "Check out www.yahoo.com"})
+t = Template("{{ value|urlize }}")
+t.render(c)

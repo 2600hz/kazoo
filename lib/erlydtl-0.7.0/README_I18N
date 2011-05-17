@@ -1,0 +1,47 @@
+Generate gettext infrastructure
+-------------------------------
+
+Erlydtl allows templates to use i18n features based on gettext. Standard po
+files can be used to generate i18ized templates. A template parser/po generator
+is also provided.
+
+    1.  In order to enable i18n you first, you'll need gettext library to be
+        available on your lib_path. 
+
+        Library can be downloaded from http://github.com/noss/erlang-gettext
+
+    2.  Then you'll need to add a parse target on your makefile (or the script
+        used to trigger template reparsing) trans:
+
+        erl -pa ./ebin ./deps/*/ebin -noshell -s reloader -run i18n_manager \
+                               generate_pos "en,es" "./views/*/*.html,./views/*.html"
+        rm -rf $(GETTEXT_DIR)/lang/default-old
+        mv $(GETTEXT_DIR)/lang/default $(GETTEXT_DIR)/lang/default-old
+        cp -rf $(GETTEXT_DIR)/lang/$(GETTEXT_TMP_NAME) $(GETTEXT_DIR)/lang/default
+        rm -rf $(GETTEXT_DIR)/lang/$(GETTEXT_TMP_NAME)/*
+
+        Mind that GETTEXT_DIR and GETTEXT_TMP_NAME must be bound to existing
+        directories. Args passed to i18n_manager:generate_pos are locales that
+        will be supported (generating dir structure and po files) and
+        directories where generator will search for template files including
+        trans tags.
+
+    3.  Before template parsing gettext server must be running and it must be
+        populated with the content of the po files. Consider adding this
+        snipplet to the code before template parsing
+
+	gettext_server:start(),
+        LoadPo = 
+            fun(Lang)->
+                {_, Bin} = file:read_file("./lang/default/"++ Lang ++"/gettext.po"),
+                gettext:store_pofile(Lang, Bin)
+            end,
+        lists:map(LoadPo, ["es","en"]).
+
+        Here locales are the codes are provided to gettext. Those codes must be
+        a subset of the locales provided to po generation process.
+
+    4.  Update strings. Edit po files on $(GETTEXT_DIR)/lang/default/$(LOCALE)/gettext.po 
+        translating msgstr to the translated version of their corresponding msgstr.
+
+    5.  Generate localized templates providing locale compile option.

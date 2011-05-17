@@ -197,7 +197,7 @@ handle_info({binding_fired, Pid, _false, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    accounts:update_all_accounts(?VIEW_FILE),
+    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->

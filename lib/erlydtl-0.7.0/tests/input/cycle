@@ -1,0 +1,9 @@
+before
+
+<ul>
+{% for i in test %}
+<li>{{ forloop.counter }}. {{ i }} - {% cycle a b c %}</li>
+{% endfor %}
+</ul>
+
+after

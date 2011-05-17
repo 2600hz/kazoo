@@ -124,7 +124,10 @@ wait(Call, Flow, Pid) ->
                    end;
                _Else ->
                    wait(Call, Flow, Pid)
-           end
+           end;
+       _Msg ->
+           logger:format_log(error, "CF_EXECUTIONER (~p): Roque message recieved: ~p", [self(), _Msg]),
+           wait(Call, Flow, Pid)
    end.
 
 %%--------------------------------------------------------------------
