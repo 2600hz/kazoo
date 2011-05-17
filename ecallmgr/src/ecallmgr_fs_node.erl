@@ -41,8 +41,9 @@ resource_consume(FsNodePid, Route) ->
     after   10000 -> {resource_error, timeout}
     end.
 
--spec(start_link/2 :: (Node :: atom(), Options :: proplist()) -> pid() | {error, term()}).
+-spec(start_link/2 :: (Node :: atom(), Options :: proplist()) -> tuple(ok, pid()) | {error, term()}).
 start_link(Node, Options) ->
+    logger:format_log(info, "FS_NODE(~p): Starting up~n", [self()]),
     NodeData = extract_node_data(Node),
     {ok, Chans} = freeswitch:api(Node, show, "channels"),
     {ok, R} = re:compile("([\\d+])"),
@@ -55,7 +56,7 @@ start_link(Node, Options) ->
 		       },
     HState = #handler_state{fs_node=Node, stats=Stats, options=Options},
     case freeswitch:start_event_handler(Node, ?MODULE, monitor_node, HState) of
-	{ok, Pid} -> Pid;
+	{ok, _Pid}=Res -> Res;
 	timeout -> {error, timeout};
 	{error, _Err}=E -> E
     end.

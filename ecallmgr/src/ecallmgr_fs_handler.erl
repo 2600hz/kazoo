@@ -377,20 +377,19 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 		pong ->
 		    erlang:monitor_node(Node, true),
 		    logger:format_log(info, "FS_HANDLER(~p): No node matching ~p found, adding~n", [self(), Node]),
-		    Restart = fun(StartFun) -> restart_handler(Node, Options, undefined, undefined, StartFun) end,
-		    
-		    AHP = Restart(fun start_auth_handler/2),
-		    RHP = Restart(fun start_route_handler/1),
-		    NHP = Restart(fun start_node_handler/2),
 
-		    {ok, State#state{fs_nodes=[#node_handler{node=Node
-							     ,options=Options
-							     ,auth_handler_pid=AHP
-							     ,route_handler_pid=RHP
-							     ,node_handler_pid=NHP
-							     ,node_watch_pid=undefined
-							    }
-					       | Nodes]}};
+		    Results = ecallmgr_fs_sup:start_handler(Node, Options),
+		    logger:format_log(info, "Started ~p: ~p~n", [Node, Results]),
+
+		    {ok, State};
+		    %% {ok, State#state{fs_nodes=[#node_handler{node=Node
+		    %% 					     ,options=Options
+		    %% 					     ,auth_handler_pid=AHP
+		    %% 					     ,route_handler_pid=RHP
+		    %% 					     ,node_handler_pid=NHP
+		    %% 					     ,node_watch_pid=undefined
+		    %% 					    }
+		    %% 			       | Nodes]}};
 		pang ->
 		    logger:format_log(error, "FS_HANDLER(~p): ~p not responding~n", [self(), Node]),
 		    {{error, no_connection}, State}

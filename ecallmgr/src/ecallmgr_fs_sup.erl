@@ -11,13 +11,15 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_handler/1]).
+-export([start_link/0, start_handler/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("ecallmgr.hrl").
+
 -define(SERVER, ?MODULE).
--define(CHILD(Name, Mod), {Name, {Mod, start_link, []}, temporary, 5000, worker, [Mod]}).
+-define(CHILD(Name, Mod, Args), {Name, {Mod, start_link, Args}, temporary, 5000, worker, [Mod]}).
 
 %%%===================================================================
 %%% API functions
@@ -33,15 +35,15 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec(start_handler/1 :: (Node :: atom()) -> list(tuple(ok, pid()))).
-start_handler(Node) when is_atom(Node) ->
-    NodeL = whistle_util:to_list(Node),
+-spec(start_handler/2 :: (Node :: atom(), Options :: proplist()) -> list(tuple(ok, pid()))).
+start_handler(Node, Options) when is_atom(Node) ->
+    NodeB = whistle_util:to_binary(Node),
     [ begin
-	  Name = whistle_util:to_atom(NodeL ++ H, true),
-	  Mod = whistle_util:to_atom("ecallmgr_fs" ++ H),
-	  supervisor:start_child(?SERVER, ?CHILD(Name, Mod))
+	  Name = whistle_util:to_atom(<<NodeB/binary, H/binary>>, true),
+	  Mod = whistle_util:to_atom(<<"ecallmgr_fs", H/binary>>),
+	  supervisor:start_child(?SERVER, ?CHILD(Name, Mod, [Node, Options]))
       end
-      || H <- ["_auth", "_route", "_node"] ].
+      || H <- [<<"_auth">>, <<"_node">>, <<"_route">>] ].
 
 
 %%%===================================================================
