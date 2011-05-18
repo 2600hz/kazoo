@@ -284,21 +284,17 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, 
                  ,{say,  RecordKey}
                  ,{play, Prompts#prompts.to_rerecord}
                 ], Call),
-    case wait_for_dtmf(5000) of
-        {error, _}=E ->
-            E;
-        {ok, ListenKey} ->
-            _ = flush(Call),
+    {ok, Digits} = wait_for_dtmf(30000),
+    _ = flush(Call),
+    case Digits of 
+        ListenKey ->
 	    _ = b_play(MediaName, Call),
 	    review_recording(MediaName, Menu, Call);
-	{ok, RecordKey} ->
-	    _ = flush(Call),
+	RecordKey ->
 	    {ok, record};
-	{ok, SaveKey} ->
-	    _ = flush(Call),
-	    {ok, save};
-	_ ->
-	    _ = flush(Call),
+	SaveKey ->
+	    {ok, save};	
+        _ ->
 	    review_recording(MediaName, Menu, Call)
     end.
 
