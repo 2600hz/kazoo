@@ -36,6 +36,7 @@ init([]) ->
 	 ,?CHILD(ecallmgr_maintenance, worker) % handles maintenance-type API calls
 	 ,?CHILD(ecallmgr_call_sup, supervisor) % handles dynamic call {event,control} processes
          ,?CHILD(ecallmgr_shout_sup, supervisor) % handles dynamic record streams from FreeSWITCH to local filesystem
+	 ,?CHILD(ecallmgr_fs_sup, supervisor)
 	]
       }
     }.

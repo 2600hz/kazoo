@@ -113,13 +113,13 @@ handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! Type,
     receive
 	ok ->
-	    logger:format_log(info, "Bound ~p to ~p~n", [Type, Node]),
+	    logger:format_log(info, "FS_AUTH(~p): Bound ~p to ~p~n", [self(), Type, Node]),
 	    {noreply, State};
 	{error, Reason} ->
-	    logger:format_log(info, "Failed to bind: ~p~n", [Reason]),
+	    logger:format_log(info, "FS_AUTH(~p): Failed to bind: ~p~n", [self(), Reason]),
 	    {stop, Reason, State}
     after ?FS_TIMEOUT ->
-	    logger:format_log(info, "Failed to bind: TIMEOUT~n", []),
+	    logger:format_log(info, "FS_AUTH(~p): Failed to bind: TIMEOUT~n", [self()]),
 	    {stop, timeout, State}
     end;
 

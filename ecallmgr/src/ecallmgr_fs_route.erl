@@ -19,7 +19,6 @@
 
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
--define(VSN, <<"0.5.0">>).
 
 -include("ecallmgr.hrl").
 
@@ -170,8 +169,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 			      false -> ok
 			  end
 		  end, LUs),
-    freeswitch:close(Node),
-    logger:format_log(error, "FS_ROUTE(~p): shutting down~n", [self()]),
+    logger:format_log(error, "FS_ROUTE(~p): shutting down for ~p~n", [self(), Node]),
     {stop, normal, State};
 
 %% send diagnostic info
@@ -202,8 +200,8 @@ handle_info(Other, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, #state{node=Node}) ->
+    freeswitch:close(Node).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,7 +227,7 @@ handle_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, ?VSN)],
+	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
     {ok, RespProp} = ecallmgr_amqp_pool:route_req(DefProp),
 
@@ -249,7 +247,7 @@ start_control_and_events(Node, CallID, SendTo) ->
     CtlProp = [{<<"Msg-ID">>, CallID}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Control-Queue">>, CtlQ}
-	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, <<"ecallmgr.route">>, ?VSN)],
+	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
     send_control_queue(SendTo, CtlProp).
 
 send_control_queue(SendTo, CtlProp) ->
