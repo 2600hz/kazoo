@@ -209,7 +209,7 @@ send_vm_to_email(To, Tmpl, JObj) ->
 		  ]
 	     ,[] %% Parameters
 	     ,[ %% Body
-		{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], Body} %% Content Type, Subtype, Headers, Parameters, Body
+		{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(Body)} %% Content Type, Subtype, Headers, Parameters, Body
 		,{<<"audio">>, <<"mpeg">>
 		      ,[
 			{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}

@@ -1,9 +1,0 @@
-{
-     "_id":"_design/LookUpMonitor"
-    ,"language":"javascript"
-    ,"views":{
-        "LookUpMonitor":{
-            "map":"function(doc) {(function(d, id){for (o in d) {if (typeof(d[o])==\"object\" && d[o].monitor_enabled == true) {emit(id, d[o]);} else if (typeof(d[o])==\"object\") {arguments.callee(d[o],id);}}})(doc, doc._id)}"
-        }
-    }
-}
