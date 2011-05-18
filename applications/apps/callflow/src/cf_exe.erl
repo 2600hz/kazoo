@@ -12,7 +12,8 @@
 -module(cf_exe).
 
 %% API
--export([start/2]).
+-export([start_link/2]).
+-export([init/3]).
 
 -include("callflow.hrl").
 
@@ -23,11 +24,17 @@
 %% execution of the first node
 %% @end
 %%--------------------------------------------------------------------
--spec(start/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> ok).
-start(Call, Flow) ->
+-spec(start_link/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> tuple(ok, pid())).
+start_link(Call, Flow) ->
+    proc_lib:start_link(?MODULE, init, [self(), Call, Flow]).
+
+-spec(init/3 :: (Parent :: pid(), Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
+init(Parent, #cf_call{dest_number=DestNum, call_id=CallId}=Call, Flow) ->
     process_flag(trap_exit, true),
     AmqpQ = init_amqp(Call),
     cache_account(Call),
+    proc_lib:init_ack(Parent, {ok, self()}),
+    logger:format_log(info, "CF_EXECUTIONER(~p): Executing callflow for ~p (~p)", [self(), DestNum, CallId]),
     next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow).
 
 %%--------------------------------------------------------------------
@@ -109,22 +116,7 @@ wait(Call, Flow, Pid) ->
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
            is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
-           case wh_json:get_value(<<"Event-Name">>, Msg) of
-               <<"CHANNEL_HANGUP_COMPLETE">> ->
-                   receive
-                       {_, #amqp_msg{props = Props, payload = Payload}}=Message when Props#'P_basic'.content_type == <<"application/json">> ->
-                           self() ! Message,
-                           wait(Call, Flow, Pid);
-                       {heartbeat} ->
-                           self() ! {heartbeat},
-                           wait(Call, Flow, Pid)
-                   after
-                       1000 ->
-                           logger:format_log(info, "CF EXECUTIONER (~p): Channel was hung up", [self()])
-                   end;
-               _Else ->
-                   wait(Call, Flow, Pid)
-           end;
+           wait(Call, Flow, Pid);
        _Msg ->
            logger:format_log(error, "CF_EXECUTIONER (~p): Roque message recieved: ~p", [self(), _Msg]),
            wait(Call, Flow, Pid)

@@ -277,7 +277,7 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
 		    new_message(MediaName, Box, Call)
             end;
         {error, channel_hungup} ->
-	    _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
+            _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
             new_message(MediaName, Box, Call);
 	{error, execution_failure} ->
 	    ok %% something happened Whistle-side, nothing to do for now
@@ -472,20 +472,19 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 							     ,cid_name=CIDName, cid_number=CIDNumber
 							     ,call_id=CallID}=Call) ->
     {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
-    {ok, JObj} = couch_mgr:open_doc(Db, Id),
+
     Tstamp = new_timestamp(),
-    NewMessages=[{struct, [
-			   {<<"timestamp">>, Tstamp}
-			   ,{<<"from">>, From}
-			   ,{<<"to">>, To}
-			   ,{<<"caller_id_number">>, CIDNumber}
-			   ,{<<"caller_id_name">>, CIDName}
-			   ,{<<"call_id">>, CallID}
-			   ,{<<"folder">>, ?FOLDER_NEW}
-			   ,{<<"attachment">>, MediaName}
-			  ]
-		 }] ++ wh_json:get_value([<<"messages">>], JObj, []),
-    {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)),
+    NewMessage={struct, [
+                          {<<"timestamp">>, Tstamp}
+                         ,{<<"from">>, From}
+                         ,{<<"to">>, To}
+                         ,{<<"caller_id_number">>, CIDNumber}
+                         ,{<<"caller_id_name">>, CIDName}
+                         ,{<<"call_id">>, CallID}
+                         ,{<<"folder">>, ?FOLDER_NEW}
+                         ,{<<"attachment">>, MediaName}
+                        ]},
+    {ok, _} = save_metadata(NewMessage, Db, Id),
 
     [FromU, FromR] = binary:split(From, <<"@">>),
     [ToU, ToR] = binary:split(To, <<"@">>),
@@ -504,6 +503,22 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 				      ]),
     logger:format_log(info, "CF_VOICEMAIL(~p): API send ~s~n", [self(), JSON]),
     amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(save_metadata/3 :: (NewMessage :: json_object(), Db :: binary(), Id :: binary()) -> no_return()).
+save_metadata(NewMessage, Db, Id) ->
+    {ok, JObj} = couch_mgr:open_doc(Db, Id),    
+    NewMessages=[NewMessage | wh_json:get_value([<<"messages">>], JObj, [])],    
+    case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)) of
+        {error, conflict} ->
+            save_metadata(NewMessage, Db, Id);
+        {ok, _}=Ok -> Ok;
+        {error, _}=E -> E
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -539,7 +554,7 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, <<"8000">>, Call),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj))
+        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj))
     catch
         _:_ ->
             change_pin(Box, Call)
@@ -732,12 +747,16 @@ set_folder(Folder, Message, Box, Call) ->
 -spec(update_folder/4 :: (Folder :: binary(), Attachment :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 update_folder(_, undefined, _, _) ->
     {error, attachment_undefined};
-update_folder(Folder, Attachment, #mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
+update_folder(Folder, Attachment, #mailbox{mailbox_id=Id}=Mailbox, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             Messages = [ update_folder1(Message, Folder, Attachment, wh_json:get_value(<<"attachment">>, Message))
 			 || Message <- wh_json:get_value(<<"messages">>, JObj, []) ],
-            couch_mgr:save_doc(Db, wh_json:set_value(<<"messages">>, Messages, JObj));
+            case couch_mgr:save_doc(Db, wh_json:set_value(<<"messages">>, Messages, JObj)) of
+                {error, conflict} -> update_folder(Folder, Attachment, Mailbox, Call);
+                {ok, _}=OK -> OK;
+                {error, _}=E -> E
+            end;
         {error, _}=E ->
             E
     end.
