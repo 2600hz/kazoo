@@ -42,7 +42,7 @@
 % @end
 %------------------------------------------------------------------------------
 start_link() -> 
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%-----------------------------------------------------------------------------
 %% GEN SERVER CALLBACKS
@@ -222,8 +222,7 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
       ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
      },
     cf_call_command:set(undefined, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq), Call),
-    format_log(info, "CF_RESP(~p): Executing callflow for ~p(~p)", [self(), To, CallId]),
-    spawn(fun() -> cf_exe:start(Call, Flow) end);
+    supervisor:start_child(cf_exe_sup, [Call, Flow]);
 
 handle_req(_EventName, _JObj, _Parent, _State) ->
     {error, invalid_event}.
