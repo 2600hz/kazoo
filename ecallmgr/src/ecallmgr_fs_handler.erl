@@ -32,10 +32,6 @@
 
 -record(node_handler, {node = 'undefined' :: atom()
 		       ,options = [] :: proplist()
-		       ,auth_handler_pid = undefined :: pid() | undefined
-                       ,route_handler_pid = undefined :: pid() | undefined
-                       ,node_handler_pid = undefined :: pid() | undefined
-                       ,node_watch_pid = undefined :: pid() | undefined % If a node goes down, this pid is responsible for watching for the node to restart
 		      }).
 
 -record(state, {fs_nodes = [] :: list(#node_handler{}) }).
@@ -122,20 +118,13 @@ handle_call({request_node, <<"audio">>}, From, #state{fs_nodes=Nodes}=State) ->
 		  end
 	  end),
     {noreply, State};
-handle_call({is_node_up, Node}, From, #state{fs_nodes=Nodes}=State) ->
-    spawn(fun() ->
-		  IsUp = lists:foldl(fun(#node_handler{node=FSNode, node_watch_pid=NWP}, _) when FSNode =:= Node ->
-					     not erlang:is_pid(NWP);
-					(_, A) -> A
-				     end, false, Nodes),
-		  gen_server:reply(From, IsUp)
-	  end),
-    {noreply, State};
+handle_call({is_node_up, Node}, _From, #state{fs_nodes=Nodes}=State) ->
+    {reply, [ Node1 || #node_handler{node=Node1} <- Nodes, Node1 =:= Node ] =/= [], State};
 
 handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
-		  {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP}
-							   ,{KN, HD}) ->
+		  {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode}, {KN, HD}) ->
+							       {AHP, RHP, NHP} = ecallmgr_fs_sup:get_handler_pids(FSNode),
 							       AuthHandlerD = diagnostics_query(AHP),
 							       RteHandlerD = diagnostics_query(RHP),
 							       NodeHandlerD = diagnostics_query(NHP),
@@ -170,6 +159,7 @@ handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=Stat
 		  gen_server:reply(From, Resp)
 	  end),
     {noreply, State};
+
 handle_call(_Request, _From, State) ->
     logger:format_log(error, "FS_HANDLER(~p): Unhandled call ~p~n", [self(), _Request]),
     {reply, {error, unhandled_request}, State}.
@@ -197,21 +187,32 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'EXIT', HPid, Reason}, #state{fs_nodes=Nodes}=State) ->
-    logger:format_log(error, "FS_HANDLER(~p): Handler(~p) EXITed: ~p~n", [self(), HPid, Reason]),
-    NewNodes = check_down_pid(Nodes, HPid),
-    {noreply, State#state{fs_nodes=NewNodes}};
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
     case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
 	[] ->
 	    logger:format_log(info, "FS_HANDLER(~p): Received nodedown for ~p but node is not known~n", [self(), Node]),
 	    {noreply, State};
-	[#node_handler{node=Node, options=Opts}=N|_] ->
+	[#node_handler{node=Node, options=Opts}|_] ->
 	    erlang:monitor_node(Node, false),
-	    WatchPid = spawn_link(fun() -> watch_node_for_restart(Node, Opts) end),
+	    ecallmgr_fs_sup:stop_handlers(Node),
+
+	    spawn_link(fun() ->
+			       logger:format_log(info, "FS_HANDLER.node_watch(~p) starting~n", [self()]),
+			       watch_node_for_restart(Node, Opts)
+		       end),
+
 	    logger:format_log(info, "FS_HANDLER(~p): Node ~p has gone down~n", [self(), Node]),
-	    {noreply, State#state{fs_nodes=[N#node_handler{node_watch_pid=WatchPid} | lists:keydelete(Node, 2, Nodes)]}}
+	    {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end;
+
+handle_info({'EXIT', Pid, normal}, State) ->
+    logger:format_log(info, "FS_HANDLER(~p): ~p exited normally.~n", [self(), Pid]),
+    {noreply, State};
+
+handle_info({'EXIT', Pid, _Reason}, State) ->
+    logger:format_log(info, "FS_HANDLER(~p): ~p exited abnormally: ~p.~n", [self(), Pid, _Reason]),
+    {noreply, State};
+
 handle_info(_Info, State) ->
     logger:format_log(info, "FS_HANDLER(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
@@ -287,71 +288,6 @@ check_options(Opts) ->
 	_ -> Opts0
     end.
 
--spec(check_down_pid/2 :: (Nodes :: list(#node_handler{}), HPid :: pid()) -> list(#node_handler{})).
-check_down_pid(Nodes, HPid) ->
-    lists:foldl(fun(#node_handler{auth_handler_pid=AHP
-				  ,route_handler_pid=RHP
-				  ,node_handler_pid=NHP
-				  ,node_watch_pid=undefined
-				  ,options=Options
-				  ,node=Node
-				 }=N, Nodes0) ->
-			Restart = fun(CurrHPid, StartFun) -> restart_handler(Node, Options, HPid, CurrHPid, StartFun) end,
-			NewAHP = Restart(AHP, fun start_auth_handler/2),
-			NewRHP = Restart(RHP, fun start_route_handler/1),
-			NewNHP = Restart(NHP, fun start_node_handler/2),
-			[N#node_handler{auth_handler_pid=NewAHP
-					,route_handler_pid=NewRHP
-					,node_handler_pid=NewNHP}
-			 | Nodes0];
-		   (#node_handler{node_watch_pid=NWP}=N, Nodes0) when NWP =:= HPid ->
-			[N#node_handler{node_watch_pid=undefined} | Nodes0];
-		   (#node_handler{node_watch_pid=NWP}, Nodes0) when is_pid(NWP) ->
-			Nodes0
-		end, [], Nodes).
-
--spec(restart_handler/5 :: (Node :: atom(), Options :: proplist(), DownPid :: pid() | undefined, CurrPid :: pid() | undefined, StartFun :: fun()) ->
-				pid() | undefined).
-restart_handler(Node, Options, _, undefined, StartFun) when is_function(StartFun, 2) ->
-    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restart ~p handler~n", [self(), Node]),
-    case StartFun(Node, Options) of
-	{error, Err} ->
-	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
-	    undefined;
-	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p for ~p~n", [self(), Pid, Node]),
-	    Pid
-    end;
-restart_handler(Node, _, _, undefined, StartFun) when is_function(StartFun, 1) ->
-    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restart ~p handler~n", [self(), Node]),
-    case StartFun(Node) of
-	{error, Err} ->
-	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p starting handler~n", [self(), Err]),
-	    undefined;
-	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting as ~p for ~p~n", [self(), Pid, Node]),
-	    Pid
-    end;
-restart_handler(Node, Options, HPid, HPid, StartFun) when is_function(StartFun, 2)->
-    case StartFun(Node, Options) of
-	{error, Err} ->
-	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
-	    undefined;
-	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p for ~p~n", [self(), HPid, Pid, Node]),
-	    Pid
-    end;
-restart_handler(Node, _, HPid, HPid, StartFun) when is_function(StartFun, 1)->
-    case StartFun(Node) of
-	{error, Err} ->
-	    logger:format_log(error, "FS_HANDLER.rstrt_h(~p): Error ~p restarting handler ~p~n", [self(), Err, HPid]),
-	    undefined;
-	Pid when is_pid(Pid) ->
-	    logger:format_log(info, "FS_HANDLER.rstrt_h(~p): Restarting ~p as ~p for ~p~n", [self(), HPid, Pid, Node]),
-	    Pid
-    end;
-restart_handler(_, _, _, Pid, _) -> Pid.
-
 %% query a pid for its diagnostics info
 -spec(diagnostics_query/1 :: (Pid :: pid()) -> tuple(ok, proplist()) | tuple(error, atom(), term())).
 diagnostics_query(Pid) when is_pid(Pid) ->
@@ -378,56 +314,33 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 		    erlang:monitor_node(Node, true),
 		    logger:format_log(info, "FS_HANDLER(~p): No node matching ~p found, adding~n", [self(), Node]),
 
-		    Results = ecallmgr_fs_sup:start_handler(Node, Options),
-		    logger:format_log(info, "Started ~p: ~p~n", [Node, Results]),
-
-		    {ok, State};
-		    %% {ok, State#state{fs_nodes=[#node_handler{node=Node
-		    %% 					     ,options=Options
-		    %% 					     ,auth_handler_pid=AHP
-		    %% 					     ,route_handler_pid=RHP
-		    %% 					     ,node_handler_pid=NHP
-		    %% 					     ,node_watch_pid=undefined
-		    %% 					    }
-		    %% 			       | Nodes]}};
+		    case lists:all(fun({ok, Pid}) when is_pid(Pid) -> true;
+				      ({error, {already_started, Pid}}) when is_pid(Pid) -> true;
+				      (_) -> false
+				   end, ecallmgr_fs_sup:start_handlers(Node, Options)) of
+			true ->
+			    {ok, State#state{fs_nodes=[#node_handler{node=Node, options=Options} | Nodes]}};
+			false ->
+			    {{error, failed_starting_handlers}, State}
+		    end;
 		pang ->
 		    logger:format_log(error, "FS_HANDLER(~p): ~p not responding~n", [self(), Node]),
 		    {{error, no_connection}, State}
 	    end;
-	[#node_handler{node=Node, auth_handler_pid=AHP, route_handler_pid=RHP, node_handler_pid=NHP, node_watch_pid=NWP}=N] ->
-	    logger:format_log(info, "FS_HANDLER(~p): handlers known for node ~p: ~p~n", [self(), Node, N]),
+	[#node_handler{node=Node}=N] ->
+	    logger:format_log(info, "FS_HANDLER(~p): handlers known for node ~p~n", [self(), Node]),
 
-	    erlang:is_pid(NWP) andalso ( erlang:is_process_alive(NWP) andalso NWP ! shutdown ),
+	    {_, _, NHP} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
+	    is_pid(NHP) andalso NHP ! {update_options, Options},
 
-	    Restart = fun(Pid, StartFun) when is_pid(Pid) ->
-			      case erlang:is_process_alive(Pid) of
-				  true ->
-				      Pid ! {update_options, Options},
-				      Pid;
-				  false ->
-				      case StartFun(Node, Options) of
-					  {error, E} ->
-					      logger:format_log(error, "FS_HANDLER.add(~p): Handler start on ~p failed because ~p~n", [self(), Node, E]),
-					      undefined;
-					  NewPid -> NewPid
-				      end
-			      end;
-			 (_, StartFun) ->
-			      case StartFun(Node, Options) of
-				  {error, E} ->
-				      logger:format_log(error, "FS_HANDLER.add(~p): Handler start on ~p failed because ~p~n", [self(), Node, E]),
-				      undefined;
-				  Pid -> Pid
-			      end
-		      end,
-
-	    {ok, State#state{fs_nodes=[N#node_handler{auth_handler_pid=Restart(AHP, fun start_auth_handler/2)
-						      ,route_handler_pid=Restart(RHP, fun start_route_handler/1)
-						      ,node_handler_pid=Restart(NHP, fun start_node_handler/2)
-						      ,node_watch_pid=undefined
-						      ,options=Options
-						     }
-				       | lists:keydelete(Node, 2, Nodes)]}}
+	    case lists:any(fun(error) -> true; (undefined) -> true; (_) -> false end, tuple_to_list(Handlers)) of
+		true ->
+		    _ = ecallmgr_fs_sup:stop_handlers(Node),
+		    logger:format_log(info, "removed handlers cause something is wonky: handlers: ~p", [Handlers]),
+		    add_fs_node(Node, Options, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)});
+		false ->
+		    {ok, State#state{fs_nodes=[N#node_handler{options=Options} | lists:keydelete(Node, 2, Nodes)]}}
+	    end
     end.
 
 -spec(rm_fs_node/2 :: (Node :: atom(), State :: tuple()) -> {ok | tuple(error, no_node, atom()), tuple()}).
@@ -437,69 +350,25 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 	    logger:format_log(error, "FS_HANDLER(~p): No handlers found for ~p~n", [self(), Node]),
 	    {{error, no_node, Node}, State};
 	N ->
+	    logger:format_log(info, "FS_HANDLER(~p): Found node handler: ~p~n", [self(), N]),
 	    Res = close_node(N),
 	    {{ok, Res}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
--spec(close_node/1 :: (N :: #node_handler{}) -> tuple(atom(), ok | tuple(), ok | tuple(), ok | tuple())).
-close_node(#node_handler{node=Node
-			 ,auth_handler_pid=AHP
-			 ,route_handler_pid=RHP
-			 ,node_handler_pid=NHP}) ->
+-spec(close_node/1 :: (N :: #node_handler{}) -> list(ok | tuple(error, term()))).
+close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),
-    {Node, close_handler(AHP), close_handler(RHP), close_handler(NHP)}.
-
--spec(close_handler/1 :: (Pid :: pid()) -> ok | tuple(error, handler_down)).
-close_handler(Pid) ->
-    case is_pid(Pid) andalso erlang:is_process_alive(Pid) of
-	true -> Pid ! shutdown, ok;
-	false -> {error, handler_down}
-    end.
-
--spec(start_auth_handler/2 :: (Node :: atom(), Options :: proplist()) -> pid() | tuple(error, term())).
-start_auth_handler(Node, Options) ->
-    start_handler(Node, Options, ?AUTH_MOD).
-
--spec(start_route_handler/1 :: (Node :: atom()) -> pid() | tuple(error, term())).
-start_route_handler(Node) ->
-    start_handler(Node, [], ?ROUTE_MOD).
-
--spec(start_node_handler/2 :: (Node :: atom(), Options :: proplist()) -> pid() | tuple(error, term())).
-start_node_handler(Node, Options) ->
-    start_handler(Node, Options, ?NODE_MOD).
-
--spec(start_handler/3 :: (Node :: atom(), Options :: proplist(), Mod :: atom()) -> pid() | tuple(error, term())).
-start_handler(Node, Options, Mod) ->
-    logger:format_log(info, "Starting ~p on ~p~n", [Mod, Node]),
-    try
-	case Mod:start_link(Node, Options) of
-	    Pid when is_pid(Pid) ->
-		link(Pid),
-		logger:format_log(info, "FS_HANDLER(~p): Started handler ~p(~p)~n", [self(), Mod, Pid]),
-		Pid;
-	    {ok, Pid} ->
-		logger:format_log(info, "FS_HANDLER(~p): Started link ~p(~p)~n", [self(), Mod, Pid]),
-		Pid;
-	    false -> {error, start_functions_missing};
-	    {error, _Other}=E ->
-		logger:format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p on ~p: got ~p~n", [self(), Mod, Node, _Other]),
-		E
-	end
-    catch
-	What:Why ->
-	    logger:format_log(error, "FS_HANDLER(~p): Failed to start ~p for ~p: got ~p:~p~n", [self(), Mod, Node, What, Why]),
-	    {error, Why}
-    end.
+    ecallmgr_fs_sup:stop_handlers(Node).
 
 -spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(#node_handler{}), Options :: proplist()) -> list(proplist()) | []).
 process_resource_request(<<"audio">>=Type, Nodes, Options) ->
     NodesResp = [begin
-		     logger:format_log(info, "FS_HANDLER.prr: NodePid ~p N ~p~n", [NodePid, N]),
-		     NodePid ! {resource_request, self(), Type, Options},
-		     receive {resource_response, NodePid, Resp} -> Resp
+		     {_,_,NHP} = ecallmgr_fs_sup:get_handler_pids(Node),
+		     NHP ! {resource_request, self(), Type, Options},
+		     receive {resource_response, NHP, Resp} -> Resp
 		     after 500 -> []
 		     end
-		 end || #node_handler{node_handler_pid=NodePid}=N <- Nodes],
+		 end || #node_handler{node=Node} <- Nodes],
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
     logger:format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),

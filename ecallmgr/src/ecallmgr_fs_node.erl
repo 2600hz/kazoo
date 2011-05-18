@@ -154,6 +154,10 @@ handle_info({resource_consume, Pid, Route}, #state{node=Node, options=Opts, stat
 
     spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan) end),
     {noreply, State};
+
+handle_info({update_options, NewOptions}, State) ->
+    {noreply, State#state{options=NewOptions}};
+
 handle_info(_Msg, State) ->
     logger:format_log(info, "FS_NODE(~p): Recv unexpected ~p~n", [self(), _Msg]),
     {noreply, State}.
