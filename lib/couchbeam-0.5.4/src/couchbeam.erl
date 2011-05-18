@@ -39,6 +39,7 @@
         open_or_create_db/2, open_or_create_db/3, open_or_create_db/4,
         delete_db/1, delete_db/2, 
         db_info/1,
+        design_info/2,
         save_doc/2, save_doc/3,
         doc_exists/2,
         open_doc/2, open_doc/3,
@@ -364,6 +365,20 @@ db_info(#db{server=Server, name=DbName, options=IbrowseOpts}) ->
             {error, db_not_found};
        Error ->
           Error
+    end.
+
+%% @doc get information about the design doc
+%% @spec design_info(db(), string()) -> {ok, iolist()}|{error, Error}
+design_info(#db{server=Server, name=DbName, options=IbrowseOpts}, DesignDoc) ->
+    Path = binary_to_list(list_to_binary([DbName, "/_design/", DesignDoc, "/_info"])),
+    Url = make_url(Server, Path, []),
+    case request(get, Url, ["200"], IbrowseOpts) of
+	{ok, _Status, _Headers, Body} ->
+            {ok, couchbeam_util:json_decode(Body)}; 
+        {error, {ok, "404", _, _}} ->
+            {error, design_not_found};
+	Error ->
+	    Error
     end.
 
 %% @doc test if doc with uuid exists in the given db
@@ -698,18 +713,20 @@ view(#db{server=Server}=Db, ViewName, Options) ->
     ViewName1 = couchbeam_util:to_list(ViewName),
     Options1 = couchbeam_util:parse_options(Options),
     Url = case ViewName1 of
-        {DName, VName} ->
-            [db_url(Db), "/_design/", DName, "/_view/", VName];
-        "_all_docs" ->
-            [db_url(Db), "/_all_docs"];
-        _Else ->
-            case string:tokens(ViewName1, "/") of
-            [DName, VName] ->
-                [db_url(Db), "/_design/", DName, "/_view/", VName];
-            _ ->
-                undefined
-            end
-    end,
+	      {DName, VName} ->
+		  [db_url(Db), "/_design/", DName, "/_view/", VName];
+	      "_all_docs" ->
+		  [db_url(Db), "/_all_docs"];
+	      "_design_docs" ->
+		  [db_url(Db), "/_all_docs?startkey=\"_design\"&endkey=\"_design0\""];
+	      _Else ->
+		  case string:tokens(ViewName1, "/") of
+		      [DName, VName] ->
+			  [db_url(Db), "/_design/", DName, "/_view/", VName];
+		      _ ->
+			  undefined
+		  end
+	  end,
     case Url of
     undefined ->
         {error, invalid_view_name};

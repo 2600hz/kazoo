@@ -11,14 +11,20 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, get_host/0, get_port/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
+-export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, set_host/5, get_host/0, get_port/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
+-export([get_admin_port/0, get_admin_conn/0, get_admin_url/0]).
 
 %% System manipulation
 -export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
+-export([admin_db_info/0, admin_db_info/1, admin_db_compact/1]).
+
+-export([design_info/2]).
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
+
+-export([all_docs/1, all_design_docs/1]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3]).
@@ -36,14 +42,16 @@
 -define(SERVER, ?MODULE).
 -define(STARTUP_FILE, [code:lib_dir(whistle_couch, priv), "/startup.config"]).
 -define(DEFAULT_PORT, 5984).
+-define(DEFAULT_ADMIN_PORT, 5986).
 -define(IBROWSE_OPTS, [{max_sessions, 1024}, {max_pipeline_size, 10}]).
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
 %% Change handler {DBName :: string(), {Srv :: pid(), SrvRef :: reference()}
 -record(state, {
-          host = {"", ?DEFAULT_PORT} :: tuple(string(), integer())
+          host = {"", ?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT} :: tuple(string(), integer(), integer())
 	  ,connection = #server{} :: #server{}
+	  ,admin_connection = #server{} :: #server{}
 	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
 	  ,change_handlers = dict:new() :: dict()
 	 }).
@@ -125,6 +133,17 @@ db_info() ->
             end
     end.
 
+-spec(admin_db_info/0 :: () -> tuple(ok, json_objects()) | tuple(error, atom())).
+admin_db_info() ->
+    case get_admin_conn() of
+        {} -> {error, db_not_reachable};
+        Conn ->
+            case couchbeam:all_dbs(Conn) of
+                {error, _Error}=E -> E;
+                {ok, Info} -> {ok, Info}
+            end
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -140,6 +159,27 @@ db_info(DbName) ->
                 {error, _Error}=E -> E;
                 {ok, Info} -> {ok, Info}
             end
+    end.
+
+-spec(admin_db_info/1 :: (DbName :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+admin_db_info(DbName) ->
+    case get_admin_conn() of
+        {} -> {error, db_not_reachable};
+        Conn ->
+            couchbeam:db_info(#db{server=Conn, name=whistle_util:to_list(DbName)})
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieve information regarding a database design doc
+%% @end
+%%--------------------------------------------------------------------
+design_info(DbName, DesignName) ->
+    case get_db(DbName) of
+	{} -> {error, db_not_reachable};
+	Conn ->
+	    couchbeam:design_info(Conn, DesignName)
     end.
 
 %%--------------------------------------------------------------------
@@ -215,6 +255,17 @@ db_compact(DbName) ->
             end
     end.
 
+-spec(admin_db_compact/1 :: (DbName :: binary()) -> boolean()).
+admin_db_compact(DbName) ->
+    case get_admin_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:compact(#db{server=Conn, name=whistle_util:to_list(DbName)}) of
+                {error, _} -> false;
+                ok -> true
+            end
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -251,11 +302,33 @@ open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
 open_doc(DbName, DocId, Options) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
+	Db -> couchbeam:open_doc(Db, DocId, Options)
+    end.
+
+all_docs(DbName) ->
+    case get_db(DbName) of
+	{error, _Error} -> {error, db_not_reachable};
 	Db ->
-            case couchbeam:open_doc(Db, DocId, Options) of
-                {error, _Error}=E -> E;
-                {ok, Doc1} -> {ok, Doc1}
-            end
+	    {ok, View} = couchbeam:all_docs(Db),
+	    case couchbeam_view:fetch(View) of
+		{ok, {struct, Prop}} ->
+		    Rows = props:get_value(<<"rows">>, Prop, []),
+		    {ok, Rows};
+		{error, _Error}=E -> E
+	    end
+    end.
+
+all_design_docs(DbName) ->
+    case get_db(DbName) of
+	{error, _Error} -> {error, db_not_reachable};
+	Db ->
+	    {ok, View} = couchbeam:view(Db, "_design_docs", []),
+	    case couchbeam_view:fetch(View) of
+		{ok, {struct, Prop}} ->
+		    Rows = props:get_value(<<"rows">>, Prop, []),
+		    {ok, Rows};
+		{error, _Error}=E -> E
+	    end
     end.
 
 %%--------------------------------------------------------------------
@@ -420,19 +493,23 @@ start_link() ->
 %% set the host to connect to
 -spec(set_host/1 :: (HostName :: string()) -> ok | tuple(error, term())).
 set_host(HostName) ->
-    set_host(HostName, ?DEFAULT_PORT, "", "").
+    set_host(HostName, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT).
 
 -spec(set_host/2 :: (HostName :: string(), Port :: integer()) -> ok | tuple(error, term())).
 set_host(HostName, Port) ->
-    set_host(HostName, Port, "", "").
+    set_host(HostName, Port, "", "", ?DEFAULT_ADMIN_PORT).
 
 -spec(set_host/3 :: (HostName :: string(), UserName :: string(), Password :: string()) -> ok | tuple(error, term())).
 set_host(HostName, UserName, Password) ->
-    set_host(HostName, ?DEFAULT_PORT, UserName, Password).
+    set_host(HostName, ?DEFAULT_PORT, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
 -spec(set_host/4 :: (HostName :: string(), Port :: integer(), UserName :: string(), Password :: string()) -> ok | tuple(error, term())).
 set_host(HostName, Port, UserName, Password) ->
-    gen_server:call(?SERVER, {set_host, HostName, whistle_util:to_integer(Port), UserName, Password}, infinity).
+    set_host(HostName, Port, UserName, Password, ?DEFAULT_ADMIN_PORT).
+
+-spec(set_host/5 :: (HostName :: string(), Port :: integer(), UserName :: string(), Password :: string(), AdmingPort :: integer()) -> ok | tuple(error, term())).
+set_host(HostName, Port, UserName, Password, AdminPort) ->
+    gen_server:call(?SERVER, {set_host, HostName, Port, UserName, Password, AdminPort}, infinity).
 
 get_host() ->
     gen_server:call(?SERVER, get_host).
@@ -440,35 +517,55 @@ get_host() ->
 get_port() ->
     gen_server:call(?SERVER, get_port).
 
+get_admin_port() ->
+    gen_server:call(?SERVER, get_admin_port).
+
 get_creds() ->
-    gen_server:call(?SERVER, {get_creds}).
+    gen_server:call(?SERVER, get_creds).
 
 get_conn() ->
-    gen_server:call(?SERVER, {get_conn}).
+    gen_server:call(?SERVER, get_conn).
+
+get_admin_conn() ->
+    gen_server:call(?SERVER, get_admin_conn).
 
 get_db(DbName) ->
-    Conn = gen_server:call(?SERVER, {get_conn}),
+    Conn = gen_server:call(?SERVER, get_conn),
     open_db(whistle_util:to_list(DbName), Conn).
 
 get_uuid() ->
-    Conn = gen_server:call(?SERVER, {get_conn}),
+    Conn = gen_server:call(?SERVER, get_conn),
     [UUID] = couchbeam:get_uuid(Conn),   
     UUID.
 
 get_uuids(Count) ->
-    Conn = gen_server:call(?SERVER, {get_conn}),
+    Conn = gen_server:call(?SERVER, get_conn),
     couchbeam:get_uuids(Conn, Count).
 
+-spec(get_url/0 :: () -> binary()).
 get_url() ->
-    case {whistle_util:to_binary(get_host()), get_creds()} of
-        {<<"">>, _} ->
+    case {whistle_util:to_binary(get_host()), get_creds(), get_port()} of
+        {<<"">>, _, _} ->
             undefined;
-        {H, {[], []}} ->
-            <<"http://", H/binary, ":5984", $/>>;
-        {H, {User, Pwd}} ->
+        {H, {[], []}, P} ->
+            <<"http://", H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>;
+        {H, {User, Pwd}, P} ->
             U = whistle_util:to_binary(User),
             P = whistle_util:to_binary(Pwd),
-            <<"http://", U/binary, $:, P/binary, $@, H/binary, ":5984", $/>>
+            <<"http://", U/binary, $:, P/binary, $@, H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>
+    end.
+
+-spec(get_admin_url/0 :: () -> binary()).
+get_admin_url() ->
+    case {whistle_util:to_binary(get_host()), get_creds(), get_admin_port()} of
+        {<<"">>, _, _} ->
+            undefined;
+        {H, {[], []}, P} ->
+            <<"http://", H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>;
+        {H, {User, Pwd}, P} ->
+            U = whistle_util:to_binary(User),
+            P = whistle_util:to_binary(Pwd),
+            <<"http://", U/binary, $:, P/binary, $@, H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>
     end.
 
 add_change_handler(DBName, DocID) ->
@@ -514,26 +611,44 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(get_host, _From, #state{host={H,_}}=State) ->
+handle_call(get_host, _From, #state{host={H,_,_}}=State) ->
     {reply, H, State};
 
-handle_call(get_port, _From, #state{host={_,P}}=State) ->
+handle_call(get_port, _From, #state{host={_,P,_}}=State) ->
     {reply, P, State};
 
-handle_call({set_host, Host, Port, User, Pass}, _From, #state{host={OldHost,_}}=State) ->
+handle_call(get_admin_port, _From, #state{host={_,_,P}}=State) ->
+    {reply, P, State};
+
+handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={OldHost,_,_}}=State) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
     Conn = get_new_connection(Host, Port, User, Pass),
-    {reply, ok, State#state{host={Host, Port}, connection=Conn, change_handlers=dict:new(), creds={User,Pass}}};
+    AdminConn = get_new_connection(Host, AdminPort, User, Pass),
+    {reply, ok, State#state{host={Host, Port, AdminPort}
+			    ,connection=Conn
+			    ,admin_connection=AdminConn
+			    ,change_handlers=dict:new()
+			    ,creds={User,Pass}
+			   }};
 
-handle_call({set_host, Host, Port, User, Pass}, _From, State) ->
+handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
     Conn = get_new_connection(Host, Port, User, Pass),
-    {reply, ok, State#state{host={Host,Port}, connection=Conn, change_handlers=dict:new(), creds={User,Pass}}};
+    AdminConn = get_new_connection(Host, AdminPort, User, Pass),
+    {reply, ok, State#state{host={Host,Port,AdminPort}
+			    ,connection=Conn
+			    ,admin_connection=AdminConn
+			    ,change_handlers=dict:new()
+			    ,creds={User,Pass}
+			   }};
 
-handle_call({get_conn}, _, #state{connection=S}=State) ->
+handle_call(get_conn, _, #state{connection=S}=State) ->
     {reply, S, State};
 
-handle_call({get_creds}, _, #state{creds=Cred}=State) ->
+handle_call(get_admin_conn, _, #state{admin_connection=ACon}=State) ->
+    {reply, ACon, State};
+
+handle_call(get_creds, _, #state{creds=Cred}=State) ->
     {reply, Cred, State};
 
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
@@ -678,19 +793,26 @@ get_view(Db, DesignDoc, ViewOptions) ->
 init_state() ->
     case get_startup_config() of
 	{ok, Ts} ->
-	    {_, Host, Port, User, Pass} = case lists:keyfind(couch_host, 1, Ts) of
-					      false ->
-						  case lists:keyfind(default_couch_host, 1, Ts) of
-						      false -> {ok, net_adm:localhost(), ?DEFAULT_PORT, "", ""};
-						      {default_couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", ""};
-						      {default_couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P};
-						      {default_couch_host,_,_,_,_}=Conf -> Conf
-						  end;
-					      {couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", ""};
-					      {couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P};
-					      {couch_host,_,_,_,_}=Conf -> Conf
-					  end,
-	    #state{connection=get_new_connection(Host, whistle_util:to_integer(Port), User, Pass), host={Host, whistle_util:to_integer(Port)}, creds={User,Pass}};
+	    {_, Host, NormalPort, User, Password, AdminPort} = case lists:keyfind(couch_host, 1, Ts) of
+								   false ->
+								       case lists:keyfind(default_couch_host, 1, Ts) of
+									   false -> {ok, net_adm:localhost(), ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT};
+									   {default_couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT};
+									   {default_couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P, ?DEFAULT_ADMIN_PORT};
+									   {default_couch_host,H,Port,U,Pass} -> {ok, H, Port, U, Pass, ?DEFAULT_ADMIN_PORT};
+									   {default_couch_host,H,Port,U,Pass,AdminP} -> {ok, H, Port, U, Pass, AdminP}
+								       end;
+								   {couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT};
+								   {couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P, ?DEFAULT_ADMIN_PORT};
+								   {couch_host,H,Port,U,Pass} -> {ok, H, Port, U, Pass, ?DEFAULT_ADMIN_PORT};
+								   {couch_host,H,Port,U,Pass,AdminP} -> {ok, H, Port, U, Pass, AdminP}
+							       end,
+	    Conn = get_new_connection(Host, whistle_util:to_integer(NormalPort), User, Password),
+	    AdminConn = get_new_connection(Host, whistle_util:to_integer(AdminPort), User, Password),
+	    #state{connection=Conn
+		   ,admin_connection=AdminConn
+		   ,host={Host, whistle_util:to_integer(NormalPort), whistle_util:to_integer(AdminPort)}
+		   ,creds={User, Password}};
 	_ -> #state{}
     end.
 
