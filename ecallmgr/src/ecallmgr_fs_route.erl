@@ -169,7 +169,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 			      false -> ok
 			  end
 		  end, LUs),
-    logger:format_log(error, "FS_ROUTE(~p): shutting down~n", [self()]),
+    logger:format_log(error, "FS_ROUTE(~p): shutting down for ~p~n", [self(), Node]),
     {stop, normal, State};
 
 %% send diagnostic info
@@ -200,7 +200,7 @@ handle_info(Other, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{node=Node}=State) ->
+terminate(_Reason, #state{node=Node}) ->
     freeswitch:close(Node).
 
 %%--------------------------------------------------------------------
