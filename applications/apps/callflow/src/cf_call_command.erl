@@ -715,7 +715,7 @@ wait_for_dtmf(Timeout) ->
             end
     after
         Timeout ->
-            {error, timeout}
+            {ok, <<>>}
     end.
 
 %%--------------------------------------------------------------------

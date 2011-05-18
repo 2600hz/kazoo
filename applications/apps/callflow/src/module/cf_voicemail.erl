@@ -611,12 +611,12 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
                 ], Call),
 
     case wait_for_dtmf(5000) of
-	{error, timeout} ->
-	    _ = flush(Call),
-	    review_recording(MediaName, Box, Call);
 	{error, channel_hungup} ->
 	    logger:format_log(info, "CF_VOICEMAIL(~p): review was waiting for dtmf, got hungup, so let's save", [self()]),
 	    {ok, save};
+        {ok, <<>>} ->
+            _ = flush(Call),
+	    review_recording(MediaName, Box, Call);
 	{ok, Digit} ->
 	    _ = flush(Call),
 	    case Digit of
