@@ -37,6 +37,10 @@
 -define(VIEW_FILE, <<"views/signup.json">>).
 -define(VIEW_ACTIVATION_KEYS, <<"signups/listing_by_key">>).
 -define(VIEW_ACTIVATION_REALM, <<"signups/group_by_realm">>).
+-define(VIEW_ACTIVATION_NOT_EXPIRED, <<"signups/has_not_expired">>).
+
+-define(CLEANUP_INTERVAL, 1000 * 3600 * 24). % once a day (in milliseconds)
+-define(SIGNUP_LIFESPAN, 3600*24*7). % a week (in seconds)
 
 %%%===================================================================
 %%% API
@@ -179,6 +183,12 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
+handle_info(cleanup, State) ->
+    logger:format_log(info, ">>> CLEANING", []),
+    cleanup_signups(),
+    logger:format_log(info, ">>> DONE", [] ),
+    {noreply, State};
+
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?SIGNUP_DB),
@@ -187,6 +197,7 @@ handle_info(timeout, State) ->
             couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
         {ok, _} -> ok
     end,
+    timer:send_interval(?CLEANUP_INTERVAL, cleanup),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -346,6 +357,7 @@ create_activation_request(#cb_context{req_data=JObj}=Context) ->
 		    Context1#cb_context{doc={struct, [
 						      {<<"pvt_user">>, User}
 						      ,{<<"pvt_account">>, Account}
+						      ,{<<"has_expired">>, false }
 						      ,{<<"pvt_activation_key">>, create_activation_key()}
 						     ]}};
 		Context1 -> Context1
@@ -417,3 +429,29 @@ is_unique_realm1(undefined, []) -> false;
 is_unique_realm1(_, []) -> true;
 is_unique_realm1(Realm, [Realm]) -> true;
 is_unique_realm1(_, _) -> false.
+
+
+cleanup_signups() ->
+    logger:format_log(info, "---- Cleaning old registrations ...", []), 
+    {ok, Docs} = couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_NOT_EXPIRED, [{<<"include_docs">>, true}]),
+    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+    Fun = fun(Doc) -> check_for_expiration(wh_json:get_value(<<"doc">>, Doc), Now) end,
+    lists:map(Fun, Docs),
+    
+    logger:format_log(info, "----- Registrations cleaned", []).
+
+check_for_expiration(Doc, Now) ->
+    logger:format_log(info, "---- Checking for registrations for ID:~p", [wh_json:get_value([<<"pvt_user">>, <<"email">>], Doc)]),
+    
+    NewDoc = wh_json:set_value( <<"pvt_has_expired">>, is_expired( wh_json:get_value( <<"pvt_created">>, Doc ), Now ), Doc ),
+    case couch_mgr:save_doc(?SIGNUP_DB, NewDoc) of
+	{error, conflict} ->
+	    check_for_expiration(couch_mgr:load_doc(?SIGNUP_DB, wh_json:get_value(<<"_id">>, NewDoc)), Now);
+	{ok, _} ->
+	    ok;
+	{_,_} ->
+	    error
+    end.
+	    
+is_expired(Timestamp, Now) ->
+    Timestamp < (Now + ?SIGNUP_LIFESPAN).
