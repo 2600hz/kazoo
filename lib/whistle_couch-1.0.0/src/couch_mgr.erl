@@ -602,9 +602,10 @@ get_admin_url() ->
         {H, {[], []}, P} ->
             <<"http://", H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>;
         {H, {User, Pwd}, P} ->
-            U = whistle_util:to_binary(User),
-            P = whistle_util:to_binary(Pwd),
-            <<"http://", U/binary, $:, P/binary, $@, H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>
+            <<"http://"
+              ,(whistle_util:to_binary(User))/binary, $: ,(whistle_util:to_binary(Pwd))/binary
+              ,$@, H/binary
+              ,":", (whistle_util:to_binary(P))/binary, $/>>
     end.
 
 add_change_handler(DBName, DocID) ->
