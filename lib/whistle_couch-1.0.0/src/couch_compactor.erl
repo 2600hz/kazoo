@@ -64,7 +64,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, queue:new(), 500}.
+    {ok, ok, 500}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,25 +106,22 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, Data) ->
+handle_info(timeout, ok) ->
     {ok, ShardDBs} = couch_mgr:admin_db_info(),
 
-    OldDBs = [ Name || #db_data{db_name=Name} <- queue:to_list(Data)],
-    NewDBs = [ Encoded || DB <- ShardDBs,
-			  not lists:member(Encoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]), OldDBs)
-	     ],
+    DBs = [ binary:replace(DB, <<"/">>, <<"%2f">>, [global]) || DB <- ShardDBs ],
 
-    Data1 = lists:foldr(fun(DBName, Q0) ->
-				create_db_data(DBName, Q0)
-			end, Data, NewDBs),
+    Data1 = lists:foldr(fun(DBName, Acc) ->
+				create_db_data(DBName, Acc)
+			end, [], DBs),
 
     Data2 = get_design_docs(Data1),
 
-    logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), queue:len(Data2)]),
+    logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), length(Data2)]),
 
-    [ compact(D) || D <- queue:to_list(Data2) ],
+    [ compact(D) || D <- Data2 ],
     
-    {noreply, Data2, ?TIMEOUT};
+    {noreply, ok, ?TIMEOUT};
 
 handle_info(_Info, State) ->
     {noreply, State, ?TIMEOUT}.
@@ -159,19 +156,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 %% Sharded DB names from admin interface
--spec(create_db_data/2 :: (DBName :: binary(), Q :: queue()) -> queue()).
-create_db_data(DBName, Q) ->
+-spec(create_db_data/2 :: (DBName :: binary(), L :: list()) -> list()).
+create_db_data(DBName, L) ->
     try
 	{ok, DBData} = couch_mgr:admin_db_info(DBName),
-	queue:in(#db_data{db_name=DBName
-			  ,disk_size=wh_json:get_value(<<"disk_size">>, DBData, 0)
-			  ,data_size=wh_json:get_value([<<"other">>, <<"data_size">>], DBData, 0)
-			 }, Q)
+	[#db_data{db_name=DBName
+		  ,disk_size=wh_json:get_value(<<"disk_size">>, DBData, 0)
+		  ,data_size=wh_json:get_value([<<"other">>, <<"data_size">>], DBData, 0)
+		 }
+	 | L]
     catch
-	_:_ -> Q
+	_:_ -> L
     end.
 
-get_design_docs(DataQ) ->
+get_design_docs(L) ->
     {ok, DBs} = couch_mgr:db_info(),
     DBandDocs = lists:flatten([ begin
 				    Encoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
@@ -179,25 +177,23 @@ get_design_docs(DataQ) ->
 				    [{Encoded, binary:replace(wh_json:get_value(<<"id">>, DDoc), <<"_design/">>, <<>>, [global])} || DDoc <- DDocs ]
 				end || DB <- DBs ]),
 
-    DataL = queue:to_list(DataQ),
-
-    OldDBandDocs = [ {DBName, Design} || #design_data{db_name=DBName, design_name=Design} <- DataL],
-    NewDBandDocs = [ Pair || Pair <- DBandDocs, not lists:member(Pair, OldDBandDocs) ],
-
-    lists:foldr(fun({DBName, DesignID}, Q0) ->
+    lists:foldr(fun({DBName, DesignID}, L0) ->
 			{ok, DDocData} = couch_mgr:design_info(DBName, DesignID),
 			DataSize = wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, 0),
 			DiskSize = wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, 0),
 
-			Shards = find_shards(DBName, DataL),
+			Shards = find_shards(DBName, L),
 
-			queue:in(#design_data{db_name=DBName, design_name=DesignID, shards=Shards
-					      ,disk_size=DiskSize, data_size=DataSize}, Q0)
-		end, DataQ, NewDBandDocs).
+			[ #design_data{db_name=DBName, design_name=DesignID, shards=Shards
+				       ,disk_size=DiskSize, data_size=DataSize}
+			  | L0]
+		end, L, DBandDocs).
 
 compact(#db_data{db_name=DBName, data_size=DataSize, disk_size=DiskSize}) when DiskSize div DataSize > ?COMPACT_THRESHOLD ->
+    timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
     logger:format_log(info, "compact db ~p: ~p", [DBName, couch_mgr:admin_db_compact(DBName)]);
 compact(#design_data{shards=Shards, design_name=Design, data_size=DataSize, disk_size=DiskSize}) when DiskSize div DataSize > ?COMPACT_THRESHOLD ->
+    timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
     [ logger:format_log(info, "compact ds: ~p:~p: ~p~n", [DBName, Design, couch_mgr:admin_design_compact(DBName, Design)]) || DBName <- Shards ];
 compact(_) -> ok.
 

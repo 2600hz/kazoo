@@ -122,7 +122,7 @@ db_exists(DbName) ->
 %% Retrieve information regarding all databases
 %% @end
 %%--------------------------------------------------------------------
--spec(db_info/0 :: () -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(db_info/0 :: () -> tuple(ok, list(binary())) | tuple(error, atom())).
 db_info() ->
     case get_conn() of
         {} -> {error, db_not_reachable};
@@ -857,7 +857,7 @@ init_state() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_startup_config/0 :: () -> tuple(ok, proplist()) | tuple(error, term())).
+-spec(get_startup_config/0 :: () -> tuple(ok, list(tuple())) | tuple(error, atom() | tuple())).
 get_startup_config() ->
     file:consult(?STARTUP_FILE).
 
@@ -866,14 +866,6 @@ get_startup_config() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(save_config/2 :: (H :: string(), Port :: integer()) -> no_return()).
-save_config(H, Port) ->
-    save_config(H, Port, "", "").
-
--spec(save_config/4 :: (H :: string(), Port :: integer(), U :: string(), P :: string()) -> no_return()).
-save_config(H, Port, U, P) ->
-    save_config(H, Port, U, P, ?DEFAULT_ADMIN_PORT).
-
 -spec(save_config/5 :: (H :: string(), Port :: integer(), U :: string(), P :: string(), AdminPort :: integer()) -> no_return()).
 save_config(H, Port, U, P, AdminPort) ->
     {ok, Config} = get_startup_config(),    
