@@ -53,7 +53,7 @@ to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
 to_1npan(Other) ->
     Other.
 
--spec(to_integer/1 :: (X :: list() | binary() | integer() | float()) -> integer()).
+-spec(to_integer/1 :: (X :: list() | binary() | integer() | float() | atom()) -> integer()).
 to_integer(X) when is_float(X) ->
     round(X);
 to_integer(X) when is_binary(X) ->
@@ -62,7 +62,7 @@ to_integer(X) when is_list(X) ->
     try
 	list_to_integer(X)
     catch
-	error:badarg -> to_integer(to_float(X))
+	error:badarg -> to_integer(list_to_float(X))
     end;
 to_integer(X) when is_integer(X) ->
     X.
@@ -74,7 +74,7 @@ to_float(X) when is_list(X) ->
     try
 	list_to_float(X)
     catch
-	error:badarg -> to_float(to_integer(X)) %% "500" -> 500.0
+	error:badarg -> to_float(list_to_integer(X)) %% "500" -> 500.0
     end;
 to_float(X) when is_integer(X) ->
     X * 1.0;
