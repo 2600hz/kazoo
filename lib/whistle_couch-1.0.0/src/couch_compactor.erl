@@ -18,7 +18,7 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(TIMEOUT, 1000 * 60 * 10). %% check every ten minutes
+-define(TIMEOUT, 1000 * 60 * 60). %% check every hour
 -define(COMPACT_THRESHOLD, 100000). %% ratio of DiskSize div DataSize
 
 -record(design_data, {
