@@ -16,8 +16,8 @@
 -define(FOLDER_SAVED, <<"saved">>).
 -define(FOLDER_DELETED, <<"deleted">>).
 
--define(UNAVAILABLE_GREETING, <<"unavailable_greeting.wav">>).
--define(NAME_RECORDING, <<"name_recording.wav">>).
+-define(UNAVAILABLE_GREETING, <<"unavailable_greeting.mp3">>).
+-define(NAME_RECORDING, <<"name_recording.mp3">>).
 
 -import(cf_call_command, [
                            answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
@@ -257,7 +257,7 @@ play_greeting(#mailbox{prompts=#prompts{person_at_exten=PersonAtExten, not_avail
                  ,{play, NotAvailable}
                 ], Call);
 play_greeting(#mailbox{mailbox_id=Id, has_unavailable_greeting=true}, #cf_call{account_db=Db}=Call) ->
-    play(<<$/, Db/binary, $/, Id/binary, $/, "unavailable_greeting.wav">>, Call).
+    play(<<$/, Db/binary, $/, Id/binary, $/, "unavailable_greeting.mp3">>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -610,7 +610,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
                  ,{play, ToRerecord}
                 ], Call),
 
-    case wait_for_dtmf(5000) of
+    case wait_for_dtmf(18000) of
 	{error, channel_hungup} ->
 	    logger:format_log(info, "CF_VOICEMAIL(~p): review was waiting for dtmf, got hungup, so let's save", [self()]),
 	    {ok, save};
