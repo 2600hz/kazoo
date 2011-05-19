@@ -18,13 +18,13 @@
 -export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_delete/1, db_replicate/1]).
 -export([admin_db_info/0, admin_db_info/1, admin_db_compact/1]).
 
--export([design_info/2]).
+-export([design_info/2, admin_design_info/2, design_compact/2, admin_design_compact/2]).
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
--export([all_docs/1, all_design_docs/1]).
+-export([all_docs/1, all_design_docs/1, admin_all_docs/1, admin_all_design_docs/1]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3]).
@@ -133,7 +133,7 @@ db_info() ->
             end
     end.
 
--spec(admin_db_info/0 :: () -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(admin_db_info/0 :: () -> tuple(ok, list(binary())) | tuple(error, atom())).
 admin_db_info() ->
     case get_admin_conn() of
         {} -> {error, db_not_reachable};
@@ -177,9 +177,38 @@ admin_db_info(DbName) ->
 %%--------------------------------------------------------------------
 design_info(DbName, DesignName) ->
     case get_db(DbName) of
-	{} -> {error, db_not_reachable};
+	{error, db_not_reachable}=E -> E;
 	Conn ->
 	    couchbeam:design_info(Conn, DesignName)
+    end.
+
+admin_design_info(DbName, DesignName) ->
+    case get_admin_db(DbName) of
+	{error, db_not_reachable}=E -> E;
+	Conn ->
+	    couchbeam:design_info(Conn, DesignName)
+    end.
+
+-spec(design_compact/2 :: (DbName :: binary(), Design :: binary()) -> boolean()).
+design_compact(DbName, Design) ->
+    case get_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:compact(#db{server=Conn, name=whistle_util:to_list(DbName)}, Design) of
+                {error, _} -> false;
+                ok -> true
+            end
+    end.
+
+-spec(admin_design_compact/2 :: (DbName :: binary(), Design :: binary()) -> boolean()).
+admin_design_compact(DbName, Design) ->
+    case get_admin_conn() of
+        {} -> false;
+        Conn ->
+            case couchbeam:compact(#db{server=Conn, name=whistle_util:to_list(DbName)}, Design) of
+                {error, _} -> false;
+                ok -> true
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -306,29 +335,34 @@ open_doc(DbName, DocId, Options) ->
     end.
 
 all_docs(DbName) ->
-    case get_db(DbName) of
-	{error, _Error} -> {error, db_not_reachable};
-	Db ->
-	    {ok, View} = couchbeam:all_docs(Db),
-	    case couchbeam_view:fetch(View) of
-		{ok, {struct, Prop}} ->
-		    Rows = props:get_value(<<"rows">>, Prop, []),
-		    {ok, Rows};
-		{error, _Error}=E -> E
-	    end
+    get_all_docs(get_db(DbName)).
+admin_all_docs(DbName) ->
+    get_all_docs(get_admin_db(DbName)).
+
+get_all_docs({error, _}) -> {error, db_not_reachable};
+get_all_docs(Db) ->
+    {ok, View} = couchbeam:all_docs(Db),
+    case couchbeam_view:fetch(View) of
+	{ok, {struct, Prop}} ->
+	    Rows = props:get_value(<<"rows">>, Prop, []),
+	    {ok, Rows};
+	{error, _Error}=E -> E
     end.
 
 all_design_docs(DbName) ->
-    case get_db(DbName) of
-	{error, _Error} -> {error, db_not_reachable};
-	Db ->
-	    {ok, View} = couchbeam:view(Db, "_design_docs", []),
-	    case couchbeam_view:fetch(View) of
-		{ok, {struct, Prop}} ->
-		    Rows = props:get_value(<<"rows">>, Prop, []),
-		    {ok, Rows};
-		{error, _Error}=E -> E
-	    end
+    get_all_design_docs(get_db(DbName)).
+admin_all_design_docs(DbName) ->
+    get_all_design_docs(get_admin_db(DbName)).
+
+get_all_design_docs({error, _}) ->
+    {error, db_not_reachable};
+get_all_design_docs(Db) ->
+    {ok, View} = couchbeam:view(Db, "_design_docs", []),
+    case couchbeam_view:fetch(View) of
+	{ok, {struct, Prop}} ->
+	    Rows = props:get_value(<<"rows">>, Prop, []),
+	    {ok, Rows};
+	{error, _Error}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -533,6 +567,10 @@ get_db(DbName) ->
     Conn = gen_server:call(?SERVER, get_conn),
     open_db(whistle_util:to_list(DbName), Conn).
 
+get_admin_db(DbName) ->
+    Conn = gen_server:call(?SERVER, get_admin_conn),
+    open_db(whistle_util:to_list(DbName), Conn).
+
 get_uuid() ->
     Conn = gen_server:call(?SERVER, get_conn),
     [UUID] = couchbeam:get_uuid(Conn),   
@@ -624,6 +662,8 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
     logger:format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
     Conn = get_new_connection(Host, Port, User, Pass),
     AdminConn = get_new_connection(Host, AdminPort, User, Pass),
+    spawn(fun() -> save_config(Host, Port, User, Pass, AdminPort) end),
+
     {reply, ok, State#state{host={Host, Port, AdminPort}
 			    ,connection=Conn
 			    ,admin_connection=AdminConn
@@ -635,6 +675,8 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
     Conn = get_new_connection(Host, Port, User, Pass),
     AdminConn = get_new_connection(Host, AdminPort, User, Pass),
+    spawn(fun() -> save_config(Host, Port, User, Pass, AdminPort) end),
+
     {reply, ok, State#state{host={Host,Port,AdminPort}
 			    ,connection=Conn
 			    ,admin_connection=AdminConn
@@ -748,12 +790,6 @@ get_new_conn(Host, Port, Opts) ->
     logger:format_log(info, "WHISTLE_COUCH(~p): Host ~p Opts ~p has conn ~p~n", [self(), Host, Opts, Conn]),
     {ok, _Version} = couchbeam:server_info(Conn),
     logger:format_log(info, "WHISTLE_COUCH(~p): Connected to ~p~n~p~n", [self(), Host, _Version]),
-    spawn(fun() ->
-		  case props:get_value(basic_auth, Opts) of
-		      undefined -> save_config(Host, Port);
-		      {U, P} -> save_config(Host, Port, U, P)
-		  end
-	  end),
     Conn.
 
 %%--------------------------------------------------------------------
@@ -836,13 +872,15 @@ save_config(H, Port) ->
 
 -spec(save_config/4 :: (H :: string(), Port :: integer(), U :: string(), P :: string()) -> no_return()).
 save_config(H, Port, U, P) ->
-    spawn(fun() ->
-                  {ok, Config} = get_startup_config(),    
-                  file:write_file(?STARTUP_FILE
-                                  ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
-                                               , "", [{couch_host, H, Port, U, P} | lists:keydelete(couch_host, 1, Config)])
-                                 )
-          end).
+    save_config(H, Port, U, P, ?DEFAULT_ADMIN_PORT).
+
+-spec(save_config/5 :: (H :: string(), Port :: integer(), U :: string(), P :: string(), AdminPort :: integer()) -> no_return()).
+save_config(H, Port, U, P, AdminPort) ->
+    {ok, Config} = get_startup_config(),    
+    file:write_file(?STARTUP_FILE
+		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
+				 , "", [{couch_host, H, Port, U, P, AdminPort} | lists:keydelete(couch_host, 1, Config)])
+		   ).
 
 -spec(remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict()).
 remove_ref(Ref, CH) ->
