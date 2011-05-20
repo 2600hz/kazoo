@@ -99,7 +99,7 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                           R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
 			  logger:format_log(info, "DB REPLICATE: ~p~n", [R]);
 		     (_) -> ok
-                  end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account", _/binary>>) -> true; (_) -> false end(Db)]).
+                  end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
 
 %%--------------------------------------------------------------------
 %% @public
