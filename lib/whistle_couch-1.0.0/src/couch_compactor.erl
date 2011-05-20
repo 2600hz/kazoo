@@ -108,20 +108,20 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, ok) ->
-    {ok, ShardDBs} = couch_mgr:admin_db_info(),
+    spawn(fun() ->
+		  {ok, ShardDBs} = couch_mgr:admin_db_info(),
 
-    DBs = [ binary:replace(DB, <<"/">>, <<"%2f">>, [global]) || DB <- ShardDBs ],
+		  DBs = [ binary:replace(DB, <<"/">>, <<"%2f">>, [global]) || DB <- ShardDBs ],
 
-    Data1 = lists:foldr(fun(DBName, Acc) ->
-				create_db_data(DBName, Acc)
-			end, [], DBs),
+		  Data1 = lists:foldr(fun(DBName, Acc) ->
+					      create_db_data(DBName, Acc)
+				      end, [], DBs),
 
-    Data2 = get_design_docs(Data1),
+		  Data2 = get_design_docs(Data1),
 
-    logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), length(Data2)]),
-
-    [ compact(D) || D <- Data2 ],
-    
+		  logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), length(Data2)]),
+		  [ spawn(fun() -> compact(D) end) || D <- Data2 ]
+	  end),
     {noreply, ok, ?TIMEOUT};
 
 handle_info(_Info, State) ->
