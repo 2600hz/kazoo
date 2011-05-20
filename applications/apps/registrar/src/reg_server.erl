@@ -91,8 +91,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +119,8 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{cache=undefined}=State) ->
     handle_info(timeout, State#state{cache=whereis(reg_cache)});
 
-handle_info(timeout, State) ->
+handle_info(timeout, #state{cache=Pid}=State) ->
+    prime_cache(Pid),
     Q = start_amqp(),
     Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     format_log(info, "REG_SRV(~p): Starting timer for ~p msec: ~p~n", [self(), ?CLEANUP_RATE, Ref]),
@@ -160,9 +160,7 @@ handle_info({'basic.consume_ok', _}, S) ->
 handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) ->
     logger:format_log(info, "REG_SRV(~p): Cache(~p) went down: ~p~n", [self(), Cache, _Reason]),
     erlang:demonitor(MRef),
-    {ok, Srv} = registrar_sup:start_cache(),
-    erlang:monitor(process, Srv),
-    {noreply, State#state{cache=Srv}};
+    {noreply, State#state{cache=undefined}, 50};
 
 handle_info(_Info, State) ->
     format_log(info, "REG_SRV: unhandled info: ~p~n", [_Info]),
@@ -180,8 +178,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(terminate/2 :: (_, #state{}) -> no_return()).
-terminate(_Reason, #state{my_q=Q}) ->
-    stop_amqp(Q),
+terminate(_, _) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -209,10 +206,6 @@ start_amqp() ->
     amqp_util:basic_consume(Q, [{exclusive, false}]),
     Q.
 
--spec(stop_amqp/1 :: (Q :: binary()) -> no_return()).
-stop_amqp(Q) ->
-    amqp_util:unbind_q_from_callmgr(Q).
-
 -spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
 handle_req(<<"application/json">>, Payload, State) ->
     {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
@@ -224,7 +217,7 @@ get_msg_type(Prop) ->
     { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) }.
 
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), Prop :: proplist(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
+process_req({<<"directory">>, <<"auth_req">>}, Prop, #state{my_q=Queue}) ->
     AuthU = props:get_value(<<"Auth-User">>, Prop),
     AuthR = props:get_value(<<"Auth-Domain">>, Prop),
 
@@ -240,7 +233,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, State) ->
                                                        ,{<<"Authorizing-ID">>, wh_json:get_value(<<"authorizing_id">>, AuthProp, <<"ignore">>)}
 						      ]
 					     }}
-		| whistle_api:default_headers(State#state.my_q % serverID is not important, though we may want to define it eventually
+		| whistle_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
 					      ,props:get_value(<<"Event-Category">>, Prop)
 					      ,<<"auth_resp">>
 					      ,?APP_NAME
@@ -262,6 +255,8 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, #state{cache=Cache}) ->
     case wh_cache:fetch_local(Cache, Id) of
 	{error, not_found} ->
 	    logger:format_log(info, "REG_SRV: cache miss, saving ~p ~p~n", [Id, Expires]),
+	    wh_cache:store_local(Cache, Id, Expires, Expires),
+
 	    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
 				 ,{<<"Contact">>, Contact1}
 				 ,{<<"_id">>, Id}
@@ -269,14 +264,13 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, #state{cache=Cache}) ->
 		       },
 	    logger:format_log(info, "REG_SRV: cache miss, saving md ~p~n", [MochiDoc]),
 	    {ok, _Doc} = couch_mgr:save_doc(?REG_DB, MochiDoc),
-	    logger:format_log(info, "REG_SRV: cache miss, saving d~p~n", [_Doc]),
-	    wh_cache:store_local(Cache, Id, Expires, Expires);
+	    logger:format_log(info, "REG_SRV: cache miss, saving d~p~n", [_Doc]);
 	{ok, _} ->
 	    logger:format_log(info, "REG_SRV: cache hit, ignoring ~p~n", [Id]),
 	    wh_cache:store_local(Cache, Id, Expires, Expires)
     end;
 
-process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
+process_req({<<"directory">>, <<"reg_query">>}, Prop, #state{my_q=Queue}) ->
     true = whistle_api:reg_query_v(Prop),
 
     Domain = props:get_value(<<"Realm">>, Prop),
@@ -301,7 +295,7 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, State) ->
 			 end,
 
 	    {ok, JSON} = whistle_api:reg_query_resp([ {<<"Fields">>, {struct, RespFields}}
-						      | whistle_api:default_headers(State#state.my_q
+						      | whistle_api:default_headers(Queue
 										    ,<<"directory">>
 										    ,<<"reg_query_resp">>
 										    ,?APP_NAME
@@ -361,3 +355,9 @@ auth_specific_response(AuthInfo) ->
 send_resp(Payload, RespQ) ->
     format_log(info, "REG_SERVE(~p): Paylowd to ~s: ~s~n", [self(), RespQ, Payload]),
     amqp_util:targeted_publish(RespQ, Payload, <<"application/json">>).
+
+-spec(prime_cache/1 :: (Pid :: pid()) -> no_return()).
+prime_cache(Pid) when is_pid(Pid) ->
+    {ok, Docs} = couch_mgr:all_docs(?REG_DB),
+    Expires = whistle_util:current_tstamp() + 3600,
+    _ = [ wh_cache:store_local(Pid, wh_json:get_value(<<"id">>, View), Expires) || View <- Docs ].
