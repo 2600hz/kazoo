@@ -607,9 +607,11 @@ get_admin_url() ->
     end.
 
 add_change_handler(DBName, DocID) ->
+    logger:format_log(info, "ADD_CHANGE_HANDLER for Pid: ~p for DB: ~p and Doc: ~p~n", [self(), DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
 
 add_change_handler(DBName, DocID, Pid) ->
+    logger:format_log(info, "ADD_CHANGE_HANDLER req by ~p for Pid: ~p for DB: ~p and Doc: ~p~n", [self(), Pid, DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
