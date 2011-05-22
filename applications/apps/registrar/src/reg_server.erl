@@ -277,7 +277,7 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, #state{my_q=Queue}) ->
     User = props:get_value(<<"Username">>, Prop),
 
     case couch_mgr:get_results("registrations", <<"registrations/newest">>
-				   ,[{<<"startkey">>, [Domain, User,0]}, {<<"endkey">>, [Domain, User, ""]}]) of
+				   ,[{<<"startkey">>, [Domain, User,?EMPTY_JSON_OBJECT]}, {<<"endkey">>, [Domain, User, 0]}, {<<"descending">>, true}]) of
 	{ok, []} -> format_log(info, "REG_SRV: no req_query_resp for ~s@~s~n", [User, Domain]);
 	{ok, [ViewRes | _]} ->
 	    DocId = wh_json:get_value(<<"id">>, ViewRes),
