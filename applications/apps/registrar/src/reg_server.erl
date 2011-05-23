@@ -254,20 +254,24 @@ process_req({<<"directory">>, <<"reg_success">>}, Prop, #state{cache=Cache}) ->
 
     case wh_cache:fetch_local(Cache, Id) of
 	{error, not_found} ->
-	    logger:format_log(info, "REG_SRV: cache miss, saving ~p ~p~n", [Id, Expires]),
-	    wh_cache:store_local(Cache, Id, Expires, Expires),
+	    logger:format_log(info, "REG_SRV: cache miss, rm old and save new ~p ~p~n", [Id, Expires]),
 
-	    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
-				 ,{<<"Contact">>, Contact1}
-				 ,{<<"_id">>, Id}
-				 | lists:keydelete(<<"Contact">>, 1, Prop)]
-		       },
-	    logger:format_log(info, "REG_SRV: cache miss, saving md ~p~n", [MochiDoc]),
-	    {ok, _Doc} = couch_mgr:save_doc(?REG_DB, MochiDoc),
-	    logger:format_log(info, "REG_SRV: cache miss, saving d~p~n", [_Doc]);
+	    remove_old_regs(props:get_value(<<"Username">>, Prop), props:get_value(<<"Realm">>, Prop), Cache),
+	    wh_cache:store_local(Cache, Id, Expires, Expires),
+	    store_reg(Prop, Id, Contact1);
 	{ok, _} ->
-	    logger:format_log(info, "REG_SRV: cache hit, ignoring ~p~n", [Id]),
-	    wh_cache:store_local(Cache, Id, Expires, Expires)
+	    logger:format_log(info, "REG_SRV: cache hit, check rev ~p~n", [Id]),
+	    case couch_mgr:lookup_doc_rev(<<"registrations">>, Id) of
+		{ok, _} ->
+		    logger:format_log(info, "REG_SRV: cache hit, rev exists ~p~n", [Id]),
+		    wh_cache:store_local(Cache, Id, Expires, Expires);
+		{error, _} ->
+		    logger:format_log(info, "REG_SRV: cache hit, rev missing for ~p@~p ~p~n"
+				      ,[props:get_value(<<"Username">>, Prop), props:get_value(<<"Realm">>, Prop), Id]),
+		    wh_cache:store_local(Cache, Id, Expires, Expires),
+		    remove_old_regs(props:get_value(<<"Username">>, Prop), props:get_value(<<"Realm">>, Prop), Cache),
+		    store_reg(Prop, Id, Contact1)
+	    end
     end;
 
 process_req({<<"directory">>, <<"reg_query">>}, Prop, #state{my_q=Queue}) ->
@@ -306,6 +310,29 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, #state{my_q=Queue}) ->
     end;
 process_req(_,_,_) ->
     not_handled.
+
+store_reg(Prop, Id, Contact) ->
+    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
+			 ,{<<"Contact">>, Contact}
+			 ,{<<"_id">>, Id}
+			 | lists:keydelete(<<"Contact">>, 1, Prop)]
+	       },
+    {ok, _Doc} = couch_mgr:save_doc(?REG_DB, MochiDoc),
+    logger:format_log(info, "REG_SRV: saving reg doc d~p~n", [Id]).
+
+remove_old_regs(User, Realm, Cache) ->
+    case couch_mgr:get_results(<<"registrations">>, <<"registrations/newest">>,
+			       [{<<"startkey">>, [Realm, User, 0]}, {<<"endkey">>, [Realm, User, ?EMPTY_JSON_OBJECT]}]) of
+	{ok, OldDocs} ->
+	    DelDocs = [ begin
+			    ID = wh_json:get_value(<<"id">>, Doc),
+			    wh_cache:erase_local(Cache, ID),
+			    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"registrations">>, ID),
+			    {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]}
+			end || Doc <- OldDocs ],
+	    couch_mgr:del_docs(<<"registrations">>, DelDocs);
+	_ -> ok
+    end.
 
 cleanup_registrations(Cache) ->
     %% get all documents with one or more tstamps < Now
