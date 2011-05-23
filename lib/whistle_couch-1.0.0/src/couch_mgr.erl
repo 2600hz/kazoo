@@ -21,7 +21,7 @@
 -export([design_info/2, admin_design_info/2, design_compact/2, admin_design_compact/2]).
 
 %% Document manipulation
--export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, lookup_doc_rev/2]).
+-export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, del_docs/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1, admin_all_design_docs/1]).
@@ -376,11 +376,7 @@ lookup_doc_rev(DbName, DocId) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
 	Db ->
-	    case couchbeam:lookup_doc_rev(Db, DocId) of
-		{error, _}=E -> E;
-		{ok, Rev} ->
-		    {ok, Rev}
-	    end
+	    couchbeam:lookup_doc_rev(Db, DocId)
     end.
 
 %%--------------------------------------------------------------------
@@ -427,7 +423,7 @@ save_docs(DbName, Docs, Opts) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: binary(), Doc :: proplist()) -> tuple(ok, term()) | tuple(error, atom())).
+-spec(del_doc/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, term()) | tuple(error, atom())).
 del_doc(DbName, Doc) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
@@ -436,6 +432,20 @@ del_doc(DbName, Doc) ->
                 {error, _Error}=E -> E;
                 {ok, Doc1} -> {ok, Doc1}
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% remove documents from the db
+%% @end
+%%--------------------------------------------------------------------
+-spec(del_docs/2 :: (DbName :: binary(), Docs :: json_objects()) -> tuple(ok, json_objects()) | tuple(error, atom())).
+del_docs(DbName, Docs) ->
+    case get_db(DbName) of
+        {error, _Error} -> {error, db_not_reachable};
+	Db ->
+	    couchbeam:delete_docs(Db, Docs)
     end.
 
 %%%===================================================================
