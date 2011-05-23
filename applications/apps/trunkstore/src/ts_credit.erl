@@ -18,7 +18,7 @@ start_link() ->
 	{ok, _} -> ok;
 	_ -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>)
     end,
-    {stop, normal}.
+    ignore.
 
 check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 		  ,account_doc_id=AccountDocId, callid=CallID, flat_rate_enabled=FlatRateEnabled}=Flags) ->
