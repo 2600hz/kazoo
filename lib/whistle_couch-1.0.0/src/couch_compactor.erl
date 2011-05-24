@@ -119,7 +119,7 @@ handle_info(timeout, ok) ->
 
 		  Data2 = get_design_docs(Data1),
 
-		  logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), length(Data2)]),
+		  %% logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), length(Data2)]),
 		  [ spawn(fun() -> compact(D) end) || D <- Data2 ]
 	  end),
     {noreply, ok, ?TIMEOUT};
@@ -194,14 +194,10 @@ compact(#db_data{db_name=DBName, data_size=DataSize, disk_size=DiskSize})
   when DiskSize > ?MIN_DISK_SIZE andalso DiskSize div DataSize > ?COMPACT_THRESHOLD ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
     logger:format_log(info, "compact db ~p: ~p", [DBName, couch_mgr:admin_db_compact(DBName)]);
-compact(#db_data{db_name=DBName, data_size=DataSize, disk_size=DiskSize}) when DataSize > 0 ->
-    logger:format_log(info, "compact db ~p: disk/data: ~p (~p/~p)", [DBName, DiskSize div DataSize, DiskSize, DataSize]);
 compact(#design_data{shards=Shards, design_name=Design, data_size=DataSize, disk_size=DiskSize})
   when DiskSize > ?MIN_DISK_SIZE andalso DiskSize div DataSize > ?COMPACT_THRESHOLD ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
     [ logger:format_log(info, "compact ds: ~p:~p: ~p~n", [DBName, Design, couch_mgr:admin_design_compact(DBName, Design)]) || DBName <- Shards ];
-compact(#design_data{shards=[H|_], design_name=Design, data_size=DataSize, disk_size=DiskSize}) when DataSize > 0 ->
-    logger:format_log(info, "compact shard ~p:~p: disk/data: ~p (~p/~p)", [H, Design, DiskSize div DataSize, DiskSize, DataSize]);
 compact(_) -> ok.
 
 find_shards(DBName, DBs) ->
