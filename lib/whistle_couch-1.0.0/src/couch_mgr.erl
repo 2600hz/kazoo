@@ -23,6 +23,7 @@
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, del_docs/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
+-export([ensure_saved/2]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1, admin_all_design_docs/1]).
 
@@ -371,7 +372,7 @@ get_all_design_docs(Db) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec(lookup_doc_rev/2 :: (DbName :: binary(), DocId :: binary()) -> tuple(error, term()) | tuple(ok, binary())).
+-spec(lookup_doc_rev/2 :: (DbName :: binary() | string(), DocId :: binary()) -> tuple(error, term()) | tuple(ok, binary())).
 lookup_doc_rev(DbName, DocId) ->
     case get_db(DbName) of
 	{error, _} -> {error, db_not_reachable};
@@ -395,16 +396,32 @@ save_doc(DbName, Doc) when is_list(Doc) ->
 save_doc(DbName, Doc) ->
     save_doc(DbName, Doc, []).
 
+%% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
+%% any other error is returned
+-spec(ensure_saved/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, json_object()) | tuple(erro, atom())).
+-spec(ensure_saved/3 :: (DbName :: binary() | #db{}, Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(erro, atom())).
+ensure_saved(DbName, Doc) ->
+    ensure_saved(DbName, Doc, []).
+ensure_saved(DbName, Doc, Opts) when is_binary(DbName) ->
+    case get_db(DbName) of
+	{error, _} -> {error, db_not_reachable};
+	Db -> ensure_saved(Db, Doc, Opts)
+    end;
+ensure_saved(#db{name=DbName}=Db, Doc, Opts) ->
+    case couchbeam:save_doc(Db, Doc, Opts) of
+	{ok, _}=Saved -> Saved;
+	{error, conflict} ->
+	    Id = wh_json:get_value(<<"_id">>, Doc),
+	    {ok, Rev} = lookup_doc_rev(DbName, Id),
+	    ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
+	E -> E
+    end.
 
 -spec(save_doc/3 :: (DbName :: binary(), Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(error, atom())).
 save_doc(DbName, {struct, _}=Doc, Opts) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
-	Db ->
-            case couchbeam:save_doc(Db, Doc, Opts) of
-                {error, _Error}=E -> E;
-                {ok, Doc1} -> {ok, Doc1}
-            end
+	Db -> couchbeam:save_doc(Db, Doc, Opts)
     end.
 
 save_docs(DbName, Docs) ->
