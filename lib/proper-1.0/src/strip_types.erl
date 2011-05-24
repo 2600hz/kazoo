@@ -1,5 +1,6 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,9 +17,11 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
 %%% @version {@version}
+%%% @author Manolis Papadakis <manopapad@gmail.com>
 %%% @doc This modules contains a parse transformer that removes all type-related
 %%%	 annotations from a module. Its intended use within PropEr is to allow
 %%%	 the main application modules, which make heavy use of recursive types,
@@ -42,6 +45,7 @@
 %%	{attribute,LINE,callback,_}
 -define(ATTRS_TO_STRIP, [export_type,type,opaque,spec,callback]).
 
+%% @private
 parse_transform(Forms, _Options) ->
     strip_types(Forms, []).
 

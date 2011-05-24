@@ -1,5 +1,6 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,9 +17,11 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
 %%% @version {@version}
+%%% @author Manolis Papadakis <manopapad@gmail.com>
 %%% @doc Type manipulation functions and predefined types are contained in this
 %%%	 module.
 
@@ -27,7 +30,8 @@
 
 -export([integer/2, float/2, atom/0, binary/0, binary/1, bitstring/0,
 	 bitstring/1, list/1, vector/2, union/1, weighted_union/1,tuple/1,
-	 loose_tuple/1, exactly/1, fixed_list/1, function/2, any/0]).
+	 loose_tuple/1, exactly/1, fixed_list/1, function/2, any/0,
+	 shrink_list/1, safe_union/1, safe_weighted_union/1]).
 -export([integer/0, non_neg_integer/0, pos_integer/0, neg_integer/0, range/2,
 	 float/0, non_neg_float/0, number/0, boolean/0, byte/0, char/0,
 	 list/0, tuple/0, string/0, wunion/1, term/0, timeout/0, arity/0]).
@@ -40,12 +44,13 @@
 -export([cook_outer/1, is_type/1, equal_types/2, is_raw_type/1, to_binary/1,
 	 from_binary/1, get_prop/2, find_prop/2, safe_is_instance/2,
 	 is_instance/2, unwrap/1, weakly/1, strongly/1, satisfies_all/2,
-	 new_type/2, list_get_indices/1]).
+	 new_type/2, subtype/2, list_get_indices/1]).
 -export([lazy/1, sized/1, bind/3, shrinkwith/2, add_constraint/3,
 	 native_type/2, distlist/3, with_parameter/3, with_parameters/2,
 	 parameter/1, parameter/2]).
+-export([le/2]).
 
--export_type([type/0, raw_type/0]).
+-export_type([type/0, raw_type/0, extint/0, extnum/0]).
 
 -include("proper_internal.hrl").
 
@@ -93,24 +98,31 @@
 -type type_kind() :: 'basic' | 'wrapper' | 'constructed' | 'container' | atom().
 -type instance_test() :: fun((proper_gen:imm_instance()) -> boolean()).
 -type index() :: pos_integer().
+%% @alias
 -type value() :: term().
+%% @private_type
+%% @alias
+-type extint()  :: integer() | 'inf'.
+%% @private_type
+%% @alias
+-type extnum()  :: number()  | 'inf'.
 -type constraint_fun() :: fun((proper_gen:instance()) -> boolean()).
 
 -opaque type() :: {'$type', [type_prop()]}.
+%% @type raw_type()
 -type raw_type() :: type() | [raw_type()] | loose_tuple(raw_type()) | term().
--type type_prop_name() :: 'kind' | 'generator' | 'straight_gen' | 'reverse_gen'
-			| 'parts_type' | 'combine' | 'alt_gens'
-			| 'shrink_to_parts' | 'size_transform' | 'is_instance'
-			| 'shrinkers' | 'noshrink' | 'internal_type'
-			| 'internal_types' | 'get_length' | 'split' | 'join'
-			| 'get_indices' | 'remove' | 'retrieve' | 'update'
-			| 'constraints' | 'content' | 'default'.
+-type type_prop_name() :: 'kind' | 'generator' | 'reverse_gen' | 'parts_type'
+			| 'combine' | 'alt_gens' | 'shrink_to_parts'
+			| 'size_transform' | 'is_instance' | 'shrinkers'
+			| 'noshrink' | 'internal_type' | 'internal_types'
+			| 'get_length' | 'split' | 'join' | 'get_indices'
+			| 'remove' | 'retrieve' | 'update' | 'constraints'
+			| 'content' | 'default'.
 
 -type type_prop_value() :: term().
 -type type_prop() ::
       {'kind', type_kind()}
     | {'generator', proper_gen:generator()}
-    | {'straight_gen', proper_gen:straight_gen()}
     | {'reverse_gen', proper_gen:reverse_gen()}
     | {'parts_type', type()}
     | {'combine', proper_gen:combine_fun()}
@@ -156,6 +168,9 @@
 %%------------------------------------------------------------------------------
 %% Type manipulation functions
 %%------------------------------------------------------------------------------
+
+%% TODO: We shouldn't need the fully qualified type name in the range of these
+%%       functions.
 
 %% @private
 %% TODO: just cook/1 ?
@@ -246,21 +261,25 @@ get_prop(PropName, {'$type',Props}) ->
 find_prop(PropName, {'$type',Props}) ->
     orddict:find(PropName, Props).
 
+%% @private
 -spec new_type([type_prop()], type_kind()) -> proper_types:type().
 new_type(PropList, Kind) ->
     Type = type_from_list(PropList),
     add_prop(kind, Kind, Type).
 
+%% @private
 -spec subtype([type_prop()], proper_types:type()) -> proper_types:type().
 %% TODO: should the 'is_instance' function etc. be reset for subtypes?
 subtype(PropList, Type) ->
     add_props(PropList, Type).
 
+%% @private
 -spec is_inst(proper_gen:instance(), raw_type()) ->
 	  boolean() | {'error',{'typeserver',term()}}.
 is_inst(Instance, RawType) ->
     is_inst(Instance, RawType, 10).
 
+%% @private
 -spec is_inst(proper_gen:instance(), raw_type(), size()) ->
 	  boolean() | {'error',{'typeserver',term()}}.
 is_inst(Instance, RawType, Size) ->
@@ -428,8 +447,7 @@ native_type(Mod, TypeStr) ->
 %% Basic types
 %%------------------------------------------------------------------------------
 
--spec integer(proper_arith:extint(), proper_arith:extint()) ->
-	  proper_types:type().
+-spec integer(extint(), extint()) -> proper_types:type().
 integer(Low, High) ->
     ?BASIC([
 	{generator, fun(Size) -> proper_gen:integer_gen(Size, Low, High) end},
@@ -438,15 +456,13 @@ integer(Low, High) ->
 	 [fun(X,_T,S) -> proper_shrink:number_shrinker(X, Low, High, S) end]}
     ]).
 
--spec integer_test(proper_gen:imm_instance(), proper_arith:extint(),
-		   proper_arith:extint()) -> boolean().
+-spec integer_test(proper_gen:imm_instance(), extint(), extint()) -> boolean().
 integer_test(X, Low, High) ->
     is_integer(X)
-    andalso proper_arith:le(Low, X)
-    andalso proper_arith:le(X, High).
+    andalso le(Low, X)
+    andalso le(X, High).
 
--spec float(proper_arith:extnum(), proper_arith:extnum()) ->
-	  proper_types:type().
+-spec float(extnum(), extnum()) -> proper_types:type().
 float(Low, High) ->
     ?BASIC([
 	{generator, fun(Size) -> proper_gen:float_gen(Size, Low, High) end},
@@ -455,12 +471,16 @@ float(Low, High) ->
 	 [fun(X,_T,S) -> proper_shrink:number_shrinker(X, Low, High, S) end]}
     ]).
 
--spec float_test(proper_gen:imm_instance(), proper_arith:extnum(),
-		 proper_arith:extnum()) -> boolean().
+-spec float_test(proper_gen:imm_instance(), extnum(), extnum()) -> boolean().
 float_test(X, Low, High) ->
     is_float(X)
-    andalso proper_arith:le(Low, X)
-    andalso proper_arith:le(X, High).
+    andalso le(Low, X)
+    andalso le(X, High).
+
+-spec le(extnum(), extnum()) -> boolean().
+le(inf, _B) -> true;
+le(_A, inf) -> true;
+le(A, B)    -> A =< B.
 
 -spec atom() -> proper_types:type().
 atom() ->
@@ -482,7 +502,6 @@ atom_test(X) ->
 binary() ->
     ?WRAPPER([
 	{generator, fun proper_gen:binary_gen/1},
-	{straight_gen, fun proper_gen:binary_str_gen/1},
 	{reverse_gen, fun proper_gen:binary_rev/1},
 	{is_instance, fun erlang:is_binary/1}
     ]).
@@ -491,7 +510,6 @@ binary() ->
 binary(Len) ->
     ?WRAPPER([
 	{generator, fun() -> proper_gen:binary_len_gen(Len) end},
-	{straight_gen, fun() -> proper_gen:binary_len_str_gen(Len) end},
 	{reverse_gen, fun proper_gen:binary_rev/1},
 	{is_instance, fun(X) -> binary_len_test(X, Len) end}
     ]).
@@ -538,11 +556,30 @@ list(RawElemType) ->
 	{update, fun proper_arith:list_update/3}
     ]).
 
+-spec shrink_list([term()]) -> proper_types:type().
+shrink_list(List) ->
+    ?CONTAINER([
+	{generator, fun() -> List end},
+	{is_instance, fun(X) -> is_sublist(X, List) end},
+	{get_length, fun erlang:length/1},
+	{split, fun lists:split/2},
+	{join, fun lists:append/2},
+	{get_indices, fun list_get_indices/1},
+	{remove, fun proper_arith:list_remove/2}
+    ]).
+
+-spec is_sublist([term()], [term()]) -> boolean().
+is_sublist([], _) -> true;
+is_sublist(_, []) -> false;
+is_sublist([H|T1], [H|T2]) -> is_sublist(T1, T2);
+is_sublist(Slice, [_|T2]) -> is_sublist(Slice, T2).
+
 -spec list_test(proper_gen:imm_instance(), proper_types:type()) -> boolean().
 list_test(X, ElemType) ->
     is_list(X)
     andalso lists:all(fun(E) -> is_instance(E, ElemType) end, X).
 
+%% @private
 -spec list_get_indices(list()) -> [position()].
 list_get_indices(List) ->
     lists:seq(1, length(List)).
@@ -609,6 +646,27 @@ weighted_union(RawFreqChoices) ->
     ?SUBTYPE(union(Choices), [
 	{generator, fun() -> proper_gen:weighted_union_gen(FreqChoices) end}
     ]).
+
+%% @private
+-spec safe_union([raw_type(),...]) -> proper_types:type().
+safe_union(RawChoices) ->
+    Choices = [cook_outer(C) || C <- RawChoices],
+    subtype(
+      [{generator, fun() -> proper_gen:safe_union_gen(Choices) end}],
+      union(Choices)).
+
+%% @private
+-spec safe_weighted_union([{frequency(),raw_type()},...]) ->
+         proper_types:type().
+safe_weighted_union(RawFreqChoices) ->
+    CookFreqType = fun({Freq,RawType}) ->
+			   {Freq,cook_outer(RawType)} end,
+    FreqChoices = lists:map(CookFreqType, RawFreqChoices),
+    Choices = [T || {_F,T} <- FreqChoices],
+    subtype(
+      [{generator,
+	fun() -> proper_gen:safe_weighted_union_gen(FreqChoices) end}],
+      union(Choices)).
 
 -spec tuple([raw_type()]) -> proper_types:type().
 tuple(RawFields) ->
@@ -768,7 +826,7 @@ pos_integer() -> integer(1, inf).
 -spec neg_integer() -> proper_types:type().
 neg_integer() -> integer(inf, -1).
 
--spec range(proper_arith:extint(),proper_arith:extint()) -> proper_types:type().
+-spec range(extint(), extint()) -> proper_types:type().
 range(Low, High) -> integer(Low, High).
 
 -spec float() -> proper_types:type().
@@ -829,8 +887,7 @@ real() -> float().
 -spec bool() -> proper_types:type().
 bool() -> boolean().
 
--spec choose(proper_arith:extint(), proper_arith:extint()) ->
-	  proper_types:type().
+-spec choose(extint(), extint()) -> proper_types:type().
 choose(Low, High) -> integer(Low, High).
 
 -spec elements([raw_type(),...]) -> proper_types:type().

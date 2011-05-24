@@ -1,3 +1,28 @@
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
+%%%
+%%% This file is part of PropEr.
+%%%
+%%% PropEr is free software: you can redistribute it and/or modify
+%%% it under the terms of the GNU General Public License as published by
+%%% the Free Software Foundation, either version 3 of the License, or
+%%% (at your option) any later version.
+%%%
+%%% PropEr is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%%% GNU General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License
+%%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
+
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @version {@version}
+%%% @author Eirini Arvaniti <eirinibob@gmail.com>
+
 -module(ets_counter).
 -include_lib("proper/include/proper.hrl").
 
@@ -7,7 +32,7 @@
 ets_inc(Key, Inc) ->
     case ets:lookup(counter, Key) of
 	[] ->
-	    timer:sleep(1),
+	    erlang:yield(),
 	    ets:insert(counter, {Key,Inc}),
 	    Inc;
 	[{Key,OldValue}] ->
@@ -52,7 +77,7 @@ postcondition(S, {call,_,ets_inc,[Key, Inc]}, Res) ->
 	false ->
 	    Res =:= Inc
     end.
-	
+
 next_state(S, _Res, {call,_,ets_inc,[Key, Inc]}) ->
     case proplists:is_defined(Key, S) of
 	 true ->
