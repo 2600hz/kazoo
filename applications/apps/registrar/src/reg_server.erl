@@ -241,6 +241,7 @@ process_req({<<"directory">>, <<"auth_req">>}, Prop, #state{my_q=Queue}) ->
     {ok, JSON} = auth_response(AuthProp, Defaults),
     RespQ = props:get_value(<<"Server-ID">>, Prop),
     send_resp(JSON, RespQ);
+
 process_req({<<"directory">>, <<"reg_success">>}, Prop, #state{cache=Cache}) ->
     true = whistle_api:reg_success_v(Prop),
 
@@ -311,26 +312,29 @@ process_req({<<"directory">>, <<"reg_query">>}, Prop, #state{my_q=Queue}) ->
 process_req(_,_,_) ->
     not_handled.
 
+-spec(store_reg/3 :: (Prop :: proplist(), Id :: binary(), Contact :: binary()) -> no_return()).
 store_reg(Prop, Id, Contact) ->
     MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
 			 ,{<<"Contact">>, Contact}
 			 ,{<<"_id">>, Id}
 			 | lists:keydelete(<<"Contact">>, 1, Prop)]
 	       },
-    {ok, _Doc} = couch_mgr:save_doc(?REG_DB, MochiDoc),
-    logger:format_log(info, "REG_SRV: saving reg doc d~p~n", [Id]).
+    couch_mgr:ensure_saved(?REG_DB, MochiDoc).
 
+-spec(remove_old_regs/3 :: (User :: binary(), Realm :: binary(), Cache :: pid()) -> no_return()).
 remove_old_regs(User, Realm, Cache) ->
     case couch_mgr:get_results(<<"registrations">>, <<"registrations/newest">>,
 			       [{<<"startkey">>, [Realm, User, 0]}, {<<"endkey">>, [Realm, User, ?EMPTY_JSON_OBJECT]}]) of
 	{ok, OldDocs} ->
-	    DelDocs = [ begin
-			    ID = wh_json:get_value(<<"id">>, Doc),
-			    wh_cache:erase_local(Cache, ID),
-			    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"registrations">>, ID),
-			    {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]}
-			end || Doc <- OldDocs ],
-	    couch_mgr:del_docs(<<"registrations">>, DelDocs);
+	    spawn(fun() ->
+			  DelDocs = [ begin
+					  ID = wh_json:get_value(<<"id">>, Doc),
+					  wh_cache:erase_local(Cache, ID),
+					  {ok, Rev} = couch_mgr:lookup_doc_rev(<<"registrations">>, ID),
+					  {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]}
+				      end || Doc <- OldDocs ],
+			  couch_mgr:del_docs(<<"registrations">>, DelDocs)
+		  end);
 	_ -> ok
     end.
 
