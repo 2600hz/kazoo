@@ -13,13 +13,23 @@
 %% API
 -export([start_link/0, check/1]).
 
+-spec(start_link/0 :: () -> ignore).
 start_link() ->
+    couch_mgr:db_create(?TS_RATES_DB),
+    {ok, DBInfo} = couch_mgr:db_info(?TS_RATES_DB),
+
+    case wh_json:get_value(<<"doc_count">>, DBInfo) of
+	0 -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"sample_rate_doc.json">>);
+	_ -> ok
+    end,
+
     case couch_mgr:update_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>) of
 	{ok, _} -> ok;
 	_ -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>)
     end,
     ignore.
 
+-spec(check/1 :: (Flags :: #route_flags{}) -> tuple(ok, #route_flags{}) | tuple(error, atom())).
 check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 		  ,account_doc_id=AccountDocId, callid=CallID, flat_rate_enabled=FlatRateEnabled}=Flags) ->
     <<Start:1/binary, _/binary>> = Number = whistle_util:to_1npan(To),
