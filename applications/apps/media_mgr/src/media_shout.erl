@@ -204,12 +204,12 @@ handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
     MediaLoop ! {add_socket, Socket},
     {noreply, S};
 
-handle_info({'EXIT', From, ok}, #state{media_loop=MediaLoop}) when From =:= MediaLoop ->
+handle_info({'EXIT', From, ok}, #state{media_loop=MediaLoop}=S) when From =:= MediaLoop ->
     logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down ok, stopping~n", [self(), From]),
-    {stop, normal, #state{}};
-handle_info({'EXIT', From, normal}, #state{media_loop=MediaLoop}) when From =:= MediaLoop ->
+    {stop, normal, S};
+handle_info({'EXIT', From, normal}, #state{media_loop=MediaLoop}=S) when From =:= MediaLoop ->
     logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down normal, stopping~n", [self(), From]),
-    {stop, normal, #state{}};
+    {stop, normal, S};
 handle_info({'EXIT', From, Reason}, #state{media_loop=MediaLoop, media_file=MediaFile}=S) when From =:= MediaLoop ->
     logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down: ~p~n", [self(), From, Reason]),
     MediaLoop1 = spawn_link(fun() -> play_media(MediaFile) end),
@@ -231,8 +231,10 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(_Reason, #state{lsocket=undefined}) ->
+    logger:format_log(error, "SHOUT(~p): Shutting down: ~p~n", [self(), _Reason]);
 terminate(_Reason, #state{lsocket=LSock}) ->
-    logger:format_log(error, "SHOUT(~p): Shutting down: ~p~n", [self(), _Reason]),
+    logger:format_log(error, "SHOUT(~p): Closing socket and shutting down: ~p~n", [self(), _Reason]),
     gen_tcp:close(LSock).
 
 %%--------------------------------------------------------------------
