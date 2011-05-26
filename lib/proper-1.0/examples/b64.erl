@@ -1,5 +1,6 @@
-%%% Copyright 2010-2011 Manolis Papadakis (manopapad@gmail.com)
-%%%                 and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,7 +17,12 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%% PropEr usage example: Some simple testcases for stdlib's base64
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @version {@version}
+%%% @author Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @doc PropEr usage example: Some simple testcases for stdlib's base64
 
 -module(b64).
 -export([prop_enc_dec/0]).

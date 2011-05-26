@@ -1,5 +1,6 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,9 +17,11 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
 %%% @version {@version}
+%%% @author Manolis Papadakis <manopapad@gmail.com>
 %%% @doc The generator subsystem and generators for basic types are contained
 %%%	 in this module.
 
@@ -29,22 +32,15 @@
 -export([generate/1, normal_gen/1, alt_gens/1, clean_instance/1,
 	 get_ret_type/1]).
 -export([integer_gen/3, float_gen/3, atom_gen/1, atom_rev/1, binary_gen/1,
-	 binary_str_gen/1, binary_rev/1, binary_len_gen/1, binary_len_str_gen/1,
-	 bitstring_gen/1, bitstring_rev/1, bitstring_len_gen/1, list_gen/2,
-	 distlist_gen/3, vector_gen/2, union_gen/1, weighted_union_gen/1,
-	 tuple_gen/1, loose_tuple_gen/2, loose_tuple_rev/2, exactly_gen/1,
-	 fixed_list_gen/1, function_gen/2, any_gen/1, native_type_gen/2]).
+	 binary_rev/1, binary_len_gen/1, bitstring_gen/1, bitstring_rev/1,
+	 bitstring_len_gen/1, list_gen/2, distlist_gen/3, vector_gen/2,
+	 union_gen/1, weighted_union_gen/1, tuple_gen/1, loose_tuple_gen/2,
+	 loose_tuple_rev/2, exactly_gen/1, fixed_list_gen/1, function_gen/2,
+	 any_gen/1, native_type_gen/2, safe_weighted_union_gen/1,
+	 safe_union_gen/1]).
 
 -export_type([instance/0, imm_instance/0, sized_generator/0, nosize_generator/0,
-	      generator/0, straight_gen/0, reverse_gen/0, combine_fun/0,
-	      alt_gens/0]).
-%% @private_type sized_generator
-%% @private_type nosize_generator
-%% @private_type generator
-%% @private_type straight_gen
-%% @private_type reverse_gen
-%% @private_type combine_fun
-%% @private_type alt_gens
+	      generator/0, reverse_gen/0, combine_fun/0, alt_gens/0]).
 
 -include("proper_internal.hrl").
 -compile({parse_transform, vararg}).
@@ -66,9 +62,6 @@
 -type sized_generator() :: fun((size()) -> imm_instance()).
 -type nosize_generator() :: fun(() -> imm_instance()).
 -type generator() :: sized_generator() | nosize_generator().
--type sized_straight_gen() :: fun((size()) -> {'ok',instance()} | 'error').
--type nosize_straight_gen() :: fun(() -> {'ok',instance()} | 'error').
--type straight_gen() :: sized_straight_gen() | nosize_straight_gen().
 -type reverse_gen() :: fun((instance()) -> imm_instance()).
 -type combine_fun() :: fun((instance()) -> imm_instance()).
 -type alt_gens() :: fun(() -> [imm_instance()]).
@@ -91,6 +84,7 @@ safe_generate(RawType) ->
 	throw:{'$typeserver',SubReason} -> {error, {typeserver,SubReason}}
     end.
 
+%% @private
 -spec generate(proper_types:raw_type()) -> imm_instance().
 generate(RawType) ->
     Type = proper_types:cook_outer(RawType),
@@ -154,13 +148,8 @@ generate(Type, TriesLeft, Fallback) ->
 			false -> ImmInstance1
 		    end,
 		{'$used',ImmParts,ImmInstance2};
-	    Kind ->
-		ImmInstance1 =
-		    case Kind of
-			%% TODO: should we have an option to enable this?
-			wrapper -> normal_or_str_gen(Type);
-			_       -> normal_gen(Type)
-		    end,
+	    _ ->
+		ImmInstance1 = normal_gen(Type),
 		case proper_types:is_raw_type(ImmInstance1) of
 		    true  -> generate(ImmInstance1);
 		    false -> ImmInstance1
@@ -252,29 +241,10 @@ contains_fun(_Term) ->
 %% Utility functions
 %%-----------------------------------------------------------------------------
 
--spec normal_or_str_gen(proper_types:type()) -> imm_instance().
-normal_or_str_gen(Type) ->
-    case proper_types:find_prop(straight_gen,Type) of
-	{ok,StraightGen} ->
-	    case call_gen(StraightGen, Type) of
-		{ok,Instance} ->
-		    ReverseGen = proper_types:get_prop(reverse_gen, Type),
-		    ReverseGen(Instance);
-		error ->
-		    normal_gen(Type)
-	    end;
-	error ->
-	    normal_gen(Type)
-    end.
-
 %% @private
 -spec normal_gen(proper_types:type()) -> imm_instance().
 normal_gen(Type) ->
-    call_gen(proper_types:get_prop(generator,Type),Type).
-
--spec call_gen(generator() | straight_gen(), proper_types:type()) ->
-	  imm_instance() | {'ok',instance()} | 'error'.
-call_gen(Gen, Type) ->
+    Gen = proper_types:get_prop(generator, Type),
     if
 	is_function(Gen, 0) -> Gen();
 	is_function(Gen, 1) -> Gen(proper:get_size(Type))
@@ -311,7 +281,7 @@ clean_instance(ImmInstance) ->
 %%-----------------------------------------------------------------------------
 
 %% @private
--spec integer_gen(size(), proper_arith:extint(), proper_arith:extint()) ->
+-spec integer_gen(size(), proper_types:extint(), proper_types:extint()) ->
 	  integer().
 integer_gen(Size, inf, inf) ->
     proper_arith:rand_int(Size);
@@ -323,7 +293,7 @@ integer_gen(_Size, Low, High) ->
     proper_arith:rand_int(Low, High).
 
 %% @private
--spec float_gen(size(), proper_arith:extnum(), proper_arith:extnum()) ->
+-spec float_gen(size(), proper_types:extnum(), proper_types:extnum()) ->
 	  float().
 float_gen(Size, inf, inf) ->
     proper_arith:rand_float(Size);
@@ -360,12 +330,6 @@ binary_gen(Size) ->
 	 list_to_binary(Bytes)).
 
 %% @private
--spec binary_str_gen(size()) -> {'ok',binary()} | 'error'.
-binary_str_gen(Size) ->
-    Len = proper_arith:rand_int(0, Size),
-    binary_len_str_gen(Len).
-
-%% @private
 -spec binary_rev(binary()) -> imm_instance().
 binary_rev(Binary) ->
     {'$used', binary_to_list(Binary), Binary}.
@@ -376,11 +340,6 @@ binary_len_gen(Len) ->
     ?LET(Bytes,
 	 proper_types:vector(Len, proper_types:byte()),
 	 list_to_binary(Bytes)).
-
-%% @private
--spec binary_len_str_gen(length()) -> {'ok',binary()} | 'error'.
-binary_len_str_gen(Len) ->
-    proper_arith:rand_bytes(Len).
 
 %% @private
 -spec bitstring_gen(size()) -> proper_types:type().
@@ -461,6 +420,28 @@ union_gen(Choices) ->
 weighted_union_gen(FreqChoices) ->
     {_Choice,Type} = proper_arith:freq_choose(FreqChoices),
     generate(Type).
+
+%% @private
+-spec safe_union_gen([proper_types:type(),...]) -> imm_instance().
+safe_union_gen(Choices) ->
+    {Choice,Type} = proper_arith:rand_choose(Choices),
+    try generate(Type)
+    catch
+	error:_ ->
+	    safe_union_gen(proper_arith:list_remove(Choice, Choices))
+    end.
+
+%% @private
+-spec safe_weighted_union_gen([{frequency(),proper_types:type()},...]) ->
+         imm_instance().
+safe_weighted_union_gen(FreqChoices) ->
+    {Choice,Type} = proper_arith:freq_choose(FreqChoices),
+    try generate(Type)
+    catch
+	error:_ ->
+	    safe_weighted_union_gen(proper_arith:list_remove(Choice,
+							     FreqChoices))
+    end.
 
 %% @private
 -spec tuple_gen([proper_types:type()]) -> tuple().
@@ -556,6 +537,7 @@ create_fun(Arity, RetType, FunSeed) ->
     Err = fun() -> throw('$arity_limit') end,
     'MAKE_FUN'(Arity, Handler, Err).
 
+%% @private
 -spec get_ret_type(function()) -> proper_types:type().
 get_ret_type(Fun) ->
     {arity,Arity} = erlang:fun_info(Fun, arity),

@@ -1,5 +1,6 @@
-%%% Copyright 2011 Eirini Arvaniti (eirinibob@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,45 +17,45 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% File           : ets_statem.erl
-%%% Description    : Simple statem test for ets tables
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @version {@version}
+%%% @author Eirini Arvaniti <eirinibob@gmail.com>
+%%% @doc Simple statem test for ets tables
 
 -module(ets_statem).
--export([initial_state/0, command/1, precondition/2, postcondition/3,
-	next_state/3]).
--export([sample_commands/0, sample_parallel_commands/0]).
+-behaviour(proper_statem).
+
+-export([initial_state/0, initial_state/1, initial_state/2, command/1,
+	 precondition/2, postcondition/3, next_state/3]).
+-export([sample_commands/0]).
 
 -include_lib("proper/include/proper.hrl").
 
--type object() :: tuple().
+-type object()     :: tuple().
 -type table_type() :: 'set' | 'ordered_set' | 'bag' | 'duplicate_bag'.
 
--record(state, {stored = []  :: [object()],       %% list of objects stored in ets table
-		type         :: table_type()}).   %% type of ets table
+-record(state, {tids   = []  :: [ets:tid()],
+		stored = []  :: [object()],      %% list of objects stored in
+		                                 %% ets table
+		type   = set :: table_type()}).  %% type of ets table
 
--define(TAB, table).
--define(INT_KEYS, lists:seq(0,10)).
--define(FLOAT_KEYS, [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]).
+-define(INT_KEYS, lists:seq(0, 2)).
+-define(FLOAT_KEYS, [float(Key) || Key <- ?INT_KEYS]).
 
 
 %%% Generators
 
-key() -> frequency([{5, integer_key()},
-		    {1, float_key()}]).
+key() -> frequency([{2, elements(?INT_KEYS)},
+		    {1, elements(?FLOAT_KEYS)}]).
 
-integer_key() ->
-    elements(?INT_KEYS).
-
-float_key() ->
-    elements(?FLOAT_KEYS).
-
-int_or_bin() ->
-    frequency([{5, integer()}, {1, binary()}]).
+value() ->
+    frequency([{5, int()},
+	       {1, elements([a, b, c, d])}]).
 
 object() ->
-    oneof([{key(), int_or_bin()},
-	   {key(), int_or_bin(), binary()},
-	   {key(), int_or_bin(), binary(), binary()}]).
+    {key(), value()}.
 
 object(S) ->
     elements(S#state.stored).
@@ -62,41 +63,52 @@ object(S) ->
 key(S) ->
     ?LET(Object, object(S), element(1, Object)).
 
-small_int() ->
-    resize(10, integer()).
-
-table_type() ->
-    noshrink(oneof([set, ordered_set, bag, duplicate_bag])).
+tid(S) ->
+    elements(S#state.tids).
 
 
 %%% Abstract state machine for ets table
 
 initial_state() ->
-    Type = parameter(table_type),
-    #state{type=Type}.
+    #state{type = set}.
 
+initial_state(Type) ->
+    #state{type = Type}.
+
+initial_state(Type, parallel) ->
+    #state{tids = [tab], type = Type}.
+
+command(#state{tids = [], type = Type}) ->
+    {call,ets,new,[tab, [Type]]};
 command(S) ->
-    oneof([{call,ets,delete_object,[?TAB, object(S)]} || S#state.stored =/= []] ++
-	  [{call,ets,delete,[?TAB, key(S)]} || S#state.stored =/= []] ++
-	  [{call,ets,insert,[?TAB, object()]},
-	   {call,ets,insert_new,[?TAB, object()]},
-	   {call,ets,lookup,[?TAB,key()]}] ++
-	  [{call,ets,update_counter,[?TAB,key(S),small_int()]}
+    oneof([{call,ets,insert,[tid(S), object()]},
+	   {call,ets,delete,[tid(S), key()]}] ++
+	  [{call,ets,lookup_element,[tid(S), key(S), range(1, 2)]}
+	   || S#state.stored =/= []] ++
+	  [{call,ets,update_counter,[tid(S), key(S), int()]}
 	   || S#state.stored =/= [],
-	      S#state.type == set orelse  S#state.type == ordered_set]).
+	      S#state.type =:= set orelse  S#state.type =:= ordered_set]).
 
-precondition(S, {call,_,update_counter,[?TAB,Key,_Incr]}) ->
-    Object = case S#state.type of
-		 set ->
-		     proplists:lookup(Key, S#state.stored);
-		 ordered_set ->
-		     lists:keyfind(Key, 1, S#state.stored)
-	     end,
-    is_tuple(Object) andalso is_integer(element(2, Object));
+precondition(S, {call,_,lookup_element,[_, Key, _]}) ->
+    proplists:is_defined(Key, S#state.stored);
+precondition(S, {call,_,update_counter,[_, Key, _Incr]}) ->
+    proplists:is_defined(Key, S#state.stored) andalso
+	case S#state.type of
+	    set ->
+		Obj = proplists:lookup(Key, S#state.stored),
+		is_integer(element(2, Obj));
+	    ordered_set ->
+		Obj = lists:keyfind(Key, 1, S#state.stored),
+		is_integer(element(2, Obj));
+	    _ ->
+		false
+	end;
 precondition(_S, {call,_,_,_}) ->
     true.
 
-next_state(S, _V, {call,_,update_counter,[?TAB,Key,Incr]}) ->
+next_state(S, V, {call,_,new,[_Tab, _Opts]}) ->
+    S#state{tids = [V|S#state.tids]};
+next_state(S, _V, {call,_,update_counter,[_Tab, Key, Incr]}) ->
     case S#state.type of
 	set ->
 	    Object = proplists:lookup(Key, S#state.stored),
@@ -109,60 +121,40 @@ next_state(S, _V, {call,_,update_counter,[?TAB,Key,Incr]}) ->
 	    NewObj = setelement(2, Object, Value + Incr),
 	    S#state{stored=lists:keyreplace(Key, 1, S#state.stored, NewObj)}
     end;
-next_state(S, _V, {call,_,insert,[?TAB,Object]}) ->
+next_state(S, _V, {call,_,insert,[_Tab, Object]}) ->
     case S#state.type of
 	set ->
 	    Key = element(1, Object),
 	    case proplists:is_defined(Key, S#state.stored) of
 		false ->
-		    S#state{stored=[Object|S#state.stored]};
+		    S#state{stored = S#state.stored ++ [Object]};
 		true ->
+		    %% correct model
 		    S#state{stored=keyreplace(Key, 1, S#state.stored, Object)}
+		    %% error model, run {numtests, 3000} to discover the bug
+		    %% S#state{stored=lists:keyreplace(Key, 1, S#state.stored,
+		    %% 				    Object)}
 	    end;
 	ordered_set ->
 	    Key = element(1, Object),
 	    case lists:keymember(Key, 1, S#state.stored) of
 		false ->
-		    S#state{stored=[Object|S#state.stored]};
+		    S#state{stored = S#state.stored ++ [Object]};
 		true ->
-		    S#state{stored=lists:keyreplace(Key, 1, S#state.stored, Object)}
-	    end; 
+		    S#state{stored=lists:keyreplace(Key, 1, S#state.stored,
+						    Object)}
+	    end;
 	bag ->
 	    case lists:member(Object, S#state.stored) of
 		false ->
-		    S#state{stored=[Object|S#state.stored]};
+		    S#state{stored = S#state.stored ++ [Object]};
 		true ->
 		    S
 	    end;
 	duplicate_bag ->
-	    S#state{stored=[Object|S#state.stored]}
+	    S#state{stored = S#state.stored ++ [Object]}
     end;
-next_state(S, _V, {call,_,insert_new,[?TAB,Object]}) ->
-    Key = element(1, Object),
-    case S#state.type of   
-	ordered_set ->
-	    case lists:keymember(Key, 1, S#state.stored) of
-		false ->
-		    S#state{stored=[Object|S#state.stored]};
-		true ->
-		    S
-	    end;
-  	_ ->
-	    case proplists:is_defined(Key, S#state.stored) of
-		false ->
-		    S#state{stored=[Object|S#state.stored]};
-		true ->
-		    S
-	    end
-    end;
-next_state(S, _V, {call,_,delete_object,[?TAB,Object]}) ->
-    case S#state.type of
-	duplicate_bag ->
-	    S#state{stored=delete_all(Object, S#state.stored)};
-	_ ->
-	    S#state{stored=lists:delete(Object, S#state.stored)}
-    end;
-next_state(S, _V, {call,_,delete,[?TAB,Key]}) ->
+next_state(S, _V, {call,_,delete,[_Tab, Key]}) ->
     case S#state.type of
 	ordered_set ->
 	    S#state{stored=lists:keydelete(Key, 1, S#state.stored)};
@@ -171,87 +163,65 @@ next_state(S, _V, {call,_,delete,[?TAB,Key]}) ->
     end;
 next_state(S, _V, {call,_,_,_}) -> S.
 
-postcondition(S, {call,_,update_counter,[?TAB,Key,Incr]}, Res) ->
+postcondition(_S, {call,_,new,[_Tab, _Opts]}, _Res) ->
+    true;
+postcondition(S, {call,_,update_counter,[_Tab, Key, Incr]}, Res) ->
     Object = case S#state.type of
-		 set -> 
+		 set ->
 		     proplists:lookup(Key, S#state.stored);
 		 ordered_set ->
 		     lists:keyfind(Key, 1, S#state.stored)
 	     end,
     Value = element(2, Object),
     Res =:= Value + Incr;
-postcondition(_S, {call,_,delete_object,[?TAB,_Object]}, Res) ->
+postcondition(_S, {call,_,delete,[_Tab, _Key]}, Res) ->
     Res =:= true;
-postcondition(_S, {call,_,delete,[?TAB,_Key]}, Res) ->
+postcondition(_S, {call,_,insert,[_Tab, _Object]}, Res) ->
     Res =:= true;
-postcondition(_S, {call,_,insert,[?TAB,_Object]}, Res) ->
-    Res =:= true;
-postcondition(S, {call,_,insert_new,[?TAB,Object]}, Res) ->
-    Key = element(1, Object),   
+postcondition(S, {call,_,lookup_element,[_Tab, Key, Pos]}, Res) ->
     case S#state.type of
 	ordered_set ->
-	    Res =:= not lists:keymember(Key, 1, S#state.stored);
-	_ ->
-	    Res =:= not proplists:is_defined(Key, S#state.stored)
-    end;
-postcondition(S, {call,_,lookup,[?TAB,Key]}, []) ->
-    case S#state.type of
-	ordered_set ->
-	    not lists:keymember(Key, 1, S#state.stored);
-	_ ->
-	    not proplists:is_defined(Key, S#state.stored)   
-    end;
-postcondition(S, {call,_,lookup,[?TAB,Key]}, Res) -> 
-    case S#state.type of
+	    Res =:= element(Pos, lists:keyfind(Key, 1, S#state.stored));
 	set ->
-	    Res =:= proplists:lookup_all(Key, S#state.stored);
-	ordered_set ->
-	    Res =:= [lists:keyfind(Key, 1, S#state.stored)];
+	    Res =:= element(Pos, proplists:lookup(Key, S#state.stored));
 	_ ->
-	    Res =:= lists:reverse(proplists:lookup_all(Key, S#state.stored))
+	    Res =:= [element(Pos, Tuple)
+		     || Tuple <- proplists:lookup_all(Key, S#state.stored)]
     end.
 
 
 %%% Sample properties
 
 prop_ets() ->
-    ?FORALL(Type, table_type(),
-        ?FORALL(Cmds, with_parameter(table_type, Type, commands(?MODULE)),
-	    begin
-		catch ets:delete(?TAB),
-		?TAB = ets:new(?TAB, [Type, public, named_table]),
-		{H,S,Res} = run_commands(?MODULE, Cmds),
-		?WHENFAIL(
-		   io:format("History: ~p\nState: ~p\nRes: ~p\n", [H,S,Res]),
-		   collect(Type, Res =:= ok))
-	    end)).
+    ?FORALL(Type, noshrink(table_type()),
+        ?FORALL(Cmds, commands(?MODULE, initial_state(Type)),
+		begin
+		    {H,S,Res} = run_commands(?MODULE, Cmds),
+		    [ets:delete(Tab) || Tab <- S#state.tids],
+		    ?WHENFAIL(
+		       io:format("History: ~p\nState: ~p\nRes: ~p\n", [H,S,Res]),
+		       collect(Type, Res =:= ok))
+		end)).
 
 prop_parallel_ets() ->
-    ?FORALL(Type, table_type(),
-        ?FORALL(Cmds, with_parameter(table_type, Type,
-				     parallel_commands(?MODULE)),
-	    begin
-		catch ets:delete(?TAB),
-		?TAB = ets:new(?TAB, [Type, public, named_table]),
-		{Seq,P,Res} = run_parallel_commands(?MODULE, Cmds),
-		?WHENFAIL(
-		   io:format("Sequential: ~p\nParallel: ~p\nRes: ~p\n",
-			     [Seq,P,Res]),
-		   collect(Type, Res =:= ok))
-	    end)).
-
+    ?FORALL(Type, noshrink(table_type()),
+        ?FORALL(Cmds, commands(?MODULE, initial_state(Type, parallel)),
+		begin
+		    ets:new(tab, [named_table, public, Type]),
+		    {Seq,P,Res} = run_commands(?MODULE, Cmds),
+		    ets:delete(tab),
+		    ?WHENFAIL(
+		       io:format("Sequential: ~p\nParallel: ~p\nRes: ~p\n",
+				 [Seq,P,Res]),
+		       collect(Type, Res =:= ok))
+		end)).
 
 %%% Demo commands
 
 sample_commands() ->
     proper_gen:sample(
-      ?LET(Type, table_type(),
-	   with_parameter(table_type, Type, commands(?MODULE)))).
-
-sample_parallel_commands() ->
-    proper_gen:sample(
-      ?LET(Type, table_type(),
-	   with_parameter(table_type, Type, parallel_commands(?MODULE)))).
+      ?LET(Type, oneof([set, ordered_set, bag, duplicate_bag]),
+	   commands(?MODULE, initial_state(Type)))).
 
 
 %%% Utility Functions
@@ -259,22 +229,12 @@ sample_parallel_commands() ->
 keyreplace(Key, Pos, List, NewTuple) ->
     keyreplace(Key, Pos, List, NewTuple, []).
 
-keyreplace(_Key, _Pos, [], _NewTuple, Accum) -> lists:reverse(Accum);
-keyreplace(Key, Pos, [Tuple|Rest], NewTuple, Accum) ->
+keyreplace(_Key, _Pos, [], _NewTuple, Acc) ->
+    lists:reverse(Acc);
+keyreplace(Key, Pos, [Tuple|Rest], NewTuple, Acc) ->
     case element(Pos, Tuple) =:= Key of
 	true ->
-	    lists:reverse(Accum) ++ [NewTuple] ++ Rest;
-	false->
-	    keyreplace(Key, Pos, Rest, NewTuple, [Tuple|Accum])
-    end.
-
-delete_all(X, List) ->
-    delete_all(X, List, []).
-
-delete_all(_X, [], Accum) ->
-    lists:reverse(Accum);
-delete_all(X, [H|T], Accum) ->
-    case X =:= H of
-	true -> delete_all(X, T, Accum);
-	false -> delete_all(X, T, [H|Accum])
+	    lists:reverse(Acc) ++ [NewTuple|Rest];
+	false ->
+	    keyreplace(Key, Pos, Rest, NewTuple, [Tuple|Acc])
     end.

@@ -1,5 +1,6 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,46 +17,27 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
 %%% @version {@version}
+%%% @author Manolis Papadakis <manopapad@gmail.com>
 %%% @doc This module contains helper arithmetic, list handling and random
 %%%	 functions.
 %%% @private
 
 -module(proper_arith).
 
--export([le/2]).
 -export([list_remove/2, list_update/3, list_insert/3, safe_map/2, safe_foldl/3,
 	 safe_any/2, safe_zip/2, tuple_map/2, cut_improper_tail/1,
 	 head_length/1, find_first/2, filter/2, partition/2, remove/2, insert/3,
 	 unflatten/2]).
--export([rand_start/1, rand_reseed/0, rand_stop/0,
+-export([rand_start/0, rand_reseed/0, rand_stop/0,
 	 rand_int/1, rand_int/2, rand_non_neg_int/1,
 	 rand_float/1, rand_float/2, rand_non_neg_float/1,
-	 rand_bytes/1, distribute/2, jumble/1, rand_choose/1, freq_choose/1]).
-
--export_type([extint/0, extnum/0]).
+	 distribute/2, jumble/1, rand_choose/1, freq_choose/1]).
 
 -include("proper_internal.hrl").
-
-
-%%-----------------------------------------------------------------------------
-%% Types
-%%-----------------------------------------------------------------------------
-
--type extint()  :: integer() | 'inf'.
--type extnum()  :: number()  | 'inf'.
-
-
-%%-----------------------------------------------------------------------------
-%% Arithmetic functions
-%%-----------------------------------------------------------------------------
-
--spec le(extnum(), extnum()) -> boolean().
-le(inf, _B) -> true;
-le(_A, inf) -> true;
-le(A, B)    -> A =< B.
 
 
 %%-----------------------------------------------------------------------------
@@ -231,22 +213,11 @@ remove_n(N, {List,Acc}) ->
 
 %% @doc Seeds the random number generator. This function should be run before
 %% calling any random function from this module.
--spec rand_start(boolean()) -> 'ok'.
-rand_start(Crypto) ->
+-spec rand_start() -> 'ok'.
+rand_start() ->
     _ = random:seed(now()),
     %% TODO: read option for RNG bijections here
-    case Crypto of
-	true ->
-	    case crypto:start() of
-		ok ->
-		    put('$crypto', true),
-		    ok;
-		{error, _} ->
-		    ok
-	    end;
-	false ->
-	    ok
-    end.
+    ok.
 
 -spec rand_reseed() -> 'ok'.
 rand_reseed() ->
@@ -257,14 +228,6 @@ rand_reseed() ->
 
 -spec rand_stop() -> 'ok'.
 rand_stop() ->
-    case get('$crypto') of
-	true ->
-	    erase('$crypto'),
-	    _ = crypto:stop(),
-	    ok;
-	_ ->
-	    ok
-    end,
     erase(random_seed),
     ok.
 
@@ -278,12 +241,7 @@ rand_non_neg_int(Const) ->
 
 -spec rand_int(integer(), integer()) -> integer().
 rand_int(Low, High) when is_integer(Low), is_integer(High), Low =< High ->
-    case get('$crypto') of
-	true ->
-	    crypto:rand_uniform(Low, High + 1);
-	_ ->
-	    Low + random:uniform(High - Low + 1) - 1
-    end.
+    Low + random:uniform(High - Low + 1) - 1.
 
 -spec rand_float(non_neg_integer()) -> float().
 rand_float(Const) ->
@@ -310,13 +268,6 @@ rand_float(Low, High) when is_float(Low), is_float(High), Low =< High ->
 %% TODO: read global options and decide here which bijection to use
 zero_one_to_zero_inf(X) ->
     X / math:sqrt(1 - X*X).
-
--spec rand_bytes(length()) -> {'ok',binary()} | 'error'.
-rand_bytes(Len) ->
-    case get('$crypto') of
-	true -> {ok,crypto:rand_bytes(Len)};
-	_    -> error
-    end.
 
 -spec distribute(non_neg_integer(), non_neg_integer()) -> [non_neg_integer()].
 distribute(_Credits, 0) ->

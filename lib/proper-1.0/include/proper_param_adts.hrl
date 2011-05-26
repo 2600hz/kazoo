@@ -1,5 +1,6 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,11 +17,16 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% Complementary user header file
-%%% This can be included in any module, to allow for the use of parametric
-%%% versions of some common opaque datatypes from STDLIB. PropEr will recognize
-%%% these types as opaques and treat them accordingly. This is meant as a
-%%% temporary measure until Dialyzer implements support for parametric opaques.
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @author Manolis Papadakis <manopapad@gmail.com>
+%%% @doc Complementary user header file: This file can be included in any
+%%%      module, to allow for the use of parametric versions of some common
+%%%      opaque datatypes from STDLIB. PropEr will recognize these types as
+%%%      opaques and treat them accordingly. This is meant as a temporary
+%%%      measure until Dialyzer implements support for parametric opaques.
+
 
 %%------------------------------------------------------------------------------
 %% Type declarations

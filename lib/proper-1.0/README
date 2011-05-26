@@ -4,11 +4,17 @@ Contact information and license
 
 PropEr (PROPerty-based testing tool for ERlang) is a QuickCheck-inspired
 open-source property-based testing tool for Erlang, developed by Manolis
-Papadakis (manopapad@gmail.com) and Kostis Sagonas (kostis@cs.ntua.gr).
+Papadakis <manopapad@gmail.com>, Eirini Arvaniti <eirinibob@gmail.com> and
+Kostis Sagonas <kostis@cs.ntua.gr>. The base PropEr system was written mainly by
+Manolis Papadakis, and the stateful code testing subsystem by Eirini Arvaniti.
 
-Most of the source code of PropEr is written mainly by Manolis Papadakis.
+You can reach the developers in the following ways:
+* by email: at proper@softlab.ntua.gr
+* on the web: at github.com/manopapad/proper (project page on github)
+We welcome user contributions and feedback (comments, suggestions, feature
+requests, bug reports, patches etc.).
 
-Copyright 2010-2011 by Manolis Papadakis and Kostis Sagonas.
+Copyright 2010-2011 by Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas.
 
 This program is distributed under the GPL, version 3 or later. Please see the
 COPYING file for details.
@@ -19,7 +25,8 @@ Quickstart guide
 --------------------------------------------------------------------------------
 
 * Compile PropEr: run 'make' (or 'make all', if you also want to build the
-  documentation).
+  documentation -- you will need the syntax_tools application and a recent
+  version of EDoc).
 * Add PropEr's base directory to your Erlang code path by choosing one of the
   following ways:
   1. ERL_LIBS environment variable - Add the following line to your shell
@@ -147,16 +154,13 @@ collect(<Category>, <Prop>)
     the percentages for each 'collect' wrapper are printed separately.
 collect(<Stats_printer>, <Category>, <Prop>)
     Same as collect/2, but takes an extra first argument, which should be a fun
-    with one of the following signatures:
+    with the following signature:
     (SortedSample :: [term()]) -> 'ok'
-    (SortedSample :: [term()], TestsPassed :: pos_integer()) -> 'ok'
     This fun will be called at the end of testing (in case no test fails) with
-    a sorted list of collected terms and, in the case of the 2-argument variant,
-    the number of tests that actually succeeded. It is expected to print some
-    statistics over the collected terms. with_title/1 is a predefined function
-    that accepts an atom or string and returns a stats printing function which
-    is equivalent to the default one, but prints the given title above the
-    statistics.
+    a sorted list of collected terms. It is expected to print some statistics
+    over the collected terms. with_title/1 is a predefined function that accepts
+    an atom or string and returns a stats printing function which is equivalent
+    to the default one, but prints the given title above the statistics.
 aggregate(<Categories>, <Prop>)
     Same as collect/2, but accepts a list of categories under which to classify
     the produced test case.
@@ -326,15 +330,6 @@ The available options are:
     CAUTION: The above output control options are incompatible with each other.
 'long_result'
     Enables long-result mode (see the 'Counterexamples' section for details).
-'crypto'
-    Enables the use of the crypto module for some kinds of random generation
-    (namely, the generation of binaries and the generation of ranges of
-    integers) - make sure the crypto module is available before enabling this.
-    This has the side-effect that an INFO message is printed on screen when
-    the program exits, because of the stopping of the crypto server.
-    CAUTION: This option is incompatible with the random function generation
-    subsystem - do not enable it for tests that contain randomly generated
-    functions.
 {'numtests', <Positive_number>} or simply <Positive_number>
     This is equivalent to the 'numtests' property wrapper. Any 'numtests'
     wrappers in the actual property will overwrite this setting.
@@ -567,12 +562,11 @@ noshrink(<Type>)
     language.
 with_parameter(<Parameter_name>, <Value>, <Type>)
     <Parameter_name> will be associated with <Value> while generating <Type>.
-    This can be useful when testing stateful systems (as described in 'Testing
-    stateful systems' section). An example use can be found in module
-    examples/ets_statem.
+    This can be useful when generating commands for stateful systems (as
+    described in 'Testing stateful systems' section).
 with_parameters(<Proplist_of_parameters>, <Type>)
-    Similar to with_parameter/3, but accepts a list of {<Parameter_name>,<Value>}
-    pairs.
+    Similar to with_parameter/3, but accepts a list of
+    {<Parameter_name>,<Value>} pairs.
 parameter(<Parameter_name>, <Default>)
     Returns the <Value> associated with <Parameter_name>, or <Default> in case
     <Parameter_name> is not associated with any value.
@@ -899,13 +893,15 @@ symbolic variable to the result of a symbolic call.
 
 During command generation we use symbolic variables to bind the results of
 symbolic calls. Therefore, the state of the abstract state machine might (and
-usually does) contain symbolic variables. Thus, we refer to it as symbolic
+usually does) contain symbolic variables and/or symbolic calls, which are
+necessary to operate on symbolic variables. Thus, we refer to it as symbolic
 state.
 
 As a next step, symbolic command sequences are evaluated in order to check that
 command execution behaves according to the state machine specifications
-(postconditions). During this phase, symbolic variables are replaced by their
-corresponding values, and now we refer to the state as dynamic state.
+(postconditions). During this phase, symbolic calls are evaluated and symbolic
+variables are replaced by their corresponding real values. Now we refer to the
+state as dynamic state.
 
 
 More specifically, the following functions must be exported from the callback
@@ -913,7 +909,10 @@ module implementing the abstract state machine:
 
 * initial_state(): Specifies the (symbolic) initial state of the state machine.
 This state will be evaluated at command execution time to produce the actual
-initial state.
+initial state. The function is not only called at command generation time, but
+also in order to initialize the state every time the command sequence is run
+(i.e. during normal execution, while shrinking and when checking a
+counterexample). For this reason, it should be deterministic.
 * command(<Symbolic_state>): Generates a symbolic call to be included in the
 command sequence, given the current <Symbolic_state> of the state machine.
 However, before the call is actually included, a precondition is checked.
@@ -921,7 +920,9 @@ However, before the call is actually included, a precondition is checked.
 that should hold so that <Symbolic_call> can be included in the command
 sequence, given the current <Symbolic_state> of the state machine. In case
 precondition doesn't hold, a new call is chosen using the command/1
-generator. The number of tries is bounded by 'constraint_tries' (see Options).
+generator. If preconditions are very strict, it will take a lot of tries for
+PropEr to randomly choose a valid command. Testing will be stopped in case the
+'constraint_tries' limit is reached (see the 'Options'section).
 * postcondition(<Dynamic_state>, <Symbolic_call>, <Result>): Specifies the
 postcondition that should hold about the <Result> of the evaluation of
 <Symbolic_call>, given the current <Dynamic_state> of the state machine.
@@ -931,7 +932,8 @@ is dynamic.
 Specifies the next state of the state machine, given the current state, the
 <Symbolic_call> chosen and its <Result>. This function is called both at
 command generation and command execution time in order to determine the next
-state, therefore the <Result> can be either symbolic (i.e. {var,N}) or dynamic.
+state, therefore the <Result> can be either symbolic (i.e. containing symbolic
+variables and/or symbolic calls) or dynamic (i.e. containing real values).
 
 
 The following functions, automatically imported from the proper_statem module
@@ -943,11 +945,14 @@ sequences, as specified by the absract state machine in <Module>. The initial
 state is specified by <Module>:initial_state().
 * commands(<Module>, <Symbolic_state>): Similar to commands/1, but generated
 command sequences always start at <Symbolic_state>. In this case, the first
-command is always {init,<Symbolic_state>}.
+command is always {init,<Symbolic_state>} and is used to correctly initialize
+the state every time the command sequence is run (i.e. during normal execution,
+while shrinking and when checking a counterexample).
+In this case, <Module>:initial_state/0 is never called.
 * more_commands(<N>, <Generator>): Increases the maximum length of command
 sequences generated within Generator by a factor <N>.
 
-* run_commands(<Cmds>, <Module>): This function runs a given command sequence
+* run_commands(<Module>, <Cmds>): This function runs a given command sequence
 <Cmds> according to the state machine specified in <Module>. The result is a
 tuple of the form: {<History>,<Dynamic_state>,<Statem_result>}.
   - <History> contains the execution history of all commands that were executed
@@ -967,7 +972,7 @@ tuple of the form: {<History>,<Dynamic_state>,<Statem_result>}.
     -- {'precondition', <Boolean> | <Exception>}: a precondition was false or
     raised an exception
     -- <Exception>: an exception was raised while running a command
-* run_commands(<Cmds>, <Module>, <Environment>): Similar to run_commands/2,
+* run_commands(<Module>, <Cmds>, <Environment>): Similar to run_commands/2,
 but also accepts a list of {<Key>,<Value>} pairs. Keys may be used in symbolic
 variables (i.e. {var,<Key>}) whithin the command sequence <Cmds>. These
 symbolic variables will be replaced by their corresponding <Value> during
@@ -1013,7 +1018,7 @@ testcases from the absract state machine specified in <Module>. The initial
 state is specified by <Module>:initial_state().
 * parallel_commands(<Module>, <Symbolic_state): Similar to parallel_commands/1,
 but generated command sequences always start at <Symbolic_state>.
-* run_parallel_commands(<TestCase>, <Module>): This function runs a parallel
+* run_parallel_commands(<Module>, <TestCase>): This function runs a parallel
 <TestCase> according to the specifications in <Module>. The result is a tuple
 of the form: {<Sequential_history>,<Parallel_history>,<Statem_result>}.
   - <Sequential_history> contains the execution history of the sequential
@@ -1024,7 +1029,7 @@ of the form: {<Sequential_history>,<Parallel_history>,<Statem_result>}.
   execution, based on the results observed. It can be one of the following:
     -- 'ok'
     -- 'no_possible_interleaving'
-* run_parallel_commands(<TestCase>, <Module>, <Environment>): Similar to
+* run_parallel_commands(<Module>, <TestCase>, <Environment>): Similar to
 run_parallel_commands/2, but also accepts an <Environment> used for symbolic
 variable evaluation, exactly as described in run_commands/3.
 
@@ -1034,6 +1039,119 @@ screen to inform the user.
 
 An example of a sample property for parallel testing can be found at
 examples/ets_statem, where we test concurrent operations on a public ets table.
+
+
+--------------------------------------------------------------------------------
+PropEr fsm
+--------------------------------------------------------------------------------
+
+PropEr provides another useful module for testing stateful systems, in
+particular those that can be better described as a finite state machine.
+For PropEr, an FSM is a triple {S0, D, S}, where S0 is the initial state,
+D a set of possible updates (transitions) and S a finite set of states.
+
+* State representation
+Following the convention used in gen_fsm behaviour, a state is fully described
+by a StateName and some StateData. StateName is used to denote a state of
+the state machine and StateData is used to denote the internal state of the
+Erlang process which implements the state machine. States are fully represented
+as tuples {StateName, StateData}.
+
+StateName is usually an atom (i.e. the name of the state), but can also be a
+tuple. In the latter case, the first element of the tuple must be an atom
+specifying the name of the state, whereas the rest of the elements can be
+arbitrary terms specifying state attributes.
+For example, when implementing the fsm of an elevator which can reach N
+different floors, the StateName for each floor could be {floor,K}, 1 <= K <= N.
+StateData can be an arbitrary term, but is usually a record.
+
+* Transition represantation
+Transitions are represented as tuples {TargetState, {call,M,F,ArgsGen}}. This
+means that performing the specified symbolic call at the current state of the
+fsm will lead to TargetState. The atom <history> can be used as TargetState to
+denote that a transition does not change the current state of the fsm.
+
+
+The following functions must be exported from the callback module implementing
+the finite state machine:
+
+* initial_state(): Specifies the initial state_name of the fsm. As in
+proper_statem:initial_state/0, its result should be deterministic.
+* initial_state_data() : Specifies the (symbolic) initial state_data. As in
+proper_statem:initial_state/0, its result should be deterministic.
+* StateName(<StateData>): There should be one instance of this function for
+each possible state name StateName. In case StateName is a tuple the function
+takes a different form, described just below. The function returns a list
+of possible transitions from the current state {StateName,StateData}.
+At command generation time, the instance of this function with the same name
+as the current state name StateName is called to return the list of possible
+transitions. Then, PropEr will randomly choose a transition and, according to
+that, generate the next symbolic call to be included in the command sequence.
+However, before the call is actually included, a precondition that might
+impose constraints on <StateData> is checked.
+Note also that PropEr detects transitions that would raise an exception of class
+<error> at generation time (not earlier) and does not choose them. This feature
+can be used to include conditional transitions that depend on the <StateData>.
+* StateName(<Attr1>, ..., <AttrN>, <StateData>): There should be one instance
+of this function for each possible state name {StateName,<Attr1>,...,<AttrN>}.
+The function has similar beaviour to StateName/1, described above.
+* weight(<FromState>, <TargetState>, <Call>): This is an optional callback.
+When it is not defined (or not exported), transitions are chosen with equal
+probability. When it is defined, it assigns an integer weight to transitions
+from <FromState> to <TargetState> triggered by symbolic call <Call>. In this
+case, each transition is chosen with probability proportional to the weight
+assigned.
+* precondition(<FromState>, <TargetState>, <StateData>, <Call>):
+Similar to proper_statem:precondition/2. Specifies the precondition that should
+hold about <StateData> so that <Call> can be included in the command sequence.
+In case precondition doesn't hold, a new transition is chosen using the
+appropriate StateName/1 generator (more specifically FromState/1).
+It is possible for more than one transitions to be triggered by the same
+symbolic call and lead to different target states. In this case, at most one of
+the target states may have a true precondition. Otherwise, PropEr will not be
+able to detect which transition was chosen and an exception will be raised.
+Preconditions are also very important for the shrinking procedure. When
+attempting to shrink fsm command sequences, we try to eliminate commands that
+do not contribute to failure, ensuring that all preconditions still hold.
+* postcondition(<FromState>, <TargetState>, <StateData>, <Call>, <Result>):
+Similar to proper_statem:postcondition/3. Specifies the postcondition that
+should hold about the <Result> of the evaluation of <Call>.
+* next_state_data(<FromState>, <TargetState>, <StateData>, <Result>, <Call>):
+Similar to proper_statem:next_state/3. Specifies how the transition from
+<FromState> to <TargetState> triggered by <Call> affects the <StateData>.
+<Result> refers to the result of <Call> and can be either symbolic or dynamic.
+
+
+The following functions can be used when working with finite state machines.
+Due to name conflicts with functions automatically imported from proper_statem,
+a fully qualified call is needed, i.e. proper_fsm:Fun(Args).
+
+* proper_fsm:commands(<Module>): A special PropEr type which generates random
+command sequences, as specified by the finite state machine in <Module>. The
+initial state is {<Module>:initial_state(), <Module>:initial_state_data()}.
+* proper_fsm:commands(<Module>, <Symbolic_state>): Similar to commands/1, but
+generated command sequences always start at <Symbolic_state>, which should be
+a tuple {<StateName>, <StateData>}. In this case, the first command is always
+{init,<Symbolic_state>} and is used to correctly initialize the state every time
+the command sequence is run (i.e. during normal execution, while shrinking and
+when checking a counterexample).
+
+* proper_fsm:run_commands(<Module>, <Cmds>): This function runs a given command
+sequence <Cmds> according to the finite state machine specified in <Module>. The
+result is a tuple of the form: {<History>,<Dynamic_state>,<Fsm_result>}.
+See proper_statem:run_commands/2 for more details. <Fsm_result> has the same
+form and meaning as <Statem_result>.
+* proper_fsm:run_commands(<Module>, <Cmds>, <Environment>): Similar to
+run_commands/2, but also accepts an <Environment> used for symbolic variable
+evaluation, exactly as described in proper_statem:run_commands/3.
+
+* proper_fsm:state_names(<History>): Extracts the names of the states from a
+given command execution history. It is useful in combination with functions such
+as aggregate/2,3 in order to collect statistics about state transitions during
+command execution.
+
+Examples of sample properties to check can be found at examples/elevator_fsm,
+containing a finite state machine specification for an elevator.
 
 
 --------------------------------------------------------------------------------
@@ -1056,12 +1174,10 @@ occurs. Normaly, a message is also printed on screen describing the error.
 * 'cant_satisfy': All the tests were rejected because no produced test case
   would pass all ?IMPLIES checks. You should loosen the failing ?IMPLIES
   constraint(s). This error should only be encountered during normal operation.
+* 'non_boolean_result': The property code returned a non-boolean result. Please
+  fix your property.
 * 'rejected': Only encountered during re-checking, the counterexample does not
   match the property, since the counterexample doesn't pass an ?IMPLIES check.
-* 'shrinking_error': An error occured during shrinking. If you ever get this
-  error, it means that you have found a bug in PropEr - please send an error
-  report to the maintainers and remember to include both the failing test case
-  and the output of the program, if possible.
 * 'too_many_instances': Only encountered during re-checking, the counterexample
   does not match the property, since the counterexample contains more instances
   than there are ?FORALLs in the property.
@@ -1114,14 +1230,14 @@ for demonstration purposes only.
 
 
 --------------------------------------------------------------------------------
-Incompatibilities with Quviq QuickCheck
+Incompatibilities with QuviQ's QuickCheck
 --------------------------------------------------------------------------------
 
 We have generaly tried to keep PropEr's notation and output as compatible as
-possible with Quviq QuickCheck, to allow for the reuse of existing testing code
-written for QuickCheck. However, incompatibilities are to be expected, since
-the two programs probably bear little resemblance under the hood. Here we
-provide a nonexhaustive list of known incompatibilities:
+possible with QuviQ's QuickCheck, to allow for the reuse of existing testing
+code written for QuickCheck. However, incompatibilities are to be expected,
+since the two programs probably bear little resemblance under the hood. Here
+we provide a nonexhaustive list of known incompatibilities:
 
 * ?SUCHTHATMAYBE behaves differently in PropEr.
 * proper_gen:pick differs from eqc_gen:pick in return value format.
