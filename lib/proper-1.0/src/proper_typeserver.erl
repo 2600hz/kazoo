@@ -1,5 +1,6 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,12 +17,13 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
 %%% @version {@version}
+%%% @author Manolis Papadakis <manopapad@gmail.com>
 %%% @doc This module contains the subsystem responsible for integration with
 %%%	 Erlang's built-in type system.
-%%% @private
 
 -module(proper_typeserver).
 -behaviour(gen_server).
@@ -125,8 +127,10 @@
 -type pattern() :: loose_tuple(pat_field()).
 -type next_step() :: 'none' | 'take_head' | {'match_with',pattern()}.
 
+%% @private_type
 -type mod_exp_types() :: set(). %% set(imm_type_ref())
 -type mod_types() :: dict(). %% dict(type_ref(),type_repr())
+%% @private_type
 -type mod_exp_funs() :: set(). %% set(fun_ref())
 -type mod_specs() :: dict(). %% dict(fun_ref(),fun_repr())
 -record(state,
@@ -145,10 +149,13 @@
 
 -type stack() :: [full_type_ref() | 'tuple' | 'list' | 'union' | 'fun'].
 -type var_dict() :: dict(). %% dict(var_name(),ret_type())
+%% @private_type
 -type imm_type() :: {mod_name(),string()}.
+%% @alias
 -type fin_type() :: proper_types:type().
 -type tagged_result(T) :: {'ok',T} | 'error'.
 -type tagged_result2(T,S) :: {'ok',T,S} | 'error'.
+%% @alias
 -type rich_result(T) :: {'ok',T} | {'error',term()}.
 -type rich_result2(T,S) :: {'ok',T,S} | {'error',term()}.
 
@@ -166,25 +173,27 @@
 %% Server interface functions
 %%------------------------------------------------------------------------------
 
+%% @private
 -spec start() -> 'ok'.
 start() ->
     {ok,TypeserverPid} = gen_server:start_link(?MODULE, dummy, []),
     put('$typeserver_pid', TypeserverPid),
-    %% TODO: To make PropEr multi-threaded, this should be copied to each
-    %%       spawned worker process.
     ok.
 
+%% @private
 -spec stop() -> 'ok'.
 stop() ->
     TypeserverPid = get('$typeserver_pid'),
     erase('$typeserver_pid'),
     gen_server:cast(TypeserverPid, stop).
 
+%% @private
 -spec create_spec_test(mfa(), timeout()) -> rich_result(proper:test()).
 create_spec_test(MFA, SpecTimeout) ->
     TypeserverPid = get('$typeserver_pid'),
     gen_server:call(TypeserverPid, {create_spec_test,MFA,SpecTimeout}).
 
+%% @private
 -spec get_exp_specced(mod_name()) -> rich_result([mfa()]).
 get_exp_specced(Mod) ->
     TypeserverPid = get('$typeserver_pid'),
@@ -196,6 +205,7 @@ get_type_repr(Mod, TypeRef, IsRemote) ->
     TypeserverPid = get('$typeserver_pid'),
     gen_server:call(TypeserverPid, {get_type_repr,Mod,TypeRef,IsRemote}).
 
+%% @private
 -spec translate_type(imm_type()) -> rich_result(fin_type()).
 translate_type(ImmType) ->
     TypeserverPid = get('$typeserver_pid'),
@@ -236,10 +246,12 @@ demo_is_instance(X, Mod, TypeStr) ->
 %% Implementation of gen_server interface
 %%------------------------------------------------------------------------------
 
+%% @private
 -spec init(_) -> {'ok',state()}.
 init(_) ->
     {ok, #state{}}.
 
+%% @private
 -spec handle_call(server_call(), _, state()) ->
 	  {'reply',server_response(),state()}.
 handle_call({create_spec_test,MFA,SpecTimeout}, _From, State) ->
@@ -271,18 +283,22 @@ handle_call({translate_type,ImmType}, _From, State) ->
 	    {reply, Error, State}
     end.
 
+%% @private
 -spec handle_cast('stop', state()) -> {'stop','normal',state()}.
 handle_cast(stop, State) ->
     {stop, normal, State}.
 
+%% @private
 -spec handle_info(term(), state()) -> {'stop',{'received_info',term()},state()}.
 handle_info(Info, State) ->
     {stop, {received_info,Info}, State}.
 
+%% @private
 -spec terminate(term(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     ok.
 
+%% @private
 -spec code_change(term(), state(), _) -> {'ok',state()}.
 code_change(_OldVsn, State, _) ->
     {ok, State}.
@@ -437,6 +453,7 @@ add_module(Mod, #state{exp_types = ExpTypes} = State) ->
 	    end
     end.
 
+%% @private
 -spec get_exp_info(mod_name()) -> rich_result2(mod_exp_types(),mod_exp_funs()).
 get_exp_info(Mod) ->
     case get_code_and_exports(Mod) of
@@ -908,6 +925,7 @@ add_field({atom,_,Tag}, {Left,Acc}) ->
 add_field(_Type, {Left,Acc}) ->
     {erlang:max(0,Left-1), [0|Acc]}.
 
+%% @private
 -spec match(pattern(), tuple()) -> term().
 match(Pattern, Term) when tuple_size(Pattern) =:= tuple_size(Term) ->
     match(tuple_to_list(Pattern), tuple_to_list(Term), none, false);
@@ -1076,6 +1094,7 @@ term_to_singleton_type(Tuple) when is_tuple(Tuple) ->
 	 {timeout, {type,0,union,[{atom,0,infinity},
 				  {type,0,non_neg_integer,[]}]}}]).
 
+%% @private
 %% TODO: Most of these functions accept an extended form of abs_type(), namely
 %%	 the addition of a custom wrapper: {'from_mod',mod_name(),...}
 -spec is_instance(term(), mod_name(), abs_type()) -> boolean().

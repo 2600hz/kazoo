@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -20,6 +20,8 @@
 -include("media.hrl").
 
 -define(SERVER, ?MODULE).
+-define(CONTENT_TYPE_MP3, <<"audio/mpeg">>).
+-define(CONTENT_TYPE_WAV, <<"audio/x-wav">>).
 
 -record(state, {
 	  media_file = #media_file{} :: #media_file{}
@@ -101,8 +103,7 @@ init([Media, To, Type, Port]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,7 +116,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(stop, State) ->
-    {stop, externally_stopped, State}.
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,19 +135,8 @@ handle_cast(stop, State) ->
 handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName
 			    ,lsocket=LSocket, send_to=SendTo, stream_type=StreamType}=S) ->
     try
-	CT = <<"audio/mpeg">>,
-	{ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
-
 	{ok, PortNo} = inet:port(LSocket),
-	StreamUrl = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
-	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, SendTo]),
-
-	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
-
-	logger:format_log(info, "SHOUT(~p): URL: ~p~n", [self(), StreamUrl]),
-
-	Self = self(),
-	spawn(fun() -> start_acceptor(Self, LSocket) end),
+	{ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
 
 	Size = byte_size(Content),
 	ChunkSize = case ?CHUNKSIZE > Size of
@@ -154,11 +144,35 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 			false -> ?CHUNKSIZE
 		    end,
 
-	Resp = wh_shout:get_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, StreamUrl, CT),
-	Header = wh_shout:get_header(MediaName, StreamUrl),
+	{Resp, Header, CT, StreamUrl} = case filename:extension(Attachment) of
+					    <<".mp3">> ->
+						Self = self(),
+						spawn(fun() -> start_shout_acceptor(Self, LSocket) end),
+						Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
+
+						{
+						  wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, Url, ?CONTENT_TYPE_MP3)
+						  ,{0,wh_shout:get_shout_header(MediaName, Url)}
+						 ,?CONTENT_TYPE_MP3
+						 ,Url
+						};
+					    <<".wav">> ->
+						Self = self(),
+						spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
+						{
+						  get_http_response_headers(?CONTENT_TYPE_WAV, Size)
+						 ,undefined
+						 ,?CONTENT_TYPE_WAV
+						 ,list_to_binary(["http://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.wav"])
+						}
+					end,
+
+	logger:format_log(info, "SHOUT(~p): Send ~p to ~p~n", [self(), StreamUrl, SendTo]),
+
+	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
-				,shout_response=Resp, shout_header={0,Header}, continuous=(StreamType =:= continuous)},
+				,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
 	MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
 
 	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
@@ -175,8 +189,8 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=Med
 	  end),
     {noreply, S};
 
-handle_info({add_listener, ListenerQ}, #state{media_name=MediaName, media_file=Media, send_to=SendTo}=S) ->
-    send_media_resp(MediaName, Media#media_file.stream_url, ListenerQ),
+handle_info({add_listener, ListenerQ}, #state{media_name=#media_file{stream_url=StreamUrl}=MediaName, send_to=SendTo}=S) ->
+    send_media_resp(MediaName, StreamUrl, ListenerQ),
     {noreply, S#state{send_to=[ListenerQ | SendTo]}};
 
 handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile}=S) ->
@@ -190,9 +204,12 @@ handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
     MediaLoop ! {add_socket, Socket},
     {noreply, S};
 
-handle_info({'EXIT', From, ok}, #state{media_loop=MediaLoop}) when From =:= MediaLoop ->
+handle_info({'EXIT', From, ok}, #state{media_loop=MediaLoop}=S) when From =:= MediaLoop ->
     logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down ok, stopping~n", [self(), From]),
-    {stop, normal, #state{}};
+    {stop, normal, S};
+handle_info({'EXIT', From, normal}, #state{media_loop=MediaLoop}=S) when From =:= MediaLoop ->
+    logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down normal, stopping~n", [self(), From]),
+    {stop, normal, S};
 handle_info({'EXIT', From, Reason}, #state{media_loop=MediaLoop, media_file=MediaFile}=S) when From =:= MediaLoop ->
     logger:format_log(error, "SHOUT(~p): MediaLoop ~p went down: ~p~n", [self(), From, Reason]),
     MediaLoop1 = spawn_link(fun() -> play_media(MediaFile) end),
@@ -214,8 +231,10 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(_Reason, #state{lsocket=undefined}) ->
+    logger:format_log(error, "SHOUT(~p): Shutting down: ~p~n", [self(), _Reason]);
 terminate(_Reason, #state{lsocket=LSock}) ->
-    logger:format_log(error, "SHOUT(~p): Shutting down: ~p~n", [self(), _Reason]),
+    logger:format_log(error, "SHOUT(~p): Closing socket and shutting down: ~p~n", [self(), _Reason]),
     gen_tcp:close(LSock).
 
 %%--------------------------------------------------------------------
@@ -241,11 +260,11 @@ send_media_resp(MediaName, Url, To) ->
     logger:format_log(info, "SHOUT(~p): Sending ~s to ~p~n", [self(), JSON, To]),
     amqp_util:targeted_publish(To, JSON).
 
-start_acceptor(Parent, LSock) ->
-    logger:format_log(info, "SHOUT.accept(~p): Acceptor started~n", [self()]),
+start_shout_acceptor(Parent, LSock) ->
+    logger:format_log(info, "SHOUT.accept(~p): SHOUT Acceptor started~n", [self()]),
     case gen_tcp:accept(LSock) of
 	{ok, S} ->
-	    spawn(fun() -> start_acceptor(Parent, LSock) end),
+	    spawn(fun() -> start_shout_acceptor(Parent, LSock) end),
 	    logger:format_log(info, "SHOUT.accept(~p): Listening on ~p~n", [self(), S]),
 	    case wh_shout:get_request(S) of
 		void ->
@@ -259,45 +278,64 @@ start_acceptor(Parent, LSock) ->
 	_ -> ok
     end.
 
+start_stream_acceptor(Parent, LSock) ->
+    logger:format_log(info, "SHOUT.accept(~p): Stream Acceptor started~n", [self()]),
+    case gen_tcp:accept(LSock) of
+	{ok, S} ->
+	    spawn(fun() -> start_stream_acceptor(Parent, LSock) end),
+
+	    _Req = wh_shout:get_request(S),
+
+	    logger:format_log(info, "SHOUT.accept(~p): Listening on ~p: Req: ~p~n", [self(), S, _Req]),
+	    gen_tcp:controlling_process(S, Parent),
+	    Parent ! {send_media, S};
+	_ -> ok
+    end.
+
 play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile) ->
     play_media(MediaFile, [], 0, byte_size(Contents), <<>>, Header).
 
-play_media(MediaFile, [], _, Stop, _, _) ->
+play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile, [], _, Stop, _, _) ->
     receive
 	{add_socket, S} ->
-	    logger:format_log(info, "SHOUT.mloop(~p): Adding first socket: ~p~n", [self(), S]),
-	    gen_tcp:send(S, [MediaFile#media_file.shout_response]),
-	    play_media(MediaFile, [S], 0, Stop, <<>>, MediaFile#media_file.shout_header);
+	    logger:format_log(info, "SHOUT.mloop(~p): Adding first socket: ~p Sending Resp Headers: ~p~n", [self(), S, ShoutResponse]),
+	    gen_tcp:send(S, [ShoutResponse]),
+	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
-	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
-	    exit(ok)
+	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()])
     after ?MAX_WAIT_FOR_LISTENERS ->
-	    logger:format_log(info, "SHOUT.mloop(~p): have heard from anyone in ~p ms, going down~n", [self(), ?MAX_WAIT_FOR_LISTENERS]),
-	    ok
+	    logger:format_log(info, "SHOUT.mloop(~p): have heard from anyone in ~p ms, going down~n", [self(), ?MAX_WAIT_FOR_LISTENERS])
     end;
-play_media(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
+play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile
+	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
-	    logger:format_log(info, "SHOUT.mloop(~p): Adding socket: ~p~n", [self(), S]),
-	    gen_tcp:send(S, [MediaFile#media_file.shout_response]),
+	    logger:format_log(info, "SHOUT.mloop(~p): Adding socket: ~p and sending Resp Headers: ~p~n", [self(), S, ShoutResponse]),
+	    gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
-	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()]),
-	    exit(ok)
+	    logger:format_log(info, "SHOUT.mloop(~p): shutdown: going down~n", [self()])
     after 0 ->
-	    %% logger:format_log(info, "SHOUT.mloop(~p): Playing from ~p (~p)~n", [self(), Offset, Stop]),
+	    logger:format_log(info, "SHOUT.mloop(~p): Playing from ~p (~p)~n", [self(), Offset, Stop]),
 	    case wh_shout:play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
 		{Socks1, Header1, Offset1, SoFar1} ->
-		    %% logger:format_log(info, "SHOUT.mloop(~p): Continue with ~p (~p)~n", [self(), Offset1, Stop]),
+		    logger:format_log(info, "SHOUT.mloop(~p): Continue with ~p (~p)~n", [self(), Offset1, Stop]),
 		    play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);
 		{done, Socks1} ->
-		    case MediaFile#media_file.continuous of
+		    case Continuous of
 			true ->
-			    %% logger:format_log(info, "SHOUT.mloop(~p): looping to play again~n", [self()]),
-			    play_media(MediaFile, Socks1, 0, Stop, <<>>, MediaFile#media_file.shout_header);
+			    logger:format_log(info, "SHOUT.mloop(~p): looping to play again~n", [self()]),
+			    play_media(MediaFile, Socks1, 0, Stop, <<>>, ShoutHeader);
 			false ->
-			    %% logger:format_log(info, "SHOUT.mloop(~p): done playing, bye!~n", [self()]),
-			    exit(ok)
+			    logger:format_log(info, "SHOUT.mloop(~p): done playing, bye!~n", [self()]),
+			    [gen_tcp:close(S) || S <- Socks1]
 		    end
 	    end
     end.
+
+get_http_response_headers(CT, CL) ->
+    ["HTTP/1.1 200 OK\r\n"
+     ,"Server: ", ?APP_NAME, "/", ?APP_VERSION, "\r\n"
+     ,"Content-Type: ", whistle_util:to_list(CT), "\r\n"
+     ,"Content-Disposition: identity\r\n"
+     ,"Content-Length: ", whistle_util:to_list(CL), "\r\n\r\n"].

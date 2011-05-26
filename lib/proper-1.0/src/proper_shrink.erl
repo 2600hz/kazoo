@@ -1,5 +1,6 @@
-%%% Copyright 2010 Manolis Papadakis (manopapad@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,9 +17,11 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @copyright 2010 Manolis Papadakis and Kostis Sagonas
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
 %%% @version {@version}
+%%% @author Manolis Papadakis <manopapad@gmail.com>
 %%% @doc The shrinking subsystem and all predefined shrinkers are contained in
 %%%	 this module.
 %%% @private
@@ -103,7 +106,7 @@ get_shrinkers(Type) ->
 			end;
 		    container ->
 			[fun split_shrinker/3, fun remove_shrinker/3,
-			 fun elements_shrinker/3];	    
+			 fun elements_shrinker/3];
 		    _Other ->
 			[]
 		end,
@@ -398,7 +401,7 @@ elements_shrinker(Instance, Type,
 %% Custom shrinkers
 %%------------------------------------------------------------------------------
 
--spec number_shrinker(number(), proper_arith:extnum(), proper_arith:extnum(),
+-spec number_shrinker(number(), proper_types:extnum(), proper_types:extnum(),
 		      state()) -> {[number()],state()}.
 number_shrinker(X, Low, High, init) ->
     {Target,Inc,OverLimit} = find_target(X, Low, High),
@@ -418,7 +421,7 @@ number_shrinker(_X, _Low, _High, {shrunk,_Pos,_State}) ->
 -spec find_target(number(), number(), number()) ->
 	  {number(),fun((number()) -> number()),fun((number()) -> boolean())}.
 find_target(X, Low, High) ->
-    case {proper_arith:le(Low,0), proper_arith:le(0,High)} of
+    case {proper_types:le(Low,0), proper_types:le(0,High)} of
 	{false, _} ->
 	    Limit = find_limit(X, Low, High, High),
 	    {Low, fun(Y) -> Y + 1 end, fun(Y) -> Y > Limit end};
@@ -441,7 +444,7 @@ find_target(X, Low, High) ->
 
 -spec find_limit(number(), number(), number(), number()) -> number().
 find_limit(X, Low, High, FallBack) ->
-    case proper_arith:le(Low, X) andalso proper_arith:le(X, High) of
+    case proper_types:le(Low, X) andalso proper_types:le(X, High) of
 	true  -> X;
 	false -> FallBack
     end.

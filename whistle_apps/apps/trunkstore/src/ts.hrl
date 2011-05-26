@@ -19,12 +19,12 @@
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 
 %% couch params for the routing table and its views
--define(TS_RATES_DOC, "rates").
+-define(TS_RATES_DB, "ts_rates").
 -define(TS_CARRIERS_DOC, "carriers").
 
 -define(DEFAULT_PROGRESS_TIMEOUT, 6). % seconds to timeout if no progress
 
--define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>]).
+-define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>, <<"e164">>, <<"npan">>, <<"1npan">>]).
 
 % just want to deal with binary K/V pairs
 %%-type proplist() :: list(tuple(binary(), binary())) | [].

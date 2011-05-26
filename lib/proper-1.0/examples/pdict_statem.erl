@@ -1,5 +1,6 @@
-%%% Copyright 2011 Eirini Arvaniti (eirinibob@gmail.com)
-%%%            and Kostis Sagonas (kostis@cs.ntua.gr)
+%%% Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                     Eirini Arvaniti <eirinibob@gmail.com>
+%%%                 and Kostis Sagonas <kostis@cs.ntua.gr>
 %%%
 %%% This file is part of PropEr.
 %%%
@@ -16,14 +17,20 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% File           : pdict_statem.erl
-%%% Original author: Kresten Krab Thorup (krab@trifork.com)
-%%% Description    : Simple statem test for the process dictionary
+%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
+%%%                      Eirini Arvaniti <eirinibob@gmail.com>
+%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @version {@version}
+%%% @author Kresten Krab Thorup <krab@trifork.com>,
+%%%         edited by Eirini Arvaniti <eirinibob@gmail.com>
+%%% @doc Simple statem test for the process dictionary
 
 -module(pdict_statem).
+-behaviour(proper_statem).
+
 -export([test/0, test/1]).
 -export([initial_state/0, command/1, precondition/2, postcondition/3,
-	next_state/3]).
+	 next_state/3]).
 
 -include_lib("proper/include/proper.hrl").
 
@@ -55,9 +62,7 @@ clean_up() ->
 key() ->
     elements(?KEYS).
 
-initial_state() ->
-    lists:filter(fun({Key,_}) -> lists:member(Key, ?KEYS) end,
-		 erlang:get()).
+initial_state() -> [].
 
 command([]) ->
     {call,erlang,put,[key(), integer()]};

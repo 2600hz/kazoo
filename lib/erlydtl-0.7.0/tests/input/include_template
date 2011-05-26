@@ -1,0 +1,3 @@
+Including another template: {% include "base" %}
+
+test variable: {{ test_var }}

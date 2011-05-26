@@ -10,7 +10,7 @@
 
 -include_lib("wh_media.hrl").
 
--export([get_request/1, play_chunk/6, get_srv_response/5, get_header/2]).
+-export([get_request/1, play_chunk/6, get_shout_srv_response/5, get_shout_header/2]).
 
 -spec(get_request/1 :: (S :: port()) -> void | list()).
 get_request(S) ->
@@ -47,27 +47,29 @@ get_request(S, L) ->
 			   tuple(list(port()), tuple(), integer(), binary())). %% more media to play
 play_chunk(MediaFile, Sock, Offset, Stop, SoFar, Header) when is_port(Sock) ->
     play_chunk(MediaFile, [Sock], Offset, Stop, SoFar, Header);
-play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) ->
-    Need = MediaFile#media_file.chunk_size - byte_size(SoFar),
+play_chunk(#media_file{contents=Contents, chunk_size=ChunkSize, pad_response=ToPad}, Socks, Offset, Stop, SoFar, Header) ->
+    Need = ChunkSize - byte_size(SoFar),
     Last = Offset + Need,
 
     case Last >= Stop of
 	true ->
 	    %% not enough data so read as much as possible and return
 	    Max = Stop - Offset,
-	    Bin = binary:part(MediaFile#media_file.contents, Offset, Max),
-	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
+	    Bin = binary:part(Contents, Offset, Max),
+	    StillActive = write_data(Socks, SoFar, Bin, Header, ChunkSize, ToPad),
 	    {done, StillActive};
 	false ->
-	    Bin = binary:part(MediaFile#media_file.contents, Offset, Need),
-	    StillActive = write_data(Socks, SoFar, Bin, Header, MediaFile#media_file.chunk_size),
+	    Bin = binary:part(Contents, Offset, Need),
+	    StillActive = write_data(Socks, SoFar, Bin, Header, ChunkSize, ToPad),
 	    {StillActive, bump(Header), Offset + Need, <<>>}
     end.
 
 %% return the res
--spec(get_srv_response/5 :: (SrvName :: binary() | string(), MediaName :: binary() | string(), ChunkSize :: integer(), Url :: binary() | string(), CT :: binary() | string()) ->
+-spec(get_shout_srv_response/5 :: (SrvName :: binary() | string(), MediaName :: binary() | string()
+				  ,ChunkSize :: integer(), Url :: binary() | string()
+				  ,CT :: binary() | string()) ->
 			 iolist()).
-get_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
+get_shout_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
     ["ICY 200 OK\r\n",
      "icy-notice1: ", whistle_util:to_list(SrvName), "<BR>\r\n",
      "icy-name: ", whistle_util:to_list(MediaName), "\r\n",
@@ -78,8 +80,8 @@ get_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
      "icy-metaint: ",integer_to_list(ChunkSize),"\r\n",
      "icy-br: 8\r\n\r\n"].
 
--spec(get_header/2 :: (MediaName :: string() | binary(), Url :: string() | binary()) -> binary()).
-get_header(MediaName, Url) ->
+-spec(get_shout_header/2 :: (MediaName :: string() | binary(), Url :: string() | binary()) -> binary()).
+get_shout_header(MediaName, Url) ->
     Bin = list_to_binary(["StreamTitle='",whistle_util:to_list(MediaName)
 			  ,"';StreamUrl='",whistle_util:to_list(Url) ,"';"]),
     Nblocks = ((byte_size(Bin) - 1) div 16) + 1,
@@ -92,7 +94,7 @@ split("\r\n\r\n" ++ T, L) -> {lists:reverse(L), T};
 split([H|T], L)           -> split(T, [H|L]);
 split([], _)              -> more.
 
-write_data(Sockets, B0, B1, Header, ChunkSize) ->
+write_data(Sockets, B0, B1, Header, ChunkSize, ToPad) ->
     %% Check that we really have got a block of the right size
     %% this is a very useful check that our program logic is
     %% correct
@@ -104,10 +106,17 @@ write_data(Sockets, B0, B1, Header, ChunkSize) ->
 		      Write = gen_tcp:send(S, Send),
 		      Write =:= ok
 		  end];
-	Size when Size < ChunkSize ->
+	Size when (Size < ChunkSize) andalso ToPad ->
 	    H = the_header(Header),
 	    Padding = binary:copy(<<0>>, ChunkSize-Size-byte_size(H)),
 	    Send = [B0, B1, H, Padding],
+	    [ S || S <- Sockets,
+		   begin
+		       Write = gen_tcp:send(S, Send),
+		       Write =:= ok
+		   end ];
+	Size when (Size < ChunkSize) ->
+	    Send = [B0, B1, the_header(Header)],
 	    [ S || S <- Sockets,
 		   begin
 		       Write = gen_tcp:send(S, Send),
@@ -117,8 +126,11 @@ write_data(Sockets, B0, B1, Header, ChunkSize) ->
 	    Sockets
     end.
 
+bump(undefined) -> undefined;
 bump({K, H}) -> {K+1, H}.
 
+the_header(undefined) ->
+    <<>>;
 the_header({K, H}) ->
     case K rem 5 of
 	0 -> H;

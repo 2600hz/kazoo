@@ -161,13 +161,18 @@ handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
 handle_info({worker_free, W}, #state{workers=Ws}=State) ->
     {noreply, State#state{workers=queue:in(W, Ws)}};
 
-handle_info({'EXIT', W, Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) ->
+handle_info({'EXIT', W, Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) when WC < OWC ->
+    logger:format_log(info, "CALL_POOL(~p): Worker ~p down: ~p: WC: ~p: OWC: ~p, restarting worker~n", [self(), W, Reason, WC, OWC]),
     Ws1 = queue:in(start_worker(), queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws)),
-    logger:format_log(info, "CALL_POOL(~p): Worker ~p down: ~p: WC: ~p: OWC: ~p~n", [self(), W, Reason, WC, OWC]),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
-handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC ->
-    Reduct = erlang:max(OWC, WC-RP),
+handle_info({'EXIT', W, Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) ->
+    logger:format_log(info, "CALL_POOL(~p): Worker ~p down: ~p: WC: ~p: OWC: ~p~n", [self(), W, Reason, WC, OWC]),
+    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+
+handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC andalso WC > OWC ->
+    logger:format_log(info, "CALL_POOL(~p): Reducing back to original labor force of ~p from ~p~n", [self(), OWC, WC]),
     Ws1 = lists:foldl(fun(_, Q0) ->
 			      case queue:len(Q0) =< OWC of
 				  true -> Q0;
@@ -176,7 +181,20 @@ handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per
 				      W ! shutdown,
 				      Q1
 			      end
-		      end, Ws, lists:seq(1,Reduct)),
+		      end, Ws, lists:seq(1,WC-OWC)),
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
+
+handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC andalso WC > OWC ->
+    logger:format_log(info, "CALL_POOL(~p): Scaling back labor force from ~p to ~p~n", [self(), WC, WC-RP]),
+    Ws1 = lists:foldl(fun(_, Q0) ->
+			      case queue:len(Q0) =< OWC of
+				  true -> Q0;
+				  false ->
+				      {{value, W}, Q1} = queue:out(Q0),
+				      W ! shutdown,
+				      Q1
+			      end
+		      end, Ws, lists:seq(1,WC-RP)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
 
 handle_info(reduce_labor_force, State) ->
@@ -254,8 +272,8 @@ worker_busy(Q, From, Ref, Parent) ->
 	{_, #amqp_msg{payload = Payload}} ->
 	    logger:format_log(info, "WORKER-B(~p): Recv payload response (~p ms)~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
-	{'DOWN', Ref, process, Pid, Info} ->
-	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down: ~p~n", [self(), Pid, Info])
+	{'DOWN', Ref, process, Pid, _Info} ->
+	    logger:format_log(error, "WORKER-B(~p): Requestor(~p) down~n", [self(), Pid])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},

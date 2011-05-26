@@ -229,6 +229,8 @@ get_conference_profile(Data, Db) ->
 -spec(caller_controls/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 caller_controls(#conf{control=Control} = Conf, Call) ->
     case wait_for_dtmf(200000) of
+        {ok, <<>>} ->
+            caller_controls(Conf, Call);
         {ok, Digit} ->
             if
                 Digit == Control#control.mute ->
@@ -248,8 +250,6 @@ caller_controls(#conf{control=Control} = Conf, Call) ->
                 true ->
                     ok
             end,
-            caller_controls(Conf, Call);
-        {error, timeout} ->
             caller_controls(Conf, Call);
         {error, channel_hungup} ->
             ok

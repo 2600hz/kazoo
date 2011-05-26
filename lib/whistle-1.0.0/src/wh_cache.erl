@@ -11,11 +11,15 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, store/2, store/3, fetch/1, erase/1, flush/0]).
+-export([start_link/0, start_link/1, store/2, store/3, fetch/1, erase/1, flush/0, fetch_keys/0, filter/1]).
+-export([start_local_link/0, store_local/3, store_local/4, fetch_local/2,  erase_local/2
+	 ,flush_local/1, fetch_keys_local/1, filter_local/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
+
+-include_lib("whistle/include/whistle_types.hrl").
 
 -define(SERVER, ?MODULE). 
 -define(EXPIRES, 3600). %% an hour
@@ -33,6 +37,12 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+start_link(Name) ->
+    gen_server:start_link({local, Name}, ?MODULE, [], []).
+
+start_local_link() ->
+    gen_server:start_link(?MODULE, [], []).
 
 %% T - seconds to store the pair
 -spec(store/2 :: (K :: term(), V :: term()) -> no_return()).
@@ -54,6 +64,42 @@ erase(K) ->
 flush() ->
     gen_server:cast(?SERVER, {flush}).
 
+-spec(fetch_keys/0 :: () -> list(term())).
+fetch_keys() ->
+    gen_server:call(?SERVER, fetch_keys).
+
+-spec(filter/1 :: (Pred :: fun()) -> proplist()).
+filter(Pred) when is_function(Pred) ->
+    gen_server:call(?SERVER, {filter, Pred}).
+
+%% Local cache API
+-spec(store_local/3 :: (Srv :: pid(), K :: term(), V :: term()) -> no_return()).
+-spec(store_local/4 :: (Srv :: pid(), K :: term(), V :: term(), T :: integer()) -> no_return()).
+store_local(Srv, K, V) when is_pid(Srv) ->
+    store_local(Srv, K, V, ?EXPIRES).
+store_local(Srv, K, V, T) when is_pid(Srv) ->
+    gen_server:cast(Srv, {store, K, V, T}).
+
+-spec(fetch_local/2 :: (Srv :: pid(), K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+fetch_local(Srv, K) when is_pid(Srv) ->
+    gen_server:call(Srv, {fetch, K}).
+
+-spec(erase_local/2 :: (Srv :: pid(), K :: term()) -> no_return()).
+erase_local(Srv, K) when is_pid(Srv) ->
+    gen_server:cast(Srv, {erase, K}).
+
+-spec(flush_local/1 :: (Srv :: pid()) -> no_return()).
+flush_local(Srv) when is_pid(Srv) ->
+    gen_server:cast(Srv, {flush}).
+
+-spec(fetch_keys_local/1 :: (Srv :: pid()) -> list(term())).
+fetch_keys_local(Srv) when is_pid(Srv) ->
+    gen_server:call(Srv, fetch_keys).
+
+-spec(filter_local/2 :: (Srv :: pid(), Pred :: fun()) -> proplist()).
+filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred) ->
+    gen_server:call(Srv, {filter, Pred}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -70,7 +116,9 @@ flush() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    logger:format_log(info, "WH_CACHE: start", []),
     {ok, _} = timer:send_interval(1000, flush),
+    logger:format_log(info, "WH_CACHE: start interval", []),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -91,7 +139,11 @@ handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
 	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {whistle_util:current_tstamp()+T, V, T} end, Dict)};
 	error -> {reply, {error, not_found}, Dict}
-    end.
+    end;
+handle_call(fetch_keys, _, Dict) ->
+    {reply, dict:fetch_keys(Dict), Dict};
+handle_call({filter, Pred}, _, Dict) ->
+    {reply, dict:to_list(dict:filter(Pred, Dict)), Dict}.
 
 %%--------------------------------------------------------------------
 %% @private

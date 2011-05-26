@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2]).
+-export([start_link/1, start_link/2, handle_route_req/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -19,7 +19,6 @@
 
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
--define(VSN, <<"0.5.0">>).
 
 -include("ecallmgr.hrl").
 
@@ -132,7 +131,9 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
 handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     case props:get_value(<<"Event-Name">>, FSData) of
 	<<"REQUEST_PARAMS">> ->
-	    LookupPid = spawn_link(fun() -> handle_route_req(Node, FSID, CallID, FSData) end),
+	    {ok, LookupPid} = ecallmgr_fs_route_sup:start_req(Node, FSID, CallID, FSData),
+	    erlang:monitor(process, LookupPid),
+
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 	    logger:format_log(info, "FS_ROUTE(~p): fetch: Id: ~p UUID: ~p Lookup: ~p Req#: ~p~n"
 		       ,[self(), FSID, CallID, LookupPid, LookupsReq]),
@@ -170,8 +171,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 			      false -> ok
 			  end
 		  end, LUs),
-    freeswitch:close(Node),
-    logger:format_log(error, "FS_ROUTE(~p): shutting down~n", [self()]),
+    logger:format_log(error, "FS_ROUTE(~p): shutting down for ~p~n", [self(), Node]),
     {stop, normal, State};
 
 %% send diagnostic info
@@ -183,8 +183,12 @@ handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     Pid ! Resp,
     {noreply, State};
 
-handle_info({'EXIT', LU, Reason}, #state{lookups=LUs}=State) ->
-    logger:format_log(info, "FS_ROUTE(~p): lookup ~p exited: ~p~n", [self(), LU, Reason]),
+handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
+    logger:format_log(info, "FS_ROUTE(~p): lookup ~p down~n", [self(), LU]),
+    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
+
+handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
+    logger:format_log(info, "FS_ROUTE(~p): lookup ~p exited~n", [self(), LU]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
 
 handle_info(Other, State) ->
@@ -202,8 +206,8 @@ handle_info(Other, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, #state{node=Node}) ->
+    freeswitch:close(Node).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -221,24 +225,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(handle_route_req/4 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist()) -> no_return()).
 handle_route_req(Node, FSID, CallID, FSData) ->
-    DefProp = [{<<"Msg-ID">>, FSID}
-	       ,{<<"Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, FSData)}
-	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
-	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
-	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-	       ,{<<"Call-ID">>, CallID}
-	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, <<"ecallmgr.route">>, ?VSN)],
-    %% Server-ID will be over-written by the pool worker
-    {ok, RespProp} = ecallmgr_amqp_pool:route_req(DefProp),
+    Pid = spawn_link(fun() ->
+			     DefProp = [{<<"Msg-ID">>, FSID}
+					,{<<"Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, FSData)}
+					,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
+					,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
+					,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
+					,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+					,{<<"Call-ID">>, CallID}
+					,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+					| whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+			     %% Server-ID will be over-written by the pool worker
+			     {ok, RespProp} = ecallmgr_amqp_pool:route_req(DefProp),
 
-    true = whistle_api:route_resp_v(RespProp),
+			     true = whistle_api:route_resp_v(RespProp),
 
-    spawn(fun() -> start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp)) end),
-
-    {ok, Xml} = ecallmgr_fs_xml:route_resp_xml(RespProp),
-    freeswitch:fetch_reply(Node, FSID, Xml).
+			     {ok, Xml} = ecallmgr_fs_xml:route_resp_xml(RespProp),
+			     ok = freeswitch:fetch_reply(Node, FSID, Xml), % only start control if freeswitch recv'd reply
+			     start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp))
+		     end),
+    {ok, Pid}.
 
 start_control_and_events(Node, CallID, SendTo) ->
     CtlQ = amqp_util:new_callctl_queue(<<>>),
@@ -249,7 +255,7 @@ start_control_and_events(Node, CallID, SendTo) ->
     CtlProp = [{<<"Msg-ID">>, CallID}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Control-Queue">>, CtlQ}
-	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, <<"ecallmgr.route">>, ?VSN)],
+	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
     send_control_queue(SendTo, CtlProp).
 
 send_control_queue(SendTo, CtlProp) ->

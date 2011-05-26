@@ -15,6 +15,8 @@ to_hex(S) ->
 
 %% +18001234567 -> +18001234567
 -spec(to_e164/1 :: (DID :: binary()) -> binary()).
+to_e164(<<"011", N/binary>>) ->
+    to_e164(N);
 to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) =:= 80 -> % 8bits/ch * 10ch
     E164;
 %% 18001234567 -> +18001234567
@@ -28,6 +30,8 @@ to_e164(Other) ->
 
 %% end up with 8001234567 from 1NPAN and E.164
 -spec(to_npan/1 :: (NPAN :: binary()) -> binary()).
+to_npan(<<"011", N/binary>>) ->
+    to_npan(N);
 to_npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     N;
 to_npan(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
@@ -38,6 +42,8 @@ to_npan(Other) ->
     Other.
 
 -spec(to_1npan/1 :: (NPAN :: binary()) -> binary()).
+to_1npan(<<"011", N/binary>>) ->
+    to_1npan(N);
 to_1npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
     <<$1, N/bitstring>>;
 to_1npan(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
@@ -47,7 +53,7 @@ to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
 to_1npan(Other) ->
     Other.
 
--spec(to_integer/1 :: (X :: list() | binary() | integer() | float()) -> integer()).
+-spec(to_integer/1 :: (X :: list() | binary() | integer() | float() | atom()) -> integer()).
 to_integer(X) when is_float(X) ->
     round(X);
 to_integer(X) when is_binary(X) ->
@@ -56,7 +62,7 @@ to_integer(X) when is_list(X) ->
     try
 	list_to_integer(X)
     catch
-	error:badarg -> to_integer(to_float(X))
+	error:badarg -> round(list_to_float(X))
     end;
 to_integer(X) when is_integer(X) ->
     X.
@@ -68,7 +74,7 @@ to_float(X) when is_list(X) ->
     try
 	list_to_float(X)
     catch
-	error:badarg -> to_float(to_integer(X)) %% "500" -> 500.0
+	error:badarg -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
 to_float(X) when is_integer(X) ->
     X * 1.0;
