@@ -53,7 +53,7 @@ cd $WDIR/ecallmgr
 $REBAR clean compile
 
 echo "Compiling Apps container and Apps"
-cd $WDIR/applications
+cd $WDIR/whistle_apps
 $REBAR clean compile
 
     for WLIB in ${WDIR}/lib/whistle*
@@ -78,9 +78,9 @@ fCompileWhApps() {
     echo "======================================================="
     echo "  Compiling WhApps"
     echo "======================================================="
-    echo "# cd ${WDIR}/applications; ${REBAR} clean compile"
+    echo "# cd ${WDIR}/whistle_apps; ${REBAR} clean compile"
 
-    cd ${WDIR}/applications; ${REBAR} clean compile
+    cd ${WDIR}/whistle_apps; ${REBAR} clean compile
     echo
 }
 

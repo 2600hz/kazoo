@@ -286,7 +286,9 @@ media_path(MediaName, UUID) ->
 
 -spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
 get_fs_playback(<<"http://", _/binary>>=Url) ->
-    <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
+    {ok, Settings} = file:consult(?SETTINGS_FILE),
+    RemoteAudioScript = props:get_value(remote_audio_script, Settings, <<"/tmp/fetch_remote_audio.sh">>),
+    <<"shell_stream://", (whistle_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
 
@@ -471,7 +473,7 @@ get_conference_flags(JObj) ->
         <<>> ->
             <<>>;
         F ->
-            <<"+flags{", (binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
+            <<"+flags{", (erlang:binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
     end.
 
 -spec(send_fetch_call_event/3 :: (Node :: binary(), UUID :: binary(), JObj :: json_object()) -> no_return()).

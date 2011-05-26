@@ -150,22 +150,19 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
-    handle_info(start_apps, State);
+    spawn(fun() ->                  
+                  logger:format_log(info, "Consult ~p got ~p", [?STARTUP_FILE, file:consult(?STARTUP_FILE)]),
+                  {ok, Startup} = file:consult(?STARTUP_FILE),
+                  WhApps = props:get_value(whapps, Startup, []),
+                  lists:foreach(fun(WhApp) -> start_app(WhApp) end, WhApps)
+          end),
+    {noreply, State};
 handle_info({add_successful_app, undefined}, State) ->
     format_log(info, "WHAPPS(~p): Failed to add app~n", [self()]),
     {noreply, State};
 handle_info({add_successful_app, A}, State) ->
     format_log(info, "WHAPPS(~p): Adding app to ~p~n", [self(), A]),
     {noreply, State#state{apps=[A | State#state.apps]}};
-handle_info(start_apps, #state{apps=As}=State) ->
-    State1 = case file:consult(?STARTUP_FILE) of
-		 {ok, Ts} ->
-		     Apps = props:get_value(start, Ts, []),
-		     lists:foreach(fun(App) -> add_app(App, As) end, Apps),
-		     State;
-		 _ -> State
-	     end,
-    {noreply, State1};
 handle_info(_Info, State) ->
     format_log(info, "WHAPPS(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
