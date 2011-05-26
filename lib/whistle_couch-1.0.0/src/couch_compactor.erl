@@ -65,7 +65,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, ok, 500}.
+    {ok, ok, ?TIMEOUT}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +120,8 @@ handle_info(timeout, ok) ->
 		  Data2 = get_design_docs(Data1),
 
 		  %% logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), length(Data2)]),
-		  [ spawn(fun() -> compact(D) end) || D <- Data2 ]
+		  %% changed to blocking to not overload bigcouch with compaction requests
+		  [ compact(D) || D <- Data2 ]
 	  end),
     {noreply, ok, ?TIMEOUT};
 
