@@ -1,3 +1,4 @@
+
 %%%-----------------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.com>
 %%% @copyright (C) 2010, James Aimonetti
@@ -178,7 +179,7 @@ request_node(Type) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, #state{}}.
+    {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -295,6 +296,15 @@ handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
 	    logger:format_log(info, "FS_HANDLER(~p): Node ~p has gone down~n", [self(), Node]),
 	    {noreply, State#state{fs_nodes=[N#node_handler{node_watch_pid=WatchPid} | lists:keydelete(Node, 2, Nodes)]}}
     end;
+handle_info(timeout, State) ->
+    spawn(fun() ->
+                  {ok, Startup} = file:consult(?STARTUP_FILE),
+                  Nodes = props:get_value(nodes, Startup, []),
+                  lists:foreach(fun(Node) -> 
+                                        add_fs_node(whistle_util:to_atom(Node, true)) 
+                                end, Nodes)
+          end),    
+    {noreply, State};
 handle_info(_Info, State) ->
     logger:format_log(info, "FS_HANDLER(~p): Unhandled Info: ~p~n", [self(), _Info]),
     {noreply, State}.
