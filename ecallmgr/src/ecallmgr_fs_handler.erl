@@ -299,7 +299,7 @@ handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
 handle_info(timeout, State) ->
     spawn(fun() ->
                   {ok, Startup} = file:consult(?STARTUP_FILE),
-                  Nodes = props:get_value(nodes, Startup, []),
+                  Nodes = props:get_value(fs_nodes, Startup, []),
                   lists:foreach(fun(Node) -> 
                                         add_fs_node(whistle_util:to_atom(Node, true)) 
                                 end, Nodes)
