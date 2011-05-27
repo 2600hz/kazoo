@@ -33,7 +33,8 @@ start_link() ->
 check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 		  ,account_doc_id=AccountDocId, callid=CallID, flat_rate_enabled=FlatRateEnabled}=Flags) ->
     <<Start:1/binary, _/binary>> = Number = whistle_util:to_1npan(To),
-    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, Start}, {<<"endkey">>, Number}]) of
+    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, whistle_util:to_integer(Start)}
+									    ,{<<"endkey">>, whistle_util:to_integer(Number)}]) of
 	{ok, []} -> {error, no_route_found};
 	{error, _} -> {error, no_route_found};
 	{ok, Rates} ->
