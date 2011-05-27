@@ -142,14 +142,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
 		  case Params of
-		      [C2CID, ?CONNECT_CALL] ->
+		      [_C2CID, ?CONNECT_CALL] ->
 			  crossbar_util:binding_heartbeat(Pid),
 			  %% log call to history
-			  Context1 = update_c2c_history(C2CID, Context),
+			  Context1 = crossbar_doc:save(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]};
-		      [C2CID] ->
+		      [_C2CID] ->
 			  %% update c2c 
-			  Context1 = update_c2c(C2CID, Context),
+			  Context1 = crossbar_doc:save(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		   end
 	  end),
@@ -342,7 +342,9 @@ update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
 update_c2c_history(C2CId, #cb_context{req_data=Req}=Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
     History = wh_json:get_value(<<"history">>, C2C, []),
-    Context1#cb_context{doc=wh_json:set_value(<<"history">>, [create_c2c_history_item(Req) | History], C2C)}.
+    List = [create_c2c_history_item(Req) | History],
+    logger:format_log(info, "yea ~p", [List]),
+    Context1#cb_context{doc=wh_json:set_value(<<"history">>, List, C2C)}.
 
 create_c2c(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
@@ -351,9 +353,15 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
 	{true, []} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"history">>, [], JObj))
-	      ,resp_status=success
+	      ,resp_status=successb
 	     }
     end.
 
 create_c2c_history_item(Req) ->
-    Req.
+    %logger:format_log(info, ">>>>> here is it ~p", [Context]),
+    Now = whistle_util:current_tstamp(),
+    {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)}, 
+	       {<<"timestamp">>, Now},
+	       {<<"call_id">>, null},
+	       {<<"cdr_id">>, null} 
+	     ]}.
