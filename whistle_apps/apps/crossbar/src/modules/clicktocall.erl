@@ -141,8 +141,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+		  case Params of
+		      [C2CID, ?CONNECT_CALL] ->
+			  crossbar_util:binding_heartbeat(Pid),
+			  %% log call to history
+			  Context1 = update_c2c_history(C2CID, Context),
+			  Pid ! {binding_result, true, [RD, Context1, Params]};
+		      [C2CID] ->
+			  %% update c2c 
+			  Context1 = update_c2c(C2CID, Context),
+			  Pid ! {binding_result, true, [RD, Context1, Params]}
+		   end
 	  end),
     {noreply, State};
 
@@ -341,7 +350,7 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
             crossbar_util:response_invalid_data(Fields, Context);
 	{true, []} ->
             Context#cb_context{
-	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:delete_key(<<"history">>, JObj))
+	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"history">>, [], JObj))
 	      ,resp_status=success
 	     }
     end.
