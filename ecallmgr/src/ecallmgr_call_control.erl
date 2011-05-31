@@ -375,7 +375,7 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
                                    >>),
         Mod:exec_cmd(Node, UUID, Cmd, self())
     catch
-	badmatch:{error,nosession} ->
+	_:{error,nosession} ->
 	    logger:format_log(error, "CONTROL.exe (~p): Error session down for ~p~n~p~n", [self(), UUID, erlang:get_stacktrace()]),
 	    Resp = [
 		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}

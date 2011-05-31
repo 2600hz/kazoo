@@ -128,7 +128,9 @@ media_path(MediaName, UUID) ->
 get_fs_playback(Url) when byte_size(Url) >= 4 ->
     case binary:part(Url, 0, 4) of
         <<"http">> ->
-            <<"shell_stream:///tmp/fetch_remote_audio.sh ", Url/binary>>;
+            {ok, Settings} = file:consult(?SETTINGS_FILE),
+            RemoteAudioScript = props:get_value(remote_audio_script, Settings, <<"/tmp/fetch_remote_audio.sh">>),
+            <<"shell_stream://", (whistle_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
         _Else ->
             Url
     end;

@@ -1,22 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2011, Karl Anderson
 %%% @doc
-%%% 
-%%% Click to call
+%%% Users module
 %%%
-%%% Allow embeddable HTML forms (or other ways to POST to the URL)
-%%% and create a call.
+%%% Handle client requests for user documents
 %%%
 %%% @end
-%%% Created : 09 May 2011 by Karl Anderson <james@2600hz.org>
+%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(clicktocall).
+-module(users).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, create_user/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -25,10 +23,10 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(CONNECT_CALL, <<"connect">>).
--define(HISTORY, <<"history">>).
--define(VIEW_FILE, <<"views/c2c.json">>).
--define(PVT_TYPE, <<"click2call">>).
+
+-define(VIEW_FILE, <<"views/users.json">>).
+-define(VIEW_BY_ID, <<"users/listing_by_id">>).
+-define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
 
 %%%===================================================================
 %%% API
@@ -77,7 +75,8 @@ init(_) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    Reply = ok,
+    {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,21 +101,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.clicktocall">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.users">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.clicktocall">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
                 Context1 = validate(Params, Context),
@@ -124,36 +123,21 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Co
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  case Params of
-		      [_C2CID, ?CONNECT_CALL] ->
-			  %% start call
-			  crossbar_util:binding_heartbeat(Pid),
-			  %% should return a 204
-			  %% spawn off a process to start the call
-			  Pid ! {binding_result, true, [RD, Context#cb_context{resp_data=undefined}, Params]};
-		      _ ->
-			  Pid ! {binding_result, true, [RD, Context, Params]}
-		  end
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
+                  Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.clicktocall">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
+                  Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.clicktocall">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -162,14 +146,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.clicktocall">>, [
 
 handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
     Pid ! {binding_result, true, ?VIEW_FILE},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -221,12 +197,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.clicktocall">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.clicktocall">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.clicktocall">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.clicktocall">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.users">>),
     crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
@@ -243,10 +217,6 @@ allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
-allowed_methods([_,?CONNECT_CALL]) ->
-    {true, ['POST']};
-allowed_methods([_,?HISTORY]) ->
-    {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -263,10 +233,6 @@ resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
     {true, []};
-resource_exists([_, ?CONNECT_CALL]) ->
-    {true, []};
-resource_exists([_, ?HISTORY]) ->
-    {true, []};
 resource_exists(_) ->
     {false, []}.
 
@@ -281,24 +247,98 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_c2c_summary(Context);
+    load_user_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_c2c(Context);
-
-validate([C2CId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_c2c(C2CId, Context);
-validate([C2CId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_c2c(C2CId, Context);
-validate([C2CId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_c2c(C2CId, Context);
-
-validate([C2CId, ?HISTORY], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_c2c_history(C2CId, Context);
-validate([C2CId, ?CONNECT_CALL], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_c2c_history(C2CId, Context);
-
+    create_user(Context);
+validate([UserId], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_user(UserId, Context);
+validate([UserId], #cb_context{req_verb = <<"post">>}=Context) ->
+    update_user(UserId, Context);
+validate([UserId], #cb_context{req_verb = <<"delete">>}=Context) ->
+    load_user(UserId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load list of accounts, each summarized.  Or a specific
+%% account summary.
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_user_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_user_summary(Context) ->
+    crossbar_doc:load_view(?VIEW_BY_ID, [], Context, fun normalize_view_results/2).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a new user document with the data provided, if it is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_user/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_user(#cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
+            case is_unique_username(undefined, Context) of
+                true ->
+                    Context#cb_context{
+                      doc=wh_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
+                      ,resp_status=success
+                     };
+                false ->
+                    crossbar_util:response_invalid_data([<<"username">>], Context)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load a user document from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_user(UserId, Context) ->
+    Doc = crossbar_doc:load(UserId, Context),
+    case wh_json:get_value(<<"pvt_deleted">>, Doc, true) of
+	true ->
+	    crossbar_util:response_bad_identifier(UserId, Context);
+	false ->
+	    Doc
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update an existing user document with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_user(UserId, #cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
+            case is_unique_username(UserId, Context) of
+                true ->
+                    crossbar_doc:load_merge(UserId, JObj, Context);
+                false ->
+                    crossbar_util:response_invalid_data([<<"username">>], Context)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -309,42 +349,51 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
 is_valid_doc(JObj) ->
-    case lists:any(fun(undefined) -> true; (_) -> false end, [wh_json:get_value(<<"name">>, JObj)
-							      ,wh_json:get_value(<<"extension">>, JObj)]) of
-	true -> {false, [<<"name">>, <<"extension">>]};
-	_ -> {true, []}
+    case wh_json:get_value(<<"email">>, JObj) of
+	undefined -> {false, [<<"email">>]};
+	Email when is_binary(Email) -> {true, []}
     end.
 
-load_c2c_summary(Context) ->
-    crossbar_doc:load_view(<<"click2call/listing_by_id">>, [], Context).
-
-load_c2c(C2CId, Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    C2C1 = wh_json:set_value(<<"history_items">>, length(wh_json:get_value(<<"history">>, C2C)), wh_json:delete_key(<<"history">>, C2C)),
-    Context1#cb_context{doc=C2C1}.
-
-load_c2c_history(C2CId, Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    Context1#cb_context{doc=wh_json:get_value(<<"history">>, C2C)}.
-
-update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
-    crossbar_doc:load_merge(C2CId, Doc, Context).
-
-update_c2c_history(C2CId, #cb_context{req_data=Req}=Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    History = wh_json:get_value(<<"history">>, C2C, []),
-    Context1#cb_context{doc=wh_json:set_value(<<"history">>, [create_c2c_history_item(Req) | History], C2C)}.
-
-create_c2c(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-	{true, []} ->
-            Context#cb_context{
-	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:delete_key(<<"history">>, JObj))
-	      ,resp_status=success
-	     }
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will determine if the password parameter is present
+%% and if so create the hashes then remove it.
+%% @end
+%%--------------------------------------------------------------------
+-spec(hash_password/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+hash_password(#cb_context{doc=JObj}=Context) ->
+    case wh_json:get_value(<<"password">>, JObj) of
+        undefined ->
+            Context;
+        Password ->
+            Creds = <<(wh_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
+            SHA1 = whistle_util:to_binary(whistle_util:to_hex(crypto:sha(Creds))),
+            MD5 = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Creds))),
+            JObj1 = wh_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
+            {struct, Props} = wh_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
+            Context#cb_context{doc={struct, props:delete(<<"password">>, Props)}}
     end.
 
-create_c2c_history_item(Req) ->
-    Req.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will determine if the username in the request is 
+%% unique or belongs to the request being made
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_unique_username/2 :: (UserId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).            
+is_unique_username(UserId, Context) ->
+    Username = wh_json:get_value(<<"username">>, Context#cb_context.req_data),
+    JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of
+               #cb_context{resp_status=success, doc=[J]} -> J;
+               _ -> []
+           end,
+    Assignments = wh_json:get_value(<<"value">>, JObj, []),
+    case UserId of
+        undefined ->
+            Assignments =:= [];
+        Id ->
+            Assignments =:= [] orelse Assignments =:= [Id]
+    end.
+        
