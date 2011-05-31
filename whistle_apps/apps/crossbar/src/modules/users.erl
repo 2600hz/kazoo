@@ -301,7 +301,13 @@ create_user(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(load_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_user(UserId, Context) ->
-    crossbar_doc:load(UserId, Context).
+    Doc = crossbar_doc:load(UserId, Context),
+    case wh_json:get_value(<<"pvt_deleted">>, Doc, true) of
+	true ->
+	    crossbar_util:response_bad_identifier(UserId, Context);
+	false ->
+	    Doc
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
