@@ -172,10 +172,13 @@ writer_loop(Sock, Data, Parent, SrvRef) ->
 	    writer_loop(Sock, [Bin | Data], Parent, SrvRef);
 	{tcp_closed, Sock} ->
 	    Path = ecallmgr_shout:get_path(Parent),
+	    logger:format_log(info, "ECALL_SHOUT_WRITER: data recv for ~p~n", [Path]),
 	    ok = file:write_file(Path, lists:reverse(Data)),
+	    logger:format_log(info, "ECALL_SHOUT_WRITER: data written for ~p~n", [Path]),
 	    gen_tcp:close(Sock),
 	    Parent ! {done, SrvRef};
 	_Other ->
+	    logger:format_log(info, "ECALL_SHOUT_WRITER: unknown receive ~p~n", [_Other]),
 	    writer_loop(Sock, Data, Parent, SrvRef)
     after ?TIMEOUT ->
 	    exit(timeout)
