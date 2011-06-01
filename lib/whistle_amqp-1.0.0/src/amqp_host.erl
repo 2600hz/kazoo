@@ -439,13 +439,21 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 				      end;
 
 				 (FromPid, {C,CRef,_,FromRef}, AccDict) when Ref =:= FromRef ->
-				      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down~n", [self(), FromPid]),
+				      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down: channel(~p) goes down too~n", [self(), FromPid, C]),
 				      erlang:demonitor(CRef, [flush]),
-				      case erlang:is_process_alive(C) of
-					  true -> amqp_channel:close(C);
-					  false -> ok
-				      end,
+				      amqp_channel:close(C),
 				      dict:erase(FromPid, AccDict);
+
+				 (FromPid, {C,CRef,_,FromRef}, AccDict) ->
+				      case erlang:is_process_alive(FromPid) of
+					  true -> AccDict;
+					  false ->
+					      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down unknowingly: channel(~p) goes down too~n", [self(), FromPid, C]),
+					      erlang:demonitor(FromRef, [flush]),
+					      erlang:demonitor(CRef, [flush]),
+					      amqp_channel:close(C),
+					      dict:erase(FromPid, AccDict)
+				      end;
 
 				 (_, _, AccDict) ->
 				      AccDict
