@@ -151,6 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
+    logger:format_log(info, ">>> DEBUG ~p", [Context]),
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}),
@@ -380,12 +381,20 @@ load_account(AccountId, Context) ->
 -spec(update_account/2 :: (AccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_account(AccountId, #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
+        {false, Fields} ->
+             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             case is_unique_realm(AccountId, Context) of
                 true ->
-                    crossbar_doc:load_merge(AccountId, Data, Context);
+		    %% Update the account DB (/account/AB/CB...)
+		    AccountCtx = load_account_db(AccountId, Context),
+		    UpdatedAccountCtx = crossbar_doc:load_merge(AccountId, Data, AccountCtx),
+		    crossbar_doc:save(UpdatedAccountCtx),
+
+		    %% Update the accounts DB (/accounts/)
+		    AccountsCtx = load_account_summary(AccountId, Context),
+		    logger:format_log(info, " >> PROUT ~p", [AccountsCtx]),
+		    crossbar_doc:load_merge(AccountId, Data, AccountsCtx);
                 false ->
                     crossbar_util:response_invalid_data([<<"realm">>], Context)
             end
@@ -684,5 +693,5 @@ is_unique_realm(AccountId, Context, Realm) ->
 is_unique_realm1(undefined, [_]) -> false;
 is_unique_realm1(undefined, []) -> false;
 is_unique_realm1(_, []) -> true;
-is_unique_realm1(Realm, [Realm]) -> true;
+is_unique_realm1(_, [_]) -> true;
 is_unique_realm1(_, _) -> false.
