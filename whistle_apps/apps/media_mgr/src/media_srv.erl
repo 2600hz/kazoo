@@ -346,32 +346,23 @@ updated_reserved_ports(Ps, PortRange) ->
     end.
 
 -spec(fill_ports/3 :: (Ps :: queue(), Len :: integer(), Range :: 0 | tuple(pos_integer(), pos_integer())) -> queue()).
-fill_ports(Ps, ?MAX_RESERVED_PORTS, _) ->
+fill_ports(Ps, Len, _) when Len >= ?MAX_RESERVED_PORTS ->
     Ps;
 
 %% randomly assign port numbers
-fill_ports(Ps, Len, 0) ->
+fill_ports(Ps, _, 0) ->
     {ok, Port} = gen_tcp:listen(0, ?PORT_OPTIONS),
-    fill_ports(queue:in(Port, Ps), Len+1, 0);
+    Ps1 = queue:in(Port, Ps),
+    fill_ports(Ps1, queue:len(Ps1), 0);
 
 %% assign ports in a range
 fill_ports(Ps, Len, {End, End}) ->
     fill_ports(Ps, Len, ?PORT_RANGE);
-fill_ports(Ps, Len, {Curr, End}) ->
+fill_ports(Ps, _, {Curr, End}) ->
     case gen_tcp:listen(Curr, ?PORT_OPTIONS) of
 	{ok, Port} ->
-	    fill_ports(queue:in(Port, Ps), Len+1, {Curr+1, End});
+	    Ps1 = queue:in(Port, Ps),
+	    fill_ports(Ps1, queue:len(Ps1), {Curr+1, End});
 	{error, _} ->
-	    fill_ports(Ps, Len, {Curr+1, End})
+	    fill_ports(Ps, queue:len(Ps), {Curr+1, End})
     end.
-
-%% -spec(send_couch_stream_resp/5 :: (Db :: binary(), Doc :: binary(), Attachment :: binary(),
-%%                                   MediaName :: binary(), To :: binary) -> ok | tuple(error, atom())).
-%% send_couch_stream_resp(Db, Doc, Attachment, MediaName, To) ->
-%%     Url = <<(couch_mgr:get_url())/binary, Db/binary, $/, Doc/binary, $/, Attachment/binary>>,
-%%     Resp = [{<<"Media-Name">>, MediaName}
-%% 	    ,{<<"Stream-URL">>, Url}
-%% 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
-%%     logger:format_log(info, "MEDIA_SRV(~p): Sending ~p to ~p~n", [self(), Resp, To]),
-%%     {ok, Payload} = whistle_api:media_resp(Resp),
-%%     amqp_util:targeted_publish(To, Payload).
