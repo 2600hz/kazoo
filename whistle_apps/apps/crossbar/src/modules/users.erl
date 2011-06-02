@@ -117,10 +117,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payloa
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+		  crossbar_util:binding_heartbeat(Pid),
+		  Context1 = validate(Params, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
@@ -302,7 +302,7 @@ create_user(#cb_context{req_data=JObj}=Context) ->
 -spec(load_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_user(UserId, Context) ->
     Doc = crossbar_doc:load(UserId, Context),
-    case wh_json:get_value(<<"pvt_deleted">>, Doc, true) of
+    case wh_json:get_value(<<"pvt_deleted">>, Doc, false) of
 	true ->
 	    crossbar_util:response_bad_identifier(UserId, Context);
 	false ->
@@ -349,10 +349,18 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"email">>, JObj) of
-	undefined -> {false, [<<"email">>]};
-	Email when is_binary(Email) -> {true, []}
+    RequiredFields = [<<"email">>, <<"username">>],
+    ErrorFields = [Field || Field <- RequiredFields, not field_exists(Field, JObj) ],
+    logger:format_log(info, ">>>> POO  ~p ", [ErrorFields]),
+
+    case ErrorFields of
+	[] -> {true, []};
+	_ -> {false, ErrorFields}
     end.
+		   
+-spec(field_exists/2 :: (Field :: binary(), JObj :: json_object()) -> boolean()).
+field_exists(Field, JObj) ->
+    is_binary(wh_json:get_value(Field, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -394,6 +402,6 @@ is_unique_username(UserId, Context) ->
         undefined ->
             Assignments =:= [];
         Id ->
-            Assignments =:= [] orelse Assignments =:= [Id]
+            Assignments =:= [] orelse Assignments =:= [[Id]]
     end.
-        
+
