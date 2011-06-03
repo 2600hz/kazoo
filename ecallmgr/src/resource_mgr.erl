@@ -211,7 +211,7 @@ start_channels([N | Ns]=Nodes, JObj, Route, Min, Max) -> %% start the minimum ch
 -spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), JObj :: json_object()) -> tuple(ok, integer()) | tuple(error, timeout | binary())).
 start_channel(N, Route, JObj) ->
     Pid = get_value(node, N),
-    case ecallmgr_fs_node:resource_consume(Pid, Route) of
+    case ecallmgr_fs_node:resource_consume(Pid, Route, JObj) of
 	{resource_consumed, UUID, CtlQ, AvailableChan} ->
 	    spawn(fun() -> send_uuid_to_app(JObj, UUID, CtlQ) end),
 	    {ok, AvailableChan};

@@ -10,7 +10,7 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([resource_consume/2]).
+-export([resource_consume/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -34,11 +34,11 @@
 
 -define(FS_TIMEOUT, 5000).
 
--spec(resource_consume/2 :: (FsNodePid :: pid(), Route :: binary()) ->
+-spec(resource_consume/3 :: (FsNodePid :: pid(), Route :: binary(), JObj :: json_object()) ->
 				 tuple(resource_consumed, binary(), binary(), integer())
 				     | tuple(resource_error, binary() | error)).
-resource_consume(FsNodePid, Route) ->
-    FsNodePid ! {resource_consume, self(), Route},
+resource_consume(FsNodePid, Route, JObj) ->
+    FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
@@ -147,12 +147,12 @@ handle_info({resource_request, Pid, <<"audio">>, ChanOptions}
     FSHandlerPid = self(),
     spawn(fun() -> channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) end),
     {noreply, State};
-handle_info({resource_consume, Pid, Route}, #state{node=Node, options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
+handle_info({resource_consume, Pid, Route, JObj}, #state{node=Node, options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
     ActiveChan = Cr - De,
     MaxChan = props:get_value(max_channels, Opts, 1),
     AvailChan =  MaxChan - ActiveChan,
 
-    spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan) end),
+    spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan, JObj) end),
     {noreply, State};
 
 handle_info({update_options, NewOptions}, State) ->
@@ -169,10 +169,12 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
--spec(originate_channel/4 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
-originate_channel(Node, Pid, Route, AvailChan) ->
+-spec(originate_channel/5 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer(), JObj :: json_object()) -> no_return()).
+originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     logger:format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
-    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
+    Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
+
+    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &", Action])),
     logger:format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
     case freeswitch:api(Node, originate, OrigStr, 9000) of
 	{ok, X} ->
@@ -262,3 +264,19 @@ publish_register_event(Data, AppVsn) ->
 	    logger:format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
 	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
     end.
+
+get_originate_action(<<"transfer">>, Data) ->
+    case wh_json:get_value(<<"To-User">>, Data) of
+	undefined -> <<"error">>;
+	User ->
+	    list_to_binary([ <<"loopback/">>, wh_util:to_e164(User), <<"@">>, wh_json:get_value(<<"To-Realm">>, Data) ])
+    end;
+get_originate_action(<<"bridge">>, Data) ->
+    case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
+	{error, timeout} -> <<"error">>;
+	EndPoint ->
+	    CVs = ecallmgr_fs_xml:get_leg_vars(Data),
+	    whistle_util:to_list(list_to_binary([CVs, EndPoint]))
+    end;
+get_originate_action(_, _) ->
+    <<"park">>.
