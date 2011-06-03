@@ -10,7 +10,7 @@
 
 -include("../callflow.hrl").
 
--export([handle/2, test/4]).
+-export([handle/2]).
 
 -import(calendar, [
                     day_of_the_week/1, day_of_the_week/3, gregorian_seconds_to_datetime/1
@@ -36,23 +36,18 @@ find_temporal_routes(#cf_call{account_db=Db}) ->
             {continue, <<"no_match">>}
     end.
 
-test(Rule, Every, Modifier, Count) ->
-    T0 = current_date(),
-    lists:foldr(fun(Seq, T1) ->
-                        T = event_date(Rule, Every, Modifier, T0, T1),
-                        logger:format_log(info, "~p) ~p", [Seq, T]),
-                        T
-                end, T0, lists:seq(Count, 1, -1)).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 event_date("daily", 1, _, _, {Y1, M1, D1}) ->
+    %% add one and fix 
     normalize_date({Y1, M1, D1 + 1});
 
 event_date("daily", I0, _, {Y0, M0, D0}, {Y1, M1, D1}) ->
+    %% Calculate the distance in days as a function of
+    %% the interval and fix
     DS0 = date_to_gregorian_days({Y0, M0, D0}),
     DS1 = date_to_gregorian_days({Y1, M1, D1}),
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
@@ -60,6 +55,9 @@ event_date("daily", I0, _, {Y0, M0, D0}, {Y1, M1, D1}) ->
 
 event_date("weekly", 1, DOWs, _, {Y1, M1, D1}) ->
     DOW1 = day_of_the_week({Y1, M1, D1}),
+    %% Take the head of a list of DOWs after removing any up to 
+    %% and including the current DOW.
+    %% Also append the first DOW plus 7 (the occurance next week of that DOW)
     Offset = hd([ DOW || DOW <- [ to_dow(D) || D <- DOWs ], DOW > DOW1 ]
                 ++ [ to_dow( hd( DOWs ) ) + 7 ])
                - DOW1,
@@ -67,15 +65,19 @@ event_date("weekly", 1, DOWs, _, {Y1, M1, D1}) ->
 
 event_date("weekly", I0, DOWs, {Y0, M0, D0}, {Y1, M1, D1}) ->
     DOW1 = day_of_the_week({Y1, M1, D1}),
+    W0 = iso_week_number({Y0, M0, D0}),
+    W1 = iso_week_number({Y1, M1, D1}),
+    WeekDiff = iso_week_difference(W0, W1),
     case [ DOW || DOW <- [to_dow(D) || D <- DOWs], DOW > DOW1 ] of
-        [] ->
-            W0 = iso_week_number({Y0, M0, D0}),
-            W1 = iso_week_number({Y1, M1, D1}),
-            Offset = trunc( iso_week_difference(W0, W1) / I0 ) * I0,
+        %% During an 'active' week but before the last DOW move to the next day this week
+        [Offset|_] when WeekDiff =:= 0; WeekDiff rem I0 =:= 0 ->
+            normalize_date({Y1, M1, D1 + Offset - DOW1});
+        %% During an 'inactive' week or the last DOW during an 'active' week, 
+        %% skip forward to the first DOW in the next week
+        _ ->
+            Offset = trunc( WeekDiff / I0 ) * I0,
             {Y2, M2, D2} = iso_week_to_gregorian_date({element(1, W0), element(2, W0) + Offset + I0}),
-            normalize_date({Y2, M2, D2 - 1 + to_dow( hd( DOWs ) )});
-        [Offset|_] ->
-            normalize_date({Y1, M1, D1 + Offset - DOW1})
+            normalize_date({Y2, M2, ( D2 - 1 ) + to_dow( hd( DOWs ) )})
     end;
 
 event_date("monthly", 1, {every, DOW0}, _, {Y1, M1, D1}) ->
@@ -83,6 +85,8 @@ event_date("monthly", 1, {every, DOW0}, _, {Y1, M1, D1}) ->
     case calendar:day_of_the_week({Y1, M1, D1}) of
         DOW1 ->
             normalize_date({Y1, M1, D1 + 7});
+        D when DOW1 > D ->
+            normalize_date({Y1, M1, D1 + (DOW1 - D)});            
         D ->
             Offset = ( 7 - D ) + DOW1,
             normalize_date({Y1, M1, D1 + Offset})
@@ -90,7 +94,7 @@ event_date("monthly", 1, {every, DOW0}, _, {Y1, M1, D1}) ->
 
 event_date("monthly", 1, {last, DOW0}, _, {Y1, M1, _}) ->
     try
-        date_of_dow(Y1, M1, to_dow(DOW0), 4)
+        {Y1, M1, _} = date_of_dow(Y1, M1, to_dow(DOW0), 4)
     catch
         _:_ ->
             date_of_dow(Y1, M1, to_dow(DOW0), 3)
@@ -139,25 +143,6 @@ normalize_date({Y, M, D}=Date) ->
         _ ->
             Date
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(current_date/0 :: () -> date()).
-current_date() ->
-    {Date, _} = localtime:utc_to_local(universal_time(), "America/Los_Angeles"),
-    Date.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-%% -spec(current_date_in_seconds/0 :: () -> seconds()).
-%% current_date_in_seconds() ->
-%%     datetime_to_gregorian_seconds({current_date(), {0, 0, 0}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -220,8 +205,8 @@ date_of_dow(Year, Month, DOW, Occurance) ->
                RefDOW ->
                    RefDays + abs(DOW - RefDOW) + (7 * Occurance)
           end,
-    {Year, Month, Day} = gregorian_days_to_date(Days),
-    normalize_date({Year, Month, Day}).
+    {Y, M, D} = gregorian_days_to_date(Days),
+    normalize_date({Y, M, D}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -241,7 +226,7 @@ iso_week_difference({Y0, W0}, {Y1, W1}) ->
                             {_, 1} -> 52 + Acc;
                             {Y, W} -> W + Acc
                         end
-                end, abs(Partial - W0), lists:seq(Y0 + 1, Y1)) + W1.
+                end, abs(Partial - W0), lists:seq(Y0 + 1, Y1 - 1)) + W1.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,7 +246,6 @@ iso_week_to_gregorian_date({Year, Week}) ->
         end,
     gregorian_days_to_date(Days).
 
-%% I don't know what this should be doing!
 iso_week_number(Date) ->
     case erlang:function_exported(calendar, iso_week_number, 1) of
 	true -> calendar:iso_week_number(Date);
@@ -300,3 +284,388 @@ gregorian_days_of_iso_w01_1(Year) ->
     true ->
 	D0101 + 7 - DOW + 1
     end.
+
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% RECURRENCE TESTS
+%%
+%% Tests date predictions for events that recur
+%% @end
+%%--------------------------------------------------------------------
+daily_recurrence_test() ->
+    %% basic increment
+    ?assertEqual({2011, 1, 2}, event_date("daily", 1, undefined, {2011, 1, 1}, {2011, 1, 1})),     
+    %%  increment over month boundary
+    ?assertEqual({2011, 2, 1}, event_date("daily", 1, undefined, {2011, 1, 1}, {2011, 1, 31})),
+    %% increment over year boundary
+    ?assertEqual({2011, 1, 1}, event_date("daily", 1, undefined, {2010, 1, 1}, {2010, 12, 31})),
+    %% leap year (into)
+    ?assertEqual({2008, 2, 29}, event_date("daily", 1, undefined, {2008, 1, 1}, {2008, 2, 28})),
+    %% leap year (over)
+    ?assertEqual({2008, 3, 1}, event_date("daily", 1, undefined, {2008, 1, 1}, {2008, 2, 29})),
+    %% shift start date (no impact)
+    ?assertEqual({2011, 1, 2}, event_date("daily", 1, undefined, {2008, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 2}, event_date("daily", 1, undefined, {2009, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 2}, event_date("daily", 1, undefined, {2010, 1, 1}, {2011, 1, 1})),
+    %% even step (small)
+    ?assertEqual({2011, 1, 5}, event_date("daily", 4, undefined, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 2}, event_date("daily", 4, undefined, {2011, 1, 1}, {2011, 1, 29})),
+    ?assertEqual({2011, 1, 4}, event_date("daily", 4, undefined, {2010, 1, 1}, {2010, 12, 31})),
+    %% odd step (small)
+    ?assertEqual({2011, 1, 8}, event_date("daily", 7, undefined, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 5}, event_date("daily", 7, undefined, {2011, 1, 1}, {2011, 1, 29})),
+    ?assertEqual({2011, 1, 7}, event_date("daily", 7, undefined, {2010, 1, 1}, {2010, 12, 31})),
+    %% even step (large)
+    ?assertEqual({2011, 2, 18}, event_date("daily", 48, undefined, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 20}, event_date("daily", 48, undefined, {2010, 1, 1}, {2010, 12, 31})),
+    %% odd step (large)
+    ?assertEqual({2011, 3, 26}, event_date("daily", 84, undefined, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 25}, event_date("daily", 84, undefined, {2010, 1, 1}, {2010, 12, 31})),
+    %% shift start date (future)
+%    ?assertEqual({2011, 2, 1}, event_date("daily", 4, undefined, {2011, 2, 1}, {2011, 1, 1})),
+%    ?assertEqual({2011, 2, 2}, event_date("daily", 4, undefined, {2011, 2, 2}, {2011, 1, 1})),
+    %% shift start date (past)
+    ?assertEqual({2011, 2, 5}, event_date("daily", 4, undefined, {2011, 2, 1}, {2011, 2, 3})),
+    ?assertEqual({2011, 2, 6}, event_date("daily", 4, undefined, {2011, 2, 2}, {2011, 2, 3})),
+    %% current date before
+    ?assertEqual({2011, 1, 5}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 1})),
+    %% current date on
+    ?assertEqual({2011, 1, 9}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 5})),
+    %% current date after
+    ?assertEqual({2011, 1, 9}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 6})),
+    %% long span
+    ?assertEqual({2011, 1, 2}, event_date("daily", 4, undefined, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 12}, event_date("daily", 4, undefined, {1983, 4, 11}, {2011, 4, 11})).
+
+weekly_recurrence_test() ->
+    %% basic increment
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 4}, event_date("weekly", 1, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 5}, event_date("weekly", 1, [wensday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 6}, event_date("weekly", 1, [thursday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 7}, event_date("weekly", 1, [friday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 8}, event_date("weekly", 1, [saturday], {2011, 1, 1}, {2011, 1, 1})), %% 1st is a sat
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 1, [sunday], {2011, 1, 1}, {2011, 1, 1})),
+    %%  increment over month boundary
+    ?assertEqual({2011, 2, 7}, event_date("weekly", 1, [monday], {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 1, [tuesday], {2011, 1, 1}, {2011, 1, 25})),
+    ?assertEqual({2011, 2, 2}, event_date("weekly", 1, [wensday], {2011, 1, 1}, {2011, 1, 26})),
+    ?assertEqual({2011, 2, 3}, event_date("weekly", 1, [thursday], {2011, 1, 1}, {2011, 1, 27})),
+    ?assertEqual({2011, 2, 4}, event_date("weekly", 1, [friday], {2011, 1, 1}, {2011, 1, 28})),
+    ?assertEqual({2011, 2, 5}, event_date("weekly", 1, [saturday], {2011, 1, 1}, {2011, 1, 29})),
+    ?assertEqual({2011, 2, 6}, event_date("weekly", 1, [sunday], {2011, 1, 1}, {2011, 1, 30})),
+    %%  increment over year boundary
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday], {2010, 1, 1}, {2010, 12, 27})),
+    ?assertEqual({2011, 1, 4}, event_date("weekly", 1, [tuesday], {2010, 1, 1}, {2010, 12, 28})),
+    ?assertEqual({2011, 1, 5}, event_date("weekly", 1, [wensday], {2010, 1, 1}, {2010, 12, 29})),
+    ?assertEqual({2011, 1, 6}, event_date("weekly", 1, [thursday], {2010, 1, 1}, {2010, 12, 30})),
+    ?assertEqual({2011, 1, 7}, event_date("weekly", 1, [friday], {2010, 1, 1}, {2010, 12, 31})),
+    ?assertEqual({2011, 1, 1}, event_date("weekly", 1, [saturday], {2010, 1, 1}, {2010, 12, 25})),
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 1, [sunday], {2010, 1, 1}, {2010, 12, 26})),
+    %%  leap year (into)
+    ?assertEqual({2008, 2, 29}, event_date("weekly", 1, [friday], {2008, 1, 1}, {2008, 2, 28})),
+    %%  leap year (over)
+    ?assertEqual({2008, 3, 1}, event_date("weekly", 1, [saturday], {2008, 1, 1}, {2008, 2, 28})),
+    ?assertEqual({2008, 3, 7}, event_date("weekly", 1, [friday], {2008, 1, 1}, {2008, 2, 29})),
+    %% shift start date (no impact)
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday], {2008, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday], {2009, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday], {2010, 1, 2}, {2011, 1, 1})),
+    %% multiple DOWs
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 1, [monday,tuesday,wensday,thursday,friday,saturday,sunday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday,tuesday,wensday,thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 4}, event_date("weekly", 1, [tuesday,wensday,thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 5}, event_date("weekly", 1, [wensday,thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 6}, event_date("weekly", 1, [thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 7}, event_date("weekly", 1, [friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
+    %% even step (small)
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 12}, event_date("weekly", 2, [wensday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 13}, event_date("weekly", 2, [thursday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 14}, event_date("weekly", 2, [friday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 15}, event_date("weekly", 2, [saturday], {2011, 1, 1}, {2011, 1, 1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    %%                and google calendar agrees (thunderbird and outlook be damned!)
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 2, [sunday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 16}, event_date("weekly", 2, [sunday], {2011, 1, 1}, {2011, 1, 2})),
+    %% odd step (small)
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 3, [monday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 3, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 19}, event_date("weekly", 3, [wensday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 20}, event_date("weekly", 3, [thursday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 21}, event_date("weekly", 3, [friday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 22}, event_date("weekly", 3, [saturday], {2011, 1, 1}, {2011, 1, 1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 3, [sunday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 23}, event_date("weekly", 3, [sunday], {2011, 1, 1}, {2011, 1, 2})),
+    %% even step (large)
+    ?assertEqual({2011, 6, 13}, event_date("weekly", 24, [monday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 6, 14}, event_date("weekly", 24, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 6, 15}, event_date("weekly", 24, [wensday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 6, 16}, event_date("weekly", 24, [thursday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 6, 17}, event_date("weekly", 24, [friday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 6, 18}, event_date("weekly", 24, [saturday], {2011, 1, 1}, {2011, 1, 1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 24, [sunday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 6, 19}, event_date("weekly", 24, [sunday], {2011, 1, 1}, {2011, 1, 2})),
+    %% odd step (large)
+    ?assertEqual({2011, 9, 5}, event_date("weekly", 36, [monday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 6}, event_date("weekly", 36, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 7}, event_date("weekly", 36, [wensday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 8}, event_date("weekly", 36, [thursday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 9}, event_date("weekly", 36, [friday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 10}, event_date("weekly", 36, [saturday], {2011, 1, 1}, {2011, 1, 1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 36, [sunday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 11}, event_date("weekly", 36, [sunday], {2011, 1, 1}, {2011, 1, 2})),
+    %% shift start date (past)
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 2, [monday], {2010, 12, 26}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 4}, event_date("weekly", 2, [tuesday], {2010, 12, 26}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 5}, event_date("weekly", 2, [wensday], {2010, 12, 26}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 6}, event_date("weekly", 2, [thursday], {2010, 12, 26}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 7}, event_date("weekly", 2, [friday], {2010, 12, 26}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 8}, event_date("weekly", 2, [saturday], {2010, 12, 26}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 9}, event_date("weekly", 2, [sunday], {2010, 12, 26}, {2011, 1, 1})),
+    %% multiple DOWs with step (currently on start)
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 2})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 6})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 7})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 8})),
+    %% multiple DOWs with step (start in past)
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 9})),
+    ?assertEqual({2011, 1, 12}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 10})),
+    ?assertEqual({2011, 1, 12}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 11})),
+    ?assertEqual({2011, 1, 14}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 12})),
+    ?assertEqual({2011, 1, 14}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 13})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 14})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 15})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 16})),
+    %% multiple DOWs over month boundary 
+    ?assertEqual({2011, 2, 7}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 28})),
+    %% multiple DOWs over year boundary 
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2010, 1, 1}, {2010, 12, 31})),
+    %% long span
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 4, [monday], {1983, 4, 11}, {2011, 1, 1})), 
+    ?assertEqual({2011, 5, 2}, event_date("weekly", 4, [monday], {1983, 4, 11}, {2011, 4, 11})).    
+
+every_other_day_weekly_recurrence_test() ->
+    %% This is a proof of concept based on (implementation of a random find on the internet)
+    %% http://www.outlookbanter.com/outlook-calandaring/80737-set-recurrance-every-other-weekday.html
+
+    %% Blue
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 2})),     
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 6})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 7})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 8})),
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 9})),
+    ?assertEqual({2011, 1, 12}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 10})),
+    ?assertEqual({2011, 1, 12}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 11})),
+    ?assertEqual({2011, 1, 14}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 12})),
+    ?assertEqual({2011, 1, 14}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 13})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 14})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 15})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 16})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 17})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 18})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 19})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 20})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 21})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 22})),
+    ?assertEqual({2011, 1, 24}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 23})),
+    ?assertEqual({2011, 1, 26}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 24})),
+    ?assertEqual({2011, 1, 26}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 25})),
+    ?assertEqual({2011, 1, 28}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 26})),
+    ?assertEqual({2011, 1, 28}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 27})),
+    ?assertEqual({2011, 2, 7}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 28})),
+    ?assertEqual({2011, 2, 7}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 29})),
+    ?assertEqual({2011, 2, 7}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 30})),
+    ?assertEqual({2011, 2, 7}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 31})),
+
+    %% White
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 2})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 3})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 4})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 5})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 6})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 7})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 8})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 9})),     
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 10})),     
+    ?assertEqual({2011, 1, 13}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 11})),     
+    ?assertEqual({2011, 1, 13}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 12})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 13})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 14})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 15})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 16})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 17})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 18})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 19})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 20})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 21})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 22})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 23})),     
+    ?assertEqual({2011, 1, 25}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 24})),
+    ?assertEqual({2011, 1, 27}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 25})),
+    ?assertEqual({2011, 1, 27}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 26})),
+    ?assertEqual({2011, 2, 8}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 27})),
+    ?assertEqual({2011, 2, 8}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 28})),
+    ?assertEqual({2011, 2, 8}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 29})),
+    ?assertEqual({2011, 2, 8}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 30})),
+    ?assertEqual({2011, 2, 8}, event_date("weekly", 2, [tuesday, thursday], {2011, 1, 1}, {2011, 1, 31})),
+
+    %% White
+    ?assertEqual({2011, 1, 3}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 2})),
+    ?assertEqual({2011, 1, 5}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 5}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 7}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 7}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 6})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 7})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 8})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 9})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 10})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 11})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 12})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 13})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 14})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 15})),
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 16})),
+    ?assertEqual({2011, 1, 19}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 17})),
+    ?assertEqual({2011, 1, 19}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 18})),
+    ?assertEqual({2011, 1, 21}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 19})),
+    ?assertEqual({2011, 1, 21}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 20})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 21})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 22})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 23})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 24})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 25})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 26})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 27})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 28})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 29})),
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 30})),
+    ?assertEqual({2011, 2, 2}, event_date("weekly", 2, [monday, wensday, friday], {2010, 12, 25}, {2011, 1, 31})),
+    %% Blue
+    ?assertEqual({2011, 1, 4}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 2})),
+    ?assertEqual({2011, 1, 4}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 6}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 6}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 6})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 7})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 8})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 9})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 10})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 11})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 12})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 13})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 14})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 15})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 16})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 17})),
+    ?assertEqual({2011, 1, 20}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 18})),
+    ?assertEqual({2011, 1, 20}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 19})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 20})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 21})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 22})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 23})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 24})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 25})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 26})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 27})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 28})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 29})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 30})),
+    ?assertEqual({2011, 2, 1}, event_date("weekly", 2, [tuesday, thursday], {2010, 12, 25}, {2011, 1, 31})).
+
+monthly_every_recurrence_test() ->
+    %% basic increment (also crosses month boundary) 
+    ?assertEqual({2011, 1, 3}, event_date("monthly", 1, {every, monday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 10}, event_date("monthly", 1, {every, monday}, {2011, 1, 1}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 17}, event_date("monthly", 1, {every, monday}, {2011, 1, 1}, {2011, 1, 10})),
+    ?assertEqual({2011, 1, 24}, event_date("monthly", 1, {every, monday}, {2011, 1, 1}, {2011, 1, 17})),
+    ?assertEqual({2011, 1, 31}, event_date("monthly", 1, {every, monday}, {2011, 1, 1}, {2011, 1, 24})),
+    ?assertEqual({2011, 1, 4}, event_date("monthly", 1, {every, tuesday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 11}, event_date("monthly", 1, {every, tuesday}, {2011, 1, 1}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 18}, event_date("monthly", 1, {every, tuesday}, {2011, 1, 1}, {2011, 1, 11})),
+    ?assertEqual({2011, 1, 25}, event_date("monthly", 1, {every, tuesday}, {2011, 1, 1}, {2011, 1, 18})),
+    ?assertEqual({2011, 2, 1}, event_date("monthly", 1, {every, tuesday}, {2011, 1, 1}, {2011, 1, 25})),
+    ?assertEqual({2011, 1, 5}, event_date("monthly", 1, {every, wensday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 12}, event_date("monthly", 1, {every, wensday}, {2011, 1, 1}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 19}, event_date("monthly", 1, {every, wensday}, {2011, 1, 1}, {2011, 1, 12})),
+    ?assertEqual({2011, 1, 26}, event_date("monthly", 1, {every, wensday}, {2011, 1, 1}, {2011, 1, 19})),
+    ?assertEqual({2011, 2, 2}, event_date("monthly", 1, {every, wensday}, {2011, 1, 1}, {2011, 1, 26})),
+    ?assertEqual({2011, 1, 6}, event_date("monthly", 1, {every, thursday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 13}, event_date("monthly", 1, {every, thursday}, {2011, 1, 1}, {2011, 1, 6})),
+    ?assertEqual({2011, 1, 20}, event_date("monthly", 1, {every, thursday}, {2011, 1, 1}, {2011, 1, 13})),
+    ?assertEqual({2011, 1, 27}, event_date("monthly", 1, {every, thursday}, {2011, 1, 1}, {2011, 1, 20})),
+    ?assertEqual({2011, 2, 3}, event_date("monthly", 1, {every, thursday}, {2011, 1, 1}, {2011, 1, 27})),
+    ?assertEqual({2011, 1, 7}, event_date("monthly", 1, {every, friday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 14}, event_date("monthly", 1, {every, friday}, {2011, 1, 1}, {2011, 1, 7})),
+    ?assertEqual({2011, 1, 21}, event_date("monthly", 1, {every, friday}, {2011, 1, 1}, {2011, 1, 14})),
+    ?assertEqual({2011, 1, 28}, event_date("monthly", 1, {every, friday}, {2011, 1, 1}, {2011, 1, 21})),
+    ?assertEqual({2011, 2, 4}, event_date("monthly", 1, {every, friday}, {2011, 1, 1}, {2011, 1, 28})),
+    ?assertEqual({2011, 1, 8}, event_date("monthly", 1, {every, saturday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 15}, event_date("monthly", 1, {every, saturday}, {2011, 1, 1}, {2011, 1, 8})),
+    ?assertEqual({2011, 1, 22}, event_date("monthly", 1, {every, saturday}, {2011, 1, 1}, {2011, 1, 15})),
+    ?assertEqual({2011, 1, 29}, event_date("monthly", 1, {every, saturday}, {2011, 1, 1}, {2011, 1, 22})),
+    ?assertEqual({2011, 2, 5}, event_date("monthly", 1, {every, saturday}, {2011, 1, 1}, {2011, 1, 29})),
+    ?assertEqual({2011, 1, 2}, event_date("monthly", 1, {every, sunday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 9}, event_date("monthly", 1, {every, sunday}, {2011, 1, 1}, {2011, 1, 2})),
+    ?assertEqual({2011, 1, 16}, event_date("monthly", 1, {every, sunday}, {2011, 1, 1}, {2011, 1, 9})),
+    ?assertEqual({2011, 1, 23}, event_date("monthly", 1, {every, sunday}, {2011, 1, 1}, {2011, 1, 16})),
+    ?assertEqual({2011, 1, 30}, event_date("monthly", 1, {every, sunday}, {2011, 1, 1}, {2011, 1, 23})),
+    ?assertEqual({2011, 2, 6}, event_date("monthly", 1, {every, sunday}, {2011, 1, 1}, {2011, 1, 30})),
+    %% increment over year boundary 
+    ?assertEqual({2011, 1, 3}, event_date("monthly", 1, {every, monday}, {2010, 1, 1}, {2010, 12, 27})),
+    ?assertEqual({2011, 1, 4}, event_date("monthly", 1, {every, tuesday}, {2010, 1, 1}, {2010, 12, 28})),
+    ?assertEqual({2011, 1, 5}, event_date("monthly", 1, {every, wensday}, {2010, 1, 1}, {2010, 12, 29})),
+    ?assertEqual({2011, 1, 6}, event_date("monthly", 1, {every, thursday}, {2010, 1, 1}, {2010, 12, 30})),
+    ?assertEqual({2011, 1, 7}, event_date("monthly", 1, {every, friday}, {2010, 1, 1}, {2010, 12, 31})),
+    ?assertEqual({2011, 1, 1}, event_date("monthly", 1, {every, saturday}, {2010, 1, 1}, {2010, 12, 25})),
+    ?assertEqual({2011, 1, 2}, event_date("monthly", 1, {every, sunday}, {2010, 1, 1}, {2010, 12, 26})),
+    %%  leap year (into) 
+    ?assertEqual({2008, 2, 29}, event_date("monthly", 1, {every, friday}, {2008, 1, 1}, {2008, 2, 28})),
+    %% leap year (over)
+    ?assertEqual({2008, 3, 1}, event_date("monthly", 1, {every, saturday}, {2008, 1, 1}, {2008, 2, 28})),
+    %% long span
+    ?assertEqual({1983, 4, 11}, event_date("monthly", 1, {every, monday}, {1983, 4, 11}, {1983, 4, 10})).
+
+monthly_last_recurrence_test() ->
+    %% basic increment 
+    ?assertEqual({2011, 1, 31}, event_date("monthly", 1, {last, monday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 25}, event_date("monthly", 1, {last, tuesday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 26}, event_date("monthly", 1, {last, wensday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 27}, event_date("monthly", 1, {last, thursday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 28}, event_date("monthly", 1, {last, friday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 29}, event_date("monthly", 1, {last, saturday}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 30}, event_date("monthly", 1, {last, sunday} , {2011, 1, 1}, {2011, 1, 1})),    
+    %%  leap year
+    ?assertEqual({2008, 2, 25}, event_date("monthly", 1, {last, monday}, {2008, 1, 1}, {2008, 2, 1})),
+    ?assertEqual({2008, 2, 26}, event_date("monthly", 1, {last, tuesday}, {2008, 1, 1}, {2008, 2, 1})),
+    ?assertEqual({2008, 2, 27}, event_date("monthly", 1, {last, wensday}, {2008, 1, 1}, {2008, 2, 1})),
+    ?assertEqual({2008, 2, 28}, event_date("monthly", 1, {last, thursday}, {2008, 1, 1}, {2008, 2, 1})),
+    ?assertEqual({2008, 2, 29}, event_date("monthly", 1, {last, friday}, {2008, 1, 1}, {2008, 2, 1})),
+    ?assertEqual({2008, 2, 23}, event_date("monthly", 1, {last, saturday}, {2008, 1, 1}, {2008, 2, 1})),
+    ?assertEqual({2008, 2, 24}, event_date("monthly", 1, {last, sunday} , {2008, 1, 1}, {2008, 2, 1})),
+    %%  long span
+    ?assertEqual({1983, 4, 25}, event_date("monthly", 1, {last, monday}, {1983, 1, 1}, {1983, 4, 1})),
+    ?assertEqual({1983, 4, 26}, event_date("monthly", 1, {last, tuesday}, {1983, 1, 1}, {1983, 4, 1})),
+    ?assertEqual({1983, 4, 27}, event_date("monthly", 1, {last, wensday}, {1983, 1, 1}, {1983, 4, 1})),
+    ?assertEqual({1983, 4, 28}, event_date("monthly", 1, {last, thursday}, {1983, 1, 1}, {1983, 4, 1})),
+    ?assertEqual({1983, 4, 29}, event_date("monthly", 1, {last, friday}, {1983, 1, 1}, {1983, 4, 1})),
+    ?assertEqual({1983, 4, 30}, event_date("monthly", 1, {last, saturday}, {1983, 1, 1}, {1983, 4, 1})),
+    ?assertEqual({1983, 4, 24}, event_date("monthly", 1, {last, sunday} , {1983, 1, 1}, {1983, 4, 1})).
+
+-endif.
