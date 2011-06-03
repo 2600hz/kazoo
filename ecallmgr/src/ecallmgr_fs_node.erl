@@ -269,14 +269,14 @@ get_originate_action(<<"transfer">>, Data) ->
     case wh_json:get_value(<<"To-User">>, Data) of
 	undefined -> <<"error">>;
 	User ->
-	    list_to_binary([ <<"loopback/">>, wh_util:to_e164(User), <<"@">>, wh_json:get_value(<<"To-Realm">>, Data) ])
+	    list_to_binary([ <<"transfer(loopback/">>, wh_util:to_e164(User), <<"@">>, wh_json:get_value(<<"To-Realm">>, Data), <<")">>])
     end;
 get_originate_action(<<"bridge">>, Data) ->
     case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
 	{error, timeout} -> <<"error">>;
 	EndPoint ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(Data),
-	    whistle_util:to_list(list_to_binary([CVs, EndPoint]))
+	    list_to_binary([<<"bridge(">>, CVs, EndPoint, <<")">>])
     end;
 get_originate_action(_, _) ->
     <<"park">>.
