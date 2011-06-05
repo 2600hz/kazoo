@@ -222,13 +222,14 @@ request_media(MediaName, Type, CallId) ->
 	    Url = ecallmgr_shout:get_srv_url(Srv),
             {ok, Url};
         {error, _} ->
-            lookup_remote(MediaName, Type)
+            lookup_remote(MediaName, Type, CallID)
     end.
 
-lookup_remote(MediaName, StreamType) ->
+lookup_remote(MediaName, StreamType, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, StreamType}
+	       ,{<<"Call-ID">>, CallID}
                | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
 

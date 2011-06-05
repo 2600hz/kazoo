@@ -66,8 +66,8 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
 	    Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
 	    Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
 	    Storage = <<"collected_digits">>,
-	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " ",
-				   Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
+	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
+				   ,Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
 	    {<<"play_and_get_digits">>, Data}
     end;
 get_fs_app(Node, UUID, JObj, <<"record">>) ->
