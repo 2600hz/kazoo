@@ -30,6 +30,10 @@
 -define(VIEW_FILE, <<"views/c2c.json">>).
 -define(PVT_TYPE, <<"click2call">>).
 
+						%-include_lib("whistle/include/whistle_amqp.hrl").
+						%-include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -118,10 +122,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.clicktocall">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+		  crossbar_util:binding_heartbeat(Pid),
+		  Context1 = validate(Params, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD, Context | Params]}, State) ->
@@ -139,11 +143,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, #cb_context{req_data=JObj}=Context | Params]}, State) ->
     spawn(fun() ->
 		  case Params of
 		      [_C2CID, ?CONNECT_CALL] ->
 			  crossbar_util:binding_heartbeat(Pid),
+			  %% originate call
+			  logger:format_log(info, ">>>>> ~p~n", [JObj]),
 			  %% log call to history
 			  Context1 = crossbar_doc:save(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]};
@@ -151,7 +157,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD
 			  %% update c2c 
 			  Context1 = crossbar_doc:save(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
-		   end
+		  end
 	  end),
     {noreply, State};
 
@@ -353,15 +359,59 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
 	{true, []} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"history">>, [], JObj))
-	      ,resp_status=successb
+	      ,resp_status=success
 	     }
     end.
 
 create_c2c_history_item(Req) ->
-    %logger:format_log(info, ">>>>> here is it ~p", [Context]),
+						%logger:format_log(info, ">>>>> here is it ~p", [Context]),
     Now = whistle_util:current_tstamp(),
     {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)}, 
 	       {<<"timestamp">>, Now},
 	       {<<"call_id">>, null},
 	       {<<"cdr_id">>, null} 
 	     ]}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+originate_call(ToUser, ToRealm) ->
+    receive
+	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
+	    JObj = mochijson2:decode(Payload),
+	    case whistle_json:get_value(<<"Event-Name">>, JObj) of
+		<<"resource_resp">> ->
+		    %% everything is ok;
+		    ok;
+		<<"resource_error">> ->
+		    %% cant right now, to busy;
+		    ko
+	    end
+    after
+	5000 ->
+	    %% OH NO!
+	    ko
+    end,
+
+    logger:format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p", [self(), ToRealm]),
+    %% create amqp queue
+    Amqp = amqp_util:new_queue(),
+    amqp_util:bind_q_to_targeted(Amqp),
+    amqp_util:basic_consume(Amqp),
+
+    %% json object
+    Command = [
+	       {<<"Msg-ID">>, whistle_util:current_tstamp()}
+               ,{<<"Resource-Type">>, <<"audio">>}
+               ,{<<"Invite-Format">>, <<"e164">>}
+               ,{<<"Application-Name">>, <<"transfer">>}
+	       ,{<<"Application-Data">>, [{"To-User", ToUser}, {"To-Realm", ToRealm}]}
+               | whistle_api:default_headers(Amqp, <<"originate">>, <<"resource_req">>, <<"clicktocall">>, <<"0.1">>)
+              ],
+    {ok, Json} = whistle_api:resource_req({struct, Command}),
+    amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ).
+
+
