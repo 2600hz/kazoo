@@ -42,7 +42,7 @@ handle_req(ApiJObj) ->
 -spec(inbound_handler/1 :: (ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 inbound_handler(ApiJObj) ->
     %% wh_timer:tick("inbound_handler/1"),
-    logger:debug("~s | Log | ~p.~p(~p): Inbound handler started", [wh_json:get_value(<<"Call-ID">>, ApiJObj), ?MODULE, ?LINE, self()]),
+    ?LOG("Inbound handler started"),
     [ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
     Flags = create_flags(whistle_util:to_e164(ToUser), ApiJObj),
     case Flags#route_flags.account_doc_id of
@@ -53,7 +53,7 @@ inbound_handler(ApiJObj) ->
 -spec(outbound_handler/1 :: (ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 outbound_handler(ApiJObj) ->
     %% wh_timer:tick("outbound_handler/1"),
-    logger:debug("~s | Log | ~p.~p(~p): Outbound handler started", [wh_json:get_value(<<"Call-ID">>, ApiJObj), ?MODULE, ?LINE, self()]),
+    ?LOG("Outbound handler started"),
     Did = whistle_util:to_e164(wh_json:get_value(<<"Caller-ID-Number">>, ApiJObj, <<>>)),
     Flags = create_flags(Did, ApiJObj),
     process_routing(outbound_features(Flags), ApiJObj).
@@ -126,7 +126,7 @@ find_route(Flags, ApiJObj) ->
 		{ok, Routes, InboundFlags} ->
 		    response(Routes, ApiJObj, InboundFlags#route_flags{routes_generated=Routes});
 		{error, _Error}=E ->
-		    logger:debug("~s | Log | ~p.~p(~p): Inbound routing error ~p", [wh_json:get_value(<<"Call-ID">>, ApiJObj), ?MODULE, ?LINE, self(), _Error]),
+		    ?LOG("Inbound routing error: ~p", [_Error]),
 		    E
 	    end;
 	true ->
@@ -138,27 +138,28 @@ find_outbound_route(#route_flags{callid=CallID, account_doc_id=AccountDocId}=Fla
     %% wh_timer:tick("find_outbound_route/2"),
     try
 	[ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
-	Did = whistle_util:to_e164(ToUser),
+	DID = whistle_util:to_e164(ToUser),
 
-	case lookup_did(Did) of
+	case lookup_did(DID) of
 	    {error, _} -> % if lookup_did(Did) failed
-		logger:debug("~s | Log | ~p.~p(~p): We don't know ~s, routing over carriers", [CallID, ?MODULE, ?LINE, self(), Did]),
+		?LOG("We don't know ~s, routing over carriers", [DID]),
 		route_over_carriers(Flags#route_flags{scenario=outbound}, ApiJObj);
 	    {ok, DidJObj} -> % out-in scenario
 		OrigAcctId = AccountDocId,
-		FlagsIn0 = create_flags(Did, ApiJObj, DidJObj),
+		FlagsIn0 = create_flags(DID, ApiJObj, DidJObj),
 		FlagsIn1 = FlagsIn0#route_flags{direction = <<"inbound">>},
 
 		case (not FlagsIn1#route_flags.force_outbound) andalso ts_credit:check(FlagsIn1) of
 		    false -> % if force_outbound == true
-			logger:debug("~s | Log | ~p.~p(~p): We know ~s, but force_outbound is true, routing over carriers", [CallID, ?MODULE, ?LINE, self(), Did]),
+			?LOG("We know ~s, but force_outbound is true, routing over carriers", [DID]),
 			route_over_carriers(Flags#route_flags{scenario=outbound}, ApiJObj);
 		    {ok, FlagsIn} ->
-			logger:debug("~s | Log | ~p.~p(~p): We know ~s, routing back in", [CallID, ?MODULE, ?LINE, self(), Did]),
+			?LOG("We know ~s, and credit checked, routing in", [DID]),
 			%% we'll do the actual trunk reservation on CHANNEL_BRIDGE in ts_call_handler
 			case inbound_route(FlagsIn) of
 			    {ok, Routes, FlagsIn2} ->
 				%% wh_timer:tick("found inbound route to route over instead"),
+				?LOG("We know ~s, generated inbound route"),
 				case FlagsIn#route_flags.scenario of
 				    inbound ->
 					response(Routes, ApiJObj, FlagsIn2#route_flags{routes_generated=Routes
@@ -174,8 +175,7 @@ find_outbound_route(#route_flags{callid=CallID, account_doc_id=AccountDocId}=Fla
 										      })
 				end;
 			    {error, _ErrCredit} ->
-				logger:debug("~s | Log | ~p.~p(~p): We know ~s, but errored in credit check with ~p, heading out over carriers"
-					     ,[CallID, ?MODULE, ?LINE, self(), Did, _ErrCredit]),
+				?LOG("We know ~s, but errors in credit check with ~p, routing over carriers", DID, _ErrCredit),
 				route_over_carriers(Flags#route_flags{scenario=outbound}, ApiJObj)
 			end;
 
@@ -183,34 +183,35 @@ find_outbound_route(#route_flags{callid=CallID, account_doc_id=AccountDocId}=Fla
 		    {error, entry_exists} ->
 			case inbound_route(FlagsIn1) of
 			    {ok, Routes, _} ->
-				logger:debug("~s | Log | ~p.~p(~p): ~s is in the same account as caller, no new trunk", [CallID, ?MODULE, ?LINE, self(), Did]),
+				?LOG("~s is in the same account as caller, no new trunk", [DID]),
 				response(Routes, ApiJObj, Flags#route_flags{direction = <<"inbound">>});
 			    {error, _} ->
 				route_over_carriers(Flags#route_flags{scenario=outbound}, ApiJObj)
 			end;
 
 		    {error, _}  ->
-			logger:debug("~s | Log | ~p.~p(~p): Unable to route back to account ~s (credit fail)", [CallID, ?MODULE, ?LINE, self(), FlagsIn1#route_flags.account_doc_id]),
+			?LOG("Unable to route back to account ~s (credit fail)", [FlagsIn1#route_flags.account_doc_id]),
 			_ = ts_acctmgr:release_trunk(FlagsIn1#route_flags.account_doc_id, FlagsIn1#route_flags.callid, 0),
 			response(503, ApiJObj, Flags)
 		end
 	end
     catch
 	_A:_B ->
-	    logger:debug("~s | Log | ~p.~p(~p): Exception occurred: ~p:~p, release trunk", [CallID, ?MODULE, ?LINE, self(), _A, _B]),
+	    ?LOG_SYS("Exception occurred: ~p:~p, releasing trunk", [_A, _B]),
+	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()]),
 	    _ = ts_acctmgr:release_trunk(AccountDocId, CallID, 0),
 	    response(500, ApiJObj, Flags)
     end.
 
 -spec(route_over_carriers/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
-route_over_carriers(#route_flags{callid=CallID}=Flags, ApiJObj) ->
+route_over_carriers(Flags, ApiJObj) ->
     %% wh_timer:tick("route_over_carriers/2"),
     case ts_carrier:route(Flags) of
 	{ok, Routes} ->
 	    %% wh_timer:tick("routes found, response time"),
 	    response(Routes, ApiJObj, Flags#route_flags{routes_generated=Routes});
 	{error, _Error} ->
-	    logger:err("~s | Log | ~p.~p(~p): Outbound routing error: ~p", [CallID, ?MODULE, ?LINE, self(), _Error]),
+	    ?LOG("Outbound routing error: ~p", [_Error]),
 	    {error, "We don't handle this route"}
     end.
 
@@ -267,8 +268,8 @@ invite_format(_, _) ->
 				   tuple(ok, json_objects(), #route_flags{})).
 add_failover_route({}, Flags, InboundRoute) -> {ok, [InboundRoute], Flags#route_flags{scenario=inbound}};
 %% route to a SIP URI
-add_failover_route({<<"sip">>, URI}, #route_flags{media_handling=MediaHandling, callid=CallID}=Flags, InboundRoute) ->
-    logger:debug("~s | Log | ~p.~p(~p): Adding SIP failover ~p", [CallID, ?MODULE, ?LINE, self(), URI]),
+add_failover_route({<<"sip">>, URI}, #route_flags{media_handling=MediaHandling}=Flags, InboundRoute) ->
+    ?LOG("Adding SIP failover ~p", [URI]),
 
     {ok, [InboundRoute, {struct, [{<<"Route">>, URI}
 				  ,{<<"Invite-Format">>, <<"route">>}
@@ -281,7 +282,7 @@ add_failover_route({<<"sip">>, URI}, #route_flags{media_handling=MediaHandling, 
     };
 %% route to a E.164 number - need to setup outbound for this sucker
 add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, InboundRoute) ->
-    logger:debug("~s | Log | ~p.~p(~p): Trying to add DID failover ~s", [CallID, ?MODULE, ?LINE, self(), DID]),
+    ?LOG("Trying to add DID failover ~s", [DID]),
     OutBFlags = Flags#route_flags{to_user=DID
 				  ,callid = <<CallID/binary, "-failover">>
 				  ,direction = <<"outbound">>
@@ -290,15 +291,15 @@ add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, Inbound
 	{ok, OutBFlags1} ->
 	    case ts_carrier:route(OutBFlags1) of
 		{ok, Routes} ->
-		    logger:debug("~s | Log | ~p.~p(~p): Adding DID failover ~s", [CallID, ?MODULE, ?LINE, self(), DID]),
+		    ?LOG("Adding DID failover ~s", [DID]),
 		    { ok, [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
 		{error, _Error} ->
-		    logger:debug("~s | Log | ~p.~p(~p): Error for DID failover ~p", [CallID, ?MODULE, ?LINE, self(), _Error]),
+		    ?LOG("Error adding DID failover ~p", [_Error]),
 		    _ = ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
 		    { ok, [InboundRoute], Flags#route_flags{scenario=inbound}}
 	    end;
 	{error, _Error} ->
-	    logger:debug("~s | Log | ~p.~p(~p): Failed to secure trunk for ~s: ~p", [CallID, ?MODULE, ?LINE, self(), DID, _Error]),
+	    ?LOG("Failed to secure failover trunk for ~s: ~p", [DID, _Error]),
 	    {ok, [InboundRoute], Flags#route_flags{scenario=inbound}}
     end.
 
