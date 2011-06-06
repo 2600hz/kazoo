@@ -183,7 +183,7 @@ get_msg_type(JObj) ->
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), CallID :: binary()) -> no_return()).
 process_req({<<"directory">>, <<"auth_req">>}, JObj, CallID) ->
     try
-    case whistle_api:auth_req_v(JObj) andalso ts_Auth:handle_req(JObj) of
+    case whistle_api:auth_req_v(JObj) andalso ts_auth:handle_req(JObj) of
 	false ->
 	    logger:info("~s | End | ~p.~p(~p): Failed to validate authentication request", [CallID, ?MODULE, ?LINE, self()]);
 	{ok, JSON} ->
