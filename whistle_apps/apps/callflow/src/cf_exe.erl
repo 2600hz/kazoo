@@ -1,6 +1,6 @@
 %%%============================================================================
 %%% @author Vladimir Darmin <vova@2600hz.org>
-%%% @copyright (C) 2011, Vladimir Darmin
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Callflow executioner, executes the head node and waits for further
 %%% instructions

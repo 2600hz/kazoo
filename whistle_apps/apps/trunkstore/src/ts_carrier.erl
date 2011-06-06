@@ -80,7 +80,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Req, _From, []=C) ->
-    logger:debug("~p.~p(~p): No carriers are loaded, refreshing", [?MODULE, ?LINE, self()]),
+    ?LOG_SYS("No carriers are loaded, refreshing"),
     ?MODULE ! refresh,
     {reply, no_carrier_information, C};
 handle_call({route, Flags}, _From, Carriers) ->
@@ -114,18 +114,18 @@ handle_info(?REFRESH_MSG, OldCarriers) ->
 	{ok, Carriers} ->
 	    {noreply, Carriers};
 	{error, _Err} ->
-	    logger:debug("~p.~p(~p): Error getting carriers: ~p~n", [?MODULE, ?LINE, self(), _Err]),
+	    ?LOG_SYS("Error getting carriers: ~p", [_Err]),
 	    {noreply, OldCarriers}
     end;
 handle_info({document_changes, DocID, Changes}, Carriers) ->
-    logger:debug("~p.~p(~p): Document change on ~s", [?MODULE, ?LINE, self(), DocID]),
+    ?LOG_SYS("Document change on ~s", [DocID]),
     CurrRev = props:get_value(<<"_rev">>, Carriers),
     ChangedCarriers = lists:foldl(fun(ChangeProp, Cs) ->
 					  case props:get_value(<<"rev">>, ChangeProp) of
 					      undefined -> Cs;
 					      CurrRev -> Cs;
 					      _ ->
-						  logger:debug("~p.~p(~p): New carriers to be loaded", [?MODULE, ?LINE, self()]),
+						  ?LOG_SYS("New carriers to be loaded"),
 						  {ok, NewCarriers} = get_current_carriers(),
 						  NewCarriers
 					  end
@@ -160,7 +160,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    logger:debug("~p.~p(~p): Terminating: ~p", [?MODULE, ?LINE, self(), _Reason]),
+    ?LOG_SYS("Terminating: ~p", [_Reason]),
     couch_mgr:rm_change_handler(?TS_DB, ?TS_CARRIERS_DOC).
 
 %%--------------------------------------------------------------------
@@ -211,7 +211,8 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 
 -spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, routes()} | {error, string()}).
 get_routes(#route_flags{callid=CallID, to_user=User}=Flags, Carriers) ->
-    logger:info("~s | Log | ~p.~p(~p): Finding carriers to route ~s over", [CallID, ?MODULE, ?LINE, self(), User]),
+    put(callid, CallID),
+    ?LOG("Finding carriers to route ~s over", [User]),
 
     Carriers1 = lists:filter(fun({_CarrierName, CarrierData}) ->
 				     lists:any(fun(Regex) ->
@@ -220,10 +221,10 @@ get_routes(#route_flags{callid=CallID, to_user=User}=Flags, Carriers) ->
 			     end, props:delete(<<"_rev">>, props:delete(<<"_id">>, Carriers))),
     case Carriers1 of
 	[] ->
-	    logger:info("~s | Log | ~p.~p(~p): No carriers found that matched", [CallID, ?MODULE, ?LINE, self()]),
+	    ?LOG("No carriers found that matched"),
 	    {error, "No carriers match outbound number"};
 	Cs ->
-	    logger:info("~s | Log | ~p.~p(~p): Found ~p carriers to route over", [CallID, ?MODULE, ?LINE, self(), length(Cs)]),
+	    ?LOG("Found ~p carriers to route over", [length(Cs)]),
 	    create_routes(Flags, lists:sort(fun sort_carriers/2, Cs))
     end.
 
@@ -236,7 +237,7 @@ sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
 
 %% transform Carriers proplist() into a list of Routes for the API
 -spec(create_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> tuple(ok, routes()) | tuple(error, string())).
-create_routes(#route_flags{callid=CallID, caller_id=CallerID0, to_user=ToUser}=Flags, Carriers) ->
+create_routes(#route_flags{caller_id=CallerID0, to_user=ToUser}=Flags, Carriers) ->
     CallerID = case CallerID0 of
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
@@ -246,10 +247,10 @@ create_routes(#route_flags{callid=CallID, caller_id=CallerID0, to_user=ToUser}=F
 
     case lists:foldr(fun carrier_to_routes/2, {[], ToUser, CallerID, ChannelVars}, Carriers) of
 	{[], _, _, _} ->
-	    logger:err("~s | Log | ~p.~p(~p): Failed to create routes to ~s", [CallID, ?MODULE, ?LINE, self(), ToUser]),
+	    ?LOG("Failed to create routes to ~s", [ToUser]),
 	    {error, "Failed to find routes for the call"};
 	{Routes, _, _, _} ->
-	    logger:err("~s | Log | ~p.~p(~p): Created ~p routes to ~s", [CallID, ?MODULE, ?LINE, self(), length(Routes), ToUser]),
+	    ?LOG("Created ~b routes to ~s", [length(Routes), ToUser]),
 	    {ok, Routes}
     end.
 
