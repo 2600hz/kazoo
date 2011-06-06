@@ -43,7 +43,7 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 		[] -> {error, no_route_found};
 		[Rate|_] ->
 		    %% wh_timer:tick("post usort data found"),
-		    logger:info("~s | Log | ~p.~p(~p): Rate to use: ~s", [CallID, ?MODULE, ?LINE, self(), wh_json:get_value(<<"rate_name">>, Rate)]),
+		    ?LOG("Rate to use: ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
 		    BaseCost = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
 			+ whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
@@ -54,19 +54,19 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 			{ok, per_min} ->
 			    {ok, set_rate_flags(Flags, Direction, Rate)};
 			{error, entry_exists}=E ->
-			    logger:err("~s | Log | ~p.~p(~p): Failed reserving a trunk; call-id exists in DB", [CallID, ?MODULE, ?LINE, self()]),
+			    ?LOG("Failed reserving a trunk; call-id exists in DB"),
 			    E;
 			{error, no_funds}=E1 ->
-			    logger:err("~s | Log | ~p.~p(~p): Failed reserving a trunk; no funds or flat-rates", [CallID, ?MODULE, ?LINE, self()]),
+			    ?LOG("Failed reserving a trunk; no funds or flat-rate trunks"),
 			    E1;
 			{error, no_account}=E2 ->
-			    logger:err("~s | Log | ~p.~p(~p): Failed reserving a trunk; no account id was passed", [CallID, ?MODULE, ?LINE, self()]),
+			    ?LOG("Failed reserving a trunk; no account passed: ~p tried", [AccountDocId]),
 			    E2;
 			{error, no_callid}=E3 ->
-			    logger:err("~s | Log | ~p.~p(~p): Failed reserving a trunk; no call id was passed", [CallID, ?MODULE, ?LINE, self()]),
+			    ?LOG("Failed reserving a trunk; no call id passed: ~p tried", [CallID]),
 			    E3;
 			{error, not_found}=E4 ->
-			    logger:err("~s | Log | ~p.~p(~p): Failed reserving a trunk; ts_acctmgr:reserve_trunk/4 failed", [CallID, ?MODULE, ?LINE, self()]),
+			    ?LOG("Failed reserving a trunk; ts_acctmgr:reserve_trunk/4 failed"),
 			    E4
 		    end
 	    end
