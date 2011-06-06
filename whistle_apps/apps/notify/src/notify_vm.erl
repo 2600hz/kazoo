@@ -245,5 +245,3 @@ pretty_print_did(<<"011", Rest/binary>>) ->
     pretty_print_did(wh_util:to_e164(Rest));
 pretty_print_did(Other) ->
     Other.
-
-

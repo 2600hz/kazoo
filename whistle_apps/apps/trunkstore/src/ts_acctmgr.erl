@@ -127,11 +127,10 @@ init(_) ->
 
     DB = ts_util:todays_db_name(?TS_USAGE_PREFIX),
 
-    logger:format_log(info, "TS_ACCTMGR: Starting DB ~p~n", [DB]),
+    logger:debug("~p.~p(~p): Creating (if necessary) DB ~p", [?MODULE, ?LINE, self(), DB]),
     couch_mgr:db_create(DB),
 
     MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
-    logger:format_log(info, "TS_ACCTMGR: ms till Midnight: ~p (~p:~p:~p)~n", [MillisecsToMidnight, H, Min, S]),
     {ok, _} = timer:send_after(MillisecsToMidnight, ?EOD),
 
     {ok, #state{
@@ -164,14 +163,17 @@ handle_call({has_flatrates, AcctId}, From, #state{current_read_db=RDB}=S) ->
 
 handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
-    logger:format_log(info, "TS_ACCTMGR(~p): reserve per_min for ~p: ~p: ~p~n", [self(), AcctId, CallID, Amt]),
+    logger:info("~s | Log | ~p.~p(~p): Trying to reserve a per-minute trunk for ~s for ~p", [CallID, ?MODULE, ?LINE, Self, AcctId, Amt]),
+
     spawn(fun() ->
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 		  case has_credit(RDB, AcctId, Amt) of
 		      true ->
+			  logger:info("~s | Log | ~p.~p(~p): Reserved a per-minute trunk for ~s for ~p", [CallID, ?MODULE, ?LINE, Self, AcctId, Amt]),
 			  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
 			  gen_server:reply(From, {ok, per_min});
 		      false ->
+			  logger:info("~s | Log | ~p.~p(~p): Failed to reserve a per-minute trunk for ~s", [CallID, ?MODULE, ?LINE, Self, AcctId, Amt]),
 			  gen_server:reply(From, {error, no_funds})
 		  end
 	  end),
@@ -179,30 +181,33 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_
 
 handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
-    logger:format_log(info, "TS_ACCTMGR(~p): reserve trunk for ~p: ~p: ~p from ~p~n", [self(), AcctId, CallID, Amt, RDB]),
+    logger:info("~s | Log | ~p.~p(~p): Try to reserve a trunk for ~s (~p if needed)", [CallID, ?MODULE, ?LINE, Self, AcctId, Amt]),
     spawn(fun() ->
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 
 		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
 		      {error, not_found}=E ->
+			  logger:crit("~s | Err | ~p.~p(~p): View accounts/balance not found in DB ~s", [CallID, ?MODULE, ?LINE, Self, RDB]),
 			  gen_server:reply(From, E);
 		      {ok, []} ->
-			  logger:format_log(info, "TS_ACCTMGR.reserve: no_funds for ~p:~p~n", [AcctId, CallID]),
+			  logger:info("~s | Log | ~p.~p(~p): No view results for ~s, no_funds", [CallID, ?MODULE, ?LINE, Self, AcctId]),
 			  gen_server:reply(From, {error, no_account});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
 				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
-				  logger:format_log(info, "TS_ACCTMGR.reserve: flat_rate for ~p:~p~n", [AcctId, CallID]),
+				  logger:info("~s | Log | ~p.~p(~p): Flat-rate reserved for ~s", [CallID, ?MODULE, ?LINE, Self, AcctId]),
 				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
-				  case wh_json:get_value(<<"credit">>, Funds, 0) > Amt of
+				  AvailableCredit = wh_json:get_value(<<"credit">>, Funds, 0),
+				  case AvailableCredit > Amt of
 				      true ->
 					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
-					  logger:format_log(info, "TS_ACCTMGR.reserve: per_min for ~p:~p~n", [AcctId, CallID]),
+					  logger:info("~s | Log | ~p.~p(~p): Per-minute reserved for ~s", [CallID, ?MODULE, ?LINE, Self, AcctId]),
 					  gen_server:reply(From, {ok, per_min});
 				      false ->
-					  logger:format_log(info, "TS_ACCTMGR.reserve: no_funds for ~p:~p~n", [AcctId, CallID]),
+					  logger:info("~s | Log | ~p.~p(~p): Insufficient credit (~p) for this call for ~s"
+						      ,[CallID, ?MODULE, ?LINE, Self, AvailableCredit, AcctId]),
 					  gen_server:reply(From, {error, no_funds})
 				  end
 			  end
@@ -214,8 +219,9 @@ handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{
 		  case trunk_type(RDB, AcctID, ACallID) of
 		      non_existant ->
 			  case trunk_type(WDB, AcctID, ACallID) of
-			      non_existant -> logger:format_log(error, "TS_ACCTMGR(~p): Can't copy data from ~p to ~p for acct ~p, non_existant~n"
-							 ,[self(), ACallID, BCallID, AcctID]);
+			      non_existant ->
+				  logger:debug("~p.~p(~p): Can't copy data from ~s to ~s for acct ~s, non_existant in ~s"
+						    ,[self(), ACallID, BCallID, AcctID, WDB]);
 			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
 			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
 			  end;
@@ -242,14 +248,14 @@ handle_cast(update_views, #state{current_read_db=RDB}=S) ->
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
     spawn(fun() ->
-		  logger:format_log(info, "TS_ACCTMGR(~p): Release trunk for ~p:~p ($~p)~n", [self(), AcctId, CallID, Amt]),
+		  logger:info("~s | Log | ~p.~p(~p): Release trunk for ~s: $~p", [CallID, ?MODULE, ?LINE, Self, AcctId, Amt]),
 
 		  load_account(AcctId, WDB, Self),
 
 		  case trunk_type(RDB, AcctId, CallID) of
 		      non_existant ->
 			  case trunk_type(WDB, AcctId, CallID) of
-			      non_existant -> logger:format_log(info, "TS_ACCTMGR(~p): Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
+			      non_existant -> logger:info("~s | Log | ~p.~p(~p): Failed to find trunk to release for ~s", [CallID, ?MODULE, ?LINE, Self, AcctId]);
 			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
 			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
 			  end;
@@ -271,7 +277,7 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
     Self = self(),
-    logger:format_log(info, "TS_ACCTMGR(~p): Loading accounts~n", [Self]),
+    logger:debug("~p.~p(~p): Loading accounts into ~s", [?MODULE, ?LINE, Self, WDB]),
     spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB, Self) end),
     {noreply, S};
 handle_info(?EOD, S) ->
@@ -289,25 +295,27 @@ handle_info(?EOD, S) ->
 handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
     Self = self(),
     spawn( fun() -> lists:foreach(fun(Acct) ->
+					  logger:debug("~p.~p(~p): Transfer account ~s from ~s to ~s", [?MODULE, ?LINE, Self, Acct, RDB, WDB]),
 					  transfer_acct(Acct, RDB, WDB),
+					  logger:debug("~p.~p(~p): Transfer active calls for ~s from ~s to ~s", [?MODULE, ?LINE, Self, Acct, RDB, WDB]),
 					  transfer_active_calls(Acct, RDB, WDB)
 				  end, get_accts(RDB)),
 		    %% once active accounts from yesterday are done, make sure all others are in too
 		    load_accounts_from_ts(WDB, Self)
 	   end),
     {noreply, S#state{current_read_db=WDB}};
-handle_info({document_changes, DocID, Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    logger:format_log(info, "TS_ACCTMGR(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
+handle_info({document_changes, DocID, _Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    logger:debug("~p.~p(~p): Changes for account ~s to be processed", [?MODULE, ?LINE, self(), DocID]),
     spawn(fun() -> update_from_couch(DocID, WDB, RDB) end),
     {noreply, S};
 handle_info({document_deleted, AcctId}, S) ->
-    logger:format_log(info, "TS_ACCTMGR(~p): Account Doc ~p deleted~n", [self(), AcctId]),
+    logger:debug("~p.~p(~p): Account ~s to deleted", [?MODULE, ?LINE, self(), AcctId]),
     {noreply, S};
-handle_info({change_handler_terminating, DB, Doc}, S) ->
-    logger:format_log(info, "TS_ACCTMGR(~p): Change Handler down for ~p ~p~n", [self(), DB, Doc]),
+handle_info({change_handler_terminating, _DB, _Doc}, S) ->
+    logger:debug("~p.~p(~p): Change handler terminated for ~s:~s", [?MODULE, ?LINE, self(), _DB, _Doc]),
     {noreply, S};
 handle_info(_Info, S) ->
-    logger:format_log(info, "TS_ACCTMGR(~p): Uhandled info: ~p~n", [self(), _Info]),
+    logger:debug("~p.~p(~p): Unhandled message ~p", [?MODULE, ?LINE, self(), _Info]),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -475,7 +483,7 @@ transfer_acct(AcctId, RDB, WDB) ->
     {ok, {struct, Acct}} = couch_mgr:open_doc(RDB, AcctId),
     Acct1 = [ {<<"amount">>, Bal} | lists:keydelete(<<"amount">>, 1, Acct)],
 
-    logger:format_log(info, "TS_ACCTMGR.transfer: Read from ~p and write to ~p: ~p has ~p balance~n", [RDB, WDB, AcctId, ?UNITS_TO_DOLLARS(Bal)]),
+    logger:debug("~p.~p(~p): Transfer account ~s: Balance ~p from ~s to ~s", [?MODULE, ?LINE, self(), AcctId, ?UNITS_TO_DOLLARS(Bal), RDB, WDB]),
 
     %% create credit entry in WDB for balance/trunks
     {ok, _} = couch_mgr:save_doc(WDB, {struct, lists:keydelete(<<"_rev">>, 1, Acct1)}),
@@ -485,14 +493,15 @@ transfer_acct(AcctId, RDB, WDB) ->
 
 transfer_active_calls(AcctId, RDB, WDB) ->
     case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
-	{ok, []} -> logger:format_log(info, "TS_ACCTMGR.trans_active: No active for ~p~n", [AcctId]);
+	{ok, []} -> logger:format_log(info, "TS_ACCTMGR.trans_active: No active for ~p", [AcctId]);
 	{ok, Calls} when is_list(Calls) ->
 	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, <<"active">>}] }) ->
 				  spawn(fun() ->
 						case is_call_active(CallId) of
 						    true ->
 							NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
-							logger:format_log(info, "TS_ACCTMGR.trans_active: Moving ~p over~n", [CallId]),
+							logger:info("~s | Log | ~p.~p(~p): Transfering active call for ~s from ~s to ~s"
+								    ,[CallId, ?MODULE, ?LINE, self(), AcctId, RDB, WDB]),
 							couch_mgr:save_doc(WDB, {struct, NewDoc});
 						    false ->
 							release_trunk_error(AcctId, CallId, RDB)
@@ -568,10 +577,7 @@ load_views(DB) ->
 
 update_views(DB) ->
     lists:foreach(fun(File) ->
-			  case couch_mgr:update_doc_from_file(DB, trunkstore, File) of
-			      {ok, _} -> logger:format_log(info, "Updating ~s: success~n", [File]);
-			      {error, Reason} -> logger:format_log(info, "Updating ~s: error ~p~n", [File, Reason])
-			  end
+			  couch_mgr:update_doc_from_file(DB, trunkstore, File)
 		  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
@@ -600,11 +606,13 @@ is_call_active_loop() ->
     end.
 
 release_trunk_error(AcctId, CallID, DB) ->
-    logger:format_log(info, "TS_ACCTMGR(~p).release_error: Release trunk for ~p:~p~n", [self(), AcctId, CallID]),
+    logger:debug("~s | Log | ~p.~p(~p): Releasing trunk for ~s errored", [CallID, ?MODULE, ?LINE, self(), AcctId]),
 
     case trunk_type(DB, AcctId, CallID) of
-	non_existant -> logger:format_log(info, "TS_ACCTMGR.release_error: Failed to find trunk for release ~p: ~p~n", [self(), AcctId, CallID]);
-	flat_rate -> couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, flat_rate));
+	non_existant -> 
+	    logger:debug("~s | Log | ~p.~p(~p): Failed to release trunk for ~s errored", [CallID, ?MODULE, ?LINE, self(), AcctId]);
+	flat_rate ->
+	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, flat_rate));
 	per_min ->
 	    Amt = case ts_cdr:fetch_cdr(binary:replace(DB, ?TS_USAGE_PREFIX, ?TS_CDR_PREFIX), CallID) of
 		      {error, not_found} -> 0;
