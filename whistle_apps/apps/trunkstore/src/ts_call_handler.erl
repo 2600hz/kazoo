@@ -100,6 +100,7 @@ get_queue(Pid) ->
 %%--------------------------------------------------------------------
 init([CallID, RouteFlags, LegNumber]) ->
     process_flag(trap_exit, true),
+    put(callid, CallID),
 
     {ok, #state{callid = CallID
 		,route_flags = RouteFlags
@@ -154,7 +155,7 @@ handle_info(timeout, #state{callid=CallID, amqp_q=Q, todays_db=DB}=S) when not i
     {noreply, S#state{amqp_q=NewQ}, 1000};
 
 handle_info({amqp_host_down, H}, #state{is_amqp_up=true}=State) ->
-    logger:debug("~p.~p(~p): AMQP Host ~s went down", [?MODULE, ?LINE, self(), H]),
+    ?LOG_SYS("AMQP Host ~s went down", [H]),
     {ok, _} = timer:send_after(1000, self(), is_amqp_up),
     {noreply, State#state{amqp_q={error, amqp_host_down}, is_amqp_up=false}};
 
@@ -168,12 +169,12 @@ handle_info(is_amqp_up, #state{callid=CallID, amqp_q={error, _}, is_amqp_up=fals
 	    {noreply, State}
     end;
 
-handle_info({timeout, Ref, call_activity_timeout}, #state{callid=CallID, call_status=down, call_activity_ref=Ref}=S) ->
+handle_info({timeout, Ref, call_activity_timeout}, #state{call_status=down, call_activity_ref=Ref}=S) ->
     _ = stop_call_activity_ref(Ref),
-    logger:debug("~s | Log | ~p.~p(~p): Call activity timed out, assuming we're down", [CallID, ?MODULE, ?LINE, self()]),
+    ?LOG_SYS("Call activity timed out, assuming we're down"),
     {stop, shutdown, S};
-handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref, amqp_q=Q, callid=CallID}=S) when is_binary(Q) ->
-    logger:debug("~s | Log | ~p.~p(~p): Event stream quiet for too long, checking in", [CallID, ?MODULE, ?LINE, self()]),
+handle_info({timeout, Ref, call_activity_timeout}, #state{callid=CallID, call_activity_ref=Ref, amqp_q=Q}=S) when is_binary(Q) ->
+    ?LOG_SYS("Event stream quiet for too long, checking in"),
     _ = stop_call_activity_ref(Ref),
 
     Prop = [{<<"Call-ID">>, CallID} | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_call_handler">>, <<"0.5.3">>)],
@@ -181,22 +182,22 @@ handle_info({timeout, Ref, call_activity_timeout}, #state{call_activity_ref=Ref,
 	{ok, JSON} ->
 	    amqp_util:callevt_publish(CallID, JSON, status_req);
 	{error, E} ->
-	    logger:err("~s | Log | ~p.~p(~p): Error validating status request: ~p", [CallID, ?MODULE, ?LINE, self(), E])
+	    ?LOG_SYS("Error validating status request: ~p", [E])
     end,
     {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=down}};
 handle_info(#'basic.consume_ok'{}, #state{call_activity_ref=Ref}=S) ->
     _ = stop_call_activity_ref(Ref),
     {noreply, S#state{call_activity_ref=call_activity_ref()}};
-handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{callid=CallID, route_flags=Flags, call_activity_ref=Ref, leg_number=LegNo, todays_db=DB}=S) ->
+handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{callid=CallID, route_flags=Flags
+								      ,call_activity_ref=Ref, leg_number=LegNo, todays_db=DB}=S) ->
     _ = stop_call_activity_ref(Ref),
 
     JObj = mochijson2:decode(binary_to_list(Payload)),
 
     case wh_json:get_value(<<"Event-Name">>, JObj) of
 	<<"cdr">> ->
-	    Self = self(),
 	    spawn(fun() ->
-			  logger:info("~s | Log | ~p.~p(~p): CDR received: ~s", [CallID, ?MODULE, ?LINE, Self, Payload]),
+			  ?LOG(CallID, "CDR received: ~s", [Payload]),
 			  true = whistle_api:call_cdr_v(JObj),
 			  close_down_call(JObj, Flags, LegNo),
 			  ts_cdr:store_cdr(JObj, Flags, DB)
@@ -204,12 +205,12 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{callid=Cal
 	    {stop, normal, S};
 	<<"route_win">> ->
 	    true = whistle_api:route_win_v(JObj),
-	    logger:info("~s | Log | ~p.~p(~p): Route won: ~s", [CallID, ?MODULE, ?LINE, self(), Payload]),
+	    ?LOG("Route won: ~s", [Payload]),
 	    {noreply, S#state{ctl_q=wh_json:get_value(<<"Control-Queue">>, JObj), call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"CHANNEL_BRIDGE">> ->
 	    true = whistle_api:call_event_v(JObj),
 	    OtherCallID = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-	    logger:info("~s | Log | ~p.~p(~p): Bridging to ~s: ~s", [CallID, ?MODULE, ?LINE, self(), OtherCallID, Payload]),
+	    ?LOG("Bridging to ~s: ~s", [OtherCallID, Payload]),
 	    OtherAcctID = Flags#route_flags.diverted_account_doc_id,
 	    AcctID = Flags#route_flags.account_doc_id, % don't lose the old account, in case of a failover route
 
@@ -229,14 +230,14 @@ handle_info({_, #amqp_msg{props = _Props, payload = Payload}}, #state{callid=Cal
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	<<"status_resp">> ->
 	    true = whistle_api:call_status_resp_v(JObj),
-	    logger:info("~s | Log | ~p.~p(~p): Status Response received: ~s", [CallID, ?MODULE, ?LINE, self(), Payload]),
+	    ?LOG("Status response received: ~s", [Payload]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}};
 	_EvtName ->
-	    logger:err("~s | Log | ~p.~p(~p): Unknown event name: ~s", [CallID, ?MODULE, ?LINE, self(), Payload]),
+	    ?LOG("Unhandled event: ~s", [Payload]),
 	    {noreply, S#state{call_activity_ref=call_activity_ref(), call_status=up}}
     end;
-handle_info(_Info, #state{callid=CallID}=S) ->
-    logger:info("~s | Log | ~p.~p(~p): Unhandled message: ~p", [CallID, ?MODULE, ?LINE, self(), _Info]),
+handle_info(_Info, S) ->
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, S}.
 
 %%--------------------------------------------------------------------
@@ -250,19 +251,19 @@ handle_info(_Info, #state{callid=CallID}=S) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(shutdown, #state{callid=CallID, route_flags=Flags, start_time=StartT, call_activity_ref=Ref}) ->
+terminate(shutdown, #state{route_flags=Flags, start_time=StartT, call_activity_ref=Ref}) ->
     _ = stop_call_activity_ref(Ref),
     Duration = get_call_duration(?EMPTY_JSON_OBJECT, Flags, StartT),
-    logger:info("~s | Log | ~p.~p(~p): Call ending via shutdown, billing for ~p", [CallID, ?MODULE, ?LINE, self(), Duration]),
+    ?LOG_SYS("Call ending via shutdown, billing for ~p", [Duration]),
     update_account(Duration, Flags); % charge for minimmum seconds since we apparently messed up
-terminate(normal, #state{callid=CallID, start_time=StartTime, call_activity_ref=Ref}) ->
+terminate(normal, #state{start_time=StartTime, call_activity_ref=Ref}) ->
     _ = stop_call_activity_ref(Ref),
     DeltaTime = whistle_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
-    logger:info("~s | Log | ~p.~p(~p): Terminating normally, call handler lasted ~p seconds", [CallID, ?MODULE, ?LINE, self(), DeltaTime]);
-terminate(_Unexpected, #state{callid=CallID, start_time=StartTime, call_activity_ref=Ref}) ->
+    ?LOG_SYS("Terminating normally, call handler lasted ~p seconds", [DeltaTime]);
+terminate(_Unexpected, #state{start_time=StartTime, call_activity_ref=Ref}) ->
     _ = stop_call_activity_ref(Ref),
     DeltaTime = whistle_util:current_tstamp() - StartTime, % one second calls in case the call isn't connected but we have a delay knowing it
-    logger:info("~s | Log | ~p.~p(~p): Terminating ~p, call handler lasted ~p seconds", [CallID, ?MODULE, ?LINE, self(), _Unexpected, DeltaTime]).
+    ?LOG_SYS("Terminating ~p, call handler lasted ~p seconds", [_Unexpected, DeltaTime]).
 
 %%--------------------------------------------------------------------
 %% @private
