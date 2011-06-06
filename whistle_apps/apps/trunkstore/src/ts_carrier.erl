@@ -79,8 +79,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(Req, _From, []=C) ->
-    logger:format_log(error, "TS_CARRIER(~p): No carrier information for Req ~p, refreshing~n", [self(), Req]),
+handle_call(_Req, _From, []=C) ->
+    logger:debug("~p.~p(~p): No carriers are loaded, refreshing", [?MODULE, ?LINE, self()]),
     ?MODULE ! refresh,
     {reply, no_carrier_information, C};
 handle_call({route, Flags}, _From, Carriers) ->
@@ -114,22 +114,22 @@ handle_info(?REFRESH_MSG, OldCarriers) ->
 	{ok, Carriers} ->
 	    {noreply, Carriers};
 	{error, _Err} ->
-	    logger:format_log(error, "TS_CARRIER(~p): Error getting carriers: ~p~n", [self(), _Err]),
+	    logger:debug("~p.~p(~p): Error getting carriers: ~p~n", [?MODULE, ?LINE, self(), _Err]),
 	    {noreply, OldCarriers}
     end;
 handle_info({document_changes, DocID, Changes}, Carriers) ->
-    logger:format_log(info, "TS_CARRIER(~p): Changes on ~p. ~p~n", [self(), DocID, Changes]),
+    logger:debug("~p.~p(~p): Document change on ~s", [?MODULE, ?LINE, self(), DocID]),
     CurrRev = props:get_value(<<"_rev">>, Carriers),
     ChangedCarriers = lists:foldl(fun(ChangeProp, Cs) ->
 					  case props:get_value(<<"rev">>, ChangeProp) of
 					      undefined -> Cs;
 					      CurrRev -> Cs;
 					      _ ->
+						  logger:debug("~p.~p(~p): New carriers to be loaded", [?MODULE, ?LINE, self()]),
 						  {ok, NewCarriers} = get_current_carriers(),
 						  NewCarriers
 					  end
 				  end, Carriers, Changes),
-    logger:format_log(info, "TS_CARRIER(~p): Changed carriers from ~p to ~p~n", [self(), CurrRev,props:get_value(<<"_rev">>, ChangedCarriers)]),
     {noreply, ChangedCarriers};
 handle_info({document_deleted, DocID}, Carriers) ->
     CurrID = props:get_value(<<"_id">>, Carriers),
@@ -160,9 +160,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    logger:format_log(error, "TS_CARRIER(~p): Going down: ~p~n", [self(), _Reason]),
-    couch_mgr:rm_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
-    ok.
+    logger:debug("~p.~p(~p): Terminating: ~p", [?MODULE, ?LINE, self(), _Reason]),
+    couch_mgr:rm_change_handler(?TS_DB, ?TS_CARRIERS_DOC).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -181,16 +180,12 @@ code_change(_OldVsn, State, _Extra) ->
 get_current_carriers() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_CARRIERS_DOC) of
 	{error, not_found} ->
-	    logger:format_log(info, "TS_CARRIER(~p): No document(~p) found~n", [self(), ?TS_CARRIERS_DOC]),
 	    {error, "No matching carriers"};
 	{error, db_not_reachable} ->
-	    logger:format_log(info, "TS_CARRIER(~p): No DB(~p) found~n", [self(), ?TS_DB]),
 	    {error, "DB not accessible"};
 	{ok, []} ->
-	    logger:format_log(info, "TS_CARRIER(~p): No Carriers defined~n", [self()]),
 	    {error, "No matching carriers"};
 	{ok, {struct, Carriers}} when is_list(Carriers) ->
-	    logger:format_log(info, "TS_CARRIER(~p): Carriers pulled. Rev: ~p~n", [self(),props:get_value(<<"_rev">>, Carriers)]),
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
 	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))}
     end.
@@ -215,8 +210,8 @@ process_carriers({CarrierName, {struct, CarrierOptions}}) ->
 		   | proplists:delete(<<"routes">>, COs1)]}.
 
 -spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, routes()} | {error, string()}).
-get_routes(#route_flags{to_user=User}=Flags, Carriers) ->
-    logger:format_log(info, "TS_CARRIER(~p): Find route to ~p~n", [self(), User]),
+get_routes(#route_flags{callid=CallID, to_user=User}=Flags, Carriers) ->
+    logger:info("~s | Log | ~p.~p(~p): Finding carriers to route ~s over", [CallID, ?MODULE, ?LINE, self(), User]),
 
     Carriers1 = lists:filter(fun({_CarrierName, CarrierData}) ->
 				     lists:any(fun(Regex) ->
@@ -225,10 +220,10 @@ get_routes(#route_flags{to_user=User}=Flags, Carriers) ->
 			     end, props:delete(<<"_rev">>, props:delete(<<"_id">>, Carriers))),
     case Carriers1 of
 	[] ->
-	    logger:format_log(error, "TS_CARRIER(~p): No carriers matching ~p~n", [self(), User]),
+	    logger:info("~s | Log | ~p.~p(~p): No carriers found that matched", [CallID, ?MODULE, ?LINE, self()]),
 	    {error, "No carriers match outbound number"};
 	Cs ->
-	    logger:format_log(error, "TS_CARRIER(~p): Creating routes for ~p~n", [self(), User]),
+	    logger:info("~s | Log | ~p.~p(~p): Found ~p carriers to route over", [CallID, ?MODULE, ?LINE, self(), length(Cs)]),
 	    create_routes(Flags, lists:sort(fun sort_carriers/2, Cs))
     end.
 
@@ -241,20 +236,20 @@ sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
 
 %% transform Carriers proplist() into a list of Routes for the API
 -spec(create_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> tuple(ok, routes()) | tuple(error, string())).
-create_routes(Flags, Carriers) ->
-    CallerID = case Flags#route_flags.caller_id of
+create_routes(#route_flags{callid=CallID, caller_id=CallerID0, to_user=ToUser}=Flags, Carriers) ->
+    CallerID = case CallerID0 of
 		   {} -> [];
 		   {Name, Number} -> [{<<"Caller-ID-Name">>, Name} ,{<<"Caller-ID-Number">>, Number}]
 	       end,
 
     ChannelVars = ts_util:get_base_channel_vars(Flags),
 
-    case lists:foldr(fun carrier_to_routes/2, {[], Flags#route_flags.to_user, CallerID, ChannelVars}, Carriers) of
+    case lists:foldr(fun carrier_to_routes/2, {[], ToUser, CallerID, ChannelVars}, Carriers) of
 	{[], _, _, _} ->
-	    logger:format_log(info, "TS_CARRIER(~p): Failed to create routes~n", [self()]),
+	    logger:err("~s | Log | ~p.~p(~p): Failed to create routes to ~s", [CallID, ?MODULE, ?LINE, self(), ToUser]),
 	    {error, "Failed to find routes for the call"};
 	{Routes, _, _, _} ->
-	    logger:format_log(info, "TS_CARRIER(~p): Found ~p routes~n", [self(), length(Routes)]),
+	    logger:err("~s | Log | ~p.~p(~p): Created ~p routes to ~s", [CallID, ?MODULE, ?LINE, self(), length(Routes), ToUser]),
 	    {ok, Routes}
     end.
 
@@ -303,9 +298,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 		 | BaseRouteData ],
 	    case whistle_api:route_resp_route_v(R) of
 		true -> {[{struct, R} | CRs], Regexed, BaseRouteData, ChannelVars};
-		false ->
-		    logger:format_log(error, "TS_CARRIER.gateway_to_route Error validating route~n~p~n", [R]),
-		    Acc
+		false -> Acc
 	    end;
 	_ -> Acc
     end.
