@@ -130,16 +130,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  case Params of
-		      [_C2CID, ?CONNECT_CALL] ->
-			  %% start call
-			  crossbar_util:binding_heartbeat(Pid),
-			  %% should return a 204
-			  %% spawn off a process to start the call
-			  Pid ! {binding_result, true, [RD, Context#cb_context{resp_data=undefined}, Params]};
-		      _ ->
 			  Pid ! {binding_result, true, [RD, Context, Params]}
-		  end
 	  end),
     {noreply, State};
 
