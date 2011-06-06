@@ -106,23 +106,25 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, S) ->
-    logger:format_log(info, "TS_RESPONDER(~p): starting up amqp, will retry in a bit if doesn't work~n", [self()]),
     {ok, CQ} = start_amqp(),
+    logger:debug("~p.~p(~p): Starting up responder with AMQP Queue: ~s", [?MODULE, ?LINE, self(), CQ]),
     {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
 
 handle_info({amqp_host_down, H}, S) ->
-    logger:format_log(info, "TS_RESPONDER(~p): amqp host ~s went down, waiting a bit then trying again~n", [self(), H]),
-    {ok, CQ} = start_amqp(),
-    {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
+    logger:debug("~p.~p(~p): AMQP Host(~s) down", [?MODULE, ?LINE, self(), H]),
+    {noreply, S#state{is_amqp_up=false}, 1000};
 
-handle_info(_, #state{is_amqp_up=false}=S) ->
-    logger:format_log(info, "TS_RESPONDER(~p): restarting amqp, will retry in a bit if doesn't work~n", [self()]),
-    {ok, CQ} = start_amqp(),
-    {noreply, S#state{is_amqp_up=is_binary(CQ)}};
+handle_info(Req, #state{is_amqp_up=false}=S) ->
+    case start_amqp() of
+	{ok, CQ} when is_binary(CQ) ->
+	    handle_info(Req, S#state{is_amqp_up=true});
+	_ ->
+	    logger:debug("~p.~p(~p): Dropping request ~p~n", [?MODULE, ?LINE, self(), Req]),
+	    {noreply, S}
+    end;
 
 %% receive resource requests from Apps
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    logger:format_log(info, "TS_RESPONDER(~p): Amqp Request recv: ~s~n", [self(), Payload]),
     spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
     {noreply, State};
 
@@ -131,7 +133,7 @@ handle_info(#'basic.consume_ok'{}, S) ->
 
 %% catch all so we don't lose state
 handle_info(_Unhandled, State) ->
-    logger:format_log(info, "TS_RESPONDER(~p): unknown info request: ~p~n", [self(), _Unhandled]),
+    logger:debug("~p.~p(~p): unknown message: ~p~n", [?MODULE, ?LINE, self(), _Unhandled]),
     {noreply, State, 1000}.
 
 %%--------------------------------------------------------------------
@@ -146,7 +148,7 @@ handle_info(_Unhandled, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _) ->
-    logger:format_log(error, "TS_RESPONDER(~p): Going down(~p)...~n", [self(), _Reason]).
+    logger:debug("~p.~p(~p): terminating: ~p~n", [?MODULE, ?LINE, self(), _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -157,7 +159,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    logger:format_log(info, "TS_RESPONDER(~p): Code Change called~n", [self()]),
+    logger:debug("~p.~p(~p): Code Change from ~p~n", [?MODULE, ?LINE, self(), _OldVsn]),
     {ok, State}.
 
 %%%===================================================================
@@ -166,53 +168,60 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(handle_req/2 :: (ContentType :: binary(), Payload :: binary()) -> no_return()).
 handle_req(<<"application/json">>, Payload) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
-    process_req(get_msg_type(JObj), JObj);
+
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>)),
+    logger:info("~s | Start | ~p.~p(~p): Received ~s", [CallID, ?MODULE, ?LINE, self(), Payload]),
+
+    process_req(get_msg_type(JObj), JObj, CallID);
 handle_req(_ContentType, _Payload) ->
-    logger:format_log(info, "TS_RESPONDER(~p): recieved unknown msg type: ~p~n", [self(), _ContentType]).
+    logger:err("~p.~p(~p): Received payload with unknown content type: ~p", [?MODULE, ?LINE, self(), _ContentType]).
 
 -spec(get_msg_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary())).
 get_msg_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
--spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object()) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
-    case whistle_api:auth_req_v(JObj) of
+-spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), CallID :: binary()) -> no_return()).
+process_req({<<"directory">>, <<"auth_req">>}, JObj, CallID) ->
+    try
+    case whistle_api:auth_req_v(JObj) andalso ts_Auth:handle_req(JObj) of
 	false ->
-	    logger:format_log(error, "TS_RESPONDER.auth(~p): Failed to validate auth_req~n", [self()]);
-	true ->
-	    case ts_auth:handle_req(JObj) of
-		{ok, JSON} ->
-		    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-		    send_resp(JSON, RespQ);
-		{error, _Msg} ->
-		    logger:format_log(error, "TS_RESPONDER.auth(~p) ERROR: ~p~n", [self(), _Msg])
-	    end
+	    logger:info("~s | End | ~p.~p(~p): Failed to validate authentication request", [CallID, ?MODULE, ?LINE, self()]);
+	{ok, JSON} ->
+	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+	    logger:info("~s | Pass | ~s | ~p.~p(~p): Responding with ~s", [CallID, RespQ, ?MODULE, ?LINE, self(), JSON]),
+	    send_resp(JSON, RespQ),
+	    logger:info("~s | End | ~p.~p(~p): Finished authentication request", [CallID, ?MODULE, ?LINE, self()]);
+	{error, _Msg} ->
+	    logger:info("~s | End | ~p.~p(~p): Authentication request error: ~p", [CallID, ?MODULE, ?LINE, self(), _Msg])
+    end
+    catch
+	A:B ->
+	    logger:info("~s | End | ~p.~p(~p): Authentication request exception: ~p:~p", [CallID, ?MODULE, ?LINE, self(), A, B])
     end;
 
-process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
-    logger:format_log(info, "TS_RESPONDER.route(~p): Looking up route req~n", [self()]),
-    Start = erlang:now(),
+process_req({<<"dialplan">>,<<"route_req">>}, JObj, CallID) ->
     try
     case whistle_api:route_req_v(JObj) andalso ts_route:handle_req(JObj) of
 	false ->
-	    logger:format_log(error, "TS_RESPONDER.route(~p): Failed to validate route_req~n", [self()]);
+	    logger:info("~s | End | ~p.~p(~p): Failed to validate route request", [CallID, ?MODULE, ?LINE, self()]);
 	{ok, JSON} ->
-	    logger:format_log(info, "TS_RESPONDER.route(~p): Took ~p micro to find route~n", [self(), timer:now_diff(erlang:now(), Start) div 1000]),
 	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-	    send_resp(JSON, RespQ);
+	    logger:info("~s | Pass | ~s | ~p.~p(~p): Responding with ~s", [CallID, RespQ, ?MODULE, ?LINE, self(), JSON]),
+	    send_resp(JSON, RespQ),
+	    logger:info("~s | End | ~p.~p(~p): Finished route request", [CallID, ?MODULE, ?LINE, self()]);
 	{error, _Msg} ->
-	    logger:format_log(error, "TS_RESPONDER.route(~p) ERROR: ~s~n", [self(), _Msg])
+	    logger:info("~s | End | ~p.~p(~p): Route request error: ~p", [CallID, ?MODULE, ?LINE, self(), _Msg])
     end
     catch
-	A:B -> logger:format_log(error, "TS_RESPONDER.route(~p): CATCH ~p:~p~n~p~n", [self(), A, B, erlang:get_stacktrace()])
+	A:B ->
+	    logger:info("~s | End | ~p.~p(~p): Route request exception: ~p:~p", [CallID, ?MODULE, ?LINE, self(), A, B])
     end;
 
-process_req(_MsgType, _Prop) ->
-    io:format("Unhandled Msg ~p~nJSON: ~p~n", [_MsgType, _Prop]).
+process_req(_MsgType, _Prop, CallID) ->
+    logger:err("~s | End | ~p.~p(~p): Unhandled request of type ~p", [CallID, ?MODULE, ?LINE, self(), _MsgType]).
 
 -spec(send_resp/2 :: (JSON :: iolist(), RespQ :: binary()) -> no_return()).
 send_resp(JSON, RespQ) ->
-    logger:format_log(info, "TS_RESPONDER(~p): JSON to ~s: ~s~n", [self(), RespQ, JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
 
 -spec(start_amqp/0 :: () -> tuple(ok, binary())).
@@ -231,5 +240,4 @@ start_amqp() ->
     amqp_util:basic_consume(ReqQueue, [{exclusive, false}]),
     amqp_util:basic_consume(ReqQueue1, [{exclusive, false}]),
 
-    logger:format_log(info, "TS_RESPONDER(~p): Consuming on CM(~p)~n", [self(), ReqQueue]),
     {ok, ReqQueue}.

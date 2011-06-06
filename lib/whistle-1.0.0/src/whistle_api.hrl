@@ -517,7 +517,7 @@
 
 %% Media Request - when streaming is needed
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
--define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>]).
+-define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
 			   ,{<<"Event-Name">>, <<"media_req">>}
 			   ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
