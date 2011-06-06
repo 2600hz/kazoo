@@ -214,21 +214,22 @@ generate_local_path(MediaName) ->
 request_media(MediaName, CallId) ->
     request_media(MediaName, <<"new">>, CallId).
 
--spec(request_media/3 :: (MediaName :: binary(), Type :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
-request_media(MediaName, Type, CallId) ->
-    case gen_server:call(?MODULE, {lookup_local, MediaName, CallId}, infinity) of
+-spec(request_media/3 :: (MediaName :: binary(), Type :: binary(), CallID :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
+request_media(MediaName, Type, CallID) ->
+    case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
         {ok, Path} ->
 	    {ok, Srv} = ecallmgr_shout_sup:start_srv(Path),
 	    Url = ecallmgr_shout:get_srv_url(Srv),
             {ok, Url};
         {error, _} ->
-            lookup_remote(MediaName, Type)
+            lookup_remote(MediaName, Type, CallID)
     end.
 
-lookup_remote(MediaName, StreamType) ->
+lookup_remote(MediaName, StreamType, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, StreamType}
+	       ,{<<"Call-ID">>, CallID}
                | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
 
