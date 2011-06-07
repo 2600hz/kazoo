@@ -175,7 +175,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
 	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
     catch A:B ->
-	    logger:err(info, "~p.~p(~p): Exception Thrown: ~p:~p~p", [?MODULE, ?LINE, self(), A, B, erlang:get_stacktrace()]),
+	    logger:err("~p.~p(~p): Exception Thrown: ~p:~p~p", [?MODULE, ?LINE, self(), A, B, erlang:get_stacktrace()]),
 	    {stop, normal, S}
     end;
 
@@ -187,7 +187,7 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=Med
 	  end),
     {noreply, S};
 
-handle_info({add_listener, ListenerQ}, #state{media_name=#media_file{stream_url=StreamUrl}=MediaName, send_to=SendTo}=S) ->
+handle_info({add_listener, ListenerQ}, #state{media_file=#media_file{stream_url=StreamUrl}, media_name=MediaName, send_to=SendTo}=S) ->
     send_media_resp(MediaName, StreamUrl, ListenerQ),
     {noreply, S#state{send_to=[ListenerQ | SendTo]}};
 

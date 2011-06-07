@@ -5,6 +5,7 @@
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
+-spec(start_link/0 :: () -> tuple(ok, pid()) | ignore | tuple(error, term())).
 start_link() ->
     start_deps(),
     Res = trunkstore_sup:start_link(),

@@ -178,21 +178,29 @@ start_amqp() ->
 handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
     <<"dialplan">> = wh_json:get_value(<<"Event-Category">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    put(callid, CallId), %% we were spawn'd so this is safe
+    ?LOG_START("received route request"),
     Dest = destination_uri(JObj),
-    true = hunt_to(Dest) orelse hunt_no_match(Dest),
-    logger:format_log(info, "CF_RESP(~p): Affirmative routing response for ~p", [self(), Dest]),
-    wh_cache:store({cf_call, CallId}, {Dest, JObj}, 5),
-    Resp = [
-             {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Routes">>, []}
-            ,{<<"Method">>, <<"park">>}
-            | whistle_api:default_headers(CQ, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
-           ],
-    {ok, Payload} = whistle_api:route_resp(Resp),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+    case hunt_to(Dest) orelse hunt_no_match(Dest) of
+        false ->
+            ?LOG_END("unknown to callflow");
+        true ->
+            wh_cache:store({cf_call, CallId}, {Dest, JObj}, 5),
+            Resp = [
+                     {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    ,{<<"Routes">>, []}
+                    ,{<<"Method">>, <<"park">>}
+                    | whistle_api:default_headers(CQ, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+                   ],
+            {ok, Payload} = whistle_api:route_resp(Resp),
+            ?LOG("replying to route request"),
+            amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
+    end;
 
 handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    put(callid, CallId), %% we were spawn'd so this is safe
+    ?LOG("received route win"),
     {ok, {Dest, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
     {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, Dest}),
     To = wh_json:get_value(<<"To">>, RouteReq),
@@ -230,8 +238,8 @@ handle_req(_EventName, _JObj, _Parent, _State) ->
 -spec(hunt_to/1 :: (To :: binary()) -> boolean()).
 hunt_to(To) ->
     case wh_cache:fetch({cf_flow, To}) of         
-        {ok, _} ->
-            format_log(info, "CF_RESP(~p): Callflow for ~p exists in cache...", [self(), To]),
+        {ok, {FlowId, _, _}} ->
+            ?LOG("found callflow ~s in cache", [FlowId]),
             true;
         {error, _} ->
             lookup_flow(To)
@@ -250,18 +258,18 @@ lookup_flow(To) ->
 lookup_flow(To, Key) ->
     case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, Key}]) of
         {ok, []} ->
-            format_log(info, "CF_RESP(~p): Could not find callflow for ~p to ~p", [self(), Key, To]),
             false;
         {ok, [JObj]} ->
-            format_log(info, "CF_RESP(~p): Retreived callflow for ~p to ~p", [self(), Key, To]),
+            FlowId = wh_json:get_value(<<"id">>, JObj),
             wh_cache:store({cf_flow, To}, {
-                             wh_json:get_value(<<"id">>, JObj),
+                             FlowId,
                              wh_json:get_value([<<"value">>, <<"flow">>], JObj),
                              wh_json:get_value([<<"value">>, <<"account_db">>], JObj)
                             }, 500),
+            ?LOG("found callflow ~s", [FlowId]),
             true;
-        {error, _}=E ->
-            format_log(info, "CF_RESP(~p): Error ~p while retreiving callflow ~p to ~p", [self(), E, Key, To]),
+        {error, E} ->
+            ?LOG("error looking up callflow ~s", [E]),
             false
     end.    
 
