@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4, stop/1]).
+-export([start_link/5, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,8 +47,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Media, To, Type, Port) ->
-    gen_server:start_link(?MODULE, [Media, To, Type, Port], []).
+start_link(Media, To, Type, Port, CallID) ->
+    gen_server:start_link(?MODULE, [Media, To, Type, Port, CallID], []).
 
 stop(Srv) ->
     gen_server:cast(Srv, stop).
