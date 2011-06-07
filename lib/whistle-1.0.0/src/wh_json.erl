@@ -48,7 +48,7 @@ get_value1(_, _, Default) -> Default.
 
 %% Figure out how to set the current key among a list of objects
 
--spec(set_value/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object()).
+-spec(set_value/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object() | json_objects()).
 set_value(Key, Value, {struct, _}=Doc) ->
     set_value1(Key, Value, Doc);
 set_value(Key, Value, [{struct, _} | _]=Docs) ->

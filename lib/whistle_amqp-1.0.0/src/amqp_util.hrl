@@ -22,12 +22,6 @@
 -define(EXCHANGE_CALLEVT, <<"callevt">>).
 -define(TYPE_CALLEVT, <<"topic">>).
 
-%% Broadcast Exchange
-%% - Any consumer can create a queue to get any message published to the exchange
-%% - Many publishers to the exchange, one consumer per queue
--define(EXCHANGE_BROADCAST, <<"broadcast">>).
--define(TYPE_BROADCAST, <<"fanout">>).
-
 -define(EXCHANGE_RESOURCE, <<"resource">>).
 -define(TYPE_RESOURCE, <<"fanout">>).
 

@@ -2,23 +2,19 @@
 
 -include("amqp_util.hrl").
 
--import(props, [get_value/2, get_value/3]).
-
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
 -export([callctl_exchange/0, callctl_publish/2, callctl_publish/3]).
 -export([callevt_exchange/0, callevt_publish/2, callevt_publish/3]).
--export([broadcast_exchange/0, broadcast_publish/1, broadcast_publish/2]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
 
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
 -export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2]).
--export([bind_q_to_broadcast/1, bind_q_to_broadcast/2, unbind_q_from_broadcast/2]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 
--export([new_targeted_queue/0, new_targeted_queue/1, new_callevt_queue/1, new_callctl_queue/1, new_broadcast_queue/1, new_callmgr_queue/1, new_callmgr_queue/2]).
+-export([new_targeted_queue/0, new_targeted_queue/1, new_callevt_queue/1, new_callctl_queue/1, new_callmgr_queue/1, new_callmgr_queue/2]).
 -export([delete_callevt_queue/1, delete_callctl_queue/1, delete_callmgr_queue/1]).
 
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
@@ -77,16 +73,6 @@ callevt_publish(CallId, Payload, cdr) ->
 callevt_publish(_CallId, Payload, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, <<"application/json">>).
 
-broadcast_publish(Payload) ->
-    broadcast_publish(Payload, undefined).
-
-broadcast_publish(Payload, ContentType) when is_list(ContentType) ->
-    broadcast_publish(Payload, list_to_binary(ContentType));
-broadcast_publish(Payload, ContentType) when is_list(Payload) ->
-    broadcast_publish(list_to_binary(Payload), ContentType);
-broadcast_publish(Payload, ContentType) ->
-    basic_publish(?EXCHANGE_BROADCAST, <<"#">>, Payload, ContentType).
-
 resource_publish(Payload) ->
     resource_publish(Payload, undefined).
 
@@ -109,9 +95,6 @@ callctl_exchange() ->
 callevt_exchange() ->
     new_exchange(?EXCHANGE_CALLEVT, ?TYPE_CALLEVT).
 
-broadcast_exchange() ->
-    new_exchange(?EXCHANGE_BROADCAST, ?TYPE_BROADCAST).
-
 resource_exchange() ->
     new_exchange(?EXCHANGE_RESOURCE, ?TYPE_RESOURCE).
 
@@ -128,52 +111,55 @@ new_exchange(Exchange, Type, _Options) ->
      },
     #'exchange.declare_ok'{} = amqp_manager:misc_req(ED).
 
+
+-spec(new_targeted_queue/0 :: () -> binary() | tuple(error, amqp_error)).
+-spec(new_targeted_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
 new_targeted_queue() ->
     new_queue(<<>>, [{nowait, false}]).
 
 new_targeted_queue(<<>>) ->
     new_queue(<<>>, [{nowait, false}]);
-new_targeted_queue(QueueName) ->
-    new_queue(list_to_binary([?EXCHANGE_TARGETED, ".", QueueName]), [{nowait, false}]).
+new_targeted_queue(Queue) ->
+    new_queue(Queue, [{nowait, false}]).
 
-new_broadcast_queue(<<>>) ->
-    new_queue(<<>>, [{nowait, false}]);
-new_broadcast_queue(QueueName) ->
-    new_queue(list_to_binary([?EXCHANGE_BROADCAST, ".", QueueName]), [{nowait, false}]).
-
+-spec(new_callevt_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
 new_callevt_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callevt_queue(CallId) ->
     new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
+-spec(new_callctl_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
 new_callctl_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(CallId) ->
     new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
+-spec(new_callmgr_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec(new_callmgr_queue/2 :: (Queue :: binary(), Opts :: proplist()) -> binary() | tuple(error, amqp_error)).
 new_callmgr_queue(Queue) ->
     new_queue(Queue, []).
 new_callmgr_queue(Queue, Opts) ->
     new_queue(Queue, Opts).
 
 %% Declare a queue and returns the queue Name
+-spec(new_queue/0 :: () -> binary() | tuple(error, amqp_error)).
+-spec(new_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec(new_queue/2 :: (Queue :: binary(), Opts :: proplist()) -> binary() | tuple(error, amqp_error)).
 new_queue() ->
     new_queue(<<>>). % let's the client lib create a random queue name
 new_queue(Queue) ->
     new_queue(Queue, []).
-new_queue(Queue, Options) when is_list(Queue) ->
-    new_queue(list_to_binary(Queue), Options);
-new_queue(Queue, Options) ->
+new_queue(Queue, Options) when is_binary(Queue) ->
     QD = #'queue.declare'{
       queue = Queue
-      ,passive = get_value(passive, Options, false)
-      ,durable = get_value(durable, Options, false)
-      ,exclusive = get_value(exclusive, Options, false)
-      ,auto_delete = get_value(auto_delete, Options, true)
-      ,nowait = get_value(nowait, Options, false)
-      ,arguments = get_value(arguments, Options, [])
+      ,passive = props:get_value(passive, Options, false)
+      ,durable = props:get_value(durable, Options, false)
+      ,exclusive = props:get_value(exclusive, Options, false)
+      ,auto_delete = props:get_value(auto_delete, Options, true)
+      ,nowait = props:get_value(nowait, Options, false)
+      ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_manager:consume(QD) of
 	ok -> Queue;
@@ -198,20 +184,24 @@ delete_callmgr_queue(Queue) ->
     queue_delete(Queue, []).
 
 %% Bind a Queue to an Exchange (with optional Routing Key)
+-spec(bind_q_to_targeted/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_targeted(Queue) ->
-    bind_q_to_targeted(Queue, Queue).
-
+    bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
+-spec(bind_q_to_callctl/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec(bind_q_to_callctl/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_callctl(Queue) ->
     bind_q_to_callctl(Queue, Queue).
 
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
-
 %% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallId
+-spec(bind_q_to_callevt/2 :: (Queue :: binary(), Routing :: media_req | binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec(bind_q_to_callevt/3 :: (Queue :: binary(), Routing :: media_req | binary(), Type :: events | status_req | cdr | other) ->
+				  #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_callevt(Queue, media_req) ->
     bind_q_to_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallId) ->
@@ -226,27 +216,21 @@ bind_q_to_callevt(Queue, CallId, cdr) ->
 bind_q_to_callevt(Queue, Routing, other) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
-bind_q_to_broadcast(Queue) ->
-    bind_q_to_broadcast(Queue, <<"#">>).
-
-bind_q_to_broadcast(Queue, Routing) ->
-    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_BROADCAST).
-
+-spec(bind_q_to_resource/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec(bind_q_to_resource/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_resource(Queue) ->
     bind_q_to_resource(Queue, <<"#">>).
 
 bind_q_to_resource(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
+-spec(bind_q_to_callmgr/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
 %% generic binder
-bind_q_to_exchange(Queue, Routing, Exchange) when is_list(Queue) ->
-    bind_q_to_exchange(list_to_binary(Queue), Routing, Exchange);
-bind_q_to_exchange(Queue, Routing, Exchange) when is_list(Routing) ->
-    bind_q_to_exchange(Queue, list_to_binary(Routing), Exchange);
-bind_q_to_exchange(Queue, Routing, Exchange) ->
+-spec(bind_q_to_exchange/3 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+bind_q_to_exchange(Queue, Routing, Exchange) when is_binary(Queue), is_binary(Routing) ->
     QB = #'queue.bind'{
       queue = Queue %% what queue does the binding attach to?
       ,exchange = Exchange %% what exchange does the binding attach to?
@@ -262,8 +246,7 @@ unbind_q_from_callctl(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_CALLCTL).
 unbind_q_from_resource(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
-unbind_q_from_broadcast(Queue, Routing) ->
-    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_BROADCAST).
+
 unbind_q_from_callmgr(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 unbind_q_from_targeted(Queue) ->
@@ -288,10 +271,10 @@ basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
       ,consumer_tag = Queue
-      ,no_local = get_value(no_local, Options, false)
-      ,no_ack = get_value(no_ack, Options, true)
-      ,exclusive = get_value(exclusive, Options, true)
-      ,nowait = get_value(nowait, Options, false)
+      ,no_local = props:get_value(no_local, Options, false)
+      ,no_ack = props:get_value(no_ack, Options, true)
+      ,exclusive = props:get_value(exclusive, Options, true)
+      ,nowait = props:get_value(nowait, Options, false)
      },
     amqp_manager:consume(BC).
 
@@ -314,8 +297,8 @@ basic_publish(Exchange, Queue, Payload, ContentType, Prop) ->
     BP = #'basic.publish'{
       exchange = Exchange
       ,routing_key = Queue
-      ,mandatory = get_value(mandatory, Prop, false)
-      ,immediate = get_value(immediate, Prop, false)
+      ,mandatory = props:get_value(mandatory, Prop, false)
+      ,immediate = props:get_value(immediate, Prop, false)
      },
 
     %% Add the message to the publish, converting to binary
@@ -332,9 +315,9 @@ queue_delete(Queue) ->
 queue_delete(Queue, Prop) ->
     QD = #'queue.delete'{
       queue=Queue
-      ,if_unused=get_value(if_unused, Prop, false)
-      ,if_empty = get_value(if_empty, Prop, false)
-      ,nowait = get_value(nowait, Prop, true)
+      ,if_unused=props:get_value(if_unused, Prop, false)
+      ,if_empty = props:get_value(if_empty, Prop, false)
+      ,nowait = props:get_value(nowait, Prop, true)
      },
     amqp_manager:consume(QD).
 
@@ -342,12 +325,12 @@ access_request() ->
     access_request([]).
 access_request(Options) ->
     #'access.request'{
-      realm = get_value(realm, Options, <<"/data">>)
-      ,exclusive = get_value(exclusive, Options, false)
-      ,passive = get_value(passive, Options, true)
-      ,active = get_value(active, Options, true)
-      ,write = get_value(write, Options, true)
-      ,read = get_value(read, Options, true)
+      realm = props:get_value(realm, Options, <<"/data">>)
+      ,exclusive = props:get_value(exclusive, Options, false)
+      ,passive = props:get_value(passive, Options, true)
+      ,active = props:get_value(active, Options, true)
+      ,write = props:get_value(write, Options, true)
+      ,read = props:get_value(read, Options, true)
      }.
 
 is_json(Props) ->
@@ -363,6 +346,6 @@ basic_nack(DTag) ->
 is_host_available() ->
     amqp_mgr:is_available().
 
--spec(basic_qos/1 :: (PreFetch :: non_neg_integer()) -> no_return()).
+-spec(basic_qos/1 :: (PreFetch :: non_neg_integer()) -> ok).
 basic_qos(PreFetch) when is_integer(PreFetch) ->
     amqp_manager:consume(#'basic.qos'{prefetch_count = PreFetch}).

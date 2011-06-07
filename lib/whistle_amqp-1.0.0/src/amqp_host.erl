@@ -23,7 +23,6 @@
 -define(KNOWN_EXCHANGES, [{?EXCHANGE_TARGETED, ?TYPE_TARGETED}
 			  ,{?EXCHANGE_CALLCTL, ?TYPE_CALLCTL}
 			  ,{?EXCHANGE_CALLEVT, ?TYPE_CALLEVT}
-			  ,{?EXCHANGE_BROADCAST, ?TYPE_BROADCAST}
 			  ,{?EXCHANGE_CALLMGR, ?TYPE_CALLMGR}
 			  ,{?EXCHANGE_MONITOR, ?TYPE_MONITOR}
 			 ]).
@@ -137,7 +136,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R,T} -> % channel, channel ref, ticket
 		    FromRef = erlang:monitor(process, FromPid),
 
 		    gen_server:reply(From, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)),
@@ -439,13 +438,21 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 				      end;
 
 				 (FromPid, {C,CRef,_,FromRef}, AccDict) when Ref =:= FromRef ->
-				      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down~n", [self(), FromPid]),
+				      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down: channel(~p) goes down too~n", [self(), FromPid, C]),
 				      erlang:demonitor(CRef, [flush]),
-				      case erlang:is_process_alive(C) of
-					  true -> amqp_channel:close(C);
-					  false -> ok
-				      end,
+				      amqp_channel:close(C),
 				      dict:erase(FromPid, AccDict);
+
+				 (FromPid, {C,CRef,_,FromRef}, AccDict) ->
+				      case erlang:is_process_alive(FromPid) of
+					  true -> AccDict;
+					  false ->
+					      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down unknowingly: channel(~p) goes down too~n", [self(), FromPid, C]),
+					      erlang:demonitor(FromRef, [flush]),
+					      erlang:demonitor(CRef, [flush]),
+					      amqp_channel:close(C),
+					      dict:erase(FromPid, AccDict)
+				      end;
 
 				 (_, _, AccDict) ->
 				      AccDict

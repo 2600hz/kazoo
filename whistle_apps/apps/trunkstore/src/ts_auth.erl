@@ -12,7 +12,7 @@
 -export([handle_req/1]).
 
 -define(APP_NAME, <<"ts_responder.auth">>).
--define(APP_VERSION, <<"0.3.1">>).
+-define(APP_VERSION, <<"0.3.4">>).
 
 -include("ts.hrl").
 
@@ -36,7 +36,7 @@ handle_req(JObj) ->
     AuthR = case ts_util:is_ipv4(AuthR0) of
 		true ->
 		    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-		    logger:format_log(info, "TS_AUTH(~p): Auth-Realm (~p) not a hostname, trying To-Domain(~p)~n", [self(), AuthR0, ToDomain]),
+		    ?LOG("Auth-Realm (~s) not a hostname, trying To-Domain (~s)", [AuthR0, ToDomain]),
 		    ToDomain;
 		false ->
 		    AuthR0

@@ -1,6 +1,6 @@
 %%%============================================================================
 %%% @author Vladimir Darmin <vova@2600hz.org>
-%%% @copyright (C) 2011, Vladimir Darmin
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Callflow executioner, executes the head node and waits for further
 %%% instructions
@@ -29,12 +29,13 @@ start_link(Call, Flow) ->
     proc_lib:start_link(?MODULE, init, [self(), Call, Flow]).
 
 -spec(init/3 :: (Parent :: pid(), Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
-init(Parent, #cf_call{dest_number=DestNum, call_id=CallId}=Call, Flow) ->
+init(Parent, #cf_call{call_id=CallId}=Call, Flow) ->
+    put(callid, CallId),
+    ?LOG("executing callflow"),
     process_flag(trap_exit, true),
     AmqpQ = init_amqp(Call),
     cache_account(Call),
     proc_lib:init_ack(Parent, {ok, self()}),
-    logger:format_log(info, "CF_EXECUTIONER(~p): Executing callflow for ~p (~p)", [self(), DestNum, CallId]),
     next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow).
 
 %%--------------------------------------------------------------------
@@ -50,11 +51,11 @@ next(Call, Flow) ->
     Data = wh_json:get_value(<<"data">>, Flow),
     try list_to_existing_atom(binary_to_list(Module)) of
         CF_Module ->
-            logger:format_log(info, "CF EXECUTIONER (~p): Executing ~p...", [self(), Module]),
+            ?LOG("moving to action ~s", [Module]),
             wait(Call, Flow, spawn_link(CF_Module, handle, [Data, Call]))
     catch
         _:_ ->
-            logger:format_log(error, "CF EXECUTIONER (~p): Module ~p doesn't exist!", [self(), Module]),
+            ?LOG("unknown action ~s", [Module]),
             self() ! {continue, <<"_">>},
             wait(Call, Flow, undefined)
     end.
@@ -70,7 +71,7 @@ next(Call, Flow) ->
 wait(Call, Flow, Pid) ->
    receive
        {'EXIT', Pid, Reason} when Reason =/= normal ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Module died unexpectedly (~p)", [self(), Reason]),
+           ?LOG("action died unexpectedly ~s", [Reason]),
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue} ->
@@ -80,10 +81,10 @@ wait(Call, Flow, Pid) ->
            logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
-                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
+                   ?LOG_END("unexpected end of callflow"),
                    cf_call_command:hangup(Call);
                ?EMPTY_JSON_OBJECT ->
-                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
+                   ?LOG_END("child node doesn't exist"),
                    cf_call_command:hangup(Call);
                NewFlow ->
                    next(Call, NewFlow)
@@ -112,13 +113,12 @@ wait(Call, Flow, Pid) ->
        {branch, NewFlow} ->
            next(Call, NewFlow);
        {stop} ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]);
+           ?LOG_END("execution has been stopped");
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
            is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
            wait(Call, Flow, Pid);
        _Msg ->
-           logger:format_log(error, "CF_EXECUTIONER (~p): Roque message recieved: ~p", [self(), _Msg]),
            wait(Call, Flow, Pid)
    end.
 
