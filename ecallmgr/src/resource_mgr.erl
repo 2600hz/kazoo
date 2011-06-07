@@ -140,12 +140,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/0 :: () -> binary()).
+-spec(start_amqp/0 :: () -> binary() | tuple(error, amqp_error)).
 start_amqp() ->
-    Q = amqp_util:new_callmgr_queue(<<>>),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_RESOURCE_REQ),
-    amqp_util:basic_consume(Q),
-    Q.
+    try
+	true = is_binary(Q = amqp_util:new_callmgr_queue(<<>>)),
+	_ = amqp_util:bind_q_to_callmgr(Q, ?KEY_RESOURCE_REQ),
+	_ = amqp_util:basic_consume(Q),
+	Q
+    catch
+	_:_ -> {error, amqp_error}
+    end.
 
 -spec(handle_resource_req/1 :: (Payload :: binary()) -> no_return()).
 handle_resource_req(Payload) ->

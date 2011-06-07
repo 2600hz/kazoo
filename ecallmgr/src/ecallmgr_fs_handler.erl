@@ -1,10 +1,11 @@
-
 %%%-----------------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%%
-%%%
+%%% When connecting to a FreeSWITCH node, we create three processes: one to
+%%% handle authentication (directory) requests; one to handle route (dialplan)
+%%% requests, and one to monitor the node and various stats about the node.
 %%%
 %%% @end
 %%% Created : 08 Oct 2010 by James Aimonetti <james@2600hz.com>
@@ -45,6 +46,8 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns ok or {error, some_error_atom_explaining_more}
+-spec(add_fs_node/1 :: (Node :: atom()) -> ok | tuple(error, no_connection)).
+-spec(add_fs_node/2 :: (Node :: atom(), Opts :: proplist()) -> ok | tuple(error, no_connection)).
 add_fs_node(Node) -> add_fs_node(Node, []).
 add_fs_node(Node, Opts) ->
     gen_server:call(?MODULE, {add_fs_node, Node, Opts}, infinity).
@@ -156,13 +159,12 @@ handle_call({rm_fs_node, Node}, _From, State) ->
 handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
 		  Resp = process_resource_request(Type, Nodes, Options),
-		  logger:format_log(info, "FS_HANDLER(~p): Resource Resp: ~p~n", [self(), Resp]),
 		  gen_server:reply(From, Resp)
 	  end),
     {noreply, State};
 
 handle_call(_Request, _From, State) ->
-    logger:format_log(error, "FS_HANDLER(~p): Unhandled call ~p~n", [self(), _Request]),
+    ?LOG("Unhandled call ~p", [_Request]),
     {reply, {error, unhandled_request}, State}.
 
 %%--------------------------------------------------------------------
@@ -189,22 +191,17 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
-    case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
-	[] ->
-	    logger:format_log(info, "FS_HANDLER(~p): Received nodedown for ~p but node is not known~n", [self(), Node]),
-	    {noreply, State};
-	[#node_handler{node=Node, options=Opts}|_] ->
-	    erlang:monitor_node(Node, false),
-	    ecallmgr_fs_sup:stop_handlers(Node),
+    ?LOG("Node ~p has gone down", [Node]),
+    spawn(fun() ->
+		  [#node_handler{node=Node, options=Opts}] = [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1],
+		  erlang:monitor_node(Node, false),
+		  [ok,ok,ok] = ecallmgr_fs_sup:stop_handlers(Node),
 
-	    spawn_link(fun() ->
-			       logger:format_log(info, "FS_HANDLER.node_watch(~p) starting~n", [self()]),
-			       watch_node_for_restart(Node, Opts)
-		       end),
+		  ?LOG("Node watch starting for ~p", [Node]),
+		  watch_node_for_restart(Node, Opts)
+	  end),
 
-	    logger:format_log(info, "FS_HANDLER(~p): Node ~p has gone down~n", [self(), Node]),
-	    {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
-    end;
+    {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}};
 handle_info(timeout, State) ->
     spawn(fun() ->
                   {ok, Startup} = file:consult(?STARTUP_FILE),
@@ -214,14 +211,11 @@ handle_info(timeout, State) ->
                                 end, Nodes)
           end),    
     {noreply, State};
-handle_info({'EXIT', Pid, normal}, State) ->
-    logger:format_log(info, "FS_HANDLER(~p): ~p exited normally.~n", [self(), Pid]),
-    {noreply, State};
 handle_info({'EXIT', Pid, _Reason}, State) ->
-    logger:format_log(info, "FS_HANDLER(~p): ~p exited abnormally: ~p.~n", [self(), Pid, _Reason]),
+    ?LOG("Pid ~p exited: ~p", [self(), Pid, _Reason]),
     {noreply, State};
 handle_info(_Info, State) ->
-    logger:format_log(info, "FS_HANDLER(~p): Unhandled Info: ~p~n", [self(), _Info]),
+    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -236,10 +230,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{fs_nodes=Nodes}) ->
-    Self = self(),
-    logger:format_log(error, "FS_HANDLER(~p): terminating: ~p~n", [Self, _Reason]),
-    lists:foreach(fun close_node/1, Nodes),
-    ok.
+    ?LOG("Terminating: ~p", [_Reason]),
+    lists:foreach(fun close_node/1, Nodes).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -255,11 +247,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(watch_node_for_restart/2 :: (Node :: atom(), Opts :: proplist()) -> no_return()).
+-spec(watch_node_for_restart/2 :: (Node :: atom(), Opts :: proplist()) -> ok | tuple(error, no_connection)).
 watch_node_for_restart(Node, Opts) ->
     watch_node_for_restart(Node, Opts, 1000).
 
--spec(watch_node_for_restart/3 :: (Node :: atom(), Opts :: proplist(), Timeout :: integer()) -> no_return()).
+-spec(watch_node_for_restart/3 :: (Node :: atom(), Opts :: proplist(), Timeout :: integer()) -> ok | tuple(error, no_connection)).
 watch_node_for_restart(Node, Opts, Timeout) when Timeout > ?MAX_TIMEOUT_FOR_NODE_RESTART ->
     is_node_up(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART);
 watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
@@ -267,17 +259,20 @@ watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
 watch_node_for_restart(Node, Opts, Timeout) ->
     is_node_up(Node, Opts, Timeout * 2).
 
+-spec(is_node_up/3 :: (Node :: atom(), Opts :: proplist(), Timeout :: integer()) -> ok | tuple(error, no_connection)).
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
 	pong ->
-	    logger:format_log(info, "FS_HANDLER.is_node_up(~p): ~p has risen~n", [self(), Node]),
+	    ?LOG("Node ~p has risen", [Node]),
 	    ?MODULE:add_fs_node(Node, Opts);
 	pang ->
+	    ?LOG("Waiting ~p seconds to ping again", [Timeout div 1000]),
 	    receive
-		shutdown -> logger:format_log(info, "FS_HANDLER.is_node_up(~p): watcher going down for ~p~n", [self(), Node])
+		shutdown ->
+		    ?LOG("Watcher for ~p asked to go down", [Node])
 	    after
 		Timeout ->
-		    logger:format_log(info, "FS_HANDLER.is_node_up(~p): trying ~p again, then waiting for ~p secs~n", [self(), Node, Timeout div 1000]),
+		    ?LOG("Pinging ~p again", [Node]),
 		    watch_node_for_restart(Node, Opts, Timeout)
 	    end
     end.
@@ -319,7 +314,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 	    case net_adm:ping(Node) of
 		pong ->
 		    erlang:monitor_node(Node, true),
-		    logger:format_log(info, "FS_HANDLER(~p): No node matching ~p found, adding~n", [self(), Node]),
+		    ?LOG("No node matching ~p found, adding", [Node]),
 
 		    case lists:all(fun({ok, Pid}) when is_pid(Pid) -> true;
 				      ({error, {already_started, Pid}}) when is_pid(Pid) -> true;
@@ -331,11 +326,11 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 			    {{error, failed_starting_handlers}, State}
 		    end;
 		pang ->
-		    logger:format_log(error, "FS_HANDLER(~p): ~p not responding~n", [self(), Node]),
+		    ?LOG("Node ~p not responding, can't connect", [Node]),
 		    {{error, no_connection}, State}
 	    end;
 	[#node_handler{node=Node}=N] ->
-	    logger:format_log(info, "FS_HANDLER(~p): handlers known for node ~p~n", [self(), Node]),
+	    ?LOG("Handlers known for node ~p", [Node]),
 
 	    {_, _, NHP} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
 	    is_pid(NHP) andalso NHP ! {update_options, Options},
@@ -343,7 +338,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 	    case lists:any(fun(error) -> true; (undefined) -> true; (_) -> false end, tuple_to_list(Handlers)) of
 		true ->
 		    _ = ecallmgr_fs_sup:stop_handlers(Node),
-		    logger:format_log(info, "removed handlers cause something is wonky: handlers: ~p", [Handlers]),
+		    ?LOG("Removed handlers for node ~p because something is wonky: handlers: ~p", [Node, Handlers]),
 		    add_fs_node(Node, Options, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)});
 		false ->
 		    {ok, State#state{fs_nodes=[N#node_handler{options=Options} | lists:keydelete(Node, 2, Nodes)]}}
@@ -354,12 +349,11 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
     case lists:keyfind(Node, 2, Nodes) of
 	false ->
-	    logger:format_log(error, "FS_HANDLER(~p): No handlers found for ~p~n", [self(), Node]),
+	    ?LOG("No handlers found for ~p", [Node]),
 	    {{error, no_node, Node}, State};
 	N ->
-	    logger:format_log(info, "FS_HANDLER(~p): Found node handler: ~p~n", [self(), N]),
-	    Res = close_node(N),
-	    {{ok, Res}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
+	    ?LOG("Found node handler for p: ~p", [Node, N]),
+	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
 -spec(close_node/1 :: (N :: #node_handler{}) -> list(ok | tuple(error, term()))).
@@ -378,5 +372,5 @@ process_resource_request(<<"audio">>=Type, Nodes, Options) ->
 		 end || #node_handler{node=Node} <- Nodes],
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
-    logger:format_log(info, "FS_HANDLER(~p): Unhandled resource request type ~p~n", [self(), Type]),
+    ?LOG("Unhandled resource request type ~p", [Type]),
     [].

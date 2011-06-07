@@ -247,16 +247,20 @@ handle_route_req(Node, FSID, CallID, FSData) ->
     {ok, Pid}.
 
 start_control_and_events(Node, CallID, SendTo) ->
-    CtlQ = amqp_util:new_callctl_queue(<<>>),
-    amqp_util:bind_q_to_callctl(CtlQ),
-    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, CtlQ),
-    {ok, _} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
+    try
+	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
+	_ = amqp_util:bind_q_to_callctl(CtlQ),
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, CtlQ),
+	{ok, _} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
 
-    CtlProp = [{<<"Msg-ID">>, CallID}
-	       ,{<<"Call-ID">>, CallID}
-	       ,{<<"Control-Queue">>, CtlQ}
-	       | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
-    send_control_queue(SendTo, CtlProp).
+	CtlProp = [{<<"Msg-ID">>, CallID}
+		   ,{<<"Call-ID">>, CallID}
+		   ,{<<"Control-Queue">>, CtlQ}
+		   | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
+	send_control_queue(SendTo, CtlProp)
+    catch
+	_:_ -> {error, amqp_error}
+    end.
 
 send_control_queue(SendTo, CtlProp) ->
     case whistle_api:route_win(CtlProp) of

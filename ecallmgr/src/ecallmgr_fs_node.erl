@@ -189,14 +189,18 @@ originate_channel(Node, Pid, Route, AvailChan) ->
 	    Pid ! {resource_error, timeout}
     end.
 
--spec(start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary()).
+-spec(start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary() | tuple(error, amqp_error)).
 start_call_handling(Node, UUID) ->
-    CtlQueue = amqp_util:new_callctl_queue(<<>>),
-    amqp_util:bind_q_to_callctl(CtlQueue),
+    try
+	true = is_binary(CtlQueue = amqp_util:new_callctl_queue(<<>>)),
+	_ = amqp_util:bind_q_to_callctl(CtlQueue),
 
-    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
-    {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
-    CtlQueue.
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
+	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
+	CtlQueue
+    catch
+	_:_ -> {error, amqp_error}
+    end.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).
 diagnostics(Pid, Stats) ->

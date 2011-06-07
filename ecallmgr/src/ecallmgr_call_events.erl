@@ -289,7 +289,7 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
     erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName};
 send_ctl_event(_, _, _, _) -> ok.
 
--spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist() | []) -> no_return()).
+-spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist() | []) -> ok).
 publish_msg(_, []) -> ok;
 publish_msg(UUID, Prop) ->
     EvtName = props:get_value(<<"Event-Name">>, Prop),
@@ -454,7 +454,7 @@ send_queued(UUID, [_|_]=Evts, Tries) ->
 	    receive after 1000 -> send_queued(UUID, Evts, Tries+1) end;
 	true ->
 	    logger:format_log(info, "EVT.send_queued(~p): Sending queued events on try ~p", [self(), Tries]),
-	    [ _ = publish_msg(UUID, E) || E <- Evts ]
+	    [ publish_msg(UUID, E) || E <- Evts ]
     end.
 
 -spec(is_node_up/2 :: (Node :: atom(), UUID :: binary()) -> boolean()).
