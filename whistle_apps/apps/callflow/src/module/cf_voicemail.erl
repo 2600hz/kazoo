@@ -156,6 +156,7 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
 -spec(check_mailbox/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
 
 check_mailbox(#mailbox{prompts=Prompts, pin = <<>>}, Call) ->
+    ?LOG("attempted to sign into a mailbox with no pin"),
     b_play(Prompts#prompts.goodbye, Call);
 check_mailbox(Box, Call) ->
     check_mailbox(Box, Call, 1).
@@ -167,11 +168,14 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, <<"8000">>, Call),
         main_menu(Box, Call)
     catch
-        _:_ ->
+        _:R ->
+            ?LOG("invalid mailbox login ~p", [R]),
             _ = b_play(InvalidLogin, Call),
             case Loop < MaxLoginAttempts of
 		true -> check_mailbox(Box, Call, Loop+1);
-                false -> b_play(AbortLogin, Call)
+                false -> 
+                    ?LOG("maximum number of invalid attempts to check mailbox"), 
+                    b_play(AbortLogin, Call)
             end
     end.
 
@@ -197,14 +201,15 @@ find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
         Pin = Box#mailbox.pin,
         main_menu(Box, Call)
     catch
-        _:_=E ->
-            logger:format_log(info, "ERROR: ~p", [E]),
+        _:R ->
+            ?LOG("unable to find mailbox via user provided ID and pin ~p", [R]),
             B = #mailbox{},
             _ = b_play(Prompts#prompts.invalid_login, Call),
             if
                 Loop < B#mailbox.max_login_attempts ->
                     find_mailbox(Call, Loop+1);
                 true ->
+                    ?LOG("maximum number of invalid attempts to find mailbox"), 
                     b_play(Prompts#prompts.abort_login, Call)
             end
     end.
@@ -217,10 +222,12 @@ find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
 %%--------------------------------------------------------------------
 -spec(compose_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 compose_voicemail(#mailbox{exists=false, prompts=#prompts{no_mailbox=NoMailbox}}, Call) ->
+    ?LOG("attempted to compose voicemail for missing mailbox"),
     b_play(NoMailbox, Call);
 compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipInstructions
 			   ,prompts=#prompts{record_instructions=RecordInstructions}
 			   ,keys=#keys{login=Login}}=Box, Call) ->
+    ?LOG("playing mailbox greeting to caller"),
 
     not whistle_util:is_true(SkipGreeting) andalso play_greeting(Box, Call),
     not whistle_util:is_true(SkipInstructions) andalso play(RecordInstructions, Call),
@@ -268,6 +275,7 @@ play_greeting(#mailbox{mailbox_id=Id, has_unavailable_greeting=true}, #cf_call{a
 -spec(record_voicemail/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, Call) ->
     tones(ToneSpec, Call),
+    ?LOG("composing new voicemail"),
     case b_record(MediaName, Call) of
         {ok, _Msg} ->
             case review_recording(MediaName, Box, Call) of
@@ -280,6 +288,7 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
             _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
             new_message(MediaName, Box, Call);
 	{error, execution_failure} ->
+            ?LOG("media server exploded"),
 	    ok %% something happened Whistle-side, nothing to do for now
     end.
 
@@ -293,6 +302,7 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
 main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMessages, saved=Saved, to_hear_new=ToHearNew
 				    ,press=Press, to_hear_saved=ToHearSaved, to_configure=ToConfigure, to_exit=ToExit}
 		   ,keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call) ->
+    ?LOG("playing mailbox main menu"),
     Messages = get_messages(Box, Call),
     audio_macro([
                   {play, YouHave}
@@ -351,6 +361,7 @@ play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
 						,to_delete=ToDelete, to_return_main=ToReturnMain
 						,message_saved=MessageSaved, message_deleted=MessageDeleted}
 			      ,keys=#keys{replay=Replay, keep=Keep, delete=Delete, return_main=ReturnMain}}=Box, Call) ->
+    ?LOG("reviewing mailbox message"),
     Message = get_message(H, Box, Call),
     audio_macro([
                   {play, Received}
@@ -405,6 +416,7 @@ play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
 config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press=Press, to_rec_name=ToRecName
 				     ,to_change_pin=ToChangePin, to_return_main=ToReturnMain}
 		     ,keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName, set_pin=SetPin, return_main=ReturnMain}}=Box, Call) ->
+    ?LOG("playing mailbox configuration menu"),
     audio_macro([
                   {play, ToRecUnavailable}
                  ,{play, Press}
@@ -450,6 +462,7 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
 %%--------------------------------------------------------------------
 -spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting, tone_spec=ToneSpec}}=Box, Call) ->
+    ?LOG("recoding unavailable greeting"),
     audio_macro([
                   {play,  RecordUnavailGreeting}
                  ,{tones, ToneSpec}
@@ -472,6 +485,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 							     ,cid_name=CIDName, cid_number=CIDNumber
 							     ,call_id=CallID}=Call) ->
     {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
+    ?LOG("stored voicemail message"),
 
     Tstamp = new_timestamp(),
     NewMessage={struct, [
@@ -485,6 +499,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
                          ,{<<"attachment">>, MediaName}
                         ]},
     {ok, _} = save_metadata(NewMessage, Db, Id),
+    ?LOG("stored voicemail metadata"),
 
     [FromU, FromR] = binary:split(From, <<"@">>),
     [ToU, ToR] = binary:split(To, <<"@">>),
@@ -501,7 +516,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 				       ,{<<"Voicemail-Timestamp">>, Tstamp}
 				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
-    logger:format_log(info, "CF_VOICEMAIL(~p): API send ~s~n", [self(), JSON]),
+    ?LOG("new voicemail whistle API message broadcast"),
     amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW).
 
 %%--------------------------------------------------------------------
@@ -517,7 +532,9 @@ save_metadata(NewMessage, Db, Id) ->
         {error, conflict} ->
             save_metadata(NewMessage, Db, Id);
         {ok, _}=Ok -> Ok;
-        {error, _}=E -> E
+        {error, R}=E -> 
+            ?LOG("error while storing voicemail metadata ~s", [R]), 
+            E
     end.
 
 %%--------------------------------------------------------------------
@@ -528,6 +545,7 @@ save_metadata(NewMessage, Db, Id) ->
 %%--------------------------------------------------------------------
 -spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object())).
 record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec}}=Box, Call) ->
+    ?LOG("recording name"),
     audio_macro([
                   {play,  RecordName}
                  ,{tones, ToneSpec}
@@ -549,14 +567,17 @@ record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_sp
 -spec(change_pin/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> stop | continue).
 change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=ReenterNewPin}
 		    ,mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
+    ?LOG("requesting new mailbox pin number"),
     try
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, <<"8000">>, Call),
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, <<"8000">>, Call),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj))
+        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj)),
+        ?LOG("updated mailbox pin number")
     catch
-        _:_ ->
+        _:R ->
+            ?LOG("new pin was invalid ~p, trying again", [R]),
             change_pin(Box, Call)
     end.
 
@@ -596,6 +617,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, dest_number=Dest}) ->
 -spec(review_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, record | save)).
 review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToListen, to_save=ToSave, to_rerecord=ToRerecord}
 				     ,keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call) ->
+    ?LOG("playing review options"),
     audio_macro([
                   {play, Press}
                  ,{say,  Listen}
@@ -612,7 +634,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 
     case wait_for_dtmf(18000) of
 	{error, channel_hungup} ->
-	    logger:format_log(info, "CF_VOICEMAIL(~p): review was waiting for dtmf, got hungup, so let's save", [self()]),
+            ?LOG("channel hungup while waiting for dtmf"),
 	    {ok, save};
         {ok, <<>>} ->
             _ = flush(Call),
@@ -620,8 +642,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 	{ok, Digit} ->
 	    _ = flush(Call),
 	    case Digit of
-		Listen ->
-		    logger:format_log(info, "CF_VOICEMAIL(~p): Recv ~p, playing ~p~n", [self(), Listen, MediaName]),
+		Listen ->                   
 		    _ = b_play(MediaName, Call),
 		    review_recording(MediaName, Box, Call);
 		Record ->
@@ -643,6 +664,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 store_recording(MediaName, Box, Call) ->
     store_recording(MediaName, MediaName, Box, Call).
 store_recording(MediaName, DestName, Box, Call) ->
+    ?LOG("storing media ~s", [DestName]),
     store(MediaName, get_attachment_path(DestName, Box, Call), Call),
     cf_call_command:wait_for_store(Call).
 
@@ -735,6 +757,7 @@ get_folder(Messages, Folder) ->
 %%--------------------------------------------------------------------
 -spec(set_folder/4 :: (Folder :: binary(), Message :: json_object(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 set_folder(Folder, Message, Box, Call) ->
+    ?LOG("setting folder for message to ~s", [Folder]),
     not (wh_json:get_value(<<"folder">>, Message) =:= Folder) andalso
 	update_folder(Folder, wh_json:get_value(<<"attachment">>, Message), Box, Call).
 
@@ -755,7 +778,9 @@ update_folder(Folder, Attachment, #mailbox{mailbox_id=Id}=Mailbox, #cf_call{acco
             case couch_mgr:save_doc(Db, wh_json:set_value(<<"messages">>, Messages, JObj)) of
                 {error, conflict} -> update_folder(Folder, Attachment, Mailbox, Call);
                 {ok, _}=OK -> OK;
-                {error, _}=E -> E
+                {error, R}=E -> 
+                    ?LOG("error while updating folder ~s ~s", [Folder, R]),
+                    E
             end;
         {error, _}=E ->
             E

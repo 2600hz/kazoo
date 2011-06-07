@@ -22,5 +22,7 @@
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
-    b_play(wh_json:get_value(<<"media">>, Data), wh_json:get_value(<<"terminators">>, Data), Call),
+    Media = wh_json:get_value(<<"media">>, Data),
+    ?LOG("playing media ~s", [Media]),
+    b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
     CFPid ! {continue}.

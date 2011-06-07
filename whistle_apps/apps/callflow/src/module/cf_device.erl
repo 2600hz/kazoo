@@ -29,10 +29,13 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
     IgnoreEarlyMedia = wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint),
     case b_bridge([Endpoint], Timeout, {undefined, undefined}, <<"single">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
+            ?LOG("bridged to endpoint"),
             update_call_realm(Call),
             _ = wait_for_unbridge(),
+            ?LOG("bridge completed"),
             CFPid ! { stop };
-        {error, _} ->
+        {error, R} ->
+            ?LOG("failed to bridge to endpoint ~p", [R]),
             CFPid ! { continue }
     end.
 

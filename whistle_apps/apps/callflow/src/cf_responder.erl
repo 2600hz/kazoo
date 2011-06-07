@@ -181,9 +181,10 @@ handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
     put(callid, CallId), %% we were spawn'd so this is safe
     ?LOG_START("received route request"),
     Dest = destination_uri(JObj),
+    ?LOG("hunting for ~s", [Dest]),
     case hunt_to(Dest) orelse hunt_no_match(Dest) of
         false ->
-            ?LOG_END("unknown to callflow");
+            ?LOG_END("no callflows satisfy request");
         true ->
             wh_cache:store({cf_call, CallId}, {Dest, JObj}, 5),
             Resp = [
@@ -193,18 +194,20 @@ handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
                     | whistle_api:default_headers(CQ, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
                    ],
             {ok, Payload} = whistle_api:route_resp(Resp),
-            ?LOG("replying to route request"),
+            ?LOG_END("replying to route request"),
             amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
     end;
 
 handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId), %% we were spawn'd so this is safe
-    ?LOG("received route win"),
+    ?LOG_START("received route win"),
     {ok, {Dest, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
     {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, Dest}),
-    To = wh_json:get_value(<<"To">>, RouteReq),
     From = wh_json:get_value(<<"From">>, RouteReq),
+    ?LOG("from: ~s", [From]),
+    To = wh_json:get_value(<<"To">>, RouteReq),
+    ?LOG("to: ~s", [To]),
     [ToNumber, ToRealm] = binary:split(To, <<"@">>),
     [FromNumber, FromRealm] = binary:split(From, <<"@">>),
     [DestNumber, DestRealm] = binary:split(Dest, <<"@">>),
@@ -229,6 +232,8 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
       ,to_realm=ToRealm
       ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
      },
+    ?LOG("caller-id: \"~s\" <~s>", [Call#cf_call.cid_name, Call#cf_call.cid_number]),
+    ?LOG("call authorized by ~s", [Call#cf_call.authorizing_id]),
     cf_call_command:set(undefined, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq), Call),
     supervisor:start_child(cf_exe_sup, [Call, Flow]);
 
@@ -266,10 +271,10 @@ lookup_flow(To, Key) ->
                              wh_json:get_value([<<"value">>, <<"flow">>], JObj),
                              wh_json:get_value([<<"value">>, <<"account_db">>], JObj)
                             }, 500),
-            ?LOG("found callflow ~s", [FlowId]),
+            ?LOG("retrieved callflow ~s from db", [FlowId]),
             true;
         {error, E} ->
-            ?LOG("error looking up callflow ~s", [E]),
+            ?LOG("error looking up callflow ~p", [E]),
             false
     end.    
 

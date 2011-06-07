@@ -23,10 +23,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(_, #cf_call{cf_pid=CFPid}=Call) ->
+handle(_, Call) ->
     {ok, Gateways} = find_gateways(Call),
-    bridge_to_gateways(Gateways, Call),
-    CFPid ! {stop}.
+    bridge_to_gateways(Gateways, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -40,13 +39,20 @@ handle(_, #cf_call{cf_pid=CFPid}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(bridge_to_gateways/2 :: (Resources :: proplist(), Call :: #cf_call{}) -> no_return()).
-bridge_to_gateways([{DestNum, Gateways, CIDType}|T], Call) ->
+bridge_to_gateways([{DestNum, Gateways, CIDType}|T], #cf_call{cf_pid=CFPid}=Call) ->
     case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways], <<"60">>, CIDType, Call) of
         {ok, _} ->
-            wait_for_unbridge();
-        {error, _} ->
+            ?LOG("resource acquired"),
+            wait_for_unbridge(),
+            ?LOG("resource released"),
+            CFPid ! {stop};
+        {error, R} ->
+            ?LOG("resource failed ~p", [R]),
             bridge_to_gateways(T, Call)
-    end.
+    end;
+bridge_to_gateways([], #cf_call{cf_pid=CFPid}) ->
+    ?LOG("resources exhausted without success"),
+    CFPid ! {continue}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -62,6 +68,7 @@ create_endpoint(DestNum, JObj) ->
               ,DestNum/binary
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
+    ?LOG("attempting resource ~s", [Rule]),
     Endpoint = [
                  {<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
@@ -83,8 +90,10 @@ create_endpoint(DestNum, JObj) ->
 %%--------------------------------------------------------------------
 -spec(find_gateways/1 :: (Call :: #cf_call{}) -> tuple(ok, proplist()) | tuple(error, atom())).
 find_gateways(#cf_call{account_db=Db, dest_number=DestNum}=Call) ->
+    ?LOG("searching for resources"),
     case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
+            ?LOG("found resources, filtering by rules"),
             {ok, [ {Number
                     ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
                     ,get_caller_id_type(Resource, Call)}
@@ -92,7 +101,8 @@ find_gateways(#cf_call{account_db=Db, dest_number=DestNum}=Call) ->
 			 , Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), DestNum)
 			 , Number =/= []
                  ]};
-        {error, _}=E ->
+        {error, R}=E ->
+            ?LOG("search failed ~p", [R]),
             E
     end.
 

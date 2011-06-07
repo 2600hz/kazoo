@@ -38,12 +38,16 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
                             end, [], wh_json:get_value([<<"endpoints">>], Data, [])),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
+    ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     case b_bridge(Endpoints, Timeout, {undefined, undefined}, Strategy, <<"true">>, Call) of
         {ok, _} ->
+            ?LOG("bridged to ring group"),
             update_call_realm(Call),
             _ = wait_for_unbridge(),
+            ?LOG("ring group completed"),
             CFPid ! { stop };
-        {error, _} ->
+        {error, R} ->
+            ?LOG("failed to bridge to ring group ~p", [R]),
             CFPid ! { continue }
     end.
 
