@@ -122,15 +122,21 @@ handle_cast({add_stream, MediaID, ShoutSrv}, #state{streams=Ss}=S) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
-    Q = start_amqp(),
-    ?LOG_SYS("AMQP Queue: ~s", [Q]),
-    Ps1 = updated_reserved_ports(Ps, PortRange),
-    {noreply, S#state{amqp_q=Q, is_amqp_up=is_binary(Q), ports=Ps1}, 2000};
+    try
+	{ok, Q} = start_amqp(),
+	?LOG_SYS("AMQP Queue: ~s", [Q]),
+	Ps1 = updated_reserved_ports(Ps, PortRange),
+	{noreply, S#state{amqp_q=Q, is_amqp_up=true, ports=Ps1}, 2000}
+    catch
+	_:_ ->
+	    Ps2 = updated_reserved_ports(Ps, PortRange),
+	    {noreply, S#state{amqp_q={error, amqp_error}, is_amqp_up=false, ports=Ps2}, 2000}
+    end;
 
 handle_info(timeout, #state{amqp_q={error, _}=QE}=S) ->
     ?LOG_SYS("Failed to start q (~s), trying again", [QE]),
     try
-        Q = start_amqp(),
+        {ok, Q} = start_amqp(),
         {noreply, S#state{is_amqp_up=is_binary(Q), amqp_q=Q}}
     catch
         _:_ ->
@@ -138,10 +144,15 @@ handle_info(timeout, #state{amqp_q={error, _}=QE}=S) ->
     end;
 
 handle_info(timeout, #state{amqp_q=Q, is_amqp_up=false}=S) ->
-    amqp_util:queue_delete(Q),
-    NewQ = start_amqp(),
-    ?LOG_SYS("Old AMQP Queue: ~s, New AMQP Queue: ~s", [Q, NewQ]),
-    {noreply, S#state{amqp_q=NewQ, is_amqp_up=is_binary(NewQ)}};
+    try
+	amqp_util:queue_delete(Q),
+	{ok, NewQ} = start_amqp(),
+	?LOG_SYS("Old AMQP Queue: ~s, New AMQP Queue: ~s", [Q, NewQ]),
+	{noreply, S#state{amqp_q=NewQ, is_amqp_up=is_binary(NewQ)}}
+    catch
+	_:_ -> {noreply, S#state{amqp_q={error, amqp_error}, is_amqp_up=false}}
+    end;
+
 handle_info(timeout, #state{amqp_q=Q, is_amqp_up=true}=S) when is_binary(Q) ->
     {noreply, S};
 
@@ -220,6 +231,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
 start_amqp() ->
     try
 	Q = amqp_util:new_queue(<<>>),
@@ -228,7 +240,7 @@ start_amqp() ->
 	amqp_util:bind_q_to_targeted(Q, Q),
 
 	amqp_util:basic_consume(Q),
-	Q
+	{ok, Q}
     catch
 	_:_ -> {error, amqp_error}
     end.

@@ -8,7 +8,7 @@
 -export([resource_exchange/0, resource_publish/1, resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
 
--export([bind_q_to_targeted/1, unbind_q_from_targeted/1]).
+-export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
 -export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
@@ -187,6 +187,8 @@ delete_callmgr_queue(Queue) ->
 -spec(bind_q_to_targeted/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
+bind_q_to_targeted(Queue, Routing) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
 -spec(bind_q_to_callctl/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 -spec(bind_q_to_callctl/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
