@@ -61,7 +61,7 @@ event_date("weekly", 1, DOWs, _, {Y1, M1, D1}) ->
     %% Take the head of a list of DOWs after removing any up to 
     %%   and including the current DOW (DOW1).
     %% Also append the first DOW plus 7 
-    %%  (ie: the occurance next week of that DOW)
+    %%   (ie: the occurance next week of that DOW)
     Offset = hd([ DOW || DOW <- [ to_dow(D) || D <- DOWs ], DOW > DOW1 ]
                 ++ [ to_dow( hd( DOWs ) ) + 7 ])
                - DOW1,
@@ -69,58 +69,106 @@ event_date("weekly", 1, DOWs, _, {Y1, M1, D1}) ->
 
 event_date("weekly", I0, DOWs, {Y0, M0, D0}, {Y1, M1, D1}) ->
     DOW1 = day_of_the_week({Y1, M1, D1}),
-    W0 = iso_week_number({Y0, M0, D0}),
-    W1 = iso_week_number({Y1, M1, D1}),
-    WeekDiff = iso_week_difference(W0, W1),
+    Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
+    Offset = trunc( Distance / I0 ) * I0,
     case [ DOW || DOW <- [to_dow(D) || D <- DOWs], DOW > DOW1 ] of
         %% During an 'active' week but before the last DOW move to the next day this week
-        [Offset|_] when WeekDiff =:= 0; WeekDiff rem I0 =:= 0 ->
-            normalize_date({Y1, M1, D1 + Offset - DOW1}); 
+        [Day|_] when Distance =:= Offset ->
+            normalize_date({Y1, M1, D1 + Day - DOW1}); 
         %% Empty list:
         %%   The last DOW during an 'active' week, 
         %% Non Empty List that failed the guard:
         %%   During an 'inactive' week
         _ ->
-            Offset = trunc( WeekDiff / I0 ) * I0,
-            {Y2, M2, D2} = iso_week_to_gregorian_date({element(1, W0), element(2, W0) + Offset + I0}),
+            {WY0, W0} = iso_week_number({Y0, M0, D0}),
+            {Y2, M2, D2} = iso_week_to_gregorian_date({WY0, W0 + Offset + I0}),
             normalize_date({Y2, M2, ( D2 - 1 ) + to_dow( hd( DOWs ) )})
     end;
 
 event_date("monthly", 1, {every, DOW0}, _, {Y1, M1, D1}) ->
     DOW1 = to_dow(DOW0),
+    %%   Note: since this is every DOW of every month, overflow in normalize
+    %%         is the correct action (bellow)
     case calendar:day_of_the_week({Y1, M1, D1}) of
+        %% Today is the DOW we wanted, calculate for next week 
         DOW1 ->
-            %% Today is the DOW we wanted, calculate to next week 
             normalize_date({Y1, M1, D1 + 7});
+        %% If the DOW has not occured this week yet
         D when DOW1 > D ->
-            %% If the DOW has not occured this week yet
             normalize_date({Y1, M1, D1 + (DOW1 - D)});            
+        %% If the DOW occurance has already happend, calculate for the next week
+        %%   using the current DOW as a reference
         D ->
-            %% If the DOW occurance has already happend, calculate to next week
             Offset = ( 7 - D ) + DOW1,
             normalize_date({Y1, M1, D1 + Offset})
     end;
 
-event_date("monthly", 1, {last, DOW0}, _, {Y1, M1, _}) ->
+event_date("monthly", I0, {every, DOW0}, {Y0, M0, _}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
+    Offset = trunc( Distance / I0 ) * I0,
     try
-        %% The max number of weeks a month can ever have is four.
-        %% This will throw if it doesnt or the return is corrected
-        %% by moving to the next month, in which case we know the
-        %% last DOW. Either way the last DOW would occur in the third week.
+        %% Throw if this an 'inactive' month
+        Distance = Offset,
+        %% Throw if we span a month boundry during normalize
+        {Y1, M1, _} = event_date("monthly", 1, {every, DOW0}, undefined, {Y1, M1, D1})
+    catch
+        _:_ ->
+            %% This is an 'inactive' month, or the next DOW occurs next month.
+            %% Work out the first occurence of the DOW in the next 'active'
+            %% month.
+            DOW1 = to_dow(DOW0),
+            {Y2, M2, _} = normalize_date({Y0, M0 + Offset + I0, 1}),
+            find_next_weekday(Y2, M2, 0, DOW1)
+    end;
+
+event_date("monthly", 1, {last, DOW0}, _, {Y1, M1, _}) ->
+    %% Assumption/Principle:
+    %%   A DOW can never occur more than four times in a month.
+    %% ---------------------------------------------------------
+    %% First attempt to calulate the date of the fouth DOW
+    %% occurance.  Since the function corrects an invalid
+    %% date by crossing month/year boundries, cause a badmatch
+    %% if this happens. Therefore, during the exception the last
+    %% occurance MUST be in the third week.
+    try
         {Y1, M1, _} = date_of_dow(Y1, M1, to_dow(DOW0), 4)
     catch
         _:_ ->
             date_of_dow(Y1, M1, to_dow(DOW0), 3)
     end;
 
-event_date("monthly", 1, {When, DOW0}, _, {Y1, M1, _}) ->
-    find_next_weekday(Y1, M1, from_ordinal(When), to_dow(DOW0));
+event_date("monthly", I0, {last, DOW0}, {Y0, M0, _}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
+    Offset = trunc( Distance / I0 ) * I0,
+    {Y2, M2, _} = case Distance =:= Offset of
+                      %% This is an 'active' month, calculate the next
+                      %%   month/year it should occur
+                      true -> normalize_date({Y0, M0 + Offset + I0, 1});
+                      %% In an 'inactive' month the next month/year
+                      %%   is comming up on the current iteration
+                      false -> normalize_date({Y0, M0 + Offset, 1})
+                  end,
+    try
+        {Y2, M2, _} = date_of_dow(Y2, M2, to_dow(DOW0), 4)
+    catch
+        _:_ ->
+            date_of_dow(Y2, M2, to_dow(DOW0), 3)
+    end;
 
-event_date("monthly", 1, Days, _, {Y1, M1, D1}) when is_list(Days) ->
+event_date("monthly", 1, {Ordinal, DOW0}, _, {Y1, M1, _}) ->
+    %% This calculation can be recursive if the requested DOW spans 
+    %%   a month/year border, so I created a helper function to keep
+    %%   the code more readable.
+    find_next_weekday(Y1, M1, from_ordinal(Ordinal), to_dow(DOW0));
+
+event_date("monthly", I0, {When, DOW0}, {Y0, M0, _}, {Y1, M1, D1}) ->
+    error;
+
+event_date("monthly", 1, Days, _, {Y1, M1, D1}) ->
     %% Take the head of a list of Days after removing any up to 
     %%   and including the current Day (D1).
     %% Also append the first Day plus the last day of the month 
-    %%  (ie: the occurance of that day next month).
+    %%   (ie: the occurance of that day next month).
     Offset = hd([D || D <- Days, D > D1]
                 ++ [last_day_of_the_month(Y1, M1) + hd(Days)]),
     normalize_date({Y1, M1, Offset});
@@ -132,20 +180,24 @@ event_date("monthly", I0, Days, {Y0, M0, _}, {Y1, M1, D1}) when is_list(Days) ->
         %% The day hasn't happend on an 'active' month
         [Day|_] when Distance =:= Offset ->
             normalize_date({Y0, M0 + Offset, Day});
+        %% Empty List:
+        %%   All of the days in the list have already happened
+        %% Non Empty List that failed the guard:
+        %%   The day hasn't happend on an 'inactive' month
         _ -> 
-            %% Empty List:
-            %%   All of the days in the list have already happened
-            %% Non Empty List that failed the guard:
-            %%   The day hasn't happend on an 'inactive' month
             normalize_date({Y0, M0 + Offset + I0, hd( Days )})
     end;
 
-event_date("monthly", I0, {When, DOW0}, {Y0, M0, _}, {Y1, M1, _D1}) ->
-    Distance = ( Y1 - Y0 ) * 12 + abs(M0 - M1),
-    Offset = trunc( Distance / I0 ) * I0,
-    find_next_weekday(Y0, M0 + Offset + I0, from_ordinal(When), to_dow(DOW0));
+event_date("yearly", 1, {Month, Day}, {Y0, M0, _}, {Y1, M1, D1}) ->
+    error;
 
-event_date(_, _, _, _, _) ->
+event_date("yearly", 1, {last, DOW0, Month}, {Y0, M0, _}, {Y1, M1, D1}) ->
+    error;
+
+event_date("yearly", 1, {every, DOW0, Month}, {Y0, M0, _}, {Y1, M1, D1}) ->
+    error;
+
+event_date("yearly", 1, {When, DOW0, Month}, {Y0, M0, _}, {Y1, M1, D1}) ->
     error.
 
 %%--------------------------------------------------------------------
@@ -153,6 +205,7 @@ event_date(_, _, _, _, _) ->
 %% @doc
 %% Normalizes dates, for example corrects for months that are given
 %% with more days then they have (ie: {2011, 1, 36} -> {2011, 2, 5}).
+%% I have been refering to this as 'spanning a month/year border'
 %% @end
 %%--------------------------------------------------------------------
 -spec(normalize_date/1 :: (Date :: date()) -> date()).
@@ -203,16 +256,16 @@ to_dow(sunday) -> 7.
 %% until the date can be calculated.
 %% @end
 %%--------------------------------------------------------------------
-find_next_weekday(Y1, M1, When, Weekday) when M1 =:= 13 ->
-    find_next_weekday(Y1 + 1, 1, When, Weekday);
-find_next_weekday(Y1, M1, When, Weekday) when M1 > 12 ->
-    find_next_weekday(Y1 + 1, M1 - 12, When, Weekday);
-find_next_weekday(Y1, M1, When, Weekday) ->
+find_next_weekday(Y1, M1, Occurrence, Weekday) when M1 =:= 13 ->
+    find_next_weekday(Y1 + 1, 1, Occurrence, Weekday);
+find_next_weekday(Y1, M1, Occurrence, Weekday) when M1 > 12 ->
+    find_next_weekday(Y1 + 1, M1 - 12, Occurrence, Weekday);
+find_next_weekday(Y1, M1, Occurrence, Weekday) ->
     try
-        date_of_dow(Y1, M1, Weekday, When)
+        date_of_dow(Y1, M1, Weekday, Occurrence)
     catch
         _:_ ->
-            find_next_weekday(Y1, M1 + 1, When, Weekday)
+            find_next_weekday(Y1, M1 + 1, Occurrence, Weekday)
     end.
 
 %%--------------------------------------------------------------------
@@ -243,28 +296,32 @@ date_of_dow(Year, Month, DOW, Occurance) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Calculates the distance, in total weeks, between two ISO 8601 weeks
+%% Calculates the distance, in total ISO weeks, between two dates
 %% @end
 %%--------------------------------------------------------------------
 -spec(iso_week_difference/2 :: (Week0 :: iso_week(), Week1 :: iso_week()) -> non_neg_integer()).
-iso_week_difference({Y0, W0}, {Y0, W1}) ->
-    abs( W0 - W1 );
-iso_week_difference({Y0, W0}, {Y1, W1}) when Y1 - Y0 == 1->
-    {Y0, W} = iso_week_number({Y0, 12, last_day_of_the_month(Y0, 12)}),
-    ( W - W0 ) + W1;
-iso_week_difference({Y0, W0}, {Y1, W1}) ->
-    {_, Partial} = iso_week_number({Y0, 12, last_day_of_the_month(Y0, 12)}),
-    lists:foldr(fun(Y, Acc) ->
-                        case iso_week_number({Y, 12, last_day_of_the_month(Y, 12)}) of
-                            {_, 1} -> 52 + Acc;
-                            {Y, W} -> W + Acc
-                        end
-                end, abs(Partial - W0), lists:seq(Y0 + 1, Y1 - 1)) + W1.
+iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
+    %% I rather dislike this approach, but it is the best of MANY evils that I came up with...
+    %% The idea here is to find the difference (in days) between the ISO 8601 mondays
+    %% of the start and end dates.  This takes care of all the corner cases for us such as:
+    %%    - Start date in ISO week of previous year
+    %%    - End date in ISO week of previous year
+    %%    - Spanning years
+    %% All while remaining ISO 8601 compliant.
+    DS0 = date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y0, M0, D0}))),
+    DS1 = date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y1, M1, D1}))),
+    trunc( abs( DS0 - DS1 ) / 7 ).
+
+iso_weeks_in_a_year(Year) ->
+    case iso_week_number({Year, 12, last_day_of_the_month(Year, 12)}) of
+        {_, 1} -> 52;
+        {Y, W} -> W
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Caclulates the gregorian date of a given ISO 8901 week
+%% Caclulates the gregorian date of a given ISO 8601 week
 %% @end
 %%--------------------------------------------------------------------
 -spec(iso_week_to_gregorian_date/1 :: (Date :: iso_week()) -> date()).
@@ -350,10 +407,10 @@ daily_recurrence_test() ->
     ?assertEqual({2011, 1, 1}, event_date("daily", 1, undefined, {2010, 6, 1}, {2010, 12, 31})),
     %% leap year (into)
     ?assertEqual({2008, 2, 29}, event_date("daily", 1, undefined, {2008, 1, 1}, {2008, 2, 28})),
-    ?assertEqual({2008, 2, 29}, event_date("daily", 1, undefined, {2008, 6, 1}, {2008, 2, 28})),
+    ?assertEqual({2008, 2, 29}, event_date("daily", 1, undefined, {2008, 1, 1}, {2008, 2, 28})),
     %% leap year (over)
     ?assertEqual({2008, 3, 1}, event_date("daily", 1, undefined, {2008, 1, 1}, {2008, 2, 29})),
-    ?assertEqual({2008, 3, 1}, event_date("daily", 1, undefined, {2008, 6, 1}, {2008, 2, 29})),
+    ?assertEqual({2008, 3, 1}, event_date("daily", 1, undefined, {2008, 1, 1}, {2008, 2, 29})),
     %% shift start date (no impact)
     ?assertEqual({2011, 1, 2}, event_date("daily", 1, undefined, {2008, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 2}, event_date("daily", 1, undefined, {2009, 1, 1}, {2011, 1, 1})),
@@ -378,7 +435,7 @@ daily_recurrence_test() ->
     ?assertEqual({2011, 3, 27}, event_date("daily", 85, undefined, {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 3, 2}, event_date("daily", 85, undefined, {2010, 1, 1}, {2010, 12, 31})),
     ?assertEqual({2011, 8, 25}, event_date("daily", 85, undefined, {2011, 6, 1}, {2011, 6, 1})),
-    %% shift start date (past)
+    %% shift start date
     ?assertEqual({2011, 2, 5}, event_date("daily", 4, undefined, {2011, 2, 1}, {2011, 2, 3})),
     ?assertEqual({2011, 2, 6}, event_date("daily", 4, undefined, {2011, 2, 2}, {2011, 2, 3})),
     %% current date before
@@ -432,6 +489,8 @@ weekly_recurrence_test() ->
     ?assertEqual({2011, 1, 5}, event_date("weekly", 1, [wensday,thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 6}, event_date("weekly", 1, [thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 7}, event_date("weekly", 1, [friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
+    %% Last DOW of an active week
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 1, [monday,tuesday,wensday,thursday,friday], {2011, 1, 1}, {2011, 1, 7})),
     %% even step (small)
     ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 11}, event_date("weekly", 2, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
@@ -464,12 +523,12 @@ weekly_recurrence_test() ->
     ?assertEqual({2011, 1, 2}, event_date("weekly", 24, [sunday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 6, 19}, event_date("weekly", 24, [sunday], {2011, 1, 1}, {2011, 1, 2})),
     %% odd step (large)
-    ?assertEqual({2011, 9, 5}, event_date("weekly", 36, [monday], {2011, 1, 1}, {2011, 1, 1})),
-    ?assertEqual({2011, 9, 6}, event_date("weekly", 36, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
-    ?assertEqual({2011, 9, 7}, event_date("weekly", 36, [wensday], {2011, 1, 1}, {2011, 1, 1})),
-    ?assertEqual({2011, 9, 8}, event_date("weekly", 36, [thursday], {2011, 1, 1}, {2011, 1, 1})),
-    ?assertEqual({2011, 9, 9}, event_date("weekly", 36, [friday], {2011, 1, 1}, {2011, 1, 1})),
-    ?assertEqual({2011, 9, 10}, event_date("weekly", 36, [saturday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 12}, event_date("weekly", 37, [monday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 13}, event_date("weekly", 37, [tuesday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 14}, event_date("weekly", 37, [wensday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 15}, event_date("weekly", 37, [thursday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 16}, event_date("weekly", 37, [friday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 9, 17}, event_date("weekly", 37, [saturday], {2011, 1, 1}, {2011, 1, 1})),
     %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
     ?assertEqual({2011, 1, 2}, event_date("weekly", 36, [sunday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 9, 11}, event_date("weekly", 36, [sunday], {2011, 1, 1}, {2011, 1, 2})),
@@ -689,8 +748,24 @@ monthly_every_recurrence_test() ->
     ?assertEqual({2008, 2, 29}, event_date("monthly", 1, {every, friday}, {2008, 1, 1}, {2008, 2, 28})),
     %% leap year (over)
     ?assertEqual({2008, 3, 1}, event_date("monthly", 1, {every, saturday}, {2008, 1, 1}, {2008, 2, 28})),
-    %% long span
-    ?assertEqual({1983, 4, 11}, event_date("monthly", 1, {every, monday}, {1983, 4, 11}, {1983, 4, 10})).
+    %% long span (start date has no impact but for consistency)
+    ?assertEqual({2011, 4, 18}, event_date("monthly", 1, {every, monday}, {1983, 4, 11}, {2011, 4, 11})),
+    %% even step (small)
+    ?assertEqual({2011, 3, 7}, event_date("monthly", 2, {every, monday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 3, 1}, event_date("monthly", 2, {every, tuesday}, {2011, 1, 1}, {2011, 1, 25})),
+    ?assertEqual({2011, 3, 2}, event_date("monthly", 2, {every, wensday}, {2011, 1, 1}, {2011, 1, 26})),
+    ?assertEqual({2011, 3, 3}, event_date("monthly", 2, {every, thursday}, {2011, 1, 1}, {2011, 1, 27})),
+    ?assertEqual({2011, 3, 4}, event_date("monthly", 2, {every, friday}, {2011, 1, 1}, {2011, 1, 28})),
+    ?assertEqual({2011, 3, 5}, event_date("monthly", 2, {every, saturday}, {2011, 1, 1}, {2011, 1, 29})),
+    ?assertEqual({2011, 3, 6}, event_date("monthly", 2, {every, sunday}, {2011, 1, 1}, {2011, 1, 30})),
+    %% odd step (small)
+    ?assertEqual({2011, 9, 5}, event_date("monthly", 3, {every, monday}, {2011, 6, 1}, {2011, 6, 27})),
+    ?assertEqual({2011, 9, 6}, event_date("monthly", 3, {every, tuesday}, {2011, 6, 1}, {2011, 6, 28})),
+    ?assertEqual({2011, 9, 7}, event_date("monthly", 3, {every, wensday}, {2011, 6, 1}, {2011, 6, 29})),
+    ?assertEqual({2011, 9, 1}, event_date("monthly", 3, {every, thursday}, {2011, 6, 1}, {2011, 6, 30})),
+    ?assertEqual({2011, 9, 2}, event_date("monthly", 3, {every, friday}, {2011, 6, 1}, {2011, 6, 24})),
+    ?assertEqual({2011, 9, 3}, event_date("monthly", 3, {every, saturday}, {2011, 6, 1}, {2011, 6, 25})),
+    ?assertEqual({2011, 9, 4}, event_date("monthly", 3, {every, sunday}, {2011, 6, 1}, {2011, 6, 26})).
 
 monthly_last_recurrence_test() ->
     %% basic increment 
@@ -725,6 +800,7 @@ monthly_last_recurrence_test() ->
     ?assertEqual({1983, 4, 29}, event_date("monthly", 1, {last, friday}, {1983, 1, 1}, {1983, 4, 1})),
     ?assertEqual({1983, 4, 30}, event_date("monthly", 1, {last, saturday}, {1983, 1, 1}, {1983, 4, 1})),
     ?assertEqual({1983, 4, 24}, event_date("monthly", 1, {last, sunday} , {1983, 1, 1}, {1983, 4, 1})).
+
 
 monthly_every_ordinal_recurrence_test() ->
     %% basic first
@@ -908,10 +984,22 @@ monthly_date_recurrence_test() ->
     ?assertEqual({2011, 10, 2}, event_date("monthly", 3, [2], {2011, 1, 1}, {2011, 7, 2})),
     ?assertEqual({2011, 6, 2}, event_date("monthly", 3, [2], {2011, 6, 1}, {2011, 6, 1})),
     ?assertEqual({2011, 9, 2}, event_date("monthly", 3, [2], {2011, 6, 1}, {2011, 6, 2})),
+    %% even step (small)
+    ?assertEqual({2011, 1, 2}, event_date("monthly", 24, [2], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2013, 1, 2}, event_date("monthly", 24, [2], {2011, 1, 1}, {2011, 1, 2})),
+    ?assertEqual({2011, 6, 2}, event_date("monthly", 24, [2], {2011, 6, 1}, {2011, 6, 1})),
+    ?assertEqual({2013, 6, 2}, event_date("monthly", 24, [2], {2011, 6, 1}, {2011, 6, 2})),
+    %% odd step (small)
+    ?assertEqual({2011, 1, 2}, event_date("monthly", 37, [2], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2014, 2, 2}, event_date("monthly", 37, [2], {2011, 1, 1}, {2011, 4, 2})),
+    ?assertEqual({2011, 6, 2}, event_date("monthly", 37, [2], {2011, 6, 1}, {2011, 6, 1})),
+    ?assertEqual({2014, 7, 2}, event_date("monthly", 37, [2], {2011, 6, 1}, {2011, 6, 2})),
     %% shift start date
     ?assertEqual({2011, 2, 2}, event_date("monthly", 3, [2], {2007, 5, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 3, 2}, event_date("monthly", 3, [2], {2008, 6, 2}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 2}, event_date("monthly", 3, [2], {2009, 7, 3}, {2011, 1, 1})),
-    ?assertEqual({2011, 2, 2}, event_date("monthly", 3, [2], {2010, 8, 4}, {2011, 1, 1})).
+    ?assertEqual({2011, 2, 2}, event_date("monthly", 3, [2], {2010, 8, 4}, {2011, 1, 1})),
+    %% long span
+    ?assertEqual({2011, 4, 11}, event_date("monthly", 4, [11], {1983, 4, 11}, {2011, 1, 1})).
 
 -endif.
