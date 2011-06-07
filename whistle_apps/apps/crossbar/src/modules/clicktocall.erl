@@ -134,21 +134,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, #cb_context{req_data=JObj}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  case Params of
-		      [_C2CID, ?CONNECT_CALL] ->
-			  crossbar_util:binding_heartbeat(Pid),
-			  %% originate call
-			  logger:format_log(info, ">>>>> ~p~n", [JObj]),
-			  %% log call to history
-			  Context1 = crossbar_doc:save(Context),
-			  Pid ! {binding_result, true, [RD, Context1, Params]};
-		      [_C2CID] ->
-			  %% update c2c 
-			  Context1 = crossbar_doc:save(Context),
-			  Pid ! {binding_result, true, [RD, Context1, Params]}
-		  end
+		  crossbar_util:binding_heartbeat(Pid),		  
+		  Context1 = crossbar_doc:save(Context),
+     		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -301,7 +291,7 @@ validate([C2CId], #cb_context{req_verb = <<"delete">>}=Context) ->
 validate([C2CId, ?HISTORY], #cb_context{req_verb = <<"get">>}=Context) ->
     load_c2c_history(C2CId, Context);
 validate([C2CId, ?CONNECT_CALL], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_c2c_history(C2CId, Context);
+    establish_c2c(C2CId, Context);
 
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -336,12 +326,22 @@ load_c2c_history(C2CId, Context) ->
 update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
     crossbar_doc:load_merge(C2CId, Doc, Context).
 
-update_c2c_history(C2CId, #cb_context{req_data=Req}=Context) ->
+establish_c2c(C2CId, #cb_context{req_data=Req}=Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    History = wh_json:get_value(<<"history">>, C2C, []),
-    List = [create_c2c_history_item(Req) | History],
-    logger:format_log(info, "yea ~p", [List]),
-    Context1#cb_context{doc=wh_json:set_value(<<"history">>, List, C2C)}.
+    Caller = wh_json:get_value(<<"contact">>, Req),
+    Callee = wh_json:get_value(<<"extension">>, C2C),
+    Realm = wh_json:get_value(<<"realm">>, C2C),
+    logger:format_log(info, "----> ~p to ~p @ ~p~n", [Caller, Callee ,Realm]),
+    % Status = originate_call(Caller, Callee, Realm),
+    Status = {success, [123, 456]},
+    case Status of 
+	{success, [CallID, CdrID]} ->
+	    History = wh_json:get_value(<<"history">>, C2C, []),
+	    List = [create_c2c_history_item(Req, CallID, CdrID) | History],
+	    Context1#cb_context{doc=wh_json:set_value(<<"history">>, List, C2C)};
+	{error, _} -> Context1#cb_context{resp_status=error};
+	{timeout, _} -> Context1#cb_context{resp_status=error}
+    end.
 
 create_c2c(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
@@ -354,13 +354,12 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
 	     }
     end.
 
-create_c2c_history_item(Req) ->
-						%logger:format_log(info, ">>>>> here is it ~p", [Context]),
+create_c2c_history_item(Req, CallID, CdrID) ->
     Now = whistle_util:current_tstamp(),
     {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)}, 
 	       {<<"timestamp">>, Now},
-	       {<<"call_id">>, null},
-	       {<<"cdr_id">>, null} 
+	       {<<"call_id">>, CallID},
+	       {<<"cdr_id">>, CdrID} 
 	     ]}.
 
 %%--------------------------------------------------------------------
@@ -369,40 +368,46 @@ create_c2c_history_item(Req) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
-originate_call(ToUser, ToRealm) ->
+originate_call(CallerNumber, CalleeExtension, CalleeRealm) ->
+    logger:format_log(info, " ..... Establishing clicktocall from ~p@~p to ~p@~p ...~n", [CallerNumber, CalleeRealm, CalleeExtension, CalleeRealm]),
+    
+    %% create, bind & consume amqp queue
+    Amqp = amqp_util:new_queue(),
+    amqp_util:bind_q_to_targeted(Amqp),
+    amqp_util:basic_consume(Amqp),
+
+    JObjReq = [
+	       {<<"Msg-ID">>, whistle_util:current_tstamp()}
+               ,{<<"Resource-Type">>, <<"audio">>}
+               ,{<<"Invite-Format">>, <<"route">>}
+	       ,{<<"Route">>, <<"loopback/+1", CallerNumber, "@", CalleeRealm>> }
+               ,{<<"Application-Name">>, <<"transfer">>}
+	       ,{<<"Application-Data">>, {struct, {[{"To-User", CalleeExtension}, {"To-Realm", CalleeRealm}]}} }
+               | whistle_api:default_headers(Amqp, <<"originate">>, <<"resource_req">>, <<"clicktocall">>, <<"0.1">>)
+              ],
+
+    logger:format_log(info, ">>> JSON  ~p~n", [JObjReq]),
+    {ok, Json} = whistle_api:resource_req({struct, {JObjReq}}),
+    amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ),
+    
     receive
 	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
 	    JObj = mochijson2:decode(Payload),
 	    case whistle_json:get_value(<<"Event-Name">>, JObj) of
 		<<"resource_resp">> ->
 		    %% everything is ok;
-		    ok;
+		    logger:format_log(info, ">>> \o/ Everything went fine", []),
+		    CallID =  wh_json:get_value(<<"Call-ID">>, JObj),
+		    CdrID = null,
+		    {success, [CallID, CdrID]};
 		<<"resource_error">> ->
 		    %% cant right now, to busy;
-		    ko
+		    logger:format_log(info, ">>> ! Can't transfer call, busy", []),
+		    {error, []}
 	    end
     after
 	5000 ->
 	    %% OH NO!
-	    ko
-    end,
-
-    logger:format_log(info, "MONITOR_CALL_BASIC(~p): Originate call to ~p", [self(), ToRealm]),
-    %% create amqp queue
-    Amqp = amqp_util:new_queue(),
-    amqp_util:bind_q_to_targeted(Amqp),
-    amqp_util:basic_consume(Amqp),
-
-    %% json object
-    Command = [
-	       {<<"Msg-ID">>, whistle_util:current_tstamp()}
-               ,{<<"Resource-Type">>, <<"audio">>}
-               ,{<<"Invite-Format">>, <<"e164">>}
-               ,{<<"Application-Name">>, <<"transfer">>}
-	       ,{<<"Application-Data">>, [{"To-User", ToUser}, {"To-Realm", ToRealm}]}
-               | whistle_api:default_headers(Amqp, <<"originate">>, <<"resource_req">>, <<"clicktocall">>, <<"0.1">>)
-              ],
-    {ok, Json} = whistle_api:resource_req({struct, Command}),
-    amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ).
-
-
+	    logger:format_log(info, ">>> ! Timeout", []),
+	    {timeout, []}
+    end.
