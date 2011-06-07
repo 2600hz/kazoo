@@ -261,7 +261,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	case wh_cache:fetch_local(Cache, Id) of
 	    {error, not_found} ->
 		logger:info("~s | Log | ~p.~p(~p): cache miss, rm old and save new ~p ~p", [CallID, ?MODULE, ?LINE, self(), Id, Expires]),
-
+		
 		remove_old_regs(wh_json:get_value(<<"Username">>, JObj), wh_json:get_value(<<"Realm">>, JObj), Cache),
 		wh_cache:store_local(Cache, Id, Expires, Expires),
 		store_reg(JObj, Id, Contact1);
@@ -282,7 +282,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	end,
 	logger:info("~s | End | OK | ~p.~p(~p)", [CallID, ?MODULE, ?LINE, self()])
     catch
-	Type:Reason -> logger:err("~s | End | ~p | ~p.~p(~p): ~p", [CallID, Type, ?MODULE, ?LINE, self(), Reason])
+	Type:Reason -> logger:err("~s | End | ~p | ~p.~p(~p): ~p", [CallID, Type, ?MODULE, ?LINE, self(), Reason])		       
     end;
 
 process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{my_q=Queue}) ->
@@ -334,7 +334,7 @@ process_req({_Cat, _Evt},_JObj,_) ->
     logger:err("~p.~p(~p): Unhandled request: ~p:~p -> ~s", [?MODULE, ?LINE, self(), _Cat, _Evt, _JObj]).
 
 -spec(store_reg/3 :: (Prop :: proplist(), Id :: binary(), Contact :: binary()) -> no_return()).
-store_reg(Prop, Id, Contact) ->
+store_reg({struct, Prop}, Id, Contact) ->
     MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
 			 ,{<<"Contact">>, Contact}
 			 ,{<<"_id">>, Id}

@@ -328,12 +328,14 @@ update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
 
 establish_c2c(C2CId, #cb_context{req_data=Req}=Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    Caller = wh_json:get_value(<<"contact">>, Req),
-    Callee = wh_json:get_value(<<"extension">>, C2C),
+    Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
+    Callee = whistle_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
     Realm = wh_json:get_value(<<"realm">>, C2C),
     logger:format_log(info, "----> ~p to ~p @ ~p~n", [Caller, Callee ,Realm]),
-    % Status = originate_call(Caller, Callee, Realm),
-    Status = {success, [123, 456]},
+
+    Status = originate_call(Caller, Callee, Realm),
+    %Status = {success, [123, 456]},
+
     case Status of 
 	{success, [CallID, CdrID]} ->
 	    History = wh_json:get_value(<<"history">>, C2C, []),
@@ -380,14 +382,15 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm) ->
 	       {<<"Msg-ID">>, whistle_util:current_tstamp()}
                ,{<<"Resource-Type">>, <<"audio">>}
                ,{<<"Invite-Format">>, <<"route">>}
-	       ,{<<"Route">>, <<"loopback/+1", CallerNumber, "@", CalleeRealm>> }
+	       ,{<<"Route">>, <<"{ecallmgr_Realm=",CalleeRealm/binary ,"}", "loopback/", CallerNumber/binary, "/context_2">> }
+	       ,{<<"Custom-Channel-Vars">>, {struct, [{"Realm", CalleeRealm}] } }
                ,{<<"Application-Name">>, <<"transfer">>}
-	       ,{<<"Application-Data">>, {struct, {[{"To-User", CalleeExtension}, {"To-Realm", CalleeRealm}]}} }
+	       ,{<<"Application-Data">>, {struct, [{"Route", CalleeExtension}]} }
                | whistle_api:default_headers(Amqp, <<"originate">>, <<"resource_req">>, <<"clicktocall">>, <<"0.1">>)
               ],
 
     logger:format_log(info, ">>> JSON  ~p~n", [JObjReq]),
-    {ok, Json} = whistle_api:resource_req({struct, {JObjReq}}),
+    {ok, Json} = whistle_api:resource_req({struct, JObjReq}),
     amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ),
     
     receive

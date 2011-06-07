@@ -174,7 +174,8 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     logger:format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
 
-    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &", Action])),
+    % OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &", Action])),
+    OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
     logger:format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
     case freeswitch:api(Node, originate, OrigStr, 9000) of
 	{ok, X} ->
@@ -269,7 +270,7 @@ get_originate_action(<<"transfer">>, Data) ->
     case wh_json:get_value(<<"To-User">>, Data) of
 	undefined -> <<"error">>;
 	User ->
-	    list_to_binary([ <<"transfer(loopback/">>, wh_util:to_e164(User), <<"@">>, wh_json:get_value(<<"To-Realm">>, Data), <<")">>])
+	    list_to_binary([ <<"transfer(">>, whistle_util:to_e164(User), <<" XML context_2">>])
     end;
 get_originate_action(<<"bridge">>, Data) ->
     case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
