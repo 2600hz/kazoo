@@ -28,7 +28,7 @@
           ,max_pin_tries = <<"shout://translate.google.com/translate_tts?tl=en&q=You+have+reached+the+maximum+number+of+entry+attempts!+Goodbye.">>
           ,alone_enter = <<"/system_media/conf-alone">>
           ,single_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+is+only+one+other+participant.">>
-          ,multiple_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+are+~p+other+participants.">>
+          ,multiple_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+are+~s+other+participants.">>
           ,announce_join = <<"tone_stream://%(200,0,500,600,700)">>
           ,announce_leave = <<"tone_stream://%(500,0,300,200,100,50,25)">>
           ,muted = <<"/system_media/conf-muted">>
@@ -74,7 +74,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
     Conf = update_members(get_conference_profile(Data, Call#cf_call.account_db), Call),
     answer(Call),
     _ = play_conference_name(Conf, Call),
@@ -131,17 +132,21 @@ play_conference_name(#conf{prompts=Prompts}, Call) ->
 %%--------------------------------------------------------------------
 -spec(check_pin/3 :: (Conf :: #conf{}, Call :: #cf_call{}, LoopCount :: integer()) -> member | moderator | stop).
 check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) when LoopCount > Conf#conf.max_pin_tries ->
+    ?LOG("maxium number of invalid pin entries"),
     _ = b_play(Prompts#prompts.max_pin_tries, Call),
     stop;
 check_pin(#conf{prompts=Prompts} = Conf, Call, LoopCount) ->
+    ?LOG("requesting pin number"),
     case b_play_and_collect_digits(<<"4">>, <<"6">>, Prompts#prompts.request_pin, <<"1">>, <<"5000">>, Call) of
         {ok, Pin} ->
             case lists:member(Pin, Conf#conf.member_pins) of
                 true ->
+                    ?LOG("pin number is valid for a member"),
                     member;
                 false ->
                     case lists:member(Pin, Conf#conf.moderator_pins) of
                         true ->
+                            ?LOG("pin number is valid for a moderator"),
                             moderator;
                         false ->
                             _ = b_play(Prompts#prompts.incorrect_pin, Call),
@@ -178,6 +183,7 @@ play_conference_count(#conf{prompts=Prompts, members=Members}, Call) ->
 %%--------------------------------------------------------------------
 -spec(announce_join/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 announce_join(#conf{prompts=Prompts, id=ConfId}, Call) ->
+    ?LOG("caller has joined the conference"),
     cf_conference_command:play(Prompts#prompts.announce_join, ConfId, Call).
 
 %%--------------------------------------------------------------------
@@ -188,6 +194,7 @@ announce_join(#conf{prompts=Prompts, id=ConfId}, Call) ->
 %%--------------------------------------------------------------------
 -spec(announce_leave/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 announce_leave(#conf{prompts=Prompts, id=ConfId}, Call) ->
+    ?LOG("caller has left the conference"),
     cf_conference_command:play(Prompts#prompts.announce_leave, ConfId, Call).
 
 %%--------------------------------------------------------------------
@@ -298,6 +305,7 @@ toggle_deaf(Conf, Call) ->
 -spec(mute_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 mute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
     MemberId = wh_json:get_value(<<"Member-ID">>, Member),
+    ?LOG("mute member ~s", [MemberId]),
     cf_conference_command:mute(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.muted, MemberId, ConfId, Call).
 
@@ -310,6 +318,7 @@ mute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
 -spec(unmute_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 unmute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
     MemberId = wh_json:get_value(<<"Member-ID">>, Member),
+    ?LOG("unmute member ~s", [MemberId]),
     cf_conference_command:unmute(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.unmuted, MemberId, ConfId, Call).
 
@@ -322,6 +331,7 @@ unmute_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
 -spec(deaf_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 deaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
     MemberId = wh_json:get_value(<<"Member-ID">>, Member),
+    ?LOG("deaf member ~s", [MemberId]),
     cf_conference_command:deaf(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.deaf, MemberId, ConfId, Call).
 
@@ -334,6 +344,7 @@ deaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
 -spec(undeaf_caller/2 :: (Conf :: #conf{}, Call :: #cf_call{}) -> ok).
 undeaf_caller(#conf{member=Member, id=ConfId, prompts=Prompts}, Call) ->
     MemberId = wh_json:get_value(<<"Member-ID">>, Member),
+    ?LOG("undeaf member ~s", [MemberId]),
     cf_conference_command:undeaf(MemberId, ConfId, Call),
     cf_conference_command:play(Prompts#prompts.undeaf, MemberId, ConfId, Call).
 

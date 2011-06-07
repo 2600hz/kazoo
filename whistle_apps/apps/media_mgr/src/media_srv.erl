@@ -124,7 +124,6 @@ handle_cast({add_stream, MediaID, ShoutSrv}, #state{streams=Ss}=S) ->
 handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
     try
 	{ok, Q} = start_amqp(),
-	?LOG_SYS("AMQP Queue: ~s", [Q]),
 	Ps1 = updated_reserved_ports(Ps, PortRange),
 	{noreply, S#state{amqp_q=Q, is_amqp_up=true, ports=Ps1}, 2000}
     catch
@@ -133,8 +132,7 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
 	    {noreply, S#state{amqp_q={error, amqp_error}, is_amqp_up=false, ports=Ps2}, 2000}
     end;
 
-handle_info(timeout, #state{amqp_q={error, _}=QE}=S) ->
-    ?LOG_SYS("Failed to start q (~s), trying again", [QE]),
+handle_info(timeout, #state{amqp_q={error, _}}=S) ->
     try
         {ok, Q} = start_amqp(),
         {noreply, S#state{is_amqp_up=is_binary(Q), amqp_q=Q}}
@@ -147,7 +145,6 @@ handle_info(timeout, #state{amqp_q=Q, is_amqp_up=false}=S) ->
     try
 	amqp_util:queue_delete(Q),
 	{ok, NewQ} = start_amqp(),
-	?LOG_SYS("Old AMQP Queue: ~s, New AMQP Queue: ~s", [Q, NewQ]),
 	{noreply, S#state{amqp_q=NewQ, is_amqp_up=is_binary(NewQ)}}
     catch
 	_:_ -> {noreply, S#state{amqp_q={error, amqp_error}, is_amqp_up=false}}
@@ -157,23 +154,23 @@ handle_info(timeout, #state{amqp_q=Q, is_amqp_up=true}=S) when is_binary(Q) ->
     {noreply, S};
 
 handle_info({amqp_host_down, _Host}, S) ->
-    ?LOG_SYS("AMQP Host(~s) down", [_Host]),
+    ?LOG_SYS("AMQP host ~s went down", [_Host]),
     {noreply, S#state{amqp_q={error, amqp_down}, is_amqp_up=false}, 0};
 
 handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=PortRange, streams=Streams}=State) ->
     {{value, Port}, Ps1} = queue:out(Ports),
     spawn(fun() ->
-		  JObj = try mochijson2:decode(Payload) catch _:Err1 -> ?LOG_SYS("Err decoding ~p", [Err1]), {error, Err1} end,
+		  JObj = mochijson2:decode(Payload),
 		  put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"0000000000">>)),
-		  ?LOG_START("Media Request JSON: ~s", [Payload]),
+		  ?LOG_START("received request for media"),
+
 		  try
 		      handle_req(JObj, Port, Streams)
 		  catch
 		      _Type:Err ->
-			  ?LOG("Caught ~p: ~p", [_Type, Err]),
+			  ?LOG_END("caught ~p: ~p", [_Type, Err]),
 			  send_error_resp(JObj, <<"other">>, Err)
-		  end,
-		  ?LOG_END("Media Request ended")
+		  end
 	  end),
 
     Ps2 = case queue:is_empty(Ps1) of
@@ -195,12 +192,10 @@ handle_info({'DOWN', Ref, process, ShoutSrv, Info}, #state{streams=Ss}=S) ->
 	    {noreply, S}
     end;
 
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, S) ->
-    ?LOG_SYS("Basically consuming with tag ~p", [CTag]),
+handle_info(#'basic.consume_ok'{}, S) ->
     {noreply, S};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message ~p", [_Info]),
     {noreply, State, 1000}.
 
 %%--------------------------------------------------------------------
@@ -240,36 +235,38 @@ start_amqp() ->
 	amqp_util:bind_q_to_targeted(Q, Q),
 
 	amqp_util:basic_consume(Q),
+
+	?LOG_SYS("started AMQP connection"),
 	{ok, Q}
     catch
-	_:_ -> {error, amqp_error}
+	_:R -> 
+            ?LOG_SYS("unable to connect to AMQP ~p", [R]),
+            {error, amqp_error}
     end.
 
 send_error_resp(JObj, ErrCode, <<>>) ->
-    Prop = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Error-Code">>, whistle_util:to_binary(ErrCode)}
 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    To = wh_json:get_value(<<"Server-ID">>, JObj),
-
-    {ok, JSON} = whistle_api:media_error(Prop),
-    ?LOG("Sending media error to ~s: ~s", [To, JSON]),
-    amqp_util:targeted_publish(To, JSON);
+    {ok, Payload} = whistle_api:media_error(Prop),
+    ?LOG_END("sending error reply ~s for ~s", [ErrCode, MediaName]),
+    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
 send_error_resp(JObj, _ErrCode, ErrMsg) ->
-    Prop = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Error-Code">>, <<"other">>}
 	    ,{<<"Error-Msg">>, whistle_util:to_binary(ErrMsg)}
 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    To = wh_json:get_value(<<"Server-ID">>, JObj),
-
-    {ok, JSON} = whistle_api:media_error(Prop),
-    ?LOG("Sending media error to ~s: ~s", [To, JSON]),
-    amqp_util:targeted_publish(To, JSON).
+    {ok, Payload} = whistle_api:media_error(Prop),
+    ?LOG_END("sending error reply ~s for ~s", [_ErrCode, MediaName]),
+    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 -spec(handle_req/3 :: (JObj :: json_object(), Port :: port(), Streams :: list()) -> no_return()).
 handle_req(JObj, Port, Streams) ->
     true = whistle_api:media_req_v(JObj),
     case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
-        not_found ->
+        not_found ->            
             send_error_resp(JObj, <<"not_found">>, <<>>);
         no_data ->
             send_error_resp(JObj, <<"no_data">>, <<>>);
@@ -329,8 +326,7 @@ start_stream(JObj, Db, Doc, Attachment, Port) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     To = wh_json:get_value(<<"Server-ID">>, JObj),
     Media = {MediaName, Db, Doc, Attachment},
-
-    ?LOG("Starting single stream server for ~s~n", [MediaName]),
+    ?LOG_END("request for ~s is starting in new stream server", [MediaName]),
     {ok, _} = media_shout_sup:start_shout(Media, To, single, Port, get(callid)).
 
 -spec(join_stream/6 :: (JObj :: json_object(), Db :: binary(), Doc :: binary()
@@ -342,10 +338,10 @@ join_stream(JObj, Db, Doc, Attachment, Port, Streams) ->
 
     case lists:keyfind(MediaName, 1, Streams) of
 	{_, ShoutSrv, _} ->
-	    ?LOG("Joining continuous stream server(~p) for ~s~n", [ShoutSrv, MediaName]),
+            ?LOG_END("request for ~s is joining running stream server", [MediaName]),
 	    ShoutSrv ! {add_listener, To};
 	false ->
-	    ?LOG("Starting continuous stream server for ~s~n", [MediaName]),
+            ?LOG_END("request for ~s is starting a new continuous stream server", [MediaName]),
 	    {ok, ShoutSrv} = media_shout_sup:start_shout(Media, To, continuous, Port, get(callid)),
 	    ?SERVER:add_stream(MediaName, ShoutSrv)
     end.

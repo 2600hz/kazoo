@@ -55,7 +55,7 @@ next(Call, Flow) ->
             wait(Call, Flow, spawn_link(CF_Module, handle, [Data, Call]))
     catch
         _:_ ->
-            ?LOG("unknown action ~s", [Module]),
+            ?LOG("unknown action ~s, skipping", [Module]),
             self() ! {continue, <<"_">>},
             wait(Call, Flow, undefined)
     end.
@@ -71,14 +71,13 @@ next(Call, Flow) ->
 wait(Call, Flow, Pid) ->
    receive
        {'EXIT', Pid, Reason} when Reason =/= normal ->
-           ?LOG("action died unexpectedly ~s", [Reason]),
+           ?LOG("action ~p died unexpectedly ~s", [Pid, Reason]),
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue} ->
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
-       {continue, Key} ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
+       {continue, Key} ->           
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
                    ?LOG_END("unexpected end of callflow"),
