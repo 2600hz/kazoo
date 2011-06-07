@@ -279,16 +279,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(get_amqp_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, term())).
+-spec(get_amqp_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
 get_amqp_queue(CallID) ->
     EvtQ = amqp_util:new_callevt_queue(<<>>),
 
-    amqp_util:bind_q_to_callevt(EvtQ, CallID, events),
-    amqp_util:bind_q_to_callevt(EvtQ, CallID, cdr),
-    amqp_util:bind_q_to_targeted(EvtQ),
+    try
+	amqp_util:bind_q_to_callevt(EvtQ, CallID, events),
+	amqp_util:bind_q_to_callevt(EvtQ, CallID, cdr),
+	amqp_util:bind_q_to_targeted(EvtQ),
 
-    amqp_util:basic_consume(EvtQ),
-    EvtQ.
+	amqp_util:basic_consume(EvtQ),
+	EvtQ
+    catch
+	_:_ -> {error, amqp_error}
+    end.
 
 %% Duration - billable seconds
 -spec(update_account/2 :: (Duration :: integer(), Flags :: #route_flags{}) -> no_return()).

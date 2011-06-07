@@ -85,5 +85,5 @@ fetch_cdr(CallID, DB) ->
 	{ok, ?EMPTY_JSON_OBJECT} ->
 	    {error, not_found};
 	{ok, Doc} ->
-	    Doc
+	    {ok, Doc}
     end.

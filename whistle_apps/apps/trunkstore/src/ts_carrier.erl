@@ -177,14 +177,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec(get_current_carriers/0 :: () -> tuple(ok, list(tuple(binary(), proplist()))) | tuple(error, binary())).
 get_current_carriers() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_CARRIERS_DOC) of
 	{error, not_found} ->
-	    {error, "No matching carriers"};
+	    {error, <<"No matching carriers">>};
 	{error, db_not_reachable} ->
-	    {error, "DB not accessible"};
-	{ok, []} ->
-	    {error, "No matching carriers"};
+	    {error, <<"DB not accessible">>};
 	{ok, {struct, Carriers}} when is_list(Carriers) ->
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
 	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))}

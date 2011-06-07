@@ -27,12 +27,12 @@
 
 -define(LOG_SYS(Format),
 	begin
-	    LogCallId = (get(callid) =:= undefined andalso ?LOG_SYSTEM_ID) orelse get(callid),
+	    LogCallId = (fun(undefined) -> ?LOG_SYSTEM_ID; (LogCallID__) -> LogCallID__ end)(get(callid)),
 	    logger:info("~s|sys|~s:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()])
 	end).
 -define(LOG_SYS(Format, Data),
 	begin
-	    LogCallId = (get(callid) =:= undefined andalso ?LOG_SYSTEM_ID) orelse get(callid),
+	    LogCallId = (fun(undefined) -> ?LOG_SYSTEM_ID; (LogCallID__) -> LogCallID__ end)(get(callid)),
 	    logger:info("~s|sys|~s:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()] ++ Data)
 	end).
 -define(LOG_SYS(CallId, Format, Data),

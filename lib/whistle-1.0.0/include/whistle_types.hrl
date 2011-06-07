@@ -1,6 +1,6 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 
--type proplist() :: list(tuple(binary() | atom(), term())) | [].
+-type proplist() :: list( tuple(binary() | atom(), term()) ) | [].
 
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
@@ -24,7 +24,7 @@
 -type datetime() :: tuple(date(), time()).
 -type iso_week() :: tuple(non_neg_integer(), integer()).
 -type seconds() :: integer().
--type day_of_week() :: 1 | 2 | 3 | 4 | 5 | 6 | 7.
+-type day_of_week() :: 1..7.
 
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.

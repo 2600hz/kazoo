@@ -32,6 +32,7 @@
 
 %% Views
 -export([get_all_results/2, get_results/3]).
+-export([get_result_keys/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -519,7 +520,7 @@ get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
 -spec(get_results/3 :: (DbName :: binary(), DesignDoc :: binary(), ViewOptions :: proplist()) ->
-			    tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+			    tuple(ok, json_objects()) | tuple(error, atom())).
 get_results(DbName, DesignDoc, ViewOptions) ->
     case get_db(DbName) of
 	{error, _Error} -> {error, db_not_reachable};
@@ -535,6 +536,14 @@ get_results(DbName, DesignDoc, ViewOptions) ->
 		    end
 	    end
     end.
+
+-spec(get_result_keys/1 :: (JObjs :: json_objects()) -> list(binary()) | []).
+get_result_keys(JObjs) ->
+    lists:map(fun get_keys/1, JObjs).
+
+-spec(get_keys/1 :: (JObj :: json_object()) -> binary()).
+get_keys(JObj) ->
+    wh_json:get_value(<<"key">>, JObj).
 
 %%%===================================================================
 %%% API

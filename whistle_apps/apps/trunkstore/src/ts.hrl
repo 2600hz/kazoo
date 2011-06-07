@@ -5,7 +5,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 %% couch params for the trunk store and its views
--define(TS_DB, "ts").
+-define(TS_DB, <<"ts">>).
 
 %% cdr doc store
 -define(TS_CDR_PREFIX, <<"ts_cdr">>).
@@ -20,8 +20,8 @@
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 
 %% couch params for the routing table and its views
--define(TS_RATES_DB, "ts_rates").
--define(TS_CARRIERS_DOC, "carriers").
+-define(TS_RATES_DB, <<"ts_rates">>).
+-define(TS_CARRIERS_DOC, <<"carriers">>).
 
 -define(DEFAULT_PROGRESS_TIMEOUT, 6). % seconds to timeout if no progress
 
@@ -65,4 +65,4 @@
 
 
 -define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json", "ts_cdr.json"]).
--define(TS_COUCH_BASE_DOCS, ["carriers.json", "rates.json"]).
+-define(TS_COUCH_BASE_DOCS, ["carriers.json"]).

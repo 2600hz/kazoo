@@ -58,15 +58,15 @@ outbound_handler(ApiJObj) ->
     Flags = create_flags(Did, ApiJObj),
     process_routing(outbound_features(Flags), ApiJObj).
 
--spec(lookup_user_flags/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, string())).
+-spec(lookup_user_flags/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 lookup_user_flags(Name, Realm) ->
     %% wh_timer:tick("lookup_user_flags/2"),
     case wh_cache:fetch({lookup_user_flags, Realm, Name}) of
 	{ok, _}=Result -> Result;
 	{error, not_found} ->
-	    case couch_mgr:get_results(?TS_DB, "LookUpUser/LookUpUserFlags", [{<<"key">>, [Realm, Name]}]) of
+	    case couch_mgr:get_results(?TS_DB, <<"LookUpUser/LookUpUserFlags">>, [{<<"key">>, [Realm, Name]}]) of
 		{error, _}=E -> E;
-		{ok, []} -> {error, "No user@realm found"};
+		{ok, []} -> {error, <<"No user@realm found">>};
 		{ok, [User|_]} ->
 		    ValJObj = wh_json:get_value(<<"value">>, User),
 		    JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
@@ -75,11 +75,11 @@ lookup_user_flags(Name, Realm) ->
 	    end
     end.
 
--spec(lookup_did/1 :: (Did :: binary()) -> tuple(ok, json_object()) | tuple(error, string())).
-lookup_did(Did) ->
+-spec(lookup_did/1 :: (DID :: binary()) -> tuple(ok, json_object()) | tuple(error, binary())).
+lookup_did(DID) ->
     %% wh_timer:tick("lookup_did/1"),
-    Options = [{"key", Did}],
-    case wh_cache:fetch({lookup_did, Did}) of
+    Options = [{<<"key">>, DID}],
+    case wh_cache:fetch({lookup_did, DID}) of
 	{ok, _}=Resp ->
 	    %% wh_timer:tick("lookup_did/1 cache hit"),
 	    Resp;
@@ -87,16 +87,20 @@ lookup_did(Did) ->
 	    %% wh_timer:tick("lookup_did/1 cache miss"),
 	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
 		{error, _} ->
-		    {error, "No DIDLOOKUP view"};
+		    {error, <<"No DIDLOOKUP view">>};
 		{ok, []} ->
-		    {error, "No matching DID"};
-		{ok, [{struct, _}=ViewJObj | _Rest]} ->
+		    {error, <<"No matching DID">>};
+		{ok, [{struct, _}=ViewJObj]} ->
 		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
 		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
-		    wh_cache:store({lookup_did, Did}, Resp),
+		    wh_cache:store({lookup_did, DID}, Resp),
 		    {ok, Resp};
-		_Else ->
-		    {error, "Unexpected error in outbound_handler"}
+		{ok, [{struct, _}=ViewJObj | _Rest]} ->
+		    ?LOG("Looking up DID ~s resulted in more than one result", [DID]),
+		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
+		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
+		    wh_cache:store({lookup_did, DID}, Resp),
+		    {ok, Resp}
 	    end
     end.
 

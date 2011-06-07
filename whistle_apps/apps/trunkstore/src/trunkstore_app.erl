@@ -18,7 +18,8 @@ start(_StartType, _StartArgs) ->
     case trunkstore:start_link() of
 	{ok, P} -> {ok, P};
 	{error,{already_started, P}} -> {ok, P};
-	{error, _}=E -> E
+	{error, _}=E -> E;
+	ignore -> {error, failed_to_start}
     end.
 
 stop(_State) ->

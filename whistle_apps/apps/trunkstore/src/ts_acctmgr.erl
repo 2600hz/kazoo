@@ -38,8 +38,8 @@
 -define(ACTIVE_CALL_TIMEOUT, 1000).
 
 -record(state, {
-	  current_write_db = ""
-	  ,current_read_db = "" %% possibly different during transition from yesterday to today
+	  current_write_db = <<"">> :: binary()
+	  ,current_read_db = <<"">> :: binary() %% possibly different during transition from yesterday to today
 	 }).
 
 %%%===================================================================
@@ -276,7 +276,7 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 handle_info(timeout, #state{current_write_db=WDB}=S) ->
     Self = self(),
     ?LOG_SYS("Loading accounts into ~s", [WDB]),
-    spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB, Self) end),
+    spawn(fun() -> load_views(WDB), load_accounts_from_ts(WDB, Self), ok end),
     {noreply, S};
 handle_info(?EOD, S) ->
     DB = ts_util:todays_db_name(?TS_USAGE_PREFIX),
@@ -292,14 +292,14 @@ handle_info(?EOD, S) ->
 	       }};
 handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
     Self = self(),
-    spawn( fun() -> lists:foreach(fun(Acct) ->
-					  ?LOG_SYS("Transfer account ~s from ~s to ~s", [Acct, RDB, WDB]),
-					  transfer_acct(Acct, RDB, WDB),
-					  ?LOG_SYS("Transfer active calls for ~s from ~s to ~s", [Acct, RDB, WDB]),
-					  transfer_active_calls(Acct, RDB, WDB)
-				  end, get_accts(RDB)),
-		    %% once active accounts from yesterday are done, make sure all others are in too
-		    load_accounts_from_ts(WDB, Self)
+    spawn(fun() -> lists:foreach(fun(Acct) ->
+					 ?LOG_SYS("Transfer account ~s from ~s to ~s", [Acct, RDB, WDB]),
+					 transfer_acct(Acct, RDB, WDB),
+					 ?LOG_SYS("Transfer active calls for ~s from ~s to ~s", [Acct, RDB, WDB]),
+					 transfer_active_calls(Acct, RDB, WDB)
+				 end, get_accts(RDB)),
+		   %% once active accounts from yesterday are done, make sure all others are in too
+		   load_accounts_from_ts(WDB, Self)
 	   end),
     {noreply, S#state{current_read_db=WDB}};
 handle_info({document_changes, DocID, _Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
@@ -324,7 +324,7 @@ handle_info(_Info, S) ->
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
+%% @spec terminate(Reason, State) -> no_return()
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
@@ -345,9 +345,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec(load_accounts_from_ts/2 :: (DB :: binary(), Srv :: pid()) -> no_return()).
+-spec(load_accounts_from_ts/2 :: (DB :: binary(), Srv :: pid()) -> ok).
 load_accounts_from_ts(DB, Srv) ->
-    case couch_mgr:get_results(?TS_DB, {"accounts", "list"}, []) of
+    case couch_mgr:get_results(?TS_DB, <<"accounts/list">>, []) of
 	{error, _} -> ok;
 	{ok, []} -> ok;
 	{ok, Accts} when is_list(Accts) ->
@@ -468,13 +468,15 @@ debit_doc(AcctId, Extra) ->
      | Extra
     ].
 
--spec(get_accts/1 :: (DB :: binary()) -> list(binary())).
+-spec(get_accts/1 :: (DB :: binary()) -> list(binary()) | []).
 get_accts(DB) ->
-    case couch_mgr:get_results(DB, {"accounts", "listing"}, [{<<"group">>, <<"true">>}]) of
+    case couch_mgr:get_results(DB, <<"accounts/listing">>, [{<<"group">>, <<"true">>}]) of
 	{ok, []} -> [];
-	{ok, AcctsDoc} -> lists:map(fun(AcctJObj) -> wh_json:get_value(<<"key">>, AcctJObj) end, AcctsDoc)
+	{ok, AcctsDoc} -> couch_mgr:get_result_keys(AcctsDoc);
+	_ -> []
     end.
 
+-spec(transfer_acct/3 :: (AcctId :: binary(), RDB :: binary(), WDB :: binary()) -> pid()).
 transfer_acct(AcctId, RDB, WDB) ->
     %% read account balance, from RDB
     Bal = credit_available(RDB, AcctId),
@@ -489,6 +491,7 @@ transfer_acct(AcctId, RDB, WDB) ->
     %% update info_* doc with account balance
     spawn(fun() -> update_account(AcctId, Bal) end).
 
+-spec(transfer_active_calls/3 :: (AcctId :: binary(), RDB :: binary(), WDB :: binary()) -> no_return()).
 transfer_active_calls(AcctId, RDB, WDB) ->
     case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
 	{ok, []} -> ?LOG_SYS("No active calls for ~s in ~s", [AcctId, RDB]);
@@ -509,6 +512,7 @@ transfer_active_calls(AcctId, RDB, WDB) ->
     end.
 
 %% When TS updates an account, find the diff and create the appropriate entry (debit or credit).
+-spec(update_from_couch/3 :: (AcctId :: binary(), WDB :: binary(), RDB :: binary()) -> no_return()).
 update_from_couch(AcctId, WDB, RDB) ->
     {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
 
@@ -537,6 +541,7 @@ update_from_couch(AcctId, WDB, RDB) ->
 	C -> couch_mgr:save_doc(WDB, credit_doc(AcctId, C0 + C, 0, []))
     end.
 
+-spec(update_account/2 :: (AcctId :: binary(), Bal :: pos_integer()) -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
 update_account(AcctId, Bal) ->
     {ok, {struct, Doc}} = couch_mgr:open_doc(?TS_DB, AcctId),
     {struct, Acct} = props:get_value(<<"account">>, Doc, ?EMPTY_JSON_OBJECT),
@@ -546,6 +551,7 @@ update_account(AcctId, Bal) ->
     Doc1 = [ {<<"account">>, {struct, Acct1}} | lists:keydelete(<<"account">>, 1, Doc)],
     couch_mgr:save_doc(?TS_DB, Doc1).
 
+-spec(load_account/3 :: (AcctId :: binary(), DB :: binary(), Srv :: pid()) -> ok).
 load_account(AcctId, DB, Srv) ->
     case wh_cache:fetch({ts_acctmgr, AcctId, DB}) of
 	{ok, _} -> ok;
@@ -563,6 +569,7 @@ load_account(AcctId, DB, Srv) ->
 	    end
     end.
 
+-spec(load_views/1 :: (DB :: binary()) -> ok).
 load_views(DB) ->
     couch_mgr:db_create(DB),
     lists:foreach(fun(Name) ->
@@ -572,6 +579,7 @@ load_views(DB) ->
 			  end
 		  end, ?TS_ACCTMGR_VIEWS).
 
+-spec(update_views/1 :: (DB :: binary()) -> no_return()).
 update_views(DB) ->
     lists:foreach(fun(File) ->
 			  couch_mgr:update_doc_from_file(DB, trunkstore, File)

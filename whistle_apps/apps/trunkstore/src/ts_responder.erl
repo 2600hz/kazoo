@@ -117,9 +117,9 @@ handle_info({amqp_host_down, H}, S) ->
 
 handle_info(Req, #state{is_amqp_up=false}=S) ->
     case start_amqp() of
-	{ok, CQ} when is_binary(CQ) ->
+	{ok, _} ->
 	    handle_info(Req, S#state{is_amqp_up=true});
-	_ ->
+	{error, _} ->
 	    ?LOG_SYS("Dropping request, AMQP down: ~p~n", [Req]),
 	    {noreply, S}
     end;
@@ -227,20 +227,23 @@ process_req(_MsgType, _Prop) ->
 send_resp(JSON, RespQ) ->
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
 
--spec(start_amqp/0 :: () -> tuple(ok, binary())).
+-spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
 start_amqp() ->
     ReqQueue = amqp_util:new_callmgr_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
-
     ReqQueue1 = amqp_util:new_callmgr_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
 
-    amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
+    try
+	ok = amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
 
-    %% Bind the queue to an exchange
-    amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
-    amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
+	%% Bind the queue to an exchange
+	amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
+	amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
 
-    %% Register a consumer to listen to the queue
-    amqp_util:basic_consume(ReqQueue, [{exclusive, false}]),
-    amqp_util:basic_consume(ReqQueue1, [{exclusive, false}]),
+	%% Register a consumer to listen to the queue
+	amqp_util:basic_consume(ReqQueue, [{exclusive, false}]),
+	amqp_util:basic_consume(ReqQueue1, [{exclusive, false}]),
 
-    {ok, ReqQueue}.
+	{ok, ReqQueue}
+    catch
+	_:_ -> {error, amqp_error}
+    end.
