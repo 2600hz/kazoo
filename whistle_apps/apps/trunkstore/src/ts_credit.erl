@@ -1,6 +1,6 @@
-%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Check user's account for appropriate credit
 %%% @end
@@ -43,7 +43,7 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 		[] -> {error, no_route_found};
 		[Rate|_] ->
 		    %% wh_timer:tick("post usort data found"),
-		    logger:format_log(info, "TS_CREDIT(~p): Rate to use ~p~n", [self(), Rate]),
+		    ?LOG("Rate to use: ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
 		    BaseCost = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
 			+ whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
@@ -54,19 +54,19 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 			{ok, per_min} ->
 			    {ok, set_rate_flags(Flags, Direction, Rate)};
 			{error, entry_exists}=E ->
-			    logger:format_log(error, "TS_CREDIT(~p): Failed to reserve trunk for already existing call-id~n", [self()]),
+			    ?LOG("Failed reserving a trunk; call-id exists in DB"),
 			    E;
 			{error, no_funds}=E1 ->
-			    logger:format_log(error, "TS_CREDIT(~p): No funds/flat-rate trunks to route call over.~n", [self()]),
+			    ?LOG("Failed reserving a trunk; no funds or flat-rate trunks"),
 			    E1;
 			{error, no_account}=E2 ->
-			    logger:format_log(error, "TS_CREDIT(~p): No account id passed.~n", [self()]),
+			    ?LOG("Failed reserving a trunk; no account passed: ~p tried", [AccountDocId]),
 			    E2;
 			{error, no_callid}=E3 ->
-			    logger:format_log(error, "TS_CREDIT(~p): No call id passed.~n", [self()]),
+			    ?LOG("Failed reserving a trunk; no call id passed: ~p tried", [CallID]),
 			    E3;
 			{error, not_found}=E4 ->
-			    logger:format_log(error, "TS_CREDIT(~p): acctmgr get_results failed.~n", [self()]),
+			    ?LOG("Failed reserving a trunk; ts_acctmgr:reserve_trunk/4 failed"),
 			    E4
 		    end
 	    end
@@ -90,9 +90,8 @@ matching_rate(To, Direction, RouteOptions, Rate) ->
 sort_rates(RateA, RateB) ->
     ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateA, 1)) >= ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateB, 1)).
 
-set_rate_flags(Flags, <<"inbound">>=In, RateData) ->
+set_rate_flags(Flags, <<"inbound">>, RateData) ->
     RateName = wh_json:get_value(<<"rate_name">>, RateData),
-    logger:format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [In, RateName]),
     Flags#route_flags{
       rate = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, RateData))
       ,rate_increment = whistle_util:to_integer(wh_json:get_value(<<"rate_increment">>, RateData))
@@ -101,9 +100,8 @@ set_rate_flags(Flags, <<"inbound">>=In, RateData) ->
       ,rate_name = RateName
       ,flat_rate_enabled = false
      };
-set_rate_flags(Flags, <<"outbound">>=Out, RateData) ->
+set_rate_flags(Flags, <<"outbound">>, RateData) ->
     RateName = wh_json:get_value(<<"rate_name">>, RateData),
-    logger:format_log(info, "TS_CREDIT.set_rate_flags(~p): ~p~n", [Out, RateName]),
     Flags#route_flags{
       rate = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, RateData))
       ,rate_increment = whistle_util:to_integer(wh_json:get_value(<<"rate_increment">>, RateData))
@@ -113,9 +111,7 @@ set_rate_flags(Flags, <<"outbound">>=Out, RateData) ->
       ,flat_rate_enabled = false
      }.
 
-
-set_flat_flags(Flags, <<"inbound">>=In) ->
-    logger:format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [In]),
+set_flat_flags(Flags, <<"inbound">>) ->
     Flags#route_flags{
       rate = 0.0
       ,rate_increment = 0
@@ -124,8 +120,7 @@ set_flat_flags(Flags, <<"inbound">>=In) ->
       ,rate_name = <<>>
       ,flat_rate_enabled = true
      };
-set_flat_flags(Flags, <<"outbound">>=Out) ->
-    logger:format_log(info, "TS_CREDIT.set_flat_flags for ~p~n", [Out]),
+set_flat_flags(Flags, <<"outbound">>) ->
     Flags#route_flags{
       rate = 0.0
       ,rate_increment = 0
@@ -141,5 +136,4 @@ set_flat_flags(Flags, <<"outbound">>=Out) ->
 options_match(RouteOptions, {struct, RateOptions}) ->
     options_match(RouteOptions, RateOptions);
 options_match(RouteOptions, RateOptions) ->
-    logger:format_log(info, "TS_CREDIT.options_match:~nDID Flags: ~p~nRoute Options: ~p~n", [RouteOptions, RateOptions]),
     lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
