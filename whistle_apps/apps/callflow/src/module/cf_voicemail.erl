@@ -127,7 +127,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
     case wh_json:get_value(<<"action">>, Data) of
         <<"compose">> ->
             answer(Call),
@@ -165,11 +166,12 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts
 		       ,prompts=#prompts{abort_login=AbortLogin, enter_password=EnterPass, invalid_login=InvalidLogin}
 		       ,pin=Pin}=Box, Call, Loop) ->
     try
+        ?LOG("requesting pin number to check mailbox"),
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, <<"8000">>, Call),
         main_menu(Box, Call)
     catch
         _:R ->
-            ?LOG("invalid mailbox login ~p", [R]),
+            ?LOG("invalid mailbox login ~w", [R]),
             _ = b_play(InvalidLogin, Call),
             case Loop < MaxLoginAttempts of
 		true -> check_mailbox(Box, Call, Loop+1);
@@ -194,7 +196,9 @@ find_mailbox(Call) ->
 find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
     Prompts = #prompts{},
     try
+        ?LOG("requesting mailbox number to check"),
         {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_mailbox, <<"1">>, <<"8000">>, Call),
+        ?LOG("requesting pin number for mailbox ~s", [Mailbox]),
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_password, <<"1">>, <<"8000">>, Call),
         {ok, [JObj]} = couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, Mailbox}]),
         Box = get_mailbox_profile({struct, [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]}, Call ),
@@ -202,7 +206,7 @@ find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
         main_menu(Box, Call)
     catch
         _:R ->
-            ?LOG("unable to find mailbox via user provided ID and pin ~p", [R]),
+            ?LOG("unable to find or login to mailbox ~w", [R]),
             B = #mailbox{},
             _ = b_play(Prompts#prompts.invalid_login, Call),
             if
@@ -485,7 +489,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 							     ,cid_name=CIDName, cid_number=CIDNumber
 							     ,call_id=CallID}=Call) ->
     {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
-    ?LOG("stored voicemail message"),
+    ?LOG("stored voicemail message ~s", [MediaName]),
 
     Tstamp = new_timestamp(),
     NewMessage={struct, [
@@ -499,7 +503,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
                          ,{<<"attachment">>, MediaName}
                         ]},
     {ok, _} = save_metadata(NewMessage, Db, Id),
-    ?LOG("stored voicemail metadata"),
+    ?LOG("stored voicemail metadata for ~s", [MediaName]),
 
     [FromU, FromR] = binary:split(From, <<"@">>),
     [ToU, ToR] = binary:split(To, <<"@">>),
@@ -516,7 +520,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 				       ,{<<"Voicemail-Timestamp">>, Tstamp}
 				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
-    ?LOG("new voicemail whistle API message broadcast"),
+    ?LOG("new voicemail message ~s whistle API broadcast", [MediaName]),
     amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW).
 
 %%--------------------------------------------------------------------
@@ -577,7 +581,7 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
         ?LOG("updated mailbox pin number")
     catch
         _:R ->
-            ?LOG("new pin was invalid ~p, trying again", [R]),
+            ?LOG("new pin was invalid ~s, trying again", [R]),
             change_pin(Box, Call)
     end.
 

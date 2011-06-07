@@ -49,7 +49,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
     case get_call_forward(Call) of
         {error, #callfwd{prompts=Prompts}} ->
             cf_call_command:b_play(Prompts#prompts.feature_not_avaliable, Call),
@@ -184,7 +185,7 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
             ?LOG("updated call forwarding in db"),
             {ok, JObj1};
         {error, R}=E ->
-            ?LOG("failed to update call forwarding in db ~p", [R]),
+            ?LOG("failed to update call forwarding in db ~w", [R]),
             E
     end.
 

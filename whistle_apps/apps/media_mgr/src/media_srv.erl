@@ -236,7 +236,7 @@ start_amqp() ->
 
 	amqp_util:basic_consume(Q),
 
-%%	?LOG_SYS("started AMQP connection"),
+	?LOG_SYS("started AMQP connection"),
 	{ok, Q}
     catch
 	_:R -> 
@@ -245,19 +245,21 @@ start_amqp() ->
     end.
 
 send_error_resp(JObj, ErrCode, <<>>) ->
-    Prop = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Error-Code">>, whistle_util:to_binary(ErrCode)}
 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, Payload} = whistle_api:media_error(Prop),
-    ?LOG_END("sending error reply ~s", [ErrCode]),
+    ?LOG_END("sending error reply ~s for ~s", [ErrCode, MediaName]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
 send_error_resp(JObj, _ErrCode, ErrMsg) ->
-    Prop = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Error-Code">>, <<"other">>}
 	    ,{<<"Error-Msg">>, whistle_util:to_binary(ErrMsg)}
 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, Payload} = whistle_api:media_error(Prop),
-    ?LOG_END("sending error reply ~s", [_ErrCode]),
+    ?LOG_END("sending error reply ~s for ~s", [_ErrCode, MediaName]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 -spec(handle_req/3 :: (JObj :: json_object(), Port :: port(), Streams :: list()) -> no_return()).

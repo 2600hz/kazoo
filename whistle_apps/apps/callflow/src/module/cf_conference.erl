@@ -28,7 +28,7 @@
           ,max_pin_tries = <<"shout://translate.google.com/translate_tts?tl=en&q=You+have+reached+the+maximum+number+of+entry+attempts!+Goodbye.">>
           ,alone_enter = <<"/system_media/conf-alone">>
           ,single_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+is+only+one+other+participant.">>
-          ,multiple_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+are+~p+other+participants.">>
+          ,multiple_enter = <<"shout://translate.google.com/translate_tts?tl=en&q=There+are+~s+other+participants.">>
           ,announce_join = <<"tone_stream://%(200,0,500,600,700)">>
           ,announce_leave = <<"tone_stream://%(500,0,300,200,100,50,25)">>
           ,muted = <<"/system_media/conf-muted">>
@@ -74,7 +74,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
     Conf = update_members(get_conference_profile(Data, Call#cf_call.account_db), Call),
     answer(Call),
     _ = play_conference_name(Conf, Call),

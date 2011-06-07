@@ -72,7 +72,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, Call) ->
+handle(Data, #cf_call{call_id=CallId}=Call) ->
+    put(callid, CallId),
     Menu = get_menu_profile(Data, Call#cf_call.account_db),
     answer(Call),
     menu_loop(Menu, Call).
@@ -110,7 +111,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
         end
     catch
         _:R ->
-            ?LOG("invalid selection ~p", [R]),
+            ?LOG("invalid selection ~w", [R]),
             _ = play_invalid_prompt(Menu, Call),
             b_play(<<"silence_stream://250">>, Call),
             menu_loop(Menu#menu{retries=Retries-1}, Call)

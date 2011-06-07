@@ -23,7 +23,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
     Endpoints = lists:foldr(fun(Member, Acc) ->
                                     try
                                         {ok, {struct, Props}=E} = cf_endpoint:build(wh_json:get_value(<<"id">>, Member), Call),
@@ -46,8 +47,11 @@ handle(Data, #cf_call{cf_pid=CFPid}=Call) ->
             _ = wait_for_unbridge(),
             ?LOG("ring group completed"),
             CFPid ! { stop };
+        {error, {bridge_failed, R}} ->
+            ?LOG("failed to bridge to ring group ~s", [R]),
+            CFPid ! { continue };
         {error, R} ->
-            ?LOG("failed to bridge to ring group ~p", [R]),
+            ?LOG("failed to bridge to ring group ~w", [R]),
             CFPid ! { continue }
     end.
 

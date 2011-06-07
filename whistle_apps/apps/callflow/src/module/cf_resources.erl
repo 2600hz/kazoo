@@ -23,7 +23,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(_, Call) ->
+handle(_, #cf_call{call_id=CallId}=Call) ->
+    put(callid, CallId),
     {ok, Gateways} = find_gateways(Call),
     bridge_to_gateways(Gateways, Call).
 
@@ -46,8 +47,11 @@ bridge_to_gateways([{DestNum, Gateways, CIDType}|T], #cf_call{cf_pid=CFPid}=Call
             wait_for_unbridge(),
             ?LOG("resource released"),
             CFPid ! {stop};
+        {error, {bridge_failed, R}} ->
+            ?LOG("resource failed ~s", [R]),
+            bridge_to_gateways(T, Call);
         {error, R} ->
-            ?LOG("resource failed ~p", [R]),
+            ?LOG("resource failed ~w", [R]),
             bridge_to_gateways(T, Call)
     end;
 bridge_to_gateways([], #cf_call{cf_pid=CFPid}) ->
@@ -102,7 +106,7 @@ find_gateways(#cf_call{account_db=Db, dest_number=DestNum}=Call) ->
 			 , Number =/= []
                  ]};
         {error, R}=E ->
-            ?LOG("search failed ~p", [R]),
+            ?LOG("search failed ~w", [R]),
             E
     end.
 
