@@ -118,7 +118,7 @@ handle_info(timeout, #state{cache=Pid}=State) ->
     prime_cache(Pid),
     Q = start_amqp(),
     Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
-    logger:debug("~p.~p(~p): Starting timer for ~p msec: ~p~n", [?MODULE, ?LINE, self(), ?CLEANUP_RATE, Ref]),
+    ?LOG_SYS("Starting timer for ~p msec: ~p", [?CLEANUP_RATE, Ref]),
 
     {noreply, State#state{cleanup_ref=Ref, my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
 
@@ -134,13 +134,13 @@ handle_info({amqp_host_down, _H}, S) ->
     {noreply, S#state{my_q=Q, is_amqp_up=is_binary(Q)}, 1000};
 
 handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref, cache=Cache}=S) ->
-    logger:debug("~p.~p(~p): Time to clean old registrations~n", [?MODULE, ?LINE, self()]),
+    ?LOG_SYS("Time to clean old registrations"),
     spawn(fun() -> cleanup_registrations(Cache) end),
     NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     {noreply, S#state{cleanup_ref=NewRef}};
 
 handle_info({timeout, Ref1, _}, #state{cleanup_ref=Ref}=S) ->
-    logger:debug("~p.~p(~p): wrong ref ~p, expected ~p~n", [?MODULE, ?LINE, self(), Ref1, Ref]),
+    ?LOG_SYS("wrong ref ~p, expected ~p~n", [Ref1, Ref]),
     _ = erlang:cancel_timer(Ref),
     NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok), % clean out every 60 seconds
     {noreply, S#state{cleanup_ref=NewRef}};
@@ -153,12 +153,12 @@ handle_info({'basic.consume_ok', _}, S) ->
     {noreply, S};
 
 handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) ->
-    logger:debug("~p.~p(~p): Cache(~p) went down: ~p~n", [?MODULE, ?LINE, self(), Cache, _Reason]),
+    ?LOG("Cache(~p) went down: ~p", [Cache, _Reason]),
     erlang:demonitor(MRef),
     {noreply, State#state{cache=undefined}, 50};
 
 handle_info(_Info, State) ->
-    logger:err("~p.~p(~p): unhandled info: ~p~n", [?MODULE, ?LINE, self(), _Info]),
+    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State, 1000}.
 
 %%--------------------------------------------------------------------
@@ -190,20 +190,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/0 :: () -> binary() | tuple(error, term())).
+-spec(start_amqp/0 :: () -> binary() | tuple(error, amqp_error)).
 start_amqp() ->
-    Q = amqp_util:new_queue(?REG_QUEUE_NAME, [{exclusive, false}]),
+    try
+	Q = amqp_util:new_queue(?REG_QUEUE_NAME, [{exclusive, false}]),
 
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ),
+	amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
+	amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
+	amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ),
 
-    amqp_util:basic_consume(Q, [{exclusive, false}]),
-    Q.
+	amqp_util:basic_consume(Q, [{exclusive, false}]),
+	Q
+    catch
+	_:_ -> {error, amqp_error}
+    end.
 
 -spec(handle_req/3 :: (ContentType :: binary(), Payload :: binary(), State :: #state{}) -> no_return()).
 handle_req(<<"application/json">>, Payload, State) ->
     {struct, Prop} = JObj = mochijson2:decode(Payload),
+
+    put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, wh_json:get_value(<<"Call-ID">>, JObj))),
+    ?LOG_START("Received JSON: ~s", [Payload]),
+
     process_req(get_msg_type(Prop), JObj, State).
 
 -spec(get_msg_type/1 :: (Prop :: proplist()) -> tuple(binary(), binary())).
@@ -212,16 +220,15 @@ get_msg_type(Prop) ->
 
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
 process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{my_q=Queue}) ->
-    MsgID = wh_json:get_value(<<"Msg-ID">>, JObj),
     try
-	logger:info("~s | Start | ~p.~p(~p): Authentication request", [MsgID, ?MODULE, ?LINE, self()]),
+	?LOG("Authentication request"),
 
 	AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
 	AuthR = wh_json:get_value(<<"Auth-Domain">>, JObj),
 
 	Direction = <<"outbound">>, %% if we're authing, it's an outbound call or a registration; inbound from carriers is ACLed auth
 
-	{ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, MsgID), %% crashes if not found, no return necessary
+	{ok, AuthJObj} = lookup_auth_user(AuthU, AuthR), %% crashes if not found, no return necessary
 
 	Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		    ,{<<"Custom-Channel-Vars">>, {struct, [
@@ -238,16 +245,17 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{my_q=Queue}) ->
 						  ,?APP_VERSION)],
 	{ok, JSON} = auth_response(AuthJObj, Defaults),
 	RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-	send_resp(JSON, RespQ, MsgID),
-	logger:info("~s | End | OK | ~p.~p(~p)", [MsgID, ?MODULE, ?LINE, self()])
+	send_resp(JSON, RespQ),
+	?LOG_END("End of authentication")
     catch
-	Type:Reason -> logger:err("~s | End | ~p | ~p.~p(~p): ~p", [MsgID, Type, ?MODULE, ?LINE, self(), Reason])
+	Type:Reason ->
+	    ?LOG_END("Authentication exception: ~p:~p", [Type, Reason]),
+	    ?LOG("Stacktrace: ~p~n", [erlang:get_stacktrace()])
     end;
 
 process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj, <<"0000000000">>),
     try
-	logger:info("~s | Start | ~p.~p(~p): Registration success", [CallID, ?MODULE, ?LINE, self()]),
+	?LOG("Registration success"),
 	true = whistle_api:reg_success_v(JObj),
 
 	[User, AfterAt] = binary:split(wh_json:get_value(<<"Contact">>, JObj), <<"@">>), % only one @ allowed
@@ -260,35 +268,36 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 
 	case wh_cache:fetch_local(Cache, Id) of
 	    {error, not_found} ->
-		logger:info("~s | Log | ~p.~p(~p): cache miss, rm old and save new ~p ~p", [CallID, ?MODULE, ?LINE, self(), Id, Expires]),
+		?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
 
 		remove_old_regs(wh_json:get_value(<<"Username">>, JObj), wh_json:get_value(<<"Realm">>, JObj), Cache),
 		wh_cache:store_local(Cache, Id, Expires, Expires),
 		store_reg(JObj, Id, Contact1);
 	    {ok, _} ->
-		logger:debug("~s | Log | ~p.~p(~p): cache hit, check rev ~p", [CallID, ?MODULE, ?LINE, self(), Id]),
+		?LOG("Cache hit, check rev ~s", [Id]),
 		case couch_mgr:lookup_doc_rev(<<"registrations">>, Id) of
 		    {ok, _} ->
-			logger:debug("~s | Log | ~p.~p(~p): cache hit, rev exists ~p", [CallID, ?MODULE, ?LINE, self(), Id]),
+			?LOG("Cache hit, rev exists for ~s", [Id]),
 			wh_cache:store_local(Cache, Id, Expires, Expires);
 		    {error, _} ->
 			User = wh_json:get_value(<<"Username">>, JObj),
 			Realm = wh_json:get_value(<<"Realm">>, JObj),
-			logger:debug("~s | Log | ~p.~p(~p): cache hit, rev mising for ~s@~s ~p", [CallID, ?MODULE, ?LINE, self(), User, Realm, Id]),
+			?LOG("Cache hit, rev missing for ~s@~s ~s", [User, Realm, Id]),
 			wh_cache:store_local(Cache, Id, Expires, Expires),
 			remove_old_regs(User, Realm, Cache),
 			store_reg(JObj, Id, Contact1)
 		end
 	end,
-	logger:info("~s | End | OK | ~p.~p(~p)", [CallID, ?MODULE, ?LINE, self()])
+	?LOG_END("Registration successfully saved/updated")
     catch
-	Type:Reason -> logger:err("~s | End | ~p | ~p.~p(~p): ~p", [CallID, Type, ?MODULE, ?LINE, self(), Reason])
+	Type:Reason ->
+	    ?LOG_END("Registration success exception: ~p:~p", [Type, Reason]),
+	    ?LOG("Stacktrace: ~p~n", [erlang:get_stacktrace()])
     end;
 
 process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{my_q=Queue}) ->
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj, <<"0000000000">>),
     try
-	logger:info("~s | Start | ~p.~p(~p): Registration query", [CallID, ?MODULE, ?LINE, self()]),
+	?LOG("Registration query"),
 	true = whistle_api:reg_query_v(JObj),
 
 	Domain = wh_json:get_value(<<"Realm">>, JObj),
@@ -297,10 +306,10 @@ process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{my_q=Queue}) ->
 	case couch_mgr:get_results("registrations", <<"registrations/newest">>
 				       ,[{<<"startkey">>, [Domain, User,?EMPTY_JSON_OBJECT]}, {<<"endkey">>, [Domain, User, 0]}, {<<"descending">>, true}]) of
 	    {ok, []} ->
-		logger:debug("~s | Log | ~p.~p(~p): no reg_query_response for ~s@~s", [CallID, ?MODULE, ?LINE, self(), User, Domain]);
+		?LOG("No reg_query_response for ~s@~s", [User, Domain]);
 	    {ok, [ViewRes | _]} ->
 		DocId = wh_json:get_value(<<"id">>, ViewRes),
-		logger:debug("~s | Log | ~p.~p(~p): reg_query doc(~s) for ~s@~s", [CallID, ?MODULE, ?LINE, self(), User, Domain, DocId]),
+		?LOG("Reg_query doc(~s) for ~s@~s", [DocId, User, Domain]),
 
 		{ok, RegJObj} = couch_mgr:open_doc(?REG_DB, DocId),
 
@@ -323,18 +332,20 @@ process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{my_q=Queue}) ->
 							]),
 
 		RespServer = wh_json:get_value(<<"Server-ID">>, JObj),
-		logger:info("~s | Pass | ~s | ~p.~p(~p): ~s", [CallID, RespServer, ?MODULE, ?LINE, self(), JSON]),
+		?LOG("Sending response to ~s: ~s", [RespServer, JSON]),
 		amqp_util:targeted_publish(RespServer, JSON, <<"application/json">>),
-		logger:info("~s | End | OK | ~p.~p(~p)", [CallID, ?MODULE, ?LINE, self()])
+		?LOG_END("Registration query finished")
 	end
     catch
-	Type:Reason -> logger:err("~s | End | ~p | ~p.~p(~p): ~p", [CallID, Type, ?MODULE, ?LINE, self(), Reason])
+	Type:Reason ->
+	    ?LOG_END("Registration query exception: ~p:~p", [Type, Reason]),
+	    ?LOG("Stacktrace: ~p~n", [erlang:get_stacktrace()])
     end;
 process_req({_Cat, _Evt},_JObj,_) ->
-    logger:err("~p.~p(~p): Unhandled request: ~p:~p -> ~s", [?MODULE, ?LINE, self(), _Cat, _Evt, _JObj]).
+    ?LOG("Unhandled message: ~s:~s -> ~p", [_Cat, _Evt, _JObj]).
 
--spec(store_reg/3 :: (Prop :: proplist(), Id :: binary(), Contact :: binary()) -> no_return()).
-store_reg(Prop, Id, Contact) ->
+-spec(store_reg/3 :: (JObj :: json_object(), Id :: binary(), Contact :: binary()) -> no_return()).
+store_reg({struct, Prop}, Id, Contact) ->
     MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
 			 ,{<<"Contact">>, Contact}
 			 ,{<<"_id">>, Id}
@@ -342,7 +353,7 @@ store_reg(Prop, Id, Contact) ->
 	       },
     couch_mgr:ensure_saved(?REG_DB, MochiDoc).
 
--spec(remove_old_regs/3 :: (User :: binary(), Realm :: binary(), Cache :: pid()) -> no_return()).
+-spec(remove_old_regs/3 :: (User :: binary(), Realm :: binary(), Cache :: pid()) -> ok).
 remove_old_regs(User, Realm, Cache) ->
     case couch_mgr:get_results(<<"registrations">>, <<"registrations/newest">>,
 			       [{<<"startkey">>, [Realm, User, 0]}, {<<"endkey">>, [Realm, User, ?EMPTY_JSON_OBJECT]}]) of
@@ -355,7 +366,7 @@ remove_old_regs(User, Realm, Cache) ->
 					  {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]}
 				      end || Doc <- OldDocs ],
 			  couch_mgr:del_docs(<<"registrations">>, DelDocs)
-		  end);
+		  end), ok;
 	_ -> ok
     end.
 
@@ -369,9 +380,9 @@ cleanup_registrations(Cache) ->
 			  wh_cache:erase(Cache, K)
 		  end, Expired).
 
--spec(lookup_auth_user/3 :: (Name :: binary(), Realm :: binary(), CallID :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
-lookup_auth_user(Name, Realm, CallID) ->
-    logger:debug("~s | Log | ~p.~p(~p): Looking up ~s@~s", [CallID, ?MODULE, ?LINE, self(), Name, Realm]),
+-spec(lookup_auth_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
+lookup_auth_user(Name, Realm) ->
+    ?LOG("Looking up ~s@~s", [Name, Realm]),
     case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
 	{ok, []} -> {error, "No user/realm found"};
@@ -402,12 +413,12 @@ auth_specific_response(AuthInfo) ->
      ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
     ].
 
-send_resp(Payload, RespQ, CallID) ->
-    logger:info("~s | Pass | ~s | ~p.~p(~p): ~s", [CallID, RespQ, ?MODULE, ?LINE, self(), Payload]),
+send_resp(Payload, RespQ) ->
+    ?LOG("Sending JSON to ~s: ~s", [RespQ, Payload]),
     amqp_util:targeted_publish(RespQ, Payload, <<"application/json">>).
 
--spec(prime_cache/1 :: (Pid :: pid()) -> no_return()).
+-spec(prime_cache/1 :: (Pid :: pid()) -> list()).
 prime_cache(Pid) when is_pid(Pid) ->
     {ok, Docs} = couch_mgr:all_docs(?REG_DB),
     Expires = whistle_util:current_tstamp() + 3600,
-    _ = [ wh_cache:store_local(Pid, wh_json:get_value(<<"id">>, View), Expires) || View <- Docs ].
+    [ wh_cache:store_local(Pid, wh_json:get_value(<<"id">>, View), Expires) || View <- Docs ].
