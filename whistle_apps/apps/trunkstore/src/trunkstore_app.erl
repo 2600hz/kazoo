@@ -18,7 +18,8 @@ start(_StartType, _StartArgs) ->
     case trunkstore:start_link() of
 	{ok, P} -> {ok, P};
 	{error,{already_started, P}} -> {ok, P};
-	{error, _}=E -> E
+	{error, _}=E -> E;
+	ignore -> {error, failed_to_start}
     end.
 
 stop(_State) ->
@@ -31,10 +32,7 @@ setup_views() ->
 
 update_views() ->
     lists:foreach(fun(File) ->
-			  case couch_mgr:update_doc_from_file(?TS_DB, trunkstore, File) of
-			      {ok, _} -> logger:format_log(info, "Updating ~s: success~n", [File]);
-			      {error, Reason} -> logger:format_log(info, "Updating ~s: error ~p~n", [File, Reason])
-			  end
+			  couch_mgr:update_doc_from_file(?TS_DB, trunkstore, File)
 		  end, ?TS_COUCH_DESIGN_DOCS),
     ts_acctmgr:update_views().
 

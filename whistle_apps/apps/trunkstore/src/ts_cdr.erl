@@ -36,7 +36,6 @@ cdr_loop() ->
     end.
 
 create_cdr_db(DB) ->
-    logger:format_log(info, "TS_CDR(~p): Creating new cdr db ~p~n", [self(), DB]),
     couch_mgr:db_create(DB),
     case couch_mgr:load_doc_from_file(DB, trunkstore, <<"ts_cdr.json">>) of
 	{ok, _} -> ok;
@@ -86,5 +85,5 @@ fetch_cdr(CallID, DB) ->
 	{ok, ?EMPTY_JSON_OBJECT} ->
 	    {error, not_found};
 	{ok, Doc} ->
-	    Doc
+	    {ok, Doc}
     end.

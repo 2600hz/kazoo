@@ -33,12 +33,10 @@ handle_req(JObj) ->
     %% until we introduce IP-based auth
     Direction = <<"outbound">>,
 
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>),
-
     AuthR = case ts_util:is_ipv4(AuthR0) of
 		true ->
 		    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-		    logger:debug("~s | Log | ~p.~p(~p): Auth-Realm (~s) not a hostname, trying To-Domain (~s)", [MsgId, ?MODULE, ?LINE, self(), AuthR0, ToDomain]),
+		    ?LOG("Auth-Realm (~s) not a hostname, trying To-Domain (~s)", [AuthR0, ToDomain]),
 		    ToDomain;
 		false ->
 		    AuthR0
@@ -46,7 +44,7 @@ handle_req(JObj) ->
 
     {ok, AuthJObj} = lookup_user(AuthU, AuthR),
 
-    Defaults = [{<<"Msg-ID">>, MsgId}
+    Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, [
 						       {<<"Direction">>, Direction}
 						       ,{<<"Username">>, AuthU}
