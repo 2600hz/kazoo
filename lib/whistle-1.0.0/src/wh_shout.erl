@@ -18,7 +18,7 @@ get_request(S) ->
 
 -spec(get_request/2 :: (S :: port(), L :: list()) -> void | list()).
 get_request(S, L) ->
-    _ = inet:setopts(S, [{active,once}, binary]),
+    ok = inet:setopts(S, [{active,once}, binary]),
     receive
 	{tcp, S, Bin} ->
 	    L1 = L ++ binary_to_list(Bin),
@@ -33,11 +33,7 @@ get_request(S, L) ->
 	    end;
 
 	{tcp_closed, _Socket} ->
-	    void;
-
-	_Any  ->
-	    %% skip this
-	    get_request(S, L)
+	    void
     end.
 
 %% OffSet = first byte to play
@@ -90,9 +86,9 @@ get_shout_header(MediaName, Url) ->
     list_to_binary([Nblocks, Bin, Extra]).
 
 -spec(split/2 :: (Hs :: list(), L :: list()) -> tuple(list(), list()) | 'more').
-split("\r\n\r\n" ++ T, L) -> {lists:reverse(L), T};
-split([H|T], L)           -> split(T, [H|L]);
-split([], _)              -> more.
+split([], _) -> more;
+split([$\r,$\n,$\r,$\n | T], L) -> {lists:reverse(L), T};
+split([H|T], L) -> split(T, [H|L]).
 
 write_data(Sockets, B0, B1, Header, ChunkSize, ToPad) ->
     %% Check that we really have got a block of the right size
