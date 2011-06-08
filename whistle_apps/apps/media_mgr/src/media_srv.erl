@@ -23,8 +23,7 @@
 
 -record(state, {
   	   streams = [] :: list(tuple(binary(), pid(), reference())) | [] % MediaID, StreamPid, Ref
-	  ,amqp_q = <<>> :: binary() | tuple(error, term())
-          ,is_amqp_up = true :: boolean()
+	  ,amqp_q = <<>> :: binary()
 	  ,ports = queue:new() :: queue()
           ,port_range = ?PORT_RANGE
 	 }).
@@ -65,6 +64,7 @@ next_port() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ?LOG_SYS("starting new media server"),
     amqp_util:callmgr_exchange(),
     amqp_util:targeted_exchange(),
     {ok, #state{}, 0}.
@@ -125,37 +125,37 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
     try
 	{ok, Q} = start_amqp(),
 	Ps1 = updated_reserved_ports(Ps, PortRange),
-	{noreply, S#state{amqp_q=Q, is_amqp_up=true, ports=Ps1}, 2000}
+	{noreply, S#state{amqp_q=Q, ports=Ps1}}
     catch
 	_:_ ->
+            ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    Ps2 = updated_reserved_ports(Ps, PortRange),
-	    {noreply, S#state{amqp_q={error, amqp_error}, is_amqp_up=false, ports=Ps2}, 2000}
+	    {noreply, S#state{amqp_q = <<>>, ports=Ps2}}
     end;
 
-handle_info(timeout, #state{amqp_q={error, _}}=S) ->
+handle_info({amqp_reconnect, T}, State) ->
     try
-        {ok, Q} = start_amqp(),
-        {noreply, S#state{is_amqp_up=is_binary(Q), amqp_q=Q}}
-    catch
-        _:_ ->
-            {noreply, S#state{is_amqp_up=false}, 1000}
-    end;
-
-handle_info(timeout, #state{amqp_q=Q, is_amqp_up=false}=S) ->
-    try
-	amqp_util:queue_delete(Q),
 	{ok, NewQ} = start_amqp(),
-	{noreply, S#state{amqp_q=NewQ, is_amqp_up=is_binary(NewQ)}}
+	{noreply, State#state{amqp_q=NewQ}}
     catch
-	_:_ -> {noreply, S#state{amqp_q={error, amqp_error}, is_amqp_up=false}}
+	_:_ -> 
+            case T * 2 of
+                Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
+                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {noreply, State};
+                Timeout ->
+                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
+                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {noreply, State}
+            end
     end;
 
-handle_info(timeout, #state{amqp_q=Q, is_amqp_up=true}=S) when is_binary(Q) ->
-    {noreply, S};
-
-handle_info({amqp_host_down, _Host}, S) ->
-    ?LOG_SYS("AMQP host ~s went down", [_Host]),
-    {noreply, S#state{amqp_q={error, amqp_down}, is_amqp_up=false}, 0};
+handle_info({amqp_host_down, _}, State) ->
+    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
+    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=PortRange, streams=Streams}=State) ->
     {{value, Port}, Ps1} = queue:out(Ports),
@@ -196,7 +196,7 @@ handle_info(#'basic.consume_ok'{}, S) ->
     {noreply, S};
 
 handle_info(_Info, State) ->
-    {noreply, State, 1000}.
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,6 +210,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ?LOG_SYS("media server ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -236,11 +237,11 @@ start_amqp() ->
 
 	amqp_util:basic_consume(Q),
 
-	?LOG_SYS("started AMQP connection"),
+        ?LOG_SYS("connected to AMQP"),
 	{ok, Q}
     catch
 	_:R -> 
-            ?LOG_SYS("unable to connect to AMQP ~p", [R]),
+            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
             {error, amqp_error}
     end.
 
