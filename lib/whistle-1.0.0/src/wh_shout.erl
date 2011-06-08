@@ -85,7 +85,7 @@ get_shout_header(MediaName, Url) ->
     Extra = lists:duplicate(NPad, 0),
     list_to_binary([Nblocks, Bin, Extra]).
 
--spec(split/2 :: (Hs :: list(), L :: list()) -> tuple(list(), list()) | 'more').
+-spec(split/2 :: (Hs :: list(), L :: list()) -> tuple(list(), list()) | more).
 split([], _) -> more;
 split([$\r,$\n,$\r,$\n | T], L) -> {lists:reverse(L), T};
 split([H|T], L) -> split(T, [H|L]).
