@@ -11,10 +11,10 @@
 -define(LOG_START(Format, Data),
 	(fun() ->
 		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
-		 logger:info("~s|start|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()] ++ Data)
+		 logger:info("~s|start|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	 end)()).
 -define(LOG_START(CallId, Format, Data),
-        logger:info("~s|start|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self()] ++ Data)).
+        logger:info("~s|start|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self() | Data])).
 
 
 -define(LOG(Format),
@@ -25,10 +25,10 @@
 -define(LOG(Format, Data),
 	(fun() ->
 		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
-		 logger:info("~s|log|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()] ++ Data)
+		 logger:info("~s|log|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	 end)()).
 -define(LOG(CallId, Format, Data),
-        logger:info("~s|log|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self()] ++ Data)).
+        logger:info("~s|log|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self() | Data])).
 
 
 -define(LOG_END(Format),
@@ -39,10 +39,10 @@
 -define(LOG_END(Format, Data),
 	(fun() ->
 		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
-		 logger:info("~s|end|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()] ++ Data)
+		 logger:info("~s|end|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	 end)()).
 -define(LOG_END(CallId, Format, Data),
-        logger:info("~s|end|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self()] ++ Data)).
+        logger:info("~s|end|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self() | Data])).
 
 
 -define(LOG_SYS(Format),
@@ -53,7 +53,7 @@
 -define(LOG_SYS(Format, Data),
 	(fun() ->
 		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
-		 logger:info("~s|sys|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()] ++ Data)
+		 logger:info("~s|sys|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	end)()).
 -define(LOG_SYS(CallId, Format, Data),
-	logger:info("~s|sys|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self()])).
+	logger:info("~s|sys|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self() | Data])).
