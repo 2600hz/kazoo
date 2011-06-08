@@ -19,8 +19,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [log/2, format_log/3]).
-
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
@@ -106,7 +104,7 @@ handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
     end;
 
 handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
-    logger:format_log(info, "ECALL_MEDREG(~p): {lookup_local, ~p, ~p}", [self(), MediaName, CallId]),
+    ?LOG(CallId, "Lookup local media: ~s", [MediaName]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
 				true;
 			   (_, _) -> false
@@ -115,12 +113,18 @@ handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
         false ->
             {reply, {error, not_local}, Dict};        
 	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
-	    spawn(fun() -> process_flag(trap_exit, true), link(RecvSrv), link(FromPid), _ = wait_for_fs_media(Path, RecvSrv, FromPid), gen_server:reply(From, {ok, Path}) end),
+	    spawn(fun() ->
+			  process_flag(trap_exit, true),
+			  link(RecvSrv),
+			  link(FromPid),
+			  _ = wait_for_fs_media(Path, RecvSrv, FromPid),
+			  gen_server:reply(From, {ok, Path})
+		  end),
 	    {noreply, Dict}
     end;
 
 handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
-    logger:format_log(info, "ECALL_MEDREG(~p): {is_local, ~p, ~p}", [self(), MediaName, CallId]),
+    ?LOG(CallId, "Is local: ~s", [MediaName]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
 				true;
 			   (_, _) -> false
@@ -129,7 +133,12 @@ handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
         false ->
             {reply, {error, not_local}, Dict};
 	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
-	    spawn(fun() -> process_flag(trap_exit, true), link(RecvSrv), link(FromPid), gen_server:reply(From, wait_for_fs_media(Path, RecvSrv, FromPid)) end),
+	    spawn(fun() ->
+			  process_flag(trap_exit, true),
+			  link(RecvSrv),
+			  link(FromPid),
+			  gen_server:reply(From, wait_for_fs_media(Path, RecvSrv, FromPid))
+		  end),
 	    {noreply, Dict}
     end;
 
@@ -160,22 +169,22 @@ handle_cast(_Msg, Dict) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, Dict) ->
-    format_log(info, "MEDIA_REG(~p): Pid ~p down, Reason: ~p, cleaning up...~n", [self(), Pid, _Reason]),
+    ?LOG("Pid ~p down, Reason: ~p, cleaning up...", [Pid, _Reason]),
     {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) -> Pid =/= Pid1 end, Dict)};
 
 handle_info({'EXIT', Pid, _Reason}, Dict) ->
-    {noreply, dict:filter(fun({Pid1, _CallId, _Name, _RecvSrv}, Path) ->
+    {noreply, dict:filter(fun({Pid1, CallId, _Name, _RecvSrv}, Path) ->
 				  case Pid =/= Pid1 of
 				      true -> true;
 				      false ->
-					  format_log(info, "MEDIA_REG(~p): Pid ~p exited, Reason ~p, cleaning up ~p...~n", [self(), Pid, _Reason, Path]),
+					  ?LOG(CallId, "Pid ~p exited, Reason ~p, cleaning up ~p...", [Pid, _Reason, Path]),
 					  _ = file:delete(Path),
 					  false
 				  end
 			  end, Dict)};
 
 handle_info(_Info, Dict) ->
-    format_log(info, "MEDIA_REG(~p): Info Msg: ~p~n", [self(), _Info]),
+    ?LOG("Unhandled message: ~p", [self(), _Info]),
     {noreply, Dict}.
 
 %%--------------------------------------------------------------------
@@ -247,18 +256,19 @@ lookup_remote(MediaName, StreamType, CallID) ->
 wait_for_fs_media(Path, RecvSrv, FromPid) ->
     case erlang:is_process_alive(RecvSrv) of
 	true ->
-	    logger:format_log(info, "E_MED_REG: waiting for ~p to die for ~p: ~p~n", [RecvSrv, Path]),
+	    ?LOG("Waiting for ~p to die for ~s", [RecvSrv, Path]),
 	    receive
 		{'EXIT', RecvSrv, Reason} ->
-		    logger:format_log(info, "E_MED_REG: SHOUT srv ~p went down(~p) for ~p~n", [RecvSrv, Reason, Path]),
+		    ?LOG("SHOUT srv ~p went down(~p) for ~s", [RecvSrv, Reason, Path]),
 		    {ok, Path};
 		{'EXIT', FromPid, Reason} ->
-		    logger:format_log(info, "E_MED_REG: Caller ~p went down(~p) waiting for ~p(~p)~n", [FromPid, Reason, RecvSrv, Path]),
+		    ?LOG("Caller ~p went down(~p) waiting for ~p(~s)", [FromPid, Reason, RecvSrv, Path]),
 		    exit(timeout);
 		_Other ->
-		    logger:format_log(info, "E_MED_REG: wait for fs media ~p: ~p recv ~p unexpectedly~n", [RecvSrv, Path, _Other]),
+		    ?LOG("Received unhandled message: ~p", [_Other]),
 		    wait_for_fs_media(Path, RecvSrv, FromPid)
 	    after ?TIMEOUT_MEDIA_TRANSFER ->
+		    ?LOG("Waited long enough for ~p, going down with timeout", [RecvSrv]),
 		    exit(timeout)
 	    end;
 	false ->

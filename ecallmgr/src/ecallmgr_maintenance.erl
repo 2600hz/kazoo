@@ -174,4 +174,4 @@ handle_maintenance_req({<<"maintenance">>, <<"mwi">>}, JObj) ->
 	      ],
     {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
     Resp = freeswitch:sendevent(Node, 'MESSAGE_WAITING', [ {whistle_util:to_list(K), whistle_util:to_list(V)} || {K, V} <- Headers ]),
-    logger:format_log(info, "ECALL_MAIN(~p): Sending MWI Update to ~p(~p) with headers: ~p~n", [self(), Node, Resp, Headers]).
+    ?LOG("Sending MWI Update to ~p(~p)", [Node, Resp]).
