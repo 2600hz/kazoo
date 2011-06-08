@@ -12,27 +12,24 @@
 
 -export([get_request/1, play_chunk/6, get_shout_srv_response/5, get_shout_header/2]).
 
--spec(get_request/1 :: (S :: port()) -> void | list()).
-get_request(S) ->
-    get_request(S, []).
+-define(END_OF_REQUEST, <<"\r\n\r\n">>).
 
--spec(get_request/2 :: (S :: port(), L :: list()) -> void | list()).
-get_request(S, L) ->
+-spec(get_request/1 :: (S :: port()) -> void | binary()).
+-spec(get_request/2 :: (S :: port(), L :: binary()) -> void | binary()).
+
+get_request(S) -> get_request(S, <<>>).
+get_request(S, B) ->
     ok = inet:setopts(S, [{active,once}, binary]),
     receive
 	{tcp, S, Bin} ->
-	    L1 = L ++ binary_to_list(Bin),
-	    %% split checks if the header is complete
-	    case split(L1, []) of
-		more ->
-		    %% the header is incomplete we need more data
-		    get_request(S, L1);
-		{Request, _Rest} ->
-		    %% header is complete
-		    Request
+	    B1 = <<B/binary, Bin/binary>>,
+	    case binary:match(B1, ?END_OF_REQUEST) of
+		nomatch -> get_request(S, B1);
+		_ -> [Request | _] = binary:split(B1, ?END_OF_REQUEST), Request
 	    end;
-
 	{tcp_closed, _Socket} ->
+	    void
+    after 10000 -> % slow client
 	    void
     end.
 
@@ -84,11 +81,6 @@ get_shout_header(MediaName, Url) ->
     NPad = Nblocks*16 - byte_size(Bin),
     Extra = lists:duplicate(NPad, 0),
     list_to_binary([Nblocks, Bin, Extra]).
-
--spec(split/2 :: (Hs :: list(), L :: list()) -> tuple(list(), list()) | more).
-split([], _) -> more;
-split([$\r,$\n,$\r,$\n | T], L) -> {lists:reverse(L), T};
-split([H|T], L) -> split(T, [H|L]).
 
 write_data(Sockets, B0, B1, Header, ChunkSize, ToPad) ->
     %% Check that we really have got a block of the right size

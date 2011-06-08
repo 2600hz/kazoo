@@ -86,6 +86,8 @@ route_resp_xml(<<"error">>, _Routes, Prop) ->
     {ok, lists:flatten(Xml)}.
 
 -spec(build_route/2 :: (RouteProp :: proplist() | json_object(), DIDFormat :: binary()) -> binary() | tuple(error, timeout)).
+build_route(Route, undefined) ->
+    build_route(Route, <<"username">>);
 build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->

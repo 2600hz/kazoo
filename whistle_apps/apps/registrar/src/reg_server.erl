@@ -280,8 +280,8 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{amqp_q=Queue}) ->
 	send_resp(Payload, RespQ)
     catch
 	Type:Reason ->
-	    ?LOG("SIP authentication exception ~p:~p", [Type, Reason]),
-	    ?LOG_END("stacktrace ~p", [erlang:get_stacktrace()])
+	    ?LOG("SIP authentication exception ~s:~w", [Type, Reason]),
+	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 
 process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
@@ -329,8 +329,8 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	end
     catch
 	Type:Reason ->
-	    ?LOG("registration processor exception ~p:~p", [Type, Reason]),
-	    ?LOG_END("stacktrace ~p", [erlang:get_stacktrace()])
+	    ?LOG("registration processor exception ~s:~w", [Type, Reason]),
+	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 
 process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{amqp_q=Queue}) ->
@@ -375,8 +375,8 @@ process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{amqp_q=Queue}) ->
 	end
     catch
 	Type:Reason ->
-	    ?LOG("registration query exception ~p:~p", [Type, Reason]),
-	    ?LOG_END("stacktrace ~p", [erlang:get_stacktrace()])
+	    ?LOG("registration query exception ~s:~w", [Type, Reason]),
+	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 process_req({_Cat, _Evt},_JObj,_) ->
     ?LOG_SYS("Unhandled message: ~s:~s -> ~p", [_Cat, _Evt, _JObj]).
@@ -418,16 +418,16 @@ cleanup_registrations(Cache) ->
 			  wh_cache:erase(Cache, K)
 		  end, Expired).
 
--spec(lookup_auth_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, string())).
+-spec(lookup_auth_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, proplist()) | tuple(error, no_user_found)).
 lookup_auth_user(Name, Realm) ->
     ?LOG("looking up ~s@~s", [Name, Realm]),
     case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}]) of
-	{error, R}=E -> 
+	{error, R} -> 
             ?LOG_END("failed to look up SIP credentials ~p", [R]),
-            E;
+	    {error, no_user_found};
 	{ok, []} -> 
-            ?LOG("user/realm not found"),
-            {error, "No user/realm found"};
+            ?LOG("~s@~s not found", [Name, Realm]),
+            {error, no_user_found};
 	{ok, [User|_]} ->
 	    {ok, wh_json:get_value(<<"value">>, User)}
     end.
