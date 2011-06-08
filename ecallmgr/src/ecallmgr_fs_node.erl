@@ -1,3 +1,4 @@
+
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, VoIP INC
 %%% @doc
@@ -173,16 +174,26 @@ code_change(_OldVsn, State, _Extra) ->
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     logger:format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
-
-    % OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &", Action])),
     OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
-    logger:format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
-    case freeswitch:api(Node, originate, OrigStr, 9000) of
-	{ok, X} ->
-	    logger:format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
-	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-	    CtlQ = start_call_handling(Node, CallID),
-	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
+    logger:format_log(info, "FS_NODE(~p): Originate Str ~p~n", [self(), OrigStr]),
+    Result = freeswitch:bgapi(Node, originate, OrigStr),
+    case Result of
+	{ok, JobId} ->
+	    receive
+		{bgok, JobId, X} ->
+		    logger:format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
+		    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
+		    CtlQ = start_call_handling(Node, CallID),
+		    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
+		{bgerror, JobId, Y} ->
+		    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
+		    logger:format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), Route, ErrMsg]),
+		    Pid ! {resource_error, ErrMsg}
+	    after
+		9000 ->
+		    logger:format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), Route]),
+		    Pid ! {resource_error, timeout}
+	    end;
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
 	    logger:format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), Route, ErrMsg]),
@@ -267,10 +278,10 @@ publish_register_event(Data, AppVsn) ->
     end.
 
 get_originate_action(<<"transfer">>, Data) ->
-    case wh_json:get_value(<<"To-User">>, Data) of
+    case wh_json:get_value(<<"Route">>, Data) of
 	undefined -> <<"error">>;
-	User ->
-	    list_to_binary([ <<"transfer(">>, whistle_util:to_e164(User), <<" XML context_2">>])
+	Route ->
+	    list_to_binary([ <<"transfer(">>, whistle_util:to_e164(Route), <<" XML context_2)">>])
     end;
 get_originate_action(<<"bridge">>, Data) ->
     case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
