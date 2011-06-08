@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-           callmgr_q = <<>> :: binary()          
+	   amqp_q = <<>> :: binary()
          }).
 
 %%-----------------------------------------------------------------------------
@@ -57,10 +57,20 @@ start_link() ->
 % @end
 %------------------------------------------------------------------------------
 init([]) -> 
-    {ok, CQ} = start_amqp(),
+    ?LOG_SYS("starting new callflow responder"),
+    _ = amqp_util:callmgr_exchange(),
+    _ = amqp_util:targeted_exchange(),
+    _ = amqp_util:callevt_exchange(),
+    ?LOG_SYS("ensuring database ~s exists", [?CALLFLOW_DB]),
     couch_mgr:db_create(?CALLFLOW_DB),
-    couch_mgr:load_doc_from_file(?CALLFLOW_DB, callflow, ?VIEW_FILE),
-    {ok, #state{callmgr_q=CQ}}.
+    ?LOG_SYS("ensuring database ~s has view ~s", [?CALLFLOW_DB, ?VIEW_FILE]),
+    try                              
+        {ok, _} = couch_mgr:update_doc_from_file(?CALLFLOW_DB, callflow, ?VIEW_FILE)
+    catch
+        _:_ -> 
+            couch_mgr:load_doc_from_file(?CALLFLOW_DB, callflow, ?VIEW_FILE)
+    end,
+    {ok, #state{}, 0}.
 
 %------------------------------------------------------------------------------
 % @private
@@ -100,8 +110,40 @@ handle_cast(_Msg, State) ->
 %
 % @end
 %------------------------------------------------------------------------------
-handle_info(#'basic.consume_ok'{}, State) -> 
-    {noreply, State};
+handle_info(timeout, #state{amqp_q = <<>>}=State) ->
+    try
+	{ok, Q} = start_amqp(),
+	{noreply, State#state{amqp_q=Q}}
+    catch
+	_:_ ->
+            ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+	    {noreply, State}
+    end;
+
+handle_info({amqp_reconnect, T}, State) ->
+    try
+	{ok, NewQ} = start_amqp(),
+	{noreply, State#state{amqp_q=NewQ}}
+    catch
+	_:_ -> 
+            case T * 2 of
+                Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
+                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {noreply, State};
+                Timeout ->
+                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
+                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {noreply, State}
+            end
+    end;
+
+handle_info({amqp_host_down, _}, State) ->
+    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
+    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {noreply, State#state{amqp_q = <<>>}};
+
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
     Parent = self(),
     spawn(fun() ->
@@ -109,8 +151,9 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#
                   handle_req(wh_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State)
           end),
     {noreply, State};
+
 handle_info(_Info, State) ->
-   {noreply, State}.
+    {noreply, State}.
 
 %------------------------------------------------------------------------------
 % @private
@@ -122,6 +165,7 @@ handle_info(_Info, State) ->
 % @end
 %------------------------------------------------------------------------------
 terminate( _Reason, _State) -> 
+    ?LOG_SYS("callflow responder ~p termination", [_Reason]),
     ok.
 
 %------------------------------------------------------------------------------
@@ -153,14 +197,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%-----------------------------------------------------------------------------
 -spec(start_amqp/0 :: () -> tuple(ok, binary())).
 start_amqp() ->
-   amqp_util:callmgr_exchange(),
-   amqp_util:targeted_exchange(),
-   amqp_util:callevt_exchange(),
-   CallmgrQ = amqp_util:new_callmgr_queue(<<>>),
-   amqp_util:bind_q_to_callmgr(CallmgrQ, ?KEY_ROUTE_REQ),
-   amqp_util:bind_q_to_targeted(CallmgrQ, CallmgrQ),
-   amqp_util:basic_consume(CallmgrQ),
-   {ok, CallmgrQ}.
+    try
+        Q = amqp_util:new_callmgr_queue(<<>>),
+        amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
+        amqp_util:bind_q_to_targeted(Q),
+        amqp_util:basic_consume(Q),
+        ?LOG_SYS("connected to AMQP"),
+        {ok, Q}
+    catch
+        _:R ->
+            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
+            {error, amqp_error}
+    end.            
 
 %%-----------------------------------------------------------------------------
 %% HANDLING ROUTE REQUESTS
@@ -175,42 +223,45 @@ start_amqp() ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec(handle_req/4 :: (EventName :: binary()|undefined, JObj:: json_object(), Parent :: pid(), State :: #state{}) -> ok|tuple(error, atom())).
-handle_req(<<"route_req">>, JObj, _, #state{callmgr_q=CQ}) ->
+handle_req(<<"route_req">>, JObj, _, #state{amqp_q=Q}) ->
     <<"dialplan">> = wh_json:get_value(<<"Event-Category">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId), %% we were spawn'd so this is safe
     ?LOG_START("received route request"),
     Dest = destination_uri(JObj),
+    ?LOG("hunting for ~s", [Dest]),
     case hunt_to(Dest) orelse hunt_no_match(Dest) of
         false ->
-            ?LOG_END("unknown to callflow");
+            ?LOG_END("no callflows satisfy request");
         true ->
             wh_cache:store({cf_call, CallId}, {Dest, JObj}, 5),
             Resp = [
                      {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Routes">>, []}
                     ,{<<"Method">>, <<"park">>}
-                    | whistle_api:default_headers(CQ, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+                    | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
                    ],
             {ok, Payload} = whistle_api:route_resp(Resp),
-            ?LOG("replying to route request"),
+            ?LOG_END("replying to route request"),
             amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
     end;
 
-handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
+handle_req(<<"route_win">>, JObj, Parent, #state{amqp_q=Q}) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId), %% we were spawn'd so this is safe
-    ?LOG("received route win"),
+    ?LOG_START("received route win"),
     {ok, {Dest, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
     {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, Dest}),
-    To = wh_json:get_value(<<"To">>, RouteReq),
     From = wh_json:get_value(<<"From">>, RouteReq),
+    ?LOG("from: ~s", [From]),
+    To = wh_json:get_value(<<"To">>, RouteReq),
+    ?LOG("to: ~s", [To]),
     [ToNumber, ToRealm] = binary:split(To, <<"@">>),
     [FromNumber, FromRealm] = binary:split(From, <<"@">>),
     [DestNumber, DestRealm] = binary:split(Dest, <<"@">>),
     Call = #cf_call {
        ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
-      ,bdst_q=CQ
+      ,bdst_q=Q
       ,call_id=CallId
       ,cf_responder=Parent
       ,account_db=AccountDb
@@ -229,6 +280,8 @@ handle_req(<<"route_win">>, JObj, Parent, #state{callmgr_q=CQ}) ->
       ,to_realm=ToRealm
       ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
      },
+    ?LOG("caller-id: \"~s\" <~s>", [Call#cf_call.cid_name, Call#cf_call.cid_number]),
+    ?LOG("call authorized by ~s", [Call#cf_call.authorizing_id]),
     cf_call_command:set(undefined, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq), Call),
     supervisor:start_child(cf_exe_sup, [Call, Flow]);
 
@@ -266,10 +319,10 @@ lookup_flow(To, Key) ->
                              wh_json:get_value([<<"value">>, <<"flow">>], JObj),
                              wh_json:get_value([<<"value">>, <<"account_db">>], JObj)
                             }, 500),
-            ?LOG("found callflow ~s", [FlowId]),
+            ?LOG("retrieved callflow ~s from db", [FlowId]),
             true;
         {error, E} ->
-            ?LOG("error looking up callflow ~s", [E]),
+            ?LOG("error looking up callflow ~p", [E]),
             false
     end.    
 

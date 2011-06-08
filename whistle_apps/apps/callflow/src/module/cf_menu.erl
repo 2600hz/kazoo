@@ -72,7 +72,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, Call) ->
+handle(Data, #cf_call{call_id=CallId}=Call) ->
+    put(callid, CallId),
     Menu = get_menu_profile(Data, Call#cf_call.account_db),
     answer(Call),
     menu_loop(Menu, Call).
@@ -88,14 +89,17 @@ handle(Data, Call) ->
 -spec(menu_loop/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> no_return()).
 menu_loop(#menu{retries=Retries, prompts=Prompts}, #cf_call{cf_pid=CFPid} = Call) when Retries =< 0 ->
     Prompts#prompts.exit =/= <<>> andalso b_play(Prompts#prompts.exit, Call),
+    ?LOG("maxium number of retries reached"),
     CFPid ! {continue}; %% too many retries, we're out
 menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
     try
 	case b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
-	    {ok, <<>>} ->
+	    {ok, <<>>} ->                
 		throw(no_digits_collected);
-	    {ok, RecordPin} ->
+	    {ok, RecordPin} ->                
+                ?LOG("selection matches recording pin"),
                 M = record_prompt(tmp_file(), Menu, Call),
+                ?LOG("returning caller to menu"),
                 _ = b_play(Prompts#prompts.return_to_ivr, Call),
                 menu_loop(M, Call);
             {ok, Digits} ->
@@ -106,7 +110,8 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
                 true = try_match_digits(Digits, Menu, Call)
         end
     catch
-        _:_ ->
+        _:R ->
+            ?LOG("invalid selection ~w", [R]),
             _ = play_invalid_prompt(Menu, Call),
             b_play(<<"silence_stream://250">>, Call),
             menu_loop(Menu#menu{retries=Retries-1}, Call)
@@ -120,6 +125,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
 %%--------------------------------------------------------------------
 -spec(try_match_digits/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 try_match_digits(Digits, Menu, Call) ->
+    ?LOG("trying to match digits ~s", [Digits]),
     is_callflow_child(Digits, Menu, Call)
         orelse (is_hunt_enabled(Digits, Menu, Call)
 		andalso is_hunt_allowed(Digits, Menu, Call)
@@ -136,7 +142,7 @@ try_match_digits(Digits, Menu, Call) ->
 is_callflow_child(Digits, _, #cf_call{cf_pid=CFPid}) ->
     CFPid ! {attempt, Digits},
     ok =:= receive
-               {attempt_resp, Resp} -> Resp
+               {attempt_resp, Resp} -> ?LOG("selection is a callflow child"), Resp
            after 1000 ->
                    {error, timeout}
            end.
@@ -159,13 +165,16 @@ is_hunt_enabled(_, #menu{hunt=Hunt}, _) ->
 %%--------------------------------------------------------------------
 -spec(is_hunt_allowed/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_hunt_allowed(_, #menu{hunt_allow = <<>>}, _) ->
+    ?LOG("hunt_allow implicitly accepted digits"),
     true;
 is_hunt_allowed(Digits, #menu{hunt_allow=RegEx}, _) ->
     try
         {match, _} = re:run(Digits, RegEx),
+        ?LOG("hunt_allow accepted digits"),
         true
     catch
         _:_ -> 
+            ?LOG("hunt_allow denied digits"),
             false
     end.
 
@@ -177,13 +186,16 @@ is_hunt_allowed(Digits, #menu{hunt_allow=RegEx}, _) ->
 %%--------------------------------------------------------------------
 -spec(is_hunt_denied/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_hunt_denied(_, #menu{hunt_deny = <<>>}, _) ->
+    ?LOG("hunt_deny implicitly accepted digits"),
     false;
 is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
     try
         {match, _} = re:run(Digits, RegEx),
+        ?LOG("hunt_deny denied digits"),
         true
     catch
         _:_ -> 
+            ?LOG("hunt_deny accepted digits"),
             false
     end.
 
@@ -206,13 +218,16 @@ hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=To,
             hunt_for_callflow(Digits, Menu#menu{hunt_realm = To}, Call)
     end;
 hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid}=Call) ->    
+    ?LOG("hunting for ~s", [<<Digits/binary, $@, Realm/binary>>]),
     case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, Realm/binary>>}, 2000) of
         {ok, Flow} ->
+            ?LOG("callflow hunt succeeded, branching"),
             _ = cf_call_command:flush_dtmf(Call),
             _ = b_play(Prompts#prompts.hunt_transfer, Call),
             CFPid ! {branch, Flow},
             true;
         _ ->
+            ?LOG("callflow hunt failed"),
             false
     end.
 
@@ -242,6 +257,7 @@ play_invalid_prompt(#menu{prompts=Prompts}, Call) ->
 %%--------------------------------------------------------------------
 -spec(record_prompt/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> #menu{}).
 record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
+    ?LOG("recording new menu greeting"),
     audio_macro([
                   {play,  Prompts#prompts.record_prompt}
                  ,{tones, Prompts#prompts.tone_spec}
@@ -256,6 +272,7 @@ record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
                     store_recording(MediaName, ?MEDIA_PROMPT, Menu, Call),
                     Menu#menu{has_prompt_media=true};
                 _Else ->
+                    ?LOG("abandoning record greeting"),
                     _ = b_play(Prompts#prompts.message_deleted, Call),
                     Menu
             end;
@@ -271,6 +288,7 @@ record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
 %%--------------------------------------------------------------------
 -spec(review_recording/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> tuple(ok, record | save) | tuple(error, term())).
 review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
+    ?LOG("playing menu greeting review options"),
     audio_macro([
                   {play, Prompts#prompts.press}
                  ,{say,  ListenKey}
@@ -287,7 +305,7 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, 
     {ok, Digits} = wait_for_dtmf(30000),
     _ = flush(Call),
     case Digits of 
-        ListenKey ->
+        ListenKey ->            
 	    _ = b_play(MediaName, Call),
 	    review_recording(MediaName, Menu, Call);
 	RecordKey ->
@@ -305,6 +323,7 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, 
 %%--------------------------------------------------------------------
 -spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> ok).
 store_recording(MediaName, DestName, Menu, Call) ->
+    ?LOG("saving new menu greeting"),
     store(MediaName, get_attachment_path(DestName, Menu, Call), Call).
 
 %%--------------------------------------------------------------------

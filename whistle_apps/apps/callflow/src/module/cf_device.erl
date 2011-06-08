@@ -23,16 +23,23 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->    
+    put(callid, CallId),
     {ok, Endpoint} = cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),  
     IgnoreEarlyMedia = wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint),
     case b_bridge([Endpoint], Timeout, {undefined, undefined}, <<"single">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
+            ?LOG("bridged to endpoint"),
             update_call_realm(Call),
             _ = wait_for_unbridge(),
+            ?LOG("bridge completed"),
             CFPid ! { stop };
-        {error, _} ->
+        {error, {bridge_failed, R}} ->
+            ?LOG("failed to bridge to endpoint ~s", [R]),
+            CFPid ! { continue };
+        {error, R} ->
+            ?LOG("failed to bridge to endpoint ~w", [R]),
             CFPid ! { continue }
     end.
 

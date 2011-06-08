@@ -41,7 +41,7 @@ route_resp_xml(RespProp) ->
 
 %% Prop = Route Response
 route_resp_xml(<<"bridge">>, Routes, _Prop) ->
-    logger:format_log(info, "R_R_XML(~p): BRIDGEXML: Routes:~n~p~n", [self(), Routes]),
+    ?LOG("Creating a bridge XML response"),
     %% format the Route based on protocol
     {_Idx, Extensions, Errors} = lists:foldr(fun({struct, RouteProp}, {Idx, Acc, ErrAcc}) ->
 						     case build_route(RouteProp, props:get_value(<<"Invite-Format">>, RouteProp)) of
@@ -68,19 +68,22 @@ route_resp_xml(<<"bridge">>, Routes, _Prop) ->
 
     case Extensions of
 	[] ->
-	    logger:format_log(info, "R_R_XML(~p): ErrorXML: ~s~n", [self(), Errors]),
+	    ?LOG("No endpoints to route to"),
 	    {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Errors]))};
 	_ ->
-	    logger:format_log(info, "R_R_XML(~p): RoutesXML: ~s~n", [self(), Extensions]),
-	    {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]))}
+	    Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]),
+	    ?LOG("Bridge XML generated: ~s", [Xml]),
+	    {ok, lists:flatten(Xml)}
     end;
 route_resp_xml(<<"park">>, _Routes, _Prop) ->
+    ?LOG("Creating park XML: ~s", [?ROUTE_PARK_RESPONSE]),
     {ok, ?ROUTE_PARK_RESPONSE};
 route_resp_xml(<<"error">>, _Routes, Prop) ->
     ErrCode = props:get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", props:get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
-    logger:format_log(info, "R_R_XML(~p): ErrorXML: ~s ~s~n", [self(), ErrCode, ErrMsg]),
-    {ok, lists:flatten(io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg]))}.
+    Xml = io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg]),
+    ?LOG("Creating error XML: ~s", [Xml]),
+    {ok, lists:flatten(Xml)}.
 
 -spec(build_route/2 :: (RouteProp :: proplist() | json_object(), DIDFormat :: binary()) -> binary() | tuple(error, timeout)).
 build_route({struct, RouteProp}, DIDFormat) ->
@@ -200,7 +203,6 @@ get_channel_vars({<<"SIP-Headers">>, {struct, [_]=SIPHeaders}}, Vars) ->
 			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
 		end, Vars, SIPHeaders);
 get_channel_vars({_K, _V}, Vars) ->
-    %logger:format_log(info, "L/U.route(~p): Unknown channel var ~p::~p~n", [self(), _K, _V]),
     Vars.
 
 get_channel_params(Prop) ->

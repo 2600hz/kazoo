@@ -28,3 +28,6 @@
 
 %% For a specific call cdr, bind to <<"call.cdr.CALLID">> on the CallEvent Exchange
 %% For all call cdrs, bind to <<"call.cdr.*">>
+
+-define(AMQP_RECONNECT_INIT_TIMEOUT, 500).
+-define(AMQP_RECONNECT_MAX_TIMEOUT, 5000).

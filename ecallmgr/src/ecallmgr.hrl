@@ -3,6 +3,7 @@
 -include_lib("whistle/include/whistle_amqp.hrl").
 -include_lib("whistle/include/freeswitch_xml.hrl").
 -include_lib("whistle/src/whistle_api.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -record(handler_stats, {lookups_success = 0 :: integer()
 			,lookups_failed = 0 :: integer()

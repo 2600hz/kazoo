@@ -40,6 +40,7 @@
           ,misc_channel = undefined :: undefined | channel_data()
           ,consumers = dict:new() :: amqp_host:dict(pid(), consumer_data())
           ,manager = undefined :: undefined | pid()
+          ,amqp_h = undefined :: undefined | binary()
 	 }).
 
 %%%===================================================================
@@ -91,8 +92,9 @@ stop(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([_Host, Conn]) when is_pid(Conn) ->
-    {ok, Conn, 0}.
+init([Host, Conn]) when is_pid(Conn) ->
+    ?LOG_SYS("starting amqp host for broker ~s", [Host]),
+    {ok, {Host, Conn}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -308,7 +310,6 @@ handle_cast({misc_req, From, Req1, Req2}, #state{misc_channel={C,_,_}}=State) ->
     {noreply, State};
 
 handle_cast(_Msg, State) ->
-    logger:format_log(info, "AMQP_HOST(~p): Unmatched cast: ~p~nState: ~p~n", [self(), _Msg, State]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -321,7 +322,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, Conn) ->
+handle_info(timeout, {Host, Conn}) ->
     Ref = erlang:monitor(process, Conn),
     case start_channel(Conn) of
 	{Channel, _, Ticket} = PubChan ->
@@ -332,21 +333,25 @@ handle_info(timeout, Conn) ->
 	       ,misc_channel = start_channel(Conn)
 	       ,consumers = dict:new()
 	       ,manager = whereis(amqp_manager)
+               ,amqp_h = Host
 	      }
 	    };
 	{error, E} ->
-	    logger:format_log(error, "AMQP_HOST(~p): Error starting pub channel: ~p~n", [self(), E]),
+            ?LOG_SYS("unable to initialize publish channel for amqp host ~s, ~p", [Host, E]),
 	    erlang:demonitor(Ref, [flush]),
 	    {stop, E, Conn}
     end;
 
+handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}}=State) ->
+    ?LOG_SYS("recieved down notification for our connection to the amqp broker"),
+    {stop, Reason, State};
+
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{}=State) ->
-    logger:format_log(error, "AMQP_HOST(~p): Pid ~p down: ~p~n", [self(), _Pid, _Reason]),
+    ?LOG_SYS("recieved notification monitored process went down, searching for reference"),
     erlang:demonitor(Ref, [flush]),
     {noreply, remove_ref(Ref, State)};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "AMQP_HOST(~p): unhandled info: ~p", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -360,7 +365,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
+    notify_consumers({amqp_host_down, Host}, Consumers),
+    ?LOG_SYS("amqp host, for ~s, ~p termination", [Host, _Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -400,7 +407,9 @@ start_channel(Connection, Pid) ->
 	    amqp_channel:register_return_handler(C, Pid),
 	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util:access_request()),
 	    Channel;
-	E -> E
+	E -> 
+            ?LOG_SYS("failed to start new channel ~p", [E]),
+            E
     end.
 
 load_exchanges(Channel, Ticket) ->
@@ -415,18 +424,17 @@ load_exchanges(Channel, Ticket) ->
 
 -spec(remove_ref/2 :: (Ref :: reference(), State :: #state{}) -> #state{}).
 remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref,_}}=State) ->
-    logger:format_log(info, "AMQP_HOST(~p): publish_channel(~p) went down~n", [self(), C]),
+    ?LOG_SYS("reference was for publish channel ~p, restarting", [C]), 
     State#state{publish_channel=start_channel(Conn)};
 
 remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref,_}}=State) ->
-    logger:format_log(info, "AMQP_HOST(~p): misc_channel(~p) went down~n", [self(), C]),
+    ?LOG_SYS("reference was for misc channel ~p, restarting", [C]), 
     State#state{misc_channel=start_channel(Conn)};
 
 remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
-    logger:format_log(info, "AMQP_HOST(~p): consumer went down, searching~n", [self()]),
     State#state{consumers =
 		    dict:fold(fun(FromPid, {C,Ref1,_,FromRef}, AccDict) when Ref =:= Ref1 ->
-				      logger:format_log(info, "AMQP_HOST(~p): consumer_channel(~p) went down for ~p~n", [self(), C, FromPid]),
+                                      ?LOG_SYS("reference was for a consumer channel ~p for ~p, restarting", [C, FromPid]),
 				      case start_channel(Conn, FromPid) of
 					  {CNew, RefNew, TNew} -> dict:store(FromPid, {CNew, RefNew, TNew, FromRef}, AccDict);
 					  {error, no_connection} ->
@@ -438,7 +446,7 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 				      end;
 
 				 (FromPid, {C,CRef,_,FromRef}, AccDict) when Ref =:= FromRef ->
-				      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down: channel(~p) goes down too~n", [self(), FromPid, C]),
+                                      ?LOG_SYS("reference was for consumer ~p, removing channel ~p", [FromPid, C]),
 				      erlang:demonitor(CRef, [flush]),
 				      amqp_channel:close(C),
 				      dict:erase(FromPid, AccDict);
@@ -447,7 +455,7 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 				      case erlang:is_process_alive(FromPid) of
 					  true -> AccDict;
 					  false ->
-					      logger:format_log(info, "AMQP_HOST(~p): consumer(~p) went down unknowingly: channel(~p) goes down too~n", [self(), FromPid, C]),
+                                              ?LOG_SYS("reference was a consumer ~p that unexpectly shutdown, removing channel ~p", [FromPid, C]),
 					      erlang:demonitor(FromRef, [flush]),
 					      erlang:demonitor(CRef, [flush]),
 					      amqp_channel:close(C),
@@ -458,3 +466,9 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 				      AccDict
 			      end, Cs, Cs)
 	       }.
+
+
+notify_consumers(Msg, Dict) ->
+    dict:map(fun(Pid,_) ->
+                     Pid ! Msg
+             end, Dict).
