@@ -253,7 +253,7 @@ worker_free(Q) ->
 		{ok, JSON} ->
 		    Ref = erlang:monitor(process, Pid),
 		    PubFun(JSON),
-		    ?LOG_SYS("Working for ~p and sent ~s", [Pid, JSON]),
+		    ?LOG_SYS("Working for ~w and sent ~s", [Pid, JSON]),
 		    worker_busy(Q, From, Ref, Parent);
 		{error, _}=E ->
 		    gen_server:reply(From, E),
@@ -264,7 +264,7 @@ worker_free(Q) ->
 	shutdown ->
 	    ?LOG("Going on permanent leave");
 	_Other ->
-	    ?LOG("Recv other msg ~p", [_Other]),
+	    ?LOG("Recv other msg ~w", [_Other]),
 	    worker_free(Q)
     end.
 
@@ -272,10 +272,10 @@ worker_busy(Q, From, Ref, Parent) ->
     Start = erlang:now(),
     receive
 	{_, #amqp_msg{payload = Payload}} ->
-	    ?LOG("Recv payload response (~p ms): ~s", [timer:now_diff(erlang:now(), Start) div 1000, Payload]),
+	    ?LOG("Recv payload response (~b ms): ~s", [timer:now_diff(erlang:now(), Start) div 1000, Payload]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
 	{'DOWN', Ref, process, Pid, _Info} ->
-	    ?LOG("Requestor(~p) down, so are we", [Pid])
+	    ?LOG("Requestor(~w) down, so are we", [Pid])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},
