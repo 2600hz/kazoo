@@ -415,8 +415,8 @@ cleanup_registrations(Cache) ->
     Now = whistle_util:current_tstamp(),
     Expired = wh_cache:filter_local(Cache, fun(_, V) -> V < Now end),
     lists:foreach(fun({K,_}) ->
-			  {ok, D} = couch_mgr:open_doc(?REG_DB, K),
-			  couch_mgr:del_doc(?REG_DB, D),
+			  {ok, Rev} = couch_mgr:lookup_doc_rev(?REG_DB, K),
+			  {ok, _} = couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, K}, {<<"_rev">>, Rev}]}),
 			  wh_cache:erase(Cache, K)
 		  end, Expired).
 

@@ -441,7 +441,7 @@ save_docs(DbName, Docs, Opts) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, term()) | tuple(error, atom())).
+-spec(del_doc/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, json_object()) | tuple(error, atom())).
 del_doc(DbName, Doc) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};
