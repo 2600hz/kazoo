@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Trunk-Store responder waits for Auth and Route requests on the broadcast
 %%% Exchange, and delievers the requests to the corresponding handler.
@@ -9,7 +9,7 @@
 %%% Each request received by TS_RESPONDER should be put into a new spawn()
 %%% to avoid blocking on each request.
 %%% @end
-%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ts_responder).
 
@@ -223,7 +223,7 @@ process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
 process_req(_MsgType, _Prop) ->
     ?LOG_END("Unhandled request of type ~p", [_MsgType]).
 
--spec(send_resp/2 :: (JSON :: iolist(), RespQ :: binary()) -> no_return()).
+-spec(send_resp/2 :: (JSON :: iolist(), RespQ :: binary()) -> ok).
 send_resp(JSON, RespQ) ->
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
 
@@ -236,8 +236,8 @@ start_amqp() ->
 	ok = amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
 
 	%% Bind the queue to an exchange
-	amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
-	amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
+	_ = amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
+	_ = amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
 
 	%% Register a consumer to listen to the queue
 	amqp_util:basic_consume(ReqQueue, [{exclusive, false}]),

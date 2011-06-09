@@ -308,7 +308,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
                 ?LOG("flushed users registrations"),
 
 		wh_cache:store_local(Cache, Id, Expires, Expires),
-		store_reg(JObj, Id, Contact1),
+		{ok, _} = store_reg(JObj, Id, Contact1),
                 ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	    {ok, _} ->
 		?LOG("contact for ~s@~s found in cache", [Username, Realm]),
@@ -323,7 +323,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 			remove_old_regs(User, Realm, Cache),
                         ?LOG("flushed users registrations, to be safe"),
 
-			store_reg(JObj, Id, Contact1),
+			{ok, _} = store_reg(JObj, Id, Contact1),
                         ?LOG_END("added contact hash ~s to db", [Id])
 		end
 	end

@@ -57,6 +57,7 @@
 start_link(Host, Conn) ->
     gen_server:start_link(?MODULE, [Host, Conn], []).
 
+-spec(publish/4 :: (Srv :: pid(), From :: tuple(pid(), reference()), BasicPub :: #'basic.publish'{}, AmqpMsg :: iolist()) -> ok).
 publish(Srv, From, BasicPub, AmqpMsg) ->
     gen_server:cast(Srv, {publish, From, BasicPub, AmqpMsg}).
 

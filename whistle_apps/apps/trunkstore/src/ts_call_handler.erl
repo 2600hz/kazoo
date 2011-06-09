@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc A handler is spawned for each call that makes it through the
 %%% routing stage of the trunk store.  There a number of different scenarios
 %%% for tracking call progress:
@@ -30,7 +30,7 @@
 %%% compiled report to appropriate report-receiving places (Couch or another
 %%% process, perhaps).
 %%% @end
-%%% Created :  1 Oct 2010 by James Aimonetti <james@2600hz.com>
+%%% Created :  1 Oct 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 
 -module(ts_call_handler).
@@ -281,14 +281,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(get_amqp_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
 get_amqp_queue(CallID) ->
-    EvtQ = amqp_util:new_callevt_queue(<<>>),
-
     try
-	amqp_util:bind_q_to_callevt(EvtQ, CallID, events),
-	amqp_util:bind_q_to_callevt(EvtQ, CallID, cdr),
-	amqp_util:bind_q_to_targeted(EvtQ),
+	true = is_binary(EvtQ = amqp_util:new_callevt_queue(<<>>)),
+	_ = amqp_util:bind_q_to_callevt(EvtQ, CallID, events),
+	_ = amqp_util:bind_q_to_callevt(EvtQ, CallID, cdr),
+	_ = amqp_util:bind_q_to_targeted(EvtQ),
 
-	amqp_util:basic_consume(EvtQ),
+	_ = amqp_util:basic_consume(EvtQ),
 	EvtQ
     catch
 	_:_ -> {error, amqp_error}
