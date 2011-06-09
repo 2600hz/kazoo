@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% VMBoxes module
 %%%
@@ -367,7 +367,7 @@ create_vmbox(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
 	      ,resp_status=success
@@ -396,7 +396,7 @@ update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -416,9 +416,9 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+is_valid_doc(JObj) ->
+    {(wh_json:get_value(<<"mailbox">>, JObj) =/= undefined), [<<"mailbox">>]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -428,13 +428,14 @@ is_valid_doc(_JObj) ->
 %%--------------------------------------------------------------------
 -spec(load_message_summary/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_message_summary(DocId, Context) ->
-    case Messages = load_messages_from_doc(DocId, Context) of
-	?EMPTY_JSON_OBJECT ->
+    case load_messages_from_doc(DocId, Context) of
+	[] ->
 	    crossbar_util:response(error, no_messages_attached, Context);
-	_ ->
+	[?EMPTY_JSON_OBJECT] ->
+	    crossbar_util:response(error, no_messages_attached, Context);
+	Messages ->
 	    crossbar_util:response(Messages,Context)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -447,16 +448,18 @@ load_message(DocId, AttachmentId, Context) ->
     Messages = load_messages_from_doc(DocId, Context),
     Attachment = attachment_name(AttachmentId),
 
-    case Message = load_message(Attachment, Messages) of
-	{struct, _} ->
+    case load_message(Attachment, Messages) of
+	{struct, _}=Message ->
 	    crossbar_util:response(Message,Context);
-	_ ->
+	no_message ->
 	    crossbar_util:response_bad_identifier(AttachmentId, Context)
     end.
 
 load_message(Attachment, Messages) ->
-    [Mess | _] = [Message || Message <- Messages, wh_json:get_value(<<"attachment">>, Message ) =:= Attachment],
-    Mess.
+    case [Message || Message <- Messages, wh_json:get_value(<<"attachment">>, Message ) =:= Attachment] of
+	[Mess | _] -> Mess;
+	[] -> no_message
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -538,7 +541,7 @@ update_message(DocId, AttachmentId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
 	    update_message1(DocId, AttachmentId, Context)
     end.
 

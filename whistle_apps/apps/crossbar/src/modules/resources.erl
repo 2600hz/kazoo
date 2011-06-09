@@ -280,7 +280,7 @@ create_resource(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
                 ,resp_status=success
@@ -309,7 +309,7 @@ update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -330,6 +330,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+is_valid_doc(JObj) ->
+    {(wh_json:get_value(<<"gateways">>, JObj) =/= undefined), [<<"gateways">>]}.

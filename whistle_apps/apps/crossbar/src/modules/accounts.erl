@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Account module
 %%%
@@ -348,7 +348,7 @@ create_account(#cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
 	    logger:format_log(info, "Is invalid Doc: ~p: ~p~n", [JObj, Fields]),
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             case is_unique_realm(undefined, Context) of
                 true ->
                     Context#cb_context{
@@ -383,7 +383,7 @@ update_account(AccountId, #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {false, Fields} ->
              crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             case is_unique_realm(AccountId, Context) of
                 true ->
 		    %% Update the aggregate accounts DB (/accounts/AB/CB)
@@ -508,15 +508,9 @@ is_valid_parent(_JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"realm">>, JObj) of
-	undefined ->
-	    {false, [<<"realm">>]};
-	Realm when is_binary(Realm) ->
-	    {true, []}
-    end.
-
+    {(wh_json:get_value(<<"realm">>, JObj) =/= undefined), [<<"realm">>]}.
 
 %%--------------------------------------------------------------------
 %% @private

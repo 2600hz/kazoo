@@ -308,7 +308,7 @@ signup_new_account(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             create_activation_request(Context)
     end.
 
@@ -336,9 +336,9 @@ check_activation_key(ActivationKey, Context) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+is_valid_doc(JObj) ->
+    {(wh_json:get_value(<<"pvt_user">>, JObj) =/= undefined), [<<"">>]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -436,7 +436,7 @@ cleanup_signups() ->
     {ok, Docs} = couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_NOT_EXPIRED, [{<<"include_docs">>, true}]),
     Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     Fun = fun(Doc) -> check_for_expiration(wh_json:get_value(<<"doc">>, Doc), Now) end,
-    lists:map(Fun, Docs),
+    lists:foreach(Fun, Docs),
     
     logger:format_log(info, "----- Registrations cleaned", []).
 
