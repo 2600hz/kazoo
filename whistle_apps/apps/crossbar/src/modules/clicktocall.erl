@@ -31,6 +31,10 @@
 -define(VIEW_FILE, <<"views/c2c.json">>).
 -define(PVT_TYPE, <<"click2call">>).
 
+						%-include_lib("whistle/include/whistle_amqp.hrl").
+						%-include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -119,40 +123,23 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.clicktocall">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+		  crossbar_util:binding_heartbeat(Pid),
+		  Context1 = validate(Params, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  case Params of
-		      [_C2CID, ?CONNECT_CALL] ->
-			  %% start call
-			  crossbar_util:binding_heartbeat(Pid),
-			  %% should return a 204
-			  %% spawn off a process to start the call
-			  Pid ! {binding_result, true, [RD, Context#cb_context{resp_data=undefined}, Params]};
-		      _ ->
-			  Pid ! {binding_result, true, [RD, Context, Params]}
-		  end
+		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  case Params of
-		      [_C2CID, ?CONNECT_CALL] ->
-			  crossbar_util:binding_heartbeat(Pid),
-			  %% log call to history
-			  Context1 = crossbar_doc:save(Context),
-			  Pid ! {binding_result, true, [RD, Context1, Params]};
-		      [_C2CID] ->
-			  %% update c2c 
-			  Context1 = crossbar_doc:save(Context),
-			  Pid ! {binding_result, true, [RD, Context1, Params]}
-		   end
+		  crossbar_util:binding_heartbeat(Pid),		  
+		  Context1 = crossbar_doc:save(Context),
+     		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -305,7 +292,7 @@ validate([C2CId], #cb_context{req_verb = <<"delete">>}=Context) ->
 validate([C2CId, ?HISTORY], #cb_context{req_verb = <<"get">>}=Context) ->
     load_c2c_history(C2CId, Context);
 validate([C2CId, ?CONNECT_CALL], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_c2c_history(C2CId, Context);
+    establish_c2c(C2CId, Context);
 
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -325,9 +312,20 @@ is_valid_doc(JObj) ->
 	_ -> {true, []}
     end.
 
-load_c2c_summary(Context) ->
-    crossbar_doc:load_view(<<"click2call/listing_by_id">>, [], Context).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
+
+load_c2c_summary(Context) ->
+    crossbar_doc:load_view(<<"click2call/listing_by_id">>, [], Context, fun normalize_view_results/2).
+ 
 load_c2c(C2CId, Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
     C2C1 = wh_json:set_value(<<"history_items">>, length(wh_json:get_value(<<"history">>, C2C)), wh_json:delete_key(<<"history">>, C2C)),
@@ -340,12 +338,23 @@ load_c2c_history(C2CId, Context) ->
 update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
     crossbar_doc:load_merge(C2CId, Doc, Context).
 
-update_c2c_history(C2CId, #cb_context{req_data=Req}=Context) ->
+establish_c2c(C2CId, #cb_context{req_data=Req}=Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    History = wh_json:get_value(<<"history">>, C2C, []),
-    List = [create_c2c_history_item(Req) | History],
-    logger:format_log(info, "yea ~p", [List]),
-    Context1#cb_context{doc=wh_json:set_value(<<"history">>, List, C2C)}.
+    Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
+    Callee = whistle_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
+    Realm = wh_json:get_value(<<"realm">>, C2C),
+    C2CName = wh_json:get_value(<<"name">>, C2C),
+
+    Status = originate_call(Caller, Callee, Realm, C2CName),
+
+    case Status of 
+	{success, [CallID, CdrID]} ->
+	    History = wh_json:get_value(<<"history">>, C2C, []),
+	    List = [create_c2c_history_item(Req, CallID, CdrID) | History],
+	    Context1#cb_context{doc=wh_json:set_value(<<"history">>, List, C2C)};
+	{error, _} -> Context1#cb_context{resp_status=error};
+	{timeout, _} -> Context1#cb_context{resp_status=error}
+    end.
 
 create_c2c(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
@@ -358,11 +367,63 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
 	     }
     end.
 
-create_c2c_history_item(Req) ->
-    %logger:format_log(info, ">>>>> here is it ~p", [Context]),
+create_c2c_history_item(Req, CallID, CdrID) ->
     Now = whistle_util:current_tstamp(),
     {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)}, 
 	       {<<"timestamp">>, Now},
-	       {<<"call_id">>, null},
-	       {<<"cdr_id">>, null} 
+	       {<<"call_id">>, CallID},
+	       {<<"cdr_id">>, CdrID} 
 	     ]}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName) ->
+    logger:format_log(info, " ..... Establishing clicktocall ~p from ~p@~p to ~p@~p ...~n", [C2CName, CallerNumber, CalleeRealm, CalleeExtension, CalleeRealm]),
+    
+    %% create, bind & consume amqp queue
+    Amqp = amqp_util:new_queue(),
+    amqp_util:bind_q_to_targeted(Amqp),
+    amqp_util:basic_consume(Amqp),
+
+    %basic call info to display on phone's screen
+    CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary, "@", CalleeRealm/binary,
+		  ",origination_caller_id_number=", CalleeExtension/binary,
+		  ",origination_callee_id_name='", C2CName/binary, "'",
+		  ",origination_callee_id_number=", CallerNumber/binary >>,
+
+    OrigStringPart = <<"{ecallmgr_Realm=",CalleeRealm/binary, CallInfo/binary, "}loopback/", CallerNumber/binary, "/context_2">>,
+
+    JObjReq = [
+	       {<<"Msg-ID">>, whistle_util:current_tstamp()}
+               ,{<<"Resource-Type">>, <<"audio">>}
+               ,{<<"Invite-Format">>, <<"route">>} 
+	       ,{<<"Route">>, OrigStringPart}
+	       ,{<<"Custom-Channel-Vars">>, {struct, [{"Realm", CalleeRealm}] } }
+               ,{<<"Application-Name">>, <<"transfer">>}
+	       ,{<<"Application-Data">>, {struct, [{"Route", CalleeExtension}]} }
+               | whistle_api:default_headers(Amqp, <<"originate">>, <<"resource_req">>, <<"clicktocall">>, <<"0.1">>)
+              ],
+
+    {ok, Json} = whistle_api:resource_req({struct, JObjReq}),
+    amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ),
+    
+    receive
+	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
+	    JObj = mochijson2:decode(Payload),
+	    case wh_json:get_value(<<"Event-Name">>, JObj) of
+		<<"resource_resp">> ->
+		    logger:format_log(info, ">>> Click to call ... Success! Call established ", []),
+		    {success, [wh_json:get_value(<<"Call-ID">>, JObj), null]};
+		<<"resource_error">> ->
+		    logger:format_log(info, ">>> Click to call ... Error, cannot establish call, server may be busy", []),
+		    {error, []}
+	    end
+    after
+	15000 ->
+	    logger:format_log(info, ">>> Click to call ... Timeout, cannot establish call.", []),
+	    {timeout, []}
+    end.

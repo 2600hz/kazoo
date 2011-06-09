@@ -219,11 +219,13 @@
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
 					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>, <<"SIP-Headers">>
+					    ,<<"Application-Name">>, <<"Application-Data">>
 				       ]).
 -define(RESOURCE_REQ_VALUES, [
 			      {<<"Event-Category">>, <<"originate">>}
 			      ,{<<"Event-Name">>, <<"resource_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
+			      ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>]}
 			      ,?INVITE_FORMAT_TUPLE
 			     ]).
 -define(RESOURCE_REQ_TYPES, [{<<"Invite-Format">>, fun is_binary/1}

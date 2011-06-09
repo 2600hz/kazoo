@@ -307,6 +307,8 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 		remove_old_regs(Username, Realm, Cache),
                 ?LOG("flushed users registrations"),
 
+		?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
+
 		wh_cache:store_local(Cache, Id, Expires, Expires),
 		{ok, _} = store_reg(JObj, Id, Contact1),
                 ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
