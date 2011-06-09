@@ -117,7 +117,7 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{cache=undefined}=State) ->
     case whereis(reg_cache) of
         Pid when is_pid(Pid) ->
-            prime_cache(Pid),
+            _ = prime_cache(Pid),
 
             ?LOG_SYS("starting cleanup timer for ~p msec", [?CLEANUP_RATE]),
             Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok),
@@ -137,7 +137,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     catch
         _:_ ->
             ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
 
@@ -150,18 +150,18 @@ handle_info({amqp_reconnect, T}, State) ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref, cache=Cache}=S) ->
@@ -220,7 +220,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/0 :: () -> binary() | tuple(error, amqp_error)).
+-spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
 start_amqp() ->
     try
 	Q = amqp_util:new_queue(?REG_QUEUE_NAME, [{exclusive, false}]),
@@ -381,14 +381,14 @@ process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{amqp_q=Queue}) ->
 process_req({_Cat, _Evt},_JObj,_) ->
     ?LOG_SYS("Unhandled message: ~s:~s -> ~p", [_Cat, _Evt, _JObj]).
 
--spec(store_reg/3 :: (JObj :: json_object(), Id :: binary(), Contact :: binary()) -> no_return()).
+-spec(store_reg/3 :: (JObj :: json_object(), Id :: binary(), Contact :: binary()) -> tuple(ok, json_object() | json_objects())).
 store_reg({struct, Prop}, Id, Contact) ->
     MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
 			 ,{<<"Contact">>, Contact}
 			 ,{<<"_id">>, Id}
 			 | lists:keydelete(<<"Contact">>, 1, Prop)]
 	       },
-    couch_mgr:ensure_saved(?REG_DB, MochiDoc).
+    {ok, _} = couch_mgr:ensure_saved(?REG_DB, MochiDoc).
 
 -spec(remove_old_regs/3 :: (User :: binary(), Realm :: binary(), Cache :: pid()) -> ok).
 remove_old_regs(User, Realm, Cache) ->
