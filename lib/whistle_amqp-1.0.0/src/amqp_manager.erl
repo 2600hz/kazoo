@@ -153,7 +153,7 @@ handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
             {noreply, State1};
 	{error, R} -> 
             ?LOG_SYS("attempting to connect again in ~b ms", [R, ?START_TIMEOUT]),
-            timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
+            {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
             {noreply, State}
     end;   
 
@@ -166,11 +166,11 @@ handle_info({reconnect, T}, #state{host=Host}=State) ->
             case T * 2 of
                 Timeout when Timeout > ?MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
-                    timer:send_after(?MAX_TIMEOUT, {reconnect, ?MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?MAX_TIMEOUT, {reconnect, ?MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {reconnect, Timeout}),
                     {noreply, State}
             end
     end;
@@ -178,7 +178,7 @@ handle_info({reconnect, T}, #state{host=Host}=State) ->
 handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) ->
     ?LOG_SYS("amqp host process went down, ~s", [_Reason]),
     erlang:demonitor(Ref, [flush]),
-    timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
+    {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}};
 
 handle_info({nodedown, RabbitNode}, #state{conn_params=#'amqp_params'{node=RabbitNode}}=State) ->

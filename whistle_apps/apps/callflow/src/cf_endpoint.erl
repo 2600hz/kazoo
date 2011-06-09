@@ -77,7 +77,7 @@ build(Id, #cf_call{account_db=Db}=Call) ->
 -spec(get_invite_format/2 :: (Endpoint :: json_object(), Owner :: json_object()) -> binary() | undefined).
 get_invite_format(Endpoint, Owner) ->
     case whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner)) of
-        false -> wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint);
+        false -> wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>);
         true -> <<"route">>
     end.
 

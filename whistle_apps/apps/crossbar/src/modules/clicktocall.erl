@@ -1,5 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
+%%% @author Eduoard Swiac <edouard@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% 
@@ -350,10 +351,10 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-	{true, []} ->
+	{true, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"history">>, [], JObj))
-	      ,resp_status=successb
+	      ,resp_status=success
 	     }
     end.
 

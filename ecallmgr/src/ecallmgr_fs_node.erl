@@ -174,21 +174,21 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec(originate_channel/4 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
 originate_channel(Node, Pid, Route, AvailChan) ->
-    logger:format_log(info, "FS_NODE(~p): DS ~p", [self(), Route]),
+    ?LOG_SYS("Dialstring ~s", [Route]),
     OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
-    logger:format_log(info, "FS_NODE(~p): Orig ~p", [self(), OrigStr]),
+    ?LOG_SYS("Originate command ~s", [OrigStr]),
     case freeswitch:api(Node, originate, OrigStr, 9000) of
 	{ok, X} ->
-	    logger:format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p", [self(), Route, X]),
 	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
+	    ?LOG_START(CallID, "Originate resulted in ~s", [X]),
 	    CtlQ = start_call_handling(Node, CallID),
 	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    logger:format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p", [self(), Route, ErrMsg]),
+	    ?LOG("Failed to originate ~s: ~s", [Route, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    logger:format_log(info, "FS_NODE(~p): Originate to ~p timed out", [self(), Route]),
+	    ?LOG("Originate to ~s timed out", [Route]),
 	    Pid ! {resource_error, timeout}
     end.
 
@@ -200,6 +200,7 @@ start_call_handling(Node, UUID) ->
 
 	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
 	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
+	?LOG(UUID, "Started control and event procs", []),
 	CtlQueue
     catch
 	_:_ -> {error, amqp_error}

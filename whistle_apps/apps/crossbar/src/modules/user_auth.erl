@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP, INC
 %%% @doc
 %%% User auth module
 %%%
@@ -269,7 +269,7 @@ authorize_user(Context, <<>>, _, _) ->
 authorize_user(Context, _, <<>>, _) ->
     crossbar_util:response_invalid_data([<<"credentials">>], Context);
 authorize_user(Context, Realm, Credentials, Method) ->
-    case accounts:get_account_by_realm(Realm) of
+    case whapps_util:get_account_by_realm(Realm) of
 	{ok, AcctDB} -> authorize_user(Context, Realm, Credentials, Method, AcctDB);
 	{error, not_found} -> crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end.

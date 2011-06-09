@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Receive a callmgr CDR and augment it with Trunkstore-specific fields,
 %%% storing it in the database.
@@ -23,14 +23,14 @@ cdr_init() ->
     MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
     {ok, _} = timer:send_after(MillisecsToMidnight, ?EOD),
 
-    create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
+    _ = create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
 
     cdr_loop().
 
 cdr_loop() ->
     receive
 	?EOD ->
-	    create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
+	    _ = create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
 	    {ok, _} = timer:send_after(?MILLISECS_PER_DAY, ?EOD),
 	    cdr_loop()
     end.

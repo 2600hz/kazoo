@@ -402,10 +402,11 @@ event_specific(_Evt, _Prop) ->
     [].
 
 handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    put(callid, CallID),
+
     try
 	true = whistle_api:call_status_req_v(JObj),
-	CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-	put(callid, CallID),
 	?LOG("Call Status request received"),
 
 	{Status, ErrMsg} = case IsNodeUp of
@@ -418,12 +419,13 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
 		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
 	{ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
 	SrvID = wh_json:get_value(<<"Server-ID">>, JObj),
-	logger:format_log(info, "EVT.call_status(~p): ~s", [CallID, JSON]),
+	?LOG("Status response: ~s", [JSON]),
 
 	amqp_util:targeted_publish(SrvID, JSON)
     catch
 	E:R ->
-	    logger:format_log(error, "EVT.call_status err ~p: ~p", [E, R])
+	    ?LOG("Call Status exception: ~s:~w", [E, R]),
+	    ?LOG("Stackstrace: ~w", [erlang:get_stacktrace()])
     end.
 
 query_call(Node, CallID) ->
@@ -444,16 +446,16 @@ send_queued(UUID, Evts) ->
     send_queued(UUID, lists:reverse(Evts), 0).
 
 -spec(send_queued/3 :: (UUID :: binary(), Evts :: list(), Tries :: integer()) -> no_return()).
-send_queued(_, _, 10) ->
-    logger:format_log(info, "EVT.send_queued(~p): Failed after 10 times, going down", [self()]);
-send_queued(_, [], _) ->
-    logger:format_log(info, "EVT.send_queued(~p): No queued events.", [self()]);
+send_queued(_UUID, _, 10=Tries) ->
+    ?LOG(_UUID, "Failed to send queued events after ~b times, going down", [Tries]);
+send_queued(_UUID, [], _) ->
+    ?LOG(_UUID, "No queued events to send", []);
 send_queued(UUID, [_|_]=Evts, Tries) ->
     case amqp_util:is_host_available() of
 	false ->
 	    receive after 1000 -> send_queued(UUID, Evts, Tries+1) end;
 	true ->
-	    logger:format_log(info, "EVT.send_queued(~p): Sending queued events on try ~p", [self(), Tries]),
+	    ?LOG(UUID, "Sending queued events on try ~b", [Tries]),
 	    [ publish_msg(UUID, E) || E <- Evts ]
     end.
 

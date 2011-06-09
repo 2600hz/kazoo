@@ -312,8 +312,6 @@ insert_command(State, <<"now">>, JObj) ->
 			     ({struct, Cmd}) ->
 				  AppCmd = {struct, DefProp ++ Cmd},
 				  true = whistle_api:dialplan_req_v(AppCmd),
-				  AppName = wh_json:get_value(<<"Application-Name">>, AppCmd),
-				  logger:format_log(info, "CONTROL.queue: Exec now Cmd: ~p", [AppName]),
                                   execute_control_request(Cmd, State)
 			  end, wh_json:get_value(<<"Commands">>, JObj)),
 	    State#state.command_q;
@@ -392,7 +390,8 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
             self() ! {hangup, undefined, UUID},
 	    ok;
         _A:_B ->
-	    ?LOG("Exception ~p:~p when executing ~s", [_A, _B, wh_json:get_value(<<"Application-Name">>, Cmd)]),
+	    ?LOG("Exception ~s:~w when executing ~s", [_A, _B, wh_json:get_value(<<"Application-Name">>, Cmd)]),
+	    ?LOG("Stacktrace: ~w", [erlang:get_stacktrace()]),
             Resp = [
 		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
 		    ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}

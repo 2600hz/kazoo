@@ -57,6 +57,7 @@
 start_link(Host, Conn) ->
     gen_server:start_link(?MODULE, [Host, Conn], []).
 
+-spec(publish/4 :: (Srv :: pid(), From :: tuple(pid(), reference()), BasicPub :: #'basic.publish'{}, AmqpMsg :: iolist()) -> ok).
 publish(Srv, From, BasicPub, AmqpMsg) ->
     gen_server:cast(Srv, {publish, From, BasicPub, AmqpMsg}).
 
@@ -365,10 +366,10 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec(terminate/2 :: (Reason :: term(), State :: #state{}) -> ok).
 terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
     notify_consumers({amqp_host_down, Host}, Consumers),
-    ?LOG_SYS("amqp host, for ~s, ~p termination", [Host, _Reason]),
-    ok.
+    ?LOG_SYS("amqp host, for ~s, ~p termination", [Host, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -467,8 +468,6 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 			      end, Cs, Cs)
 	       }.
 
-
+-spec(notify_consumers/2 :: (Msg :: term(), Dict :: dict()) -> ok).
 notify_consumers(Msg, Dict) ->
-    dict:map(fun(Pid,_) ->
-                     Pid ! Msg
-             end, Dict).
+    lists:foreach(fun({Pid,_}) -> Pid ! Msg end, dict:to_list(Dict)).

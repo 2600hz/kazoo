@@ -13,7 +13,7 @@
 -export([start_link/2, get_recv_url/1, get_srv_url/1, get_path/1]).
 
 %% gen_server callbacks
--export([init_recv/2, init_srv/2]).
+-export([init_recv/2, init_srv/2, init_auth/3]).
 
 -include("ecallmgr.hrl").
 -include_lib("whistle/include/wh_media.hrl").
@@ -80,7 +80,7 @@ init_recv(Parent, Path) ->
     {ok, Port} = inet:port(LSock),
     SrvRef = make_ref(),
 
-    spawn_link(fun() -> init_auth(LSock, self(), SrvRef) end),
+    spawn_link(?MODULE, init_auth, [LSock, self(), SrvRef]),
 
     main_loop(Path, Port, SrvRef, LSock).
 
