@@ -10,7 +10,7 @@
 
 -include("../callflow.hrl").
 
--export([handle/2]).
+-export([handle/2, list/6]).
 
 -import(calendar, [
                     day_of_the_week/1, day_of_the_week/3, gregorian_seconds_to_datetime/1
@@ -27,6 +27,18 @@
 handle(_, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     CFPid ! find_temporal_routes(Call).
+
+list(Type, Interval, Rule, Start, Current, Count) ->
+    Fun = fun(Date) -> event_date(Type, Interval, Rule, Start, Date) end,
+    timer:tc(fun do_list/4, [Current, Fun, Count, 0]).
+
+do_list(_, _, Count, Count) ->
+    ok;
+do_list(Date, Fun, Count, Acc) ->
+    Result = Fun(Date),
+    io:format("~3w: ~-12w~n", [Acc, Result]),
+    do_list(Result, Fun, Count, Acc + 1).
+
 
 find_temporal_routes(#cf_call{account_db=Db}) ->
     case couch_mgr:get_all_results(Db, <<"temporal-route/listing_by_occurence">>) of
@@ -45,10 +57,10 @@ find_temporal_routes(#cf_call{account_db=Db}) ->
 %% rule, start date, and current date.
 %% @end
 %%--------------------------------------------------------------------
-event_date("daily", 1, _, _, {Y1, M1, D1}) ->
-    %% add one and fix if the date became invalid
-    normalize_date({Y1, M1, D1 + 1});
-
+event_date("date", _, _, Date0, _) ->
+    Date0;
+event_date(_, 0, _, Date0, _) ->
+    Date0;
 event_date("daily", I0, _, {Y0, M0, D0}, {Y1, M1, D1}) ->
     %% Calculate the distance in days as a function of
     %%   the interval and fix
@@ -57,25 +69,15 @@ event_date("daily", I0, _, {Y0, M0, D0}, {Y1, M1, D1}) ->
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
     normalize_date({Y0, M0, D0 + Offset + I0});
 
-event_date("weekly", 1, DOWs, _, {Y1, M1, D1}) ->
-    DOW1 = day_of_the_week({Y1, M1, D1}),
-    %% Take the head of a list of DOWs after removing any up to 
-    %%   and including the current DOW (DOW1).
-    %% Also append the first DOW plus 7 
-    %%   (ie: the occurance next week of that DOW)
-    Offset = hd([ DOW || DOW <- [ to_dow(D) || D <- DOWs ], DOW > DOW1 ]
-                ++ [ to_dow( hd( DOWs ) ) + 7 ])
-               - DOW1,
-    normalize_date({Y1, M1, D1 + Offset});
-
-event_date("weekly", I0, DOWs, {Y0, M0, D0}, {Y1, M1, D1}) ->
-    DOW1 = day_of_the_week({Y1, M1, D1}),
+event_date("weekly", I0, Weekdays, {Y0, M0, D0}, {Y1, M1, D1}) ->
+    DOW0 = day_of_the_week({Y1, M1, D1}),
     Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
     Offset = trunc( Distance / I0 ) * I0,
-    case [ DOW || DOW <- [to_dow(D) || D <- DOWs], DOW > DOW1 ] of
-        %% During an 'active' week but before the last DOW move to the next day this week
+    case [ DOW1 || DOW1 <- [to_dow(D) || D <- Weekdays], DOW1 > DOW0 ] of
+        %% During an 'active' week but before the last weekday in the list
+        %%   move to the next day this week
         [Day|_] when Distance =:= Offset ->
-            normalize_date({Y1, M1, D1 + Day - DOW1}); 
+            normalize_date({Y1, M1, D1 + Day - DOW0}); 
         %% Empty list:
         %%   The last DOW during an 'active' week, 
         %% Non Empty List that failed the guard:
@@ -83,143 +85,65 @@ event_date("weekly", I0, DOWs, {Y0, M0, D0}, {Y1, M1, D1}) ->
         _ ->
             {WY0, W0} = iso_week_number({Y0, M0, D0}),
             {Y2, M2, D2} = iso_week_to_gregorian_date({WY0, W0 + Offset + I0}),
-            normalize_date({Y2, M2, ( D2 - 1 ) + to_dow( hd( DOWs ) )})
+            normalize_date({Y2, M2, ( D2 - 1 ) + to_dow( hd( Weekdays ) )})
     end;
 
-event_date("monthly", 1, {every, DOW0}, _, {Y1, M1, D1}) ->
-    %%   Note: since this is every DOW of every month, overflow in normalize
-    %%         is the correct action (bellow)
-    DOW1 = to_dow(DOW0),
-    case calendar:day_of_the_week({Y1, M1, D1}) of
-        %% Today is the DOW we wanted, calculate for next week 
-        DOW1 ->
-            normalize_date({Y1, M1, D1 + 7});
-        %% If the DOW has not occured this week yet
-        D when DOW1 > D ->
-            normalize_date({Y1, M1, D1 + (DOW1 - D)});            
-        %% If the DOW occurance has already happend, calculate for the next week
-        %%   using the current DOW as a reference
-        D ->
-            Offset = ( 7 - D ) + DOW1,
-            normalize_date({Y1, M1, D1 + Offset})
-    end;
-
-event_date("monthly", I0, {every, DOW0}, {Y0, M0, _}, {Y1, M1, D1}) ->
+event_date("monthly", I0, {every, Weekday}, {Y0, M0, _}, {Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
-    try
-        %% Throw if this an 'inactive' month
-        Distance = Offset,
-        %% Throw if we span a month boundry during normalize
-        {Y1, M1, _} = event_date("monthly", 1, {every, DOW0}, undefined, {Y1, M1, D1})
-    catch
-        _:_ ->
-            %% This is an 'inactive' month, or the next DOW occurs next month.
-            %% Work out the first occurence of the DOW in the next 'active'
-            %% month.
-            DOW1 = to_dow(DOW0),
-            find_next_weekday(Y0, M0 + Offset + I0, 0, DOW1)
+    case Distance =:= Offset andalso find_next_weekday({Y1, M1, D1}, Weekday) of
+        %% If the next occurence of the weekday is during an 'active' month
+        %%   and does not span the current month/year then it is correct
+        {Y1, M1, _}=Date ->
+            Date;
+        %% In the special case were the next weekday does span the current
+        %%   month/year but it should be every month (I0 == 1) then the
+        %%   date is also correct
+        Date when I0 =:= 1 ->
+            Date;
+        %% During an 'inactive' month, or when it inappropriately spans
+        %%   a month/year boundary calculate the next iteration
+        _ ->
+            find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, first)
     end;
 
-event_date("monthly", 1, {last, DOW0}, _, {Y1, M1, D1}) ->
-    case find_last_weekday({Y1, M1, 1}, DOW0) of
-        %% If the last occurance of DOW has not already happened
-        %%   then this calculation is valid
+event_date("monthly", I0, {last, Weekday}, {Y0, M0, _}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_last_weekday({Y1, M1, 1}, Weekday) of
+        %% If today is before the occurace day on an 'active' month since
+        %%   the 'last' only happens once per month if we havent passed it
+        %%   then it must be this month
         {_, _, D2}=Date when D1 < D2 -> 
             Date;
-        %% When the DOW has already occured this month
-        %%   calculate when it will occur next month
-        _ ->        
-            find_last_weekday({Y1, M1 + 1, 1}, DOW0)
+        %% In an 'inactive' month or when we have already passed
+        %%   the last occurance of the DOW
+        _ ->
+            find_last_weekday({Y0, M0 + Offset + I0, 1}, Weekday)
     end;
 
-event_date("monthly", I0, {last, DOW0}, {Y0, M0, _}, {Y1, M1, D1}) ->
+%% WARNING: There is a known bug when requesting the fifth occurance
+%%   of a weekday when I0 > 1 and the current month only has four instances
+%%   of the given weekday, the calculation is incorrect.  I was told not 
+%%   to worry about that now...
+event_date("monthly", I0, {Ordinal, Weekday}, {Y0, M0, _}, {Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset of
-        %% This is an 'active' month, calculate the next
-        %%   month/year it should occur
-        true -> 
-            case find_last_weekday({Y1, M1, 1}, DOW0) of
-                %% If today is before the occurace day since
-                %%   the 'last' only happens once per month
-                %%   if we havent passed it then it must be 
-                %%   this month
-                {_, _, D2}=Date when D1 < D2 -> 
-                    Date;
-                %% In an 'active' month when we have already passed
-                %%   the last occurance of the DOW
-                _ ->
-                    find_last_weekday({Y0, M0 + Offset + I0, 1}, DOW0)
-            end;
-        false ->
-            %% In an 'inactive' month calculate the next
-            %%   occurrence from the start date
-            find_last_weekday({Y0, M0 + Offset + I0, 1}, DOW0)
-    end;
-
-event_date("monthly", 1, {Ordinal, DOW0}, _, {Y1, M1, D1}) ->
-    %% This calculation can be recursive if the requested DOW spans 
-    %%   a month/year border, so I created a helper function to keep
-    %%   the code more readable.
-    DOW1 = to_dow(DOW0),
-    Occur = from_ordinal(Ordinal),
-    case find_next_weekday(Y1, M1, Occur, DOW1) of
-        %% If today is before the occurance day or
-        %%   the occurance happens on a different month
-        %%   then the calculated date is accurate
-        {_, M2, D2}=Date when D1 < D2; M1 =/= M2 -> 
+    case Distance =:= Offset andalso {find_ordinal_weekday(Y1, M1, Weekday, Ordinal), I0} of
+        %% If today is before the occurance day on an 'active' month and
+        %%   the occurance does not cross month/year boundaries then the 
+        %%   calculated date is accurate
+        {{_, M1, D2}=Date, _} when D1 < D2, I0 > 1 -> 
+            Date;        
+        {{_, M2, D2}=Date, 1} when D1 < D2; M1 < M2 -> 
             Date;
-        %% If we have already passed the occurance 
-        %%   date this month then calculate when it
-        %%   will happen next month (corrects
-        %%   invalid dates)
-        _ ->        
-            find_next_weekday(Y1, M1 + 1, Occur, DOW1)
+        %% In an 'inactive' month or when we have already passed
+        %%   the last occurance of the DOW
+        _ ->
+            find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, Ordinal)
     end;
 
-%% WARNING: This is the only function that is inaccurate when 
-%%   I0 == 1, in the other like rule functions the special case
-%%   exists as optimized versions, but not this rule...
-event_date("monthly", I0, {Ordinal, DOW0}, {Y0, M0, _}, {Y1, M1, D1}) ->
-    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
-    Offset = trunc( Distance / I0 ) * I0,
-    DOW1 = to_dow(DOW0),
-    Occur = from_ordinal(Ordinal),
-    case Distance =:= Offset of
-        %% This is an 'active' month, calculate the next
-        %%   the occurance of DOW
-        true -> 
-            case find_next_weekday(Y1, M1, Occur, DOW1) of
-                %% If today is before the occurance day on an 
-                %%   'active' month and the occurance does not 
-                %%   happen on a different month then the 
-                %%   calculated date is accurate
-                {_, M1, D2}=Date when D1 < D2 -> 
-                    Date;
-                %% In an 'active' month when we have already passed
-                %%   the last occurance of the DOW
-                _ ->
-                    find_next_weekday(Y0, M0 + Offset + I0, Occur, DOW1)
-            end;
-        false ->
-            %% In an 'inactive' month calculate the next
-            %%   occurrence from the start date
-            find_next_weekday(Y0, M0 + Offset + I0, Occur, DOW1)
-    end;
-
-event_date("monthly", 1, Days, _, {Y1, M1, D1}) ->
-    %% Take the head of a list of Days after removing any up to 
-    %%   and including the current Day (D1).
-    %% Also append the first DOW plus the last day of the month 
-    %%   (ie: the occurance of that day next month)
-    %%   NOTE: since we use the last day of the previous month 
-    %%   corrects for Days not being zero offset (off by one day)
-    Offset = hd([D || D <- Days, D > D1]
-                ++ [last_day_of_the_month(Y1, M1) + hd(Days)]),
-    normalize_date({Y1, M1, Offset});
-
-event_date("monthly", I0, Days, {Y0, M0, _}, {Y1, M1, D1}) when is_list(Days) ->
+event_date("monthly", I0, Days, {Y0, M0, _}, {Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
     case [D || D <- Days, D > D1] of
@@ -234,17 +158,81 @@ event_date("monthly", I0, Days, {Y0, M0, _}, {Y1, M1, D1}) when is_list(Days) ->
             normalize_date({Y0, M0 + Offset + I0, hd( Days )})
     end;
 
-event_date("yearly", 1, {_Month, _Day}, {_Y0, _M0, _}, {_Y1, _M1, _D1}) ->
-    error;
+%% WARNING: This function does not ensure the provided day actually
+%%   exists in the month provided.  For temporal routes that isnt 
+%%   an issue because we will 'pass' the invalid date and compute
+%%   the next
+event_date("yearly", I0, {Month, Day}, {Y0, _, _}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    %% If it is currently an 'active' year before the requested
+    %%   month or on the requested month but before the day
+    %%   then just provide the occurance.  Otherwise work out 
+    %%   the next occurance.
+    case M1 =< Month andalso D1 < Day of
+        %% It is before the requested month or
+        %%   on the requested month but before the day
+        %%   but only on an 'active' year
+        true when Distance =:= Offset -> {Y1, Month, Day};
+        %% The requested month or day in that month has 
+        %%   been passed, furthermore, if the guard fails 
+        %%   calculate for next iteration
+        _ -> {Y0 + Offset + I0, Month, Day}
+    end;
 
-event_date("yearly", 1, {last, _DOW0, _Month}, {_Y0, _M0, _}, {_Y1, _M1, _D1}) ->
-    error;
+event_date("yearly", I0, {every, Weekday, Month}, {Y0, _, _}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_next_weekday({Y1, Month, D1}, Weekday) of
+        %% During an 'active' year before the target month the calculated
+        %%   occurance is accurate
+        {Y1, Month, _}=Date when M1 < Month ->
+            Date;
+        %% During an 'active' year on the target month before the
+        %%   calculated occurance day it is accurate
+        {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
+            Date;
+        %% During an 'inactive' year, or after the target month
+        %%   calculate the next iteration
+        _ ->
+            find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, first)
+    end;
 
-event_date("yearly", 1, {every, _DOW0, _Month}, {_Y0, _M0, _}, {_Y1, _M1, _D1}) ->
-    error;
+event_date("yearly", I0, {last, Weekday, Month}, {Y0, _, _}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_last_weekday({Y1, Month, 1}, Weekday) of
+        %% During an 'active' year before the target month the calculated
+        %%   occurance is accurate
+        {Y1, _, _}=Date when M1 < Month ->
+            Date;
+        %% During an 'active' year on the target month before the
+        %%   calculated occurance day it is accurate
+        {Y1, _, D2}=Date when M1 =:= Month, D1 < D2 ->
+            Date;
+        %% During an 'inactive' year, or after the target month
+        %%   calculate the next iteration
+        _ ->
+            find_last_weekday({Y0 + Offset + I0, Month, 1}, Weekday)
+    end;
 
-event_date("yearly", 1, {_When, _DOW0, _Month}, {_Y0, _M0, _}, {_Y1, _M1, _D1}) ->
-    error.
+event_date("yearly", I0, {Ordinal, Weekday, Month}, {Y0, _, _}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal) of 
+        %% During an 'active' year before the target month the calculated
+        %%   occurance is accurate
+        {Y1, Month, _}=Date when M1 < Month ->
+            Date;
+        %% During an 'active' year on the target month before the
+        %%   calculated occurance day it is accurate
+        {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
+            Date;
+        %% During an 'inactive' year or after the calculated
+        %%   occurance determine the next iteration
+        _ ->            
+            find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -298,20 +286,40 @@ to_dow(sunday) -> 7.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+find_next_weekday({Y, M, D}, Weekday) ->
+    RefDOW = to_dow(Weekday),
+    case calendar:day_of_the_week({Y, M, D}) of
+        %% Today is the DOW we wanted, calculate for next week 
+        RefDOW ->
+            normalize_date({Y, M, D + 7});
+        %% If the DOW has not occured this week yet
+        DOW when RefDOW > DOW ->
+            normalize_date({Y, M, D + (RefDOW - DOW)});            
+        %% If the DOW occurance has already happend, calculate
+        %%   for the next week using the current DOW as a reference
+        DOW ->
+            normalize_date({Y, M, D + ( 7 - DOW ) + RefDOW})
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Safety wrapper on date_of_dow used to loop over failing attempts
 %% until the date can be calculated.
 %% @end
 %%--------------------------------------------------------------------
-find_next_weekday(Y1, M1, Occurrence, Weekday) when M1 =:= 13 ->
-    find_next_weekday(Y1 + 1, 1, Occurrence, Weekday);
-find_next_weekday(Y1, M1, Occurrence, Weekday) when M1 > 12 ->
-    find_next_weekday(Y1 + 1, M1 - 12, Occurrence, Weekday);
-find_next_weekday(Y1, M1, Occurrence, Weekday) ->
+find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 =:= 13 ->
+    find_ordinal_weekday(Y1 + 1, 1, Weekday, Ordinal);
+find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 > 12 ->
+    find_ordinal_weekday(Y1 + 1, M1 - 12, Weekday, Ordinal);
+find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
     try
-        date_of_dow(Y1, M1, Weekday, Occurrence)
+        date_of_dow(Y1, M1, Weekday, Ordinal)
     catch
         _:_ ->
-            find_next_weekday(Y1, M1 + 1, Occurrence, Weekday)
+            find_ordinal_weekday(Y1, M1 + 1, Weekday, Ordinal)
     end.
 
 %%--------------------------------------------------------------------
@@ -319,11 +327,11 @@ find_next_weekday(Y1, M1, Occurrence, Weekday) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-find_last_weekday({Y, M, D}, DOW) when M =:= 13 ->
-    find_last_weekday({Y + 1, 1, D}, DOW);
-find_last_weekday({Y, M, D}, DOW) when M > 12 ->
-    find_last_weekday({Y + 1, M - 12, D}, DOW);
-find_last_weekday({Y, M, _}, DOW) ->
+find_last_weekday({Y, M, D}, Weekday) when M =:= 13 ->
+    find_last_weekday({Y + 1, 1, D}, Weekday);
+find_last_weekday({Y, M, D}, Weekday) when M > 12 ->
+    find_last_weekday({Y + 1, M - 12, D}, Weekday);
+find_last_weekday({Y, M, _}, Weekday) ->
     %% Assumption/Principle:
     %%   A DOW can never occur more than four times in a month.
     %% ---------------------------------------------------------
@@ -333,10 +341,10 @@ find_last_weekday({Y, M, _}, DOW) ->
     %% if this happens. Therefore, during the exception the last
     %% occurance MUST be in the third week.
     try
-        {Y, M, _} = date_of_dow(Y, M, to_dow(DOW), 4)
+        {Y, M, _} = date_of_dow(Y, M, Weekday, fifth)
     catch
         _:_ ->
-            date_of_dow(Y, M, to_dow(DOW), 3)
+            date_of_dow(Y, M, Weekday, fourth)
     end.
 
 %%--------------------------------------------------------------------
@@ -347,15 +355,17 @@ find_last_weekday({Y, M, _}, DOW) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(date_of_dow/4 :: (Year :: non_neg_integer(), Month :: 2..13
-                       ,DOW :: 1..7, Occurance :: 0..4) -> date()).
-date_of_dow(Year, 1, DOW, Occurance) ->
-    date_of_dow(Year - 1, 13, DOW, Occurance);
-date_of_dow(Year, Month, DOW, Occurance) ->
+                       ,Weekday :: 1..7, Ordinal :: 0..4) -> date()).
+date_of_dow(Year, 1, Weekday, Ordinal) ->
+    date_of_dow(Year - 1, 13, Weekday, Ordinal);
+date_of_dow(Year, Month, Weekday, Ordinal) ->
     RefDate = {Year, Month - 1, last_day_of_the_month(Year, Month - 1)},
     RefDays = date_to_gregorian_days(RefDate),
+    DOW = to_dow(Weekday),
+    Occurance = from_ordinal(Ordinal),
     Days = case day_of_the_week(RefDate) of
                DOW ->
-                   RefDays + 7 + (7 * Occurance);
+                   RefDays + 7 + (7 * Occurance );
                RefDOW when DOW < RefDOW ->
                    RefDays + DOW + (7 - RefDOW) + (7 * Occurance);
                RefDOW ->
@@ -500,15 +510,13 @@ daily_recurrence_test() ->
     ?assertEqual({2011, 3, 27}, event_date("daily", 85, undefined, {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 3, 2}, event_date("daily", 85, undefined, {2010, 1, 1}, {2010, 12, 31})),
     ?assertEqual({2011, 8, 25}, event_date("daily", 85, undefined, {2011, 6, 1}, {2011, 6, 1})),
+    %% current date on (interval)
+    ?assertEqual({2011, 1, 9}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 5})),
+    %% current date after (interval)
+    ?assertEqual({2011, 1, 9}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 6})),
     %% shift start date
     ?assertEqual({2011, 2, 5}, event_date("daily", 4, undefined, {2011, 2, 1}, {2011, 2, 3})),
     ?assertEqual({2011, 2, 6}, event_date("daily", 4, undefined, {2011, 2, 2}, {2011, 2, 3})),
-    %% current date before
-    ?assertEqual({2011, 1, 5}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 1})),
-    %% current date on
-    ?assertEqual({2011, 1, 9}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 5})),
-    %% current date after
-    ?assertEqual({2011, 1, 9}, event_date("daily", 4, undefined, {2011, 1, 5}, {2011, 1, 6})),
     %% long span
     ?assertEqual({2011, 1, 2}, event_date("daily", 4, undefined, {1983, 4, 11}, {2011, 1, 1})),
     ?assertEqual({2011, 4, 12}, event_date("daily", 4, undefined, {1983, 4, 11}, {2011, 4, 11})).
@@ -543,6 +551,14 @@ weekly_recurrence_test() ->
     %%  leap year (over)
     ?assertEqual({2008, 3, 1}, event_date("weekly", 1, [saturday], {2008, 1, 1}, {2008, 2, 28})),
     ?assertEqual({2008, 3, 7}, event_date("weekly", 1, [friday], {2008, 1, 1}, {2008, 2, 29})),
+    %% current date on (simple)
+    ?assertEqual({2011, 1, 10}, event_date("weekly", 1, [monday], {2011, 1, 1}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 11}, event_date("weekly", 1, [tuesday], {2011, 1, 1}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 12}, event_date("weekly", 1, [wensday], {2011, 1, 1}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 13}, event_date("weekly", 1, [thursday], {2011, 1, 1}, {2011, 1, 6})),
+    ?assertEqual({2011, 1, 14}, event_date("weekly", 1, [friday], {2011, 1, 1}, {2011, 1, 7})),
+    ?assertEqual({2011, 1, 8}, event_date("weekly", 1, [saturday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 9}, event_date("weekly", 1, [sunday], {2011, 1, 1}, {2011, 1, 2})),
     %% shift start date (no impact)
     ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday], {2008, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 3}, event_date("weekly", 1, [monday], {2009, 1, 1}, {2011, 1, 1})),
@@ -554,7 +570,7 @@ weekly_recurrence_test() ->
     ?assertEqual({2011, 1, 5}, event_date("weekly", 1, [wensday,thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 6}, event_date("weekly", 1, [thursday,friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 7}, event_date("weekly", 1, [friday,saturday], {2011, 1, 1}, {2011, 1, 1})),
-    %% Last DOW of an active week
+    %% last DOW of an active week
     ?assertEqual({2011, 1, 10}, event_date("weekly", 1, [monday,tuesday,wensday,thursday,friday], {2011, 1, 1}, {2011, 1, 7})),
     %% even step (small)
     ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday], {2011, 1, 1}, {2011, 1, 1})),
@@ -597,14 +613,6 @@ weekly_recurrence_test() ->
     %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
     ?assertEqual({2011, 1, 2}, event_date("weekly", 36, [sunday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 9, 11}, event_date("weekly", 36, [sunday], {2011, 1, 1}, {2011, 1, 2})),
-    %% shift start date (past)
-    ?assertEqual({2011, 1, 3}, event_date("weekly", 2, [monday], {2010, 12, 26}, {2011, 1, 1})),
-    ?assertEqual({2011, 1, 4}, event_date("weekly", 2, [tuesday], {2010, 12, 26}, {2011, 1, 1})),
-    ?assertEqual({2011, 1, 5}, event_date("weekly", 2, [wensday], {2010, 12, 26}, {2011, 1, 1})),
-    ?assertEqual({2011, 1, 6}, event_date("weekly", 2, [thursday], {2010, 12, 26}, {2011, 1, 1})),
-    ?assertEqual({2011, 1, 7}, event_date("weekly", 2, [friday], {2010, 12, 26}, {2011, 1, 1})),
-    ?assertEqual({2011, 1, 8}, event_date("weekly", 2, [saturday], {2010, 12, 26}, {2011, 1, 1})),
-    ?assertEqual({2011, 1, 9}, event_date("weekly", 2, [sunday], {2010, 12, 26}, {2011, 1, 1})),
     %% multiple DOWs with step (currently on start)
     ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 2})),
@@ -627,6 +635,22 @@ weekly_recurrence_test() ->
     ?assertEqual({2011, 2, 7}, event_date("weekly", 2, [monday, wensday, friday], {2011, 1, 1}, {2011, 1, 28})),
     %% multiple DOWs over year boundary 
     ?assertEqual({2011, 1, 10}, event_date("weekly", 2, [monday, wensday, friday], {2010, 1, 1}, {2010, 12, 31})),
+    %% current date on (interval)
+    ?assertEqual({2011, 1, 17}, event_date("weekly", 3, [monday], {2011, 1, 1}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 3, [tuesday], {2011, 1, 1}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 19}, event_date("weekly", 3, [wensday], {2011, 1, 1}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 20}, event_date("weekly", 3, [thursday], {2011, 1, 1}, {2011, 1, 6})),
+    ?assertEqual({2011, 1, 21}, event_date("weekly", 3, [friday], {2011, 1, 1}, {2011, 1, 7})),
+    ?assertEqual({2011, 1, 22}, event_date("weekly", 3, [saturday], {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 23}, event_date("weekly", 3, [sunday], {2011, 1, 1}, {2011, 1, 2})),
+    %% shift start date
+    ?assertEqual({2011, 1, 31}, event_date("weekly", 5, [monday], {2004, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 18}, event_date("weekly", 5, [tuesday], {2005, 2, 8}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 2}, event_date("weekly", 5, [wensday], {2006, 3, 15}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 20}, event_date("weekly", 5, [thursday], {2007, 4, 22}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 4}, event_date("weekly", 5, [friday], {2008, 5, 29}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 22}, event_date("weekly", 5, [saturday], {2009, 6, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 2}, event_date("weekly", 5, [sunday], {2010, 7, 8}, {2011, 1, 1})),
     %% long span
     ?assertEqual({2011, 1, 10}, event_date("weekly", 4, [monday], {1983, 4, 11}, {2011, 1, 1})), 
     ?assertEqual({2011, 5, 2}, event_date("weekly", 4, [monday], {1983, 4, 11}, {2011, 4, 11})).    
@@ -809,12 +833,26 @@ monthly_every_recurrence_test() ->
     ?assertEqual({2011, 1, 7}, event_date("monthly", 1, {every, friday}, {2010, 1, 1}, {2010, 12, 31})),
     ?assertEqual({2011, 1, 1}, event_date("monthly", 1, {every, saturday}, {2010, 1, 1}, {2010, 12, 25})),
     ?assertEqual({2011, 1, 2}, event_date("monthly", 1, {every, sunday}, {2010, 1, 1}, {2010, 12, 26})),
-    %%  leap year (into) 
+    %% leap year (into) 
     ?assertEqual({2008, 2, 29}, event_date("monthly", 1, {every, friday}, {2008, 1, 1}, {2008, 2, 28})),
     %% leap year (over)
     ?assertEqual({2008, 3, 1}, event_date("monthly", 1, {every, saturday}, {2008, 1, 1}, {2008, 2, 28})),
-    %% long span (start date has no impact but for consistency)
-    ?assertEqual({2011, 4, 18}, event_date("monthly", 1, {every, monday}, {1983, 4, 11}, {2011, 4, 11})),
+    %% current date on (simple)
+    ?assertEqual({2011, 1, 10}, event_date("monthly", 1, {every, monday}, {2011, 1, 1}, {2011, 1, 3})),
+    ?assertEqual({2011, 1, 18}, event_date("monthly", 1, {every, tuesday}, {2011, 1, 10}, {2011, 1, 11})),
+    ?assertEqual({2011, 1, 26}, event_date("monthly", 1, {every, wensday}, {2011, 1, 17}, {2011, 1, 19})),
+    %% current date after (simple)
+    ?assertEqual({2011, 1, 10}, event_date("monthly", 1, {every, monday}, {2011, 1, 1}, {2011, 1, 5})),
+    ?assertEqual({2011, 1, 18}, event_date("monthly", 1, {every, tuesday}, {2011, 1, 10}, {2011, 1, 14})),
+    ?assertEqual({2011, 1, 26}, event_date("monthly", 1, {every, wensday}, {2011, 1, 17}, {2011, 1, 21})),
+    %% shift start date (no impact)
+    ?assertEqual({2011, 1, 3}, event_date("monthly", 1, {every, monday}, {2004, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 11}, event_date("monthly", 1, {every, tuesday}, {2005, 2, 1}, {2011, 1, 4})),
+    ?assertEqual({2011, 1, 19}, event_date("monthly", 1, {every, wensday}, {2006, 3, 1}, {2011, 1, 12})),
+    ?assertEqual({2011, 1, 27}, event_date("monthly", 1, {every, thursday}, {2007, 4, 1}, {2011, 1, 20})),
+    ?assertEqual({2011, 2, 4}, event_date("monthly", 1, {every, friday}, {2008, 5, 1}, {2011, 1, 28})),
+    ?assertEqual({2011, 1, 8}, event_date("monthly", 1, {every, saturday}, {2009, 6, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 9}, event_date("monthly", 1, {every, sunday}, {2010, 7, 1}, {2011, 1, 2})),
     %% even step (small)
     ?assertEqual({2011, 3, 7}, event_date("monthly", 2, {every, monday}, {2011, 1, 1}, {2011, 1, 31})),
     ?assertEqual({2011, 3, 1}, event_date("monthly", 2, {every, tuesday}, {2011, 1, 1}, {2011, 1, 25})),
@@ -830,7 +868,25 @@ monthly_every_recurrence_test() ->
     ?assertEqual({2011, 9, 1}, event_date("monthly", 3, {every, thursday}, {2011, 6, 1}, {2011, 6, 30})),
     ?assertEqual({2011, 9, 2}, event_date("monthly", 3, {every, friday}, {2011, 6, 1}, {2011, 6, 24})),
     ?assertEqual({2011, 9, 3}, event_date("monthly", 3, {every, saturday}, {2011, 6, 1}, {2011, 6, 25})),
-    ?assertEqual({2011, 9, 4}, event_date("monthly", 3, {every, sunday}, {2011, 6, 1}, {2011, 6, 26})).
+    ?assertEqual({2011, 9, 4}, event_date("monthly", 3, {every, sunday}, {2011, 6, 1}, {2011, 6, 26})),
+    %% current date on (interval)
+    ?assertEqual({2011, 5, 2}, event_date("monthly", 4, {every, monday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 5, 3}, event_date("monthly", 4, {every, tuesday}, {2011, 1, 10}, {2011, 1, 25})),
+    ?assertEqual({2011, 5, 4}, event_date("monthly", 4, {every, wensday}, {2011, 1, 17}, {2011, 1, 26})),
+    %% current date after (interval)
+    ?assertEqual({2011, 5, 2}, event_date("monthly", 4, {every, monday}, {2011, 1, 1}, {2011, 2, 2})),
+    ?assertEqual({2011, 5, 3}, event_date("monthly", 4, {every, tuesday}, {2011, 1, 10}, {2011, 3, 14})),
+    ?assertEqual({2011, 5, 4}, event_date("monthly", 4, {every, wensday}, {2011, 1, 17}, {2011, 3, 21})),
+    %% shift start date
+    ?assertEqual({2011, 2, 7}, event_date("monthly", 5, {every, monday}, {2004, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 5, 3}, event_date("monthly", 5, {every, tuesday}, {2005, 2, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 2}, event_date("monthly", 5, {every, wensday}, {2006, 3, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 6}, event_date("monthly", 5, {every, thursday}, {2007, 4, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 1}, event_date("monthly", 5, {every, friday}, {2008, 5, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 5}, event_date("monthly", 5, {every, saturday}, {2009, 6, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 5, 1}, event_date("monthly", 5, {every, sunday}, {2010, 7, 1}, {2011, 1, 1})),
+    %% long span
+    ?assertEqual({2011, 3, 7}, event_date("monthly", 5, {every, monday}, {1983, 4, 11}, {2011, 1, 1})).
 
 monthly_last_recurrence_test() ->
     %% basic increment 
@@ -881,14 +937,6 @@ monthly_last_recurrence_test() ->
     ?assertEqual({2011, 1, 28}, event_date("monthly", 1, {last, friday}, {2008, 8, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 29}, event_date("monthly", 1, {last, saturday}, {2009, 7, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 30}, event_date("monthly", 1, {last, sunday} , {2010, 6, 1}, {2011, 1, 1})),
-    %% long span
-    ?assertEqual({1983, 4, 25}, event_date("monthly", 1, {last, monday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 26}, event_date("monthly", 1, {last, tuesday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 27}, event_date("monthly", 1, {last, wensday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 28}, event_date("monthly", 1, {last, thursday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 29}, event_date("monthly", 1, {last, friday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 30}, event_date("monthly", 1, {last, saturday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 24}, event_date("monthly", 1, {last, sunday} , {1983, 1, 1}, {1983, 4, 1})),
     %% even step (small) 
     ?assertEqual({2011, 3, 28}, event_date("monthly", 2, {last, monday}, {2011, 1, 1}, {2011, 1, 31})),
     ?assertEqual({2011, 3, 29}, event_date("monthly", 2, {last, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
@@ -928,7 +976,15 @@ monthly_last_recurrence_test() ->
     ?assertEqual({2011, 3, 31}, event_date("monthly", 3, {last, thursday}, {2010, 9, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 2, 25}, event_date("monthly", 3, {last, friday}, {2010, 8, 1}, {2011, 1, 1})),
     ?assertEqual({2011, 1, 29}, event_date("monthly", 3, {last, saturday}, {2010, 7, 1}, {2011, 1, 1})),
-    ?assertEqual({2011, 3, 27}, event_date("monthly", 3, {last, sunday} , {2010, 6, 1}, {2011, 1, 1})).
+    ?assertEqual({2011, 3, 27}, event_date("monthly", 3, {last, sunday} , {2010, 6, 1}, {2011, 1, 1})),
+    %% long span
+    ?assertEqual({2011, 3, 28}, event_date("monthly", 5, {last, monday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 29}, event_date("monthly", 5, {last, tuesday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 30}, event_date("monthly", 5, {last, wensday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 31}, event_date("monthly", 5, {last, thursday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 25}, event_date("monthly", 5, {last, friday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 26}, event_date("monthly", 5, {last, saturday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 27}, event_date("monthly", 5, {last, sunday} , {1983, 4, 11}, {2011, 1, 1})).
 
 monthly_every_ordinal_recurrence_test() ->
     %% basic first
@@ -976,7 +1032,7 @@ monthly_every_ordinal_recurrence_test() ->
     ?assertEqual({2011, 2, 14}, event_date("monthly", 1, {second, monday}, {2011, 1, 1}, {2011, 1, 10})),
     ?assertEqual({2011, 2, 21}, event_date("monthly", 1, {third, monday}, {2011, 1, 1}, {2011, 1, 17})),
     ?assertEqual({2011, 2, 28}, event_date("monthly", 1, {fourth, monday}, {2011, 1, 1}, {2011, 1, 24})),
-%%!!    ?assertEqual({2011, 5, 30}, event_date("monthly", 1, {fifth, monday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 1, {fifth, monday}, {2011, 1, 1}, {2011, 1, 31})),
     %% leap year first
     ?assertEqual({2008, 2, 4}, event_date("monthly", 1, {first, monday}, {2008, 1, 1}, {2008, 2, 1})),
     ?assertEqual({2008, 2, 5}, event_date("monthly", 1, {first, tuesday}, {2008, 1, 1}, {2008, 2, 1})),
@@ -1016,47 +1072,15 @@ monthly_every_ordinal_recurrence_test() ->
     ?assertEqual({2008, 3, 6}, event_date("monthly", 1, {fifth, thursday}, {2008, 1, 1}, {2008, 2, 1})),
     ?assertEqual({2008, 2, 29}, event_date("monthly", 1, {fifth, friday}, {2008, 1, 1}, {2008, 2, 1})),
     ?assertEqual({2008, 3, 1}, event_date("monthly", 1, {fifth, saturday}, {2008, 1, 1}, {2008, 2, 1})),
-    ?assertEqual({2008, 3, 2}, event_date("monthly", 1, {fifth, sunday} , {2008, 1, 1}, {2008, 2, 1})),
-    %% long span first
-    ?assertEqual({1983, 4, 4}, event_date("monthly", 1, {first, monday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 5}, event_date("monthly", 1, {first, tuesday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 6}, event_date("monthly", 1, {first, wensday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 7}, event_date("monthly", 1, {first, thursday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 5, 6}, event_date("monthly", 1, {first, friday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 2}, event_date("monthly", 1, {first, saturday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 3}, event_date("monthly", 1, {first, sunday} , {1983, 1, 1}, {1983, 4, 1})),
-    %% long span second
-    ?assertEqual({1983, 4, 11}, event_date("monthly", 1, {second, monday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 12}, event_date("monthly", 1, {second, tuesday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 13}, event_date("monthly", 1, {second, wensday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 14}, event_date("monthly", 1, {second, thursday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 8}, event_date("monthly", 1, {second, friday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 9}, event_date("monthly", 1, {second, saturday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 10}, event_date("monthly", 1, {second, sunday} , {1983, 1, 1}, {1983, 4, 1})),   
-    %% long span third
-    ?assertEqual({1983, 4, 18}, event_date("monthly", 1, {third, monday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 19}, event_date("monthly", 1, {third, tuesday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 20}, event_date("monthly", 1, {third, wensday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 21}, event_date("monthly", 1, {third, thursday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 15}, event_date("monthly", 1, {third, friday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 16}, event_date("monthly", 1, {third, saturday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 17}, event_date("monthly", 1, {third, sunday} , {1983, 1, 1}, {1983, 4, 1})),   
-    %% long span fourth
-    ?assertEqual({1983, 4, 25}, event_date("monthly", 1, {fourth, monday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 26}, event_date("monthly", 1, {fourth, tuesday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 27}, event_date("monthly", 1, {fourth, wensday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 28}, event_date("monthly", 1, {fourth, thursday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 22}, event_date("monthly", 1, {fourth, friday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 23}, event_date("monthly", 1, {fourth, saturday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 24}, event_date("monthly", 1, {fourth, sunday} , {1983, 1, 1}, {1983, 4, 1})),
-    %% long span fifth
-    ?assertEqual({1983, 5, 2}, event_date("monthly", 1, {fifth, monday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 5, 3}, event_date("monthly", 1, {fifth, tuesday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 5, 4}, event_date("monthly", 1, {fifth, wensday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 5, 5}, event_date("monthly", 1, {fifth, thursday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 29}, event_date("monthly", 1, {fifth, friday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 4, 30}, event_date("monthly", 1, {fifth, saturday}, {1983, 1, 1}, {1983, 4, 1})),
-    ?assertEqual({1983, 5, 1}, event_date("monthly", 1, {fifth, sunday} , {1983, 1, 1}, {1983, 4, 1})),    
+    ?assertEqual({2008, 3, 2}, event_date("monthly", 1, {fifth, sunday} , {2008, 1, 1}, {2008, 2, 1})),    
+    %% shift start date (no impact)
+    ?assertEqual({2011, 1, 3}, event_date("monthly", 1, {first, monday}, {2004, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 11}, event_date("monthly", 1, {second, tuesday}, {2005, 2, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 19}, event_date("monthly", 1, {third, wensday}, {2006, 3, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 27}, event_date("monthly", 1, {fourth, thursday}, {2007, 4, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 4}, event_date("monthly", 1, {fifth, friday}, {2008, 5, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 5}, event_date("monthly", 1, {first, saturday}, {2009, 6, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 9}, event_date("monthly", 1, {second, sunday} , {2010, 7, 1}, {2011, 1, 1})),
     %% even step first (small)
     ?assertEqual({2011, 3, 7}, event_date("monthly", 2, {first, monday}, {2011, 1, 1}, {2011, 1, 31})),
     ?assertEqual({2011, 3, 1}, event_date("monthly", 2, {first, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
@@ -1090,13 +1114,69 @@ monthly_every_ordinal_recurrence_test() ->
     ?assertEqual({2011, 3, 26}, event_date("monthly", 2, {fourth, saturday}, {2011, 1, 1}, {2011, 1, 31})),
     ?assertEqual({2011, 3, 27}, event_date("monthly", 2, {fourth, sunday} , {2011, 1, 1}, {2011, 1, 31})),
     %% even step fifth (small)
-%%!!    ?assertEqual({2011, 3, 28}, event_date("monthly", 2, {fifth, monday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 2, {fifth, monday}, {2011, 1, 1}, {2011, 1, 31})),
     ?assertEqual({2011, 3, 29}, event_date("monthly", 2, {fifth, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
     ?assertEqual({2011, 3, 30}, event_date("monthly", 2, {fifth, wensday}, {2011, 1, 1}, {2011, 1, 31})),
-    ?assertEqual({2011, 3, 31}, event_date("monthly", 2, {fifth, thursday}, {2011, 1, 1}, {2011, 1, 31})).
-%%!!    ?assertEqual({2011, 1, 4}, event_date("monthly", 2, {fifth, friday}, {2011, 1, 1}, {2011, 1, 31})),
-%%!!    ?assertEqual({2011, 1, 29}, event_date("monthly", 2, {fifth, saturday}, {2011, 1, 1}, {2011, 1, 31})),
-%%!!    ?assertEqual({2011, 1, 30}, event_date("monthly", 2, {fifth, sunday} , {2011, 1, 1}, {2011, 1, 31})).
+    ?assertEqual({2011, 3, 31}, event_date("monthly", 2, {fifth, thursday}, {2011, 1, 1}, {2011, 1, 31})),    
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 2, {fifth, friday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 2, {fifth, saturday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 2, {fifth, sunday} , {2011, 1, 1}, {2011, 1, 31})),
+    %% odd step first (small)
+    ?assertEqual({2011, 4, 4}, event_date("monthly", 3, {first, monday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 5}, event_date("monthly", 3, {first, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 6}, event_date("monthly", 3, {first, wensday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 7}, event_date("monthly", 3, {first, thursday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 1}, event_date("monthly", 3, {first, friday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 2}, event_date("monthly", 3, {first, saturday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 3}, event_date("monthly", 3, {first, sunday} , {2011, 1, 1}, {2011, 1, 31})),
+    %% odd step second (small)
+    ?assertEqual({2011, 4, 11}, event_date("monthly", 3, {second, monday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 12}, event_date("monthly", 3, {second, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 13}, event_date("monthly", 3, {second, wensday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 14}, event_date("monthly", 3, {second, thursday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 8}, event_date("monthly", 3, {second, friday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 9}, event_date("monthly", 3, {second, saturday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 10}, event_date("monthly", 3, {second, sunday} , {2011, 1, 1}, {2011, 1, 31})),   
+    %% odd step third (small)
+    ?assertEqual({2011, 4, 18}, event_date("monthly", 3, {third, monday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 19}, event_date("monthly", 3, {third, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 20}, event_date("monthly", 3, {third, wensday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 21}, event_date("monthly", 3, {third, thursday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 15}, event_date("monthly", 3, {third, friday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 16}, event_date("monthly", 3, {third, saturday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 17}, event_date("monthly", 3, {third, sunday} , {2011, 1, 1}, {2011, 1, 31})),   
+    %% odd step fourth (small)
+    ?assertEqual({2011, 4, 25}, event_date("monthly", 3, {fourth, monday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 26}, event_date("monthly", 3, {fourth, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 27}, event_date("monthly", 3, {fourth, wensday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 28}, event_date("monthly", 3, {fourth, thursday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 22}, event_date("monthly", 3, {fourth, friday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 23}, event_date("monthly", 3, {fourth, saturday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 24}, event_date("monthly", 3, {fourth, sunday} , {2011, 1, 1}, {2011, 1, 31})),
+    %% odd step fifth (small)
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 3, {fifth, monday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 3, {fifth, tuesday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 3, {fifth, wensday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 3, {fifth, thursday}, {2011, 1, 1}, {2011, 1, 31})),    
+    ?assertEqual({2011, 4, 29}, event_date("monthly", 3, {fifth, friday}, {2011, 1, 1}, {2011, 1, 31})),
+    ?assertEqual({2011, 4, 30}, event_date("monthly", 3, {fifth, saturday}, {2011, 1, 1}, {2011, 1, 31})),
+%%!!    ?assertEqual({2011, ?, ??}, event_date("monthly", 3, {fifth, sunday} , {2011, 1, 1}, {2011, 1, 31})),
+    %% shift start date
+    ?assertEqual({2011, 2, 7}, event_date("monthly", 5, {first, monday}, {2004, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 5, 10}, event_date("monthly", 5, {second, tuesday}, {2005, 2, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 16}, event_date("monthly", 5, {third, wensday}, {2006, 3, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 1, 27}, event_date("monthly", 5, {fourth, thursday}, {2007, 4, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 29}, event_date("monthly", 5, {fifth, friday}, {2008, 5, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 2, 5}, event_date("monthly", 5, {first, saturday}, {2009, 6, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 5, 8}, event_date("monthly", 5, {second, sunday} , {2010, 7, 1}, {2011, 1, 1})),
+    %% long span
+    ?assertEqual({2011, 3, 28}, event_date("monthly", 5, {fourth, monday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 29}, event_date("monthly", 5, {fifth, tuesday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 2}, event_date("monthly", 5, {first, wensday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 10}, event_date("monthly", 5, {second, thursday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 18}, event_date("monthly", 5, {third, friday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 26}, event_date("monthly", 5, {fourth, saturday}, {1983, 4, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 3, 6}, event_date("monthly", 5, {first, sunday} , {1983, 4, 11}, {2011, 1, 1})).
 
 monthly_date_recurrence_test() ->
     %% basic increment
@@ -1106,6 +1186,8 @@ monthly_date_recurrence_test() ->
     lists:foreach(fun(D) ->                          
                           ?assertEqual({2011, 6, D + 1}, event_date("monthly", 1, [D + 1], {2011, 6, 1}, {2011, 6, D}))
                   end, lists:seq(1, 29)),
+    %% same day, before
+    ?assertEqual({2011, 3, 25}, event_date("monthly", 1, [25], {2011, 1, 1}, {2011, 3, 24})),
     %% increment over month boundary   
     ?assertEqual({2011, 2, 1}, event_date("monthly", 1, [1], {2011, 1, 1}, {2011, 1, 31})),
     ?assertEqual({2011, 7, 1}, event_date("monthly", 1, [1], {2011, 6, 1}, {2011, 6, 30})),
@@ -1175,5 +1257,141 @@ monthly_date_recurrence_test() ->
     ?assertEqual({2011, 2, 2}, event_date("monthly", 3, [2], {2010, 8, 4}, {2011, 1, 1})),
     %% long span
     ?assertEqual({2011, 4, 11}, event_date("monthly", 4, [11], {1983, 4, 11}, {2011, 1, 1})).
+
+yearly_date_recurrence_test() ->
+    %% basic increment
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2011, 1, 1}, {2011, 2, 1})),
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2011, 1, 1}, {2011, 3, 1})),
+    %% same month, before
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2011, 1, 1}, {2011, 4, 1})),   
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2011, 1, 1}, {2011, 4, 10})),
+    %% increment over year boundary
+    ?assertEqual({2012, 4, 11}, event_date("yearly", 1, {4, 11}, {2011, 1, 1}, {2011, 4, 11})),    
+    %% leap year (into)
+    ?assertEqual({2008, 2, 29}, event_date("yearly", 1, {2, 29}, {2008, 1, 1}, {2008, 2, 28})),
+    %% leap year (over)
+    ?assertEqual({2009, 2, 29}, event_date("yearly", 1, {2, 29}, {2008, 1, 1}, {2008, 2, 29})),
+    %% shift start date (no impact)
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2008, 10, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2009, 11, 11}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {4, 11}, {2010, 12, 11}, {2011, 1, 1})),
+    %% even step (small)
+    ?assertEqual({2013, 4, 11}, event_date("yearly", 2, {4, 11}, {2011, 1, 1}, {2011, 4, 11})),
+    ?assertEqual({2015, 4, 11}, event_date("yearly", 2, {4, 11}, {2011, 1, 1}, {2014, 4, 11})),
+    %% odd step (small)
+    ?assertEqual({2014, 4, 11}, event_date("yearly", 3, {4, 11}, {2011, 1, 1}, {2011, 4, 11})),
+    ?assertEqual({2017, 4, 11}, event_date("yearly", 3, {4, 11}, {2011, 1, 1}, {2016, 4, 11})),
+    %% shift start dates
+    ?assertEqual({2013, 4, 11}, event_date("yearly", 5, {4, 11}, {2008, 10, 11}, {2011, 1, 1})),
+    ?assertEqual({2014, 4, 11}, event_date("yearly", 5, {4, 11}, {2009, 11, 11}, {2011, 1, 1})),
+    ?assertEqual({2015, 4, 11}, event_date("yearly", 5, {4, 11}, {2010, 12, 11}, {2011, 1, 1})),
+    %% long span
+    ?assertEqual({2013, 4, 11}, event_date("yearly", 5, {4, 11}, {1983, 4, 11}, {2011, 1, 1})). 
+
+yearly_every_recurrence_test() ->
+    ok.
+
+yearly_last_recurrence_test() ->
+    ok.
+
+yearly_every_ordinal_recurrence_test() ->
+    %% basic first
+    ?assertEqual({2011, 4, 4}, event_date("yearly", 1, {first, monday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 5}, event_date("yearly", 1, {first, tuesday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 6}, event_date("yearly", 1, {first, wensday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 7}, event_date("yearly", 1, {first, thursday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 1}, event_date("yearly", 1, {first, friday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 2}, event_date("yearly", 1, {first, saturday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 3}, event_date("yearly", 1, {first, sunday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    %% basic second
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {second, monday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 12}, event_date("yearly", 1, {second, tuesday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 13}, event_date("yearly", 1, {second, wensday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 14}, event_date("yearly", 1, {second, thursday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 8}, event_date("yearly", 1, {second, friday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 9}, event_date("yearly", 1, {second, saturday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 10}, event_date("yearly", 1, {second, sunday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    %% basic third
+    ?assertEqual({2011, 4, 18}, event_date("yearly", 1, {third, monday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 19}, event_date("yearly", 1, {third, tuesday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 20}, event_date("yearly", 1, {third, wensday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 21}, event_date("yearly", 1, {third, thursday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 15}, event_date("yearly", 1, {third, friday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 16}, event_date("yearly", 1, {third, saturday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 17}, event_date("yearly", 1, {third, sunday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    %% basic fourth
+    ?assertEqual({2011, 4, 25}, event_date("yearly", 1, {fourth, monday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 26}, event_date("yearly", 1, {fourth, tuesday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 27}, event_date("yearly", 1, {fourth, wensday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 28}, event_date("yearly", 1, {fourth, thursday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 22}, event_date("yearly", 1, {fourth, friday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 23}, event_date("yearly", 1, {fourth, saturday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 24}, event_date("yearly", 1, {fourth, sunday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    %% basic fifth
+    ?assertEqual({2012, 4, 30}, event_date("yearly", 1, {fifth, monday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+%%!!    ?assertEqual({2013, 4, 30}, event_date("yearly", 1, {fifth, tuesday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+%%!!    ?assertEqual({2014, 4, 30}, event_date("yearly", 1, {fifth, wensday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+%%!!    ?assertEqual({2015, 4, 28}, event_date("yearly", 1, {fifth, thursday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 29}, event_date("yearly", 1, {fifth, friday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 30}, event_date("yearly", 1, {fifth, saturday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+%%!!    ?assertEqual({2017, 4, 30}, event_date("yearly", 1, {fifth, sunday, 4}, {2011, 1, 1}, {2011, 1, 1})),
+    %% same month, before 
+    ?assertEqual({2011, 4, 4}, event_date("yearly", 1, {first, monday, 4}, {2011, 1, 1}, {2011, 4, 1})),
+    ?assertEqual({2011, 4, 11}, event_date("yearly", 1, {second, monday, 4}, {2011, 1, 1}, {2011, 4, 10})),
+    %% current date on (simple)
+    ?assertEqual({2011, 4, 4}, event_date("yearly", 1, {first, monday, 4}, {2011, 1, 1}, {2011, 3, 11})),
+    ?assertEqual({2012, 4, 2}, event_date("yearly", 1, {first, monday, 4}, {2011, 1, 1}, {2011, 4, 11})),
+    %% current date after (simple)
+    ?assertEqual({2012, 4, 2}, event_date("yearly", 1, {first, monday, 4}, {2011, 1, 1}, {2011, 6, 21})),
+    %% shift start dates (no impact)
+    ?assertEqual({2011, 4, 4}, event_date("yearly", 1, {first, monday, 4}, {2004, 1, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 12}, event_date("yearly", 1, {second, tuesday, 4}, {2005, 2, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 20}, event_date("yearly", 1, {third, wensday, 4}, {2006, 3, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 28}, event_date("yearly", 1, {fourth, thursday, 4}, {2007, 4, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 29}, event_date("yearly", 1, {fifth, friday, 4}, {2008, 5, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 2}, event_date("yearly", 1, {first, saturday, 4}, {2009, 6, 1}, {2011, 1, 1})),
+    ?assertEqual({2011, 4, 10}, event_date("yearly", 1, {second, sunday, 4}, {2010, 7, 1}, {2011, 1, 1})),
+    %% even step first (small)
+    ?assertEqual({2013, 4, 1}, event_date("yearly", 2, {first, monday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 2}, event_date("yearly", 2, {first, tuesday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 3}, event_date("yearly", 2, {first, wensday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 4}, event_date("yearly", 2, {first, thursday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 5}, event_date("yearly", 2, {first, friday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 6}, event_date("yearly", 2, {first, saturday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 7}, event_date("yearly", 2, {first, sunday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    %% even step second (small)
+    ?assertEqual({2013, 4, 8}, event_date("yearly", 2, {second, monday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 9}, event_date("yearly", 2, {second, tuesday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 10}, event_date("yearly", 2, {second, wensday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 11}, event_date("yearly", 2, {second, thursday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 12}, event_date("yearly", 2, {second, friday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 13}, event_date("yearly", 2, {second, saturday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 14}, event_date("yearly", 2, {second, sunday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    %% even step third (small)
+    ?assertEqual({2013, 4, 15}, event_date("yearly", 2, {third, monday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 16}, event_date("yearly", 2, {third, tuesday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 17}, event_date("yearly", 2, {third, wensday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 18}, event_date("yearly", 2, {third, thursday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 19}, event_date("yearly", 2, {third, friday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 20}, event_date("yearly", 2, {third, saturday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 21}, event_date("yearly", 2, {third, sunday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    %% even step fourth (small)
+    ?assertEqual({2013, 4, 22}, event_date("yearly", 2, {fourth, monday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 23}, event_date("yearly", 2, {fourth, tuesday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 24}, event_date("yearly", 2, {fourth, wensday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 25}, event_date("yearly", 2, {fourth, thursday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 26}, event_date("yearly", 2, {fourth, friday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 27}, event_date("yearly", 2, {fourth, saturday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 28}, event_date("yearly", 2, {fourth, sunday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    %% basic fifth (small)
+    ?assertEqual({2013, 4, 29}, event_date("yearly", 2, {fifth, monday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ?assertEqual({2013, 4, 30}, event_date("yearly", 2, {fifth, tuesday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+%%!!    ?assertEqual({2014, 4, 30}, event_date("yearly", 2, {fifth, wensday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+%%!!    ?assertEqual({2015, 4, 28}, event_date("yearly", 2, {fifth, thursday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+%%!!    ?assertEqual({2013, 4, 29}, event_date("yearly", 2, {fifth, friday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+%%!!    ?assertEqual({2013, 4, 30}, event_date("yearly", 2, {fifth, saturday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+%%!!    ?assertEqual({2017, 4, 30}, event_date("yearly", 2, {fifth, sunday, 4}, {2011, 1, 1}, {2011, 5, 1})),
+    ok. 
 
 -endif.
