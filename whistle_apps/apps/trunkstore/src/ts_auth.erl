@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Respond to Authentication requests
 %%% @end
-%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ts_auth).
 
@@ -12,7 +12,7 @@
 -export([handle_req/1]).
 
 -define(APP_NAME, <<"ts_responder.auth">>).
--define(APP_VERSION, <<"0.3.4">>).
+-define(APP_VERSION, <<"0.3.6">>).
 
 -include("ts.hrl").
 

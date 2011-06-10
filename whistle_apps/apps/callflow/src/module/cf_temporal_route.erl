@@ -24,7 +24,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(continue, binary())).
-handle(_, #cf_call{cf_pid=CFPid}=Call) ->
+handle(_, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
     CFPid ! find_temporal_routes(Call).
 
 find_temporal_routes(#cf_call{account_db=Db}) ->

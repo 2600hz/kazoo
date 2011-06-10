@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Maintain list of carriers and match flags to carriers, generating routes
 %%% @end
-%%% Created : 22 Sep 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 22 Sep 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ts_carrier).
 

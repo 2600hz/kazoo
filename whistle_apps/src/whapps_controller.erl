@@ -18,15 +18,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -define(SERVER, ?MODULE). 
 -define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 -define(STARTUP_FILE, [code:lib_dir(whistle_apps, priv), "/startup.config"]).
 
+-include_lib("whistle/include/wh_log.hrl").
+
 -record(state, {
-	  amqp_host = "" :: string()
-	 ,apps = [] :: list()
+          apps = [] :: list()
 	 }).
 
 %%%===================================================================
@@ -54,10 +53,10 @@ restart_app(App) when is_atom(App) ->
     gen_server:cast(?MODULE, {restart_app, App}).
 
 set_amqp_host(H) ->
-    gen_server:cast(?MODULE, {set_amqp_host, whistle_util:to_list(H)}).
+    amqp_manager:set_host(H).
 
 get_amqp_host() ->
-    gen_server:call(?MODULE, get_amqp_host).
+    amqp_manager:get_host().
 
 set_couch_host(H) ->
     set_couch_host(H, "", "").
@@ -83,6 +82,7 @@ running_apps() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ?LOG_SYS("starting whapps controller"),    
     {ok, #state{}, 0}. % causes a timeout immediately, which we can use to do initialization things for state
 
 %%--------------------------------------------------------------------
@@ -99,13 +99,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(get_amqp_host, _, #state{amqp_host=AmqpHost}=S) ->
-    {reply, AmqpHost, S};
 handle_call(running_apps, _, #state{apps=As}=S) ->
     {reply, As, S};
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,14 +125,6 @@ handle_cast({restart_app, App}, #state{apps=As}=State) ->
     whistle_util:reload_app(App),
     add_app(App, As1),
     {noreply, State#state{apps=As1}};
-handle_cast({set_amqp_host, H}, #state{apps=As}=State) ->
-    lists:foreach(fun(A) ->
-			  case erlang:function_exported(A, set_amqp_host, 1) of
-			      true -> A:set_amqp_host(H);
-			      false -> ok
-			  end
-		  end, As),
-    {noreply, State#state{amqp_host=H}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -151,20 +140,17 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
     spawn(fun() ->                  
-                  logger:format_log(info, "Consult ~p got ~p", [?STARTUP_FILE, file:consult(?STARTUP_FILE)]),
+                  ?LOG_SYS("loaded whistle controller configuration from ~s", [?STARTUP_FILE]),                  
                   {ok, Startup} = file:consult(?STARTUP_FILE),
                   WhApps = props:get_value(whapps, Startup, []),
                   lists:foreach(fun(WhApp) -> start_app(WhApp) end, WhApps)
           end),
     {noreply, State};
 handle_info({add_successful_app, undefined}, State) ->
-    format_log(info, "WHAPPS(~p): Failed to add app~n", [self()]),
     {noreply, State};
 handle_info({add_successful_app, A}, State) ->
-    format_log(info, "WHAPPS(~p): Adding app to ~p~n", [self(), A]),
     {noreply, State#state{apps=[A | State#state.apps]}};
 handle_info(_Info, State) ->
-    format_log(info, "WHAPPS(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -179,8 +165,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{apps=As}) ->
-    format_log(info, "WHAPPS(~p): Terminating(~p)~n", [self(), _Reason]),
     lists:foreach(fun(App) -> spawn(fun() -> rm_app(App, []) end) end, As),
+    ?LOG_SYS("whapps controller ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -201,12 +187,12 @@ code_change(_OldVsn, State, _Extra) ->
 add_app(App, As) ->
     Srv = self(),
     spawn(fun() ->
-		  format_log(info, "APPS(~p): Starting app ~p if not in ~p~n", [self(), App, As]),
+                  ?LOG_SYS("starting whapp ~s", [App]),
 		  A = case (not lists:member(App, As)) andalso whistle_apps_sup:start_app(App) of
-			  false -> undefined;
-			  {ok, _} -> _ = application:start(App), App;
+			  false -> ?LOG_SYS("whapp ~s is already running", [App]), undefined;
+			  {ok, _} -> _ = application:start(App),  App;
 			  {ok, _, _} -> _ = application:start(App), App;
-			  _E -> format_log(error, "WHAPPS_CTL(~p): ~p~n", [self(), _E]), undefined
+			  _E -> ?LOG_SYS("failed to start whapp ~s ~p", [App, _E]), undefined
 		      end,
 		  Srv ! {add_successful_app, A}
 	  end).
@@ -214,7 +200,7 @@ add_app(App, As) ->
 
 -spec(rm_app/2 :: (App :: atom(), As :: list(atom())) -> list()).
 rm_app(App, As) ->
-    format_log(info, "APPS(~p): Stopping app ~p if in ~p~n", [self(), App, As]),
-    format_log(info, "APPS(~p): Stopping app_sup: ~p~n", [self(), whistle_apps_sup:stop_app(App)]),
-    format_log(info, "APPS(~p): Stopping application: ~p~n", [self(), application:stop(App)]),
+    ?LOG_SYS("stopping whapp ~s", [App]),
+    whistle_apps_sup:stop_app(App),
+    application:stop(App),
     lists:delete(App, As).

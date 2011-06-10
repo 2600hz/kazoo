@@ -16,14 +16,16 @@
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
--spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), ControlPID :: pid()) -> ok | timeout | tuple(error, string())).
+-spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), ControlPID :: pid()) -> ok | timeout | tuple(error, invalid_callid | failed)).
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
 	true ->
 	    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
 	    case get_fs_app(Node, UUID, JObj, AppName) of
-		{error, _Msg}=Err -> Err;
+		{error, _Msg} ->
+		    ?LOG("Error getting FS app for ~s: ~p", [AppName, _Msg]),
+		    {error, failed};
                 {return, Result} -> Result;
 		{App, noop} ->
                     ControlPID ! {execute_complete, UUID, App};
@@ -31,8 +33,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     send_cmd(Node, UUID, App, AppData)
 	    end;
 	false ->
-	    logger:format_log(error, "CONTROL(~p): Cmd Not for us(~p) but for ~p~n", [self(), UUID, DestID]),
-	    {error, "Command not for this node"}
+	    ?LOG("Command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
+	    {error, invalid_callid}
     end.
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
@@ -95,9 +97,9 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
 	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
 		{error, not_local} ->
-		    logger:format_log(error, "CONTROL(~p): Failed to find ~p for storing~n~p~n", [self(), MediaName, JObj]);
+		    ?LOG("Failed to find media ~s for storing", [MediaName]);
 		{ok, Media} ->
-		    logger:format_log(info, "CONTROL(~p): Streaming media ~p~n", [self(), Media]),
+		    ?LOG("Streaming media ~s", [MediaName]),
 		    case filelib:is_regular(Media) andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
 			<<"stream">> ->
 			    %% stream file over AMQP
@@ -105,22 +107,25 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 				       ,{<<"Media-Name">>, MediaName}
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
+			    ?LOG("Stream ~s via AMQP", [MediaName]),
 			    stream_over_amqp(Media, JObj, Headers),
 			    {<<"store">>, noop};
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
+			    ?LOG("Stream ~s via HTTP PUT", [MediaName]),
 			    stream_over_http(Media, Verb, JObj),
 			    {<<"store">>, noop};
 			<<"post">>=Verb ->
-			    %% stream file over HTTP PUSH
+			    %% stream file over HTTP POST
+			    ?LOG("Stream ~s via HTTP POST", [MediaName]),
 			    stream_over_http(Media, Verb, JObj),
 			    {<<"store">>, noop};
 			false ->
-			    logger:format_log(error, "CONTROL(~p): File ~p has gone missing!~n", [self(), Media]),
+			    ?LOG("File ~s has gone missing!", [Media]),
 			    {return, error};
 			_Method ->
 			    %% unhandled method
-			    logger:format_log(error, "CONTROL(~p): Unhandled stream method ~p~n", [self(), _Method]),
+			    ?LOG("Unhandled stream method ~s", [_Method]),
 			    {return, error}
 		    end
 	    end
@@ -166,7 +171,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
 	    Method = wh_json:get_value(<<"Method">>, JObj),
 	    Txt = wh_json:get_value(<<"Say-Text">>, JObj),
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
-            logger:format_log(info, "BUILT COMMAND: conference ~p", [Arg]),
+	    ?LOG("Say command: ~s", [Arg]),
 	    {App, Arg}
     end;
 get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
@@ -248,7 +253,7 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
 	    {App, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
-    logger:format_log(error, "CONTROL(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
+    ?LOG("Unknown Application ~s", [_App]),
     {error, "Application unknown"}.
 
 %%%===================================================================
@@ -257,7 +262,9 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% send the SendMsg proplist to the freeswitch node
 -spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
 send_cmd(Node, UUID, AppName, Args) ->
-    logger:format_log(info, "CONTROL(~p): SendMsg -> Node: ~p UUID: ~p App: ~p Args: ~p~n", [self(), Node, UUID, whistle_util:to_list(AppName), whistle_util:to_list(Args)]),
+    ?LOG("SendMsg: Node: ~p", [Node]),
+    ?LOG("SendMsg: App: ~s", [AppName]),
+    ?LOG("SendMsg: Args: ~s", [Args]),
     freeswitch:sendmsg(Node, UUID, [
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", whistle_util:to_list(AppName)}
@@ -307,7 +314,7 @@ stream_over_amqp(File, JObj, Headers) ->
 %% get a chunk of the file and send it in an AMQP message to the DestQ
 -spec(stream_over_amqp/5 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer()) -> no_return()).
 stream_over_amqp(DestQ, F, State, Headers, Seq) ->
-    logger:format_log(info, "CONTROL(~p): Streaming via AMQP to ~p~n", [self(), DestQ]),
+    ?LOG("Streaming via AMQP to ~s", [DestQ]),
     case F(State) of
 	{ok, Data, State1} ->
 	    %% send msg
@@ -329,7 +336,7 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 -spec(stream_over_http/3 :: (File :: binary(), Verb :: binary(), JObj :: proplist()) -> no_return()).
 stream_over_http(File, Verb, JObj) ->
     Url = whistle_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
-    logger:format_log(info, "CONTROL(~p): Streaming via HTTP(~p) to ~p~n", [self(), Verb, Url]),
+    ?LOG("Streaming via HTTP(~s) to ~s", [Verb, Url]),
     {struct, AddHeaders} = wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT),
     Headers = [{"Content-Length", filelib:file_size(File)}
 	       | [ {whistle_util:to_list(K), V} || {K,V} <- AddHeaders] ],
@@ -345,15 +352,15 @@ stream_over_http(File, Verb, JObj) ->
 										 ]}
 								   ,JObj)) of
 		{ok, Payload} ->
-		    logger:format_log(info, "CONTROL(~p): ibrowse OKed with ~p publishing to ~p: ~s~n", [self(), StatusCode, AppQ, Payload]),
+		    ?LOG("ibrowse OKed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
 		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
 		{error, Msg} ->
-		    logger:format_log(error, "CONTROL(~p): store_http_resp error: ~p~n", [self(), Msg])
+		    ?LOG("Store via HTTP ~s errored: ~p", [Verb, Msg])
 	    end;
 	{error, Error} ->
-	    logger:format_log(error, "CONTROL(~p): Ibrowse error: ~p~n", [self(), Error]);
+	    ?LOG("ibrowse error: ~p", [Error]);
 	{ibrowse_req_id, ReqId} ->
-	    logger:format_log(error, "CONTROL(~p): Ibrowse_req_id: ~p~n", [self(), ReqId])
+	    ?LOG("ibrowse req id: ~p", [ReqId])
     end.
 
 -spec(stream_file/1 :: ({undefined | io_device(), binary()}) -> {ok, list(), tuple()} | eof).

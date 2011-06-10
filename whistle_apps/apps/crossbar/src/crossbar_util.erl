@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011 VoIP INC
 %%% @doc
 %%% 
 %%% @end
@@ -199,13 +199,13 @@ binding_heartbeat(BPid) ->
     spawn(fun() ->
 		  Ref = erlang:monitor(process, PPid),
 		  {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
-		  receive
-		      {'DOWN', Ref, process, _, normal} ->
-			  ok;
-		      {'DOWN', Ref, process, _, Reason} ->
+		  _ = receive
+			  {'DOWN', Ref, process, _, normal} ->
+			      ok;
+			  {'DOWN', Ref, process, _, Reason} ->
 			  BPid ! {binding_error, Reason};
-		      _ -> ok
-		  after 10000 -> ok
-		  end,
+			  _ -> ok
+		      after 10000 -> ok
+		      end,
 		  timer:cancel(Tref)
 	  end).

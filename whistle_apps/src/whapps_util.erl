@@ -14,6 +14,7 @@
 -export([get_account_by_realm/1]).
 
 -include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(REPLICATE_ENCODING, encoded).
 -define(AGG_DB, <<"accounts">>).
@@ -95,9 +96,8 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                     ],
     couch_mgr:db_create(TargetDb),
     lists:foreach(fun(SourceDb) when TargetDb =/= SourceDb ->
-                          logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
                           R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
-			  logger:format_log(info, "DB REPLICATE: ~p~n", [R]);
+                          ?LOG_SYS("replicate ~s to ~s using filter ~s returned ~s", [SourceDb, TargetDb, FilterDoc, element(1, R)]);
 		     (_) -> ok
                   end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
 
@@ -115,7 +115,7 @@ replicate_from_account(SourceDb, TargetDb, FilterDoc) when SourceDb =/= TargetDb
                      ,{<<"filter">>, FilterDoc}
                     ],
     couch_mgr:db_create(TargetDb),
-    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
+    ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate);
 replicate_from_account(_,_,_) -> {error, matching_dbs}.
 

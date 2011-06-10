@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Manage the account documents and provide specific API access to
 %%% their contents for Trunkstore components (ts_route, etc).
@@ -529,11 +529,11 @@ update_from_couch(AcctId, WDB, RDB) ->
     %% So 5->7 in account, started day with 5, credit 2 trunks
     %%    7->5 in account, started day with 7, debit 2 trunks
     %% same with credit
-    case (Trunks - T0) of
-	T when T < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, T + T0}]));
-	T when T =:= 0 -> ok;
-	T -> couch_mgr:save_doc(WDB, credit_doc(AcctId, 0, T + T0, []))
-    end,
+    _ = case (Trunks - T0) of
+	    T when T < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, T + T0}]));
+	    T when T =:= 0 -> ok;
+	    T -> couch_mgr:save_doc(WDB, credit_doc(AcctId, 0, T + T0, []))
+	end,
 
     case (Balance - C0) of
 	C when C < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, C0 + C}]));
@@ -563,7 +563,7 @@ load_account(AcctId, DB, Srv) ->
 		    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
 		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0))),
 		    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
-		    couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
+		    _ = couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
 		    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
 		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5)
 	    end
@@ -586,19 +586,27 @@ update_views(DB) ->
 		  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
-
+-spec(is_call_active/1 :: (CallID :: binary()) -> boolean() | error).
 is_call_active(CallID) ->
-    Q = amqp_util:new_targeted_queue(),
-    amqp_util:bind_q_to_targeted(Q),
+    try
+	true = is_binary(Q = amqp_util:new_targeted_queue()),
+	_ = amqp_util:bind_q_to_targeted(Q),
 
-    Req = [{<<"Call-ID">>, CallID}
-	   | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
+	Req = [{<<"Call-ID">>, CallID}
+	       | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
 
-    {ok, JSON} = whistle_api:call_status_req(Req),
-    amqp_util:callevt_publish(CallID, JSON, status_req),
+	{ok, JSON} = whistle_api:call_status_req(Req),
+	amqp_util:callevt_publish(CallID, JSON, status_req),
 
-    is_call_active_loop().
+	is_call_active_loop()
+    catch
+	Type:Reason ->
+	    ?LOG(CallID, "Is call active exception: ~s:~w", [Type, Reason]),
+	    ?LOG(CallID, "Stacktrace: ~w", [erlang:get_stacktrace()]),
+	    error
+    end.
 
+-spec(is_call_active_loop/0 :: () -> boolean()).
 is_call_active_loop() ->
     receive
 	{_, #amqp_msg{payload = Payload}} ->

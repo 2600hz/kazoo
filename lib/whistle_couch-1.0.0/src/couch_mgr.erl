@@ -399,8 +399,8 @@ save_doc(DbName, Doc) ->
 
 %% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
 %% any other error is returned
--spec(ensure_saved/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, json_object()) | tuple(erro, atom())).
--spec(ensure_saved/3 :: (DbName :: binary() | #db{}, Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(erro, atom())).
+-spec(ensure_saved/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
+-spec(ensure_saved/3 :: (DbName :: binary() | #db{}, Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
 ensure_saved(DbName, Doc, Opts) when is_binary(DbName) ->
@@ -441,7 +441,7 @@ save_docs(DbName, Docs, Opts) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, term()) | tuple(error, atom())).
+-spec(del_doc/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, json_object()) | tuple(error, atom())).
 del_doc(DbName, Doc) ->
     case get_db(DbName) of
         {error, _Error} -> {error, db_not_reachable};

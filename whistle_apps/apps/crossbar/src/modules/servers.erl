@@ -339,7 +339,7 @@ create_server(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             JObj1=wh_json:set_value(<<"pvt_type">>, <<"server">>, JObj),
             JObj2=wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, JObj1),            
             JObj3=wh_json:set_value(<<"pvt_db_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(5))), JObj2),
@@ -372,7 +372,7 @@ update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {true, _} ->
             crossbar_doc:load_merge(ServerId, JObj, Context)
     end.
     
@@ -393,9 +393,9 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+is_valid_doc(JObj) ->
+    {(wh_json:get_value(<<"hostname">>, JObj) =/= undefined), [<<"hostname">>]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -440,12 +440,12 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                                  _:_ ->
                                      ignore
                              end,
-                             mark_deploy_complete(Db, ServerId)
+                             {ok, _} = mark_deploy_complete(Db, ServerId)
                      end),
                 crossbar_util:response([], Context)
             catch 
                 _:_ ->
-                    mark_deploy_complete(Db, ServerId),
+                    _ = mark_deploy_complete(Db, ServerId),
                     crossbar_util:response(error, <<"failed to start deployment">>, Context)
             end;
         {error, _} ->
@@ -462,12 +462,7 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                           tuple(ok, json_object()) | tuple(error, atom())).
 mark_deploy_complete(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
-    case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deploy_status">>, <<"idle">>, JObj)) of
-        {error, conflict} ->
-            mark_deploy_complete(Db, ServerId);
-        Else ->
-            Else
-    end.
+    couch_mgr:ensure_saved(Db, wh_json:set_value(<<"pvt_deploy_status">>, <<"idle">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private

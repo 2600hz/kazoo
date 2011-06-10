@@ -74,10 +74,7 @@ callevt_publish(_CallId, Payload, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, <<"application/json">>).
 
 resource_publish(Payload) ->
-    resource_publish(Payload, undefined).
-
-resource_publish(Payload, ContentType) when is_list(ContentType) ->
-    resource_publish(Payload, list_to_binary(ContentType));
+    resource_publish(Payload, <<"application/json">>).
 resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, <<"#">>, Payload, ContentType).
 
@@ -286,13 +283,14 @@ basic_cancel(Queue) ->
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
+-spec(basic_publish/3 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist()) -> ok).
+-spec(basic_publish/4 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist(), ContentType :: binary()) -> ok).
+-spec(basic_publish/5 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist(), ContentType :: binary(), Prop :: proplist()) -> ok).
 basic_publish(Exchange, Queue, Payload) ->
-    basic_publish(Exchange, Queue, Payload, undefined).
+    basic_publish(Exchange, Queue, Payload, <<"application/json">>).
 basic_publish(Exchange, Queue, Payload, ContentType) ->
     basic_publish(Exchange, Queue, Payload, ContentType, []).
 
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
-    basic_publish(Exchange, Queue, list_to_binary(Payload), ContentType, Prop);
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) ->
     BP = #'basic.publish'{
       exchange = Exchange

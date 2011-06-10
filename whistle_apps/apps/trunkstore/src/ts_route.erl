@@ -14,7 +14,7 @@
 -include("ts.hrl").
 
 -define(APP_NAME, <<"ts_responder.route">>).
--define(APP_VERSION, <<"0.5.3">>).
+-define(APP_VERSION, <<"0.7.4">>).
 
 %%%===================================================================
 %%% API

@@ -1,3 +1,4 @@
+
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, VoIP INC
 %%% @doc
@@ -10,7 +11,7 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([resource_consume/2]).
+-export([resource_consume/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -34,11 +35,11 @@
 
 -define(FS_TIMEOUT, 5000).
 
--spec(resource_consume/2 :: (FsNodePid :: pid(), Route :: binary()) ->
+-spec(resource_consume/3 :: (FsNodePid :: pid(), Route :: binary(), JObj :: json_object()) ->
 				 tuple(resource_consumed, binary(), binary(), integer())
 				     | tuple(resource_error, binary() | error)).
-resource_consume(FsNodePid, Route) ->
-    FsNodePid ! {resource_consume, self(), Route},
+resource_consume(FsNodePid, Route, JObj) ->
+    FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
@@ -52,7 +53,7 @@ start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
 init([Node, Options]) ->
-    logger:format_log(info, "FS_NODE(~p): Starting up~n", [self()]),
+    ?LOG("Starting up"),
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
@@ -106,26 +107,29 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
 	<<"HEARTBEAT">> ->
 	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}};
 	<<"CUSTOM">> ->
-	    logger:format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
+	    ?LOG("Custom Event received: ~p", [EvtName]),
 	    spawn(fun() -> process_custom_data(Data, ?APP_VERSION) end),
 	    {noreply, State};
 	_ ->
-	    logger:format_log(info, "FS_NODE(~p): Evt: ~p~n", [self(), EvtName]),
+	    ?LOG("Event received: ~p", [EvtName]),
 	    {noreply, State}
     end;
 
 handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
-    logger:format_log(info, "FS_NODE(~p): Evt: ~p UUID: ~p~n", [self(), EvtName, UUID]),
+    ?LOG(UUID, "Event received: ~p", [EvtName]),
     case EvtName of
 	<<"CHANNEL_CREATE">> ->
+	    ?LOG(UUID, "Create channel", []),
 	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}};
 	<<"CHANNEL_DESTROY">> ->
 	    ChanState = props:get_value(<<"Channel-State">>, Data),
 	    case ChanState of
 		<<"CS_NEW">> -> % ignore
+		    ?LOG(UUID, "Ignore Channel Destroy because of CS_NEW", []),
 		    {noreply, State};
 		<<"CS_DESTROY">> ->
+		    ?LOG(UUID, "Channel destroyed", []),
 		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}}
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
@@ -147,19 +151,19 @@ handle_info({resource_request, Pid, <<"audio">>, ChanOptions}
     FSHandlerPid = self(),
     spawn(fun() -> channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) end),
     {noreply, State};
-handle_info({resource_consume, Pid, Route}, #state{node=Node, options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
+handle_info({resource_consume, Pid, Route, JObj}, #state{node=Node, options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
     ActiveChan = Cr - De,
     MaxChan = props:get_value(max_channels, Opts, 1),
     AvailChan =  MaxChan - ActiveChan,
 
-    spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan) end),
+    spawn(fun() -> originate_channel(Node, Pid, Route, AvailChan, JObj) end),
     {noreply, State};
 
 handle_info({update_options, NewOptions}, State) ->
     {noreply, State#state{options=NewOptions}};
 
 handle_info(_Msg, State) ->
-    logger:format_log(info, "FS_NODE(~p): Recv unexpected ~p~n", [self(), _Msg]),
+    ?LOG("Unhandled message: ~p", [_Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -169,34 +173,52 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
--spec(originate_channel/4 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer()) -> no_return()).
-originate_channel(Node, Pid, Route, AvailChan) ->
-    logger:format_log(info, "FS_NODE(~p): DS ~p~n", [self(), Route]),
-    OrigStr = binary_to_list(list_to_binary(["sofia/sipinterface_1/", Route, " &park"])),
-    logger:format_log(info, "FS_NODE(~p): Orig ~p~n", [self(), OrigStr]),
-    case freeswitch:api(Node, originate, OrigStr, 9000) of
-	{ok, X} ->
-	    logger:format_log(info, "FS_NODE(~p): Originate to ~p resulted in ~p~n", [self(), Route, X]),
-	    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-	    CtlQ = start_call_handling(Node, CallID),
-	    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
+
+-spec(originate_channel/5 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer(), JObj :: json_object()) -> no_return()).
+originate_channel(Node, Pid, Route, AvailChan, JObj) ->
+    Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
+    OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
+    ?LOG_SYS("Originate on node ~w: ~s", [OrigStr]),
+    Result = freeswitch:bgapi(Node, originate, OrigStr),
+    case Result of
+	{ok, JobId} ->
+	    receive
+		{bgok, JobId, X} ->
+		    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
+		    ?LOG_START(CallID, "Originate on node ~w with JobID ~s received bgok: ~w", [Node, JobId, X]),
+		    CtlQ = start_call_handling(Node, CallID),
+		    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
+		{bgerror, JobId, Y} ->
+		    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
+		    ?LOG_SYS("Failed to originate on node ~w: ~s", [Node, ErrMsg]),
+		    Pid ! {resource_error, ErrMsg}
+	    after
+		9000 ->
+		    ?LOG_SYS("Originate on node ~w timed out", [Node]),
+		    Pid ! {resource_error, timeout}
+	    end;
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    logger:format_log(info, "FS_NODE(~p): Failed to originate ~p: ~p~n", [self(), Route, ErrMsg]),
+	    ?LOG("Failed to originate on node ~w: ~s", [Node, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    logger:format_log(info, "FS_NODE(~p): Originate to ~p timed out~n", [self(), Route]),
+	    ?LOG("Originate on node ~w: request timed out", [Node]),
 	    Pid ! {resource_error, timeout}
     end.
 
--spec(start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary()).
+-spec(start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary() | tuple(error, amqp_error)).
 start_call_handling(Node, UUID) ->
-    CtlQueue = amqp_util:new_callctl_queue(<<>>),
-    amqp_util:bind_q_to_callctl(CtlQueue),
+    try
+	true = is_binary(CtlQueue = amqp_util:new_callctl_queue(<<>>)),
+	_ = amqp_util:bind_q_to_callctl(CtlQueue),
 
-    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
-    {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
-    CtlQueue.
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
+	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
+	?LOG(UUID, "Started control and event procs", []),
+	CtlQueue
+    catch
+	_:_ -> {error, amqp_error}
+    end.
 
 -spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).
 diagnostics(Pid, Stats) ->
@@ -204,7 +226,7 @@ diagnostics(Pid, Stats) ->
     Pid ! Resp.
 
 channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
-    logger:format_log(info, "FS_NODE(~p): Avail: ~p MinReq: ~p~n", [self(), AvailChan, MinReq]),
+    ?LOG("Channels: Avail: ~p MinReq: ~p", [AvailChan, MinReq]),
     case MinReq > AvailChan of
 	true -> Pid ! {resource_response, FSHandlerPid, []};
 	false -> Pid ! {resource_response, FSHandlerPid, [{node, FSHandlerPid}
@@ -257,8 +279,24 @@ publish_register_event(Data, AppVsn) ->
 				  end
 			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
     case whistle_api:reg_success(ApiProp) of
-	{error, E} -> logger:format_log(error, "FS_NODE.pub_reg_event: Failed API message creation: ~p~n", [E]);
+	{error, E} -> ?LOG("Reg event: Failed API message creation: ~p", [E]);
 	{ok, JSON} ->
-	    logger:format_log(info, "FS_NODE.p_reg_evt(~p): ~s~n", [self(), JSON]),
+	    ?LOG("Sending successful registration: ~s", [JSON]),
 	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
     end.
+
+get_originate_action(<<"transfer">>, Data) ->
+    case wh_json:get_value(<<"Route">>, Data) of
+	undefined -> <<"error">>;
+	Route ->
+	    list_to_binary([ <<"transfer(">>, whistle_util:to_e164(Route), <<" XML context_2)">>])
+    end;
+get_originate_action(<<"bridge">>, Data) ->
+    case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
+	{error, timeout} -> <<"error">>;
+	EndPoint ->
+	    CVs = ecallmgr_fs_xml:get_leg_vars(Data),
+	    list_to_binary([<<"bridge(">>, CVs, EndPoint, <<")">>])
+    end;
+get_originate_action(_, _) ->
+    <<"park">>.
