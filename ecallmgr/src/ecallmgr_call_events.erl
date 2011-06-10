@@ -278,6 +278,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 -spec(shutdown/2 :: (CtlPid :: pid() | undefined, UUID :: binary()) -> no_return()).
+shutdown(undefined, _) -> ok;
 shutdown(CtlPid, UUID) ->
     ?LOG(UUID, "Shutdown CTL ~p", [CtlPid]),
     is_pid(CtlPid) andalso CtlPid ! {hangup, self(), UUID}.

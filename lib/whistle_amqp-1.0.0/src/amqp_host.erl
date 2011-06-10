@@ -132,6 +132,7 @@ handle_cast({get_misc_channel, From}, #state{misc_channel={C,_,T}}=State) ->
     {noreply, State};
 
 handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=State) ->
+    ?LOG_SYS("publishing to channel ~p", [C]),
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
     {noreply, State};
 
@@ -348,7 +349,7 @@ handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}}=St
     {stop, Reason, State};
 
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{}=State) ->
-    ?LOG_SYS("recieved notification monitored process went down, searching for reference"),
+    ?LOG_SYS("recieved notification monitored process(~p) went down, searching for reference: ~w", [_Pid, _Reason]),
     erlang:demonitor(Ref, [flush]),
     {noreply, remove_ref(Ref, State)};
 

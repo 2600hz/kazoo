@@ -152,7 +152,7 @@ handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
             ?LOG_SYS("connected to AMQP host"),            
             {noreply, State1};
 	{error, R} -> 
-            ?LOG_SYS("attempting to connect again in ~b ms", [R, ?START_TIMEOUT]),
+            ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
             {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
             {noreply, State}
     end;   
