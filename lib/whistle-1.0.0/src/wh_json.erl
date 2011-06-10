@@ -192,8 +192,8 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
 
 %% EUNIT TESTING
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 -define(D1, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
 -define(D2, {struct, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}]}).

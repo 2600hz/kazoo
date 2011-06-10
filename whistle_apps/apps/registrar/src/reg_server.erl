@@ -307,6 +307,8 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 		remove_old_regs(Username, Realm, Cache),
                 ?LOG("flushed users registrations"),
 
+		?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
+
 		wh_cache:store_local(Cache, Id, Expires, Expires),
 		{ok, _} = store_reg(JObj, Id, Contact1),
                 ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
@@ -413,8 +415,8 @@ cleanup_registrations(Cache) ->
     Now = whistle_util:current_tstamp(),
     Expired = wh_cache:filter_local(Cache, fun(_, V) -> V < Now end),
     lists:foreach(fun({K,_}) ->
-			  {ok, D} = couch_mgr:open_doc(?REG_DB, K),
-			  couch_mgr:del_doc(?REG_DB, D),
+			  {ok, Rev} = couch_mgr:lookup_doc_rev(?REG_DB, K),
+			  {ok, _} = couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, K}, {<<"_rev">>, Rev}]}),
 			  wh_cache:erase(Cache, K)
 		  end, Expired).
 

@@ -157,7 +157,7 @@ handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     {noreply, State#state{is_node_up=false}};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
-    ?LOG("Node ~p down, checking fs handler"),
+    ?LOG("Node ~p down, checking fs handler", [Node]),
     case ecallmgr_fs_handler:is_node_up(Node) of
 	true ->
 	    erlang:monitor_node(Node, true),
