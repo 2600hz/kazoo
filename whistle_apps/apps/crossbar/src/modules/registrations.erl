@@ -18,12 +18,13 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(REG_DB, <<"registrations">>).
 -define(REG_VIEW_FILE, <<"views/registrations.json">>).
 -define(LOOKUP_ACCOUNT_REGS, <<"reg_doc/lookup_realm_user">>).
-
+-define(LOOKUP_ACCOUNT_USER_REALM, <<"reg_doc/realm_and_username">>).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -150,6 +151,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>,
 	  end),
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
+    Pid ! {binding_result, true, ?REG_VIEW_FILE},
+    {noreply, State};
+
 handle_info(timeout, State) ->
     setup_couch(),
     bind_to_crossbar(),
@@ -254,13 +259,10 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    Context1 = crossbar_doc:load_view(<<"devices/sip_credentials">>, [{<<"limit">>, <<"1">>}], Context),
-    logger:format_log(info, "CB_REG(~p): get acct sip auth: ~p~n", [self(), Context1#cb_context.doc]),
-    Context1;
-    %% crossbar_doc:load_view(?LOOKUP_ACCOUNT_REGS, [{<<"group_level">>, <<"1">>}
-    %% 						  ,{<<"startkey">>, [<<"acct_auth_realm">>]}
-    %% 						  ,{<<"endkey">>, [<<"auth_realm">>, true]}
-    %% 						 ], Context);
+    #cb_context{doc=[Doc]} = crossbar_doc:load_view(<<"devices/sip_credentials">>, [{<<"limit">>, <<"1">>}], Context),
+    Username = wh_json:get_value([<<"value">>, <<"username">>], Doc),
+    Realm = wh_json:get_value([<<"value">>,<<"realm">>], Doc),
+    crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, [Realm, Username]}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2);
 
 validate([], #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
     Context;
@@ -277,3 +279,13 @@ validate([RegID], #cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) 
 validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
     logger:format_log(info, "CB_REG.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
