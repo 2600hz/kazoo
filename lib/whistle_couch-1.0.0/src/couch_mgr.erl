@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Manage CouchDB connections
 %%% @end
-%%% Created : 16 Sep 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 16 Sep 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(couch_mgr).
 

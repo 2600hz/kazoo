@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating

@@ -1,7 +1,7 @@
 -module(whistle_couch).
 -behaviour(application).
 
--author('James Aimonetti <james@2600hz.com>').
+-author('James Aimonetti <james@2600hz.org>').
 
 -export([start/2, start/0, start_link/0, stop/0, stop/1]).
 

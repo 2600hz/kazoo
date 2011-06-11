@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end

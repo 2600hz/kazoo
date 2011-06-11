@@ -1,10 +1,10 @@
 %%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Respond to Route requests
 %%% @end
-%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ts_route).
 

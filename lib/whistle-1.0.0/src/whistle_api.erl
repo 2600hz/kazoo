@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Whistle API Helpers
@@ -15,7 +15,7 @@
 %%%
 %%% See http://corp.switchfreedom.com/mediawiki/index.php/API_Definition
 %%% @end
-%%% Created : 19 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 19 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(whistle_api).
 

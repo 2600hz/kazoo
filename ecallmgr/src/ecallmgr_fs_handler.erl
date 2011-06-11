@@ -8,7 +8,7 @@
 %%% requests, and one to monitor the node and various stats about the node.
 %%%
 %%% @end
-%%% Created : 08 Oct 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 08 Oct 2010 by James Aimonetti <james@2600hz.org>
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_handler).
 

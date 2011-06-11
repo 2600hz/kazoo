@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Receive route(dialplan) requests from FS, request routes and respond
 %%% @end

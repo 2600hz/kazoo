@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Handle registrations of Name/CallID combos for media, creating
 %%% temp names to store on the local box.
 %%% @end
-%%% Created : 27 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 27 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_media_registry).
 
