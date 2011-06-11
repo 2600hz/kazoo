@@ -291,6 +291,8 @@ basic_publish(Exchange, Queue, Payload) ->
 basic_publish(Exchange, Queue, Payload, ContentType) ->
     basic_publish(Exchange, Queue, Payload, ContentType, []).
 
+basic_publish(Exchange, Queue, Payload, ContentType, Prop) when not is_binary(Payload) ->    
+    basic_publish(Exchange, Queue, whistle_util:to_binary(Payload), ContentType, Prop);
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) ->
     BP = #'basic.publish'{
       exchange = Exchange
