@@ -136,7 +136,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
         {noreply, State#state{amqp_q=Q}}
     catch
         _:_ ->
-            ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
@@ -149,11 +149,11 @@ handle_info({amqp_reconnect, T}, State) ->
 	_:_ -> 
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
                     {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
                     {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end

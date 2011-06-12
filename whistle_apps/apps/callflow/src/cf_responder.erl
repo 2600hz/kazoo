@@ -116,7 +116,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
 	{noreply, State#state{amqp_q=Q}}
     catch
 	_:_ ->
-            ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
@@ -129,11 +129,11 @@ handle_info({amqp_reconnect, T}, State) ->
 	_:_ -> 
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
                     timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
                     timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
@@ -253,9 +253,9 @@ handle_req(<<"route_win">>, JObj, Parent, #state{amqp_q=Q}) ->
     {ok, {Dest, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
     {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, Dest}),
     From = wh_json:get_value(<<"From">>, RouteReq),
-    ?LOG("from: ~s", [From]),
+    ?LOG("from ~s", [From]),
     To = wh_json:get_value(<<"To">>, RouteReq),
-    ?LOG("to: ~s", [To]),
+    ?LOG("to ~s", [To]),
     [ToNumber, ToRealm] = binary:split(To, <<"@">>),
     [FromNumber, FromRealm] = binary:split(From, <<"@">>),
     [DestNumber, DestRealm] = binary:split(Dest, <<"@">>),
@@ -280,8 +280,9 @@ handle_req(<<"route_win">>, JObj, Parent, #state{amqp_q=Q}) ->
       ,to_realm=ToRealm
       ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
      },
-    ?LOG("caller-id: \"~s\" <~s>", [Call#cf_call.cid_name, Call#cf_call.cid_number]),
-    ?LOG("call authorized by ~s", [Call#cf_call.authorizing_id]),
+    ?LOG("caller-id \"~s\" <~s>", [Call#cf_call.cid_name, Call#cf_call.cid_number]),
+    ?LOG("call authorizer id ~s", [Call#cf_call.authorizing_id]),
+    ?LOG("callflow db ~s", [AccountDb]), 
     cf_call_command:set(undefined, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq), Call),
     supervisor:start_child(cf_exe_sup, [Call, Flow]);
 

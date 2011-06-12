@@ -31,7 +31,7 @@ start_link(Call, Flow) ->
 -spec(init/3 :: (Parent :: pid(), Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
 init(Parent, #cf_call{call_id=CallId}=Call, Flow) ->
     put(callid, CallId),
-    ?LOG("executing callflow"),
+    ?LOG("executing callflow ~s", [Call#cf_call.flow_id]),
     process_flag(trap_exit, true),
     AmqpQ = init_amqp(Call),
     cache_account(Call),
@@ -71,7 +71,7 @@ next(Call, Flow) ->
 wait(Call, Flow, Pid) ->
    receive
        {'EXIT', Pid, Reason} when Reason =/= normal ->
-           ?LOG("action ~p died unexpectedly ~s", [Pid, Reason]),
+           ?LOG("action ~w died unexpectedly", [Pid]),
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue} ->
