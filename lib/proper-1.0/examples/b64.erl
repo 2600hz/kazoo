@@ -17,11 +17,9 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
 %%% @version {@version}
-%%% @author Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @author Kostis Sagonas
 %%% @doc PropEr usage example: Some simple testcases for stdlib's base64
 
 -module(b64).

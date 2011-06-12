@@ -17,22 +17,20 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
 %%% @version {@version}
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @doc This module contains PropEr's main parse transformer. It is
-%%%	 automatically applied to modules when including the main PropEr header,
-%%%	 unless PROPER_NO_TRANS is defined. Applying this transform has the
-%%%	 following effects:
-%%%	 <ul>
-%%%	 <li>All prop_* functions of arity 0 in the module are automatically
-%%%	     exported.</li>
-%%%	 <li>Type declarations in ?FORALLs that correspond to native types are
-%%%	     properly substituted (with some limitations, see the README for
-%%%	     details).</li>
-%%%	 </ul>
+%%% @author Manolis Papadakis
+
+%%% @doc PropEr's main parse transform. It is automatically applied to modules
+%%% when including the main PropEr header, unless `PROPER_NO_TRANS' is defined.
+%%% Applying this transform has the following effects:
+%%% <ul>
+%%% <li>All 0-arity functions whose name begins with `prop_' are automatically
+%%%   exported.</li>
+%%% <li>Type declarations in `?FORALL's that correspond to native types are
+%%%   properly substituted (with some limitations, see the
+%%%   {@link proper_typeserver} module for details).</li>
+%%% </ul>
 
 -module(proper_transformer).
 -export([parse_transform/2]).
