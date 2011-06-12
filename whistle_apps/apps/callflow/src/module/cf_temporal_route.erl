@@ -18,15 +18,26 @@
                    ,last_day_of_the_month/2, gregorian_days_to_date/1, universal_time/0
                   ]).
 
+-record(temporal, {
+           temporal_id = <<>>
+          ,now = 0
+          ,default_callflow = <<>>
+          ,rules = []
+          ,timezone = <<"America/Los_Angeles">>
+         }).
+
+-define(FIND_RULES, <<"temporal_route/listing_by_next_occurrence">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(continue, binary())).
-handle(_, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    CFPid ! find_temporal_routes(Call).
+    Temporal = get_temporal_route(Data, Call),
+    find_callflow(Temporal, Call).
 
 list(Type, Interval, Rule, Start, Current, Count) ->
     Fun = fun(Date) -> event_date(Type, Interval, Rule, Start, Date) end,
@@ -39,15 +50,83 @@ do_list(Date, Fun, Count, Acc) ->
     io:format("~3w: ~-12w~n", [Acc, Result]),
     do_list(Result, Fun, Count, Acc + 1).
 
+find_callflow(Temporal, Call) ->
+    Rules = find_temporal_rules(Temporal, Call),    
+    is_rule_active(Rules, Temporal).
 
-find_temporal_routes(#cf_call{account_db=Db}) ->
-    case couch_mgr:get_all_results(Db, <<"temporal-route/listing_by_occurence">>) of
+is_rule_active([], #temporal{default_callflow=FlowId}) ->
+    FlowId;
+is_rule_active([T|H], #temporal{now=Now}=Temporal) ->
+    Cycle = wh_json:get_value([<<"doc">>, <<"cycle">>], T, "date"),
+    Interval = wh_json:get_value([<<"doc">>, <<"interval">>], T, 1),
+    Rule = wh_json:get_value([<<"doc">>, <<"rule">>], T),
+    Start = wh_json:get_value([<<"doc">>, <<"start_date">>], T),
+    {Date, _} = calendar:gregorian_seconds_to_datetime(Now),
+    ?LOG("event_date(~p, ~p, ~p, ~p, ~p})", [Cycle, Interval, Rule, Start, Date]),
+    is_rule_active(H, Temporal).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+find_temporal_rules(Temporal, #cf_call{account_db=Db}) ->
+    case couch_mgr:get_results(Db, ?FIND_RULES, [{<<"startkey">>, null}, {<<"endkey">>, Temporal#temporal.now}, {<<"include_docs">>, true}]) of
         {ok, JObj} ->
-            logger:format_log(info, "FOUND: ~p", [JObj]),
-            {continue, <<"match">>};
+            [R || R <- JObj, lists:keymember(wh_json:get_value(<<"id">>, R), 1, Temporal#temporal.rules)];
         _ ->
-            {continue, <<"no_match">>}
+            []
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_temporal_route/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #temporal{}).
+get_temporal_route(Data, #cf_call{account_db=Db}) ->
+    Id = wh_json:get_value(<<"id">>, Data),
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            ?LOG("loading temporal route ~s", [Id]),
+            Default=#temporal{},
+            {struct, Rules} = wh_json:get_value(<<"temporal_rules">>, JObj, ?EMPTY_JSON_OBJECT),
+            get_current_time(#temporal{
+                                 temporal_id = Id
+                                ,default_callflow = <<>>
+                                ,rules = Rules 
+                                ,timezone = wh_json:get_value(<<"retries">>, JObj, Default#temporal.timezone)
+                               });
+        {error, R} ->
+            ?LOG("failed to load temporal route ~s, ~w", [Id, R]),
+            get_current_time(#temporal{})
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+get_current_time(Temporal)->  
+    LocalDateTime = localtime:utc_to_local(
+                       calendar:universal_time()
+                      ,whistle_util:to_list(Temporal#temporal.timezone)
+                     ),
+    ?LOG("current time for ~s is ~w", [Temporal#temporal.timezone, LocalDateTime]),
+    Temporal#temporal{now=calendar:datetime_to_gregorian_seconds(LocalDateTime)}.
+
+
+
+
+
+
+
+
+
+
+
 
 %%--------------------------------------------------------------------
 %% @private
