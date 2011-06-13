@@ -286,22 +286,28 @@ remove_subscriber(Pid, Subs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% foo.* matches foo.bar, foo.baz, but not bip.bar
-%% B is what was bound, R is the routing key being used
-%% so B can be more generic, R is absolute
+%% @doc Evaluate a binding against a routing key
+%%      Break both binaries on the '.' delimiter, reverse the resulting list of
+%%      symbols, and iterate through the lists until a determination is made of
+%%      whether there is a match.
+%%      
 %% @end
 %%--------------------------------------------------------------------
 -spec(binding_matches/2 :: (B :: binary(), R :: binary()) -> boolean()).
 binding_matches(B, B) -> true;
 binding_matches(B, R) ->
     Opts = [global],
-    matches(binary:split(B, <<".">>, Opts), binary:split(R, <<".">>, Opts)).
+    matches(lists:reverse(binary:split(B, <<".">>, Opts))
+	    ,lists:reverse(binary:split(R, <<".">>, Opts))
+	   ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
+%%
+%% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
+%% 
 %%--------------------------------------------------------------------
 %% if both are empty, we made it!
 -spec(matches/2 :: (Bs :: list(binary()), Rs :: list(binary())) -> boolean()).
@@ -318,6 +324,7 @@ matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.ba
 %% if one runs out without a wildcard, no matchy
 matches([], [_|_]) -> false; % foo.*   foo
 matches([_|_], []) -> false;
+matches([_|_], [<<>>]) -> false;
 
 %% * matches one segment only
 matches([<<"*">> | Bs], [_|Rs]) ->
@@ -474,12 +481,10 @@ filter_out_failed({_, _}) -> false.
 filter_out_succeeded({true, _}) -> false;
 filter_out_succeeded({_, _}) -> true.
 
-%% PropEr testing
-%% -include_lib("proper/include/proper.hrl").
-
-%% EUNIT TESTING
+%% EUNIT and PropEr TESTING %%
 
 -ifdef(TEST).
+
 -include_lib("eunit/include/eunit.hrl").
 
 -define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
@@ -530,7 +535,8 @@ weird_bindings_test() ->
     ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo">>)),
     ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo.bar">>)),
     ?assertEqual(false, binding_matches(<<"foo.#.*">>, <<"foo">>)),
-    ?assertEqual(false, binding_matches(<<"#.*">>, <<"">>)).
+    ?assertEqual(false, binding_matches(<<"#.*">>, <<"">>)),
+    ?assertEqual(true, binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>)).
 
 wait_for_all([]) ->
     ok;
