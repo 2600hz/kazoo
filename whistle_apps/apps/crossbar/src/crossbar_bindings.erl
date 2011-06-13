@@ -24,7 +24,7 @@
 -compile(export_all).
 
 %% API
--export([start_link/0, bind/1, map/2, fold/2, flush/0, flush/1]).
+-export([start_link/0, bind/1, map/2, fold/2, flush/0, flush/1, stop/0]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1, all/1, succeeded/1, failed/1]).
@@ -100,13 +100,18 @@ succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+stop() ->
+    gen_server:cast(?SERVER, stop).
+
 -spec(bind/1 :: (Binding :: binary()) -> ok | tuple(error, exists)).
 bind(Binding) ->
     gen_server:call(?MODULE, {bind, Binding}, infinity).
 
+-spec(flush/0 :: () -> ok).
 flush() ->
     gen_server:cast(?MODULE, flush).
 
+-spec(flush/1 :: (Binding :: binary()) -> ok).
 flush(Binding) ->
     gen_server:cast(?MODULE, {flush, Binding}).
 
@@ -191,12 +196,7 @@ handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
 		    link(From),
 		    {reply, ok, State#state{bindings=[{Binding, queue:in(From, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}}
 	    end
-    end;
-handle_call({get_bindings}, _, #state{bindings=Bs}=State) ->
-    {reply, Bs, State};
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -218,8 +218,8 @@ handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
 	    flush_binding(B),
 	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}}
     end;
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast(stop, State) ->
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -253,8 +253,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{bindings=Bs}) ->
     ?LOG_SYS("Terminating: ~p", [_Reason]),
-    lists:foreach(fun flush_binding/1, Bs),
-    ok.
+    lists:foreach(fun flush_binding/1, Bs).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -302,11 +301,6 @@ binding_matches(B, R) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% <<"#.A.*.xd.6Xb">>,<<"A.a.A.a.xd.6Xb">>
-%% # matches A.a
-%% A matches A
-%% * matches a
-%% xd.6Xb matches xd.6Xb
 %% @end
 %%--------------------------------------------------------------------
 %% if both are empty, we made it!
@@ -315,6 +309,7 @@ matches([], []) -> true;
 matches([<<"#">>], []) -> true;
 
 matches([<<"#">>, <<"*">>], []) -> false;
+matches([<<"#">>, <<"*">>], [<<>>]) -> false;
 matches([<<"#">>, <<"*">>], [_]) -> true; % match one item:  #.* matches foo
 
 matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
@@ -332,7 +327,7 @@ matches([<<"*">> | Bs], [_|Rs]) ->
 matches([<<"#">>, B | Bs], [B | Rs]) ->
     %% Since the segment in B could be repeated later in the Routing Key, we need to bifurcate here
     %% but we'll short circuit if this was indeed the end of the # matching
-    %% see bindings_match(<<"#.A.*">>,<<"A.a.A.a">>)
+    %% see binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)
 
     case lists:member(B, Rs) of
 	true ->
@@ -487,62 +482,142 @@ filter_out_succeeded({_, _}) -> true.
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
+-define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
+
+-define(BINDINGS, [
+		   {<<"#">>, [true, true, true, true, true, true]}
+		   ,{<<"foo.*.zot">>, [true, true, false, false, false, false]}
+		   ,{<<"foo.#.zot">>, [true, true, true, true, false, false]}
+		   ,{<<"*.bar.#">>, [true, false, true, false, false, false]}
+		   ,{<<"*">>, [false, false, false, false, true, true]}
+		   ,{<<"#.tow">>, [false, false, false, false, false, false]}
+		   ,{<<"#.quux.zot">>, [false, true, true, false, false, false]}
+		   ,{<<"xap.#">>, [false, false, false, false, false, true]}
+		   ,{<<"#.*">>, [true, true, true, true, true, true]}
+		   ,{<<"#.bar.*">>, [true, false, false, false, false, false]}
+		  ]).
+
 bindings_match_test() ->
-    Routings = [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>],
-    Bindings = [
-		{<<"#">>, [true, true, true, true, true, true]}
-		,{<<"foo.*.zot">>, [true, true, false, false, false, false]}
-		,{<<"foo.#.zot">>, [true, true, true, true, false, false]}
-		,{<<"*.bar.#">>, [true, false, true, false, false, false]}
-		,{<<"*">>, [false, false, false, false, true, true]}
-		,{<<"#.tow">>, [false, false, false, false, false, false]}
-		,{<<"#.quux.zot">>, [false, true, true, false, false, false]}
-		,{<<"xap.#">>, [false, false, false, false, false, true]}
-		,{<<"#.*">>, [true, true, true, true, true, true]}
-		,{<<"#.bar.*">>, [true, false, false, false, false, false]}
-	       ],
     lists:foreach(fun({B, _}=Expected) ->
-			  Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], Routings),
+			  Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], ?ROUTINGS),
 			  ?assertEqual(Expected, {B, Actual})
-		  end, Bindings).
+		  end, ?BINDINGS).
+
+simple_bind_test() ->
+    ?MODULE:start_link(),
+    logger:start(),
+
+    Binding = <<"foo">>,
+    
+    BindFun = fun() ->
+		      timer:sleep(500),
+		      ?assertEqual(ok, ?MODULE:bind(Binding)),
+		      ?assertEqual({error, exists}, ?MODULE:bind(Binding))
+	      end,
+
+    Pids = [ spawn(BindFun) || _ <- lists:seq(1,3) ],
+    _ = [ erlang:monitor(process, Pid) || Pid <- Pids ],
+
+    wait_for_all(Pids),
+
+    ?assertEqual(ok, ?MODULE:flush(Binding)),
+    ?assertEqual(ok, ?MODULE:flush(<<"non-existant">>)),
+
+    ?MODULE:stop().
+
+weird_bindings_test() ->
+    ?assertEqual(true, binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)),
+    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo">>)),
+    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo.bar">>)),
+    ?assertEqual(false, binding_matches(<<"foo.#.*">>, <<"foo">>)),
+    ?assertEqual(false, binding_matches(<<"#.*">>, <<"">>)).
+
+wait_for_all([]) ->
+    ok;
+wait_for_all([P|Ps]) ->
+    receive
+	{'DOWN', _, process, P, _} ->
+	    wait_for_all(Ps)
+    end.
+
+
+fold_bindings_server(B) ->
+    ?assertEqual(?MODULE:bind(B), ok),
+    ?assertEqual(?MODULE:bind(B), {error, exists}),
+    fold_bindings_loop(B).
+
+fold_bindings_loop(B) ->
+    receive
+	{binding_fired, Pid, _R, Payload} ->
+	    ?LOG_SYS("binding received: payload ~p", [Payload]),
+	    Pid ! {binding_result, true, Payload+1},
+	    fold_bindings_loop(B);
+	{binding_flushed, _} ->
+	    fold_bindings_loop(B);
+	shutdown -> ok
+    end.
 
 map_bindings_server(B) ->
-    ?MODULE:bind(B),
+    ?assertEqual(?MODULE:bind(B), ok),
+    ?assertEqual(?MODULE:bind(B), {error, exists}),
     map_bindings_loop(B).
 
 map_bindings_loop(B) ->
     receive
 	{binding_fired, Pid, _R, _Payload} ->
-	    Pid ! {binding_result, looks_good, B},
+	    Pid ! {binding_result, true, B},
 	    map_bindings_loop(B);
 	{binding_flushed, _} ->
 	    map_bindings_loop(B);
 	shutdown -> ok
     end.
 
-map_and_route_test() ->
+-define(ROUTINGS_MAP_FOLD, [
+			    %% routing, # responses or count from fold
+			    {<<"foo.bar.zot">>, 3}
+			    ,{<<"foo.quux.zot">>, 3}
+			    ,{<<"foo.bar.quux.zot">>, 2}
+			    ,{<<"foo.zot">>, 2}
+			    ,{<<"foo">>, 2}
+			    ,{<<"xap">>, 2}
+			   ]).
+
+-define(BINDINGS_MAP_FOLD, [ <<"#">>, <<"foo.*.zot">>, <<"foo.#.zot">>, <<"*">>, <<"#.quux">>]).
+
+start_server(Fun) ->
     logger:start(),
     ?MODULE:start_link(),
-    ?MODULE:flush(),
-    Routings = [
-		%% routing, # responses
-		{<<"foo.bar.zot">>, 3}
-		,{<<"foo.quux.zot">>, 3}
-		,{<<"foo.bar.quux.zot">>, 2}
-		,{<<"foo.zot">>, 2}
-		,{<<"foo">>, 2}
-		,{<<"xap">>, 2}
-	       ],
-    Bindings = [ <<"#">>, <<"foo.*.zot">>, <<"foo.#.zot">>, <<"*">>, <<"#.quux">>],
+    ?assertEqual(ok, ?MODULE:flush()),
 
-    BoundPids = [ spawn(fun() -> map_bindings_server(B) end) || B <- Bindings ],
-    timer:sleep(500),
+    [ spawn(fun() -> Fun(B) end) || B <- ?BINDINGS_MAP_FOLD ],
+
+    timer:sleep(500).
+
+stop_server() ->
+    ?MODULE:stop().
+
+fold_and_route_test() ->
+    start_server(fun fold_bindings_server/1),
+    lists:foreach(fun({R, N}) ->
+			  Res = ?MODULE:fold(R, 0),
+			  ?LOG("fold: ~s: ~w -> ~p", [R, N, Res]),
+			  ?assertEqual({R, N}, {R, Res})
+		  end, ?ROUTINGS_MAP_FOLD),
+    stop_server().
+    
+
+map_and_route_test() ->
+    start_server(fun map_bindings_server/1),
     lists:foreach(fun({R, N}) ->
 			  Res = ?MODULE:map(R, R),
-			  %% ?LOG("~s: ~w -> ~p", [R, N, Res]),
-			  ?assertEqual({R, N}, {R, length(Res)})
-		  end, Routings),
-    lists:foreach(fun(P) -> P ! shutdown end, BoundPids).
+			  ?LOG("map: ~s: ~w -> ~p", [R, N, Res]),
+			  ?assertEqual({R, N}, {R, length(Res)}),
+			  ?assertEqual(?MODULE:any(Res), true),
+			  ?assertEqual(?MODULE:all(Res), true),
+			  ?assertEqual(?MODULE:failed(Res), []),
+			  ?assertEqual(?MODULE:succeeded(Res), Res)
+		  end, ?ROUTINGS_MAP_FOLD),
+    stop_server().
 
 proper_test_() ->
     {"Runs the module's PropEr tests for rebar quick commands",
