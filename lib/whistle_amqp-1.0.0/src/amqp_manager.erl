@@ -176,7 +176,7 @@ handle_info({reconnect, T}, #state{host=Host}=State) ->
     end;
 
 handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) ->
-    ?LOG_SYS("amqp host process went down, ~s", [_Reason]),
+    ?LOG_SYS("amqp host process went down, ~w", [_Reason]),
     erlang:demonitor(Ref, [flush]),
     {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}};
