@@ -8,6 +8,7 @@
 start_full_test() ->
     ibrowse:start(),
     logger:start(),
+
     UrlBase = "http://localhost:8000/v1/accounts",
 
     Headers = [{"X-Auth-Token", "evtsub-test"}
