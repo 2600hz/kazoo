@@ -136,7 +136,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
         {noreply, State#state{amqp_q=Q}}
     catch
         _:_ ->
-            ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
@@ -149,11 +149,11 @@ handle_info({amqp_reconnect, T}, State) ->
 	_:_ -> 
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
                     {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
                     {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
@@ -307,6 +307,8 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 		remove_old_regs(Username, Realm, Cache),
                 ?LOG("flushed users registrations"),
 
+		?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
+
 		wh_cache:store_local(Cache, Id, Expires, Expires),
 		{ok, _} = store_reg(JObj, Id, Contact1),
                 ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
@@ -413,8 +415,8 @@ cleanup_registrations(Cache) ->
     Now = whistle_util:current_tstamp(),
     Expired = wh_cache:filter_local(Cache, fun(_, V) -> V < Now end),
     lists:foreach(fun({K,_}) ->
-			  {ok, D} = couch_mgr:open_doc(?REG_DB, K),
-			  couch_mgr:del_doc(?REG_DB, D),
+			  {ok, Rev} = couch_mgr:lookup_doc_rev(?REG_DB, K),
+			  {ok, _} = couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, K}, {<<"_rev">>, Rev}]}),
 			  wh_cache:erase(Cache, K)
 		  end, Expired).
 
