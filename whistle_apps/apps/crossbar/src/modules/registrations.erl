@@ -265,16 +265,16 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, [Realm, Username]}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2);
 
 validate([], #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
-    Context;
+    Context#cb_context{db_name=?REG_DB};
     
 validate([RegID], #cb_context{req_verb = <<"get">>}=Context) ->
-    crossbar_doc:load(RegID, Context);
+    crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB});
 
 validate([RegID], #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
-    crossbar_doc:load_merge(RegID, Data, Context);
+    crossbar_doc:load_merge(RegID, Data, Context#cb_context{db_name=?REG_DB});
 
-validate([RegID], #cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) ->
-    crossbar_doc:delete(crossbar_doc:load(RegID, Context));
+validate([RegID], #cb_context{req_verb = <<"delete">>}=Context) ->
+    crossbar_doc:delete(crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB}));
 
 validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
     logger:format_log(info, "CB_REG.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
