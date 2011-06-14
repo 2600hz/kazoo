@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
@@ -24,7 +24,7 @@
 -compile(export_all).
 
 %% API
--export([start_link/0, bind/1, map/2, fold/2, flush/0, flush/1]).
+-export([start_link/0, bind/1, map/2, fold/2, flush/0, flush/1, stop/0]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1, all/1, succeeded/1, failed/1]).
@@ -33,9 +33,11 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(props, [get_value/2, get_value/3]).
-
 -include("../include/crossbar.hrl").
+%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
+%% but the PropEr one is the useful one. Also needs to be included before any
+%% function definition because it includes functions.
+-include_lib("proper/include/proper.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -98,17 +100,18 @@ succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+stop() ->
+    gen_server:cast(?SERVER, stop).
+
 -spec(bind/1 :: (Binding :: binary()) -> ok | tuple(error, exists)).
 bind(Binding) ->
     gen_server:call(?MODULE, {bind, Binding}, infinity).
 
--spec(get_bindings/0 :: () -> list()).
-get_bindings() ->
-    gen_server:call(?MODULE, {get_bindings}, infinity).
-
+-spec(flush/0 :: () -> ok).
 flush() ->
     gen_server:cast(?MODULE, flush).
 
+-spec(flush/1 :: (Binding :: binary()) -> ok).
 flush(Binding) ->
     gen_server:cast(?MODULE, {flush, Binding}).
 
@@ -148,7 +151,7 @@ init([]) ->
 handle_call({map, Routing, Payload}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
 		  ?TIMER_START(list_to_binary(["bindings.map ", Routing])),
-                  logger:format_log(info, "Running map: ~p", [Routing]),
+		  ?LOG_SYS("Running map: ~p", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
                                     case binding_matches(B, Routing) of
@@ -165,7 +168,7 @@ handle_call({map, Routing, Payload}, From , #state{bindings=Bs}=State) ->
 handle_call({fold, Routing, Payload}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
 		  ?TIMER_START(list_to_binary(["bindings.fold ", Routing])),
-                  logger:format_log(info, "Running fold: ~p", [Routing]),
+                  ?LOG_SYS("Running fold: ~p", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
                                     case binding_matches(B, Routing) of
@@ -181,7 +184,7 @@ handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
     link(From),
     {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
-    logger:format_log(info, "CB_BINDING(~p): ~p binding ~p", [self(), From, Binding]),
+    ?LOG_SYS("~w is binding ~s", [From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
 	false ->
 	    link(From),
@@ -193,12 +196,7 @@ handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
 		    link(From),
 		    {reply, ok, State#state{bindings=[{Binding, queue:in(From, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}}
 	    end
-    end;
-handle_call({get_bindings}, _, #state{bindings=Bs}=State) ->
-    {reply, Bs, State};
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -220,8 +218,8 @@ handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
 	    flush_binding(B),
 	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}}
     end;
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast(stop, State) ->
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -234,7 +232,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
-    logger:format_log(info, "CB_BINDINGS(~p): ~p went down(~p)", [self(), Pid, _Reason]),
+    ?LOG_SYS("~w went down(~w)", [Pid, _Reason]),
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, remove_subscriber(Pid, Subs)} | Acc]
 		      end, [], Bs),
@@ -254,9 +252,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{bindings=Bs}) ->
-    logger:format_log(info, "CB_BINDINGS(~p): Terminating: ~p", [self(), _Reason]),
-    lists:foreach(fun flush_binding/1, Bs),
-    ok.
+    ?LOG_SYS("Terminating: ~p", [_Reason]),
+    lists:foreach(fun flush_binding/1, Bs).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -289,22 +286,28 @@ remove_subscriber(Pid, Subs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% foo.* matches foo.bar, foo.baz, but not bip.bar
-%% B is what was bound, R is the routing key being used
-%% so B can be more generic, R is absolute
+%% @doc Evaluate a binding against a routing key
+%%      Break both binaries on the '.' delimiter, reverse the resulting list of
+%%      symbols, and iterate through the lists until a determination is made of
+%%      whether there is a match.
+%%      
 %% @end
 %%--------------------------------------------------------------------
 -spec(binding_matches/2 :: (B :: binary(), R :: binary()) -> boolean()).
 binding_matches(B, B) -> true;
 binding_matches(B, R) ->
     Opts = [global],
-    matches(binary:split(B, <<".">>, Opts), binary:split(R, <<".">>, Opts)).
+    matches(lists:reverse(binary:split(B, <<".">>, Opts))
+	    ,lists:reverse(binary:split(R, <<".">>, Opts))
+	   ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
+%%
+%% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
+%% 
 %%--------------------------------------------------------------------
 %% if both are empty, we made it!
 -spec(matches/2 :: (Bs :: list(binary()), Rs :: list(binary())) -> boolean()).
@@ -312,6 +315,7 @@ matches([], []) -> true;
 matches([<<"#">>], []) -> true;
 
 matches([<<"#">>, <<"*">>], []) -> false;
+matches([<<"#">>, <<"*">>], [<<>>]) -> false;
 matches([<<"#">>, <<"*">>], [_]) -> true; % match one item:  #.* matches foo
 
 matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
@@ -320,6 +324,7 @@ matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.ba
 %% if one runs out without a wildcard, no matchy
 matches([], [_|_]) -> false; % foo.*   foo
 matches([_|_], []) -> false;
+matches([_|_], [<<>>]) -> false;
 
 %% * matches one segment only
 matches([<<"*">> | Bs], [_|Rs]) ->
@@ -327,7 +332,17 @@ matches([<<"*">> | Bs], [_|Rs]) ->
 
 %% # can match 0 or more segments
 matches([<<"#">>, B | Bs], [B | Rs]) ->
-    matches(Bs, Rs); % if the proceeding values match, strip them out, as we've finished matching the #
+    %% Since the segment in B could be repeated later in the Routing Key, we need to bifurcate here
+    %% but we'll short circuit if this was indeed the end of the # matching
+    %% see binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)
+
+    case lists:member(B, Rs) of
+	true ->
+	    matches(Bs, Rs) orelse matches([<<"#">> | Bs], Rs);
+	false ->
+	    matches(Bs, Rs)
+    end;
+
 matches([<<"#">>, <<"*">> | _]=Bs, [_ | Rs]) ->
     matches(Bs, Rs);
 
@@ -397,7 +412,7 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
 		    fold_bind_results(ReRunQ, Payload, Route, queue:len(ReRunQ), queue:new());
 		PidsLen ->
 		    %% If all Pids 'eoq'ed, ReRunQ will be the same queue, and Payload will be unchanged - exit the fold
-		    logger:format_log(error, "CB_BIND(~p): Loop detected for ~p, returning", [self(), Route]),
+		    ?LOG_SYS("Loop detected for ~s, returning", [Route]),
 		    Payload
 	    end;
 
@@ -466,64 +481,273 @@ filter_out_failed({_, _}) -> false.
 filter_out_succeeded({true, _}) -> false;
 filter_out_succeeded({_, _}) -> true.
 
-%% EUNIT TESTING
+%% EUNIT and PropEr TESTING %%
+
+-ifdef(TEST).
 
 -include_lib("eunit/include/eunit.hrl").
--ifdef(TESTS).
+
+-define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
+
+-define(BINDINGS, [
+		   {<<"#">>, [true, true, true, true, true, true]}
+		   ,{<<"foo.*.zot">>, [true, true, false, false, false, false]}
+		   ,{<<"foo.#.zot">>, [true, true, true, true, false, false]}
+		   ,{<<"*.bar.#">>, [true, false, true, false, false, false]}
+		   ,{<<"*">>, [false, false, false, false, true, true]}
+		   ,{<<"#.tow">>, [false, false, false, false, false, false]}
+		   ,{<<"#.quux.zot">>, [false, true, true, false, false, false]}
+		   ,{<<"xap.#">>, [false, false, false, false, false, true]}
+		   ,{<<"#.*">>, [true, true, true, true, true, true]}
+		   ,{<<"#.bar.*">>, [true, false, false, false, false, false]}
+		  ]).
 
 bindings_match_test() ->
-    Routings = [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>],
-    Bindings = [
-		{<<"#">>, [true, true, true, true, true, true]}
-		,{<<"foo.*.zot">>, [true, true, false, false, false, false]}
-		,{<<"foo.#.zot">>, [true, true, true, true, false, false]}
-		,{<<"*.bar.#">>, [true, false, true, false, false, false]}
-		,{<<"*">>, [false, false, false, false, true, true]}
-		,{<<"#.tow">>, [false, false, false, false, false, false]}
-		,{<<"#.quux.zot">>, [false, true, true, false, false, false]}
-		,{<<"xap.#">>, [false, false, false, false, false, true]}
-		,{<<"#.*">>, [true, true, true, true, true, true]}
-		,{<<"#.bar.*">>, [true, false, false, false, false, false]}
-	       ],
     lists:foreach(fun({B, _}=Expected) ->
-			  Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], Routings),
+			  Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], ?ROUTINGS),
 			  ?assertEqual(Expected, {B, Actual})
-		  end, Bindings).
+		  end, ?BINDINGS).
 
-map_bindings_server(B) ->
-    ?MODULE:bind(B),
-    map_bindings_loop().
+simple_bind_test() ->
+    ?MODULE:start_link(),
+    logger:start(),
 
-map_bindings_loop() ->
+    Binding = <<"foo">>,
+    
+    BindFun = fun() ->
+		      timer:sleep(500),
+		      ?assertEqual(ok, ?MODULE:bind(Binding)),
+		      ?assertEqual({error, exists}, ?MODULE:bind(Binding))
+	      end,
+
+    Pids = [ spawn(BindFun) || _ <- lists:seq(1,3) ],
+    _ = [ erlang:monitor(process, Pid) || Pid <- Pids ],
+
+    wait_for_all(Pids),
+
+    ?assertEqual(ok, ?MODULE:flush(Binding)),
+    ?assertEqual(ok, ?MODULE:flush(<<"non-existant">>)),
+
+    ?MODULE:stop().
+
+weird_bindings_test() ->
+    ?assertEqual(true, binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)),
+    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo">>)),
+    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo.bar">>)),
+    ?assertEqual(false, binding_matches(<<"foo.#.*">>, <<"foo">>)),
+    ?assertEqual(false, binding_matches(<<"#.*">>, <<"">>)),
+    ?assertEqual(true, binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>)).
+
+wait_for_all([]) ->
+    ok;
+wait_for_all([P|Ps]) ->
+    receive
+	{'DOWN', _, process, P, _} ->
+	    wait_for_all(Ps)
+    end.
+
+
+fold_bindings_server(B) ->
+    ?assertEqual(?MODULE:bind(B), ok),
+    ?assertEqual(?MODULE:bind(B), {error, exists}),
+    fold_bindings_loop(B).
+
+fold_bindings_loop(B) ->
     receive
 	{binding_fired, Pid, _R, Payload} ->
-	    Pid ! {binding_result, looks_good, Payload},
-	    map_bindings_loop();
+	    ?LOG_SYS("binding received: payload ~p", [Payload]),
+	    Pid ! {binding_result, true, Payload+1},
+	    fold_bindings_loop(B);
 	{binding_flushed, _} ->
-	    map_bindings_loop();
+	    fold_bindings_loop(B);
 	shutdown -> ok
     end.
 
-map_and_route_test() ->
-    ?MODULE:start_link(),
-    ?MODULE:flush(),
-    Routings = [
-		%% routing, # responses
-		{<<"foo.bar.zot">>, 3}
-		,{<<"foo.quux.zot">>, 3}
-		,{<<"foo.bar.quux.zot">>, 2}
-		,{<<"foo.zot">>, 2}
-		,{<<"foo">>, 2}
-		,{<<"xap">>, 2}
-	       ],
-    Bindings = [ <<"#">>, <<"foo.*.zot">>, <<"foo.#.zot">>, <<"*">>, <<"#.quux">>],
+map_bindings_server(B) ->
+    ?assertEqual(?MODULE:bind(B), ok),
+    ?assertEqual(?MODULE:bind(B), {error, exists}),
+    map_bindings_loop(B).
 
-    BoundPids = [ spawn(fun() -> map_bindings_server(B) end) || B <- Bindings ],
-    timer:sleep(500),
+map_bindings_loop(B) ->
+    receive
+	{binding_fired, Pid, _R, _Payload} ->
+	    Pid ! {binding_result, true, B},
+	    map_bindings_loop(B);
+	{binding_flushed, _} ->
+	    map_bindings_loop(B);
+	shutdown -> ok
+    end.
+
+-define(ROUTINGS_MAP_FOLD, [
+			    %% routing, # responses or count from fold
+			    {<<"foo.bar.zot">>, 3}
+			    ,{<<"foo.quux.zot">>, 3}
+			    ,{<<"foo.bar.quux.zot">>, 2}
+			    ,{<<"foo.zot">>, 2}
+			    ,{<<"foo">>, 2}
+			    ,{<<"xap">>, 2}
+			   ]).
+
+-define(BINDINGS_MAP_FOLD, [ <<"#">>, <<"foo.*.zot">>, <<"foo.#.zot">>, <<"*">>, <<"#.quux">>]).
+
+start_server(Fun) ->
+    logger:start(),
+    ?MODULE:start_link(),
+    ?assertEqual(ok, ?MODULE:flush()),
+
+    [ spawn(fun() -> Fun(B) end) || B <- ?BINDINGS_MAP_FOLD ],
+
+    timer:sleep(500).
+
+stop_server() ->
+    ?MODULE:stop().
+
+fold_and_route_test() ->
+    start_server(fun fold_bindings_server/1),
+    lists:foreach(fun({R, N}) ->
+			  Res = ?MODULE:fold(R, 0),
+			  ?LOG("fold: ~s: ~w -> ~p", [R, N, Res]),
+			  ?assertEqual({R, N}, {R, Res})
+		  end, ?ROUTINGS_MAP_FOLD),
+    stop_server().
+    
+
+map_and_route_test() ->
+    start_server(fun map_bindings_server/1),
     lists:foreach(fun({R, N}) ->
 			  Res = ?MODULE:map(R, R),
-			  ?assertEqual({R, N}, {R, length(Res)})
-		  end, Routings),
-    lists:foreach(fun(P) -> P ! shutdown end, BoundPids).
+			  ?LOG("map: ~s: ~w -> ~p", [R, N, Res]),
+			  ?assertEqual({R, N}, {R, length(Res)}),
+			  ?assertEqual(?MODULE:any(Res), true),
+			  ?assertEqual(?MODULE:all(Res), true),
+			  ?assertEqual(?MODULE:failed(Res), []),
+			  ?assertEqual(?MODULE:succeeded(Res), Res)
+		  end, ?ROUTINGS_MAP_FOLD),
+    stop_server().
+
+proper_test_() ->
+    {"Runs the module's PropEr tests for rebar quick commands",
+     {timeout, 15000,
+      [
+       ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
+      ]}}.
+
+%%% PropEr tests
+%% Checks that the patterns for paths (a.#.*.c) match or do not
+%% match a given expanded path.
+prop_expands() ->
+    ?FORALL(Paths, expanded_paths(),
+	    ?WHENFAIL(io:format("Failed on ~p~n",[Paths]),
+		      lists:all(fun(X) -> X end, %% checks if all true
+				[binding_matches(Pattern, Expanded) =:= Expected ||
+				    {Pattern, Expanded, Expected} <- Paths])
+		     )).
+
+%%% GENERATORS
+
+%% Gives a list of paths that were expanded, some of them to fail on purpose,
+%% some of them not to.
+expanded_paths() ->
+    ?LET(P, path(),
+	 begin
+	     B = list_to_binary(P),
+	     ?LET({{Expanded1, IsRight1},{Expanded2, IsRight2}},
+		  {wrong(P), right(P)},
+		  [{B, list_to_binary(Expanded1), IsRight1},
+		   {B, list_to_binary(Expanded2), IsRight2}])
+	 end).
+
+%% Tries to make a pattern wrong. Will not always suceed because a pattern
+%% like "#" can be anything at all.
+%%
+%% Returns {Str, ShouldMatchOriginal}.
+wrong(Path) ->
+    ?LET(P, Path, wrong(P, true, [])).
+
+%% Will expand the patterns according to the rules so they should always match
+%%
+%% Returns {Str, ShouldMatchOriginal}.
+right(Path) ->
+    ?LET(P, Path, {right1(P), true}).
+
+%% Here's why some patterns will always succeed even if we try to make them
+%% wrong. In a given strign S, we could add segments, but some subpatterns
+%% would have a chance to fix the problem we created. See a.*.#, which means
+%% 'at least two segments'  but still matches (albeit wrongly) a.b if we drop
+%% a section of the text, replace it by one, or add two of them. It can
+%% technically be done, but we would need a strong lookahead for that.
+%% This is especially the case of .#., which we will have to simply ignore.
+%%
+%% Returns {Str, ShouldMatchOriginal}.
+wrong([], Bool, Acc) ->
+    {lists:reverse(Acc), Bool};
+wrong("*.#." ++ Rest, Bool, Acc) -> %% the # messes stuff up, can't invalidate
+    wrong(Rest, Bool, Acc);
+wrong("*.#", Bool, Acc) ->  %% same as above, end of string
+    {lists:reverse(Acc), Bool};
+wrong("*." ++ Rest, _Bool, Acc) ->
+    wrong(Rest, false, Acc);
+wrong(".*", _Bool, Acc) ->
+    {lists:reverse(Acc), false};
+wrong(".#." ++ Rest, Bool, Acc) -> %% can't make this one wrong
+    wrong(Rest, Bool, [$.|Acc]);
+wrong("#." ++ Rest, Bool, Acc) -> %% same, start of string
+    wrong(Rest, Bool, Acc);
+wrong(".#", Bool, Acc) -> %% same as above, end of string
+    {lists:reverse(Acc), Bool};
+wrong([Char|Rest], Bool, Acc) when Char =/= $*, Char =/= $# ->
+    wrong(Rest, Bool, [Char|Acc]).
+
+%% Returns an expanded string according to the rules
+right1([]) -> [];
+right1("*" ++ Rest) ->
+    ?LET(S, segment(), S++right1(Rest));
+right1(".#" ++ Rest) ->
+    ?LET(X,
+	 union([
+		"",
+		?LAZY(?LET(S, segment(), [$.]++S)),
+		?LAZY(?LET({A,B}, {segment(), segment()}, [$.]++A++[$.]++B)),
+		?LAZY(?LET({A,B,C}, {segment(), segment(), segment()}, [$.]++A++[$.]++B++[$.]++C))
+	       ]),
+	 X ++ right1(Rest));
+right1("#." ++ Rest) ->
+    ?LET(X,
+	 union([
+		"",
+		?LAZY(?LET(S, segment(), S++[$.])),
+		?LAZY(?LET({A,B}, {segment(), segment()}, A++[$.]++B++[$.])),
+		?LAZY(?LET({A,B,C}, {segment(), segment(), segment()}, A++[$.]++B++[$.]++C++[$.]))
+	       ]),
+	 X ++ right1(Rest));
+right1([Char|Rest]) ->
+    [Char|right1(Rest)].
+
+%% Building a basic pattern/path string
+path() ->
+    ?LET(Base, ?LAZY(weighted_union([{3,a()}, {1,b()}])),
+	 ?LET({H,T}, {union(["*.","#.",""]), union([".*",".#",""])},
+	      H ++ Base ++ T)).
+
+a() ->
+    ?LET({X,Y}, {segment(), ?LAZY(union([b(), markers()]))},
+	 X ++ [$.] ++ Y). 
+
+b() ->
+    ?LET({X,Y}, {segment(), ?LAZY(union([b(), c()]))},
+	 X ++ [$.] ++ Y). 
+
+c() ->
+    segment().
+
+segment() ->
+    ?SUCHTHAT(
+       X,
+       list(union([choose($a,$z), choose($A,$Z), choose($0,$9)])),
+       length(X) =/= 0
+      ).
+
+markers() -> 
+    ?LET(S, ?LAZY(union([[$#, $., c()], [$*, $., b()]])), lists:flatten(S)).
 
 -endif.

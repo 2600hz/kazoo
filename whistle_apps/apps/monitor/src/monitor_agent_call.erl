@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.com>
-%%% @copyright (C) 2010, Karl Anderson
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Responsible for runnning the call server monitoring tasks
 %%% @end
-%%% Created : 30 Nov 2010 by Karl Anderson <karl@2600hz.com>
+%%% Created : 30 Nov 2010 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(monitor_agent_call).
 

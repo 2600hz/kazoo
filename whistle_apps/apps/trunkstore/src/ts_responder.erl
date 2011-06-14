@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Trunk-Store responder waits for Auth and Route requests on the broadcast
 %%% Exchange, and delievers the requests to the corresponding handler.
@@ -233,7 +233,7 @@ start_amqp() ->
     ReqQueue1 = amqp_util:new_callmgr_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
 
     try
-	ok = amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
+	{'basic.qos_ok'} = amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
 
 	%% Bind the queue to an exchange
 	_ = amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),

@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Store registrations, do user lookups for contact strings
 %%% @end
@@ -136,7 +136,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
         {noreply, State#state{amqp_q=Q}}
     catch
         _:_ ->
-            ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
@@ -149,11 +149,11 @@ handle_info({amqp_reconnect, T}, State) ->
 	_:_ -> 
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
                     {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
                     {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
@@ -280,7 +280,7 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{amqp_q=Queue}) ->
 	send_resp(Payload, RespQ)
     catch
 	Type:Reason ->
-	    ?LOG("SIP authentication exception ~s:~w", [Type, Reason]),
+	    ?LOG("SIP authentication exception ~w: ~w", [Type, Reason]),
 	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 
@@ -331,7 +331,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	end
     catch
 	Type:Reason ->
-	    ?LOG("registration processor exception ~s:~w", [Type, Reason]),
+	    ?LOG("registration processor exception ~w: ~w", [Type, Reason]),
 	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 
@@ -377,7 +377,7 @@ process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{amqp_q=Queue}) ->
 	end
     catch
 	Type:Reason ->
-	    ?LOG("registration query exception ~s:~w", [Type, Reason]),
+	    ?LOG("registration query exception ~w: ~w", [Type, Reason]),
 	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 process_req({_Cat, _Evt},_JObj,_) ->

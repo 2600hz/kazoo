@@ -17,11 +17,9 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
 %%% @version {@version}
-%%% @author Eirini Arvaniti <eirinibob@gmail.com>
+%%% @author Eirini Arvaniti
 
 %%% @doc This module defines the `proper_statem' behaviour, useful for testing
 %%% stateful reactive systems whose internal state and side-effects are
@@ -38,18 +36,15 @@
 %%% all <a href="#index">API functions </a> of {@module} are automatically
 %%% imported, unless `PROPER_NO_IMPORTS' is defined.
 %%%
-%%% == A word about... ==
-%%% === ...the role of commands ===
+%%% === The role of commands ===
 %%% Testcases generated for testing a stateful system are lists of symbolic API
-%%% calls to that system. At this point you may wonder why we opt for such a
-%%% complication, when we could immediately perform the calls. As it turns out,
-%%% symbolic representation makes things much easier. Here are some reasons to
-%%% vote for it, listed in increasing order of importance:
+%%% calls to that system. Symbolic representation has several benefits, which
+%%% are listed here in increasing order of importance:
 %%% <ul>
 %%% <li>Generated testcases are easier to read and understand.</li>
 %%% <li>Failing testcases are easier to shrink.</li>
 %%% <li>The generation phase is side-effect free and this results in
-%%%   repeatable testcases.</li>
+%%%   repeatable testcases, which is essential for correct shrinking.</li>
 %%% </ul>
 %%% Since the actual results of symbolic calls are not known at generation time,
 %%% we use symbolic variables ({@type symb_var()}) to refer to them.
@@ -64,18 +59,18 @@
 %%% In this example, the first call stores the pair `{a,42}' in the process
 %%% dictionary, while the second one deletes it. Then, a new pair `{b,{var,2}}'
 %%% is stored. `{var,2}' is a symbolic variable bound to the result of
-%%% `erlang:erase/1'. This result is not known at generation time since none of
+%%% `erlang:erase/1'. This result is not known at generation time, since none of
 %%% these operations is performed at that time. After evaluating the command
 %%% sequence at runtime, the process dictionary will eventually contain the
 %%% pair `{b,42}'.
 %%%
-%%% === ...the abstract model-state ===
+%%% === The abstract model-state ===
 %%% In order to be able to test impure code, we need a way to track its
 %%% internal state (at least the useful part of it). To this end, we use an
 %%% abstract state machine representing the possible configurations of the
-%%% system under test. When referring to <i>model state</i>, we mean the state
-%%% of the abstract state machine. Model state can be either symbolic or
-%%% dynamic:
+%%% system under test. When referring to the <i>model state</i>, we mean the
+%%% state of the abstract state machine. The <i>model state</i> can be either
+%%% symbolic or dynamic:
 %%% <ul>
 %%% <li>During command generation, we use symbolic variables to bind the
 %%% results of symbolic calls. Therefore, the model state might
@@ -90,7 +85,7 @@
 %%% will be `[{b,42}]'.</li>
 %%% </ul>
 %%%
-%%% === ...the proper_statem callback functions ===
+%%% === The callback functions ===
 %%% The following functions must be exported from the callback module
 %%% implementing the abstract state machine:
 %%% <ul>
@@ -105,7 +100,9 @@
 %%% <li>`command(S::'{@type symbolic_state()}`) ::' {@type proper_types:type()}
 %%%   <p>Generates a symbolic call to be included in the command sequence,
 %%%   given the current state `S' of the abstract state machine. However,
-%%%   before the call is actually included, a precondition is checked.</p></li>
+%%%   before the call is actually included, a precondition is checked. This
+%%%   function will be repeatedly called to produce the next call to be
+%%%   included in the test case.</p></li>
 %%% <li>`precondition(S::'{@type symbolic_state()}`,
 %%%                   Call::'{@type symb_call()}`) :: boolean()'
 %%%   <p>Specifies the precondition that should hold so that `Call' can be
@@ -114,7 +111,7 @@
 %%%   chosen using the `command/1' generator. If preconditions are very strict,
 %%%   it will take a lot of tries for PropEr to randomly choose a valid command.
 %%%   Testing will be stopped in case the `constraint_tries' limit is reached
-%%%   (see the 'Options' section).
+%%%   (see the 'Options' section in the {@link proper} module documentation).
 %%%   Preconditions are also important for correct shrinking of failing
 %%%   testcases. When shrinking command sequences, we try to eliminate commands
 %%%   that do not contribute to failure, ensuring that all preconditions still
@@ -135,34 +132,49 @@
 %%%   <p>Specifies the next state of the abstract state machine, given the
 %%%   current state `S', the symbolic `Call' chosen and its result `Res'. This
 %%%   function is called both at command generation and command execution time
-%%%   in order to update the testcase state, therefore the state `S' and the
+%%%   in order to update the model state, therefore the state `S' and the
 %%%   result `Res' can be either symbolic or dynamic.</p></li>
 %%% </ul>
 %%%
-%%% === ...the property used ===
-%%% This is an example of a property to test the process dictionary:
+%%% === The property used ===
+%%% Each test consists of two phases:
+%%% <ul>
+%%% <li>As a first step, PropEr generates random symbolic command sequences
+%%%   deriving information from the callback module implementing the abstract
+%%%   state machine. This is the role of {@link commands/1} generator.</li>
+%%% <li>As a second step, command sequences are executed so as to check that
+%%%   the system behaves as expected. This is the role of
+%%%   {@link run_commands/2}, a function that evaluates a symbolic command
+%%%   sequence according to an abstract state machine specification.</li>
+%%% </ul>
+%%%
+%%% These two phases are encapsulated in the following property, which can be
+%%% used for testing the process dictionary:
 %%%
 %%% ```prop_pdict() ->
-%%%       ?FORALL(Cmds, proper_statem:commands(?MODULE),
-%%%        begin
-%%%         {H,S,Res} = proper_statem:run_commands(?MODULE, Cmds),
-%%%         cleanup(),
-%%%         ?WHENFAIL(io:format("History: ~w\nState: ~w\nRes: ~w\n",
-%%%	                        [H,S,Res]),
-%%%		      aggregate(proper_statem:command_names(Cmds),
-%%%                             Res =:= ok))
-%%%        end).'''
+%%%        ?FORALL(Cmds, proper_statem:commands(?MODULE),
+%%%                begin
+%%%                    {_History, _State, Result} = proper_statem:run_commands(?MODULE, Cmds),
+%%%                    cleanup(),
+%%%                    Result =:= ok
+%%%                end).'''
 %%%
-%%% === ...parallel testing ===
+%%% When testing impure code, it is very important to keep each test
+%%% self-contained. For this reason, almost every property for testing stateful
+%%% systems contains some clean-up code. Such code is necessary to put the
+%%% system in a known state, so that the next test can be executed
+%%% independently from previous ones.
+%%%
+%%% == Parallel testing ==
 %%% After ensuring that a system's behaviour can be described via an abstract
 %%% state machine when commands are executed sequentially, it is possible to
 %%% move to parallel testing. The same state machine can be used to generate
-%%% command sequences that will be executed concurrently to test for race
+%%% command sequences that will be executed in parallel to test for race
 %%% conditions. A parallel testcase ({@type parallel_testcase()}) consists of
 %%% a sequential and a parallel component. The sequential component is a
 %%% command sequence that is run first to put the system in a random state.
 %%% The parallel component is a list of command sequences that are executed in
-%%% parallel, each of them in a newly-spawned separate process. After running a
+%%% parallel, each of them in a separate newly-spawned process. After running a
 %%% parallel testcase, PropEr uses the state machine specification to check if
 %%% the results observed could have been produced by a possible serialization
 %%% of the parallel component. If no such serialization is possible, then an
@@ -172,15 +184,23 @@
 %%% those used for sequential testing.
 %%%
 %%% ```prop_parallel_testing() ->
-%%%       ?FORALL(Testcase, proper_statem:parallel_commands(?MODULE),
-%%%        begin
-%%%         {Seq,Par,Res} =
-%%%             proper_statem:run_parallel_commands(?MODULE, Testcase),
-%%%         cleanup(),
-%%%         ?WHENFAIL(io:format("Sequential: ~w\nParallel: ~w\nRes: ~w\n",
-%%%	                        [Seq,Par,Res]),
-%%%		      Res =:= ok)
-%%%        end).'''
+%%%        ?FORALL(Testcase, proper_statem:parallel_commands(?MODULE),
+%%%                begin
+%%%                    {_Sequential, _Parallel, Result} = proper_statem:run_parallel_commands(?MODULE, Testcase),
+%%%                    cleanup(),
+%%%                    Result =:= ok
+%%%                end).'''
+%%%
+%%% Please note that, in case of strict preconditions, PropEr might not be
+%%% able to generate a suitable parallel component for each test. In this
+%%% case, an `"f"' is printed on screen to inform the user that a test case
+%%% will be executed sequentially.
+%%%
+%%% Also note that the actual interleaving of commands of the parallel
+%%% component depends on the Erlang scheduler, which is too deterministic.
+%%% For PropEr to be able to detect race conditions, the code of the system
+%%% under test should be instrumented with `erlang:yield/0' calls to the
+%%% scheduler.
 %%% @end
 
 -module(proper_statem).

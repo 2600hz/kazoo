@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -25,7 +25,9 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->    
     put(callid, CallId),
-    {ok, Endpoint} = cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call),
+    Id = wh_json:get_value(<<"id">>, Data),
+    ?LOG("loading endpoint ~s", [Id]),
+    {ok, Endpoint} = cf_endpoint:build(Id, Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),  
     IgnoreEarlyMedia = wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint),
     case b_bridge([Endpoint], Timeout, {undefined, undefined}, <<"single">>, IgnoreEarlyMedia, Call) of

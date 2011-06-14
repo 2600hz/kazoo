@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -373,6 +373,7 @@ get_menu_profile(Data, Db) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
+            ?LOG("loaded menu route ~s", [Id]),
             Default=#menu{},
             #menu{
 		   menu_id = Id
@@ -387,6 +388,7 @@ get_menu_profile(Data, Db) ->
                    ,has_prompt_media = wh_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
                    ,s_prompt = wh_json:get_value(<<115,97,115,115,121,95,109,111,100,101>>, JObj) =/= undefined
                  };
-        _ ->
+        {error, R} ->
+            ?LOG("failed to load menu route ~s, ~w", [Id, R]),
             #menu{}
     end.

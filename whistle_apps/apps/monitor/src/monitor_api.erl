@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.com>
-%%% @copyright (C) 2010, Karl Anderson
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Monitor API Helpers
 %%%
@@ -15,7 +15,7 @@
 %%%
 %%% See http://corp.switchfreedom.com/mediawiki/
 %%% @end
-%%% Created : 12 Aug 2010 by Karl Anderson <karl@2600hz.com>
+%%% Created : 12 Aug 2010 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(monitor_api).
 

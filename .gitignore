@@ -5,5 +5,5 @@
 .eunit
 lib/rabbitmq-server/log/*.log*
 lib/rabbitmq-server/mnesia/*
-applications/apps/*/log/*
-applications/priv/mnesia/*.*
+whistle_apps/apps/*/log/*
+whistle_apps/priv/mnesia/*.*

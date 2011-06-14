@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -597,6 +597,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, dest_number=Dest}) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
+            ?LOG("loaded voicemail box ~s", [Id]),            
             Default=#mailbox{},
             #mailbox{
                        mailbox_id = Id
@@ -608,7 +609,8 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, dest_number=Dest}) ->
                       ,mailbox_number = wh_json:get_value(<<"mailbox">>, JObj, Dest)
                       ,exists=true
                     };
-        _ ->
+        {error, R} ->
+            ?LOG("failed to load voicemail box ~s, ~w", [Id, R]),
             #mailbox{}
     end.
 
