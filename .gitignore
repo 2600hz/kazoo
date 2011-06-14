@@ -3,6 +3,7 @@
 */mnesia
 */error_log
 .eunit
+whistle_apps/apps/crossbar/log/*
 lib/rabbitmq-server/log/*.log*
 lib/rabbitmq-server/mnesia/*
 whistle_apps/apps/*/log/*
