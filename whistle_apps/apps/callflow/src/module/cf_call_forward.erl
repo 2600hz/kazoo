@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -199,6 +199,7 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
 get_call_forward(#cf_call{authorizing_id=Id, account_db=Db}) ->
     case couch_mgr:get_results(Db, <<"devices/listing_with_owner">>, [{<<"include_docs">>, true}, {<<"key">>, Id}]) of     
         {ok, [JObj]} ->
+            ?LOG("loaded call forwarding ~s", [Id]),
             Owner = wh_json:get_value(<<"doc">>, JObj),
             #callfwd{
                        doc_id = wh_json:get_value(<<"_id">>, Owner, wh_json:get_value(<<"id">>, JObj))
@@ -208,7 +209,9 @@ get_call_forward(#cf_call{authorizing_id=Id, account_db=Db}) ->
                       ,keep_caller_id = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner, true))
                     };
         {ok, []} ->
+            ?LOG("loaded empty call forwarding ~s", [Id]),
             {error, #callfwd{}};
-        {error, _} ->
+        {error, R} ->
+            ?LOG("failed to load call forwarding ~s, ~w", [Id, R]),
             {error, #callfwd{}}
     end.

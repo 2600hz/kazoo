@@ -21,7 +21,9 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {}).
+-record(state, {
+	  is_amqp_up = false :: boolean()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -95,8 +97,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, State) ->
-    true = is_binary(start_amqp()),
+handle_info(timeout, #state{is_amqp_up=false}=State) ->
+    {noreply, State#state{is_amqp_up=is_binary(start_amqp())}, 1000};
+handle_info(timeout, #state{is_amqp_up=true}=State) ->
     {noreply, State};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }

@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event
 %%% queue
 %%% @end
-%%% Created : 25 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 25 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
 -behaviour(gen_server).
@@ -278,6 +278,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 -spec(shutdown/2 :: (CtlPid :: pid() | undefined, UUID :: binary()) -> no_return()).
+shutdown(undefined, _) -> ok;
 shutdown(CtlPid, UUID) ->
     ?LOG(UUID, "Shutdown CTL ~p", [CtlPid]),
     is_pid(CtlPid) andalso CtlPid ! {hangup, self(), UUID}.

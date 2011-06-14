@@ -1,6 +1,6 @@
 -module(trunkstore).
 
--author('James Aimonetti <james@2600hz.com>').
+-author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}

@@ -1,5 +1,5 @@
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% CDR logger
 %%% @end
@@ -7,7 +7,7 @@
 
 -module(cdr).
 
--author('James Aimonetti <james@2600hz.com>').
+-author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0, set_amqp_host/1, set_couch_host/1]).
 
 %% @spec start_link() -> {ok,Pid::pid()}

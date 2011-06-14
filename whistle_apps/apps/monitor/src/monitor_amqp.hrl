@@ -1,5 +1,5 @@
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010, Karl Anderson
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% AMQP-specific things for Monitor
 %%% @end

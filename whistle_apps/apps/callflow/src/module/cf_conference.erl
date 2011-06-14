@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -209,6 +209,7 @@ get_conference_profile(Data, Db) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
+            ?LOG("loaded conference ~s", [Id]),
             Default=#conf{},
             #conf{
                  id = Id
@@ -222,7 +223,8 @@ get_conference_profile(Data, Db) ->
                 ,require_moderator = wh_json:get_value(<<"require_moderator">>, JObj, Default#conf.require_moderator)
                 ,wait_for_moderator = wh_json:get_value(<<"wait_for_moderator">>, JObj, Default#conf.wait_for_moderator)
          };
-        _ ->
+        {error, R} ->
+            ?LOG("failed to load conference ~s, ~w", [Id, R]),            
             #conf{}
     end.
 

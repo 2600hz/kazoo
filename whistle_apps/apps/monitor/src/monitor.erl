@@ -1,5 +1,5 @@
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010, Karl Anderson
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Service/Server Monitoring
 %%% @end
@@ -7,7 +7,7 @@
 
 -module(monitor).
 
--author('Karl Anderson <karl@2600hz.com>').
+-author('Karl Anderson <karl@2600hz.org>').
 -export([start/0, start_link/0, start_link/1, stop/0, set_amqp_host/1]).
 
 %% @spec start_link() -> {ok,Pid::pid()}

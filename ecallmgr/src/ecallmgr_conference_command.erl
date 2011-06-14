@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.com>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Execute conference commands
 %%% @end
-%%% Created : 16 Mar 2011 by Karl Anderson <karl@2600hz.com>
+%%% Created : 16 Mar 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 
 -module(ecallmgr_conference_command).

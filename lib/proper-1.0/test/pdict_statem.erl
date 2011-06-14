@@ -17,12 +17,9 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
 %%% @version {@version}
-%%% @author Kresten Krab Thorup <krab@trifork.com>,
-%%%         edited by Eirini Arvaniti <eirinibob@gmail.com>
+%%% @author Kresten Krab Thorup, edited by Eirini Arvaniti
 %%% @doc Simple statem test for the process dictionary
 
 -module(pdict_statem).

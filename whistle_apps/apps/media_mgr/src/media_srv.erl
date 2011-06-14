@@ -128,7 +128,7 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
 	{noreply, S#state{amqp_q=Q, ports=Ps1}}
     catch
 	_:_ ->
-            ?LOG_SYS("attempting to connect amqp again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    Ps2 = updated_reserved_ports(Ps, PortRange),
 	    {noreply, S#state{amqp_q = <<>>, ports=Ps2}}
@@ -142,11 +142,11 @@ handle_info({amqp_reconnect, T}, State) ->
 	_:_ -> 
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
                     timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
-                    ?LOG_SYS("attempting to reconnect amqp again in ~b ms", [Timeout]),
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
                     timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
