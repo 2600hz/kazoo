@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Maintain a pool of ts_responders
 %%% @end

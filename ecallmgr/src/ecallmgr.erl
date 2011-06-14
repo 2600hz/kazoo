@@ -1,6 +1,6 @@
 -module(ecallmgr).
 
--author('James Aimonetti <james@2600hz.com>').
+-author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0, add_fs_node/1, rm_fs_node/1, diagnostics/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}

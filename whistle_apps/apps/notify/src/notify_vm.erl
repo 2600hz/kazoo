@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Handle updating devices and emails about voicemails
 %%% @end
@@ -23,7 +23,7 @@
 -define(SERVER, ?MODULE).
 -define(DEFAULT_VM_TEMPLATE, <<"New Voicemail Message\n\nCaller ID: {{caller_id_number}}\nCaller Name: {{caller_id_name}}\n\nCalled To: {{to_user}}   (Originally dialed number)\nCalled On: {{date_called|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{support_number}} or email {{support_email}}">>).
 -define(DEFAULT_SUPPORT_NUMBER, <<"(415) 886-7950">>).
--define(DEFAULT_SUPPORT_EMAIL, <<"support@2600hz.com">>).
+-define(DEFAULT_SUPPORT_EMAIL, <<"support@2600hz.org">>).
 
 -record(state, {}).
 

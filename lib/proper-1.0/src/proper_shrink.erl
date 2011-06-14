@@ -17,11 +17,9 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
 %%% @version {@version}
-%%% @author Manolis Papadakis <manopapad@gmail.com>
+%%% @author Manolis Papadakis
 %%% @doc The shrinking subsystem and all predefined shrinkers are contained in
 %%%	 this module.
 %%% @private

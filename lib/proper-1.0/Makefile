@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-# Author:      Manolis Papadakis <manopapad@gmail.com>
+# Author:      Manolis Papadakis
 # Description: Instructions for make
 
 .PHONY: default all compile dialyze check_scripts tests doc clean distclean rebuild retest

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
@@ -41,7 +41,7 @@
 %%%
 %%%
 %%% @end
-%%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control).
 

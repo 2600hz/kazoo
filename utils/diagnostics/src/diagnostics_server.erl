@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, James Aimonetti
 %%% @doc
 %%% Maintain a list of nodes to query for diagnostic information, and
 %%% present the data in a meaningful way to a human
 %%% @end
-%%% Created : 11 Oct 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 11 Oct 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(diagnostics_server).
 

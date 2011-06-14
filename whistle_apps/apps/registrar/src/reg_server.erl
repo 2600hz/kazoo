@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Store registrations, do user lookups for contact strings
 %%% @end
@@ -280,7 +280,7 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{amqp_q=Queue}) ->
 	send_resp(Payload, RespQ)
     catch
 	Type:Reason ->
-	    ?LOG("SIP authentication exception ~s:~w", [Type, Reason]),
+	    ?LOG("SIP authentication exception ~w: ~w", [Type, Reason]),
 	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 
@@ -331,7 +331,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	end
     catch
 	Type:Reason ->
-	    ?LOG("registration processor exception ~s:~w", [Type, Reason]),
+	    ?LOG("registration processor exception ~w: ~w", [Type, Reason]),
 	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 
@@ -377,7 +377,7 @@ process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{amqp_q=Queue}) ->
 	end
     catch
 	Type:Reason ->
-	    ?LOG("registration query exception ~s:~w", [Type, Reason]),
+	    ?LOG("registration query exception ~w: ~w", [Type, Reason]),
 	    ?LOG_END("stacktrace ~w", [erlang:get_stacktrace()])
     end;
 process_req({_Cat, _Evt},_JObj,_) ->

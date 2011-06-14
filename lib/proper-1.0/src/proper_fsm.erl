@@ -17,11 +17,9 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
 %%% @version {@version}
-%%% @author Eirini Arvaniti <eirinibob@gmail.com>
+%%% @author Eirini Arvaniti
 
 %%% @doc This module defines the `proper_fsm' behaviour, useful for testing
 %%% systems that can be modeled as finite state machines. That is, a finite
@@ -37,8 +35,7 @@
 %%% {@link proper_statem}, a fully qualified call is needed in order to
 %%% use the  <a href="#index">API functions </a> of `{@module}'.
 %%%
-%%% == A word about... ==
-%%% === ...the states of the finite state machine ===
+%%% === The states of the finite state machine ===
 %%% Following the convention used in `gen_fsm behaviour', the state is
 %%% separated into a `StateName::'{@type state_name()} and some
 %%% `StateData::'{@type state_data()}. `StateName' is used to denote a state
@@ -54,14 +51,14 @@
 %%% `StateName' for each floor could be `{floor,K}, 1 <= K <= N'.<br/>
 %%% `StateData' can be an arbitrary term, but is usually a record.
 %%%
-%%% === ...transitions between states ===
+%%% === Transitions between states ===
 %%% A transition ({@type transition()}) is represented as a tuple
 %%% `{TargetState, {call,M,F,A}}'. This means that performing the specified
 %%% symbolic call at the current state of the fsm will lead to `TargetState'.
 %%% The atom `history' can be used as `TargetState' to denote that a transition
 %%% does not change the current state of the fsm.
 %%%
-%%% === ...the proper_fsm callback functions ===
+%%% === The callback functions ===
 %%% The following functions must be exported from the callback module
 %%% implementing the finite state machine:
 %%% <ul>
@@ -136,21 +133,17 @@
 %%%   symbolic or dynamic.</p></li>
 %%% </ul>
 %%%
-%%% === ...the property used ===
-%%% This is an example of a property which can be used to test a
+%%% === The property used ===
+%%% This is an example of a property that can be used to test a
 %%% finite state machine specification:
 %%%
 %%% ```prop_fsm() ->
-%%%       ?FORALL(Cmds, proper_fsm:commands(?MODULE),
-%%%        begin
-%%%         {H,S,Res} = proper_fsm:run_commands(?MODULE, Cmds),
-%%%         cleanup(),
-%%%         ?WHENFAIL(io:format("History: ~w\nState: ~w\nRes: ~w\n",
-%%%	                        [H,S,Res]),
-%%%		      aggregate(zip(proper_fsm:state_names(H),
-%%%				    command_names(Cmds)),
-%%%			        Res =:= ok))
-%%%        end).'''
+%%%        ?FORALL(Cmds, proper_fsm:commands(?MODULE),
+%%%                begin
+%%%                    {_History, _State, Result} = proper_fsm:run_commands(?MODULE, Cmds),
+%%%                    cleanup(),
+%%%                    Result =:= ok
+%%%                end).'''
 %%% @end
 
 -module(proper_fsm).
@@ -292,9 +285,17 @@ precondition(#state{name = From, data = Data, mod = Mod}, Call) ->
     Targets = target_states(Mod, From, Data, Call),
     case [To || To <- Targets,
 		Mod:precondition(From, cook_history(From, To), Data, Call)] of
-	[]   -> false;
-	[_T] -> true;
-	_    -> erlang:error(precondition)
+	[]   ->
+	    false;
+	[_T] ->
+	    true;
+	_ ->
+	    io:format(
+	      "\nError: The transition from \"~w\" state triggered by ~w "
+	      "call leads to multiple target states.\nUse the precondition/5 "
+              "callback to specify which target state should be chosen.\n",
+	      [From, get_mfa(Call)]),
+	    erlang:error(too_many_targets)
     end.
 
 %% @private
@@ -398,3 +399,6 @@ is_compatible({call,M,F,A1}, {call,M,F,A2})
     true;
 is_compatible(_, _) ->
     false.
+
+-spec get_mfa(symb_call()) -> mfa().
+get_mfa({call,M,F,A}) -> {M,F,length(A)}.

@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Trunk-Store responder waits for Auth and Route requests on the broadcast
 %%% Exchange, and delievers the requests to the corresponding handler.
@@ -9,7 +9,7 @@
 %%% Each request received by TS_RESPONDER should be put into a new spawn()
 %%% to avoid blocking on each request.
 %%% @end
-%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ts_responder).
 
