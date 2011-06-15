@@ -17,7 +17,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--include("dth.hrl").
+-include("dth_soap.hrl").
+
 
 -define(SERVER, ?MODULE).
 -record(state, {
@@ -167,7 +168,7 @@ handle_amqp_msg(Payload) ->
     Timestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj)),
     BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)),
 
-    CallRecord = #dth_call_record{
+    CallRecord = #'call_record'{
       customer_id = wh_json:get_value([<<"Custom-Channel-Variables">>, <<"Account-ID">>], JObj, <<"0000000000">>)
       ,originating_number = wh_json:get_value(<<"From-Uri">>, JObj)
       ,destination_number = wh_json:get_value(<<"To-Uri">>, JObj)
