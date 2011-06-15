@@ -190,7 +190,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 			  ?LOG(CallID, "View accounts/balance not found in DB ~s", [RDB]),
 			  gen_server:reply(From, E);
 		      {ok, []} ->
-			  ?LOG(CallID, "No view results for ~s, no_funds", [AcctId]),
+			  ?LOG(CallID, "No view results for ~s, no_account", [AcctId]),
 			  gen_server:reply(From, {error, no_account});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
