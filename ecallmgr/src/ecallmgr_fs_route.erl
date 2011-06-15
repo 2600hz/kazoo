@@ -129,8 +129,8 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
     {noreply, State};
 
 handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
-    case props:get_value(<<"Event-Name">>, FSData) of
-	<<"REQUEST_PARAMS">> ->
+    case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
+	{<<"REQUEST_PARAMS">>, <<"context_2">>} ->
 	    {ok, LookupPid} = ecallmgr_fs_route_sup:start_req(Node, FSID, CallID, FSData),
 	    erlang:monitor(process, LookupPid),
 
@@ -138,8 +138,8 @@ handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #sta
 	    ?LOG_START(CallID, "Fetch request: FSID: ~p Lookup: ~p Req#: ~p", [FSID, LookupPid, LookupsReq]),
 	    {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
 				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
-	_Other ->
-	    ?LOG("Ignoring event ~p", [_Other]),
+	{_Other, _Context} ->
+	    ?LOG("Ignoring event ~s in context ~s", [_Other, _Context]),
 	    _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
 	    {noreply, State}
     end;
