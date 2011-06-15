@@ -72,9 +72,10 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{call_id=CallId}=Call) ->
+handle(Data, #cf_call{call_id=CallId, account_id=AccountId}=Call) ->
     put(callid, CallId),
-    Menu = get_menu_profile(Data, Call#cf_call.account_db),
+    Db = whapps_util:get_db_name(AccountId, encoded),
+    Menu = get_menu_profile(Data, Db),
     answer(Call),
     menu_loop(Menu, Call).
 
@@ -94,9 +95,9 @@ menu_loop(#menu{retries=Retries, prompts=Prompts}, #cf_call{cf_pid=CFPid} = Call
 menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
     try
 	case b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
-	    {ok, <<>>} ->                
+	    {ok, <<>>} ->
 		throw(no_digits_collected);
-	    {ok, RecordPin} ->                
+	    {ok, RecordPin} ->
                 ?LOG("selection matches recording pin"),
                 M = record_prompt(tmp_file(), Menu, Call),
                 ?LOG("returning caller to menu"),
@@ -173,7 +174,7 @@ is_hunt_allowed(Digits, #menu{hunt_allow=RegEx}, _) ->
         ?LOG("hunt_allow accepted digits"),
         true
     catch
-        _:_ -> 
+        _:_ ->
             ?LOG("hunt_allow denied digits"),
             false
     end.
@@ -194,7 +195,7 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
         ?LOG("hunt_deny denied digits"),
         true
     catch
-        _:_ -> 
+        _:_ ->
             ?LOG("hunt_deny accepted digits"),
             false
     end.
@@ -206,18 +207,18 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
-hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=To, account_db=Db}=Call) ->        
-    case wh_cache:fetch({account, Db}) of
-        {ok, Account} when To =:= <<>> ->
+hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=Realm, account_id=AccountId}=Call) ->
+    case wh_cache:fetch({account, AccountId}) of
+        {ok, Account} when Realm =:= <<>> ->
             hunt_for_callflow(Digits, Menu#menu{hunt_realm=(wh_json:get_value(<<"realm">>, Account, <<"norealm">>))}, Call);
         {ok, Account} ->
-            hunt_for_callflow(Digits, Menu#menu{hunt_realm=(wh_json:get_value(<<"realm">>, Account, To))}, Call);
-        {error, _} when To =:= <<>> ->
-            hunt_for_callflow(Digits, Menu#menu{hunt_realm = <<"norealm">>}, Call);            
+            hunt_for_callflow(Digits, Menu#menu{hunt_realm=(wh_json:get_value(<<"realm">>, Account, Realm))}, Call);
+        {error, _} when Realm =:= <<>> ->
+            hunt_for_callflow(Digits, Menu#menu{hunt_realm = <<"norealm">>}, Call);
         {error, _} ->
-            hunt_for_callflow(Digits, Menu#menu{hunt_realm = To}, Call)
+            hunt_for_callflow(Digits, Menu#menu{hunt_realm = Realm}, Call)
     end;
-hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid}=Call) ->    
+hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid}=Call) ->
     ?LOG("hunting for ~s", [<<Digits/binary, $@, Realm/binary>>]),
     case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, Realm/binary>>}, 2000) of
         {ok, Flow} ->
@@ -304,14 +305,14 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, 
                 ], Call),
     {ok, Digits} = wait_for_dtmf(30000),
     _ = flush(Call),
-    case Digits of 
-        ListenKey ->            
+    case Digits of
+        ListenKey ->
 	    _ = b_play(MediaName, Call),
 	    review_recording(MediaName, Menu, Call);
 	RecordKey ->
 	    {ok, record};
 	SaveKey ->
-	    {ok, save};	
+	    {ok, save};
         _ ->
 	    review_recording(MediaName, Menu, Call)
     end.

@@ -26,7 +26,8 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-	   amqp_q = <<>> :: binary()
+            self :: pid()
+	   ,amqp_q = <<>> :: binary()
          }).
 
 %%-----------------------------------------------------------------------------
@@ -41,7 +42,7 @@
 %
 % @end
 %------------------------------------------------------------------------------
-start_link() -> 
+start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%-----------------------------------------------------------------------------
@@ -56,21 +57,9 @@ start_link() ->
 %
 % @end
 %------------------------------------------------------------------------------
-init([]) -> 
+init([]) ->
     ?LOG_SYS("starting new callflow responder"),
-    _ = amqp_util:callmgr_exchange(),
-    _ = amqp_util:targeted_exchange(),
-    _ = amqp_util:callevt_exchange(),
-    ?LOG_SYS("ensuring database ~s exists", [?CALLFLOW_DB]),
-    couch_mgr:db_create(?CALLFLOW_DB),
-    ?LOG_SYS("ensuring database ~s has view ~s", [?CALLFLOW_DB, ?VIEW_FILE]),
-    try                              
-        {ok, _} = couch_mgr:update_doc_from_file(?CALLFLOW_DB, callflow, ?VIEW_FILE)
-    catch
-        _:_ -> 
-            couch_mgr:load_doc_from_file(?CALLFLOW_DB, callflow, ?VIEW_FILE)
-    end,
-    {ok, #state{}, 0}.
+    {ok, #state{self=self()}, 0}.
 
 %------------------------------------------------------------------------------
 % @private
@@ -79,18 +68,17 @@ init([]) ->
 %
 % @end
 %------------------------------------------------------------------------------
-handle_call({find_flow, To}, From, State) ->
-    spawn(fun() ->                  
-                  case hunt_to(To) orelse hunt_no_match(To) of
-                      true ->
-                          {ok, {_, Flow, _}} = wh_cache:fetch({cf_flow, To}),
+handle_call({find_flow, Number, AccountId}, From, State) ->
+    spawn(fun() ->
+                  case lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}) of
+                      {ok, Flow} ->
                           gen_server:reply(From, {ok, Flow});
-                      false ->
+                      {error, _} ->
                           gen_server:reply(From, {error, not_found})
                   end
           end),
     {noreply, State};
-handle_call(_Request, _From, State) ->   
+handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 %------------------------------------------------------------------------------
@@ -126,7 +114,7 @@ handle_info({amqp_reconnect, T}, State) ->
 	{ok, NewQ} = start_amqp(),
 	{noreply, State#state{amqp_q=NewQ}}
     catch
-	_:_ -> 
+	_:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
@@ -145,10 +133,10 @@ handle_info({amqp_host_down, _}, State) ->
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
-    Parent = self(),
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-                  handle_req(wh_json:get_value(<<"Event-Name">>, JObj), JObj, Parent, State)
+                  whapps_util:put_callid(JObj),
+                  _ = process_req(whapps_util:get_event_type(JObj), JObj, State)
           end),
     {noreply, State};
 
@@ -164,7 +152,7 @@ handle_info(_Info, State) ->
 %
 % @end
 %------------------------------------------------------------------------------
-terminate( _Reason, _State) -> 
+terminate( _Reason, _State) ->
     ?LOG_SYS("callflow responder ~p termination", [_Reason]),
     ok.
 
@@ -175,29 +163,25 @@ terminate( _Reason, _State) ->
 %
 % @end
 %------------------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) -> 
+code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-%%-----------------------------------------------------------------------------
-%% INTERNAL API
-%%-----------------------------------------------------------------------------
-%%
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
-%%-----------------------------------------------------------------------------
-%% STARTING AMQP
-%%-----------------------------------------------------------------------------
-%%
-
-%%-----------------------------------------------------------------------------
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Creates and binds a queue to call manager route requests
-%%
+%% ensure the exhanges exist, build a queue, bind, and consume
 %% @end
-%%-----------------------------------------------------------------------------
+%%--------------------------------------------------------------------
 -spec(start_amqp/0 :: () -> tuple(ok, binary())).
 start_amqp() ->
     try
+        _ = amqp_util:callmgr_exchange(),
+        _ = amqp_util:targeted_exchange(),
+        _ = amqp_util:callevt_exchange(),
         Q = amqp_util:new_callmgr_queue(<<>>),
         amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
         amqp_util:bind_q_to_targeted(Q),
@@ -208,131 +192,142 @@ start_amqp() ->
         _:R ->
             ?LOG_SYS("failed to connect to AMQP ~p", [R]),
             {error, amqp_error}
-    end.            
-
-%%-----------------------------------------------------------------------------
-%% HANDLING ROUTE REQUESTS
-%%-----------------------------------------------------------------------------
-%%
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempts to handle route request
-%%
+%% process AMQP request
 %% @end
 %%-----------------------------------------------------------------------------
--spec(handle_req/4 :: (EventName :: binary()|undefined, JObj:: json_object(), Parent :: pid(), State :: #state{}) -> ok|tuple(error, atom())).
-handle_req(<<"route_req">>, JObj, _, #state{amqp_q=Q}) ->
-    <<"dialplan">> = wh_json:get_value(<<"Event-Category">>, JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put(callid, CallId), %% we were spawn'd so this is safe
-    ?LOG_START("received route request"),
-    Dest = destination_uri(JObj),
-    ?LOG("hunting for ~s", [Dest]),
-    case hunt_to(Dest) orelse hunt_no_match(Dest) of
-        false ->
-            ?LOG_END("no callflows satisfy request");
-        true ->
-            wh_cache:store({cf_call, CallId}, {Dest, JObj}, 5),
-            Resp = [
-                     {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Routes">>, []}
-                    ,{<<"Method">>, <<"park">>}
-                    | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
-                   ],
-            {ok, Payload} = whistle_api:route_resp(Resp),
-            ?LOG_END("replying to route request"),
-            amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
+-spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
+process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
+    case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
+        ?EMPTY_JSON_OBJECT ->
+            ok;
+        CVs ->
+            ?LOG_START("received route request"),
+
+            Request = wh_json:get_value(<<"Request">>, JObj, <<"nouser@norealm">>),
+            From = wh_json:get_value(<<"From">>, JObj, <<"nouser@norealm">>),
+            To = wh_json:get_value(<<"To">>, JObj, <<"nouser@norealm">>),
+
+            [ToUser, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+            [FromUser, FromRealm] = binary:split(wh_json:get_value(<<"From">>, JObj), <<"@">>),
+            [RequestUser, RequestRealm] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+
+            Call = #cf_call{call_id = get(callid)
+                            ,bdst_q = Q
+                            ,cid_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj)
+                            ,cid_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj)
+                            ,request = Request
+                            ,request_user = whistle_util:to_e164(RequestUser)
+                            ,request_realm = RequestRealm
+                            ,from = From
+                            ,from_user = FromUser
+                            ,from_realm = FromRealm
+                            ,to = To
+                            ,to_user = ToUser
+                            ,to_realm = ToRealm
+                            ,inception = wh_json:get_value(<<"Inception">>, CVs)
+                            ,account_id = wh_json:get_value(<<"Account-ID">>, CVs)
+                            ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CVs)
+                            ,channel_vars = CVs
+                           },
+            fulfill_call_request(Call, JObj)
     end;
 
-handle_req(<<"route_win">>, JObj, Parent, #state{amqp_q=Q}) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put(callid, CallId), %% we were spawn'd so this is safe
+process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
     ?LOG_START("received route win"),
-    {ok, {Dest, RouteReq}} = wh_cache:fetch({cf_call, CallId}),
-    {ok, {FlowId, Flow, AccountDb}} = wh_cache:fetch({cf_flow, Dest}),
-    From = wh_json:get_value(<<"From">>, RouteReq),
-    ?LOG("from ~s", [From]),
-    To = wh_json:get_value(<<"To">>, RouteReq),
-    ?LOG("to ~s", [To]),
-    [ToNumber, ToRealm] = binary:split(To, <<"@">>),
-    [FromNumber, FromRealm] = binary:split(From, <<"@">>),
-    [DestNumber, DestRealm] = binary:split(Dest, <<"@">>),
-    Call = #cf_call {
-       ctrl_q=wh_json:get_value(<<"Control-Queue">>, JObj)
-      ,bdst_q=Q
-      ,call_id=CallId
-      ,cf_responder=Parent
-      ,account_db=AccountDb
-      ,authorizing_id=wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], RouteReq)
-      ,flow_id=FlowId
-      ,cid_name=wh_json:get_value(<<"Caller-ID-Name">>, RouteReq)
-      ,cid_number=wh_json:get_value(<<"Caller-ID-Number">>, RouteReq)
-      ,destination=Dest
-      ,dest_number=DestNumber
-      ,dest_realm=DestRealm
-      ,from=From
-      ,from_number=FromNumber
-      ,from_realm=FromRealm
-      ,to=To
-      ,to_number=ToNumber
-      ,to_realm=ToRealm
-      ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)
-     },
-    ?LOG("caller-id \"~s\" <~s>", [Call#cf_call.cid_name, Call#cf_call.cid_number]),
-    ?LOG("call authorizer id ~s", [Call#cf_call.authorizing_id]),
-    ?LOG("callflow db ~s", [AccountDb]), 
-    cf_call_command:set(undefined, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq), Call),
-    supervisor:start_child(cf_exe_sup, [Call, Flow]);
 
-handle_req(_EventName, _JObj, _Parent, _State) ->
+    {ok, #cf_call{request_user=Number, account_id=AccountId, channel_vars=CVs, no_match=NoMatch}=C1}
+        = wh_cache:fetch({cf_call, get(callid)}),
+    {ok, Flow} = case NoMatch of
+                     true -> wh_cache:fetch({cf_flow, ?NO_MATCH_CF, AccountId});
+                     false -> wh_cache:fetch({cf_flow, Number, AccountId})
+                 end,
+    ?LOG("fetched call record and flow from cache"),
+
+    C2 = C1#cf_call{cf_responder = Self
+                    ,ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
+                    ,account_db = whapps_util:get_db_name(AccountId, encoded)
+                   },
+    cf_call_command:set(undefined, CVs, C2),
+    ?LOG_END("imported custom channel vars, starting callflow"),
+
+    supervisor:start_child(cf_exe_sup, [C2, wh_json:get_value(<<"flow">>, Flow)]);
+
+process_req({_, _}, _, _) ->
     {error, invalid_event}.
 
--spec(hunt_to/1 :: (To :: binary()) -> boolean()).
-hunt_to(To) ->
-    case wh_cache:fetch({cf_flow, To}) of         
-        {ok, {FlowId, _, _}} ->
-            ?LOG("found callflow ~s in cache", [FlowId]),
-            true;
-        {error, _} ->
-            lookup_flow(To)
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% attempt to fulfill authorized call requests
+%% @end
+%%-----------------------------------------------------------------------------
+-spec(fulfill_call_request/2 :: (Call :: #cf_call{}, JObj :: json_object()) -> no_return()).
+fulfill_call_request(Call, JObj) ->
+    case lookup_callflow(Call) of
+        {ok, Flow, NoMatch} ->
+            FlowId = wh_json:get_value(<<"_id">>, Flow),
+            ?LOG("callflow ~s satisfies request", [FlowId]),
+            wh_cache:store({cf_call, get(callid)}, Call#cf_call{flow_id = FlowId, no_match = NoMatch}, 5),
+            _ = send_route_response(Call, JObj);
+        {error, R} ->
+            ?LOG_END("unable to find callflow ~w", [R])
     end.
 
--spec(hunt_no_match/1 :: (To :: binary()) -> boolean()).
-hunt_no_match(To) ->    
-    [_, ToRealm] = binary:split(To, <<"@">>),
-    lookup_flow(To, <<"no_match@", ToRealm/binary>>).
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% lookup the callflow based on the requested number in the account
+%% @end
+%%-----------------------------------------------------------------------------
+-spec(lookup_callflow/1 :: (Call :: #cf_call{}) -> tuple(ok, binary(), boolean())|tuple(error, atom())).
+lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}=Call) ->
+    ?LOG("lookup callflow for ~s in account ~s", [Number, AccountId]),
+    case wh_cache:fetch({cf_flow, Number, AccountId}) of
+	{ok, Flow} ->
+	    {ok, Flow, Number =:= ?NO_MATCH_CF};
+	{error, not_found} ->
+            Options = [{<<"key">>, Number}, {<<"include_docs">>, true}],
+            Db = whapps_util:get_db_name(AccountId, encoded),
+	    case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
+		{error, _}=E ->
+		    E;
+		{ok, []} when Number =/= ?NO_MATCH_CF ->
+                    lookup_callflow(Call#cf_call{request_user = ?NO_MATCH_CF});
+		{ok, []} ->
+                    {error, not_found};
+		{ok, [{struct, _}=JObj]} ->
+                    Flow = wh_json:get_value(<<"doc">>, JObj),
+                    wh_cache:store({cf_flow, Number, AccountId}, Flow),
+		    {ok, Flow, Number =:= ?NO_MATCH_CF};
+		{ok, [{struct, _}=JObj | _Rest]} ->
+		    ?LOG("lookup resulted in more than one result, using the first"),
+                    Flow = wh_json:get_value(<<"doc">>, JObj),
+                    wh_cache:store({cf_flow, Number, AccountId}, Flow),
+		    {ok, Flow, Number =:= ?NO_MATCH_CF}
+	    end
+    end.
 
--spec(lookup_flow/1 :: (To :: binary()) -> boolean()).
-lookup_flow(To) ->
-    lookup_flow(To, To).
-
--spec(lookup_flow/2 :: (To :: binary(), Key :: binary()) -> boolean()).
-lookup_flow(To, Key) ->
-    case couch_mgr:get_results(?CALLFLOW_DB, ?VIEW_BY_URI, [{<<"key">>, Key}]) of
-        {ok, []} ->
-            false;
-        {ok, [JObj]} ->
-            FlowId = wh_json:get_value(<<"id">>, JObj),
-            wh_cache:store({cf_flow, To}, {
-                             FlowId,
-                             wh_json:get_value([<<"value">>, <<"flow">>], JObj),
-                             wh_json:get_value([<<"value">>, <<"account_db">>], JObj)
-                            }, 500),
-            ?LOG("retrieved callflow ~s from db", [FlowId]),
-            true;
-        {error, E} ->
-            ?LOG("error looking up callflow ~p", [E]),
-            false
-    end.    
-
--spec(destination_uri/1 :: (JObj :: json_object()) -> binary()).
-destination_uri(JObj) ->    
-    [ToNumber, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"unknown@norealm">>), <<"@">>), 
-    <<(wh_json:get_value(<<"Destination-Number">>, JObj, ToNumber))/binary, $@, (wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Realm">>], JObj, ToRealm))/binary>>.
-
-%%%
-%%%============================================================================
-%%%== END =====
-%%%============================================================================
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% send a route response for a route request that can be fulfilled by this
+%% process
+%% @end
+%%-----------------------------------------------------------------------------
+-spec(send_route_response/2 :: (Call :: #cf_call{}, JObj :: json_object()) -> no_return()).
+send_route_response(#cf_call{channel_vars=CVs, bdst_q=Q}, JObj) ->
+    Resp = [
+             {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Routes">>, []}
+            ,{<<"Method">>, <<"park">>}
+            ,{<<"channel_vars">>, CVs}
+            | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+           ],
+    {ok, Payload} = whistle_api:route_resp(Resp),
+    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload),
+    ?LOG_END("replied to route request").

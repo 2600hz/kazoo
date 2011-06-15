@@ -175,8 +175,8 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts
             _ = b_play(InvalidLogin, Call),
             case Loop < MaxLoginAttempts of
 		true -> check_mailbox(Box, Call, Loop+1);
-                false -> 
-                    ?LOG("maximum number of invalid attempts to check mailbox"), 
+                false ->
+                    ?LOG("maximum number of invalid attempts to check mailbox"),
                     b_play(AbortLogin, Call)
             end
     end.
@@ -213,7 +213,7 @@ find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
                 Loop < B#mailbox.max_login_attempts ->
                     find_mailbox(Call, Loop+1);
                 true ->
-                    ?LOG("maximum number of invalid attempts to find mailbox"), 
+                    ?LOG("maximum number of invalid attempts to find mailbox"),
                     b_play(Prompts#prompts.abort_login, Call)
             end
     end.
@@ -530,14 +530,14 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
 %%--------------------------------------------------------------------
 -spec(save_metadata/3 :: (NewMessage :: json_object(), Db :: binary(), Id :: binary()) -> no_return()).
 save_metadata(NewMessage, Db, Id) ->
-    {ok, JObj} = couch_mgr:open_doc(Db, Id),    
-    NewMessages=[NewMessage | wh_json:get_value([<<"messages">>], JObj, [])],    
+    {ok, JObj} = couch_mgr:open_doc(Db, Id),
+    NewMessages=[NewMessage | wh_json:get_value([<<"messages">>], JObj, [])],
     case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)) of
         {error, conflict} ->
             save_metadata(NewMessage, Db, Id);
         {ok, _}=Ok -> Ok;
-        {error, R}=E -> 
-            ?LOG("error while storing voicemail metadata ~s", [R]), 
+        {error, R}=E ->
+            ?LOG("error while storing voicemail metadata ~s", [R]),
             E
     end.
 
@@ -593,11 +593,11 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_mailbox_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #mailbox{}).
-get_mailbox_profile(Data, #cf_call{account_db=Db, dest_number=Dest}) ->
+get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser}) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-            ?LOG("loaded voicemail box ~s", [Id]),            
+            ?LOG("loaded voicemail box ~s", [Id]),
             Default=#mailbox{},
             #mailbox{
                        mailbox_id = Id
@@ -606,7 +606,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, dest_number=Dest}) ->
                       ,has_unavailable_greeting = wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                       ,pin = wh_json:get_value(<<"pin">>, JObj, <<>>)
                       ,timezone = wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
-                      ,mailbox_number = wh_json:get_value(<<"mailbox">>, JObj, Dest)
+                      ,mailbox_number = wh_json:get_value(<<"mailbox">>, JObj, ReqUser)
                       ,exists=true
                     };
         {error, R} ->
@@ -648,7 +648,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
 	{ok, Digit} ->
 	    _ = flush(Call),
 	    case Digit of
-		Listen ->                   
+		Listen ->
 		    _ = b_play(MediaName, Call),
 		    review_recording(MediaName, Box, Call);
 		Record ->
@@ -784,7 +784,7 @@ update_folder(Folder, Attachment, #mailbox{mailbox_id=Id}=Mailbox, #cf_call{acco
             case couch_mgr:save_doc(Db, wh_json:set_value(<<"messages">>, Messages, JObj)) of
                 {error, conflict} -> update_folder(Folder, Attachment, Mailbox, Call);
                 {ok, _}=OK -> OK;
-                {error, R}=E -> 
+                {error, R}=E ->
                     ?LOG("error while updating folder ~s ~s", [Folder, R]),
                     E
             end;

@@ -28,18 +28,23 @@
 start_link(Call, Flow) ->
     proc_lib:start_link(?MODULE, init, [self(), Call, Flow]).
 
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% initialize the new call flow execution process
+%% @end
+%%-----------------------------------------------------------------------------
 -spec(init/3 :: (Parent :: pid(), Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
-init(Parent, #cf_call{call_id=CallId}=Call, Flow) ->
-    put(callid, CallId),
-    ?LOG("executing callflow ~s", [Call#cf_call.flow_id]),
+init(Parent, Call, Flow) ->
     process_flag(trap_exit, true),
+    call_info(Call),
     AmqpQ = init_amqp(Call),
     cache_account(Call),
     proc_lib:init_ack(Parent, {ok, self()}),
     next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow).
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
 %% Executes the top most call flow node on a given call,
 %% then waits for the modules reply, unexpected death, or timeout.
@@ -77,7 +82,7 @@ wait(Call, Flow, Pid) ->
        {continue} ->
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
-       {continue, Key} ->           
+       {continue, Key} ->
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
                    ?LOG_END("unexpected end of callflow"),
@@ -135,6 +140,25 @@ init_amqp(#cf_call{call_id=CallId}) ->
     amqp_util:basic_consume(AmqpQ),
     AmqpQ.
 
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% load the callid into to the process dictionary then log information about
+%% the call that is about to be processed
+%% @end
+%%-----------------------------------------------------------------------------
+-spec(call_info/1 :: (Call :: #cf_call{}) -> no_return()).
+call_info(#cf_call{flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
+               ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
+    put(callid, CallId),
+    ?LOG_START("executing callflow ~s", [FlowId]),
+    ?LOG("request ~s", [Request]),
+    ?LOG("to ~s", [To]),
+    ?LOG("from ~s", [From]),
+    ?LOG("CID ~s ~s", [CIDNumber, CIDName]),
+    ?LOG("inception ~s", [Inception]),
+    ?LOG("authorizing id ~s", [AuthorizingId]).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -143,14 +167,12 @@ init_amqp(#cf_call{call_id=CallId}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(cache_account/1 :: (Call :: #cf_call{}) -> no_return()).
-cache_account(#cf_call{account_db=Db}) ->
+cache_account(#cf_call{account_id=AccountId, account_db=Db}) ->
     spawn(fun() ->
-                  case wh_cache:fetch({account, Db}) =/= {error, not_found}
+                  case wh_cache:fetch({account, AccountId}) =/= {error, not_found}
                       orelse couch_mgr:get_results(Db, <<"account/listing_by_id">>, [{<<"include_docs">>, true}]) of
-                      {ok, [JObj]} -> wh_cache:store({account, Db}, wh_json:get_value(<<"doc">>, JObj));
+                      {ok, [JObj]} -> wh_cache:store({account, AccountId}, wh_json:get_value(<<"doc">>, JObj));
                       true -> ok;
                       {error, _} -> ok
                   end
           end).
-
-    

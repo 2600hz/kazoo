@@ -35,7 +35,7 @@ handle(_, #cf_call{call_id=CallId}=Call) ->
 %% is successfull (not necessarly the call but the bridge).
 %%
 %% When this function gets to the end of the resource list this function
-%% will not match, causing the process to crash and the callflow to 
+%% will not match, causing the process to crash and the callflow to
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
@@ -87,13 +87,13 @@ create_endpoint(DestNum, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Retrieve a complete list of resources in this database that are 
+%% Retrieve a complete list of resources in this database that are
 %% enabled.  Remove any where the rules do not apply, and the destination
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
 -spec(find_gateways/1 :: (Call :: #cf_call{}) -> tuple(ok, proplist()) | tuple(error, atom())).
-find_gateways(#cf_call{account_db=Db, dest_number=DestNum}=Call) ->
+find_gateways(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
     ?LOG("searching for resources"),
     case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
@@ -102,7 +102,7 @@ find_gateways(#cf_call{account_db=Db, dest_number=DestNum}=Call) ->
                     ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
                     ,get_caller_id_type(Resource, Call)}
                    || Resource <- Resources
-			 , Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), DestNum)
+			 , Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ReqNum)
 			 , Number =/= []
                  ]};
         {error, R}=E ->
@@ -121,8 +121,8 @@ get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
 %% @private
 %% @doc
 %% This function recieves a resource rule (regex) and determines if
-%% the destination number matches.  If it does and the regex has a 
-%% capture group return the group, if not but it matched return the 
+%% the destination number matches.  If it does and the regex has a
+%% capture group return the group, if not but it matched return the
 %% full destination number otherwise return an empty list.
 %% @end
 %%--------------------------------------------------------------------
