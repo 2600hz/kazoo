@@ -227,14 +227,15 @@ handle_route_req(Node, FSID, CallID, FSData) ->
     put(callid, CallID),
     Pid = spawn_link(fun() ->
 			     DefProp = [{<<"Msg-ID">>, FSID}
-					,{<<"Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, FSData)}
 					,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
 					,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
 					,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
 					,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+					,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
 					,{<<"Call-ID">>, CallID}
 					,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
 					| whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+
 			     %% Server-ID will be over-written by the pool worker
 			     {ok, RespProp} = ecallmgr_amqp_pool:route_req(DefProp),
 

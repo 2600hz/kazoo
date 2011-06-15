@@ -18,7 +18,7 @@
 %%% OPTIONAL_*_HEADERS defines a list of Keys that will be included in the final
 %%% message if included in the passed in Proplist.
 %%%
-%%% *_VALUES defines a proplist of {Key, Value} pairs where Key is either in 
+%%% *_VALUES defines a proplist of {Key, Value} pairs where Key is either in
 %%% *_HEADERS or OPTIONAL_*_HEADERS, and Value is either a singular value or a list
 %%% of values that the resulting message can have, given Key.
 %%% If Value is not a list, a direct match is required to validate;
@@ -138,7 +138,7 @@
 -define(REG_QUERY_RESP_TYPES, []).
 
 %% Route Requests
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Destination-Number">>
+-define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 			   ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
@@ -151,9 +151,9 @@
 			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
 			  ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                          ,{<<"Destination-Number">>, fun is_binary/1}
 			  ,{<<"To">>, fun is_binary/1}
 			  ,{<<"From">>, fun is_binary/1}
+			  ,{<<"Request">>, fun is_binary/1}
 			  ,{<<"Call-ID">>, fun is_binary/1}
 			  ,{<<"Event-Queue">>, fun is_binary/1}
 			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
@@ -530,8 +530,8 @@
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
 			   ,{<<"Event-Name">>, <<"media_resp">>}
 			  ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; 
-                                                 (<<"http://", _/binary>>) -> true; 
+-define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
+                                                 (<<"http://", _/binary>>) -> true;
                                                  (_) -> false end}]).
 
 %% Media Error
@@ -762,7 +762,7 @@
                            ,{<<"deaf">>, <<"Deaf">>}
                            ,{<<"moderator">>, <<"Moderator">>}
                            ]).
-                                
+
 %% [{FreeSWITCH-App-Name, Whistle-App-Name}]
 %% Dialplan-related applications
 %% convert from FS-named applications to Whistle-named Dialplan applications
