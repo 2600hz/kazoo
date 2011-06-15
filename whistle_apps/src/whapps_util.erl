@@ -12,6 +12,7 @@
 -export([update_all_accounts/1]).
 -export([replicate_from_accounts/2, replicate_from_account/3]).
 -export([get_account_by_realm/1]).
+-export([get_event_type/1, put_callid/1]).
 
 -include_lib("whistle/include/whistle_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -104,7 +105,7 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function will replicate the results of the filter from the 
+%% This function will replicate the results of the filter from the
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
@@ -131,3 +132,25 @@ get_account_by_realm(Realm) ->
 	    {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
 	_ -> {error, not_found}
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an API JSON object extract the category and name into a
+%% tuple for easy processing
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_event_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary())).
+get_event_type(JObj) ->
+    { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an JSON Object extracts the Call-ID into the processes
+%% dictionary, failing that the Msg-ID and finally a generic
+%% @end
+%%--------------------------------------------------------------------
+-spec(put_callid/1 :: (JObj :: json_object()) -> no_return()).
+put_callid(JObj) ->
+    _ = put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
