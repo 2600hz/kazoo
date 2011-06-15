@@ -1,0 +1,12 @@
+{application, carriers,
+ [
+  {description, "Routes calls in and out to carriers"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { carriers_app, []}},
+  {env, []}
+ ]}.
