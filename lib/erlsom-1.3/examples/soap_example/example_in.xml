@@ -1,0 +1,13 @@
+﻿<?xml version='1.0' ?>
+<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope"> 
+ <env:Body>
+   <i:calcAverage xmlns:i="http://www.example.org">
+       <i:argument>3</i:argument>
+       <i:argument>7</i:argument>
+       <i:argument>1</i:argument>
+       <i:argument>123</i:argument>
+       <i:argument>17</i:argument>
+       <i:precision>3</i:precision>
+   </i:calcAverage>
+ </env:Body>
+</env:Envelope>

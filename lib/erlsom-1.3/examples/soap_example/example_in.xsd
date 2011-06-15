@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="http://www.example.org"
+            xmlns="http://www.example.org"
+            elementFormDefault="qualified">
+    <xsd:element name="calcAverage" type="arguments"/>
+    <xsd:complexType name="arguments">
+        <xsd:sequence>
+            <xsd:element name="argument" 
+                         type="xsd:integer" 
+                         maxOccurs="unbounded"/>
+            <xsd:element name="precision" type="xsd:integer" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+</xsd:schema>
