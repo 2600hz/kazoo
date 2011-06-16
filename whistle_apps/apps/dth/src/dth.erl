@@ -24,6 +24,7 @@ start() ->
     application:start(dth).
 
 start_deps() ->
+    inets:start(),
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     ensure_started(sasl), % logging
     ensure_started(crypto), % random
