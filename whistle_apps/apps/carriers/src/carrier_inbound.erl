@@ -61,10 +61,10 @@ init([]) ->
     couch_mgr:db_create(?CARRIERS_DB),
     ?LOG_SYS("ensuring database ~s has view ~s", [?CARRIERS_DB, ?VIEW_FILE]),
     try
-        {ok, _} = couch_mgr:update_doc_from_file(?CARRIERS_DB, callflow, ?VIEW_FILE)
+        {ok, _} = couch_mgr:update_doc_from_file(?CARRIERS_DB, carriers, ?VIEW_FILE)
     catch
         _:_ ->
-            couch_mgr:load_doc_from_file(?CARRIERS_DB, callflow, ?VIEW_FILE)
+            couch_mgr:load_doc_from_file(?CARRIERS_DB, carriers, ?VIEW_FILE)
     end,
     {ok, #state{}, 0}.
 

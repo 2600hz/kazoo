@@ -31,5 +31,6 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
-				  ?CHILD(carrier_inbound, worker)
+				  ?CHILD(carrier_inbound, worker),
+				  ?CHILD(carrier_outbound, worker)
 				 ]} }.
