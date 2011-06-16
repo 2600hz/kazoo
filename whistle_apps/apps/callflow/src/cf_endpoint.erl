@@ -38,7 +38,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(build/2 :: (Id :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
-build(Id, #cf_call{account_db=Db}=Call) ->
+build(Id, #cf_call{account_db=Db, request_user=ReqUser}=Call) ->
     case couch_mgr:get_results(Db, ?VIEW_WITH_OWNER, [{<<"include_docs">>, true}, {<<"key">>, Id}]) of
         {ok, [JObj]} ->
             Endpoint = wh_json:get_value([<<"value">>, <<"device">>], JObj, ?EMPTY_JSON_OBJECT),
@@ -49,7 +49,7 @@ build(Id, #cf_call{account_db=Db}=Call) ->
                      {<<"Invite-Format">>, get_invite_format(Endpoint, Owner)}
                     ,{<<"To-User">>, get_to_user(Endpoint, Owner)}
                     ,{<<"To-Realm">>, get_to_realm(Endpoint, Owner)}
-                    ,{<<"To-DID">>, get_to_did(Endpoint, Owner)}
+                    ,{<<"To-DID">>, get_to_did(Endpoint, Owner, ReqUser)}
                     ,{<<"Route">>, get_route(Endpoint, Owner)}
                     ,{<<"Caller-ID-Number">>, CallerNumber}
                     ,{<<"Caller-ID-Name">>, CallerName}
@@ -108,6 +108,9 @@ get_to_realm(Endpoint, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_to_did/2 :: (Endpoint :: json_object(), Owner :: json_object()) -> binary() | undefined).
+-spec(get_to_did/3 :: (Endpoint :: json_object(), Owner :: json_object(), ReqUser :: binary()) -> binary()).
+get_to_did(Endpoint, _, ReqUser) ->
+    wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, ReqUser).
 get_to_did(Endpoint, _) ->
     wh_json:get_value([<<"sip">>, <<"number">>], Endpoint).
 
