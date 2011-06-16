@@ -54,10 +54,11 @@ init(Parent, Call, Flow) ->
 next(Call, Flow) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
-    try list_to_existing_atom(binary_to_list(Module)) of
-        CF_Module ->
-            ?LOG("moving to action ~s", [Module]),
-            wait(Call, Flow, spawn_link(CF_Module, handle, [Data, Call]))
+    try
+        CF_Module = whistle_util:to_atom(Module, true),
+        Pid = spawn_link(CF_Module, handle, [Data, Call]),
+        ?LOG("moving to action ~s", [Module]),
+        wait(Call, Flow, Pid)
     catch
         _:_ ->
             ?LOG("unknown action ~s, skipping", [Module]),
