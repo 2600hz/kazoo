@@ -49,10 +49,11 @@ init(Parent, #cf_call{call_id=CallId}=Call, Flow) ->
 next(Call, Flow) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
-    try list_to_existing_atom(binary_to_list(Module)) of
-        CF_Module ->
-            ?LOG("moving to action ~s", [Module]),
-            wait(Call, Flow, spawn_link(CF_Module, handle, [Data, Call]))
+    try
+        CF_Module = whistle_util:to_atom(Module, true),
+        Pid = spawn_link(CF_Module, handle, [Data, Call]),
+        ?LOG("moving to action ~s", [Module]),
+        wait(Call, Flow, Pid)
     catch
         _:_ ->
             ?LOG("unknown action ~s, skipping", [Module]),
@@ -77,7 +78,7 @@ wait(Call, Flow, Pid) ->
        {continue} ->
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
-       {continue, Key} ->           
+       {continue, Key} ->
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
                    ?LOG_END("unexpected end of callflow"),
@@ -152,5 +153,3 @@ cache_account(#cf_call{account_db=Db}) ->
                       {error, _} -> ok
                   end
           end).
-
-    
