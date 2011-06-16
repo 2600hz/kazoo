@@ -338,11 +338,12 @@ load_c2c_history(C2CId, Context) ->
 update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
     crossbar_doc:load_merge(C2CId, Doc, Context).
 
-establish_c2c(C2CId, #cb_context{req_data=Req}=Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
+establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId, db_name=DbName}=Context) ->                                                                 #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
     Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
     Callee = whistle_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
-    Realm = wh_json:get_value(<<"realm">>, C2C),
+    AccountRealm = wh_json:get_value(<<"realm">>, C2C),
+    Realm = case AccountRealm of                                                                                                                                             undefined ->                                                                                                                                                     {ok, Doc} = couch_mgr:open_doc(DbName, AccountId),
+                    wh_json:get_value(<<"realm">>, Doc);                                                                                                                     _ ->  AccountRealm                                                                                                                                       end,
     C2CName = wh_json:get_value(<<"name">>, C2C),
 
     Status = originate_call(Caller, Callee, Realm, C2CName),
