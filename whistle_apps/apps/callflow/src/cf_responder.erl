@@ -71,8 +71,8 @@ init([]) ->
 handle_call({find_flow, Number, AccountId}, From, State) ->
     spawn(fun() ->
                   case lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}) of
-                      {ok, Flow} ->
-                          gen_server:reply(From, {ok, Flow});
+                      {ok, Flow, _} ->
+                          gen_server:reply(From, {ok, wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT)});
                       {error, _} ->
                           gen_server:reply(From, {error, not_found})
                   end

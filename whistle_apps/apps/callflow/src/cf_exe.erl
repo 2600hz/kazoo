@@ -85,10 +85,10 @@ wait(Call, Flow, Pid) ->
        {continue, Key} ->
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
-                   ?LOG_END("unexpected end of callflow"),
+                   ?LOG_END("child node doesn't exist"),
                    cf_call_command:hangup(Call);
                ?EMPTY_JSON_OBJECT ->
-                   ?LOG_END("child node doesn't exist"),
+                   ?LOG_END("unexpected end of callflow"),
                    cf_call_command:hangup(Call);
                NewFlow ->
                    next(Call, NewFlow)

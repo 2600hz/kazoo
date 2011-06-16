@@ -218,9 +218,9 @@ hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=Rea
         {error, _} ->
             hunt_for_callflow(Digits, Menu#menu{hunt_realm = Realm}, Call)
     end;
-hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid}=Call) ->
+hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid, account_id=AccountId}=Call) ->
     ?LOG("hunting for ~s", [<<Digits/binary, $@, Realm/binary>>]),
-    case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, Realm/binary>>}, 2000) of
+    case gen_server:call(CFRPid, {find_flow, Digits, AccountId}, 2000) of
         {ok, Flow} ->
             ?LOG("callflow hunt succeeded, branching"),
             _ = cf_call_command:flush_dtmf(Call),

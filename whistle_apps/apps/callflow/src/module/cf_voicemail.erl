@@ -537,7 +537,7 @@ save_metadata(NewMessage, Db, Id) ->
             save_metadata(NewMessage, Db, Id);
         {ok, _}=Ok -> Ok;
         {error, R}=E ->
-            ?LOG("error while storing voicemail metadata ~s", [R]),
+            ?LOG("error while storing voicemail metadata ~w", [R]),
             E
     end.
 
