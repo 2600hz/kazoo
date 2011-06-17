@@ -63,6 +63,8 @@ init([]) ->
     WSDLFile = [code:priv_dir(dth), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir(dth, include), "/dthsoap.hrl"],
 
+    true = filelib:is_regular(WSDLFile),
+
     case filelib:is_regular(WSDLHrlFile) of
         true -> ok;
         false ->
@@ -181,71 +183,55 @@ handle_amqp_msg(Payload, WsdlModel) ->
 
     true = whistle_api:call_cdr_v(JObj),
 
-    Timestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, erlang:now())),
+    MicroTimestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp() * 1000000)),
     BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
     ?LOG(CallID, "Recv CDR: ~s", [Payload]),
-    DateTime = now_to_datetime(Timestamp - BillingSec),
+    DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec, 1970),
     ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
 
     Call = #'p:CallRecord'{
       'CustomerID' = whistle_util:to_list(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"0000000000">>))
-      ,'BatchID' = whistle_util:to_list(wh_json:get_value(<<"Msg-ID">>, JObj))
-      ,'OriginatingNumber' = whistle_util:to_list(wh_json:get_value(<<"From-Uri">>, JObj))
-      ,'DestinationNumber' = whistle_util:to_list(wh_json:get_value(<<"To-Uri">>, JObj))
-      ,'StartTime' = DateTime
+      ,'BatchID' = whistle_util:to_list(wh_json:get_value(<<"Msg-ID">>, JObj, now_to_date(whistle_util:current_tstamp())))
+      ,'OriginatingNumber' = whistle_util:to_list(wh_json:get_value(<<"Caller-ID-Number">>, JObj))
+      ,'DestinationNumber' = whistle_util:to_list(wh_json:get_value(<<"Callee-ID-Number">>, JObj))
+      ,'StartTime' = whistle_util:to_list(DateTime)
       ,'Duration' = whistle_util:to_list(BillingSec)
       ,'UniqueID' = whistle_util:to_list(CallID)
       ,'CallType' = ?DTH_CALL_TYPE_OTHER
+      %% READ ONLY Properties but erlsom chokes if not defined to something
+      ,'BilledDuration' = "0"
+      ,'CallCost' = "1"
+      ,'CallTotal' = "2"
+      ,'Direction' = "3"
+      ,'WholesaleRate' = "4"
+      ,'WholesaleCost' = "5"
+      ,'RetailRate' = "6"
+      ,'CallTax' = "7"
+      ,'IsIncluded' = 0
+      ,'BilledTier' = 0
+      ,'PrintIndicator' = 0
+      ,'EndTime' = "0001-01-01T00:00:00"
      },
-    ?LOG(CallID, "CallRecord: ~w", [Call]),
+    ?LOG(CallID, "CallRecord: ~p", [Call]),
+%%     Submit = #'p:SubmitCallRecord'{'oCallRecord'=Call},
     Resp = detergent:call(WsdlModel, "SubmitCallRecord", [Call]),
     ?LOG(CallID, "Recv from DTH: ~w", [Resp]),
     io:format("Resp from call: ~p~n", [Resp]).
 
+%% {"Other-Leg-Call-ID":"ynmhvfajysowxni@thinky64.2600hz.com","User-Agent":"PolycomSoundPointIP-SPIP_550-UA/3.3.1.0933","Callee-ID-Number":"1000","Callee-ID-Name":"Hello World","Caller-ID-Number":"1000","Caller-ID-Name":"Hello World","Local-SDP":"v=0\r\no=twinkle 138259549 1503719914 IN IP4 76.217.208.155\r\ns=-\r\nc=IN IP4 76.217.208.155\r\nt=0 0\r\nm=audio 8000 RTP/AVP 98 97 8 0 3 101\r\na=rtpmap:98 speex/16000\r\na=rtpmap:97 speex/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:3 GSM/8000\r\na=rtpmap:101 telephone-event/8000\r\na=fmtp:101 0-15\r\na=ptime:20\r\n","Remote-SDP":"v=0\r\no=- 1308348029 1308348029 IN IP4 76.217.208.155\r\ns=Polycom IP Phone\r\nc=IN IP4 76.217.208.155\r\nt=0 0\r\nm=audio 2228 RTP/AVP 8 127\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:127 telephone-event/8000\r\na=oldmediaip:192.168.1.79\r\na=oldmediaip:192.168.1.79\r\n","Custom-Channel-Vars":{"Authorizing-ID":"692de45541050fab4315036c712aa208","Inception":"on-net","Account-ID":"04152ed2b428922e99ac66f3a71b0215","Realm":"kanderson.pbx.dev.2600hz.com","Username":"kanderson_1","Access-Group":"ignore","Tenant-ID":"ignore"},"Digits-Dialed":"none","Ringing-Seconds":"0","Billing-Seconds":"8","Duration-Seconds":"11","From-Uri":"1000@184.106.189.224","To-Uri":"kanderson_2@76.217.208.155:5060","Call-Direction":"outbound","Timestamp":"1308348044434992","Call-ID":"0ba7d53f-9d74-4b47-af1f-8c0eb83e32f6","Handling-Server-Name":"fs002-dev-ord.2600hz.com","Hangup-Cause":"NORMAL_CLEARING","App-Version":"0.7.2","App-Name":"ecallmgr","Event-Name":"cdr","Event-Category":"call_detail","Server-ID":""}
+
+now_to_date(Secs) ->
+    now_to_date(Secs, 0).
+now_to_date(Secs, ExtraYears) ->
+    {{YY,MM,DD},_} = calendar:gregorian_seconds_to_datetime(Secs),
+      iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w",
+                    [YY+ExtraYears, MM, DD])).
+
 now_to_datetime(Secs) ->
+    now_to_datetime(Secs, 0).
+now_to_datetime(Secs, ExtraYears) ->
     {{YY,MM,DD},{Hour,Min,Sec}} = calendar:gregorian_seconds_to_datetime(Secs),
-      io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
-                    [YY, MM, DD, Hour, Min, Sec]).
-
-%%           <s:element minOccurs="0" maxOccurs="1" name="CustomerID" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="BatchID" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="OriginatingNumber" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="DestinationNumber" type="s:string" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="StartTime" type="s:dateTime" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="Duration" type="s:decimal" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="UniqueID" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="AccountCode" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="Disposition" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="dcontext" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="Channel" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="dstChannel" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="OriginatingIPAddress" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="CallID" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="DestinationName" type="s:string" />
-
-%%           <s:element minOccurs="1" maxOccurs="1" name="BilledDuration" type="s:decimal" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="CallCost" type="s:decimal" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="CallTotal" type="s:decimal" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="Direction" type="s1:char" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="BilledPrefix" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="RateID" type="s:string" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="WholesaleRate" type="s:decimal" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="WholesaleCost" type="s:decimal" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="RetailRate" type="s:decimal" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="CallTax" type="s:decimal" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="IsIncluded" type="s:int" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="BilledTier" type="s:int" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="ChargeID" type="s:string" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="StatementID" type="s:string" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="PrintIndicator" type="s:int" />
-%%           <s:element minOccurs="0" maxOccurs="1" name="MasterNumber" type="s:string" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="EndTime" type="s:dateTime" />
-%%           <s:element minOccurs="1" maxOccurs="1" name="CallType" type="tns:CallTypeValues" />
-
-%%           <s:enumeration value="Local" />
-%%           <s:enumeration value="TieredOrigination" />
-%%           <s:enumeration value="Interstate" />
-%%           <s:enumeration value="Intrastate" />
-%%           <s:enumeration value="Other" />
+      iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
+                    [YY+ExtraYears, MM, DD, Hour, Min, Sec])).
