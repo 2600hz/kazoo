@@ -419,9 +419,11 @@ http_request(URL, SoapAction, Request, Options, Headers, ContentType) ->
     case code:ensure_loaded(ibrowse) of
     {module, ibrowse} ->
         %% If ibrowse exist in the path then let's use it...
+            io:format("IBROWSE REQ to URL: ~p~nSoapAction: ~p~nRequest: ~p~nOptions: ~p~nHeaders: ~p~nContentType: ~p~n", [URL, SoapAction, Request, Options, Headers, ContentType]),
         ibrowse_request(URL, SoapAction, Request, Options, Headers, ContentType);
     _ ->
         %% ...otherwise, let's use the OTP http client.
+    io:format("INETS REQ to URL: ~p~nSoapAction: ~p~nRequest: ~p~nOptions: ~p~nHeaders: ~p~nContentType: ~p~n", [URL, SoapAction, Request, Options, Headers, ContentType]),
         inets_request(URL, SoapAction, Request, Options, Headers, ContentType)
     end.
 
