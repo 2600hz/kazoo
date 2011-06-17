@@ -11,3 +11,6 @@
 -define(DEFAULT_PROGRESS_TIMEOUT, 8).
 -define(REFRESH_MSG, timeout).
 -define(REFRESH_RATE, 43200000). % 1000ms * 60s * 60m * 12h = Every twelve hours
+
+-define(APP_NAME, <<"carriers">>).
+-define(APP_VERSION, <<"0.0.3">>).

@@ -19,27 +19,29 @@
 %% retrieves the sip address for the 'to' field
 -spec(get_sip_to/1 :: (Prop :: proplist()) -> binary()).
 get_sip_to(Prop) ->
-    list_to_binary([get_value(<<"sip_to_user">>, Prop, get_value(<<"variable_sip_to_user">>, Prop, ""))
+    list_to_binary([get_value(<<"sip_to_user">>, Prop, get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
 		    , "@"
-		    , get_value(<<"sip_to_host">>, Prop, get_value(<<"variable_sip_to_host">>, Prop, ""))
+		    , get_value(<<"sip_to_host">>, Prop, get_value(<<"variable_sip_to_host">>, Prop, "nodomain"))
 		   ]).
 
 %% retrieves the sip address for the 'from' field
 -spec(get_sip_from/1 :: (Prop :: proplist()) -> binary()).
 get_sip_from(Prop) ->
+    io:format("~p~n~p~n", [Prop, list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"])]),
     list_to_binary([
-		    get_value(<<"sip_from_user">>, Prop, get_value(<<"variable_sip_from_user">>, Prop, ""))
+		    get_value(<<"sip_from_user">>, Prop, get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
 		    ,"@"
-		    , get_value(<<"sip_from_host">>, Prop, get_value(<<"variable_sip_from_host">>, Prop, ""))
+		    , get_value(<<"sip_from_host">>, Prop, get_value(<<"variable_sip_from_host">>, Prop, "nodomain"))
 		   ]).
 
 %% retrieves the sip address for the 'request' field
 -spec(get_sip_request/1 :: (Prop :: proplist()) -> binary()).
 get_sip_request(Prop) ->
     list_to_binary([
-		    get_value(<<"sip_req_user">>, Prop, get_value(<<"variable_sip_req_user">>, Prop, ""))
+		    get_value(<<"Caller-Destination-Number">>, Prop, get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
 		    ,"@"
-		    , get_value(<<"sip_req_host">>, Prop, get_value(<<"variable_sip_req_host">>, Prop, ""))
+                    ,get_value(<<"variable_sip_req_host">>, Prop
+                               ,get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, "nodomain"))
 		   ]).
 
 -spec(get_orig_ip/1 :: (Prop :: proplist()) -> binary()).

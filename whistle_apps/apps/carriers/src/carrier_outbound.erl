@@ -14,7 +14,7 @@
 -include("carriers.hrl").
 
 %% API
--export([start_link/0, reload_resources/0, print_debug/0]).
+-export([start_link/0, reload_resources/0, process_number/1, process_number/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -23,19 +23,24 @@
 -define(SERVER, ?MODULE).
 
 -record(gateway, {
-           server = undefined
+           resource_id = undefined
+          ,server = undefined
           ,realm = undefined
           ,username = undefined
           ,password = undefined
+          ,route = undefined
           ,prefix = <<>>
           ,suffix = <<>>
           ,codecs = []
+          ,bypass_media = <<"false">>
           ,caller_id_type = undefined
+          ,sip_headers = undefined
           ,progress_timeout = ?DEFAULT_PROGRESS_TIMEOUT
          }).
 
 -record(resrc, {
-           resrc_id
+           id
+          ,rev
           ,weight_cost = 0
           ,flags = []
           ,rules = []
@@ -46,6 +51,9 @@
 	    amqp_q = <<>> :: binary()
            ,resrcs = []
 	 }).
+
+-type endpoint() :: tuple(1..100, binary(), #gateway{}).
+-type endpoints() :: [] | [endpoint()].
 
 %%%===================================================================
 %%% API
@@ -64,8 +72,13 @@ start_link() ->
 reload_resources() ->
     gen_server:call(?MODULE, {reload_resrcs}).
 
-print_debug() ->
-    gen_server:cast(?MODULE, {print_debug}).
+process_number(Number) ->
+    Num = whistle_util:to_binary(Number),
+    gen_server:call(?MODULE, {process_number, Num}).
+
+process_number(Number, Flags) ->
+    Num = whistle_util:to_binary(Number),
+    gen_server:call(?MODULE, {process_number, Num, Flags}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -110,8 +123,48 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({reload_resrcs}, _, State) ->
-    Resrcs = load_resrcs(),
+    Resrcs = get_resrcs(),
     {reply, ok, State#state{resrcs=Resrcs}};
+
+handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
+    spawn(fun() ->
+                  gen_server:reply(From, evaluate_number(Number, Resrcs))
+          end),
+    {noreply, State};
+
+handle_call({process_number, Number, Flags}, From, #state{resrcs=R1}=State) ->
+    spawn(fun() ->
+                  R2 = evaluate_flags(Flags, R1),
+                  gen_server:reply(From, evaluate_number(Number, R2))
+          end),
+    {noreply, State};
+
+handle_call({call, JObj}, From, #state{resrcs=R1}=State) ->
+    spawn(fun() ->
+                  Number = wh_json:get_value(<<"Number">>, JObj),
+
+                  Endpoints = case wh_json:get_value(<<"Flags">>, JObj) of
+                                  undefined -> evaluate_number(Number, R1);
+                                  Flags ->
+                                      R2 = evaluate_flags(Flags, R1),
+                                      evaluate_number(Number, R2)
+                              end,
+
+                  Q = amqp_util:new_queue(),
+                  amqp_util:bind_q_to_callevt(Q, wh_json:get_value(<<"Call-ID">>, JObj)),
+                  amqp_util:bind_q_to_targeted(Q),
+                  amqp_util:basic_consume(Q),
+
+                  BridgeReq = build_bridge_request(JObj, Endpoints, Q),
+                  io:format("Bridge Req:~n~p~n", [BridgeReq]),
+
+                  {ok, Payload} = whistle_api:bridge_req({struct, BridgeReq}),
+
+                  amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
+
+                  gen_server:reply(From, ok)
+          end),
+    {noreply, State};
 
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
@@ -126,9 +179,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({print_debug}, State) ->
-    print_debug(State#state.resrcs),
-    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -145,7 +195,7 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
 	{ok, Q} = start_amqp(),
-	{noreply, State#state{amqp_q=Q, resrcs=load_resrcs()}}
+	{noreply, State#state{amqp_q=Q, resrcs=get_resrcs()}}
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
@@ -156,7 +206,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
 handle_info({amqp_reconnect, T}, State) ->
     try
 	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ, resrcs=load_resrcs()}}
+	{noreply, State#state{amqp_q=NewQ, resrcs=get_resrcs()}}
     catch
 	_:_ ->
             case T * 2 of
@@ -176,6 +226,22 @@ handle_info({amqp_host_down, _}, State) ->
     timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
+handle_info({document_changes, DocId, [Changes]}, #state{resrcs=Resrcs}=State) ->
+    Rev = wh_json:get_value(<<"rev">>, Changes),
+    case lists:keysearch(DocId, #resrc.id, Resrcs) of
+        {value, #resrc{rev=Rev}} -> {noreply, State};
+        _ -> {noreply, State#state{resrcs=update_resrc(DocId, Resrcs)}}
+    end;
+
+handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
+    case lists:keysearch(DocId, #resrc.id, Resrcs) of
+        false -> {noreply, State};
+        {value, _} ->
+            ?LOG_SYS("resource ~p deleted", [DocId]),
+            couch_mgr:rm_change_handler(?CARRIERS_DB, DocId),
+            {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}}
+    end;
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -190,8 +256,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_q=Q}) ->
-    amqp_util:delete_queue(Q),
+terminate(_Reason, _) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -232,12 +297,45 @@ start_amqp() ->
             {error, amqp_error}
     end.
 
-load_resrcs() ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Gets a list of all active resources from the DB
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_resrcs/0 :: () -> []|[#resrc{}]).
+get_resrcs() ->
     case couch_mgr:get_results(?CARRIERS_DB, ?LIST_ACTIVE_RESOURCE, [{<<"include_docs">>, true}]) of
         {ok, Resrcs} ->
             [create_resrc(wh_json:get_value(<<"doc">>, R)) || R <- Resrcs];
         {error, _}=E ->
             E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Syncs a resource with the DB and updates it in the list
+%% of resources
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_resrc/2 :: (DocId :: binary(), Resrcs :: [#resrc{}]) -> []|[#resrc{}]).
+update_resrc(DocId, Resrcs) ->
+    case couch_mgr:open_doc(?CARRIERS_DB, DocId) of
+        {ok, JObj} ->
+            case whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
+                true ->
+                    NewResrc = create_resrc(JObj),
+                    ?LOG_SYS("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
+                    [NewResrc|lists:keydelete(DocId, #resrc.id, Resrcs)];
+                false ->
+                    ?LOG_SYS("resource ~s disabled", [DocId]),
+                    lists:keydelete(DocId, #resrc.id, Resrcs)
+            end;
+        {error, R} ->
+            ?LOG_SYS("removing resource ~s, ~w", [DocId, R]),
+            couch_mgr:rm_change_handler(?CARRIERS_DB, DocId),
+            lists:keydelete(DocId, #resrc.id, Resrcs)
     end.
 
 %%--------------------------------------------------------------------
@@ -260,14 +358,18 @@ process_req({_, _}, _) ->
 -spec(create_resrc/1 :: (JObj :: json_object()) -> #resrc{}).
 create_resrc(JObj) ->
     Default = #resrc{},
-    #resrc{resrc_id = wh_json:get_value(<<"_id">>, JObj)
-              ,weight_cost =
-                  constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
-              ,flags = wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
-              ,rules = [re:compile(R) || R <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)]
-              ,gateways = [create_gateway(G) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
-                                                whistle_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
-             }.
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    couch_mgr:add_change_handler(?CARRIERS_DB, Id),
+    #resrc{id = Id
+           ,rev = wh_json:get_value(<<"_rev">>, JObj)
+           ,weight_cost =
+               constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
+           ,flags = wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
+           ,rules = [R2 || R1 <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)
+                               ,(R2 = compile_rule(R1, Id)) =/= error]
+           ,gateways = [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
+                                             whistle_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
+          }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -275,22 +377,43 @@ create_resrc(JObj) ->
 %% Given a gateway JSON object it builds a gateway record
 %% @end
 %%--------------------------------------------------------------------
--spec(create_gateway/1 :: (JObj :: json_object()) -> #gateway{}).
-create_gateway(JObj) ->
+-spec(create_gateway/2 :: (JObj :: json_object(), Id :: binary()) -> #gateway{}).
+create_gateway(JObj, Id) ->
     Default = #gateway{},
-    #gateway{server = wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
+    #gateway{resource_id = Id
+             ,server = wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
              ,realm = wh_json:get_value(<<"realm">>, JObj, Default#gateway.realm)
              ,username = wh_json:get_value(<<"username">>, JObj, Default#gateway.username)
              ,password = wh_json:get_value(<<"password">>, JObj, Default#gateway.password)
+             ,route = wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
              ,prefix =
                  whistle_util:to_binary(wh_json:get_value(<<"prefix">>, JObj, Default#gateway.prefix))
              ,suffix =
                  whistle_util:to_binary(wh_json:get_value(<<"suffix">>, JObj, Default#gateway.suffix))
              ,codecs = wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
+             ,bypass_media = wh_json:get_value(<<"bypass_media">>, JObj, Default#gateway.bypass_media)
              ,caller_id_type = wh_json:get_value(<<"caller_id_type">>, JObj, Default#gateway.caller_id_type)
+             ,sip_headers = wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
              ,progress_timeout =
                  whistle_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
             }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Wrapper for re:compile so we can log rules that fail (including
+%% which resource it was on).
+%% @end
+%%--------------------------------------------------------------------
+-spec(compile_rule/2 :: (Rule :: binary(), Id :: binary()) -> re:mp()|error).
+compile_rule(Rule, Id) ->
+    case re:compile(Rule) of
+        {ok, MP} ->
+            MP;
+        {error, R} ->
+            ?LOG_SYS("bad rule '~s' on resource ~s, ~p", [Rule, Id, R]),
+            error
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -308,39 +431,176 @@ constrain_weight(W) -> W.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function recieves a resource rule (regex) and determines if
-%% the destination number matches.  If it does and the regex has a
-%% capture group return the group, if not but it matched return the
-%% full destination number otherwise return an empty list.
+%% Filter the list of resources returning only those that have every
+%% flag provided
 %% @end
 %%--------------------------------------------------------------------
--spec(evaluate_rule/2 :: (Regex :: tuple(), DestNum:: binary()) -> list()).
-evaluate_rule({error, Reason}, _) ->
-    ?LOG("regex did not compile ~w", [Reason]),
-    [];
-evaluate_rule(Regex, DestNum) ->
-    case re:run(DestNum, Regex) of
-        {match, [_, {Start,End}|_]} ->
-            [binary:part(DestNum, Start, End)];
-        {match, _} ->
-            [DestNum];
-        _ ->
-            []
+-spec(evaluate_flags/2 :: (F1 :: list(), Resrcs :: [#resrc{}]) -> []|[#resrc{}]).
+evaluate_flags(F1, Resrcs) ->
+    [Resrc || #resrc{flags=F2}=Resrc <- Resrcs
+                  ,lists:all(fun(Flag) -> lists:member(Flag, F2) end, F1)].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Filter the list of resources returning only those with a rule that
+%% matches the number.  The list is of tuples with three elements,
+%% the weight, the captured component of the number, and the gateways.
+%% @end
+%%--------------------------------------------------------------------
+-spec(evaluate_number/2 :: (Number :: binary(), Resrcs :: [#resrc{}]) -> endpoints()).
+evaluate_number(Number, Resrcs) ->
+    sort_endpoints(get_endpoints(Number, Resrcs)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Sort the gateway tuples returned by evalutate_resrcs according to
+%% weight.
+%% @end
+%%--------------------------------------------------------------------
+-spec(sort_endpoints/1 :: (Endpoints :: endpoints()) -> endpoints()).
+sort_endpoints(Endpoints) ->
+    lists:sort(fun({W1, _, _}, {W2, _, _}) ->
+                       W1 =< W2
+               end, Endpoints).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_endpoints/2 :: (Number :: binary(), Resrcs :: [#resrc{}]) -> endpoints()).
+get_endpoints(Number, Resrcs) ->
+    [Resrc || Resrc <- lists:map(fun(R) -> get_endpoint(Number, R) end, Resrcs)
+                      , Resrc =/= no_match].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given a gateway JSON object it builds a gateway record
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_endpoint/2 :: (Number :: binary(), Resrc :: #resrc{}) -> endpoint()|no_match).
+get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules}) ->
+    case evaluate_rules(Rules, Number) of
+        {ok, DestNum} ->
+            {WC, DestNum, Gtws};
+        {error, no_match} ->
+            no_match
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function loops over rules (regex) and until one matches
+%% the destination number.  If the matching rule has a
+%% capture group return the largest group, otherwise return the whole
+%% number.  In the event that no rules match then return an error.
+%% @end
+%%--------------------------------------------------------------------
+-spec(evaluate_rules/2 :: (Regex :: re:mp(), Number:: binary()) -> tuple(ok, binary())|tuple(error, no_match)) .
+evaluate_rules([], _) ->
+    {error, no_match};
+evaluate_rules([Regex|T], Number) ->
+    case re:run(Number, Regex) of
+        {match, [{Start,End}]} ->
+            {ok, binary:part(Number, Start, End)};
+        {match, CaptureGroups} ->
+            %% find the largest matching group if present by sorting the position of the
+            %% matching groups by list, reverse so head is largest, then take the head of the list
+            {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
+            {ok, binary:part(Number, Start, End)};
+        _ ->
+            evaluate_rules(T, Number)
+    end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Builds the proplist for a whistle API bridge request from the
+%% off-net request, endpoints, and our AMQP Q
+%% @end
+%%--------------------------------------------------------------------
+-spec(build_bridge_request/3 :: (JObj :: json_object(), Endpoints :: endpoints(), Q :: binary())
+                                -> proplist()).
+build_bridge_request(JObj, Endpoints, Q) ->
+    Command = [
+                {<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, build_endpoints(Endpoints, 0, [])}
+               ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
+               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
+               ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
+               ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
+               ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
+               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
+               ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+            ],
+    [ KV || {_, V}=KV <- Command, V =/= undefined ].
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Builds the proplist for a whistle API bridge request from the
+%% off-net request, endpoints, and our AMQP Q
+%% @end
+%%--------------------------------------------------------------------
+-spec(build_endpoints/3 :: (Endpoints :: endpoints(), Delay :: non_neg_integer(), Acc :: proplist())
+                           -> proplist()).
+build_endpoints([], _, Acc) ->
+    lists:reverse(Acc);
+build_endpoints([{_, Number, Gateways}|T], Delay, Acc0) ->
+    {_, Acc1} = lists:foldr(fun(Gateway, {0, AccIn}) ->
+                                    {1
+                                     ,[build_endpoint(Number, Gateway, undefined)|AccIn]};
+                               (Gateway, {D, AccIn}) ->
+                                    {D + 1
+                                     ,[build_endpoint(Number, Gateway, D + 1)|AccIn]}
+                            end, {Delay, Acc0}, Gateways),
+    build_endpoints(T, Delay + 2 + length(Gateways), Acc1).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Build the endpoint for use in the route request
+%% @end
+%%--------------------------------------------------------------------
+-spec(build_endpoint/3 :: (Number :: non_neg_integer(), Gateway :: #gateway{}, Delay :: non_neg_integer())
+                          -> proplist()).
+build_endpoint(Number, Gateway, Delay) ->
+    Prop = [
+             {<<"Invite-Format">>, <<"route">>}
+            ,{<<"Route">>, get_dialstring(Gateway, Number)}
+            ,{<<"Callee-ID-Number">>, whistle_util:to_binary(Number)}
+            ,{<<"Callee-ID-Name">>, <<"Whistle Outbound">>}
+            ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
+            ,{<<"Endpoint-Delay">>, whistle_util:to_binary(Delay)}
+            ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
+            ,{<<"Endpoint-Progress-Timeout">>, whistle_util:to_binary(Gateway#gateway.progress_timeout)}
+            ,{<<"Codecs">>, Gateway#gateway.codecs}
+            ,{<<"Auth-User">>, Gateway#gateway.username}
+            ,{<<"Auth-Password">>, Gateway#gateway.password}
+            ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
+            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Resource-ID">>, Gateway#gateway.resource_id}]}}
+           ],
+    {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined andalso V =/= <<"undefined">>]}.
 
-
-
-%% TMP
-print_debug([]) ->
-    ok;
-print_debug([#resrc{gateways=Gateways, resrc_id=Id}|T]) ->
-    io:format("Resource ~s~n", [Id]),
-    [print_gateway(Gateway) || Gateway <- Gateways],
-    print_debug(T).
-
-print_gateway(#gateway{server=S, realm=R}) ->
-    io:format("    gateway ~s (~s)~n", [S, R]).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Builds the route dialstring
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_dialstring/2 :: (Gateway :: #gateway{}, Number :: non_neg_integer())
+                          -> binary()).
+get_dialstring(#gateway{route=undefined}=Gateway, Number) ->
+    <<"sip:"
+      ,(whistle_util:to_binary(Gateway#gateway.prefix))/binary,
+      Number/binary
+      ,(whistle_util:to_binary(Gateway#gateway.suffix))/binary
+      ,"@", (whistle_util:to_binary(Gateway#gateway.server))/binary
+    >>;
+get_dialstring(#gateway{route=Route}, _) ->
+    Route.
