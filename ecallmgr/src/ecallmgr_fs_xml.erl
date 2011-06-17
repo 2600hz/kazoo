@@ -91,8 +91,8 @@ build_route(Route, undefined) ->
 build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->
-    case props:get_value(<<"Route">>, RouteProp) of 
-        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>; 
+    case props:get_value(<<"Route">>, RouteProp) of
+        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>;
         R2 -> R2
     end;
 build_route(RouteProp, <<"username">>) ->
@@ -170,33 +170,33 @@ get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
     [ list_to_binary([<<"rate_minimum=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Surcharge">>, V}, Vars) ->
     [ list_to_binary([<<"surcharge=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->   
+get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->
     [ list_to_binary([<<"ignore_early_media=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->   
+get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->
     [ list_to_binary([<<"bypass_media=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->   
+get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->
     [ list_to_binary([<<"continue_on_fail=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"leg_timeout=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Progress-Timeout">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Progress-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"leg_progress_timeout=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
     [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->
     [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
 %% SPECIAL CASE: Custom Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
     lists:foldl(fun
-                    %% These are a temporary abstraction leak until we can locate a call via the API, originate 
+                    %% These are a temporary abstraction leak until we can locate a call via the API, originate
                     %% on the located server only and transfer to an existing UUID...
                     ({<<"Confirm-File">>, V}, Vars0) ->
                         [ list_to_binary([<<"group_confirm_file=">>, whistle_util:to_list(V)]) | Vars0];
                     ({<<"Confirm-Key">>, V}, Vars0) ->
                        [ list_to_binary([<<"group_confirm_key=">>, whistle_util:to_list(V)]) | Vars0];
-                    ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->   
+                    ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->
                        [ list_to_binary([<<"group_confirm_cancel_timeout=">>, whistle_util:to_list(V)]) | Vars0];
                     %% end of leak
-                    ({K,V}, Vars0) ->                        
+                    ({K,V}, Vars0) ->
                        [ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
                end, Vars, Custom);
 %% SPECIAL CASE: SIP Headers
