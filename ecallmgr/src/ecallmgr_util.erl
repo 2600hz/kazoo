@@ -27,7 +27,6 @@ get_sip_to(Prop) ->
 %% retrieves the sip address for the 'from' field
 -spec(get_sip_from/1 :: (Prop :: proplist()) -> binary()).
 get_sip_from(Prop) ->
-    io:format("~p~n~p~n", [Prop, list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"])]),
     list_to_binary([
 		    get_value(<<"sip_from_user">>, Prop, get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
 		    ,"@"
