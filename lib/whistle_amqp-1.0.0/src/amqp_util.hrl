@@ -23,6 +23,9 @@
 -define(EXCHANGE_CALLEVT, <<"callevt">>).
 -define(TYPE_CALLEVT, <<"topic">>).
 
+%% Resource Exchange
+%% - Request for resources are published and consumed from this queue.  Topics are used to
+%%   distinguish the types of resource
 -define(EXCHANGE_RESOURCE, <<"resource">>).
 -define(TYPE_RESOURCE, <<"fanout">>).
 
@@ -43,10 +46,3 @@
 %%   routing keys they want messages for.
 -define(EXCHANGE_MONITOR, <<"monitor">>).
 -define(TYPE_MONITOR, <<"topic">>).
-
-%% Offnet Exchange
-%% - apps will publish requests to this exchange using routing keys for offnet commands
-%%   apps that want to handle offnet requests will create a queue with the appropriate routing key
-%%   in the binding to receive the messages.
--define(EXCHANGE_OFFNET, <<"offnet">>).
--define(TYPE_OFFNET, <<"fanout">>).

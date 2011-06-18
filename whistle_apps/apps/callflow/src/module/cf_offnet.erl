@@ -27,19 +27,20 @@ handle(JObj, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
                       ,ctrl_q=CtrlQ, amqp_q=AmqpQ}=Call) ->
     put(callid, CallId),
     Command = [
-                {<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Control-Queue">>, CtrlQ}
+                {<<"Call-ID">>, CallId}
+               ,{<<"Resource-Type">>, <<"audio">>}
+               ,{<<"To-DID">>, ReqNum}
                ,{<<"Account-ID">>, AccountId}
-               ,{<<"Number">>, ReqNum}
+               ,{<<"Control-Queue">>, CtrlQ}
+               ,{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, JObj)}
 %%               ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
 %%               ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
                ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
-               ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"offnet">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | whistle_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:offnet_bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    amqp_util:offnet_publish(Payload),
+    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    amqp_util:offnet_resource_publish(Payload),
     io:format("~p~n", [wait_for_bridge(60000)]),
     io:format("~p~n", [wait_for_unbridge()]).

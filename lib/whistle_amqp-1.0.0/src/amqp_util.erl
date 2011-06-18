@@ -6,8 +6,9 @@
 -export([callctl_exchange/0, callctl_publish/2, callctl_publish/3]).
 -export([callevt_exchange/0, callevt_publish/2, callevt_publish/3]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2]).
+-export([originate_resource_publish/1, originate_resource_publish/2]).
+-export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
--export([offnet_exchange/0, offnet_publish/1, offnet_publish/2]).
 -export([monitor_exchange/0, monitor_publish/3]).
 
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
@@ -15,15 +16,14 @@
 -export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
--export([bind_q_to_offnet/1, bind_q_to_offnet/2]).
 -export([bind_q_to_monitor/2]).
 
 -export([new_targeted_queue/0, new_targeted_queue/1]).
 -export([new_callctl_queue/1, delete_callctl_queue/1]).
 -export([new_callevt_queue/1, delete_callevt_queue/1]).
 -export([new_callmgr_queue/1, new_callmgr_queue/2, delete_callmgr_queue/1]).
+-export([new_resource_queue/0, new_resource_queue/1]).
 -export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
--export([new_offnet_queue/1, new_offnet_queue/2, delete_offnet_queue/1]).
 
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
 	 ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2]).
@@ -80,12 +80,17 @@ callevt_publish(_CallId, Payload, RoutingKey) ->
 resource_publish(Payload) ->
     resource_publish(Payload, <<"application/json">>).
 resource_publish(Payload, ContentType) ->
-    basic_publish(?EXCHANGE_RESOURCE, <<"#">>, Payload, ContentType).
+    basic_publish(?EXCHANGE_RESOURCE, ?KEY_RESOURCE_REQ, Payload, ContentType).
 
-offnet_publish(Payload) ->
-    offnet_publish(Payload, <<"application/json">>).
-offnet_publish(Payload, ContentType) ->
-    basic_publish(?EXCHANGE_OFFNET, <<"#">>, Payload, ContentType).
+originate_resource_publish(Payload) ->
+    originate_resource_publish(Payload, <<"application/json">>).
+originate_resource_publish(Payload, ContentType) ->
+   basic_publish(?EXCHANGE_RESOURCE, ?KEY_ORGN_RESOURCE_REQ, Payload, ContentType).
+
+offnet_resource_publish(Payload) ->
+    offnet_resource_publish(Payload, <<"application/json">>).
+offnet_resource_publish(Payload, ContentType) ->
+    basic_publish(?EXCHANGE_RESOURCE, ?KEY_OFFNET_RESOURCE_REQ, Payload, ContentType).
 
 %% What host to publish to, what to send, what content type, what routing key
 callmgr_publish(Payload, ContentType, RoutingKey) ->
@@ -106,9 +111,6 @@ resource_exchange() ->
 
 callmgr_exchange() ->
     new_exchange(?EXCHANGE_CALLMGR, ?TYPE_CALLMGR).
-
-offnet_exchange() ->
-    new_exchange(?EXCHANGE_OFFNET, ?TYPE_OFFNET).
 
 %% A generic Exchange maker
 new_exchange(Exchange, Type) ->
@@ -145,18 +147,18 @@ new_callctl_queue(CallId) ->
     new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
+-spec(new_resource_queue/0 :: () -> binary() | tuple(error, amqp_error)).
+-spec(new_resource_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
+new_resource_queue() ->
+    new_resource_queue(?RESOURCE_QUEUE_NAME).
+new_resource_queue(Queue) ->
+    new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+
 -spec(new_callmgr_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
 -spec(new_callmgr_queue/2 :: (Queue :: binary(), Opts :: proplist()) -> binary() | tuple(error, amqp_error)).
 new_callmgr_queue(Queue) ->
     new_queue(Queue, []).
 new_callmgr_queue(Queue, Opts) ->
-    new_queue(Queue, Opts).
-
--spec(new_offnet_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
--spec(new_offnet_queue/2 :: (Queue :: binary(), Opts :: proplist()) -> binary() | tuple(error, amqp_error)).
-new_offnet_queue(Queue) ->
-    new_queue(Queue, []).
-new_offnet_queue(Queue, Opts) ->
     new_queue(Queue, Opts).
 
 %% Declare a queue and returns the queue Name
@@ -199,9 +201,6 @@ delete_callctl_queue(CallId, Prop) ->
 delete_callmgr_queue(Queue) ->
     queue_delete(Queue, []).
 
-delete_offnet_queue(Queue) ->
-    queue_delete(Queue, []).
-
 %% Bind a Queue to an Exchange (with optional Routing Key)
 -spec(bind_q_to_targeted/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_targeted(Queue) ->
@@ -239,20 +238,12 @@ bind_q_to_callevt(Queue, Routing, other) ->
 -spec(bind_q_to_resource/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_resource(Queue) ->
     bind_q_to_resource(Queue, <<"#">>).
-
 bind_q_to_resource(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
 -spec(bind_q_to_callmgr/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
-
--spec(bind_q_to_offnet/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_offnet/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
-bind_q_to_offnet(Queue) ->
-    bind_q_to_offnet(Queue, Queue).
-bind_q_to_offnet(Queue, Routing) ->
-    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_OFFNET).
 
 %% generic binder
 -spec(bind_q_to_exchange/3 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
@@ -268,13 +259,16 @@ bind_q_to_exchange(Queue, Routing, Exchange) when is_binary(Queue), is_binary(Ro
 
 unbind_q_from_callevt(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
+
 unbind_q_from_callctl(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_CALLCTL).
+
 unbind_q_from_resource(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
 unbind_q_from_callmgr(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
+
 unbind_q_from_targeted(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 

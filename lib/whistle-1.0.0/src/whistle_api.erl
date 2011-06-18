@@ -27,7 +27,7 @@
 -export([reg_query/1, reg_query_resp/1]).
 
 %% Resources
--export([resource_req/1, resource_resp/1, resource_error/1]).
+-export([offnet_resource_req/1, resource_req/1, resource_resp/1, resource_error/1]).
 
 %% In-Call
 -export([call_event/1, error_resp/1, call_cdr/1, call_status_req/1, call_status_resp/1]).
@@ -44,9 +44,6 @@
 %% Maintenance API calls
 -export([mwi_update/1]).
 
-% Offnet API request
--export([offnet_bridge_req/1]).
-
 % Conference Members
 -export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1,
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
@@ -54,18 +51,26 @@
 	]).
 
 %% Validation functions
--export([auth_req_v/1, auth_resp_v/1, reg_success_v/1, route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1
-	 ,call_event_v/1, error_resp_v/1, play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1
-	 ,store_http_resp_v/1, tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1
-	 ,bridge_req_endpoint_v/1, answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1
-	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
-	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
-	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1, dialplan_req_v/1
-	 ,media_req_v/1, media_resp_v/1, media_error_v/1, offnet_bridge_req_v/1, conference_req_v/1
-         ,conference_members_req_v/1, conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
+-export([auth_req_v/1, auth_resp_v/1]).
+-export([reg_success_v/1, reg_query_v/1, reg_query_resp_v/1]).
+
+-export([offnet_resource_req_v/1, resource_req_v/1, resource_resp_v/1, resource_error_v/1]).
+
+-export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
+-export([play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1, store_http_resp_v/1
+         ,tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1, bridge_req_endpoint_v/1
+         ,answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1, call_pickup_req_v/1, hangup_req_v/1
+         ,say_req_v/1, sleep_req_v/1, tone_detect_req_v/1, set_req_v/1, dialplan_req_v/1
+        ]).
+
+-export([media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1]).
+
+-export([conference_members_req_v/1, conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
          ,conference_move_req_v/1, noop_req_v/1, fetch_req_v/1, mwi_update_v/1
 	]).
+
+-export([route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1]).
 
 %% Other AMQP API validators can use these helpers
 -export([build_message/3, validate/4]).
@@ -312,6 +317,26 @@ route_win_v({struct, Prop}) ->
     route_win_v(Prop);
 route_win_v(Prop) ->
     validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Offnet resource request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(offnet_resource_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+offnet_resource_req({struct, Prop}) ->
+    offnet_resource_req(Prop);
+offnet_resource_req(Prop) ->
+    case offnet_resource_req_v(Prop) of
+	true -> build_message(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for offnet_resource_req"}
+    end.
+
+-spec(offnet_resource_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+offnet_resource_req_v({struct, Prop}) ->
+    offnet_resource_req_v(Prop);
+offnet_resource_req_v(Prop) ->
+    validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Resource Request - see wiki
@@ -966,26 +991,6 @@ mwi_update_v({struct, Prop}) ->
     mwi_update_v(Prop);
 mwi_update_v(Prop) ->
     validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Bridge a call offnet - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec(offnet_bridge_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
-offnet_bridge_req({struct, Prop}) ->
-    offnet_bridge_req(Prop);
-offnet_bridge_req(Prop) ->
-    case offnet_bridge_req_v(Prop) of
-	true -> build_message(Prop, ?OFFNET_BRIDGE_REQ_HEADERS, ?OFFNET_OPTIONAL_BRIDGE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for offnet_bridge_req"}
-    end.
-
--spec(offnet_bridge_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
-offnet_bridge_req_v({struct, Prop}) ->
-    offnet_bridge_req_v(Prop);
-offnet_bridge_req_v(Prop) ->
-    validate(Prop, ?OFFNET_BRIDGE_REQ_HEADERS, ?OFFNET_BRIDGE_REQ_VALUES, ?OFFNET_BRIDGE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference - Sends caller to a conference - see wiki

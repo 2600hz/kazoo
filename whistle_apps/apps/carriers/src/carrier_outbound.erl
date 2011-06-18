@@ -226,9 +226,7 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State)
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
                   whapps_util:put_callid(JObj),
-                  _ = process_req(whapps_util:get_event_type(JObj)
-                                  ,wh_json:get_value(<<"Application-Name">>, JObj)
-                                  ,JObj, State)
+                  _ = process_req(whapps_util:get_event_type(JObj), JObj, State)
           end),
     {noreply, State};
 
@@ -275,11 +273,9 @@ start_amqp() ->
     try
         %% control egress of messages from the queue, only send one at time (load balances)
 	{'basic.qos_ok'} = amqp_util:basic_qos(1),
-        _ = amqp_util:offnet_exchange(),
-        _ = amqp_util:targeted_exchange(),
-        Q = amqp_util:new_offnet_queue(?OFFNET_QUEUE_NAME, [{exclusive, false}]),
-        amqp_util:bind_q_to_offnet(Q),
-        amqp_util:bind_q_to_targeted(Q),
+        _ = amqp_util:resource_exchange(),
+        Q = amqp_util:new_resource_queue(),
+        amqp_util:bind_q_to_resource(Q, ?KEY_OFFNET_RESOURCE_REQ),
         amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
@@ -336,15 +332,17 @@ update_resrc(DocId, Resrcs) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec(process_req/4 :: (MsgType :: tuple(binary(), binary()), App :: binary(), JObj :: json_object(), State :: #state{})
+-spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{})
                        -> no_return()).
-process_req({<<"offnet">>, <<"command">>}, <<"bridge">>, JObj, #state{resrcs=R1}) ->
+process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
     whapps_util:put_callid(JObj),
     CallId = get(callid),
 
-    Number = wh_json:get_value(<<"Number">>, JObj),
+    <<"audio">> = wh_json:get_value(<<"Resource-Type">>, JObj),
 
-    ?LOG_START("off-net bridge request to ~s for account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+    Number = wh_json:get_value(<<"To-DID">>, JObj),
+
+    ?LOG_START("off-net resource bridge request to ~s for account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
 
     Endpoints = case wh_json:get_value(<<"Flags">>, JObj) of
                     undefined -> evaluate_number(Number, R1);
@@ -370,7 +368,7 @@ process_req({<<"offnet">>, <<"command">>}, <<"bridge">>, JObj, #state{resrcs=R1}
     {ok, Payload2} = whistle_api:call_event(Response),
     amqp_util:callevt_publish(CallId, Payload2, event);
 
-process_req({_, _}, _, _, _) ->
+process_req({_, _}, _, _) ->
     {error, invalid_event}.
 
 %%--------------------------------------------------------------------
@@ -635,6 +633,13 @@ get_dialstring(#gateway{route=undefined}=Gateway, Number) ->
 get_dialstring(#gateway{route=Route}, _) ->
     Route.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% waits for the return from the bridge request
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_bridge/1 :: (Timeout :: non_neg_integer()) -> tuple(ok, json_object())|tuple(error, atom())).
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -663,7 +668,13 @@ wait_for_bridge(Timeout) ->
             {error, timeout}
     end.
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% updates a bridge response with offnet specific information
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_bridge_resp/1 :: (JObj :: json_object()) -> json_object()).
 update_bridge_resp(JObj) ->
     Updates = [
                {<<"Application-Name">>, <<"offnet_bridge">>}
@@ -672,6 +683,12 @@ update_bridge_resp(JObj) ->
               ],
     do_update_resp(JObj, Updates).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(do_update_resp/2 :: (JObj :: json_object(), Props :: proplist()) -> json_object()).
 do_update_resp(JObj, []) ->
     JObj;
 do_update_resp(JObj, [{K,V}|T]) ->

@@ -215,6 +215,27 @@
 			  ,{<<"Control-Queue">>, fun is_binary/1}
 			 ]).
 
+%% Offnet Resource Request
+-define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Call-ID">>, <<"Resource-Type">>, <<"To-DID">>
+                                      ,<<"Account-ID">>, <<"Control-Queue">>, <<"Application-Name">>
+                                     ]).
+-define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>
+                                               ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                               ,<<"Ringback">>, <<"SIP-Headers">>
+                                              ]).
+-define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
+                                     ,{<<"Event-Name">>, <<"offnet_req">>}
+                                     ,{<<"Application-Name">>, <<"bridge">>}
+                                     ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
+                                    ]).
+-define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                                    ,{<<"Account-ID">>, fun is_binary/1}
+                                    ,{<<"Control-Queue">>, fun is_binary/1}
+                                    ,{<<"To-DID">>, fun is_binary/1}
+                                    ,{<<"SIP-Headers">>, fun is_list/1}
+                                    ,{<<"Flags">>, fun is_list/1}
+                                   ]).
+
 %% Resource Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
@@ -593,26 +614,6 @@
 			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(SLEEP_REQ_TYPES, []).
-
-%% Offnet Bridge Request
--define(OFFNET_BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Account-ID">>
-                                    ,<<"Number">>, <<"Control-Queue">>]).
--define(OFFNET_OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-                                      ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-                                      ,<<"Ringback">>, <<"SIP-Headers">>
-				     ]).
--define(OFFNET_BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"offnet">>}
-			    ,{<<"Event-Name">>, <<"command">>}
-			    ,{<<"Application-Name">>, <<"bridge">>}
-			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
-			   ]).
--define(OFFNET_BRIDGE_REQ_TYPES, [
-                            {<<"Call-ID">>, fun is_binary/1}
-                           ,{<<"Account-ID">>, fun is_binary/1}
-                           ,{<<"Control-Queue">>, fun is_binary/1}
-                           ,{<<"Number">>, fun is_binary/1}
-			   ,{<<"SIP-Headers">>, fun is_list/1}
-			  ]).
 
 %% Conference
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).
