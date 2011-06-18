@@ -42,6 +42,7 @@
            id
           ,rev
           ,weight_cost = 0
+          ,grace_period = ?DEFAULT_GRACE_PERIOD
           ,flags = []
           ,rules = []
           ,gateways = []
@@ -49,10 +50,11 @@
 
 -record(state, {
 	    amqp_q = <<>> :: binary()
+           ,last_doc_change = {<<>>, [<<>>]}
            ,resrcs = []
 	 }).
 
--type endpoint() :: tuple(1..100, binary(), #gateway{}).
+-type endpoint() :: tuple(1..100, non_neg_integer(), binary(), #gateway{}).
 -type endpoints() :: [] | [endpoint()].
 
 %%%===================================================================
@@ -139,33 +141,6 @@ handle_call({process_number, Number, Flags}, From, #state{resrcs=R1}=State) ->
           end),
     {noreply, State};
 
-handle_call({call, JObj}, From, #state{resrcs=R1}=State) ->
-    spawn(fun() ->
-                  Number = wh_json:get_value(<<"Number">>, JObj),
-
-                  Endpoints = case wh_json:get_value(<<"Flags">>, JObj) of
-                                  undefined -> evaluate_number(Number, R1);
-                                  Flags ->
-                                      R2 = evaluate_flags(Flags, R1),
-                                      evaluate_number(Number, R2)
-                              end,
-
-                  Q = amqp_util:new_queue(),
-                  amqp_util:bind_q_to_callevt(Q, wh_json:get_value(<<"Call-ID">>, JObj)),
-                  amqp_util:bind_q_to_targeted(Q),
-                  amqp_util:basic_consume(Q),
-
-                  BridgeReq = build_bridge_request(JObj, Endpoints, Q),
-                  io:format("Bridge Req:~n~p~n", [BridgeReq]),
-
-                  {ok, Payload} = whistle_api:bridge_req({struct, BridgeReq}),
-
-                  amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
-
-                  gen_server:reply(From, ok)
-          end),
-    {noreply, State};
-
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
 
@@ -226,11 +201,15 @@ handle_info({amqp_host_down, _}, State) ->
     timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
-handle_info({document_changes, DocId, [Changes]}, #state{resrcs=Resrcs}=State) ->
+handle_info({document_changes, DocId, Changes}, #state{last_doc_change={DocId, Changes}}=State) ->
+    %% Ignore the duplicate document change notifications used for keep alives
+    {noreply, State};
+
+handle_info({document_changes, DocId, [Changes]=C}, #state{resrcs=Resrcs}=State) ->
     Rev = wh_json:get_value(<<"rev">>, Changes),
     case lists:keysearch(DocId, #resrc.id, Resrcs) of
-        {value, #resrc{rev=Rev}} -> {noreply, State};
-        _ -> {noreply, State#state{resrcs=update_resrc(DocId, Resrcs)}}
+        {value, #resrc{rev=Rev}} -> {noreply, State#state{last_doc_change={DocId, C}}};
+        _ -> {noreply, State#state{resrcs=update_resrc(DocId, Resrcs), last_doc_change={DocId, C}}}
     end;
 
 handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
@@ -241,6 +220,17 @@ handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
             couch_mgr:rm_change_handler(?CARRIERS_DB, DocId),
             {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}}
     end;
+
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State)
+  when Props#'P_basic'.content_type == <<"application/json">> ->
+    spawn(fun() ->
+                  JObj = mochijson2:decode(Payload),
+                  whapps_util:put_callid(JObj),
+                  _ = process_req(whapps_util:get_event_type(JObj)
+                                  ,wh_json:get_value(<<"Application-Name">>, JObj)
+                                  ,JObj, State)
+          end),
+    {noreply, State};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -283,10 +273,12 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
 start_amqp() ->
     try
-        _ = amqp_util:callmgr_exchange(),
+        %% control egress of messages from the queue, only send one at time (load balances)
+	{'basic.qos_ok'} = amqp_util:basic_qos(1),
+        _ = amqp_util:offnet_exchange(),
         _ = amqp_util:targeted_exchange(),
-        Q = amqp_util:new_callmgr_queue(<<>>),
-        amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
+        Q = amqp_util:new_offnet_queue(?OFFNET_QUEUE_NAME, [{exclusive, false}]),
+        amqp_util:bind_q_to_offnet(Q),
         amqp_util:bind_q_to_targeted(Q),
         amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),
@@ -344,8 +336,41 @@ update_resrc(DocId, Resrcs) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object()) -> no_return()).
-process_req({_, _}, _) ->
+-spec(process_req/4 :: (MsgType :: tuple(binary(), binary()), App :: binary(), JObj :: json_object(), State :: #state{})
+                       -> no_return()).
+process_req({<<"offnet">>, <<"command">>}, <<"bridge">>, JObj, #state{resrcs=R1}) ->
+    whapps_util:put_callid(JObj),
+    CallId = get(callid),
+
+    Number = wh_json:get_value(<<"Number">>, JObj),
+
+    ?LOG_START("off-net bridge request to ~s for account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+
+    Endpoints = case wh_json:get_value(<<"Flags">>, JObj) of
+                    undefined -> evaluate_number(Number, R1);
+                    Flags ->
+                        R2 = evaluate_flags(Flags, R1),
+                        evaluate_number(Number, R2)
+                end,
+
+    Q = amqp_util:new_queue(),
+    amqp_util:bind_q_to_callevt(Q, CallId),
+    amqp_util:bind_q_to_targeted(Q),
+    amqp_util:basic_consume(Q),
+
+    BridgeReq = build_bridge_request(JObj, Endpoints, Q),
+
+    {ok, Payload1} = whistle_api:bridge_req({struct, BridgeReq}),
+    amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload1),
+
+    {ok, Response} = wait_for_bridge(60000),
+
+    ?LOG_END("offnet bridge response ~s", [wh_json:get_value(<<"Application-Response">>, Response,
+                                                         wh_json:get_value(<<"Hangup-Case">>, Response))]),
+    {ok, Payload2} = whistle_api:call_event(Response),
+    amqp_util:callevt_publish(CallId, Payload2, event);
+
+process_req({_, _}, _, _, _) ->
     {error, invalid_event}.
 
 %%--------------------------------------------------------------------
@@ -359,11 +384,14 @@ process_req({_, _}, _) ->
 create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
+    ?LOG_SYS("loading resource ~s", [Id]),
     couch_mgr:add_change_handler(?CARRIERS_DB, Id),
     #resrc{id = Id
            ,rev = wh_json:get_value(<<"_rev">>, JObj)
            ,weight_cost =
                constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
+           ,grace_period =
+               whistle_util:to_integer(wh_json:get_value(<<"grace_period">>, JObj, Default#resrc.grace_period))
            ,flags = wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
            ,rules = [R2 || R1 <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)
                                ,(R2 = compile_rule(R1, Id)) =/= error]
@@ -409,6 +437,7 @@ create_gateway(JObj, Id) ->
 compile_rule(Rule, Id) ->
     case re:compile(Rule) of
         {ok, MP} ->
+            ?LOG_SYS("compiled ~s on resource ~s", [Rule, Id]),
             MP;
         {error, R} ->
             ?LOG_SYS("bad rule '~s' on resource ~s, ~p", [Rule, Id, R]),
@@ -461,7 +490,7 @@ evaluate_number(Number, Resrcs) ->
 %%--------------------------------------------------------------------
 -spec(sort_endpoints/1 :: (Endpoints :: endpoints()) -> endpoints()).
 sort_endpoints(Endpoints) ->
-    lists:sort(fun({W1, _, _}, {W2, _, _}) ->
+    lists:sort(fun({W1, _, _, _}, {W2, _, _, _}) ->
                        W1 =< W2
                end, Endpoints).
 
@@ -472,8 +501,8 @@ sort_endpoints(Endpoints) ->
 %%--------------------------------------------------------------------
 -spec(get_endpoints/2 :: (Number :: binary(), Resrcs :: [#resrc{}]) -> endpoints()).
 get_endpoints(Number, Resrcs) ->
-    [Resrc || Resrc <- lists:map(fun(R) -> get_endpoint(Number, R) end, Resrcs)
-                      , Resrc =/= no_match].
+    [Endpoint || Endpoint <- lists:map(fun(R) -> get_endpoint(Number, R) end, Resrcs)
+                     ,Endpoint =/= no_match].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -482,10 +511,10 @@ get_endpoints(Number, Resrcs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_endpoint/2 :: (Number :: binary(), Resrc :: #resrc{}) -> endpoint()|no_match).
-get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules}) ->
+get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules, grace_period=GP}) ->
     case evaluate_rules(Rules, Number) of
         {ok, DestNum} ->
-            {WC, DestNum, Gtws};
+            {WC, GP, DestNum, Gtws};
         {error, no_match} ->
             no_match
     end.
@@ -551,15 +580,15 @@ build_bridge_request(JObj, Endpoints, Q) ->
                            -> proplist()).
 build_endpoints([], _, Acc) ->
     lists:reverse(Acc);
-build_endpoints([{_, Number, Gateways}|T], Delay, Acc0) ->
-    {_, Acc1} = lists:foldr(fun(Gateway, {0, AccIn}) ->
-                                    {1
-                                     ,[build_endpoint(Number, Gateway, undefined)|AccIn]};
-                               (Gateway, {D, AccIn}) ->
-                                    {D + 1
-                                     ,[build_endpoint(Number, Gateway, D + 1)|AccIn]}
+build_endpoints([{_, GracePeriod, Number, [Gateway]}|T], Delay, Acc0) ->
+    build_endpoints(T, Delay + GracePeriod, [build_endpoint(Number, Gateway, Delay)|Acc0]);
+build_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
+    {D2, Acc1} = lists:foldl(fun(Gateway, {0, AccIn}) ->
+                                     {2, [build_endpoint(Number, Gateway, 0)|AccIn]};
+                                 (Gateway, {D0, AccIn}) ->
+                                     {D0 + 2, [build_endpoint(Number, Gateway, D0)|AccIn]}
                             end, {Delay, Acc0}, Gateways),
-    build_endpoints(T, Delay + 2 + length(Gateways), Acc1).
+    build_endpoints(T, D2 - 2 + GracePeriod, Acc1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -570,11 +599,12 @@ build_endpoints([{_, Number, Gateways}|T], Delay, Acc0) ->
 -spec(build_endpoint/3 :: (Number :: non_neg_integer(), Gateway :: #gateway{}, Delay :: non_neg_integer())
                           -> proplist()).
 build_endpoint(Number, Gateway, Delay) ->
+    Route = get_dialstring(Gateway, Number),
+    ?LOG("using ~s on ~s delayed by ~b sec", [Route, Gateway#gateway.resource_id, Delay]),
     Prop = [
              {<<"Invite-Format">>, <<"route">>}
             ,{<<"Route">>, get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Number">>, whistle_util:to_binary(Number)}
-            ,{<<"Callee-ID-Name">>, <<"Whistle Outbound">>}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
             ,{<<"Endpoint-Delay">>, whistle_util:to_binary(Delay)}
             ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
@@ -585,7 +615,7 @@ build_endpoint(Number, Gateway, Delay) ->
             ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
             ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Resource-ID">>, Gateway#gateway.resource_id}]}}
            ],
-    {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined andalso V =/= <<"undefined">>]}.
+    {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined andalso V =/= <<"0">>]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -604,3 +634,45 @@ get_dialstring(#gateway{route=undefined}=Gateway, Number) ->
     >>;
 get_dialstring(#gateway{route=Route}, _) ->
     Route.
+
+wait_for_bridge(Timeout) ->
+    Start = erlang:now(),
+    receive
+        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
+            JObj = mochijson2:decode(Payload),
+            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
+                { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
+                    {ok, update_bridge_resp(JObj)};
+                { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+                    {ok, update_bridge_resp(JObj)};
+                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                    {error, channel_hungup};
+                { _, _, <<"error">> } ->
+                    {ok, update_bridge_resp(JObj)};
+                _ ->
+		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    wait_for_bridge(Timeout - (DiffMicro div 1000))
+            end;
+        _ ->
+            %% dont let the mailbox grow unbounded if
+            %%   this process hangs around...
+            DiffMicro = timer:now_diff(erlang:now(), Start),
+            wait_for_bridge(Timeout - (DiffMicro div 1000))
+    after
+        Timeout ->
+            {error, timeout}
+    end.
+
+
+update_bridge_resp(JObj) ->
+    Updates = [
+               {<<"Application-Name">>, <<"offnet_bridge">>}
+               ,{<<"App-Name">>, ?APP_NAME}
+               ,{<<"App-Version">>, ?APP_VERSION}
+              ],
+    do_update_resp(JObj, Updates).
+
+do_update_resp(JObj, []) ->
+    JObj;
+do_update_resp(JObj, [{K,V}|T]) ->
+    do_update_resp(wh_json:set_value(K, V, JObj), T).
