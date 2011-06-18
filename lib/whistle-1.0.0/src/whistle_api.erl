@@ -44,9 +44,12 @@
 %% Maintenance API calls
 -export([mwi_update/1]).
 
+% Offnet API request
+-export([offnet_bridge_req/1]).
+
 % Conference Members
--export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1, 
-         conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1, 
+-export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1,
+         conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
          conference_move_req/1
 	]).
 
@@ -58,10 +61,10 @@
 	 ,call_pickup_req_v/1, hangup_req_v/1, say_req_v/1, sleep_req_v/1, tone_detect_req_v/1
 	 ,resource_req_v/1, resource_resp_v/1, call_cdr_v/1, resource_error_v/1, call_status_req_v/1
 	 ,call_status_resp_v/1, set_req_v/1, reg_query_v/1, reg_query_resp_v/1, dialplan_req_v/1
-	 ,media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1, conference_members_req_v/1
-         ,conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1, conference_undeaf_req_v/1
-         ,conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1, conference_move_req_v/1
-         ,noop_req_v/1, fetch_req_v/1, mwi_update_v/1
+	 ,media_req_v/1, media_resp_v/1, media_error_v/1, offnet_bridge_req_v/1, conference_req_v/1
+         ,conference_members_req_v/1, conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
+         ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
+         ,conference_move_req_v/1, noop_req_v/1, fetch_req_v/1, mwi_update_v/1
 	]).
 
 %% Other AMQP API validators can use these helpers
@@ -965,6 +968,26 @@ mwi_update_v(Prop) ->
     validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES).
 
 %%--------------------------------------------------------------------
+%% @doc Bridge a call offnet - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(offnet_bridge_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+offnet_bridge_req({struct, Prop}) ->
+    offnet_bridge_req(Prop);
+offnet_bridge_req(Prop) ->
+    case offnet_bridge_req_v(Prop) of
+	true -> build_message(Prop, ?OFFNET_BRIDGE_REQ_HEADERS, ?OFFNET_OPTIONAL_BRIDGE_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for offnet_bridge_req"}
+    end.
+
+-spec(offnet_bridge_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+offnet_bridge_req_v({struct, Prop}) ->
+    offnet_bridge_req_v(Prop);
+offnet_bridge_req_v(Prop) ->
+    validate(Prop, ?OFFNET_BRIDGE_REQ_HEADERS, ?OFFNET_BRIDGE_REQ_VALUES, ?OFFNET_BRIDGE_REQ_TYPES).
+
+%%--------------------------------------------------------------------
 %% @doc Conference - Sends caller to a conference - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1026,7 +1049,7 @@ conference_members_resp_v(Prop) ->
     validate(Prop, ?CONF_MEMBERS_RESP_HEADERS, ?CONF_MEMBERS_RESP_VALUES, ?CONF_MEMBERS_RESP_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::play - Play audio to all or a single 
+%% @doc Conference::play - Play audio to all or a single
 %%     conference member - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1067,7 +1090,7 @@ conference_deaf_req_v(Prop) ->
     validate(Prop, ?CONF_DEAF_REQ_HEADERS, ?CONF_DEAF_REQ_VALUES, ?CONF_DEAF_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::undeaf - Allows a specific conference member to 
+%% @doc Conference::undeaf - Allows a specific conference member to
 %%     hear if they where marked deaf - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1088,7 +1111,7 @@ conference_undeaf_req_v(Prop) ->
     validate(Prop, ?CONF_UNDEAF_REQ_HEADERS, ?CONF_UNDEAF_REQ_VALUES, ?CONF_UNDEAF_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::mute - Mutes a specific member in a 
+%% @doc Conference::mute - Mutes a specific member in a
 %%     conference - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1109,7 +1132,7 @@ conference_mute_req_v(Prop) ->
     validate(Prop, ?CONF_MUTE_REQ_HEADERS, ?CONF_MUTE_REQ_VALUES, ?CONF_MUTE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::unmute - Unmutes a specific member in a 
+%% @doc Conference::unmute - Unmutes a specific member in a
 %%     conference - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1150,7 +1173,7 @@ conference_kick_req_v(Prop) ->
     validate(Prop, ?CONF_KICK_REQ_HEADERS, ?CONF_KICK_REQ_VALUES, ?CONF_KICK_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::move - Transfers a member between to 
+%% @doc Conference::move - Transfers a member between to
 %%     conferences - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1271,7 +1294,7 @@ defaults(Prop, Headers) ->
 
 -spec(update_required_headers/3 :: (Prop :: proplist(), Fields :: list(binary()), Headers :: proplist()) -> {proplist(), proplist()} | {error, string()}).
 update_required_headers(Prop, Fields, Headers) ->
-    case has_all(Prop, Fields) of 
+    case has_all(Prop, Fields) of
 	true ->
 	    add_headers(Prop, Fields, Headers);
 	false ->

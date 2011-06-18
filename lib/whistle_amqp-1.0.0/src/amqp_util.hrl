@@ -43,3 +43,10 @@
 %%   routing keys they want messages for.
 -define(EXCHANGE_MONITOR, <<"monitor">>).
 -define(TYPE_MONITOR, <<"topic">>).
+
+%% Offnet Exchange
+%% - apps will publish requests to this exchange using routing keys for offnet commands
+%%   apps that want to handle offnet requests will create a queue with the appropriate routing key
+%%   in the binding to receive the messages.
+-define(EXCHANGE_OFFNET, <<"offnet">>).
+-define(TYPE_OFFNET, <<"fanout">>).

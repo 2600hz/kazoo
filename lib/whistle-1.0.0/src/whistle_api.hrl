@@ -594,6 +594,25 @@
 			  ]).
 -define(SLEEP_REQ_TYPES, []).
 
+%% Offnet Bridge Request
+-define(OFFNET_BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Account-ID">>
+                                    ,<<"Number">>, <<"Control-Queue">>]).
+-define(OFFNET_OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
+                                      ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                      ,<<"Ringback">>, <<"SIP-Headers">>
+				     ]).
+-define(OFFNET_BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"offnet">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"bridge">>}
+			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
+			   ]).
+-define(OFFNET_BRIDGE_REQ_TYPES, [
+                            {<<"Call-ID">>, fun is_binary/1}
+                           ,{<<"Account-ID">>, fun is_binary/1}
+                           ,{<<"Control-Queue">>, fun is_binary/1}
+                           ,{<<"Number">>, fun is_binary/1}
+			   ,{<<"SIP-Headers">>, fun is_list/1}
+			  ]).
 
 %% Conference
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).

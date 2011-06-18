@@ -7,15 +7,23 @@
 -export([callevt_exchange/0, callevt_publish/2, callevt_publish/3]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
+-export([offnet_exchange/0, offnet_publish/1, offnet_publish/2]).
+-export([monitor_exchange/0, monitor_publish/3]).
 
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
 -export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
+-export([bind_q_to_offnet/1, bind_q_to_offnet/2]).
+-export([bind_q_to_monitor/2]).
 
--export([new_targeted_queue/0, new_targeted_queue/1, new_callevt_queue/1, new_callctl_queue/1, new_callmgr_queue/1, new_callmgr_queue/2]).
--export([delete_callevt_queue/1, delete_callctl_queue/1, delete_callmgr_queue/1]).
+-export([new_targeted_queue/0, new_targeted_queue/1]).
+-export([new_callctl_queue/1, delete_callctl_queue/1]).
+-export([new_callevt_queue/1, delete_callevt_queue/1]).
+-export([new_callmgr_queue/1, new_callmgr_queue/2, delete_callmgr_queue/1]).
+-export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
+-export([new_offnet_queue/1, new_offnet_queue/2, delete_offnet_queue/1]).
 
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
 	 ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2]).
@@ -23,10 +31,6 @@
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
 -export([is_json/1, is_host_available/0]).
-
--export([monitor_exchange/0, monitor_publish/3]).
--export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
--export([bind_q_to_monitor/2]).
 
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
@@ -78,6 +82,11 @@ resource_publish(Payload) ->
 resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, <<"#">>, Payload, ContentType).
 
+offnet_publish(Payload) ->
+    offnet_publish(Payload, <<"application/json">>).
+offnet_publish(Payload, ContentType) ->
+    basic_publish(?EXCHANGE_OFFNET, <<"#">>, Payload, ContentType).
+
 %% What host to publish to, what to send, what content type, what routing key
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
@@ -97,6 +106,9 @@ resource_exchange() ->
 
 callmgr_exchange() ->
     new_exchange(?EXCHANGE_CALLMGR, ?TYPE_CALLMGR).
+
+offnet_exchange() ->
+    new_exchange(?EXCHANGE_OFFNET, ?TYPE_OFFNET).
 
 %% A generic Exchange maker
 new_exchange(Exchange, Type) ->
@@ -140,6 +152,13 @@ new_callmgr_queue(Queue) ->
 new_callmgr_queue(Queue, Opts) ->
     new_queue(Queue, Opts).
 
+-spec(new_offnet_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec(new_offnet_queue/2 :: (Queue :: binary(), Opts :: proplist()) -> binary() | tuple(error, amqp_error)).
+new_offnet_queue(Queue) ->
+    new_queue(Queue, []).
+new_offnet_queue(Queue, Opts) ->
+    new_queue(Queue, Opts).
+
 %% Declare a queue and returns the queue Name
 -spec(new_queue/0 :: () -> binary() | tuple(error, amqp_error)).
 -spec(new_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
@@ -178,6 +197,9 @@ delete_callctl_queue(CallId, Prop) ->
     queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]), Prop).
 
 delete_callmgr_queue(Queue) ->
+    queue_delete(Queue, []).
+
+delete_offnet_queue(Queue) ->
     queue_delete(Queue, []).
 
 %% Bind a Queue to an Exchange (with optional Routing Key)
@@ -224,6 +246,13 @@ bind_q_to_resource(Queue, Routing) ->
 -spec(bind_q_to_callmgr/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
+
+-spec(bind_q_to_offnet/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec(bind_q_to_offnet/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+bind_q_to_offnet(Queue) ->
+    bind_q_to_offnet(Queue, Queue).
+bind_q_to_offnet(Queue, Routing) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_OFFNET).
 
 %% generic binder
 -spec(bind_q_to_exchange/3 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
@@ -291,7 +320,7 @@ basic_publish(Exchange, Queue, Payload) ->
 basic_publish(Exchange, Queue, Payload, ContentType) ->
     basic_publish(Exchange, Queue, Payload, ContentType, []).
 
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when not is_binary(Payload) ->    
+basic_publish(Exchange, Queue, Payload, ContentType, Prop) when not is_binary(Payload) ->
     basic_publish(Exchange, Queue, whistle_util:to_binary(Payload), ContentType, Prop);
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) ->
     BP = #'basic.publish'{
