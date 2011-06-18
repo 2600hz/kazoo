@@ -337,11 +337,11 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
 	    io:format("WHISTLE_API: Didn't find ~p in supported", [Application]),
 	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
         <<"play_and_collect_digits">> ->
-	    [{<<"Application-Name">>, <<"play_and_collect_digits">>} 
+	    [{<<"Application-Name">>, <<"play_and_collect_digits">>}
 	     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
 	    ];
         <<"bridge">> ->
-	    [{<<"Application-Name">>, <<"bridge">>} 
+	    [{<<"Application-Name">>, <<"bridge">>}
 	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
 	    ];
 	AppName ->
