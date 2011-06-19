@@ -80,14 +80,14 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
 	    _ = set(Node, UUID, "enable_file_write_buffering=false"), % disable buffering to see if we get all the media
-	    
+
 	    RecArg = binary_to_list(list_to_binary([Media, " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Silence-Threshold">>, JObj, "500")), " "
 						    ,whistle_util:to_list(wh_json:get_value(<<"Silence-Hits">>, JObj, "5"))
 						   ])),
 	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-	    
+
 	    {<<"record">>, RecArg}
     end;
 get_fs_app(_Node, UUID, JObj, <<"store">>) ->
@@ -194,9 +194,9 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
 			    end,
             %% Taken from http://montsamu.blogspot.com/2007/02/erlang-parallel-map-and-parallel.html
             S = self(),
-            DialStrings = [ receive {Pid, DS} -> DS end 
+            DialStrings = [ receive {Pid, DS} -> DS end
                             || Pid <- [
-                                       spawn(fun() -> S ! {self(), (catch get_bridge_endpoint(EP))} end) 
+                                       spawn(fun() -> S ! {self(), (catch get_bridge_endpoint(EP))} end)
                                        || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])
                                       ]
                           ],
@@ -283,8 +283,17 @@ get_bridge_endpoint(JObj) ->
     end.
 
 -spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
+-spec(media_path/3 :: (MediaName :: binary(), Type :: binary(), UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
+        {error, _} ->
+            MediaName;
+        {ok, Url} ->
+            get_fs_playback(Url)
+    end.
+
+media_path(MediaName, Type, UUID) ->
+    case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
         {error, _} ->
             MediaName;
         {ok, Url} ->
@@ -444,8 +453,9 @@ set_terminators(Node, UUID, Ts) ->
 set_ringback(_Node, _UUID, undefined) ->
     ok;
 set_ringback(Node, UUID, RingBack) ->
-    RB = list_to_binary(["ringback=${", RingBack, "}"]),
-    set(Node, UUID, RB).
+    RB = list_to_binary(["ringback=", media_path(RingBack, <<"extant">>, UUID)]),
+    set(Node, UUID, RB),
+    set(Node, UUID, "instant_ringback=true").
 
 -spec(set_sip_req_headers/3 :: (Node :: atom(), UUID :: binary(), SIPHeaders :: undefined | proplist()) -> ok).
 set_sip_req_headers(_Node, _UUID, undefined) ->
@@ -489,12 +499,12 @@ send_fetch_call_event(Node, UUID, JObj) ->
         Prop = case whistle_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
                    true ->
                        {ok, OtherUUID} = freeswitch:api(Node, uuid_getvar, whistle_util:to_list(<<UUID/binary, " signal_bond">>)),
-                       {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(OtherUUID)),           
+                       {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(OtherUUID)),
                        ecallmgr_util:eventstr_to_proplist(Dump);
                    false ->
                        {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(UUID)),
                        ecallmgr_util:eventstr_to_proplist(Dump)
-                           
+
                end,
         EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
                     ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
@@ -527,7 +537,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
 -spec(send_noop_call_event/3 :: (Node :: binary(), UUID :: binary(), JObj :: json_object()) -> no_return()).
 send_noop_call_event(Node, UUID, JObj) ->
     try
-        {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(UUID)),            
+        {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(UUID)),
         Prop = ecallmgr_util:eventstr_to_proplist(Dump),
         EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
                     ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
