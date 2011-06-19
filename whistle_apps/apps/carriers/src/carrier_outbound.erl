@@ -54,7 +54,7 @@
            ,resrcs = []
 	 }).
 
--type endpoint() :: tuple(1..100, non_neg_integer(), binary(), #gateway{}).
+-type endpoint() :: tuple(1..100, non_neg_integer(), binary(), []|[#gateway{}]).
 -type endpoints() :: [] | [endpoint()].
 
 %%%===================================================================
@@ -620,8 +620,8 @@ build_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
 %% Build the endpoint for use in the route request
 %% @end
 %%--------------------------------------------------------------------
--spec(build_endpoint/3 :: (Number :: non_neg_integer(), Gateway :: #gateway{}, Delay :: non_neg_integer())
-                          -> proplist()).
+-spec(build_endpoint/3 :: (Number :: binary(), Gateway :: #gateway{}, Delay :: non_neg_integer())
+                          -> json_object()).
 build_endpoint(Number, Gateway, Delay) ->
     Route = get_dialstring(Gateway, Number),
     ?LOG("using ~s on ~s delayed by ~b sec", [Route, Gateway#gateway.resource_id, Delay]),
@@ -647,7 +647,7 @@ build_endpoint(Number, Gateway, Delay) ->
 %% Builds the route dialstring
 %% @end
 %%--------------------------------------------------------------------
--spec(get_dialstring/2 :: (Gateway :: #gateway{}, Number :: non_neg_integer())
+-spec(get_dialstring/2 :: (Gateway :: #gateway{}, Number :: binary())
                           -> binary()).
 get_dialstring(#gateway{route=undefined}=Gateway, Number) ->
     <<"sip:"
@@ -665,7 +665,7 @@ get_dialstring(#gateway{route=Route}, _) ->
 %% waits for the return from the bridge request
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_bridge/1 :: (Timeout :: non_neg_integer()) -> tuple(ok, json_object())|tuple(error, atom())).
+-spec(wait_for_bridge/1 :: (Timeout :: non_neg_integer()) -> tuple(ok|fail|hungup|error, json_object())|tuple(error, timeout)).
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive

@@ -170,7 +170,8 @@ cf_update_number(#callfwd{prompts=Prompts}=CF, Call) ->
 %%--------------------------------------------------------------------
 -spec(update_callfwd/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> tuple(ok, json_object())|tuple(error, atom())).
 update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=RK, keep_caller_id=KCI}=CF
-               , #cf_call{account_db=Db}=Call) ->
+               ,#cf_call{account_db=Db}=Call) ->
+    ?LOG("updating call forwarding settings on ~s", [Id]),
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     CF1 = {struct, [
                      {<<"enabled">>, Enabled}
@@ -180,6 +181,7 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
                    ]},
     case couch_mgr:save_doc(Db, wh_json:set_value(<<"call_forward">>, CF1, JObj)) of
         {error, conflict} ->
+            ?LOG("update conflicted, trying again"),
             update_callfwd(CF, Call);
         {ok, JObj1} ->
             ?LOG("updated call forwarding in db"),
