@@ -193,10 +193,8 @@ code_change(_OldVsn, State, _Extra) ->
 start_amqp() ->
     try
         _ = amqp_util:callmgr_exchange(),
-        _ = amqp_util:targeted_exchange(),
         Q = amqp_util:new_callmgr_queue(<<>>),
         amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
-        amqp_util:bind_q_to_targeted(Q),
         amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
