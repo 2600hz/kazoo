@@ -271,7 +271,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
 start_amqp() ->
     try
-        %% control egress of messages from the queue, only send one at time (load balances)
+        %% control egress of messages from the queue, only fetch one at time (load balances)
 	{'basic.qos_ok'} = amqp_util:basic_qos(1),
         _ = amqp_util:resource_exchange(),
         Q = amqp_util:new_resource_queue(),
@@ -388,7 +388,8 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                     ?LOG_END("resource bridge request did not respond"),
                     respond_resource_failed({struct, [{<<"Failure-Message">>, <<"TIMEOUT">>}]}, Attempts, JObj);
                 {error, ErrorResp} ->
-                    ?LOG_END("internal resource bridge error")
+                    ?LOG_END("internal resource bridge error"),
+                    respond_erroneously(ErrorResp, JObj)
             end
     end;
 
@@ -585,6 +586,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -692,6 +694,14 @@ wait_for_bridge(Timeout) ->
             {error, timeout}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% creates an offnet resource response and sends it to the tageted
+%% queue of the requestor
+%% @end
+%%--------------------------------------------------------------------
+-spec(respond_bridged_to_resource/2 :: (BridgeResp :: json_object(), JObj :: json_object()) -> no_return()).
 respond_bridged_to_resource(BridgeResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp),
     Response = [
@@ -709,6 +719,15 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
     {ok, Payload} = whistle_api:resource_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% creates an offnet resource failure response and sends it back to
+%% the targeted queue of the requestor
+%% @end
+%%--------------------------------------------------------------------
+-spec(respond_resource_failed/3 :: (BridgeResp :: json_object()
+                                                  ,Attempts :: non_neg_integer(), JObj :: json_object()) -> no_return()).
 respond_resource_failed(BridgeResp, Attempts, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp, <<>>),
     Response = [
@@ -720,4 +739,22 @@ respond_resource_failed(BridgeResp, Attempts, JObj) ->
                | whistle_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Payload} = whistle_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% creates a generic error response and sends it back to
+%% the targeted queue of the requestor
+%% @end
+%%--------------------------------------------------------------------
+-spec(respond_erroneously/2 :: (ErrorResp :: json_object(), JObj :: json_object()) -> no_return()).
+respond_erroneously(ErrorResp, JObj) ->
+    Q = wh_json:get_value(<<"Server-ID">>, ErrorResp, <<>>),
+    Response = [
+                 {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                ,{<<"Error-Message">>, wh_json:get_json(<<"Error-Message">>, ErrorResp)}
+               | whistle_api:default_headers(Q, <<"error">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
+            ],
+    {ok, Payload} = whistle_api:error_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
