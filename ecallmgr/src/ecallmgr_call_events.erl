@@ -343,6 +343,8 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
         <<"bridge">> ->
 	    [{<<"Application-Name">>, <<"bridge">>}
 	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
+             ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+	     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
 	    ];
 	AppName ->
 	    [{<<"Application-Name">>, AppName}
@@ -371,7 +373,9 @@ event_specific(<<"CHANNEL_UNBRIDGE">>, Prop) ->
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>,props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}];
 event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
@@ -379,6 +383,7 @@ event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
 event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
@@ -387,6 +392,7 @@ event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
 event_specific(<<"RECORD_STOP">>, Prop) ->
     [{<<"Application-Name">>, <<"record">>}

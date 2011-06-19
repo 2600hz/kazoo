@@ -221,12 +221,12 @@
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>
                                                ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-                                               ,<<"Ringback">>, <<"SIP-Headers">>
+                                               ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
-                                     ,{<<"Application-Name">>, <<"bridge">>}
                                      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
+                                     ,{<<"Application-Name">>, [<<"bridge">>]}
                                     ]).
 -define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                                     ,{<<"Account-ID">>, fun is_binary/1}
@@ -238,13 +238,13 @@
 
 %% Resource Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
--define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
-					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>, <<"SIP-Headers">>
-					    ,<<"Application-Name">>, <<"Application-Data">>
+-define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>
+                                        ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+					,<<"Application-Name">>, <<"Application-Data">>, <<"SIP-Headers">>
+                                        ,<<"Custom-Channel-Vars">>
 				       ]).
--define(RESOURCE_REQ_VALUES, [
-			      {<<"Event-Category">>, <<"originate">>}
-			      ,{<<"Event-Name">>, <<"resource_req">>}
+-define(RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
+			      ,{<<"Event-Name">>, <<"originate_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
 			      ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>]}
 			      ,?INVITE_FORMAT_TUPLE
@@ -258,17 +258,21 @@
 
 %% Resource Response
 -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_RESOURCE_RESP_HEADERS, []).
--define(RESOURCE_RESP_VALUES, [
-			       {<<"Event-Category">>, <<"originate">>}
-			       ,{<<"Event-Name">>, <<"resource_resp">>}
+-define(OPTIONAL_RESOURCE_RESP_HEADERS, [<<"To">>, <<"Timestamp">>, <<"Channel-Call-State">>
+                                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                             ,<<"Custom-Channel-Vars">>
+                                        ]).
+-define(RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
+			       ,{<<"Event-Name">>, [<<"offnet_resp">>, <<"originate_resp">>]}
 			      ]).
 -define(RESOURCE_RESP_TYPES, []).
 
 %% Resource Error
 -define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>]).
--define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>]).
--define(RESOURCE_ERROR_VALUES, [{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}]).
+-define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>, <<"Failure-Code">>]).
+-define(RESOURCE_ERROR_VALUES, [{<<"Event-Category">>, <<"resource">>}
+                                ,{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}
+                               ]).
 -define(RESOURCE_ERROR_TYPES, []).
 
 %% Call Events
@@ -278,7 +282,7 @@
 					  ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
 					  ,<<"Other-Leg-Destination-Number">>,<<"Other-Leg-Unique-ID">> %% BRIDGE
 					  ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
-                                          ,<<"Terminator">>, <<"Hangup-Cause">> %% Hangup
+                                          ,<<"Terminator">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
 				     ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->

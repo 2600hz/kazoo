@@ -406,7 +406,7 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName) ->
 	       ,{<<"Custom-Channel-Vars">>, {struct, [{"Realm", CalleeRealm}] } }
                ,{<<"Application-Name">>, <<"transfer">>}
 	       ,{<<"Application-Data">>, {struct, [{"Route", CalleeExtension}]} }
-               | whistle_api:default_headers(Amqp, <<"originate">>, <<"resource_req">>, <<"clicktocall">>, <<"0.1">>)
+               | whistle_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
               ],
 
     {ok, Json} = whistle_api:resource_req({struct, JObjReq}),
@@ -416,7 +416,7 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName) ->
 	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
 	    JObj = mochijson2:decode(Payload),
 	    case wh_json:get_value(<<"Event-Name">>, JObj) of
-		<<"resource_resp">> ->
+		<<"originate_resp">> ->
 		    logger:format_log(info, ">>> Click to call ... Success! Call established ", []),
 		    {success, [wh_json:get_value(<<"Call-ID">>, JObj), null]};
 		<<"resource_error">> ->
