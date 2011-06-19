@@ -11,7 +11,7 @@
 -include("ts.hrl").
 
 %% API
--export([start_link/0, check/1]).
+-export([start_link/0, check/1, reserve/5]).
 
 -spec(start_link/0 :: () -> ignore).
 start_link() ->
@@ -28,6 +28,18 @@ start_link() ->
 	    _ -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>)
 	end,
     ignore.
+
+-spec(reserve/5 :: (ToDID :: binary(), CallID :: binary(), AcctID :: binary(), Direction :: inbound | outbound, RouteOpts :: json_object()) -> tuple(ok, proplist())).
+reserve(ToDID, CallID, AcctID, inbound, RouteOpts) ->
+    {ok, #route_flags{
+      rate = R
+      ,rate_increment = RI
+      ,rate_minimum = RM
+      ,surcharge = S
+      ,rate_name = RN
+%%       ,flat_rate_enabled = FRE
+      }} = ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"inbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}),
+    {ok, [{<<"Rate">>, R}, {<<"Rate-Increment">>, RI}, {<<"Rate-Minimum">>, RM}, {<<"Surcharge">>, S}, {<<"Rate-Name">>, RN}]}.
 
 -spec(check/1 :: (Flags :: #route_flags{}) -> tuple(ok, #route_flags{}) | tuple(error, atom())).
 check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions

@@ -201,19 +201,22 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
 	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()])
     end;
 
-process_req({<<"dialplan">>,<<"route_req">>}, JObj) ->
+process_req({<<"dialplan">>,<<"route_req">>}, ApiJObj) ->
     try
-    case whistle_api:route_req_v(JObj) andalso ts_route:handle_req(JObj) of
-	false ->
-	    ?LOG_END("Failed to validate route request");
-	{ok, JSON} ->
-	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-	    ?LOG("Route response to ~s: ~s", [RespQ, JSON]),
-	    send_resp(JSON, RespQ),
-	    ?LOG_END("Finished route request");
-	{error, _Msg} ->
-	    ?LOG_END("Route request error: ~p", [_Msg])
-    end
+        true = whistle_api:route_req_v(ApiJObj),
+        CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
+        case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj), wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)} of
+            {AcctID, undefined} when is_binary(AcctID) ->
+                %% Coming from carrier (off-net)
+                ?LOG_START(CallID, "Offnet call starting", []),
+                ts_offnet_sup:start_handler(wh_json:set_value([<<"Direction">>], <<"inbound">>, ApiJObj));
+            {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
+                %% Coming from PBX (on-net); authed by Registrar or ts_auth
+                ?LOG_START(CallID, "Onnet call starting", []),
+                ts_onnet_sup:start_handler(wh_json:set_value(<<"Direction">>, <<"outbound">>, ApiJObj));
+            {_AcctID, _AuthID} ->
+                ?LOG("Error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID])
+        end
     catch
 	A:B ->
 	    ?LOG_END("Route request exception: ~p:~p", [A, B]),
