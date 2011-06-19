@@ -77,7 +77,7 @@ constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
 
 %% return rate information as channel vars
-get_base_channel_vars(Flags) ->
+get_base_channel_vars(#route_flags{}=Flags) ->
     ChannelVars0 = [{<<"Rate">>, whistle_util:to_binary(Flags#route_flags.rate)}
 		    ,{<<"Rate-Increment">>, whistle_util:to_binary(Flags#route_flags.rate_increment)}
 		    ,{<<"Rate-Minimum">>, whistle_util:to_binary(Flags#route_flags.rate_minimum)}
@@ -88,6 +88,7 @@ get_base_channel_vars(Flags) ->
 	0 -> ChannelVars0;
 	_ -> [{<<"Failover-Route">>, <<"true">>} | ChannelVars0]
     end.
+
 
 -spec(todays_db_name/1 :: (Prefix :: string() | binary()) -> binary()).
 todays_db_name(Prefix) ->
