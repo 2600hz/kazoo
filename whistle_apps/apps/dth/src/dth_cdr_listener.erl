@@ -194,7 +194,7 @@ handle_amqp_msg(Payload, WsdlModel) ->
     DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec, 1970),
     ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
 
-    Call = #'p:CallRecord'{
+    Call = #'CallRecord'{
       'CustomerID' = whistle_util:to_list(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"0000000000">>))
       ,'BatchID' = whistle_util:to_list(wh_json:get_value(<<"Msg-ID">>, JObj, now_to_date(whistle_util:current_tstamp())))
       ,'OriginatingNumber' = whistle_util:to_list(wh_json:get_value(<<"Caller-ID-Number">>, JObj))
