@@ -577,6 +577,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
+               ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
@@ -773,7 +774,7 @@ respond_erroneously(ErrorResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, ErrorResp, <<>>),
     Response = [
                  {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Error-Message">>, wh_json:get_json(<<"Error-Message">>, ErrorResp)}
+                ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, ErrorResp)}
                | whistle_api:default_headers(Q, <<"error">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Payload} = whistle_api:error_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
