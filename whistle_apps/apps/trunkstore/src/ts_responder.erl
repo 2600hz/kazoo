@@ -197,7 +197,7 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
     end
     catch
 	A:B ->
-	    ?LOG_END("Authentication request exception: ~p:~p", [A, B]),
+	    ?LOG_END("Authentication request exception: ~s:~w", [A, B]),
 	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()])
     end;
 
@@ -236,7 +236,7 @@ start_amqp() ->
     ReqQueue1 = amqp_util:new_callmgr_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
 
     try
-	{'basic.qos_ok'} = amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
+	amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
 
 	%% Bind the queue to an exchange
 	_ = amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),

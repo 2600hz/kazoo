@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 20 Jun 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ts_from_offnet).
+-module(ts_from_onnet).
 
 -export([start_link/1, init/2]).
 
@@ -24,13 +24,12 @@
           ,failover = ?EMPTY_JSON_OBJECT :: json_object()
 	 }).
 
--define(APP_NAME, <<"ts_from_offnet">>).
+-define(APP_NAME, <<"ts_from_onnet">>).
 -define(APP_VERSION, <<"0.0.5">>).
 -define(WAIT_FOR_WIN_TIMEOUT, 5000).
 -define(WAIT_FOR_BRIDGE_TIMEOUT, 10000).
 -define(WAIT_FOR_HANGUP_TIMEOUT, 1000 * 60 * 60 * 2). %% 2 hours
 -define(WAIT_FOR_CDR_TIMEOUT, 5000).
--define(WAIT_FOR_OFFNET_BRIDGE, 60000). %% 1 minute
 
 start_link(RouteReqJObj) ->
     proc_lib:start_link(?MODULE, init, [self(), RouteReqJObj]).
@@ -182,113 +181,8 @@ wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID, call_start=Start}=State, Ti
 	    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
     end.
 
-try_failover(#state{failover=?EMPTY_JSON_OBJECT, aleg_callid=CallID, acctid=AcctID}=State) ->
-    ?LOG_END("No failover configured, ending"),
-    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-try_failover(#state{failover=FailJObj}=State) ->
-    case wh_json:get_value(<<"e164">>, FailJObj) of
-	undefined -> try_failover_sip(State, wh_json:get_value(<<"sip">>, FailJObj));
-	DID -> try_failover_e164(State, DID)
-    end.
-
-try_failover_sip(State, SIPUri) ->
+try_failover(State) ->
     ok.
-
-try_failover_e164(#state{acctid=AcctID, aleg_callid=CallID, callctl_q=CallctlQ, my_q=Q, endpoint=EP}=State, ToDID) ->
-    FailCallID = <<CallID/binary, "-failover">>,
-    {ok, RateData} = ts_credit:reserve(ToDID, FailCallID, AcctID, outbound, wh_json:get_value(<<"Route-Options">>, EP)),
-    Command = [
-	       {<<"Call-ID">>, CallID}
-	       ,{<<"Resource-Type">>, <<"audio">>}
-	       ,{<<"To-DID">>, ToDID}
-	       ,{<<"Account-ID">>, AcctID}
-	       ,{<<"Control-Queue">>, CallctlQ}
-	       ,{<<"Application-Name">>, <<"bridge">>}
-	       ,{<<"Custom-Channel-Vars">>, {struct, RateData}}
-	       %% ,{<<"Flags">>, wh_json:get_value(<<"flags">>, JObj)}
-	       %% ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj)}
-	       %% ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, JObj)}
-	       %% ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
-	       %% ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
-	       %% ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
-	       | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
-	      ],
-    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    amqp_util:offnet_resource_publish(Payload),
-    wait_for_offnet_bridge(State#state{aleg_callid=FailCallID}, ?WAIT_FOR_OFFNET_BRIDGE).
-
-wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, Timeout) ->
-    Start = erlang:now(),
-    receive
-	{_, #amqp_msg{payload=Payload}} ->
-	    JObj = mochijson2:decode(Payload),
-	    case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
-                { <<"offnet_resp">>, <<"resource">> } ->
-		    BLegCallID = wh_json:get_value(<<"Call-ID">>, JObj),
-		    amqp_util:bind_q_to_callevt(Q, BLegCallID, cdr),
-		    wait_for_offnet_cdr(State#state{bleg_callid=BLegCallID}, ?WAIT_FOR_HANGUP_TIMEOUT);
-                { <<"resource_error">>, <<"resource">> } ->
-		    ?LOG("Failed to failover to e164"),
-		    ?LOG("Failure message: ~s", [wh_json:get_value(<<"Failure-Message">>, JObj)]),
-		    ?LOG("Failure code: ~s", [wh_json:get_value(<<"Failure-Code">>, JObj)]),
-		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-                { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
-		    ?LOG("Hangup received"),
-		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-                { _, <<"error">> } ->
-		    ?LOG("Error received"),
-		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-                _ ->
-		    Diff = Timeout - (timer:now_diff(erlang:now(), Start) div 1000),
-                    wait_for_offnet_bridge(State, Diff)
-            end;
-        _ ->
-            Diff = Timeout - (timer:now_diff(erlang:now(), Start) div 1000),
-            wait_for_offnet_bridge(State, Timeout)
-    after Timeout ->
-	    ?LOG("Offnet bridge timed out(~b)", [Timeout]),
-	    ts_acctmgr:release_trunk(AcctID, CallID, 0)
-    end.
-
-wait_for_offnet_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID, call_start=Start}=State, Timeout) ->
-    receive
-	{_, #amqp_msg{payload=Payload}} ->
-	    JObj = mochijson2:decode(Payload),
-            case { wh_json:get_value(<<"Event-Category">>, JObj)
-		   ,wh_json:get_value(<<"Event-Name">>, JObj) } of
-                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-		    ?LOG("Hangup received, waiting on CDR"),
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-                { <<"error">>, _ } ->
-		    ?LOG("Received error in event stream, waiting for CDR"),
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-		{ <<"cdr">>, <<"call_detail">> } ->
-		    true = whistle_api:call_cdr_v(JObj),
-
-		    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
-		    Duration = get_call_duration(JObj),
-
-		    {R, RI, RM, S} = get_rate_factors(JObj),
-		    Cost = ts_util:calculate_cost(R, RI, RM, S, Duration),
-
-		    ?LOG("CDR received for leg ~s", [Leg]),
-		    ?LOG("Leg to be billed for ~b seconds", [Duration]),
-		    ?LOG("Acct ~s to be charged ~p if per_min", [AcctID, Cost]),
-
-		    case Leg =:= BLeg of
-			true -> ts_acctmgr:release_trunk(AcctID, Leg, Cost);
-			false -> ts_acctmgr:release_trunk(AcctID, ALeg, Cost)
-		    end,
-
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-                _ ->
-                    wait_for_cdr(State, ?WAIT_FOR_HANGUP_TIMEOUT)
-            end
-    after Timeout ->
-	    ?LOG("Timed out(~b) waiting for CDR"),
-	    %% will fail if already released
-	    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
-    end.    
 
 %%--------------------------------------------------------------------
 %% Out-of-band functions
