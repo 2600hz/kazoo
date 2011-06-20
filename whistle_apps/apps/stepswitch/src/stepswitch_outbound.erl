@@ -14,7 +14,7 @@
 -include("stepswitch.hrl").
 
 %% API
--export([start_link/0, reload_resources/0, process_number/1, process_number/2]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -71,17 +71,6 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-reload_resources() ->
-    gen_server:call(?MODULE, {reload_resrcs}).
-
-process_number(Number) ->
-    Num = whistle_util:to_binary(Number),
-    gen_server:call(?MODULE, {process_number, Num}).
-
-process_number(Number, Flags) ->
-    Num = whistle_util:to_binary(Number),
-    gen_server:call(?MODULE, {process_number, Num, Flags}).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -124,14 +113,18 @@ handle_call({reload_resrcs}, _, State) ->
 
 handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
     spawn(fun() ->
-                  gen_server:reply(From, evaluate_number(Number, Resrcs))
+                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  EPs = print_endpoints(evaluate_number(Num, Resrcs), 0, []),
+                  gen_server:reply(From, EPs)
           end),
     {noreply, State};
 
 handle_call({process_number, Number, Flags}, From, #state{resrcs=R1}=State) ->
     spawn(fun() ->
                   R2 = evaluate_flags(Flags, R1),
-                  gen_server:reply(From, evaluate_number(Number, R2))
+                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  EPs = print_endpoints(evaluate_number(Num, R2), 0, []),
+                  gen_server:reply(From, EPs)
           end),
     {noreply, State};
 
@@ -636,6 +629,37 @@ build_endpoint(Number, Gateway, Delay) ->
             ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Resource-ID">>, Gateway#gateway.resource_id}]}}
            ],
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined andalso V =/= <<"0">>]}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Builds a list of tuples for humans from the lookup number request
+%% @end
+%%--------------------------------------------------------------------
+-spec(print_endpoints/3 :: (Endpoints :: endpoints(), Delay :: non_neg_integer(), Acc :: list())
+                           -> list()).
+print_endpoints([], _, Acc) ->
+    lists:reverse(Acc);
+print_endpoints([{_, GracePeriod, Number, [Gateway]}|T], Delay, Acc0) ->
+    print_endpoints(T, Delay + GracePeriod, [print_endpoint(Number, Gateway, Delay)|Acc0]);
+print_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
+    {D2, Acc1} = lists:foldl(fun(Gateway, {0, AccIn}) ->
+                                     {2, [print_endpoint(Number, Gateway, 0)|AccIn]};
+                                 (Gateway, {D0, AccIn}) ->
+                                     {D0 + 2, [print_endpoint(Number, Gateway, D0)|AccIn]}
+                            end, {Delay, Acc0}, Gateways),
+    print_endpoints(T, D2 - 2 + GracePeriod, Acc1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Builds a tuple for humans from the lookup number request
+%% @end
+%%--------------------------------------------------------------------
+-spec(print_endpoint/3 :: (Number :: binary(), Gateway :: #gateway{}, Delay :: non_neg_integer())
+                          -> tuple(binary(), non_neg_integer(), binary())).
+print_endpoint(Number, Gateway, Delay) ->
+    {Gateway#gateway.resource_id, Delay, get_dialstring(Gateway, Number)}.
 
 %%--------------------------------------------------------------------
 %% @private
