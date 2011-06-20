@@ -11,6 +11,7 @@
 -export([get_db_name/1, get_db_name/2]).
 -export([update_all_accounts/1]).
 -export([replicate_from_accounts/2, replicate_from_account/3]).
+-export([get_all_accounts/0, get_all_accounts/1]).
 -export([get_account_by_realm/1]).
 -export([get_event_type/1, put_callid/1]).
 
@@ -73,14 +74,13 @@ get_db_name(<<"account/", AccountId/binary>>, raw) ->
 %%--------------------------------------------------------------------
 -spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
 update_all_accounts(File) ->
-    {ok, Databases} = couch_mgr:db_info(),
     lists:foreach(fun(ClientDb) ->
                           case couch_mgr:update_doc_from_file(ClientDb, crossbar, File) of
                               {error, _} ->
                                   couch_mgr:load_doc_from_file(ClientDb, crossbar, File);
                               {ok, _} -> ok
                           end
-                  end, [get_db_name(Db, encoded) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
+                  end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,7 +91,6 @@ update_all_accounts(File) ->
 %%--------------------------------------------------------------------
 -spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
-    {ok, Databases} = couch_mgr:db_info(),
     BaseReplicate = [{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                     ],
@@ -100,7 +99,7 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                           R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
                           ?LOG_SYS("replicate ~s to ~s using filter ~s returned ~s", [SourceDb, TargetDb, FilterDoc, element(1, R)]);
 		     (_) -> ok
-                  end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
+                  end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -119,6 +118,26 @@ replicate_from_account(SourceDb, TargetDb, FilterDoc) when SourceDb =/= TargetDb
     ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate);
 replicate_from_account(_,_,_) -> {error, matching_dbs}.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will return a list of all account database names
+%% in the requested encoding
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_all_accounts/0 :: () -> list()).
+-spec(get_all_accounts/1 :: (Encoding :: unencoded | encoded | raw) -> list()).
+
+get_all_accounts() ->
+    get_all_accounts(?REPLICATE_ENCODING).
+
+get_all_accounts(Encoding) ->
+    {ok, Databases} = couch_mgr:db_info(),
+    [get_db_name(Db, Encoding)
+     || Db <- Databases
+            ,fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)].
 
 %%--------------------------------------------------------------------
 %% @public

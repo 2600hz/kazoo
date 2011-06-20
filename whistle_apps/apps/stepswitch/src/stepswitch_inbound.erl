@@ -75,6 +75,20 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({lookup_number, Number}, From, State) ->
+    spawn(fun() ->
+                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  case lookup_account_by_number(Num) of
+                      {ok, AccountId}=Ok ->
+                          ?LOG("found number is associated to account ~s", [AccountId]),
+                          gen_server:reply(From, Ok);
+                      {error, Reason}=E ->
+                          ?LOG("number is not associated to any account, ~w", [Reason]),
+                          gen_server:reply(From, E)
+                  end
+          end),
+    {noreply, State};
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -157,8 +171,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{amqp_q=Q}) ->
-    amqp_util:delete_queue(Q),
+terminate(_Reason, _State) ->
     ok.
 
 %%--------------------------------------------------------------------
