@@ -23,7 +23,7 @@
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, del_docs/2, lookup_doc_rev/2]).
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
--export([ensure_saved/2]).
+-export([revise_all_views/2, ensure_saved/2]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1, admin_all_design_docs/1]).
 
@@ -40,6 +40,7 @@
 
 -include_lib("whistle/include/whistle_types.hrl"). % get the whistle types
 -include_lib("couchbeam/include/couchbeam.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(STARTUP_FILE, [code:lib_dir(whistle_couch, priv), "/startup.config"]).
@@ -103,6 +104,44 @@ update_doc_from_file(DbName, App, File) ->
             {error, Reason};
  	_Type:Reason ->
             {error, Reason}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Loads all views in an applications priv/couchdb/views/ folder into
+%% a given database
+%% @end
+%%--------------------------------------------------------------------
+-spec(revise_all_views/2 :: (DbName :: binary(), App :: atom()) -> ok).
+revise_all_views(DbName, App) ->
+    Views = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/views/*.json"])),
+    do_revise_all_views(DbName, Views).
+
+-spec(do_revise_all_views/2 :: (Db :: binary(), Views :: [string()]|[]) -> ok).
+do_revise_all_views(_, []) ->
+    ok;
+do_revise_all_views(DbName, [H|T]) ->
+    {ok, Bin} = file:read_file(H),
+    case ?MODULE:save_doc(DbName, mochijson2:decode(Bin)) of
+        {ok, _} ->
+            ?LOG_SYS("loaded view ~s into ~s", [H, DbName]),
+            do_revise_all_views(DbName, T);
+        {error, conflict} ->
+            {struct, Prop} = mochijson2:decode(Bin),
+            DocId = props:get_value(<<"_id">>, Prop),
+            {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
+            case ?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]}) of
+                {ok, _} ->
+                    ?LOG_SYS("updated view ~s in ~s", [H, DbName]),
+                    do_revise_all_views(DbName, T);
+                {error, Reason} ->
+                    ?LOG_SYS("failed to update view ~s in ~s, ~w", [H, DbName, Reason]),
+                    do_revise_all_views(DbName, T)
+            end;
+        {error, Reason} ->
+            ?LOG_SYS("failed to load view ~s into ~s, ~w", [H, DbName, Reason]),
+            do_revise_all_views(DbName, T)
     end.
 
 %%--------------------------------------------------------------------
@@ -609,7 +648,7 @@ get_admin_db(DbName) ->
 
 get_uuid() ->
     Conn = gen_server:call(?SERVER, get_conn),
-    [UUID] = couchbeam:get_uuid(Conn),   
+    [UUID] = couchbeam:get_uuid(Conn),
     UUID.
 
 get_uuids(Count) ->
@@ -908,7 +947,7 @@ get_startup_config() ->
 %%--------------------------------------------------------------------
 -spec(save_config/5 :: (H :: string(), Port :: integer(), U :: string(), P :: string(), AdminPort :: integer()) -> no_return()).
 save_config(H, Port, U, P, AdminPort) ->
-    {ok, Config} = get_startup_config(),    
+    {ok, Config} = get_startup_config(),
     file:write_file(?STARTUP_FILE
 		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
 				 , "", [{couch_host, H, Port, U, P, AdminPort} | lists:keydelete(couch_host, 1, Config)])
