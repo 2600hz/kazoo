@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, auth_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, auth_resp_xml/1]).
 
 -include("ecallmgr.hrl").
 
@@ -133,9 +133,20 @@ get_leg_vars(Prop) ->
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> list(string())).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
+    _ = lists:foldr(fun get_channel_vars/2, [], Prop),
     ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
+get_channel_vars({<<"Timeout">>, V}, Vars) ->
+    [ list_to_binary(["call_timeout='", whistle_util:to_list(V), "'"]) | Vars];
+get_channel_vars({<<"Outgoing-Caller-ID-Name">>, V}, Vars) ->
+    [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
+get_channel_vars({<<"Outgoing-Caller-ID-Number">>, V}, Vars) ->
+    [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
+get_channel_vars({<<"Outgoing-Callee-ID-Name">>, V}, Vars) ->
+    [ list_to_binary(["origination_callee_id_name='", V, "'"]) | Vars];
+get_channel_vars({<<"Outgoing-Callee-ID-Number">>, V}, Vars) ->
+    [ list_to_binary(["origination_callee_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Auth-User">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_username='", V, "'"]) | Vars];
 get_channel_vars({<<"Auth-Password">>, V}, Vars) ->

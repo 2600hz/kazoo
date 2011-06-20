@@ -423,7 +423,7 @@
                                       ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
                                       ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
                                       ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
-				      ,<<"SIP-Headers">>
+				      ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
@@ -435,6 +435,13 @@
 -define(BRIDGE_REQ_TYPES, [
 			   {<<"Endpoints">>, fun is_list/1}
 			   ,{<<"SIP-Headers">>, fun is_list/1}
+                           ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
+                                                                lists:all(fun({K, V}) when is_binary(K) andalso
+                                                                                           (is_binary(V) orelse is_number(V)) -> true;
+                                                                             (_) -> false
+                                                                          end, L);
+                                                           (_) -> false
+                                                        end}
 			  ]).
 
 %% Bridge Endpoints
@@ -445,6 +452,7 @@
                                                     ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>
+                                                    ,<<"Custom-Channel-Vars">>
 					      ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}

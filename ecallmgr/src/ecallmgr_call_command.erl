@@ -178,16 +178,9 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(JObj) of
 	false -> {error, "bridge failed to execute as JObj did not validate."};
 	true ->
-	    ok = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
-	    ok = set_continue_on_fail(Node, UUID, whistle_util:is_true(wh_json:get_value(<<"Continue-On-Fail">>, JObj, true))),
-	    ok = set_eff_caller_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)),
-	    ok = set_eff_caller_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
-	    ok = set_eff_callee_id_name(Node, UUID, wh_json:get_value(<<"Outgoing-Callee-ID-Name">>, JObj)),
-	    ok = set_eff_callee_id_number(Node, UUID, wh_json:get_value(<<"Outgoing-Callee-ID-Number">>, JObj)),
 	    ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
-	    ok = set_ignore_early_media(Node, UUID, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)),
-	    ok = set_sip_req_headers(Node, UUID, wh_json:get_value(<<"SIP-Headers">>, JObj)),
             ok = set(Node, UUID, "failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"),
+
 	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
 				<<"simultaneous">> -> ",";
 				<<"single">> -> "|"
@@ -200,7 +193,9 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
                                        || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])
                                       ]
                           ],
-            BridgeCmd = string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
+
+            BridgeCmd = lists:flatten(ecallmgr_fs_xml:get_channel_vars(JObj))
+                ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
 	    {App, BridgeCmd}
     end;
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
@@ -386,60 +381,6 @@ stream_file({Iod, _File}=State) ->
 	    eof
     end.
 
--spec(set_eff_caller_id_name/3 :: (Node :: atom(), UUID :: binary(), Name :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_eff_caller_id_name(_Node, _UUID, undefined) ->
-    ok;
-set_eff_caller_id_name(Node, UUID, Name) ->
-    N = list_to_binary(["effective_caller_id_name=", Name]),
-    set(Node, UUID, N).
-
--spec(set_eff_caller_id_number/3 :: (Node :: atom(), UUID :: binary(), Num :: undefined | integer() | list() | binary()) -> ok | timeout | {error, string()}).
-set_eff_caller_id_number(_Node, _UUID, undefined) ->
-    ok;
-set_eff_caller_id_number(Node, UUID, Num) ->
-    N = list_to_binary(["effective_caller_id_number=", whistle_util:to_list(Num)]),
-    set(Node, UUID, N).
-
--spec(set_eff_callee_id_name/3 :: (Node :: atom(), UUID :: binary(), Name :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_eff_callee_id_name(_Node, _UUID, undefined) ->
-    ok;
-set_eff_callee_id_name(Node, UUID, Name) ->
-    N = list_to_binary(["sip_callee_id_name=", Name]),
-    set(Node, UUID, N).
-
--spec(set_eff_callee_id_number/3 :: (Node :: atom(), UUID :: binary(), Num :: undefined | integer() | list() | binary()) -> ok | timeout | {error, string()}).
-set_eff_callee_id_number(_Node, _UUID, undefined) ->
-    ok;
-set_eff_callee_id_number(Node, UUID, Num) ->
-    N = list_to_binary(["sip_callee_id_number=", whistle_util:to_list(Num)]),
-    set(Node, UUID, N).
-
-%% -spec(set_bypass_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
-%% set_bypass_media(Node, UUID, <<"true">>) ->
-%%     set(Node, UUID, "bypass_media=true");
-%% set_bypass_media(Node, UUID, _) ->
-%%     ok.
-
- -spec(set_ignore_early_media(Node :: atom(), UUID :: binary(), Method :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_ignore_early_media(Node, UUID, <<"true">>) ->
-    set(Node, UUID, "ignore_early_media=true");
-set_ignore_early_media(_Node, _UUID, _) ->
-     ok.
-
--spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
-set_timeout(_Node, _UUID, undefined) ->
-    ok;
-set_timeout(Node, UUID, N) ->
-    Timeout = [ $c,$a,$l,$l,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
-    set(Node, UUID, Timeout).
-
-%% -spec(set_progress_timeout/3 :: (Node :: atom(), UUID :: binary(), N :: undefined | integer() | list()) -> ok | timeout | {error, string()}).
-%% set_progress_timeout(_Node, _UUID, undefined) ->
-%%     ok;
-%% set_progress_timeout(Node, UUID, N) ->
-%%     ProgressTimeout = [ $p,$r,$o,$g,$r,$e,$s,$s,$_,$t,$i,$m,$e,$o,$u,$t,$= | whistle_util:to_list(N)],
-%%     set(Node, UUID, ProgressTimeout).
-
 -spec(set_terminators/3 :: (Node :: atom(), UUID :: binary(), Terminators :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_terminators(_Node, _UUID, undefined) ->
     ok;
@@ -456,19 +397,6 @@ set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=", media_path(RingBack, <<"extant">>, UUID)]),
     set(Node, UUID, RB),
     set(Node, UUID, "instant_ringback=true").
-
--spec(set_sip_req_headers/3 :: (Node :: atom(), UUID :: binary(), SIPHeaders :: undefined | proplist()) -> ok).
-set_sip_req_headers(_Node, _UUID, undefined) ->
-    ok;
-set_sip_req_headers(Node, UUID, [_]=SIPHeaders) ->
-    _ = [ set(Node, UUID, list_to_binary(["sip_h_", K, "=", V])) || {K, V} <- SIPHeaders ],
-    ok.
-
--spec(set_continue_on_fail(Node :: atom(), UUID :: binary(), Method :: boolean()) -> ok | timeout | {error, string()}).
-set_continue_on_fail(Node, UUID, false) ->
-    set(Node, UUID, "continue_on_fail=false");
-set_continue_on_fail(Node, UUID, true) ->
-    set(Node, UUID, "continue_on_fail=true").
 
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
