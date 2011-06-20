@@ -1,0 +1,18 @@
+<!-- XSD  for erlsom example1 -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"> 
+  <xsd:element name="testConfig" type="testConfig"/> 
+  <xsd:complexType name="testConfig"> 
+    <xsd:sequence>
+      <xsd:element name="path" type="xsd:string"/>
+      <xsd:element name="case" maxOccurs="unbounded" type="case"/>
+    </xsd:sequence>
+  </xsd:complexType> 
+  <xsd:complexType name="case"> 
+    <xsd:sequence>
+      <xsd:element name="name" type="xsd:string"/>
+      <xsd:element name="result" type="xsd:string"/>
+      <xsd:element name="xsd" type="xsd:string" minOccurs="0"/>
+      <xsd:element name="xml" type="xsd:string" minOccurs="0"/>
+    </xsd:sequence>
+  </xsd:complexType>
+</xsd:schema>

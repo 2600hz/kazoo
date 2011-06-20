@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" 
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+
+<plist version="1.0">
+<dict>
+  <key>Major Version</key><integer>1</integer>
+  <key>Minor Version</key><integer>1</integer>
+  <key>Application Version</key><string>4.6</string>
+  <key>Music Folder</key>
+    <string>file://localhost/Users/niel/Music/iTunes/iTunes%20Music/</string>
+  <key>Library Persistent ID</key><string>ŒŒŒŒŒŒŒŒŒŒ</string>
+  <key>Tracks</key>
+
+<dict>
+
+<key>35</key>
+<dict>
+<key>Track ID</key><integer>35</integer>
+<key>Name</key><string>Gula Gula</string>
+<key>Artist</key><string>Jan Garbarek</string>
+<key>Composer</key><string>Mari Boine Persen, arr Jan Garbarek</string>
+<key>Album</key><string>I Took Up The Runes &amp; look what I got &amp; look where I am now</string>
+<key>Genre</key><string>Jazz</string>
+<key>Kind</key><string>AAC audio file</string>
+<key>Size</key><integer>5892093</integer>
+<key>Total Time</key><integer>363578</integer>
+<key>Disc Number</key><integer>1</integer>
+<key>Disc Count</key><integer>1</integer>
+<key>Track Number</key><integer>1</integer>
+<key>Track Count</key><integer>10</integer>
+<key>Year</key><integer>1990</integer>
+<key>Date Modified</key><date>2005-06-06T04:11:43Z</date>
+<key>Date Added</key><date>2005-06-06T04:11:18Z</date>
+<key>Bit Rate</key><integer>128</integer>
+<key>Sample Rate</key><integer>44100</integer>
+<key>Track Type</key><string>File</string>
+<key>Location</key><string>file://localhost/C:/Documents%20and%20Settings/User1/My%20Documents/My%20Music/iTunes/iTunes%20Music/Jan%20Garbarek/I%20Took%20Up%20The%20Runes/01%20Gula%20Gula.m4a/</string>
+<key>File Folder Count</key><integer>4</integer>
+<key>Library Folder Count</key><integer>1</integer>
+</dict>
+
+<key>35</key>
+<dict>
+<key>Track ID</key><integer>35</integer>
+<key>Name</key><string>Gula Gula</string>
+<key>Artist</key><string>Jan Garbarek</string>
+<key>Composer</key><string>Mari Boine Persen, arr Jan Garbarek</string>
+<key>Album</key><string>I Took Up The Runes &amp; look what I got &amp; look where I am now</string>
+<key>File Folder Count</key><integer>4</integer>
+<key>Library Folder Count</key><integer>1</integer>
+</dict>
+
+<key>36</key>
+<dict>
+<key>Track ID</key><integer>36</integer>
+<key>Name</key><string>Gula Gula</string>
+<key>Artist</key><string>Jan Garbarek</string>
+<key>Composer</key><string>Mari Boine Persen, arr Jan Garbarek</string>
+<key>Album</key><string>I Took Up The Runes &amp; look what I got &amp; look where I am now</string>
+<key>File Folder Count</key><integer>4</integer>
+<key>Library Folder Count</key><integer>1</integer>
+</dict>
+
+</dict> 
+</dict>
+</plist>
