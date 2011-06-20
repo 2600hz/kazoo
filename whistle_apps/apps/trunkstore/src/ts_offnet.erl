@@ -27,8 +27,10 @@
 
 -record(state, {
          route_req_jobj = ?EMPTY_JSON_OBJECT :: json_object()
+         ,call_id = <<>> :: binary()
          ,callctl_q = <<>> :: binary()
          ,endpoint = ?EMPTY_JSON_OBJECT :: json_object()
+         ,win_fail_ref = undefined :: undefined | reference()
 	 }).
 
 %%%===================================================================
@@ -65,8 +67,9 @@ inbound_endpoint(Srv, Endpoint) ->
 %% @end
 %%--------------------------------------------------------------------
 init([JObj]) ->
-    put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
-    {ok, #state{route_req_jobj=JObj}, 0}.
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    put(callid, CallID),
+    {ok, #state{route_req_jobj=JObj, call_id=CallID}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -95,8 +98,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({inbound_endpoint, Endpoint}, State) ->
-    {noreply, State#state{endpoint=Endpoint}}.
+handle_cast({inbound_endpoint, Endpoint}, #state{callctl_q = <<>>}=State) ->
+    TRef = erlang:start_timer(5000, self(), win_fail),
+    {noreply, State#state{endpoint=Endpoint, win_fail_ref=TRef}};
+handle_cast({inbound_endpoint, Endpoint}, #state{callctl_q=CtlQ, call_id=CallID}=State) ->
+    spawn(fun() -> bridge_to_endpoint(CtlQ, CallID, Endpoint) end),
+    {noreply, #state{endpoint=Endpoint}=State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,11 +125,58 @@ handle_info(timeout, #state{route_req_jobj=JObj}=S) ->
     spawn(fun() -> inbound_route(Self, JObj) end),
 
     {noreply, S};
-handle_info({_, #amqp_msg{payload=Payload}}, #state{route_req_jobj=RouteJObj, callctl_q = <<>>}=S) ->
+
+handle_info(win_fail_ref, S) ->
+    ?LOG_END("Failed to win route, timed out"),
+    {stop, normal, S};
+
+handle_info({_, #amqp_msg{payload=Payload}}, #state{callctl_q = <<>>, endpoint = ?EMPTY_JSON_OBJECT, win_fail_ref=TRef}=S) ->
     WinJObj = mochijson2:decode(Payload),
-    true = whistle_api:route_win_v(WinJObj),
-    {noreply, S#state{callctl_q=wh_json:get_value(<<"Control-Queue">>, WinJObj)}};
-handle_info({_, #amqp_msg{payload=Payload}}, S) ->
+
+    try
+	true = whistle_api:route_win_v(WinJObj),
+	erlang:cancel_timer(TRef),
+
+	{noreply, S#state{callctl_q=wh_json:get_value(<<"Control-Queue">>, WinJObj)}};
+    catch
+	_:_ -> {noreply, S}
+    end;
+
+handle_info({_, #amqp_msg{payload=Payload}}, #state{callctl_q = <<>>, endpoint=EP, call_id=CallID, win_fail_ref=TRef}=S) ->
+    WinJObj = mochijson2:decode(Payload),
+
+    try
+	true = whistle_api:route_win_v(WinJObj),
+	erlang:cancel_timer(TRef),
+
+	CtlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
+	spawn(fun() -> bridge_to_endpoint(CtlQ, CallID, EP) end),
+	{noreply, S#state{callctl_q=CtlQ}}
+    catch
+	_:_ -> {noreply, S}
+    end;
+
+handle_info({_, #amqp_msg{payload=Payload}}, #state{callctl_q=CtlQ}=S) ->
+    JObj = mochijson2:decode(Payload),
+    case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
+	{ _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
+	    {ok, JObj};
+	{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+	    case wh_json:get_value(<<"Application-Response">>, JObj) of
+		<<"SUCCESS">> -> {ok, JObj};
+		Cause -> {error, {bridge_failed, Cause}}
+	    end;
+	{ _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+	    {error, channel_hungup};
+	{ _, _, <<"error">> } ->
+	    {error, execution_failed};
+	_ ->
+	    DiffMicro = timer:now_diff(erlang:now(), Start),
+	    wait_for_bridge(Timeout - (DiffMicro div 1000))
+    end;
+
+handle_info(_Message, S) ->
+    ?LOG("Unhandled message: ~p", [_Message]),
     {noreply, S}.
 
 
@@ -187,37 +241,28 @@ inbound_route(ParentSrv, JObj) ->
     [ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
     ToDID = whistle_util:to_e164(ToUser),
 
-    {AuthUser, AuthRealm, RouteOpts, InFormat} = routing_data(ToDID),
+    RoutingData = routing_data(ToDID),
 
-    {ok, RateData} = ts_credit:reserve(ToDID, get(callid), AcctID, inbound, RouteOpts),
+    AuthUser = props:get_value(<<"Auth-User">>, RoutingData),
+    AuthRealm = props:get_value(<<"Auth-Realm">>, RoutingData),
 
-    InviteBase = [{<<"To-User">>, AuthUser}, {<<"To-Realm">>, AuthRealm}],
+    {ok, RateData} = ts_credit:reserve(ToDID, get(callid), AcctID, inbound, props:get_value(<<"Route-Options">>, RoutingData)),
 
+    InviteBase = [{<<"To-User">>, AuthUser}, {<<"To-Realm">>, AuthRealm} | RoutingData],
+
+    InFormat = props:get_value(<<"Invite-Format">>, RoutingData),
     Invite = invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ InviteBase,
 
-    Route = [{<<"Weight-Cost">>, <<"1">>}
-	     ,{<<"Weight-Location">>, <<"1">>}
-	     ,{<<"Custom-Channel-Vars">>, {struct, [
-						    {<<"Auth-User">>, AuthUser}
-						    ,{<<"Auth-Realm">>, AuthRealm}
-						    ,{<<"Direction">>, <<"inbound">>}
-						    | RateData
-						   ]}
-	      }
-	     ,{<<"Media">>, ts_util:get_media_handling(MediaHandling)}
-	     | Invite ],
-
-    Route1 = case ProgressTimeout of
-		 none -> Route;
-		 Secs -> [{<<"Progress-Timeout">>, whistle_util:to_integer(Secs)} | Route]
-	     end,
-
-    case whistle_api:route_resp_route_v(Route1) of
-	true ->
-	    add_failover_route(Failover, Flags, {struct, Route1});
-	false ->
-	    {error, "Inbound route validation failed"}
-    end.
+    
+    ?MODULE:inbound_endpoint(ParentSrv, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
+											{<<"Auth-User">>, AuthUser}
+											,{<<"Auth-Realm">>, AuthRealm}
+											,{<<"Direction">>, <<"inbound">>}
+											| RateData
+										       ]}
+						  }
+						  | Invite ]
+					}).
 
 -spec(routing_data/1 :: (ToDID :: binary()) -> proplist()).
 routing_data(ToDID) ->
@@ -241,16 +286,27 @@ routing_data(ToDID) ->
                       _:_ -> {?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT}
                   end,
 
-    SrvOptions = wh_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT)
+    SrvOptions = wh_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
 
-    [ {<<"Invite-Format">>, wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>)}
-      ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv, [])}
-      ,{<<"Media-Handling">>, wh_json:get_value(<<"media_handling">>, Options, <<"bypass">>)}
-      ,{<<"Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, Options, 8)}
-      ,{<<"Auth-User">>, AuthU}
-      ,{<<"Auth-Realm">>, AuthR}
-      ,{<<"Route-Options">>, RouteOpts}
-    ].
+    RD0 = [ {<<"Invite-Format">>, wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>)}
+	    ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv, [])}
+	    ,{<<"Bypass-Media">>, wh_json:get_value(<<"media_handling">>, SrvOptions, <<"bypass">>)}
+	    ,{<<"Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, SrvOptions, 8)}
+	    ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, SrvOptions, <<"true">>)}
+	    ,{<<"Auth-User">>, AuthU}
+	    ,{<<"Auth-Realm">>, AuthR}
+	    ,{<<"To-User">>, AuthU}
+	    ,{<<"To-Realm">>, AuthR}
+	    ,{<<"Route-Options">>, RouteOpts}
+	    ,{<<"To-DID">>, ToDID}
+	  ],
+    case wh_json:get_value(<<"failover">>, DidOptions
+			   ,wh_json:get_value(<<"failover">>, Srv
+					      ,wh_json:get_value(<<"failover">>, Acct))
+			  ) of
+	undefined -> RD0;
+	F -> [{<<"Failover">>, F} | RD0]
+    end.
 
 -spec(invite_format/2 :: (Format :: binary(), To :: binary()) -> proplist()).
 invite_format(<<"e.164">>, To) ->
@@ -267,45 +323,6 @@ invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
-
--spec(add_failover_route/3 :: (tuple() | tuple(binary(), binary()), Flags :: #route_flags{}, InboundRoute :: json_object()) ->
-				   tuple(ok, json_objects(), #route_flags{})).
-add_failover_route({}, Flags, InboundRoute) -> {ok, [InboundRoute], Flags#route_flags{scenario=inbound}};
-%% route to a SIP URI
-add_failover_route({<<"sip">>, URI}, #route_flags{media_handling=MediaHandling}=Flags, InboundRoute) ->
-    ?LOG("Adding SIP failover ~p", [URI]),
-
-    {ok, [InboundRoute, {struct, [{<<"Route">>, URI}
-				  ,{<<"Invite-Format">>, <<"route">>}
-				  ,{<<"Weight-Cost">>, <<"1">>}
-				  ,{<<"Weight-Location">>, <<"1">>}
-				  ,{<<"Failover-Route">>, <<"true">>}
-				  ,{<<"Media">>, ts_util:get_media_handling(MediaHandling)}
-				 ]}]
-     ,Flags#route_flags{scenario=inbound_failover}
-    };
-%% route to a E.164 number - need to setup outbound for this sucker
-add_failover_route({<<"e164">>, DID}, #route_flags{callid=CallID}=Flags, InboundRoute) ->
-    ?LOG("Trying to add DID failover ~s", [DID]),
-    OutBFlags = Flags#route_flags{to_user=DID
-				  ,callid = <<CallID/binary, "-failover">>
-				  ,direction = <<"outbound">>
-				 },
-    case ts_credit:check(OutBFlags) of
-	{ok, OutBFlags1} ->
-	    case ts_carrier:route(OutBFlags1) of
-		{ok, Routes} ->
-		    ?LOG("Adding DID failover ~s", [DID]),
-		    { ok, [InboundRoute | Routes], Flags#route_flags{scenario=inbound_failover}};
-		{error, _Error} ->
-		    ?LOG("Error adding DID failover ~p", [_Error]),
-		    _ = ts_acctmgr:release_trunk(OutBFlags1#route_flags.account_doc_id, OutBFlags1#route_flags.callid, 0),
-		    { ok, [InboundRoute], Flags#route_flags{scenario=inbound}}
-	    end;
-	{error, _Error} ->
-	    ?LOG("Failed to secure failover trunk for ~s: ~p", [DID, _Error]),
-	    {ok, [InboundRoute], Flags#route_flags{scenario=inbound}}
-    end.
 
 -spec(lookup_did/1 :: (DID :: binary()) -> tuple(ok, json_object())).
 lookup_did(DID) ->
@@ -347,3 +364,18 @@ lookup_user_flags(Name, Realm) ->
 		    {ok, JObj}
 	    end
     end.
+
+bridge_to_endpoint(CtlQ, CallID, Endpoint) ->
+    Command = [
+	       {<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, [Endpoint]}
+               ,{<<"Timeout">>, 26}
+               ,{<<"Ignore-Early-Media">>, <<"false">>}
+               ,{<<"Ringback">>, <<"us-ring">>}
+               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+               ,{<<"Call-ID">>, CallID}
+               | whistle_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	      ],
+    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    ?LOG(CallID, "Sending bridge command: ~s", [Payload]),
+    amqp_util:callctl_publish(CtlQ, Payload).
