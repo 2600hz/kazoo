@@ -3,15 +3,15 @@
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Listen for inbound route requests and processes them
-%%% against the carriers db
+%%% against the routes db
 %%% @end
 %%% Created : 14 June 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(carrier_inbound).
+-module(stepswitch_inbound).
 
 -behaviour(gen_server).
 
--include("carriers.hrl").
+-include("stepswitch.hrl").
 
 %% API
 -export([start_link/0]).
@@ -56,16 +56,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new carriers inbound"),
-    ?LOG_SYS("ensuring database ~s exists", [?CARRIERS_DB]),
-    couch_mgr:db_create(?CARRIERS_DB),
-    ?LOG_SYS("ensuring database ~s has view ~s", [?CARRIERS_DB, ?VIEW_FILE]),
-    try
-        {ok, _} = couch_mgr:update_doc_from_file(?CARRIERS_DB, carriers, ?VIEW_FILE)
-    catch
-        _:_ ->
-            couch_mgr:load_doc_from_file(?CARRIERS_DB, carriers, ?VIEW_FILE)
-    end,
+    ?LOG_SYS("ensuring database ~s exists", [?ROUTES_DB]),
+    couch_mgr:db_create(?ROUTES_DB),
+    couch_mgr:revise_all_views(?ROUTES_DB, stepswitch),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -226,7 +219,7 @@ process_req({_, _}, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% handle a request inbound from a carrier
+%% handle a request inbound from offnet
 %% @end
 %%--------------------------------------------------------------------
 -spec(inbound_handler/1 :: (JObj :: json_object()) -> no_return()).
@@ -260,24 +253,24 @@ get_dest_number(JObj) ->
 -spec(lookup_account_by_number/1 :: (Number :: binary()) -> tuple(ok, binary())|tuple(error, atom())).
 lookup_account_by_number(Number) ->
     ?LOG("lookup account for ~s", [Number]),
-    case wh_cache:fetch({carrier_number, Number}) of
+    case wh_cache:fetch({stepswitch_number, Number}) of
 	{ok, AccountId} ->
 	    {ok, AccountId};
 	{error, not_found} ->
             Options = [{<<"key">>, Number}],
-	    case couch_mgr:get_results(?CARRIERS_DB, ?LIST_BY_NUMBER, Options) of
+	    case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTES_BY_NUMBER, Options) of
 		{error, _}=E ->
 		    E;
 		{ok, []} ->
 		    {error, not_found};
 		{ok, [{struct, _}=JObj]} ->
                     AccountId = wh_json:get_value(<<"id">>, JObj),
-                    wh_cache:store({carrier_number, Number}, AccountId),
+                    wh_cache:store({stepswitch_number, Number}, AccountId),
 		    {ok, AccountId};
 		{ok, [{struct, _}=JObj | _Rest]} ->
 		    ?LOG("number lookup resulted in more than one result, using the first"),
                     AccountId = wh_json:get_value(<<"id">>, JObj),
-                    wh_cache:store({carrier_number, Number}, AccountId),
+                    wh_cache:store({stepswitch_number, Number}, AccountId),
 		    {ok, AccountId}
 	    end
     end.
@@ -286,15 +279,15 @@ lookup_account_by_number(Number) ->
 %% @private
 %% @doc
 %% build the JSON to set the custom channel vars with the calls
-%% account and authorizing carrier ID
+%% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec(custom_channel_vars/2 :: (AccountId :: binary(), CarrierId :: binary()) -> json_object()).
-custom_channel_vars(AccountId, CarrierId) ->
+-spec(custom_channel_vars/2 :: (AccountId :: binary(), AuthId :: binary()) -> json_object()).
+custom_channel_vars(AccountId, AuthId) ->
     {struct, [
                {<<"Account-ID">>, AccountId}
               ,{<<"Inception">>, <<"off-net">>}
-              ,{<<"Authorizing-ID">>, CarrierId}
+              ,{<<"Authorizing-ID">>, AuthId}
              ]}.
 
 %%--------------------------------------------------------------------

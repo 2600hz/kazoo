@@ -1,12 +1,12 @@
-{application, carriers,
+{application, stepswitch,
  [
-  {description, "Routes calls in and out to carriers"},
+  {description, "Routes calls comming or going offnet, like a line finder"},
   {vsn, "0.1.0"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { carriers_app, []}},
+  {mod, { stepswitch_app, []}},
   {env, []}
  ]}.

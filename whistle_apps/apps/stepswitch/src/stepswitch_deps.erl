@@ -6,7 +6,7 @@
 %%% @end
 %%% Created :  14 June 2011 by Karl Anderson <karl@2600hz.org>
 
--module(carriers_deps).
+-module(stepswitch_deps).
 
 -export([ensure/0, ensure/1]).
 -export([get_base_dir/0, get_base_dir/1]).

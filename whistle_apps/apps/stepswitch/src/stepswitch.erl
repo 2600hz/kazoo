@@ -1,11 +1,11 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
-%%% Carriers routing WhApp
+%%% stepswitch routing WhApp
 %%% @end
 %%% Created :  14 June 2011 by Karl Anderson <karl@2600hz.org>
 
--module(carriers).
+-module(stepswitch).
 
 -export([start/0, start_link/0, stop/0]).
 
@@ -13,16 +13,16 @@
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
     start_deps(),
-    carriers_sup:start_link().
+    stepswitch_sup:start_link().
 
 %% @spec start() -> ok
-%% @doc Start the carriers whapp.
+%% @doc Start the stepswitch whapp.
 start() ->
     start_deps(),
-    application:start(carriers).
+    application:start(stepswitch).
 
 start_deps() ->
-    carriers_deps:ensure(),
+    stepswitch_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(whistle_amqp),
@@ -30,9 +30,9 @@ start_deps() ->
     ensure_started(whistle_couch).
 
 %% @spec stop() -> ok
-%% @doc Stop the carriers server.
+%% @doc Stop the stepswitch server.
 stop() ->
-    application:stop(carriers).
+    application:stop(stepswitch).
 
 ensure_started(App) ->
     case application:start(App) of

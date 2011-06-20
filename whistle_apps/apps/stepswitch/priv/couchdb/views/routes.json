@@ -1,12 +1,9 @@
 {
-   "_id": "_design/carriers",
+   "_id": "_design/routes",
    "language": "javascript",
    "views": {
        "listing_by_number": {
            "map": "function(doc) { if (doc.pvt_type != 'route' || doc.pvt_deleted) return; doc.numbers.forEach(function(num) { emit(num, null); }); }"
-       },
-       "listing_active_resource": {
-           "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; emit(doc._id, null); }"
        }
    }
 }

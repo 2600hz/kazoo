@@ -1,11 +1,11 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
-%%% Root supervisor tree for carriers routing WhApp
+%%% Root supervisor tree for stepswitch routing WhApp
 %%% @end
 %%% Created :  14 June 2011 by Karl Anderson <karl@2600hz.org>
 
--module(carriers_sup).
+-module(stepswitch_sup).
 
 -behaviour(supervisor).
 
@@ -31,6 +31,6 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
-				  ?CHILD(carrier_inbound, worker),
-				  ?CHILD(carrier_outbound, worker)
+				  ?CHILD(stepswitch_inbound, worker),
+				  ?CHILD(stepswitch_outbound, worker)
 				 ]} }.

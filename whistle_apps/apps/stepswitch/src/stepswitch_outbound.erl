@@ -3,15 +3,15 @@
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Listen for outbound route requests and processes them
-%%% against the carriers db
+%%% against the resources db
 %%% @end
 %%% Created : 14 June 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(carrier_outbound).
+-module(stepswitch_outbound).
 
 -behaviour(gen_server).
 
--include("carriers.hrl").
+-include("stepswitch.hrl").
 
 %% API
 -export([start_link/0, reload_resources/0, process_number/1, process_number/2]).
@@ -98,16 +98,10 @@ process_number(Number, Flags) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new carriers outbound server"),
-    ?LOG_SYS("ensuring database ~s exists", [?CARRIERS_DB]),
-    couch_mgr:db_create(?CARRIERS_DB),
-    ?LOG_SYS("ensuring database ~s has view ~s", [?CARRIERS_DB, ?VIEW_FILE]),
-    try
-        {ok, _} = couch_mgr:update_doc_from_file(?CARRIERS_DB, carriers, ?VIEW_FILE)
-    catch
-        _:_ ->
-            couch_mgr:load_doc_from_file(?CARRIERS_DB, carriers, ?VIEW_FILE)
-    end,
+    ?LOG_SYS("starting new stepswitch outbound responder"),
+    ?LOG_SYS("ensuring database ~s exists", [?RESOURCES_DB]),
+    couch_mgr:db_create(?RESOURCES_DB),
+    couch_mgr:revise_all_views(?RESOURCES_DB, stepswitch),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -217,7 +211,7 @@ handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
         false -> {noreply, State};
         {value, _} ->
             ?LOG_SYS("resource ~p deleted", [DocId]),
-            couch_mgr:rm_change_handler(?CARRIERS_DB, DocId),
+            couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
             {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}}
     end;
 
@@ -283,47 +277,6 @@ start_amqp() ->
         _:R ->
             ?LOG_SYS("failed to connect to AMQP ~w", [R]),
             {error, amqp_error}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Gets a list of all active resources from the DB
-%% @end
-%%--------------------------------------------------------------------
--spec(get_resrcs/0 :: () -> []|[#resrc{}]).
-get_resrcs() ->
-    case couch_mgr:get_results(?CARRIERS_DB, ?LIST_ACTIVE_RESOURCE, [{<<"include_docs">>, true}]) of
-        {ok, Resrcs} ->
-            [create_resrc(wh_json:get_value(<<"doc">>, R)) || R <- Resrcs];
-        {error, _}=E ->
-            E
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Syncs a resource with the DB and updates it in the list
-%% of resources
-%% @end
-%%--------------------------------------------------------------------
--spec(update_resrc/2 :: (DocId :: binary(), Resrcs :: [#resrc{}]) -> []|[#resrc{}]).
-update_resrc(DocId, Resrcs) ->
-    case couch_mgr:open_doc(?CARRIERS_DB, DocId) of
-        {ok, JObj} ->
-            case whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
-                true ->
-                    NewResrc = create_resrc(JObj),
-                    ?LOG_SYS("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
-                    [NewResrc|lists:keydelete(DocId, #resrc.id, Resrcs)];
-                false ->
-                    ?LOG_SYS("resource ~s disabled", [DocId]),
-                    lists:keydelete(DocId, #resrc.id, Resrcs)
-            end;
-        {error, R} ->
-            ?LOG_SYS("removing resource ~s, ~w", [DocId, R]),
-            couch_mgr:rm_change_handler(?CARRIERS_DB, DocId),
-            lists:keydelete(DocId, #resrc.id, Resrcs)
     end.
 
 %%--------------------------------------------------------------------
@@ -399,6 +352,50 @@ process_req({_, _}, _, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Gets a list of all active resources from the DB
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_resrcs/0 :: () -> []|[#resrc{}]).
+get_resrcs() ->
+    case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [{<<"include_docs">>, true}]) of
+        {ok, Resrcs} ->
+            [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
+             || R <- Resrcs],
+            [create_resrc(wh_json:get_value(<<"doc">>, R))
+             || R <- Resrcs, whistle_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, true))];
+        {error, _}=E ->
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Syncs a resource with the DB and updates it in the list
+%% of resources
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_resrc/2 :: (DocId :: binary(), Resrcs :: [#resrc{}]) -> []|[#resrc{}]).
+update_resrc(DocId, Resrcs) ->
+    case couch_mgr:open_doc(?RESOURCES_DB, DocId) of
+        {ok, JObj} ->
+            case whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
+                true ->
+                    NewResrc = create_resrc(JObj),
+                    ?LOG_SYS("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
+                    [NewResrc|lists:keydelete(DocId, #resrc.id, Resrcs)];
+                false ->
+                    ?LOG_SYS("resource ~s disabled", [DocId]),
+                    lists:keydelete(DocId, #resrc.id, Resrcs)
+            end;
+        {error, R} ->
+            ?LOG_SYS("removing resource ~s, ~w", [DocId, R]),
+            couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
+            lists:keydelete(DocId, #resrc.id, Resrcs)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Given a resrc JSON object it builds a resrc record and
 %% populates it with all enabled gateways
 %% @end
@@ -408,7 +405,6 @@ create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
     ?LOG_SYS("loading resource ~s", [Id]),
-    couch_mgr:add_change_handler(?CARRIERS_DB, Id),
     #resrc{id = Id
            ,rev = wh_json:get_value(<<"_rev">>, JObj)
            ,weight_cost =
