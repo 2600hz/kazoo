@@ -12,6 +12,15 @@
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
 
+-define(IS_JSON_OBJECT,
+        fun({struct, L}) when is_list(L) ->
+                lists:all(fun({K, V}) when is_binary(K) andalso
+                                           (is_binary(V) orelse is_number(V)) -> true;
+                             (_) -> false
+                          end, L);
+           (_) -> false
+        end).
+
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTH_REQ, AUTH_RESP, etc, for *) to be considered valid.
 %%%
@@ -91,12 +100,7 @@
 			 ]).
 -define(AUTH_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			  ,{<<"Auth-Password">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							       lists:all(fun({K, V}) when is_binary(K) andalso is_binary(V) -> true;
-									    (_) -> false
-									 end, L);
-							  (_) -> false
-						       end}
+			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			  ,{<<"Access-Group">>, fun is_binary/1}
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
@@ -164,10 +168,7 @@
 								     end, L);
 						      (_) -> false
 						   end}
-			  ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							       true;
-							  (_) -> false
-						       end}
+			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			 ]).
 -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
 				    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
@@ -190,7 +191,7 @@
 				  ,{<<"Route">>, fun is_binary/1}
 				  ,{<<"To-User">>, fun is_binary/1}
 				  ,{<<"To-Realm">>, fun is_binary/1}
-				  ,{<<"SIP-Headers">>, fun is_list/1}
+				  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
 				]).
 
 %% Route Responses
@@ -232,7 +233,8 @@
                                     ,{<<"Account-ID">>, fun is_binary/1}
                                     ,{<<"Control-Queue">>, fun is_binary/1}
                                     ,{<<"To-DID">>, fun is_binary/1}
-                                    ,{<<"SIP-Headers">>, fun is_list/1}
+                                    ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                                    ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
                                     ,{<<"Flags">>, fun is_list/1}
                                    ]).
 
@@ -253,7 +255,8 @@
 			     ,{<<"Route">>, fun is_binary/1}
 			     ,{<<"To-User">>, fun is_binary/1}
 			     ,{<<"To-Realm">>, fun is_binary/1}
-			     ,{<<"SIP-Headers">>, fun is_list/1}
+			     ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                             ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			    ]).
 
 %% Resource Response
@@ -265,7 +268,7 @@
 -define(RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
 			       ,{<<"Event-Name">>, [<<"offnet_resp">>, <<"originate_resp">>]}
 			      ]).
--define(RESOURCE_RESP_TYPES, []).
+-define(RESOURCE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Resource Error
 -define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>]).
@@ -285,11 +288,7 @@
                                           ,<<"Terminator">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
 				     ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
--define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							       true;
-							  (_) -> false
-						       end}
-			  ]).
+-define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Call Status Request
 -define(CALL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
@@ -306,7 +305,7 @@
 				  ,{<<"Event-Name">>, <<"status_resp">>}
 				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
 				 ]).
--define(CALL_STATUS_RESP_TYPES, []).
+-define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Call CDR
 -define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
@@ -323,7 +322,7 @@
 			  ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
 			  ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
 			 ]).
--define(CALL_CDR_TYPES, []).
+-define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
@@ -432,16 +431,9 @@
 			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
 			    ,?INSERT_AT_TUPLE
 			   ]).
--define(BRIDGE_REQ_TYPES, [
-			   {<<"Endpoints">>, fun is_list/1}
-			   ,{<<"SIP-Headers">>, fun is_list/1}
-                           ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-                                                                lists:all(fun({K, V}) when is_binary(K) andalso
-                                                                                           (is_binary(V) orelse is_number(V)) -> true;
-                                                                             (_) -> false
-                                                                          end, L);
-                                                           (_) -> false
-                                                        end}
+-define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
+			   ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			  ]).
 
 %% Bridge Endpoints
@@ -458,7 +450,9 @@
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                     ]).
--define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun is_list/1}]).
+-define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                                    ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                                   ]).
 
 %% Answer
 -define(ANSWER_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
@@ -498,21 +492,8 @@
 			 ,{<<"Application-Name">>, <<"set">>}
 			 ,?INSERT_AT_TUPLE
 			 ]).
--define(SET_REQ_TYPES, [
-			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							    lists:all(fun({K, V}) when is_binary(K) andalso
-										       (is_binary(V) orelse is_number(V)) -> true;
-									 (_) -> false
-								      end, L);
-						       (_) -> false
-						    end},
-			{<<"Custom-Call-Vars">>, fun({struct, L}) when is_list(L) ->
-							    lists:all(fun({K, V}) when is_binary(K) andalso
-										       (is_binary(V) orelse is_number(V)) -> true;
-									 (_) -> false
-								      end, L);
-						       (_) -> false
-						    end}
+-define(SET_REQ_TYPES, [{<<"Custom-Channel-Vars">>,?IS_JSON_OBJECT}
+			,{<<"Custom-Call-Vars">>, ?IS_JSON_OBJECT}
 		       ]).
 
 %% Fetch
