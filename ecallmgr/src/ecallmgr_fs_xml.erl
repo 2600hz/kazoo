@@ -152,9 +152,9 @@ get_channel_vars({<<"Auth-User">>, V}, Vars) ->
 get_channel_vars({<<"Auth-Password">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_password='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_caller_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_caller_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Name">>, V}, Vars) ->
     [ list_to_binary(["effective_callee_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Number">>, V}, Vars) ->
