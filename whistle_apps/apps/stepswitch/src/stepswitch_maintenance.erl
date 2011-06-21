@@ -27,14 +27,25 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(reconcile/0 :: () -> done).
--spec(reconcile/1 :: (Database :: string()) -> done).
+-spec(reconcile/1 :: (Account :: string()) -> done).
 
 reconcile() ->
     reconcile(all).
 
-reconcile(Database) ->
+reconcile(all) ->
     reconcile_accounts(),
     reconcile_trunkstore(),
+    done;
+reconcile(AccountId) when not is_binary(AccountId) ->
+    reconcile(whistle_util:to_binary(AccountId));
+reconcile(<<"info_", _/binary>> = AccountId) ->
+    Numbers = get_trunkstore_account_numbers(AccountId),
+    reconcile_account_route(AccountId, Numbers),
+    done;
+reconcile(AccountId) ->
+    Numbers = get_callflow_account_numbers(
+                whapps_util:get_db_name(AccountId, encoded)),
+    reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
     done.
 
 %%--------------------------------------------------------------------
@@ -87,14 +98,31 @@ process_number(Number) ->
 process_number(Number, Flags) ->
     gen_server:call(stepswitch_outbound, {process_number, Number, Flags}).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Loop over the accounts and try to reconcile the stepswitch routes
+%% with the numbers assigned in the account
+%% @end
+%%--------------------------------------------------------------------
+-spec(reconcile_accounts/0 :: () -> ok).
 reconcile_accounts() ->
     [begin
          Numbers = get_callflow_account_numbers(AccountId),
-         reconsile_account_route(
+         reconcile_account_route(
            whapps_util:get_db_name(AccountId, raw), Numbers)
      end
-     || AccountId <- whapps_util:get_all_accounts(encoded)].
+     || AccountId <- whapps_util:get_all_accounts(encoded)],
+    ok.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given an account create a json object of all numbers that look to
+%% external (TODO: currently just uses US rules).
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_callflow_account_numbers/1 :: (AccountId :: binary()) -> json_object()).
 get_callflow_account_numbers(AccountId) ->
     case couch_mgr:get_all_results(AccountId, ?CALLFLOW_VIEW) of
         {ok, Numbers} ->
@@ -123,7 +151,7 @@ reconcile_trunkstore() ->
             [begin
                  AccountId = wh_json:get_value(<<"id">>, Account),
                  Numbers = get_trunkstore_account_numbers(AccountId),
-                 reconsile_account_route(AccountId, Numbers)
+                 reconcile_account_route(AccountId, Numbers)
              end
              || Account <- JObj, is_trunkstore_account(Account)],
             ok;
@@ -174,9 +202,9 @@ get_trunkstore_account_numbers(Account) ->
 %% provided numbers
 %% @end
 %%--------------------------------------------------------------------
--spec(reconsile_account_route/2 :: (AccountId :: binary(), Numbers :: json_object())
+-spec(reconcile_account_route/2 :: (AccountId :: binary(), Numbers :: json_object())
                                    -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
-reconsile_account_route(AccountId, Numbers) ->
+reconcile_account_route(AccountId, Numbers) ->
     ?LOG_SYS("reconsiled route for ~s", [AccountId]),
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     case couch_mgr:open_doc(?ROUTES_DB, AccountId) of
