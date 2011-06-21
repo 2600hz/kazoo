@@ -129,7 +129,7 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    case wh_json:get_value(<<"action">>, Data) of
+    case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             answer(Call),
             _ = compose_voicemail(get_mailbox_profile(Data, Call), Call),

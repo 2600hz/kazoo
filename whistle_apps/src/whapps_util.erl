@@ -62,7 +62,9 @@ get_db_name(AccountId, encoded) when is_binary(AccountId) ->
 get_db_name(<<"account%2F", AccountId/binary>>, raw) ->
     binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
 get_db_name(<<"account/", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"/">>, <<>>, [global]).
+    binary:replace(AccountId, <<"/">>, <<>>, [global]);
+get_db_name(AccountId, raw) ->
+    AccountId.
 
 %%--------------------------------------------------------------------
 %% @doc
