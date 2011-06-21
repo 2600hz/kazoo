@@ -55,7 +55,7 @@ write_hrl(WsdlURL, Output) when is_list(WsdlURL) ->
 write_hrl(#wsdl{model = Model}, Output) when is_list(Output) ->
     erlsom:write_hrl(Model, Output).
 
-write_hrl(WsdlURL, Output, Prefix) when is_list(WsdlURL),is_list(Prefix) ->
+write_hrl(WsdlURL, Output, Prefix) when is_list(WsdlURL), (is_list(Prefix) orelse Prefix =:= undefined) ->
     write_hrl(initModel(WsdlURL, Prefix), Output).
 
 
