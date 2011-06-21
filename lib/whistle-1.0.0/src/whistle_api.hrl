@@ -421,6 +421,8 @@
 -define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
                                       ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
                                       ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
+                                      ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                      ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                       ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
 				      ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
 				     ]).
