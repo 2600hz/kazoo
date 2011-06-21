@@ -142,8 +142,8 @@
 -record('p:VoidChargeResponse', {anyAttribs, 'VoidChargeResult'}).
 -record('p:VoidPayment', {anyAttribs, 'sDocID', 'sVoidReason', 'dtVoidDate'}).
 -record('p:VoidPaymentResponse', {anyAttribs, 'VoidPaymentResult'}).
--record('s:Body', {anyAttribs, choice}).
--record('s:Envelope', {anyAttribs, 'Header', 'Body', choice}).
--record('s:Fault', {anyAttribs, 'faultcode', 'faultstring', 'faultactor', 'detail'}).
--record('s:Header', {anyAttribs, choice}).
--record('s:detail', {anyAttribs, choice}).
+-record('soap:Body', {anyAttribs, choice}).
+-record('soap:Envelope', {anyAttribs, 'Header', 'Body', choice}).
+-record('soap:Fault', {anyAttribs, 'faultcode', 'faultstring', 'faultactor', 'detail'}).
+-record('soap:Header', {anyAttribs, choice}).
+-record('soap:detail', {anyAttribs, choice}).
