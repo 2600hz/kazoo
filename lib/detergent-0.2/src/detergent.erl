@@ -100,6 +100,7 @@ call(WsdlURL, Operation, ListOfData, #call_opts{prefix=Prefix}=CallOpts)
     Wsdl = initModel(WsdlURL, Prefix),
     call(Wsdl, Operation, ListOfData, CallOpts);
 call(Wsdl, Operation, ListOfData, #call_opts{prefix=Prefix}=CallOpts) when is_record(Wsdl, wsdl) ->
+    io:format("ops: ~p~n", [Wsdl#wsdl.operations]),
     case get_operation(Wsdl#wsdl.operations, Operation) of
     {ok, Op} ->
         Msg = mk_msg(Prefix, Operation, ListOfData),
@@ -591,6 +592,7 @@ getImports(Definitions) ->
 %% returns [#operation{}]
 getOperations(ParsedWsdl, Ports) ->
   Bindings = getTopLevelElements(ParsedWsdl, 'wsdl:tBinding'),
+    io:format("bindings: ~p~nPorts: ~p~n", [Bindings, Ports]),
   getOperationsFromBindings(Bindings, Ports, []).
 
 getOperationsFromBindings([], _Ports, Acc) ->
