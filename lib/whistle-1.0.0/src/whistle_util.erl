@@ -1,5 +1,6 @@
 -module(whistle_util).
 
+-export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1]).
@@ -7,6 +8,43 @@
 -export([current_tstamp/0]).
 
 -include_lib("proper/include/proper.hrl").
+
+-spec(call_response/3 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary()) -> ok).
+-spec(call_response/4 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary(), Cause :: undefined|binary()) -> ok).
+-spec(call_response/5 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary(), Cause :: undefined|binary(), Media :: undefined|binary()) -> ok).
+
+call_response(CallId, CtrlQ, Code) ->
+    call_response(CallId, CtrlQ, Code, <<>>).
+call_response(CallId, CtrlQ, Code, undefined) ->
+    call_response(CallId, CtrlQ, Code, <<>>);
+call_response(CallId, CtrlQ, Code, Cause) ->
+    call_response(CallId, CtrlQ, Code, Cause, undefined).
+call_response(CallId, CtrlQ, Code, Cause, Media) ->
+    Respond = {struct, [{<<"Application-Name">>, <<"respond">>}
+                        ,{<<"Response-Code">>, Code}
+                        ,{<<"Response-Message">>, Cause}
+                        ,{<<"Call-ID">>, CallId}]
+              },
+    Commands = case Media of
+                   undefined ->
+                       [Respond];
+                   MediaName ->
+                        [Respond
+                         ,{struct, [{<<"Application-Name">>, <<"play">>}
+                                    ,{<<"Media-Name">>, MediaName}
+                                    ,{<<"Call-ID">>, CallId}]
+                          }
+                         ,{struct, [{<<"Application-Name">>, <<"progress">>}
+                                    ,{<<"Call-ID">>, CallId}]
+                          }
+                        ]
+               end,
+    Command = [{<<"Application-Name">>, <<"queue">>}
+               ,{<<"Call-ID">>, CallId}
+               ,{<<"Commands">>, Commands}
+               | whistle_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
+    {ok, Payload} = whistle_api:queue_req(Command),
+    amqp_util:callctl_publish(CtrlQ, Payload).
 
 %% must be a term that can be changed to a list
 -spec(to_hex/1 :: (S :: term()) -> string()).
@@ -157,7 +195,7 @@ floor(X) when X < 0 ->
         true -> T;
         false -> T - 1
     end;
-floor(X) -> 
+floor(X) ->
     trunc(X).
 
 %% found via trapexit

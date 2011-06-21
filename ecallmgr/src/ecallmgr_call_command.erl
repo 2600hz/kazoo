@@ -155,6 +155,8 @@ get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     end;
 get_fs_app(_Node, _UUID, _JObj, <<"answer">>=App) ->
     {App, <<>>};
+get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
+    {<<"pre_answer">>, <<>>};
 get_fs_app(_Node, _UUID, _JObj, <<"park">>=App) ->
     {App, <<>>};
 get_fs_app(_Node, _UUID, JObj, <<"sleep">>=App) ->
@@ -223,23 +225,39 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
 	    {App, Data}
     end;
-get_fs_app(Node, UUID, JObj, <<"set">>=AppName) ->
-    {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
-    lists:foreach(fun({K,V}) ->
-			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
-			  set(Node, UUID, Arg)
-		  end, ChannelVars),
-    {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
-    lists:foreach(fun({K,V}) ->
-			  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
-			  export(Node, UUID, Arg)
-		  end, CallVars),
-    {AppName, noop};
-get_fs_app(Node, UUID, JObj, <<"fetch">>=AppName) ->
+get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
+    case whistle_api:set_req_v(JObj) of
+        false -> {error, "set failed to execute as JObj did not validate"};
+        true ->
+            {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
+            lists:foreach(fun({K,V}) ->
+                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX
+                                                        ,whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
+                                  set(Node, UUID, Arg)
+                          end, ChannelVars),
+            {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
+            lists:foreach(fun({K,V}) ->
+                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX
+                                                        ,whistle_util:to_list(K), "=", whistle_util:to_list(V)]),
+                                  export(Node, UUID, Arg)
+                          end, CallVars),
+            {App, noop}
+    end;
+get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
+    io:format("Response: ~p~n", [JObj]),
+    case whistle_api:respond_req_v(JObj) of
+        false -> {error, "respond failed to execute as JObj did not validate"};
+        true ->
+            Response = <<(wh_json:get_value(<<"Response-Code">>, JObj, <<>>))/binary
+                         ," ", (wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
+            io:format("Response: ~p~n", [Response]),
+            {App, Response}
+    end;
+get_fs_app(Node, UUID, JObj, <<"fetch">>=App) ->
     spawn(fun() ->
                   send_fetch_call_event(Node, UUID, JObj)
           end),
-    {AppName, noop};
+    {App, noop};
 get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
 	false -> {error, "conference failed to execute as JObj did not validate."};
@@ -248,7 +266,7 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
 	    {App, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
-    ?LOG("Unknown Application ~s", [_App]),
+    ?LOG("unknown Application ~s", [_App]),
     {error, "Application unknown"}.
 
 %%%===================================================================

@@ -466,6 +466,16 @@
 			   ]).
 -define(ANSWER_REQ_TYPES, []).
 
+%% Progress
+-define(PROGRESS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_PROGRESS_REQ_HEADERS, [<<"Insert-At">>]).
+-define(PROGRESS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"progress">>}
+			    ,?INSERT_AT_TUPLE
+			   ]).
+-define(PROGRESS_REQ_TYPES, []).
+
 %% Hangup
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>]).
@@ -599,6 +609,18 @@
 			 ,?INSERT_AT_TUPLE
 			]).
 -define(SAY_REQ_TYPES, []).
+
+%% Respond
+-define(RESPOND_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Response-Code">>]).
+-define(OPTIONAL_RESPOND_REQ_HEADERS, [<<"Insert-At">>, <<"Response-Message">>]).
+-define(RESPOND_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"respond">>}
+			    ,?INSERT_AT_TUPLE
+			   ]).
+-define(RESPOND_REQ_TYPES, [{<<"Response-Code">>, fun is_binary/1}
+                            ,{<<"Response-Message">>, fun is_binary/1}
+                           ]).
 
 %% Sleep
 -define(SLEEP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Time">>]).
@@ -790,9 +812,11 @@
 				 ,{<<"export">>, <<"set">>}
 				 ,{<<"say">>, <<"say">>}
 				 ,{<<"sleep">>, <<"sleep">>}
+				 ,{<<"respond">>, <<"respond">>}
 				 ,{<<"bridge">>, <<"bridge">>}
 				 ,{<<"signal_bridge">>, <<"bridge">>}
 				 ,{<<"answer">>, <<"answer">>}
+				 ,{<<"pre_answer">>, <<"progress">>}
 				 ,{<<"tone_detect">>, <<"tone_detect">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				 ,{<<"respond">>, <<"respond">>}
@@ -822,6 +846,8 @@
 				,{<<"hangup">>, fun whistle_api:hangup_req_v/1}
 				,{<<"say">>, fun whistle_api:say_req_v/1}
 				,{<<"sleep">>, fun whistle_api:sleep_req_v/1}
+				,{<<"respond">>, fun whistle_api:respond_req_v/1}
+				,{<<"progress">>, fun whistle_api:progress_req_v/1}
 				,{<<"set">>, fun whistle_api:set_req_v/1}
 				,{<<"conference">>, fun whistle_api:conference_req_v/1}
 				,{<<"noop">>, fun whistle_api:noop_req_v/1}

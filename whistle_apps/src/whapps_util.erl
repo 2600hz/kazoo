@@ -14,6 +14,7 @@
 -export([get_all_accounts/0, get_all_accounts/1]).
 -export([get_account_by_realm/1]).
 -export([get_event_type/1, put_callid/1]).
+-export([get_call_termination_reason/1]).
 
 -include_lib("whistle/include/whistle_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -175,3 +176,21 @@ get_event_type(JObj) ->
 -spec(put_callid/1 :: (JObj :: json_object()) -> no_return()).
 put_callid(JObj) ->
     _ = put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an JSON Object for a hangup event, or bridge completion
+%% this returns the cause and code for the call termination
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_call_termination_reason/1 :: (JObj :: json_object()) -> {binary(), binary()}).
+get_call_termination_reason(JObj) ->
+    Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
+               <<>> ->
+                   wh_json:get_value(<<"Hangup-Cause">>, JObj, <<>>);
+               Response ->
+                   Response
+           end,
+    Code = wh_json:get_value(<<"Hangup-Code">>, JObj, <<>>),
+    {Cause, Code}.

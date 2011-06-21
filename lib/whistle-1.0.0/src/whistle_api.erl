@@ -35,7 +35,7 @@
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
 	 ,sleep_req/1, tone_detect_req/1, set_req/1, media_req/1, media_resp/1, media_error/1
-         ,conference_req/1, noop_req/1, fetch_req/1
+         ,conference_req/1, noop_req/1, fetch_req/1, respond_req/1, progress_req/1
         ]).
 
 %% FS command
@@ -60,7 +60,8 @@
 -export([play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1, store_http_resp_v/1
          ,tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1, bridge_req_endpoint_v/1
          ,answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1, call_pickup_req_v/1, hangup_req_v/1
-         ,say_req_v/1, sleep_req_v/1, tone_detect_req_v/1, set_req_v/1, dialplan_req_v/1
+         ,say_req_v/1, sleep_req_v/1, tone_detect_req_v/1, set_req_v/1, dialplan_req_v/1, respond_req_v/1
+         ,progress_req_v/1
         ]).
 
 -export([media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1]).
@@ -793,6 +794,26 @@ answer_req_v(Prop) ->
     validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES).
 
 %%--------------------------------------------------------------------
+%% @doc Progress a session - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(progress_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+progress_req({struct, Prop}) ->
+    progress_req(Prop);
+progress_req(Prop) ->
+    case progress_req_v(Prop) of
+	true -> build_message(Prop, ?PROGRESS_REQ_HEADERS, ?OPTIONAL_PROGRESS_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for progress_req"}
+    end.
+
+-spec(progress_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+progress_req_v({struct, Prop}) ->
+    progress_req_v(Prop);
+progress_req_v(Prop) ->
+    validate(Prop, ?PROGRESS_REQ_HEADERS, ?PROGRESS_REQ_VALUES, ?PROGRESS_REQ_TYPES).
+
+%%--------------------------------------------------------------------
 %% @doc Hangup a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -931,6 +952,26 @@ say_req_v({struct, Prop}) ->
     say_req_v(Prop);
 say_req_v(Prop) ->
     validate(Prop, ?SAY_REQ_HEADERS, ?SAY_REQ_VALUES, ?SAY_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Respond a session - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(respond_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+respond_req({struct, Prop}) ->
+    respond_req(Prop);
+respond_req(Prop) ->
+    case respond_req_v(Prop) of
+	true -> build_message(Prop, ?RESPOND_REQ_HEADERS, ?OPTIONAL_RESPOND_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for respond_req"}
+    end.
+
+-spec(respond_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+respond_req_v({struct, Prop}) ->
+    respond_req_v(Prop);
+respond_req_v(Prop) ->
+    validate(Prop, ?RESPOND_REQ_HEADERS, ?RESPOND_REQ_VALUES, ?RESPOND_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Sleep - Pauses execution - see wiki
