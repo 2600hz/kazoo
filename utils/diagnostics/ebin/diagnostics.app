@@ -1,0 +1,9 @@
+{application,diagnostics,
+             [{description,"Connect to Nodes that support the Diagnostics API"},
+              {vsn,"0.2.0"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{diagnostics_app,[]}},
+              {env,[]},
+              {modules,[diagnostics,diagnostics_app,diagnostics_server,
+                        diagnostics_sup,logger,props,whistle_util]}]}.
