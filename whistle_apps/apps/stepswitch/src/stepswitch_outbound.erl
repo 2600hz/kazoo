@@ -369,6 +369,7 @@ get_resrcs() ->
 %%--------------------------------------------------------------------
 -spec(update_resrc/2 :: (DocId :: binary(), Resrcs :: [#resrc{}]) -> []|[#resrc{}]).
 update_resrc(DocId, Resrcs) ->
+    ?LOG_SYS("received notification that resource ~s has changed", [DocId]),
     case couch_mgr:open_doc(?RESOURCES_DB, DocId) of
         {ok, JObj} ->
             case whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
