@@ -63,8 +63,8 @@ init([]) ->
     Shutdown = 2000,
     Type = worker,
 
-    AChild = {ts_offnet, {ts_offnet, start_link, []},
-              Restart, Shutdown, Type, [ts_offnet]},
+    AChild = {ts_from_offnet, {ts_from_offnet, start_link, []},
+              Restart, Shutdown, Type, [ts_from_offnet]},
 
     {ok, {SupFlags, [AChild]}}.
 

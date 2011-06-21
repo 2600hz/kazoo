@@ -397,13 +397,9 @@ process_req({_, _}, _, _) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec(store_reg/3 :: (JObj :: json_object(), Id :: binary(), Contact :: binary()) -> tuple(ok, json_object() | json_objects())).
-store_reg({struct, Prop}, Id, Contact) ->
-    MochiDoc = {struct, [{<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
-			 ,{<<"Contact">>, Contact}
-			 ,{<<"_id">>, Id}
-			 | lists:keydelete(<<"Contact">>, 1, Prop)]
-	       },
-    {ok, _} = couch_mgr:ensure_saved(?REG_DB, MochiDoc).
+store_reg(JObj, Id, Contact) ->
+    RegDoc = wh_json:set_value(<<"_id">>, Id, wh_json:set_value(<<"Contact">>, Contact, JObj)),
+    couch_mgr:ensure_saved(?REG_DB, RegDoc).
 
 %%-----------------------------------------------------------------------------
 %% @private

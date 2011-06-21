@@ -29,17 +29,46 @@ start_link() ->
 	end,
     ignore.
 
--spec(reserve/5 :: (ToDID :: binary(), CallID :: binary(), AcctID :: binary(), Direction :: inbound | outbound, RouteOpts :: json_object()) -> tuple(ok, proplist())).
+-spec(reserve/5 :: (ToDID :: binary(), CallID :: binary(), AcctID :: binary(), Direction :: inbound | outbound, RouteOpts :: list(binary()) | []) -> tuple(ok, proplist())).
 reserve(ToDID, CallID, AcctID, inbound, RouteOpts) ->
     {ok, #route_flags{
-      rate = R
-      ,rate_increment = RI
-      ,rate_minimum = RM
-      ,surcharge = S
-      ,rate_name = RN
-%%       ,flat_rate_enabled = FRE
+       rate = R
+       ,rate_increment = RI
+       ,rate_minimum = RM
+       ,surcharge = S
+       ,rate_name = RN
+       ,flat_rate_enabled = FRE
       }} = ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"inbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}),
-    {ok, [{<<"Rate">>, R}, {<<"Rate-Increment">>, RI}, {<<"Rate-Minimum">>, RM}, {<<"Surcharge">>, S}, {<<"Rate-Name">>, RN}]}.
+
+    TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
+
+    {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
+	  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
+	  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
+	  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
+	  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
+	  ,{<<"Trunk-Type">>, TrunkType}
+	 ]};
+reserve(ToDID, CallID, AcctID, outbound, RouteOpts) ->
+    {ok, #route_flags{
+       rate = R
+       ,rate_increment = RI
+       ,rate_minimum = RM
+       ,surcharge = S
+       ,rate_name = RN
+       ,flat_rate_enabled = FRE
+      }} = ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"outbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}),
+
+    TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
+
+    {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
+	  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
+	  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
+	  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
+	  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
+	  ,{<<"Trunk-Type">>, TrunkType}
+	 ]}.
+
 
 -spec(check/1 :: (Flags :: #route_flags{}) -> tuple(ok, #route_flags{}) | tuple(error, atom())).
 check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
