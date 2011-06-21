@@ -1,8 +1,0 @@
-{application,registrar,
-             [{description,"Registrar For the Stars"},
-              {vsn,"0.0.3"},
-              {registered,[]},
-              {applications,[kernel,stdlib]},
-              {mod,{registrar_app,[]}},
-              {env,[]},
-              {modules,[reg_server,registrar,registrar_app,registrar_sup]}]}.
