@@ -203,28 +203,10 @@ wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID, call_start=Start}=State, Ti
 	    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
     end.
 
-try_failover(State) ->
-    ok.
-
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
 offnet_data(JObj) ->
-    Command = [
-                {<<"Call-ID">>, CallId}
-               ,{<<"Resource-Type">>, <<"audio">>}
-               ,{<<"To-DID">>, ReqNum}
-               ,{<<"Account-ID">>, AccountId}
-               ,{<<"Control-Queue">>, CtrlQ}
-               ,{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Flags">>, wh_json:get_value(<<"flags">>, JObj)}
-               ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj)}
-               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, JObj)}
-%%               ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
-%%               ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
-               ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
-	       ,{<<"Custom-Channel-Vars">>, {struct, []}}
-	      ],
     %% wh_timer:tick("inbound_route/1"),
     AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
 
