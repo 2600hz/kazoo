@@ -20,12 +20,11 @@
           ,endpoint = ?EMPTY_JSON_OBJECT :: json_object()
           ,my_q = <<>> :: binary()
           ,callctl_q = <<>> :: binary()
-          ,call_start = erlang:now() :: tuple()
           ,failover = ?EMPTY_JSON_OBJECT :: json_object()
 	 }).
 
 -define(APP_NAME, <<"ts_from_offnet">>).
--define(APP_VERSION, <<"0.0.5">>).
+-define(APP_VERSION, <<"0.1.0">>).
 -define(WAIT_FOR_WIN_TIMEOUT, 5000).
 -define(WAIT_FOR_BRIDGE_TIMEOUT, 10000).
 -define(WAIT_FOR_HANGUP_TIMEOUT, 1000 * 60 * 60 * 2). %% 2 hours
@@ -52,7 +51,7 @@ start_amqp(#state{route_req_jobj=JObj}=State) ->
 
 endpoint_data(State, JObj) ->
     {endpoint, EP} = endpoint_data(JObj),
-    send_park(State#state{endpoint=EP}).
+    send_park(State#state{endpoint=EP, acctid = wh_json:get_value(<<"Auth-User">>, EP)}).
 
 send_park(#state{route_req_jobj=JObj, my_q=Q}=State) ->
     JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -81,7 +80,8 @@ wait_for_win(#state{aleg_callid=CallID, my_q=Q}=State, Timeout) ->
 
 	    bridge_to_endpoint(State#state{callctl_q=CallctlQ})
     after Timeout ->
-	    ?LOG("Timed out(~b) waiting for route_win", [Timeout])
+	    ?LOG("Timed out(~b) waiting for route_win", [Timeout]),
+	    wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT)
     end.
 
 bridge_to_endpoint(#state{callctl_q=CtlQ, aleg_callid=CallID, endpoint=EP}=State) ->
@@ -98,9 +98,7 @@ bridge_to_endpoint(#state{callctl_q=CtlQ, aleg_callid=CallID, endpoint=EP}=State
     {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     ?LOG(CallID, "Sending bridge command: ~s", [Payload]),
     amqp_util:callctl_publish(CtlQ, Payload),
-    wait_for_bridge(State#state{failover=wh_json:get_value(<<"Failover">>, EP, ?EMPTY_JSON_OBJECT)
-				,acctid = wh_json:get_value(<<"Auth-User">>, EP)
-			       }, ?WAIT_FOR_BRIDGE_TIMEOUT).
+    wait_for_bridge(State#state{failover=wh_json:get_value(<<"Failover">>, EP, ?EMPTY_JSON_OBJECT)}, ?WAIT_FOR_BRIDGE_TIMEOUT).
 
 wait_for_bridge(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout) ->
     Start = erlang:now(),
@@ -116,14 +114,14 @@ wait_for_bridge(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout) 
 		    BLeg = wh_json:get_value(<<"Other-Leg-Call-Id">>, JObj),
 		    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
 		    ?LOG("Bridge to ~s successful", [BLeg]),
-		    wait_for_cdr(State#state{bleg_callid=BLeg, call_start=erlang:now()});
+		    wait_for_cdr(State#state{bleg_callid=BLeg});
 		{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
 		    case wh_json:get_value(<<"Application-Response">>, JObj) of
 			<<"SUCCESS">> ->
 			    BLeg = wh_json:get_value(<<"Other-Leg-Call-Id">>, JObj),
 			    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
 			    ?LOG("Bridge to ~s successful", [BLeg]),
-			    wait_for_cdr(State#state{bleg_callid=BLeg, call_start=erlang:now()});
+			    wait_for_cdr(State#state{bleg_callid=BLeg});
 			Cause ->
 			    ?LOG("Failed to bridge: ~s", [Cause]),
 			    try_failover(State)
@@ -146,7 +144,7 @@ wait_for_bridge(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout) 
 
 wait_for_cdr(State) ->
     wait_for_cdr(State, ?WAIT_FOR_HANGUP_TIMEOUT).
-wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID, call_start=Start}=State, Timeout) ->
+wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, Timeout) ->
     receive
 	{_, #amqp_msg{payload=Payload}} ->
 	    JObj = mochijson2:decode(Payload),
@@ -182,7 +180,7 @@ wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID, call_start=Start}=State, Ti
 	    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
     end.
 
-try_failover(#state{failover=?EMPTY_JSON_OBJECT, aleg_callid=CallID, acctid=AcctID}=State) ->
+try_failover(#state{failover=?EMPTY_JSON_OBJECT, aleg_callid=CallID, acctid=AcctID}) ->
     ?LOG_END("No failover configured, ending"),
     ts_acctmgr:release_trunk(AcctID, CallID, 0);
 try_failover(#state{failover=FailJObj}=State) ->
@@ -191,9 +189,35 @@ try_failover(#state{failover=FailJObj}=State) ->
 	DID -> try_failover_e164(State, DID)
     end.
 
-try_failover_sip(State, SIPUri) ->
-    ok.
+try_failover_sip(#state{callctl_q = <<>>}, _) ->
+    ?LOG("No control queue to try SIP failover");
+try_failover_sip(#state{endpoint=EP, aleg_callid=CallID, callctl_q=CtlQ}=State, SIPUri) ->
+    EndPoint = {struct, [
+			 {<<"Invite-Format">>, <<"route">>}
+			 ,{<<"Route">>, SIPUri}
+			]},
 
+    Command = [
+	       {<<"Call-ID">>, CallID}
+	       ,{<<"Application-Name">>, <<"bridge">>}
+	       ,{<<"Endpoints">>, [EndPoint]}
+	       ,{<<"Timeout">>, 6}
+	       ,{<<"Bypass-Media">>, true}
+	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
+	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
+	       ,{<<"Outgoing-Callee-ID-Name">>, wh_json:get_value(<<"Outgoing-Callee-ID-Name">>, EP)}
+	       ,{<<"Outgoing-Callee-ID-Number">>, wh_json:get_value(<<"Outgoing-Callee-ID-Number">>, EP)}
+	      ],
+
+    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+
+    ?LOG("Sending SIP failover for ~s: ~s", [SIPUri, Payload]),
+
+    amqp_util:targeted_publish(CtlQ, Payload),
+    wait_for_bridge(State#state{failover=?EMPTY_JSON_OBJECT}, ?WAIT_FOR_BRIDGE_TIMEOUT).
+
+try_failover_e164(#state{callctl_q = <<>>}, _) ->
+    ?LOG("No control queue to try E.164 failover");
 try_failover_e164(#state{acctid=AcctID, aleg_callid=CallID, callctl_q=CallctlQ, my_q=Q, endpoint=EP}=State, ToDID) ->
     FailCallID = <<CallID/binary, "-failover">>,
     {ok, RateData} = ts_credit:reserve(ToDID, FailCallID, AcctID, outbound, wh_json:get_value(<<"Route-Options">>, EP)),
@@ -205,12 +229,12 @@ try_failover_e164(#state{acctid=AcctID, aleg_callid=CallID, callctl_q=CallctlQ, 
 	       ,{<<"Control-Queue">>, CallctlQ}
 	       ,{<<"Application-Name">>, <<"bridge">>}
 	       ,{<<"Custom-Channel-Vars">>, {struct, RateData}}
-	       %% ,{<<"Flags">>, wh_json:get_value(<<"flags">>, JObj)}
-	       %% ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj)}
-	       %% ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, JObj)}
-	       %% ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
-	       %% ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
-	       %% ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
+	       ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
+	       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
+	       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
+	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
+	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
+	       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
 	       | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
 	      ],
     {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
@@ -231,6 +255,9 @@ wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, 
 		    ?LOG("Failed to failover to e164"),
 		    ?LOG("Failure message: ~s", [wh_json:get_value(<<"Failure-Message">>, JObj)]),
 		    ?LOG("Failure code: ~s", [wh_json:get_value(<<"Failure-Code">>, JObj)]),
+
+		    %% TODO: Send Commands to CtlQ to play media depending on failure code
+
 		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
 		    ?LOG("Hangup received"),
@@ -244,13 +271,13 @@ wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, 
             end;
         _ ->
             Diff = Timeout - (timer:now_diff(erlang:now(), Start) div 1000),
-            wait_for_offnet_bridge(State, Timeout)
+            wait_for_offnet_bridge(State, Diff)
     after Timeout ->
 	    ?LOG("Offnet bridge timed out(~b)", [Timeout]),
 	    ts_acctmgr:release_trunk(AcctID, CallID, 0)
     end.
 
-wait_for_offnet_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID, call_start=Start}=State, Timeout) ->
+wait_for_offnet_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID}=State, Timeout) ->
     receive
 	{_, #amqp_msg{payload=Payload}} ->
 	    JObj = mochijson2:decode(Payload),

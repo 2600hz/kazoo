@@ -17,10 +17,9 @@
 	  ,bleg_callid = <<>> :: binary()
           ,acctid = <<>> :: binary()
 	  ,route_req_jobj = ?EMPTY_JSON_OBJECT :: json_object()
-          ,endpoint = ?EMPTY_JSON_OBJECT :: json_object()
+          ,offnet = ?EMPTY_JSON_OBJECT :: json_object()
           ,my_q = <<>> :: binary()
           ,callctl_q = <<>> :: binary()
-          ,call_start = erlang:now() :: tuple()
           ,failover = ?EMPTY_JSON_OBJECT :: json_object()
 	 }).
 
@@ -47,11 +46,34 @@ start_amqp(#state{route_req_jobj=JObj}=State) ->
     _ = amqp_util:bind_q_to_targeted(Q),
     amqp_util:basic_consume(Q, [{exclusive, false}]),
 
-    endpoint_data(State#state{my_q=Q}, JObj).
+    offnet_data(State#state{my_q=Q}, JObj).
 
-endpoint_data(State, JObj) ->
-    {endpoint, EP} = endpoint_data(JObj),
-    send_park(State#state{endpoint=EP}).
+offnet_data(State, JObj) ->
+    {offnet, EP} = offnet_data(JObj),
+    send_offnet(State#state{offnet=EP, acctid=wh_json:get_value(<<"Auth-User">>, EP)}).
+
+send_offnet(#state{offnet=EP, route_req_jobj=JObj}=State) ->
+    ToDID = whistle_util:to_e164(wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<>>)),
+    {ok, RateData} = ts_credit:reserve(ToDID, FailCallID, AcctID, outbound, wh_json:get_value(<<"Route-Options">>, EP)),
+    Command = [
+	       {<<"Call-ID">>, CallID}
+	       ,{<<"Resource-Type">>, <<"audio">>}
+	       ,{<<"To-DID">>, ToDID}
+	       ,{<<"Account-ID">>, AcctID}
+	       ,{<<"Control-Queue">>, CallctlQ}
+	       ,{<<"Application-Name">>, <<"bridge">>}
+	       ,{<<"Custom-Channel-Vars">>, {struct, RateData}}
+	       ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
+	       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
+	       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
+	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
+	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
+	       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
+	       | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
+	      ],
+    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    amqp_util:offnet_resource_publish(Payload),
+    wait_for_offnet_bridge(State#state{aleg_callid=FailCallID}, ?WAIT_FOR_OFFNET_BRIDGE).
 
 send_park(#state{route_req_jobj=JObj, my_q=Q}=State) ->
     JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -78,19 +100,19 @@ wait_for_win(#state{aleg_callid=CallID, my_q=Q}=State, Timeout) ->
 
 	    CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
 
-	    bridge_to_endpoint(State#state{callctl_q=CallctlQ})
+	    bridge_to_offnet(State#state{callctl_q=CallctlQ})
     after Timeout ->
 	    ?LOG("Timed out(~b) waiting for route_win", [Timeout])
     end.
 
-bridge_to_endpoint(#state{callctl_q=CtlQ, aleg_callid=CallID, endpoint=EP}=State) ->
+bridge_to_offnet(#state{callctl_q=CtlQ, aleg_callid=CallID, offnet=EP}=State) ->
     Command = [
 	       {<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, [{struct, whistle_api:bridge_req_endpoint(EP)}]}
+               ,{<<"Offnets">>, [{struct, whistle_api:bridge_req_offnet(EP)}]}
                ,{<<"Timeout">>, 26}
                ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Ringback">>, <<"us-ring">>}
-               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+               ,{<<"Dial-Offnet-Method">>, <<"single">>}
                ,{<<"Call-ID">>, CallID}
                | whistle_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
@@ -187,7 +209,7 @@ try_failover(State) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
-endpoint_data(JObj) ->
+offnet_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
     AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
 
@@ -207,7 +229,7 @@ endpoint_data(JObj) ->
     Invite = invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ InviteBase,
 
     
-    {endpoint, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
+    {offnet, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
 							       {<<"Auth-User">>, AuthUser}
 							       ,{<<"Auth-Realm">>, AuthRealm}
 							       ,{<<"Direction">>, <<"inbound">>}
