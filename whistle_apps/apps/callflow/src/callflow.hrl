@@ -5,6 +5,10 @@
 -include_lib("cf_amqp.hrl").
 
 -type cf_exe_response() :: tuple(stop) | tuple (continue) | tuple(continue, integer()) | tuple(heartbeat).
+-type cf_api_error() :: tuple(error, channel_hungup | execution_failure | timeout).
+-type cf_api_std_return() :: cf_api_error() | tuple(ok, json_object()).
+-type cf_api_bridge_return() :: cf_api_error() | tuple(ok, json_object()) | tuple(fail, json_object()).
+-type cf_api_binary() :: binary() | undefined.
 
 -define(APP_NAME, <<"callflow">>).
 -define(APP_VERSION, <<"0.8.2">> ).

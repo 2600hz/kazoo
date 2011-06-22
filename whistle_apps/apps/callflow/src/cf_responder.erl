@@ -212,9 +212,9 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
             From = wh_json:get_value(<<"From">>, JObj, <<"nouser@norealm">>),
             To = wh_json:get_value(<<"To">>, JObj, <<"nouser@norealm">>),
 
-            [ToUser, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-            [FromUser, FromRealm] = binary:split(wh_json:get_value(<<"From">>, JObj), <<"@">>),
-            [RequestUser, RequestRealm] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+            [ToUser, ToRealm] = binary:split(To, <<"@">>),
+            [FromUser, FromRealm] = binary:split(From, <<"@">>),
+            [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
 
             Call = #cf_call{call_id = get(callid)
                             ,bdst_q = Q

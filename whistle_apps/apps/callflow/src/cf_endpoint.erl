@@ -51,8 +51,6 @@ build(Id, #cf_call{account_db=Db, request_user=ReqUser}=Call) ->
                     ,{<<"To-Realm">>, get_to_realm(Endpoint, Owner)}
                     ,{<<"To-DID">>, get_to_did(Endpoint, Owner, ReqUser)}
                     ,{<<"Route">>, get_route(Endpoint, Owner)}
-                    ,{<<"Caller-ID-Number">>, CallerNumber}
-                    ,{<<"Caller-ID-Name">>, CallerName}
                     ,{<<"Callee-ID-Number">>, CalleeNumber}
                     ,{<<"Callee-ID-Name">>, CalleeName}
                     ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint, Owner)}
@@ -185,7 +183,7 @@ get_codecs(Endpoint, _) ->
 %% set to an empty json object!
 %% @end
 %%--------------------------------------------------------------------
--spec(get_custom_channel_vars/2 :: (Endpoint :: json_object(), Owner :: json_object()) -> proplist() | undefined).
+-spec(get_custom_channel_vars/2 :: (Endpoint :: json_object(), Owner :: json_object()) -> json_object() | undefined).
 get_custom_channel_vars(Endpoint, Owner) ->
     Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint),
     case { whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner))

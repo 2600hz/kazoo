@@ -12,8 +12,6 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6, wait_for_bridge/1, wait_for_unbridge/0, set/3, b_fetch/2]).
-
 -record(prompts, {
            has_been_enabled = <<"/system_media/custom-your_calls_are_now_forwarded_to">>
           ,has_been_disabled = <<"/system_media/custom-call_forwarding_is_now_disabled">>

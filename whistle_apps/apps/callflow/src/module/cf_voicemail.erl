@@ -286,6 +286,8 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
                 {ok, record} ->
                     record_voicemail(MediaName, Box, Call);
 		{ok, save} ->
+		    new_message(MediaName, Box, Call);
+                {ok, no_selection} ->
 		    new_message(MediaName, Box, Call)
             end;
         {error, channel_hungup} ->
@@ -335,18 +337,20 @@ main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMe
                  ,{play, Press}
                  ,{say,  Exit}
                 ], Call),
-    {ok, Digit} = wait_for_dtmf(30000),
+    DTMF = wait_for_dtmf(30000),
     _ = flush(Call),
-    case Digit of
-	HearNew ->
+    case DTMF of
+	{ok, HearNew} ->
 	    play_messages(get_folder(Messages, ?FOLDER_NEW), Box, Call),
 	    main_menu(Box, Call);
-	HearSaved ->
+	{ok, HearSaved} ->
 	    play_messages(get_folder(Messages, ?FOLDER_SAVED), Box, Call),
 	    main_menu(Box, Call);
-	Configure ->
+	{ok, Configure} ->
 	    config_menu(Box, Call);
-	Exit ->
+	{ok, Exit} ->
+	    ok;
+	{error, _} ->
 	    ok;
 	_ ->
 	    main_menu(Box, Call)
@@ -359,7 +363,6 @@ main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMe
 %% @end
 %%--------------------------------------------------------------------
 -spec(play_messages/3 :: (Messages :: json_objects(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-play_messages([], _, _) -> ok;
 play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
 			      ,prompts=#prompts{received=Received, to_replay=ToReplay, press=Press, to_keep=ToKeep
 						,to_delete=ToDelete, to_return_main=ToReturnMain
@@ -388,27 +391,30 @@ play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
                  ,{play, Press}
                  ,{say,  ReturnMain}
                 ], Call),
-    {ok, Digit} = wait_for_dtmf(30000),
+    DTMF = wait_for_dtmf(30000),
     _ = flush(Call),
-    case Digit of
-	Keep ->
+    case DTMF of
+	{ok, Keep} ->
 	    play(MessageSaved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call),
 	    play_messages(T, Box, Call);
-	Delete ->
+	{ok, Delete} ->
 	    play(MessageDeleted, Call),
 	    set_folder(?FOLDER_DELETED, H, Box, Call),
 	    play_messages(T, Box, Call);
-	ReturnMain ->
+	{ok, ReturnMain} ->
 	    play(MessageSaved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call);
-	Replay ->
+	{ok, Replay} ->
 	    play_messages(Messages, Box, Call);
+        {error, _} ->
+            ok;
 	_ ->
 	    play(MessageSaved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call),
 	    play_messages(T, Box, Call)
-    end.
+    end;
+play_messages([], _, _) -> ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -438,22 +444,24 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
                  ,{play, Press}
                  ,{say,  ReturnMain}
                 ], Call),
-    {ok, Digit} =  wait_for_dtmf(30000),
+    DTMF = wait_for_dtmf(30000),
     _ = flush(Call),
-    case Digit of
-	RecUnavailable ->
+    case DTMF of
+	{ok, RecUnavailable} ->
 	    record_unavailable_greeting(tmp_file(), Box, Call),
 	    config_menu(Box, Call);
-	RecName ->
+	{ok, RecName} ->
 	    _ = record_name(tmp_file(), Box, Call),
 	    config_menu(Box, Call);
-	SetPin ->
+	{ok, SetPin} ->
 	    change_pin(Box, Call),
 	    config_menu(Box, Call);
-	ReturnMain ->
+	{ok, ReturnMain} ->
 	    main_menu(Box, Call);
 	%% Bulk delete -> delete all voicemails
 	%% Reset -> delete all voicemails, greetings, name, and reset pin
+        {error, _} ->
+            ok;
 	_ ->
 	    config_menu(Box, Call)
     end.
@@ -476,7 +484,9 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 	{ok, record} ->
 	    record_unavailable_greeting(MediaName, Box, Call);
 	{ok, save} ->
-	    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call)
+	    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call);
+        {ok, no_selection} ->
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -485,9 +495,10 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 %% @end
 %%--------------------------------------------------------------------
 -spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from=From, to=To
-							     ,cid_name=CIDName, cid_number=CIDNumber
-							     ,call_id=CallID}=Call) ->
+new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call_id=CallID
+                                                             ,from=From, from_user=FromU, from_realm=FromR
+                                                             ,to=To, to_user=ToU, to_realm=ToR
+							     ,cid_name=CIDName, cid_number=CIDNumber}=Call) ->
     {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
     ?LOG("stored voicemail message ~s", [MediaName]),
 
@@ -504,9 +515,6 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, from
                         ]},
     {ok, _} = save_metadata(NewMessage, Db, Id),
     ?LOG("stored voicemail metadata for ~s", [MediaName]),
-
-    [FromU, FromR] = binary:split(From, <<"@">>),
-    [ToU, ToR] = binary:split(To, <<"@">>),
 
     {ok, JSON} = cf_api:new_voicemail([{<<"From-User">>, FromU}
 				       ,{<<"From-Realm">>, FromR}
@@ -559,7 +567,9 @@ record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_sp
 	{ok, record} ->
 	    record_name(MediaName, Box, Call);
 	{ok, save} ->
-	    store_recording(MediaName, ?NAME_RECORDING, Box, Call)
+	    store_recording(MediaName, ?NAME_RECORDING, Box, Call);
+        {ok, no_selection} ->
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -620,7 +630,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(review_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, record | save)).
+-spec(review_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, record | save | no_selection)).
 review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToListen, to_save=ToSave, to_rerecord=ToRerecord}
 				     ,keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call) ->
     ?LOG("playing review options"),
@@ -637,27 +647,21 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
                  ,{say,  Record}
                  ,{play, ToRerecord}
                 ], Call),
-
-    case wait_for_dtmf(18000) of
-	{error, channel_hungup} ->
+    DTMF = wait_for_dtmf(18000),
+    _ = flush(Call),
+    case DTMF of
+        {ok, Listen} ->
+            _ = b_play(MediaName, Call),
+            review_recording(MediaName, Box, Call);
+        {ok, Record} ->
+            {ok, record};
+        {ok, Save} ->
+            {ok, save};
+	{error, _} ->
             ?LOG("channel hungup while waiting for dtmf"),
-	    {ok, save};
-        {ok, <<>>} ->
-            _ = flush(Call),
-	    review_recording(MediaName, Box, Call);
-	{ok, Digit} ->
-	    _ = flush(Call),
-	    case Digit of
-		Listen ->
-		    _ = b_play(MediaName, Call),
-		    review_recording(MediaName, Box, Call);
-		Record ->
-		    {ok, record};
-		Save ->
-		    {ok, save};
-		_ ->
-		    review_recording(MediaName, Box, Call)
-	    end
+	    {ok, no_selection};
+        _ ->
+	    review_recording(MediaName, Box, Call)
     end.
 
 %%--------------------------------------------------------------------

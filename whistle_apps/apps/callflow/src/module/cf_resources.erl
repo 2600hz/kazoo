@@ -12,9 +12,12 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0, find_failure_branch/2]).
 
 -define(VIEW_BY_RULES, <<"resources/listing_active_by_rules">>).
+
+-type endpoint() :: tuple(binary(), json_objects(), raw | binary()).
+-type endpoints() :: [] | [endpoint()].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -25,8 +28,8 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(_, #cf_call{call_id=CallId}=Call) ->
     put(callid, CallId),
-    {ok, Gateways} = find_gateways(Call),
-    bridge_to_gateways(Gateways, Call).
+    {ok, Endpoints} = find_endpoints(Call),
+    bridge_to_resources(Endpoints, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -39,24 +42,30 @@ handle(_, #cf_call{call_id=CallId}=Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_to_gateways/2 :: (Resources :: proplist(), Call :: #cf_call{}) -> no_return()).
-bridge_to_gateways([{DestNum, Gateways, CIDType}|T], #cf_call{cf_pid=CFPid}=Call) ->
+-spec(bridge_to_resources/2 :: (Endpoints :: endpoints(), Call :: #cf_call{}) -> no_return()).
+bridge_to_resources([{DestNum, Gateways, CIDType}|T], #cf_call{cf_pid=CFPid}=Call) ->
     case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways], <<"60">>, CIDType, Call) of
         {ok, _} ->
             ?LOG("resource acquired"),
             wait_for_unbridge(),
             ?LOG("resource released"),
-            CFPid ! {stop};
-        {error, {bridge_failed, R}} ->
-            ?LOG("resource failed ~s", [R]),
-            bridge_to_gateways(T, Call);
+            CFPid ! { stop };
+        {fail, Reason} when T =:= [] ->
+            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            ?LOG("resource failed ~s:~s", [Code, Cause]),
+            find_failure_branch({Cause, Code}, Call)
+                orelse bridge_to_resources(T, Call);
+        {fail, Reason} ->
+            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            ?LOG("resource failed ~s:~s", [Code, Cause]),
+            bridge_to_resources(T, Call);
         {error, R} ->
-            ?LOG("resource failed ~w", [R]),
-            bridge_to_gateways(T, Call)
+            ?LOG("resource error ~w", [R]),
+            bridge_to_resources(T, Call)
     end;
-bridge_to_gateways([], #cf_call{cf_pid=CFPid}) ->
+bridge_to_resources([], #cf_call{cf_pid=CFPid}) ->
     ?LOG("resources exhausted without success"),
-    CFPid ! {continue}.
+    CFPid ! { continue }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,9 +101,9 @@ create_endpoint(DestNum, JObj) ->
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec(find_gateways/1 :: (Call :: #cf_call{}) -> tuple(ok, proplist()) | tuple(error, atom())).
-find_gateways(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
-    ?LOG("searching for resources"),
+-spec(find_endpoints/1 :: (Call :: #cf_call{}) -> {ok, endpoints()} | tuple(error, atom())).
+find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
+    ?LOG("searching for resource endpoints"),
     case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             ?LOG("found resources, filtering by rules"),
@@ -110,6 +119,12 @@ find_gateways(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
             E
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec(get_caller_id_type/2 :: (Resource :: json_object(), Call :: #cf_call{}) -> raw | binary()).
 get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
     case whistle_util:is_true(wh_json:get_value(<<"CF-Keep-Caller-ID">>, CVs)) of
@@ -126,7 +141,7 @@ get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
 %% full destination number otherwise return an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec(evaluate_rules/2 :: (Key :: list(), DestNum:: binary()) -> list()).
+-spec(evaluate_rules/2 :: (Key :: list(), DestNum:: binary()) -> [] | [binary()]).
 evaluate_rules([_, Regex], DestNum) ->
     case re:run(DestNum, Regex) of
         {match, [_, {Start,End}|_]} ->
