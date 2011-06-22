@@ -42,7 +42,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
 -spec(get_fs_app/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), Application :: binary()) ->
-			   tuple(binary(), binary() | noop) | tuple(return, ok) | tuple(error, string())).
+			   tuple(binary(), binary() | noop) | tuple(return, ok) | tuple(error, binary())
+                               | tuple(error, binary(), binary())).
 get_fs_app(Node, UUID, JObj, <<"noop">>=App) ->
     spawn(fun() ->
                   send_noop_call_event(Node, UUID, JObj)
@@ -417,7 +418,7 @@ set_ringback(_Node, _UUID, undefined) ->
     ok;
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=", media_path(RingBack, <<"extant">>, UUID)]),
-    set(Node, UUID, RB),
+    ok = set(Node, UUID, RB),
     set(Node, UUID, "instant_ringback=true").
 
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
