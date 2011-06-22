@@ -133,7 +133,6 @@ get_leg_vars(Prop) ->
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> list(string())).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
-    _ = lists:foldr(fun get_channel_vars/2, [], Prop),
     ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
@@ -215,7 +214,7 @@ get_channel_vars({<<"SIP-Headers">>, {struct, [_]=SIPHeaders}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
 			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
 		end, Vars, SIPHeaders);
-get_channel_vars({_K, _V}, Vars) ->
+get_channel_vars(_, Vars) ->
     Vars.
 
 get_channel_params(Prop) ->
