@@ -243,7 +243,7 @@ allowed_methods(_) ->
 -spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
 resource_exists([]) ->
     {true, []};
-resource_exists([_RegistrationsID]) ->
+resource_exists([_]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -258,15 +258,15 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    #cb_context{doc=[Doc]} = crossbar_doc:load_view(<<"devices/sip_credentials">>, [{<<"limit">>, <<"1">>}], Context),
-    Username = wh_json:get_value([<<"value">>, <<"username">>], Doc),
-    Realm = wh_json:get_value([<<"value">>,<<"realm">>], Doc),
-    crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, [Realm, Username]}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2);
+validate([], #cb_context{req_verb = <<"get">>, db_name=DbName}=Context) ->
+    {ok, Doc} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
+    Registrations = [wh_json:get_value(<<"key">>, Elm) || Elm <- Doc],
+    ?LOG(" === ~p", [Registrations]),
+    crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"keys">>, Registrations}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2);
 
 validate([], #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
     Context#cb_context{db_name=?REG_DB};
-    
+
 validate([RegID], #cb_context{req_verb = <<"get">>}=Context) ->
     crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB});
 
