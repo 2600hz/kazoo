@@ -1,9 +1,0 @@
-{application,media_importer,
-             [{description,[]},
-              {vsn,"1"},
-              {registered,[]},
-              {applications,[kernel,stdlib]},
-              {mod,{media_importer_app,[]}},
-              {env,[]},
-              {modules,[getopt,media_importer,media_importer_app,
-                        media_importer_sup,whapps_json]}]}.
