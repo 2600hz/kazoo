@@ -58,9 +58,9 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
     end;
 get_fs_app(_Node, _UUID, _JObj, <<"hangup">>=App) ->
     {App, <<>>};
-get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>=App) ->
+get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case whistle_api:play_collect_digits_req_v(JObj) of
-	false -> {error, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
+	false -> {error, <<"play_and_get_digits">>, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
 	true ->
 	    Min = wh_json:get_value(<<"Minimum-Digits">>, JObj),
 	    Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
@@ -73,7 +73,7 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>=App) ->
 	    Storage = <<"collected_digits">>,
 	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
 				   ,Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
-	    {App, Data}
+	    {<<"play_and_get_digits">>, Data}
     end;
 get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
     case whistle_api:record_req_v(JObj) of
