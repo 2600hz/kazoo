@@ -397,8 +397,10 @@ remove_old_regs(User, Realm, Cache) ->
 			  DelDocs = [ begin
 					  ID = wh_json:get_value(<<"id">>, Doc),
 					  wh_cache:erase_local(Cache, ID),
-					  {ok, Rev} = couch_mgr:lookup_doc_rev(<<"registrations">>, ID),
-					  {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]}
+					  case couch_mgr:lookup_doc_rev(<<"registrations">>, ID) of
+					      {ok, Rev} -> {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]};
+					      _ -> ?EMPTY_JSON_OBJECT
+					  end
 				      end || Doc <- OldDocs ],
 			  couch_mgr:del_docs(<<"registrations">>, DelDocs)
 		  end), ok;
