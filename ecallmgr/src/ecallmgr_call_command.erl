@@ -21,16 +21,19 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
 	true ->
-	    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
-	    case get_fs_app(Node, UUID, JObj, AppName) of
-		{error, _Msg} ->
-		    ?LOG("Error getting FS app for ~s: ~p", [AppName, _Msg]),
-		    {error, failed};
-                {return, Result} -> Result;
-		{App, noop} ->
+	    App = wh_json:get_value(<<"Application-Name">>, JObj),
+	    case get_fs_app(Node, UUID, JObj, App) of
+		{error, Msg} ->
+                    send_error_response(App, Msg, UUID, JObj),
                     ControlPID ! {execute_complete, UUID, App};
-		{App, AppData} ->
-                    send_cmd(Node, UUID, App, AppData)
+		{error, AppName, Msg} ->
+                    send_error_response(App, Msg, UUID, JObj),
+                    ControlPID ! {execute_complete, UUID, AppName};
+                {return, Result} -> Result;
+		{AppName, noop} ->
+                    ControlPID ! {execute_complete, UUID, AppName};
+		{AppName, AppData} ->
+                    send_cmd(Node, UUID, AppName, AppData)
 	    end;
 	false ->
 	    ?LOG("Command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
@@ -40,14 +43,14 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
 -spec(get_fs_app/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), Application :: binary()) ->
 			   tuple(binary(), binary() | noop) | tuple(return, ok) | tuple(error, string())).
-get_fs_app(Node, UUID, JObj, <<"noop">>) ->
+get_fs_app(Node, UUID, JObj, <<"noop">>=App) ->
     spawn(fun() ->
                   send_noop_call_event(Node, UUID, JObj)
           end),
-    {<<"noop">>, noop};
+    {App, noop};
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case whistle_api:play_req_v(JObj) of
-	false -> {error, "play failed to execute as JObj did not validate."};
+	false -> {error, <<"playback">>, <<"play failed to execute as JObj did not validate">>};
 	true ->
 	    F = media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
 	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
@@ -55,9 +58,9 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
     end;
 get_fs_app(_Node, _UUID, _JObj, <<"hangup">>=App) ->
     {App, <<>>};
-get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
+get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>=App) ->
     case whistle_api:play_collect_digits_req_v(JObj) of
-	false -> {error, "play_and_collect_digits failed to execute as JObj did not validate."};
+	false -> {error, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
 	true ->
 	    Min = wh_json:get_value(<<"Minimum-Digits">>, JObj),
 	    Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
@@ -70,11 +73,11 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
 	    Storage = <<"collected_digits">>,
 	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
 				   ,Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
-	    {<<"play_and_get_digits">>, Data}
+	    {App, Data}
     end;
-get_fs_app(Node, UUID, JObj, <<"record">>) ->
+get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
     case whistle_api:record_req_v(JObj) of
-	false -> {error, "record failed to execute as JObj did not validate."};
+	false -> {error, <<"record failed to execute as JObj did not validate">>};
 	true ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
@@ -88,11 +91,11 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
 						   ])),
 	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
-	    {<<"record">>, RecArg}
+	    {App, RecArg}
     end;
 get_fs_app(_Node, UUID, JObj, <<"store">>) ->
     case whistle_api:store_req_v(JObj) of
-	false -> {error, "store failed to execute as JObj did not validate."};
+	false -> {error, <<"store failed to execute as JObj did not validate">>};
 	true ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
 	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
@@ -132,7 +135,7 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
     end;
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
-	false -> {error, "tones failed to execute as JObj did not validate."};
+	false -> {error, <<"playback">>, <<"tones failed to execute as JObj did not validate">>};
 	true ->
 	    Tones = wh_json:get_value(<<"Tones">>, JObj, []),
 	    FSTones = [begin
@@ -161,12 +164,12 @@ get_fs_app(_Node, _UUID, _JObj, <<"park">>=App) ->
     {App, <<>>};
 get_fs_app(_Node, _UUID, JObj, <<"sleep">>=App) ->
     case whistle_api:sleep_req_v(JObj) of
-	false -> {error, "sleep failed to execute as JObj did not validate."};
+	false -> {error, <<"sleep failed to execute as JObj did not validate">>};
 	true -> {App, whistle_util:to_binary(wh_json:get_value(<<"Time">>, JObj))}
     end;
 get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
     case whistle_api:say_req_v(JObj) of
-	false -> {error, "say failed to execute as JObj did not validate."};
+	false -> {error, <<"say failed to execute as JObj did not validate">>};
 	true ->
 	    Lang = wh_json:get_value(<<"Language">>, JObj),
 	    Type = wh_json:get_value(<<"Type">>, JObj),
@@ -178,12 +181,11 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
     end;
 get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(JObj) of
-	false -> {error, "bridge failed to execute as JObj did not validate."};
+	false -> {error, <<"bridge failed to execute as JObj did not validate">>};
 	true ->
-	    ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
+            ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
             ok = set(Node, UUID, "failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"),
-
-	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj) of
+	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
 				<<"simultaneous">> -> ",";
 				<<"single">> -> "|"
 			    end,
@@ -195,14 +197,18 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
                                        || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])
                                       ]
                           ],
-
-            BridgeCmd = lists:flatten(ecallmgr_fs_xml:get_channel_vars(JObj))
-                ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
-	    {App, BridgeCmd}
+            case DialStrings of
+                [[]] ->
+                    {error, <<"bridge failed to execute no endpoints avaliable">>};
+                _ ->
+                    BridgeCmd = lists:flatten(ecallmgr_fs_xml:get_channel_vars(JObj))
+                        ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
+                    {App, BridgeCmd}
+            end
     end;
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
     case whistle_api:tone_detect_req_v(JObj) of
-	false -> {error, "tone detect failed to execute as JObj did not validate"};
+	false -> {error, <<"tone detect failed to execute as JObj did not validate">>};
 	true ->
 	    Key = wh_json:get_value(<<"Tone-Detect-Name">>, JObj),
 	    Freqs = [ whistle_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, JObj) ],
@@ -227,7 +233,7 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
     end;
 get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
     case whistle_api:set_req_v(JObj) of
-        false -> {error, "set failed to execute as JObj did not validate"};
+        false -> {error, <<"set failed to execute as JObj did not validate">>};
         true ->
             {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
             lists:foreach(fun({K,V}) ->
@@ -244,13 +250,11 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
             {App, noop}
     end;
 get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
-    io:format("Response: ~p~n", [JObj]),
     case whistle_api:respond_req_v(JObj) of
-        false -> {error, "respond failed to execute as JObj did not validate"};
+        false -> {error, <<"respond failed to execute as JObj did not validate">>};
         true ->
             Response = <<(wh_json:get_value(<<"Response-Code">>, JObj, <<>>))/binary
                          ," ", (wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
-            io:format("Response: ~p~n", [Response]),
             {App, Response}
     end;
 get_fs_app(Node, UUID, JObj, <<"fetch">>=App) ->
@@ -260,14 +264,14 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>=App) ->
     {App, noop};
 get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
-	false -> {error, "conference failed to execute as JObj did not validate."};
+	false -> {error, <<"conference failed to execute as JObj did not validate">>};
 	true ->
 	    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
 	    {App, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     ?LOG("unknown Application ~s", [_App]),
-    {error, "Application unknown"}.
+    {error, <<"application unknown">>}.
 
 %%%===================================================================
 %%% Internal helper functions
@@ -468,9 +472,9 @@ send_fetch_call_event(Node, UUID, JObj) ->
         {ok, P1} = whistle_api:call_event(EvtProp2),
         amqp_util:callevt_publish(UUID, P1, event)
     catch
-        Type:Reason ->
+        Type:_ ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                     ,{<<"Error-Message">>, whistle_util:to_binary(Reason)}
+                     ,{<<"Error-Message">>, "failed to construct or publish fetch call event"}
                      ,{<<"Call-ID">>, UUID}
                      ,{<<"Application-Name">>, <<"fetch">>}
                      ,{<<"Application-Response">>, <<>>}
@@ -501,9 +505,9 @@ send_noop_call_event(Node, UUID, JObj) ->
         {ok, P1} = whistle_api:call_event(EvtProp2),
         amqp_util:callevt_publish(UUID, P1, event)
     catch
-        Type:Reason ->
+        Type:_ ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                     ,{<<"Error-Message">>, whistle_util:to_binary(Reason)}
+                     ,{<<"Error-Message">>, "failed to construct or publish noop call event"}
                      ,{<<"Call-ID">>, UUID}
                      ,{<<"Application-Name">>, <<"noop">>}
                      ,{<<"Application-Response">>, <<>>}
@@ -512,3 +516,16 @@ send_noop_call_event(Node, UUID, JObj) ->
             {ok, P2} = whistle_api:error_resp(Error),
             amqp_util:callevt_publish(UUID, P2, event)
     end.
+
+-spec(send_error_response/4 :: (App :: binary(), Msg :: binary(), UUID :: binary(), JObj :: json_object()) -> ok).
+send_error_response(App, Msg, UUID, JObj) ->
+    ?LOG("Error getting FS app for ~s: ~p", [App, Msg]),
+    Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+             ,{<<"Error-Message">>, Msg}
+             ,{<<"Call-ID">>, UUID}
+             ,{<<"Application-Name">>, App}
+             ,{<<"Application-Response">>, <<>>}
+             | whistle_api:default_headers(<<>>, <<"error">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+            ],
+    {ok, Payload} = whistle_api:error_resp(Error),
+    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
