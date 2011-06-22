@@ -27,7 +27,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(reconcile/0 :: () -> done).
--spec(reconcile/1 :: (Account :: string()) -> done).
+-spec(reconcile/1 :: (Account :: string()|all) -> done).
 
 reconcile() ->
     reconcile(all).
@@ -254,21 +254,21 @@ find_duplicate_numbers() ->
 %% this will create false errors on TS accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec(find_missing_accounts/0 :: () -> ok|tuple(error, atom())).
-find_missing_accounts() ->
-    case couch_mgr:get_all_results(?ROUTES_DB, ?LIST_ROUTE_ACCOUNTS) of
-        {ok, Routes} ->
-            [begin
-                 AccountId = wh_json:get_value(<<"key">>, Route),
-                 Numbers = wh_json:get_value(<<"value">>, Route, []),
-                 [?LOG_SYS("the number ~s routes to a non-existant account ~s", [Number, AccountId])
-                  || Number <- Numbers]
-             end
-             || Route <- Routes
-                    ,not couch_mgr:db_exists(wh_json:get_value(<<"key">>, Route))
-                    ,length(wh_json:get_value(<<"value">>, Route, [])) > 0],
-            ok;
-        {error, _}=E ->
-            ?LOG_SYS("unable to check for missing accounts ~p~n", [E]),
-            E
-    end.
+%-spec(find_missing_accounts/0 :: () -> ok|tuple(error, atom())).
+%find_missing_accounts() ->
+%    case couch_mgr:get_all_results(?ROUTES_DB, ?LIST_ROUTE_ACCOUNTS) of
+%        {ok, Routes} ->
+%            [begin
+%                 AccountId = wh_json:get_value(<<"key">>, Route),
+%                 Numbers = wh_json:get_value(<<"value">>, Route, []),
+%                 [?LOG_SYS("the number ~s routes to a non-existant account ~s", [Number, AccountId])
+%                  || Number <- Numbers]
+%             end
+%             || Route <- Routes
+%                    ,not couch_mgr:db_exists(wh_json:get_value(<<"key">>, Route))
+%                    ,length(wh_json:get_value(<<"value">>, Route, [])) > 0],
+%            ok;
+%        {error, _}=E ->
+%            ?LOG_SYS("unable to check for missing accounts ~p~n", [E]),
+%            E
+%    end.
