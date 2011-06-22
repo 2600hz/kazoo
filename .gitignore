@@ -4,10 +4,10 @@
 */ebin/*.beam
 */ebin/*.app
 .eunit
-ecallmgr/conf/*
-ecallmgr/priv/*
-whistle_apps/conf/*
-whistle_apps/priv/*
+ecallmgr/conf/vm.args
+ecallmgr/priv/startup.config
+whistle_apps/conf/vm.args
+whistle_apps/priv/startup.config
 whistle_apps/apps/*/ebin/*.beam
 whistle_apps/apps/*/ebin/*.app
 whistle_apps/apps/*/log/*
