@@ -2,7 +2,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Manage offnet calls
+%%% Manage onnet calls
 %%% @end
 %%% Created : 18 Jun 2011 by James Aimonetti
 %%%-------------------------------------------------------------------
@@ -63,8 +63,8 @@ init([]) ->
     Shutdown = 2000,
     Type = worker,
 
-    AChild = {ts_onnet, {ts_onnet, start_link, []},
-              Restart, Shutdown, Type, [ts_onnet]},
+    AChild = {ts_from_onnet, {ts_from_onnet, start_link, []},
+              Restart, Shutdown, Type, [ts_from_onnet]},
 
     {ok, {SupFlags, [AChild]}}.
 

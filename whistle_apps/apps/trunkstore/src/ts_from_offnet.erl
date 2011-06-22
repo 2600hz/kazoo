@@ -81,6 +81,8 @@ wait_for_win(#state{aleg_callid=CallID, my_q=Q}=State, Timeout) ->
 	    bridge_to_endpoint(State#state{callctl_q=CallctlQ})
     after Timeout ->
 	    ?LOG("Timed out(~b) waiting for route_win", [Timeout]),
+	    _ = amqp_util:bind_q_to_callevt(Q, CallID),
+	    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
 	    wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT)
     end.
 
@@ -159,9 +161,9 @@ wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, Timeout) ->
 		{ <<"cdr">>, <<"call_detail">> } ->
 		    true = whistle_api:call_cdr_v(JObj),
 		    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
-		    Duration = get_call_duration(JObj),
+		    Duration = ts_util:get_call_duration(JObj),
 
-		    {R, RI, RM, S} = get_rate_factors(JObj),
+		    {R, RI, RM, S} = ts_util:get_rate_factors(JObj),
 		    Cost = ts_util:calculate_cost(R, RI, RM, S, Duration),
 
 		    ?LOG("CDR received for leg ~s", [Leg]),
@@ -293,9 +295,9 @@ wait_for_offnet_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID}=St
 		    true = whistle_api:call_cdr_v(JObj),
 
 		    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
-		    Duration = get_call_duration(JObj),
+		    Duration = ts_util:get_call_duration(JObj),
 
-		    {R, RI, RM, S} = get_rate_factors(JObj),
+		    {R, RI, RM, S} = ts_util:get_rate_factors(JObj),
 		    Cost = ts_util:calculate_cost(R, RI, RM, S, Duration),
 
 		    ?LOG("CDR received for leg ~s", [Leg]),
@@ -315,7 +317,7 @@ wait_for_offnet_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID}=St
 	    ?LOG("Timed out(~b) waiting for CDR"),
 	    %% will fail if already released
 	    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
-    end.    
+    end.
 
 %%--------------------------------------------------------------------
 %% Out-of-band functions
@@ -337,7 +339,7 @@ endpoint_data(JObj) ->
     InviteBase = [{<<"To-User">>, AuthUser}, {<<"To-Realm">>, AuthRealm} | RoutingData],
 
     InFormat = props:get_value(<<"Invite-Format">>, RoutingData),
-    Invite = invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ InviteBase,
+    Invite = ts_util:invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ InviteBase,
 
     
     {endpoint, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
@@ -352,7 +354,7 @@ endpoint_data(JObj) ->
 
 -spec(routing_data/1 :: (ToDID :: binary()) -> proplist()).
 routing_data(ToDID) ->
-    {ok, Settings} = lookup_did(ToDID),
+    {ok, Settings} = ts_util:lookup_did(ToDID),
 
     AuthOpts = wh_json:get_value(<<"auth">>, Settings, ?EMPTY_JSON_OBJECT),
     Acct = wh_json:get_value(<<"account">>, Settings, ?EMPTY_JSON_OBJECT),
@@ -363,7 +365,7 @@ routing_data(ToDID) ->
     AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
 
     {Srv, Acct} = try
-                      {ok, AccountSettings} = lookup_user_flags(AuthU, AuthR),
+                      {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR),
                       {
                         wh_json:get_value(<<"server">>, AccountSettings, ?EMPTY_JSON_OBJECT)
                         ,wh_json:get_value(<<"account">>, AccountSettings, ?EMPTY_JSON_OBJECT)
@@ -393,73 +395,3 @@ routing_data(ToDID) ->
 	undefined -> RD0;
 	F -> [{<<"Failover">>, F} | RD0]
     end.
-
--spec(invite_format/2 :: (Format :: binary(), To :: binary()) -> proplist()).
-invite_format(<<"e.164">>, To) ->
-    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
-invite_format(<<"e164">>, To) ->
-    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
-invite_format(<<"1npanxxxxxx">>, To) ->
-    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
-invite_format(<<"1npan">>, To) ->
-    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
-invite_format(<<"npanxxxxxx">>, To) ->
-    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
-invite_format(<<"npan">>, To) ->
-    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
-invite_format(_, _) ->
-    [{<<"Invite-Format">>, <<"username">>} ].
-
--spec(lookup_did/1 :: (DID :: binary()) -> tuple(ok, json_object())).
-lookup_did(DID) ->
-    Options = [{<<"key">>, DID}],
-    case wh_cache:fetch({lookup_did, DID}) of
-	{ok, _}=Resp ->
-	    %% wh_timer:tick("lookup_did/1 cache hit"),
-	    {ok, Resp};
-	{error, not_found} ->
-	    %% wh_timer:tick("lookup_did/1 cache miss"),
-	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
-		{ok, [{struct, _}=ViewJObj]} ->
-		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
-		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
-		    wh_cache:store({lookup_did, DID}, Resp),
-		    {ok, Resp};
-		{ok, [{struct, _}=ViewJObj | _Rest]} ->
-		    ?LOG("Looking up DID ~s resulted in more than one result", [DID]),
-		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
-		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
-		    wh_cache:store({lookup_did, DID}, Resp),
-		    {ok, Resp}
-	    end
-    end.
-
--spec(lookup_user_flags/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, term())).
-lookup_user_flags(Name, Realm) ->
-    %% wh_timer:tick("lookup_user_flags/2"),
-    case wh_cache:fetch({lookup_user_flags, Realm, Name}) of
-	{ok, _}=Result -> Result;
-	{error, not_found} ->
-	    case couch_mgr:get_results(?TS_DB, <<"LookUpUser/LookUpUserFlags">>, [{<<"key">>, [Realm, Name]}]) of
-		{error, _}=E -> E;
-		{ok, []} -> {error, <<"No user@realm found">>};
-		{ok, [User|_]} ->
-		    ValJObj = wh_json:get_value(<<"value">>, User),
-		    JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
-		    wh_cache:store({lookup_user_flags, Realm, Name}, JObj),
-		    {ok, JObj}
-	    end
-    end.
-
--spec(get_call_duration/1 :: (JObj :: json_object()) -> integer()).
-get_call_duration(JObj) ->
-    whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)).
-
--spec(get_rate_factors/1 :: (JObj :: json_object()) -> tuple(float(), pos_integer(), pos_integer(), float())).
-get_rate_factors(JObj) ->
-    CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    { whistle_util:to_float(wh_json:get_value(<<"Rate">>, CCV, 0.0))
-      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Increment">>, CCV, 60))
-      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Minimum">>, CCV, 60))
-      ,whistle_util:to_float(wh_json:get_value(<<"Surcharge">>, CCV, 0.0))
-    }.
