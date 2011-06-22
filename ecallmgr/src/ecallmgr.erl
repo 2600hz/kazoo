@@ -1,6 +1,6 @@
 -module(ecallmgr).
 
--author('James Aimonetti <james@2600hz.com>').
+-author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0, add_fs_node/1, rm_fs_node/1, diagnostics/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
@@ -34,7 +34,9 @@ ensure_started(App) ->
 	ok ->
 	    ok;
 	{error, {already_started, App}} ->
-	    ok
+	    ok;
+	E -> io:format("ERROR: ~p~n", [E]),
+	     ok
     end.
 
 add_fs_node(Node) ->

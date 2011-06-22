@@ -1,6 +1,0 @@
-[
-	{deps, [
-		{"clones/mochiweb", []},
-		{"JacobVorreuter/dynamic_compile", []}
-	]}
-].

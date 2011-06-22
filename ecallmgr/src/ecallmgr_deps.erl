@@ -6,7 +6,7 @@
 %%      to this application's path.
 
 -module(ecallmgr_deps).
--author('James Aimonetti <james@2600hz.com>').
+-author('James Aimonetti <james@2600hz.org>').
 
 -export([ensure/0, ensure/1]).
 -export([get_base_dir/0, get_base_dir/1]).
@@ -38,18 +38,14 @@ new_siblings(Module) ->
                            ordsets:is_element(
                              filename:basename(filename:dirname(X)),
                              Existing) =:= false],
-    lists:filter(fun filelib:is_dir/1, 
-                 lists:append([[filename:join([X, "ebin"]),
-                                filename:join([X, "include"])] ||
-                                  X <- Siblings])).
-        
+    [D || D <- lists:append([[filename:join([X, "ebin"]), filename:join([X, "include"])] || X <- Siblings]), filelib:is_dir(D)].
 
 %% @spec ensure(Module) -> ok
 %% @doc Ensure that all ebin and include paths for dependencies
 %%      of the application for Module are on the code path.
 ensure(Module) ->
     code:add_paths(new_siblings(Module)),
-    code:clash(),
+    %% code:clash(),
     ok.
 
 %% @spec ensure() -> ok

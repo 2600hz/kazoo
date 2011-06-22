@@ -1,0 +1,7 @@
+{
+    "_id":"_design/reg_doc"
+    ,"language":"javascript"
+    ,"views": {
+        "lookup_realm_user": "function(doc) { var expires = parseInt(doc['Reg-Server-Timestamp'] || doc['Event-Timestamp']) + parseInt(doc['Expires']); emit([doc['Realm'], doc['To-User'], expires], null); }"
+    }
+}

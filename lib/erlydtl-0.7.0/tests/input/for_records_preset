@@ -1,0 +1,15 @@
+before
+
+<ul>
+{% for iterator in photo_links %}
+	<li><a href="{{ iterator.url }}">{{ iterator.name }}</a></li>
+{% endfor %}
+</ul>
+
+<ul>
+{% for iterator in software_links %}
+	<li><a href="{{ iterator.url }}">{{ iterator.name }}</a></li>
+{% endfor %}
+</ul>
+
+after

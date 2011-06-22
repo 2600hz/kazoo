@@ -1,9 +1,0 @@
-{application,client,
-             [{description,[]},
-              {vsn,"1"},
-              {registered,[]},
-              {modules,[client,client_app,client_logger,client_req,
-                        client_stats,client_sup,logger]},
-              {applications,[kernel,stdlib]},
-              {mod,{client_app,[]}},
-              {env,[]}]}.

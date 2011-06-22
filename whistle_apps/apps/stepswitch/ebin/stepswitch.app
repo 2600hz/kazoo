@@ -1,0 +1,10 @@
+{application,stepswitch,
+             [{description,"Routes calls comming or going offnet, like a line finder"},
+              {vsn,"0.1.0"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{stepswitch_app,[]}},
+              {env,[]},
+              {modules,[stepswitch,stepswitch_app,stepswitch_deps,
+                        stepswitch_inbound,stepswitch_outbound,
+                        stepswitch_sup]}]}.

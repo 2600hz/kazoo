@@ -6,7 +6,7 @@
 %%      to this application's path.
 
 -module(log_server_deps).
--author('James Aimonetti <james@2600hz.com>').
+-author('James Aimonetti <james@2600hz.org>').
 
 -export([ensure/0, ensure/1]).
 -export([get_base_dir/0, get_base_dir/1]).

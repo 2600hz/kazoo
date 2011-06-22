@@ -1,9 +1,6 @@
 #!/bin/sh
 
 cd `dirname $0`
-export ERL_LIBS=$PWD/../lib/
 
-exec erl -setcookie `cat ../confs/fs_conf/autoload_configs/.erlang.cookie` \
-    -pa $PWD/ebin -pa $PWD/deps/*/ebin \
-    -boot start_sasl -name ecallmgr@whistle.local -s reloader -s ecallmgr
-
+export ERL_LIBS=$PWD/../lib
+exec erl -args_file $PWD/conf/vm.args -pa $PWD/ebin -s reloader -s ecallmgr

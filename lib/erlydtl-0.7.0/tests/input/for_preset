@@ -1,0 +1,9 @@
+before
+
+<ul>
+{% for iterator in fruit_list %}
+	<li>{{ iterator }}</li>
+{% endfor %}
+</ul>
+
+after

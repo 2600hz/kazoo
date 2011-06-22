@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end

@@ -11,7 +11,6 @@
 -export([get_diagnostics/1]).
 
 -include("ecallmgr.hrl").
--include("whistle_api.hrl").
 
 -spec(get_diagnostics/1 :: (Stats :: tuple()) -> proplist()).
 get_diagnostics(#handler_stats{}=Stats) ->

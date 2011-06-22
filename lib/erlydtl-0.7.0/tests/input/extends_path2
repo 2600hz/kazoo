@@ -1,0 +1,6 @@
+{% extends "path1/base2" %}
+{% block content %}
+start_content
+{% include "path1/include1" %}
+end_content
+{% endblock %}

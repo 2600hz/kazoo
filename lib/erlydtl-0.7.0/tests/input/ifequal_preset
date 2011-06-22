@@ -1,0 +1,43 @@
+{% ifequal var1 var2 %}
+if: var1="foo" and var2="foo" are equal
+{% endifequal %}
+
+{% ifequal var1 var2 %}
+if: var1="foo" and var2="foo" are equal
+{% else %}
+else: var1="foo" and var2="foo" are not equal
+{% endifequal %}
+
+{% ifequal var1 var3 %}
+if: var1="foo" and var3="bar" are equal
+{% endifequal %}
+
+{% ifequal var1 var3 %}
+if: var1="foo" and var3="bar" are equal
+{% else %}
+else: var1="foo" and var3="bar" are not equal
+{% endifequal %}
+
+{% ifequal "foo" "foo" %}
+if: "foo" and "foo" are equal
+{% else %}
+else: "foo" and "foo" are not equal
+{% endifequal %}
+
+{% ifequal "foo" "bar" %}
+if: "foo" and "bar" are equal
+{% else %}
+else: "foo" and "bar" are not equal
+{% endifequal %}
+
+{% ifequal 99 99 %}
+if: 99 and 99 are equal
+{% else %}
+else: 99 and 99 are not equal
+{% endifequal %}
+
+{% ifequal 77 99 %}
+if: 77 and 99 are equal
+{% else %}
+else: 77 and 99 are not equal
+{% endifequal %}

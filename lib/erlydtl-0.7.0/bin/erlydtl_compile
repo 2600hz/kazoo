@@ -1,0 +1,25 @@
+#!/usr/bin/env escript
+%% -*- mode: erlang -*-
+-export([main/1]).
+
+%% External API
+
+main([Prefix, File]) ->
+    ensure(),
+    Basename = filename:basename(File, ".dtl"),
+    ModuleName = list_to_atom(string:to_lower(lists:flatten([Prefix, "_", Basename]))),
+    erlydtl_compiler:compile(File, ModuleName, [{out_dir, filename:dirname(File)}]);
+main(_) ->
+    usage().
+
+ensure() ->
+    code:add_patha("ebin"),
+    code:add_patha("lib/erlydtl/ebin"),
+    [D1,D2|_] = code:get_path(),
+    io:format("Code Path: ~p~n", [[D1,D2]]).
+
+
+usage() ->
+    io:format("usage: ~s name [destdir]~n",
+              [filename:basename(escript:script_name())]),
+    halt(1).

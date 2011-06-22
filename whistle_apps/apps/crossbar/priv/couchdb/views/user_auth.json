@@ -1,0 +1,15 @@
+{
+   "_id": "_design/user_auth",
+   "language": "javascript",
+   "views": {
+       "creds_by_md5": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc.pvt_md5_auth, {'id': doc._id, 'account_db': doc.pvt_account_db} ); }"
+       },
+       "creds_by_sha": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc.pvt_sha1_auth, {'id': doc._id, 'account_db': doc.pvt_account_db} ); }"
+       },
+       "listing_by_username": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc.username, {'id': doc._id, 'account_db': doc.pvt_account_db} ); }"
+       }
+   }
+}

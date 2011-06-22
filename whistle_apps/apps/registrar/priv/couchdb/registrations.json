@@ -1,0 +1,8 @@
+{ "_id":"_design/registrations"
+  ,"language":"javascript"
+  ,"views":{
+    "newest":{
+      "map": "function(doc) { var t = parseInt(doc['Reg-Server-Timestamp']); emit([doc['Realm'], doc['Username'], t], null); }"
+    }
+  }
+}

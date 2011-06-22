@@ -1,0 +1,5 @@
+before varriable1
+{{ var1 }}
+after variable1
+<!--{{ var2 }}-->
+after variable2 (HTML-comment-wrapped)

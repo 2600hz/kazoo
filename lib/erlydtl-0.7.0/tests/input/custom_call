@@ -1,0 +1,7 @@
+>>>> before custom call tag 'comment'
+{% call example_for_preset %}
+>>>> after custom call tag 'comment'
+
+>>>> before custom call tag 'if'
+{% call example_if with var1 %}
+>>>> after custom call tag 'if'

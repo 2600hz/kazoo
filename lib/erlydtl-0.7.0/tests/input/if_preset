@@ -1,0 +1,4 @@
+One but not two: {% if var1 %} one {% else %} two {% endif %}
+Two but not one: {% if not var1 %} one {% else %} two {% endif %}
+One: {% if var1 %} one {% endif %}
+None: {% if var2 %} one {% endif %}

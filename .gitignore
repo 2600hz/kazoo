@@ -1,9 +1,9 @@
 *~
 */log/error_log*
-*/mnesia
 */error_log
 .eunit
-rabbit/rabbit-config/log/*.log*
-rabbit/rabbit-config/mnesia/*
-applications/apps/*/log/*
-applications/priv/mnesia/*.*
+ecallmgr/priv/startup.config
+whistle_apps/priv/startup.config
+whistle_apps/apps/*/ebin/*.beam
+whistle_apps/apps/*/ebin/*.app
+whistle_apps/apps/*/log/*

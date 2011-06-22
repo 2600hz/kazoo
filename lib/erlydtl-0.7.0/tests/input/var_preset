@@ -1,0 +1,9 @@
+one
+{{ var1 }}
+two
+{{ preset_var1 }}
+three
+<!--{{ var2 }}-->
+four
+{{ preset_var2 }}
+five

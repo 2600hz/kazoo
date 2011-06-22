@@ -1,9 +1,0 @@
-{application,callmgr,
-             [{description,[]},
-              {vsn,"1"},
-              {registered,[]},
-              {applications,[kernel,stdlib]},
-              {mod,{callmgr_app,[]}},
-              {env,[]},
-              {modules,[callmgr,callmgr_app,callmgr_demo,callmgr_deps,
-                        callmgr_fsdemo,callmgr_logger,callmgr_sup]}]}.
