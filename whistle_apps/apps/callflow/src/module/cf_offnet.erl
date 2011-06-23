@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [wait_for_unbridge/0]).
+-import(cf_call_command, [wait_for_unbridge/0, find_failure_branch/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -21,65 +21,49 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(JObj, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
-                      ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid}=Call) ->
+handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
+                      ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId}=Call) ->
     put(callid, CallId),
-    Command = [
-                {<<"Call-ID">>, CallId}
+    {CIDNum, CIDName}
+        = cf_attributes:caller_id(wh_json:get_value(<<"caller_id_options">>, Data, <<"external">>), AuthId, OwnerId, Call),
+    Command = [{<<"Call-ID">>, CallId}
                ,{<<"Resource-Type">>, <<"audio">>}
                ,{<<"To-DID">>, ReqNum}
                ,{<<"Account-ID">>, AccountId}
                ,{<<"Control-Queue">>, CtrlQ}
                ,{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Flags">>, wh_json:get_value(<<"flags">>, JObj)}
-               ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj)}
-               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, JObj)}
-%%               ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
-%%               ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
-               ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
+               ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
+               ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
+               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
+               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+               ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
                | whistle_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     amqp_util:offnet_resource_publish(Payload),
     case wait_for_offnet_response(60000) of
-        {ok, _R} ->
-            io:format("Resource call id~n~p~n~n", [wh_json:get_value(<<"Call-ID">>, _R)]),
-            io:format("OFFNET WAIT1: ~p~n~n", [wait_for_unbridge()]),
-            io:format("OFFNET WAIT2: ~p~n~n", [wait_for_unbridge()]);
-        {fail, Msg, Code} ->
-            ?LOG("received offnet failure ~s:~s", [Code, Msg]),
-            find_failure_branch([Msg, Code], Call);
+        {ok, _} ->
+            wait_for_unbridge(),
+            CFPid ! { stop };
+        {fail, Reason} ->
+            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            ?LOG("offnet request failed ~s:~s", [Cause, Code]),
+            find_failure_branch({Cause, Code}, Call)
+                orelse CFPid ! { continue };
         {error, Reason} ->
             ?LOG("offnet resource request error ~w", [Reason]),
-            find_failure_branch([whistle_util:to_binary(Reason)], Call)
+            CFPid ! { continue }
     end.
 
-find_failure_branch([], #cf_call{cf_pid=CFPid}) ->
-    CFPid ! {continue};
-find_failure_branch([<<"sip:", Error/binary>>|T], #cf_call{cf_pid=CFPid}=Call) ->
-    CFPid ! {attempt, Error},
-    receive
-        {attempt_resp, ok} ->
-            ?LOG("found child branch to handle failure code ~s", [Error]);
-        {attempt_resp, _} ->
-            find_failure_branch(T, Call)
-    after
-        1000 ->
-            find_failure_branch(T, Call)
-    end;
-find_failure_branch([Error|T], #cf_call{cf_pid=CFPid}=Call) ->
-    CFPid ! {attempt, Error},
-    receive
-        {attempt_resp, ok} ->
-            ?LOG("found child branch to handle failure ~s", [Error]);
-        {attempt_resp, _} ->
-            find_failure_branch(T, Call)
-    after
-        1000 ->
-            find_failure_branch(T, Call)
-    end.
-
--spec(wait_for_offnet_response/1 :: (Timeout :: integer()) -> tuple(ok, json_object()) | tuple(error, atom())).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Consume Erlang messages and return on resource completion message
+%% @end
+%%--------------------------------------------------------------------
+-spec(wait_for_offnet_response/1 :: (Timeout :: integer())
+                                    -> tuple(ok | fail, json_object()) | tuple(error, channel_hungup | execution_failed | timeout)).
 wait_for_offnet_response(Timeout) ->
     Start = erlang:now(),
     receive
@@ -88,8 +72,7 @@ wait_for_offnet_response(Timeout) ->
                 { <<"offnet_resp">>, <<"resource">> } ->
                     {ok, JObj};
                 { <<"resource_error">>, <<"resource">> } ->
-                    {fail, wh_json:get_value(<<"Failure-Message">>, JObj)
-                     ,wh_json:get_value(<<"Failure-Code">>, JObj)};
+                    {fail, JObj};
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {error, channel_hungup};
                 { _, <<"error">> } ->

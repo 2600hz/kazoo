@@ -13,10 +13,10 @@
 -type json_string() :: atom() | binary().
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term()].
--type json_object() :: {struct, [{json_string(), json_term()}]}.
+-type json_object() :: {struct, [tuple(json_string(), json_term())]}.
 -type json_iolist() :: {json, iolist()}.
 -type json_term() :: json_string() | json_number() | json_array() | json_object() | json_iolist().
--type json_objects() :: [json_object()] | [].
+-type json_objects() :: [json_object()].
 -type mochijson() :: json_object() | json_objects() | json_term() | [].
 
 -type wh_year() :: non_neg_integer().

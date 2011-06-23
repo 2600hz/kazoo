@@ -11,6 +11,7 @@
 -export([get_db_name/1, get_db_name/2]).
 -export([update_all_accounts/1]).
 -export([replicate_from_accounts/2, replicate_from_account/3]).
+-export([revise_whapp_views_in_accounts/1]).
 -export([get_all_accounts/0, get_all_accounts/1]).
 -export([get_account_by_realm/1]).
 -export([get_event_type/1, put_callid/1]).
@@ -77,12 +78,21 @@ get_db_name(AccountId, raw) ->
 %%--------------------------------------------------------------------
 -spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
 update_all_accounts(File) ->
-    lists:foreach(fun(ClientDb) ->
-                          case couch_mgr:update_doc_from_file(ClientDb, crossbar, File) of
-                              {error, _} ->
-                                  couch_mgr:load_doc_from_file(ClientDb, crossbar, File);
-                              {ok, _} -> ok
-                          end
+    lists:foreach(fun(AccountDb) ->
+                          couch_mgr:revise_doc_from_file(AccountDb, crossbar, File)
+                  end, get_all_accounts(?REPLICATE_ENCODING)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will import every .json file found in the given
+%% application priv/couchdb/views/ folder into every account
+%% @end
+%%--------------------------------------------------------------------
+-spec(revise_whapp_views_in_accounts/1 :: (App :: atom()) -> no_return()).
+revise_whapp_views_in_accounts(App) ->
+    lists:foreach(fun(AccountDb) ->
+                          couch_mgr:revise_views_from_folder(AccountDb, App)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
@@ -98,9 +108,9 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                      ,{<<"filter">>, FilterDoc}
                     ],
     couch_mgr:db_create(TargetDb),
-    lists:foreach(fun(SourceDb) when TargetDb =/= SourceDb ->
-                          R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
-                          ?LOG_SYS("replicate ~s to ~s using filter ~s returned ~s", [SourceDb, TargetDb, FilterDoc, element(1, R)]);
+    lists:foreach(fun(AccountDb) when TargetDb =/= AccountDb ->
+                          R = couch_mgr:db_replicate([{<<"source">>, AccountDb} | BaseReplicate]),
+                          ?LOG_SYS("replicate ~s to ~s using filter ~s returned ~s", [AccountDb, TargetDb, FilterDoc, element(1, R)]);
 		     (_) -> ok
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
@@ -111,14 +121,14 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec(replicate_from_account/3 :: (SourceDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
-replicate_from_account(SourceDb, TargetDb, FilterDoc) when SourceDb =/= TargetDb ->
-    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, ?REPLICATE_ENCODING)}
+-spec(replicate_from_account/3 :: (AccountDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
+replicate_from_account(AccountDb, TargetDb, FilterDoc) when AccountDb =/= TargetDb ->
+    BaseReplicate = [{<<"source">>, get_db_name(AccountDb, ?REPLICATE_ENCODING)}
                      ,{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                     ],
     couch_mgr:db_create(TargetDb),
-    ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
+    ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(AccountDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate);
 replicate_from_account(_,_,_) -> {error, matching_dbs}.
 

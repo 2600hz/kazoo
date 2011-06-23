@@ -90,7 +90,7 @@ init([]) ->
     ?LOG_SYS("starting new stepswitch outbound responder"),
     ?LOG_SYS("ensuring database ~s exists", [?RESOURCES_DB]),
     couch_mgr:db_create(?RESOURCES_DB),
-    couch_mgr:revise_all_views(?RESOURCES_DB, stepswitch),
+    couch_mgr:revise_views_from_folder(?RESOURCES_DB, stepswitch),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -290,25 +290,30 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
 
     ?LOG_START("off-net resource bridge request to ~s for account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
 
-    Endpoints = case wh_json:get_value(<<"Flags">>, JObj) of
-                    undefined -> evaluate_number(Number, R1);
-                    Flags ->
-                        [?LOG("resource must have ~s flag", [F]) || F <- Flags],
-                        R2 = evaluate_flags(Flags, R1),
-                        evaluate_number(Number, R2)
-                end,
-
     Q = amqp_util:new_queue(),
     amqp_util:bind_q_to_callevt(Q, CallId),
     amqp_util:basic_consume(Q),
 
-    BridgeReq = build_bridge_request(JObj, Endpoints, Q),
+    BridgeReq = case gen_sever:call(stepswitch_inbound, {lookup_number, Number}) of
+                    {ok, AccountId} ->
+                        ?LOG("number belongs to another on-net account, loopback back to account ~s", [AccountId]),
+                        build_loopback_request(JObj, Number, Q);
+                    {error, _} ->
+                        Endpoints = case wh_json:get_value(<<"Flags">>, JObj) of
+                                        undefined -> evaluate_number(Number, R1);
+                                        Flags ->
+                                            [?LOG("resource must have ~s flag", [F]) || F <- Flags],
+                                            R2 = evaluate_flags(Flags, R1),
+                                            evaluate_number(Number, R2)
+                                    end,
+                        build_bridge_request(JObj, Endpoints, Q)
+                end,
 
     case length(wh_json:get_value(<<"Endpoints">>, BridgeReq, [])) of
         0 ->
             ?LOG_END("no offnet resources found for request, sending failure response"),
             respond_resource_failed({struct, [
-                                               {<<"Hangup-Cause">>, <<"NO_ROUTE_TRANSIT_NET">>}
+                                               {<<"Hangup-Cause">>, <<"NO_RESOURCES">>}
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
@@ -557,6 +562,40 @@ evaluate_rules([Regex|T], Number) ->
             evaluate_rules(T, Number)
     end.
 
+
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Builds the proplist for a whistle API bridge request from the
+%% off-net request, endpoints, and our AMQP Q
+%% @end
+%%--------------------------------------------------------------------
+-spec(build_loopback_request/3 :: (JObj :: json_object(), Number :: binary(), Q :: binary())
+                                -> proplist()).
+build_loopback_request(JObj, Number, Q) ->
+    Endpoint = [{<<"Invite-Format">>, <<"route">>}
+                ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
+                ,{<<"Custom-Channel-Vars">>, [{<<"Inter-Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}]}
+               ],
+    Command = [{<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, Endpoint}
+               ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
+               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
+               ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
+               ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
+               ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
+               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"Continue-On-Fail">>, <<"true">>}
+               ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
+               ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
+               ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+            ],
+    [ KV || {_, V}=KV <- Command, V =/= undefined ].
+
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -567,8 +606,7 @@ evaluate_rules([Regex|T], Number) ->
 -spec(build_bridge_request/3 :: (JObj :: json_object(), Endpoints :: endpoints(), Q :: binary())
                                 -> proplist()).
 build_bridge_request(JObj, Endpoints, Q) ->
-    Command = [
-                {<<"Application-Name">>, <<"bridge">>}
+    Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, build_endpoints(Endpoints, 0, [])}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}

@@ -52,5 +52,6 @@
             ,account_db = undefined :: binary() | undefined         %% The database name of the account that authorized this call
             ,account_id = undefined :: binary() | undefined         %% The account id that authorized this call
             ,authorizing_id = undefined :: binary() | undefined     %% The ID of the record that authorized this call
+            ,owner_id = undefined :: binary() | undefined           %% The ID of the that owns the authorizing endpoint
             ,channel_vars = undefined :: json_object() | undefined  %% Any custom channel vars that where provided with the route request
            }).
