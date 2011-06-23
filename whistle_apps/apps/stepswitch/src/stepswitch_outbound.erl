@@ -263,7 +263,7 @@ start_amqp() ->
         _ = amqp_util:resource_exchange(),
         Q = amqp_util:new_resource_queue(),
         amqp_util:bind_q_to_resource(Q, ?KEY_OFFNET_RESOURCE_REQ),
-        amqp_util:basic_consume(Q),
+        amqp_util:basic_consume(Q, [exclusive, false]),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
     catch
