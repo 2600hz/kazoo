@@ -562,9 +562,6 @@ evaluate_rules([Regex|T], Number) ->
             evaluate_rules(T, Number)
     end.
 
-
-
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -575,12 +572,12 @@ evaluate_rules([Regex|T], Number) ->
 -spec(build_loopback_request/3 :: (JObj :: json_object(), Number :: binary(), Q :: binary())
                                 -> proplist()).
 build_loopback_request(JObj, Number, Q) ->
-    Endpoint = [{<<"Invite-Format">>, <<"route">>}
-                ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
-                ,{<<"Custom-Channel-Vars">>, [{<<"Inter-Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}]}
-               ],
+    Endpoints = [{struct, [{<<"Invite-Format">>, <<"route">>}
+                          ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
+                          ,{<<"Custom-Channel-Vars">>, [{<<"Inter-Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}]}
+                         ]}],
     Command = [{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, Endpoint}
+               ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
