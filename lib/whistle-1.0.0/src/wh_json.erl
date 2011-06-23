@@ -8,6 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(wh_json).
 
+-export([get_binary_boolean/2]).
+-export([get_binary_value/2]).
+
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
 -export([delete_key/2]).
@@ -16,6 +19,20 @@
 -export([prune/2, no_prune/2]).
 
 -include_lib("whistle/include/whistle_types.hrl").
+
+-spec(get_binary_boolean/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+get_binary_boolean(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> whistle_util:to_binary(whistle_util:is_true(Value))
+    end.
+
+-spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+get_binary_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> whistle_util:to_binary(Value)
+    end.
 
 -spec(get_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | term()).
 get_value(Key, Doc) ->
@@ -145,7 +162,7 @@ prune([K|T], {struct, Doc}=JObj) ->
 	    end
     end;
 prune(_, []) -> [];
-prune([K|T], [_|_]=JObjs) -> 
+prune([K|T], [_|_]=JObjs) ->
     V = lists:nth(K, JObjs),
     case prune(T, V) of
 	?EMPTY_JSON_OBJECT ->
@@ -172,7 +189,7 @@ no_prune([K|T], {struct, Doc}=JObj) ->
 	    {struct, [{K, no_prune(T, V)} | lists:keydelete(K, 1, Doc)]}
     end;
 no_prune(_, []) -> [];
-no_prune([K|T], [_|_]=JObjs) when is_integer(K) -> 
+no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
     V = lists:nth(K, JObjs),
     V1 = no_prune(T, V),
     case V1 =:= V of
