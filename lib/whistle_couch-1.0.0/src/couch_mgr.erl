@@ -71,7 +71,7 @@
 -spec(load_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DbName, App, File) ->
     Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    logger:format_log(info, "Read into ~p from CouchDB dir: ~p~n", [DbName, Path]),
+    ?LOG_SYS("Read into ~p from CouchDB dir: ~p~n", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	?MODULE:save_doc(DbName, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
@@ -92,7 +92,7 @@ load_doc_from_file(DbName, App, File) ->
 -spec(update_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
-    logger:format_log(info, "Update into ~p from CouchDB dir: ~p~n", [DbName, Path]),
+    ?LOG_SYS("Update into ~p from CouchDB dir: ~p~n", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
