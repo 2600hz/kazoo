@@ -308,7 +308,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
         0 ->
             ?LOG_END("no offnet resources found for request, sending failure response"),
             respond_resource_failed({struct, [
-                                               {<<"Hangup-Cause">>, <<"NO_ROUTE_TRANSIT_NET">>}
+                                               {<<"Hangup-Cause">>, <<"NO_RESOURCES">>}
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
