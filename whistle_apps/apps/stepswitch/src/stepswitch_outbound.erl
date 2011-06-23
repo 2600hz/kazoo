@@ -294,7 +294,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
     amqp_util:bind_q_to_callevt(Q, CallId),
     amqp_util:basic_consume(Q),
 
-    BridgeReq = case gen_sever:call(stepswitch_inbound, {lookup_number, Number}) of
+    BridgeReq = case gen_server:call(stepswitch_inbound, {lookup_number, Number}) of
                     {ok, AccountId} ->
                         ?LOG("number belongs to another on-net account, loopback back to account ~s", [AccountId]),
                         build_loopback_request(JObj, Number, Q);
