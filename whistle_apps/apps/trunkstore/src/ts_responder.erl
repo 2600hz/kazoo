@@ -249,8 +249,6 @@ start_amqp() ->
     ReqQueue = amqp_util:new_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
     ReqQueue1 = amqp_util:new_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
 
-    ?LOG_SYS("Ensured ~s and ~s are up", [ReqQueue, ReqQueue1]),
-
     try
 	amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
 
