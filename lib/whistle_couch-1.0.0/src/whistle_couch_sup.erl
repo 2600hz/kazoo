@@ -26,7 +26,7 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
 				  ?CHILD(couch_mgr, worker)
+				  ,?CHILD(couch_compactor, worker)
 				  ,?CHILD(change_mgr_sup, supervisor)
-				  ,?CHILD(couch_compactor, supervisor)
 				 ]} }.
 
