@@ -57,8 +57,7 @@
 audio_macro(Commands, Call) ->
     audio_macro(Commands, Call, []).
 audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
-    Command = [
-                {<<"Application-Name">>, <<"queue">>}
+    Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Queue}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -106,8 +105,7 @@ set(ChannelVars, undefined, Call) ->
 set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, _) ->
     ok;
 set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"set">>}
+    Command = [{<<"Application-Name">>, <<"set">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Custom-Channel-Vars">>, ChannelVars}
                ,{<<"Custom-Call-Vars">>, CallVars}
@@ -134,8 +132,7 @@ set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
 fetch(Call) ->
     fetch(false, Call).
 fetch(FromOtherLeg, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"fetch">>}
+    Command = [{<<"Application-Name">>, <<"fetch">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"From-Other-Leg">>, FromOtherLeg}
                ,{<<"Call-ID">>, CallId}
@@ -165,8 +162,7 @@ b_fetch(FromOtherLeg, Call) ->
 -spec(b_answer/1 :: (Call :: #cf_call{}) -> cf_api_error()|tuple(ok, json_object())).
 
 answer(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"answer">>}
+    Command = [{<<"Application-Name">>, <<"answer">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
@@ -188,8 +184,7 @@ b_answer(Call) ->
 -spec(b_hangup/1 :: (Call :: #cf_call{}) -> tuple(ok, attended_transfer | channel_hungup)).
 
 hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"hangup">>}
+    Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -231,15 +226,18 @@ bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
     bridge(Endpoints, Timeout, CIDType, Strategy, <<"false">>, Call).
 bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
     bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, undefined, Call).
-bridge(Endpoints, Timeout, _CIDType, Strategy, IgnoreEarlyMedia, Ringback, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-%%    {CIDNum, CIDName} = cf_endpoint:get_caller_id(CIDType, Call),
-    Command = [
-                {<<"Application-Name">>, <<"bridge">>}
+bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
+       , #cf_call{call_id=CallId, amqp_q=AmqpQ, owner_id=OwnerId, authorizing_id=AuthId, inception=Inception}=Call) ->
+    {CIDNum, CIDName} = case Inception of
+                            <<"off-net">> -> {undefined, undefined};
+                            _ -> cf_attributes:caller_id(CIDType, AuthId, OwnerId, Call)
+                        end,
+    Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-%               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-%               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, Ringback}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
                ,{<<"Call-ID">>, CallId}
@@ -279,8 +277,7 @@ b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call
 play(Media, Call) ->
     play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"play">>}
+    Command = [{<<"Application-Name">>, <<"play">>}
                ,{<<"Media-Name">>, Media}
                ,{<<"Terminators">>, Terminators}
                ,{<<"Call-ID">>, CallId}
@@ -296,8 +293,7 @@ b_play(Media, Terminators, Call) ->
     wait_for_message(<<"play">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, false).
 
 play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
-    [
-      {<<"Application-Name">>, <<"play">>}
+    [{<<"Application-Name">>, <<"play">>}
      ,{<<"Media-Name">>, Media}
      ,{<<"Terminators">>, Terminators}
      ,{<<"Call-ID">>, CallId}
@@ -331,8 +327,7 @@ record(MediaName, Terminators, TimeLimit, Call) ->
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"record">>}
+    Command = [{<<"Application-Name">>, <<"record">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Terminators">>, Terminators}
                ,{<<"Time-Limit">>, TimeLimit}
@@ -371,8 +366,7 @@ store(MediaName, Transfer, Call) ->
 store(MediaName, Transfer, Method, Call) ->
     store(MediaName, Transfer, Method, [?EMPTY_JSON_OBJECT], Call).
 store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"store">>}
+    Command = [{<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Media-Transfer-Method">>, Method}
                ,{<<"Media-Transfer-Destination">>, Transfer}
@@ -394,8 +388,7 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
 -spec(tones/2 :: (Tones :: json_objects(), Call :: #cf_call{}) -> ok).
 
 tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"tones">>}
+    Command = [{<<"Application-Name">>, <<"tones">>}
                ,{<<"Tones">>, Tones}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -405,8 +398,7 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
 
 -spec(tones_command/2 :: (Tones :: list(integer()), Call :: #cf_call{}) -> json_object()).
 tones_command(Tones, #cf_call{call_id=CallId}) ->
-    {struct, [
-	      {<<"Application-Name">>, <<"tones">>}
+    {struct, [{<<"Application-Name">>, <<"tones">>}
 	      ,{<<"Tones">>, Tones}
 	      ,{<<"Call-ID">>, CallId}
 	     ]}.
@@ -446,8 +438,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, [<<"#">>], Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"play_and_collect_digits">>}
+    Command = [{<<"Application-Name">>, <<"play_and_collect_digits">>}
                ,{<<"Minimum-Digits">>, MinDigits}
                ,{<<"Maximum-Digits">>, MaxDigits}
                ,{<<"Timeout">>, Timeout}
@@ -506,8 +497,7 @@ say(Say, Type, Call) ->
 say(Say, Type, Method, Call) ->
     say(Say, Type, Method, <<"en">>, Call).
 say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"say">>}
+    Command = [{<<"Application-Name">>, <<"say">>}
                ,{<<"Say-Text">>, Say}
                ,{<<"Type">>, Type}
                ,{<<"Method">>, Method}
@@ -519,8 +509,7 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     send_callctrl(Payload, Call).
 
 say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
-    [
-      {<<"Application-Name">>, <<"say">>}
+    [{<<"Application-Name">>, <<"say">>}
      ,{<<"Say-Text">>, Say}
      ,{<<"Type">>, Type}
      ,{<<"Method">>, Method}
@@ -562,8 +551,7 @@ conference(ConfId, Mute, Call) ->
 conference(ConfId, Mute, Deaf, Call) ->
     conference(ConfId, Mute, Deaf, <<"false">>, Call).
 conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"conference">>}
+    Command = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Mute">>, Mute}
                ,{<<"Deaf">>, Deaf}
@@ -594,8 +582,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
 -spec(b_noop/1 :: (Call :: #cf_call{}) -> cf_api_std_return()).
 
 noop(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"noop">>}
+    Command = [{<<"Application-Name">>, <<"noop">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
@@ -616,8 +603,7 @@ b_noop(Call) ->
 -spec(flush/1 :: (Call :: #cf_call{}) -> cf_api_std_return()).
 
 flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    Command = [
-                {<<"Application-Name">>, <<"noop">>}
+    Command = [{<<"Application-Name">>, <<"noop">>}
                ,{<<"Insert-At">>, <<"flush">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -871,7 +857,6 @@ wait_for_store(Call) ->
 send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
     amqp_util:callctl_publish(CtrlQ, Payload).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -895,10 +880,3 @@ find_failure_branch(Error, #cf_call{cf_pid=CFPid}) ->
         1000 ->
             false
     end.
-
-get_caller_id(_, #cf_call{inception = <<"off-net">>, cid_number=CIDNum, cid_name=CIDName}) ->
-    %% reformat
-    {CIDNum, CIDName};
-get_caller_id(undefined, #cf_call{authorizing_id=AuthID}) ->
-    {<<>>, <<>>}.
-    %% fetch_caller_id(<<"external">>, Db, AuthId)

@@ -35,12 +35,14 @@ start_link(Call, Flow) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec(init/3 :: (Parent :: pid(), Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
-init(Parent, Call, Flow) ->
+init(Parent, #cf_call{authorizing_id=AuthId}=Call, Flow) ->
     process_flag(trap_exit, true),
     _ = call_info(Call),
     AmqpQ = init_amqp(Call),
     proc_lib:init_ack(Parent, {ok, self()}),
-    _ = next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow).
+    _ = next(Call#cf_call{cf_pid=self()
+                          ,amqp_q=AmqpQ
+                          ,owner_id=cf_attributes:owner_id(AuthId, Call)}, Flow).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -76,7 +78,7 @@ next(Call, Flow) ->
 wait(Call, Flow, Pid) ->
    receive
        {'EXIT', Pid, Reason} when Reason =/= normal ->
-           ?LOG("action ~w died unexpectedly", [Pid]),
+           ?LOG("action ~w died unexpectedly, ~p", [Pid, Reason]),
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue} ->

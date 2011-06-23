@@ -1,0 +1,18 @@
+{
+   "_id": "_design/cf_attributes",
+   "language": "javascript",
+   "views": {
+       "caller_id": {
+           "map": "function(doc) { if (!doc.caller_id || doc.pvt_deleted) return; emit(doc._id, doc.caller_id); }"
+       },
+       "caller_id_options": {
+           "map": "function(doc) { if (!doc.caller_id_options || doc.pvt_deleted) return; emit(doc._id, doc.caller_id_options); }"
+       },
+       "call_forward": {
+           "map": "function(doc) { if (!doc.call_forward.enabled || doc.pvt_deleted) return; emit(doc._id, doc.call_forward); }"
+       },
+       "owner": {
+           "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit(doc._id, doc.owner_id); }"
+       }
+   }
+}

@@ -59,6 +59,8 @@ start_link() ->
 %------------------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new callflow responder"),
+    ?LOG("ensuring callflow views exist in all accounts"),
+    whapps_util:revise_whapp_views_in_accounts(callflow),
     {ok, #state{self=self()}, 0}.
 
 %------------------------------------------------------------------------------
@@ -321,8 +323,7 @@ lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}=Call) ->
 %%-----------------------------------------------------------------------------
 -spec(send_route_response/2 :: (Call :: #cf_call{}, JObj :: json_object()) -> no_return()).
 send_route_response(#cf_call{channel_vars=CVs, bdst_q=Q}, JObj) ->
-    Resp = [
-             {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             ,{<<"channel_vars">>, CVs}

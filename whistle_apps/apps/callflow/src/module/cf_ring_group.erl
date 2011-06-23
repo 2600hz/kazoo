@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/5, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -29,7 +29,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
+    case b_bridge(Endpoints, Timeout, <<"internal">>, Strategy, <<"true">>, Call) of
         {ok, _} ->
             ?LOG("bridged to ring group"),
             _ = wait_for_unbridge(),
@@ -55,13 +55,9 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 -spec(get_endpoints/2 :: (Data :: json_object(), Call :: #cf_call{}) -> json_objects()).
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
-                        try
-                            {ok, {struct, Props}=E} = cf_endpoint:build(wh_json:get_value(<<"id">>, Member), Call),
-                            case wh_json:get_value(<<"delay">>, Member) of
-                                undefined -> [E|Acc];
-                                Delay -> [{struct, [{<<"Endpoint-Delay">>, Delay}|Props]}|Acc]
-                            end
-                        catch
-                            _:_ -> Acc
+                        EndpointId = wh_json:get_value(<<"id">>, Member),
+                        case cf_endpoint:build(EndpointId, Member, Call) of
+                            {ok, Endpoint} -> Endpoint ++ Acc;
+                            {error, _} -> Acc
                         end
                 end, [], wh_json:get_value([<<"endpoints">>], Data, [])).
