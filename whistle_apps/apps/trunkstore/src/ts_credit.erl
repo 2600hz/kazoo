@@ -27,6 +27,7 @@ start_link() ->
 	    {ok, _} -> ok;
 	    _ -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>)
 	end,
+    ?LOG("setup ~s DB for rates", [?TS_RATES_DB]),
     ignore.
 
 -spec(reserve/5 :: (ToDID :: binary(), CallID :: binary(), AcctID :: binary(), Direction :: inbound | outbound, RouteOpts :: list(binary()) | []) -> tuple(ok, proplist())).
@@ -76,12 +77,13 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
     <<Start:1/binary, _/binary>> = Number = whistle_util:to_1npan(To),
     case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, whistle_util:to_integer(Start)}
 									    ,{<<"endkey">>, whistle_util:to_integer(Number)}]) of
-	{ok, []} -> {error, no_route_found};
-	{error, _} -> {error, no_route_found};
+	{ok, []} -> ?LOG("No results"), {error, no_route_found};
+	{error, _E} -> ?LOG("Error in lookup: ~p", [_E]), {error, no_route_found};
 	{ok, Rates} ->
+	    ?LOG("Rates found: ~b", [length(Rates)]),
 	    Matching = filter_rates(To, Direction, RouteOptions, Rates),
 	    case lists:usort(fun sort_rates/2, Matching) of
-		[] -> {error, no_route_found};
+		[] -> ?LOG("No rates left after filter"), {error, no_route_found};
 		[Rate|_] ->
 		    %% wh_timer:tick("post usort data found"),
 		    ?LOG("Rate to use: ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
@@ -91,8 +93,10 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 
 		    case ts_acctmgr:reserve_trunk(AccountDocId, CallID, BaseCost, FlatRateEnabled) of
 			{ok, flat_rate} ->
+			    ?LOG("flat rate trunk reserved"),
 			    {ok, set_flat_flags(Flags, Direction)};
 			{ok, per_min} ->
+			    ?LOG("per minute trunk reserved. at cost ~p", [BaseCost]),
 			    {ok, set_rate_flags(Flags, Direction, Rate)};
 			{error, entry_exists}=E ->
 			    ?LOG("Failed reserving a trunk; call-id exists in DB"),
@@ -176,5 +180,9 @@ set_flat_flags(Flags, <<"outbound">>) ->
 -spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary()) | json_object()) -> boolean()).
 options_match(RouteOptions, {struct, RateOptions}) ->
     options_match(RouteOptions, RateOptions);
+options_match([], []) ->
+    true;
+options_match([], _) ->
+    true;
 options_match(RouteOptions, RateOptions) ->
     lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).

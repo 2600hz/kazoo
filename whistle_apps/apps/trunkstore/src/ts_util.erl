@@ -122,6 +122,7 @@ lookup_did(DID) ->
 	{error, not_found} ->
 	    %% wh_timer:tick("lookup_did/1 cache miss"),
 	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
+		{ok, []} -> {error, no_did_found};
 		{ok, [{struct, _}=ViewJObj]} ->
 		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
 		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),

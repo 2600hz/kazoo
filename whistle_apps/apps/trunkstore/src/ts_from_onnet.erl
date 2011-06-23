@@ -38,6 +38,7 @@ init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put(callid, CallID),
+    ?LOG("Init done"),
     start_amqp(#state{aleg_callid=CallID, route_req_jobj=RouteReqJObj}).
 
 start_amqp(#state{route_req_jobj=JObj}=State) ->
@@ -47,6 +48,7 @@ start_amqp(#state{route_req_jobj=JObj}=State) ->
     _ = amqp_util:bind_q_to_targeted(Q),
     amqp_util:basic_consume(Q, [{exclusive, false}]),
 
+    ?LOG("Started AMQP with queue ~s", [Q]),
     onnet_data(State#state{my_q=Q}, JObj).
 
 onnet_data(#state{aleg_callid=CallID, my_q=Q}=State, JObj) ->
@@ -57,6 +59,9 @@ onnet_data(#state{aleg_callid=CallID, my_q=Q}=State, JObj) ->
     ToDID = whistle_util:to_e164(ToUser),
 
     FromUser = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
+
+    ?LOG("From ~s(~s) to ~s", [FromUser, AcctID, ToDID]),
+
     DIDJObj = case ts_util:lookup_did(FromUser) of
 		  {ok, DIDFlags} -> DIDFlags;
 		  _ -> ?EMPTY_JSON_OBJECT
@@ -90,8 +95,8 @@ send_park(#state{route_req_jobj=JObj, my_q=Q}=State, Command) ->
 		       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
 	    },
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    JSON = whistle_api:route_resp(JObj1),
-    ?LOG("Sending to ~s: ~s", [RespQ, JSON]),
+    {ok, JSON} = whistle_api:route_resp(JObj1),
+    ?LOG("Sending park to ~s: ~s", [RespQ, JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>),
 
     wait_for_win(State, Command, ?WAIT_FOR_WIN_TIMEOUT).

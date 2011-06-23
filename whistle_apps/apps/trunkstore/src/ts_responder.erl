@@ -106,13 +106,20 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, S) ->
+handle_info(timeout, #state{is_amqp_up=false}=S) ->
     {ok, CQ} = start_amqp(),
     ?LOG_SYS("Starting up responder with AMQP Queue: ~s", [CQ]),
     {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
 
+handle_info(timeout, #state{is_amqp_up=true}=S) ->
+    {noreply, S};
+
 handle_info({amqp_host_down, H}, S) ->
     ?LOG_SYS("AMQP Host(~s) down", [H]),
+    {noreply, S#state{is_amqp_up=false}, 1000};
+
+handle_info({amqp_lost_channel, no_connection}, S) ->
+    ?LOG_SYS("AMQP channel lost due to no connection"),
     {noreply, S#state{is_amqp_up=false}, 1000};
 
 handle_info(Req, #state{is_amqp_up=false}=S) ->
@@ -196,7 +203,7 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
 	    ?LOG_END("Authentication request error: ~p", [_Msg])
     end
     catch
-	A:B ->
+	A:{error,B} ->
 	    ?LOG_END("Authentication request exception: ~s:~w", [A, B]),
 	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()])
     end;
@@ -213,12 +220,12 @@ process_req({<<"dialplan">>,<<"route_req">>}, ApiJObj) ->
             {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
                 %% Coming from PBX (on-net); authed by Registrar or ts_auth
                 ?LOG_START(CallID, "Onnet call starting", []),
-                ts_onnet_sup:start_handler(wh_json:set_value(<<"Direction">>, <<"outbound">>, ApiJObj));
+                ts_onnet_sup:start_handler(wh_json:set_value([<<"Direction">>], <<"outbound">>, ApiJObj));
             {_AcctID, _AuthID} ->
                 ?LOG("Error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID])
         end
     catch
-	A:B ->
+	A:{error,B} ->
 	    ?LOG_END("Route request exception: ~p:~p", [A, B]),
 	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()])
     end;
