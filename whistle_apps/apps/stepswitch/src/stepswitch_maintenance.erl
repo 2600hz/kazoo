@@ -206,7 +206,14 @@ get_trunkstore_account_numbers(Account) ->
 -spec(reconcile_account_route/2 :: (AccountId :: binary(), Numbers :: json_object())
                                    -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
 reconcile_account_route(AccountId, ?EMPTY_JSON_OBJECT) ->
-    {error, skipped};
+    case couch_mgr:lookup_doc_rev(?ROUTES_DB, AccountId) of
+        {ok, Rev} ->
+            ?LOG("account ~s no longer has any routes", [AccountId]),
+            couch_mgr:del_doc(?ROUTES_DB, {struct, [{<<"_id">>, AccountId}, {<<"_rev">>, Rev}]});
+        {error, _} ->
+            ?LOG("account ~s has no routes", [AccountId]),
+            {error, skipped}
+    end;
 reconcile_account_route(AccountId, Numbers) ->
     ?LOG_SYS("reconsiled route for ~s", [AccountId]),
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
