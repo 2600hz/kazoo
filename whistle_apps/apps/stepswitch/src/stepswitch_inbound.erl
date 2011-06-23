@@ -58,7 +58,7 @@ start_link() ->
 init([]) ->
     ?LOG_SYS("ensuring database ~s exists", [?ROUTES_DB]),
     couch_mgr:db_create(?ROUTES_DB),
-    couch_mgr:revise_all_views(?ROUTES_DB, stepswitch),
+    couch_mgr:revise_views_from_folder(?ROUTES_DB, stepswitch),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -241,7 +241,9 @@ inbound_handler(JObj) ->
     case lookup_account_by_number(Number) of
         {ok, AccountId} ->
             ?LOG("number associated with account ~s", [AccountId]),
-            relay_route_req(wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, <<>>), JObj));
+            relay_route_req(
+              wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined), JObj)
+             );
         {error, R} ->
             ?LOG_END("unable to get account id ~w", [R])
     end.
@@ -297,11 +299,11 @@ lookup_account_by_number(Number) ->
 %%--------------------------------------------------------------------
 -spec(custom_channel_vars/2 :: (AccountId :: binary(), AuthId :: binary()) -> json_object()).
 custom_channel_vars(AccountId, AuthId) ->
-    {struct, [
-               {<<"Account-ID">>, AccountId}
-              ,{<<"Inception">>, <<"off-net">>}
-              ,{<<"Authorizing-ID">>, AuthId}
-             ]}.
+    Vars = [{<<"Account-ID">>, AccountId}
+            ,{<<"Inception">>, <<"off-net">>}
+            ,{<<"Authorizing-ID">>, AuthId}
+            ],
+    {struct, [ KV || {_, V}=KV <- Vars, V =/= undefined ]}.
 
 %%--------------------------------------------------------------------
 %% @private
