@@ -69,10 +69,10 @@ init([]) ->
         true -> ok;
         false ->
             true = filelib:is_regular(WSDLFile),
-            ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
+            ok = detergent:write_hrl(WSDLFile, WSDLHrlFile, undefined) %% no prefix
     end,
 
-    {ok, #state{wsdl_model=detergent:initModel(WSDLFile)}, 0}.
+    {ok, #state{wsdl_model=detergent:initModel(WSDLFile, undefined)}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,6 +131,9 @@ handle_info({_, #amqp_msg{payload=Payload}}, #state{wsdl_model=WsdlModel}=State)
 handle_info({amqp_host_down, _H}, State) ->
     ?LOG_SYS("Amqp host went down: ~s", [_H]),
     {noreply, State#state{is_amqp_up=false}, 0};
+
+handle_info(#'basic.consume_ok'{}, State) ->
+    {noreply, State};
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~w", [_Info]),
@@ -191,7 +194,7 @@ handle_amqp_msg(Payload, WsdlModel) ->
     DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec, 1970),
     ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
 
-    Call = #'p:CallRecord'{
+    Call = #'CallRecord'{
       'CustomerID' = whistle_util:to_list(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"0000000000">>))
       ,'BatchID' = whistle_util:to_list(wh_json:get_value(<<"Msg-ID">>, JObj, now_to_date(whistle_util:current_tstamp())))
       ,'OriginatingNumber' = whistle_util:to_list(wh_json:get_value(<<"Caller-ID-Number">>, JObj))
@@ -220,8 +223,8 @@ handle_amqp_msg(Payload, WsdlModel) ->
     ?LOG(CallID, "Recv from DTH: ~w", [Resp]),
     io:format("Resp from call: ~p~n", [Resp]).
 
-%% {"Other-Leg-Call-ID":"ynmhvfajysowxni@thinky64.2600hz.com","User-Agent":"PolycomSoundPointIP-SPIP_550-UA/3.3.1.0933","Callee-ID-Number":"1000","Callee-ID-Name":"Hello World","Caller-ID-Number":"1000","Caller-ID-Name":"Hello World","Local-SDP":"v=0\r\no=twinkle 138259549 1503719914 IN IP4 76.217.208.155\r\ns=-\r\nc=IN IP4 76.217.208.155\r\nt=0 0\r\nm=audio 8000 RTP/AVP 98 97 8 0 3 101\r\na=rtpmap:98 speex/16000\r\na=rtpmap:97 speex/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:3 GSM/8000\r\na=rtpmap:101 telephone-event/8000\r\na=fmtp:101 0-15\r\na=ptime:20\r\n","Remote-SDP":"v=0\r\no=- 1308348029 1308348029 IN IP4 76.217.208.155\r\ns=Polycom IP Phone\r\nc=IN IP4 76.217.208.155\r\nt=0 0\r\nm=audio 2228 RTP/AVP 8 127\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:127 telephone-event/8000\r\na=oldmediaip:192.168.1.79\r\na=oldmediaip:192.168.1.79\r\n","Custom-Channel-Vars":{"Authorizing-ID":"692de45541050fab4315036c712aa208","Inception":"on-net","Account-ID":"04152ed2b428922e99ac66f3a71b0215","Realm":"kanderson.pbx.dev.2600hz.com","Username":"kanderson_1","Access-Group":"ignore","Tenant-ID":"ignore"},"Digits-Dialed":"none","Ringing-Seconds":"0","Billing-Seconds":"8","Duration-Seconds":"11","From-Uri":"1000@184.106.189.224","To-Uri":"kanderson_2@76.217.208.155:5060","Call-Direction":"outbound","Timestamp":"1308348044434992","Call-ID":"0ba7d53f-9d74-4b47-af1f-8c0eb83e32f6","Handling-Server-Name":"fs002-dev-ord.2600hz.com","Hangup-Cause":"NORMAL_CLEARING","App-Version":"0.7.2","App-Name":"ecallmgr","Event-Name":"cdr","Event-Category":"call_detail","Server-ID":""}
-
+-spec(now_to_date/1 :: (Secs :: integer()) -> binary()).
+-spec(now_to_date/2 :: (Secs :: integer(), ExtraYears :: non_neg_integer()) -> binary()).
 now_to_date(Secs) ->
     now_to_date(Secs, 0).
 now_to_date(Secs, ExtraYears) ->
@@ -229,6 +232,8 @@ now_to_date(Secs, ExtraYears) ->
       iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w",
                     [YY+ExtraYears, MM, DD])).
 
+-spec(now_to_datetime/1 :: (Secs :: integer()) -> binary()).
+-spec(now_to_datetime/2 :: (Secs :: integer(), ExtraYears :: non_neg_integer()) -> binary()).
 now_to_datetime(Secs) ->
     now_to_datetime(Secs, 0).
 now_to_datetime(Secs, ExtraYears) ->
