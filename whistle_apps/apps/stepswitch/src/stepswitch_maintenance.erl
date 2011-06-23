@@ -153,7 +153,7 @@ reconcile_trunkstore() ->
                  Numbers = get_trunkstore_account_numbers(AccountId),
                  reconcile_account_route(AccountId, Numbers)
              end
-             || Account <- JObj, is_trunkstore_account(Account)],
+             || Account <- JObj],
             ok;
         {error, _}=E ->
             E
@@ -168,10 +168,7 @@ reconcile_trunkstore() ->
 %%--------------------------------------------------------------------
 -spec(is_trunkstore_account/1 :: (JObj :: json_object()) -> boolean()).
 is_trunkstore_account(JObj) ->
-    case wh_json:get_value(<<"id">>, JObj) of
-        <<"info_", _/binary>> -> true;
-        _ -> false
-    end.
+    wh_json:get_value(<<"type">>, JObj) =:= <<"sys_info">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -184,13 +181,17 @@ is_trunkstore_account(JObj) ->
 get_trunkstore_account_numbers(Account) ->
     case couch_mgr:open_doc(?TS_DB, Account) of
         {ok, JObj} ->
-            Assigned = [wh_json:get_value(<<"DIDs">>, Server, ?EMPTY_JSON_OBJECT)
-                        || Server <- wh_json:get_value(<<"servers">>, JObj, ?EMPTY_JSON_OBJECT)],
-            Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, ?EMPTY_JSON_OBJECT)],
-            {struct, lists:foldr(fun({struct, Numbers}, Acc) ->
-                                         Numbers ++ Acc;
-                                    (_, Acc) -> Acc
-                        end, [], Assigned ++ Unassigned)};
+	    case is_trunkstore_account(JObj) of
+		true ->
+		    Assigned = [wh_json:get_value(<<"DIDs">>, Server, ?EMPTY_JSON_OBJECT)
+				|| Server <- wh_json:get_value(<<"servers">>, JObj, ?EMPTY_JSON_OBJECT)],
+		    Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, ?EMPTY_JSON_OBJECT)],
+		    {struct, lists:foldr(fun({struct, Numbers}, Acc) ->
+						 Numbers ++ Acc;
+					    (_, Acc) -> Acc
+					 end, [], Assigned ++ Unassigned)};
+		false -> ?EMPTY_JSON_OBJECT
+	    end;
         {error, _} ->
             ?EMPTY_JSON_OBJECT
     end.
@@ -204,6 +205,8 @@ get_trunkstore_account_numbers(Account) ->
 %%--------------------------------------------------------------------
 -spec(reconcile_account_route/2 :: (AccountId :: binary(), Numbers :: json_object())
                                    -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
+reconcile_account_route(AccountId, ?EMPTY_JSON_OBJECT) ->
+    {error, skipped};
 reconcile_account_route(AccountId, Numbers) ->
     ?LOG_SYS("reconsiled route for ~s", [AccountId]),
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
