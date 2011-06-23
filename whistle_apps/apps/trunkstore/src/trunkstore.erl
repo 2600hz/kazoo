@@ -1,7 +1,7 @@
 -module(trunkstore).
 
 -author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0]).
+-export([start/0, start_link/0, stop/0, start_deps/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree

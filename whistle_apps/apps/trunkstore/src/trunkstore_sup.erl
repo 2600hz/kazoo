@@ -17,6 +17,9 @@
 %% ===================================================================
 -spec(start_link/0 :: () -> tuple(ok, pid()) | ignore | tuple(error, term())).
 start_link() ->
+    trunkstore:start_deps(),
+    trunkstore_app:setup_views(),
+    trunkstore_app:setup_base_docs(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
@@ -28,8 +31,8 @@ init([]) ->
 	   , [
 	      ?CHILD(ts_call_sup, supervisor)
 	      ,?CHILD(ts_responder_sup, supervisor)
+	      ,?CHILD(ts_responder, worker)
 	      ,?CHILD(ts_acctmgr, worker)
-	      ,?CHILD(ts_carrier, worker)
 	      ,?CHILD(ts_credit, worker)
               ,?CHILD(ts_cdr, worker)
 	      ,?CHILD(ts_onnet_sup, supervisor)

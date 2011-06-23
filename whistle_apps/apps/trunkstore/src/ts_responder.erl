@@ -16,7 +16,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, start_responder/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,7 +29,7 @@
 -define(AUTH_QUEUE_NAME, <<"ts_responder.auth.queue">>).
 
 -record(state, {
-	  is_amqp_up = true :: boolean()
+	  is_amqp_up = false :: boolean()
 	 }).
 
 %%%===================================================================
@@ -44,6 +44,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
+    spawn(fun() -> [ ts_responder_sup:start_handler() || _ <- [1,2,3] ] end),
+    ignore.
+
+start_responder() ->
+    ?LOG("Starting responder"),
     gen_server:start_link(?MODULE, [], []).
 
 %%%===================================================================
@@ -64,6 +69,7 @@ start_link() ->
 init([]) ->
     process_flag(trap_exit, true),
     couch_mgr:db_create(?TS_DB),
+    ?LOG_SYS("Ensured ~s is created", [?TS_DB]),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -107,6 +113,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{is_amqp_up=false}=S) ->
+    ?LOG_SYS("starting amqp"),
     {ok, CQ} = start_amqp(),
     ?LOG_SYS("Starting up responder with AMQP Queue: ~s", [CQ]),
     {noreply, S#state{is_amqp_up=is_binary(CQ)}, 1000};
@@ -239,21 +246,31 @@ send_resp(JSON, RespQ) ->
 
 -spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
 start_amqp() ->
-    ReqQueue = amqp_util:new_callmgr_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
-    ReqQueue1 = amqp_util:new_callmgr_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
+    ReqQueue = amqp_util:new_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
+    ReqQueue1 = amqp_util:new_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
+
+    ?LOG_SYS("Ensured ~s and ~s are up", [ReqQueue, ReqQueue1]),
 
     try
 	amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
+
+	?LOG_SYS("QOS=1 set"),
 
 	%% Bind the queue to an exchange
 	_ = amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
 	_ = amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
 
+	?LOG_SYS("Bound queues"),
+
 	%% Register a consumer to listen to the queue
 	amqp_util:basic_consume(ReqQueue, [{exclusive, false}]),
 	amqp_util:basic_consume(ReqQueue1, [{exclusive, false}]),
 
+	?LOG_SYS("Consuming"),
+
 	{ok, ReqQueue}
     catch
-	_:_ -> {error, amqp_error}
+	_A:_B ->
+	    ?LOG_SYS("Error starting AMQP: ~p: ~p", [_A, _B]),
+	    {error, amqp_error}
     end.
