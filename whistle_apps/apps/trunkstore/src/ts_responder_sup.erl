@@ -63,7 +63,7 @@ init([]) ->
     Shutdown = 2000,
     Type = worker,
 
-    AChild = {ts_responder, {ts_responder, start_link, []},
+    AChild = {ts_responder, {ts_responder, start_responder, []},
 	      Restart, Shutdown, Type, [ts_responder]},
 
     {ok, {SupFlags, [AChild]}}.
