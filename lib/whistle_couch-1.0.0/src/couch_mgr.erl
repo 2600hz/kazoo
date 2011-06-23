@@ -22,8 +22,8 @@
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, del_docs/2, lookup_doc_rev/2]).
--export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3]).
--export([revise_all_views/2, ensure_saved/2]).
+-export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3, revise_doc_from_file/3]).
+-export([revise_docs_from_folder/3, revise_views_from_folder/2, ensure_saved/2]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1, admin_all_design_docs/1]).
 
@@ -109,24 +109,50 @@ update_doc_from_file(DbName, App, File) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Loads all views in an applications priv/couchdb/views/ folder into
-%% a given database
+%% Create or overwrite the existing contents of a document with the
+%% contents of a file
 %% @end
 %%--------------------------------------------------------------------
--spec(revise_all_views/2 :: (DbName :: binary(), App :: atom()) -> ok).
-revise_all_views(DbName, App) ->
-    Views = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/views/*.json"])),
-    do_revise_all_views(DbName, Views).
+-spec(revise_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+revise_doc_from_file(DbName, App, File) ->
+    case ?MODULE:update_doc_from_file(DbName, App, File) of
+        {error, _} ->
+            ?MODULE:load_doc_from_file(DbName, App, File);
+        {ok, _} -> ok
+    end.
 
--spec(do_revise_all_views/2 :: (Db :: binary(), Views :: [string()]|[]) -> ok).
-do_revise_all_views(_, []) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Loads all .json files in an applications priv/couchdb/views/ folder
+%% into a given database
+%% @end
+%%--------------------------------------------------------------------
+-spec(revise_views_from_folder/2 :: (DbName :: binary(), App :: atom()) -> ok).
+revise_views_from_folder(DbName, App) ->
+    revise_docs_from_folder(DbName, App, "views").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Loads all .json files in an applications folder, relative to
+%% priv/couchdb/ into a given database
+%% @end
+%%--------------------------------------------------------------------
+-spec(revise_docs_from_folder/3 :: (DbName :: binary(), App :: atom(), Folder :: list()) -> ok).
+revise_docs_from_folder(DbName, App, Folder) ->
+    Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
+    do_revise_docs_from_folder(DbName, Files).
+
+-spec(do_revise_docs_from_folder/2 :: (Db :: binary(), Views :: [string()]|[]) -> ok).
+do_revise_docs_from_folder(_, []) ->
     ok;
-do_revise_all_views(DbName, [H|T]) ->
+do_revise_docs_from_folder(DbName, [H|T]) ->
     {ok, Bin} = file:read_file(H),
     case ?MODULE:save_doc(DbName, mochijson2:decode(Bin)) of
         {ok, _} ->
             ?LOG_SYS("loaded view ~s into ~s", [H, DbName]),
-            do_revise_all_views(DbName, T);
+            do_revise_docs_from_folder(DbName, T);
         {error, conflict} ->
             {struct, Prop} = mochijson2:decode(Bin),
             DocId = props:get_value(<<"_id">>, Prop),
@@ -134,14 +160,14 @@ do_revise_all_views(DbName, [H|T]) ->
             case ?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]}) of
                 {ok, _} ->
                     ?LOG_SYS("updated view ~s in ~s", [H, DbName]),
-                    do_revise_all_views(DbName, T);
+                    do_revise_docs_from_folder(DbName, T);
                 {error, Reason} ->
                     ?LOG_SYS("failed to update view ~s in ~s, ~w", [H, DbName, Reason]),
-                    do_revise_all_views(DbName, T)
+                    do_revise_docs_from_folder(DbName, T)
             end;
         {error, Reason} ->
             ?LOG_SYS("failed to load view ~s into ~s, ~w", [H, DbName, Reason]),
-            do_revise_all_views(DbName, T)
+            do_revise_docs_from_folder(DbName, T)
     end.
 
 %%--------------------------------------------------------------------
