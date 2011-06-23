@@ -33,6 +33,7 @@
           ,orig_worker_count = ?WORKER_COUNT :: integer() % scale back workers after a period of time
           ,workers = queue:new() :: queue()
           ,requests_per = 0 :: non_neg_integer()
+	  ,amqp_ref = undefined :: undefined | reference() 
 	 }).
 
 %%%===================================================================
@@ -124,6 +125,7 @@ handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_coun
 	    {noreply, State#state{workers=W1, requests_per=RP+1}};
 	{empty, _} ->
 	    Worker = start_worker(),
+	    ?LOG("Starting extra worker: ~p", [Worker]),
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
 	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}}
     end.
@@ -152,23 +154,55 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
+    ?LOG("checking worker totals"),
     Count = case WC-queue:len(Ws) of X when X < 0 -> 0; Y -> Y end,
+    ?LOG("adding ~b workers", [Count]),
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
-    {ok, _} = timer:send_interval(?BACKOFF_PERIOD, reduce_labor_force),
+    erlang:start_timer(?BACKOFF_PERIOD, self(), reduce_labor_force),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
 handle_info({worker_free, W}, #state{workers=Ws}=State) ->
     {noreply, State#state{workers=queue:in(W, Ws)}};
 
+handle_info({'EXIT', W, amqp_host_down}, #state{workers=Ws, amqp_ref=undefined}=State) ->
+    ?LOG("AMQP Host down, ~p exited, starting timer", [W]),
+    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
+    Ref = erlang:start_timer(1000, self(), {amqp_check, 1000}),
+    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1, amqp_ref=Ref}};
+
+handle_info({'EXIT', W, amqp_host_down}, #state{workers=Ws}=State) ->
+    ?LOG("AMQP Host down, ~p exited", [W]),
+    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
+    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1}};
+
+handle_info({timeout, Ref, {amqp_check, LastTimeout}}, #state{amqp_ref=Ref}=State) ->
+    ?LOG("Check AMQP"),
+    case amqp_util:is_host_available() of
+	true -> {noreply, State#state{worker_count=0, workers=queue:new(), amqp_ref=undefined}, 0};
+	false ->
+	    NewT = LastTimeout*2,
+	    Timeout = case NewT > ?BACKOFF_PERIOD of true -> ?BACKOFF_PERIOD; false -> NewT end,
+	    Ref1 = erlang:start_timer(Timeout, self(), {amqp_check, Timeout}),
+	    {noreply, State#state{amqp_ref=Ref1}}
+    end;
+
+handle_info({'EXIT', W, _Reason}, #state{workers=Ws, amqp_ref=Ref}=State) when is_reference(Ref) ->
+    ?LOG("Worker down, amqp_ref set so wait: ~p", [_Reason]),
+    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) when WC < OWC ->
+    ?LOG("Worker down: ~p", [_Reason]),
     Ws1 = queue:in(start_worker(), queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws}=State) ->
+    ?LOG("Worker down: ~p", [_Reason]),
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
-handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC andalso WC > OWC ->
+handle_info({timeout, _, reduce_labor_force}
+	    ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC andalso WC > OWC ->
     ?LOG("Reducing back to original labor force of ~p from ~p", [OWC, WC]),
     Ws1 = lists:foldl(fun(_, Q0) ->
 			      case queue:len(Q0) =< OWC of
@@ -181,7 +215,8 @@ handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per
 		      end, Ws, lists:seq(1,WC-OWC)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
 
-handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC andalso WC > OWC ->
+handle_info({timeout, _, reduce_labor_force}
+	    ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC andalso WC > OWC ->
     ?LOG("Scaling back labor force from ~p to ~p", [WC, WC-RP]),
     Ws1 = lists:foldl(fun(_, Q0) ->
 			      case queue:len(Q0) =< OWC of
@@ -194,7 +229,7 @@ handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per
 		      end, Ws, lists:seq(1,WC-RP)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
 
-handle_info(reduce_labor_force, State) ->
+handle_info({timeout, _, reduce_labor_force}, State) ->
     {noreply, State#state{requests_per=0}};
 
 handle_info(_Info, State) ->
@@ -241,7 +276,8 @@ worker_init() ->
 	worker_free(Q)
     catch
 	_:_ ->
-	    ?LOG("Failed to secure Queue")
+	    ?LOG("Failed to secure Queue"),
+	    exit(amqp_host_down)
     end.
 
 -spec(worker_free/1 :: (Q :: binary()) -> no_return()).
@@ -261,6 +297,12 @@ worker_free(Q) ->
 	    end;
 	#'basic.consume_ok'{} ->
 	    worker_free(Q);
+	{amqp_host_down, H} ->
+	    ?LOG("AMQP host down: ~s", [H]),
+	    exit(amqp_host_down);
+	{amqp_lost_channel,no_connection} ->
+	    ?LOG("AMQP connection down"),
+	    exit(amqp_host_down);
 	shutdown ->
 	    ?LOG("Going on permanent leave");
 	_Other ->
@@ -271,6 +313,12 @@ worker_free(Q) ->
 worker_busy(Q, From, Ref, Parent) ->
     Start = erlang:now(),
     receive
+	{amqp_host_down, H} ->
+	    ?LOG("AMQP host down: ~s", [H]),
+	    exit(amqp_host_down);
+	{amqp_lost_channel,no_connection} ->
+	    ?LOG("AMQP connection down"),
+	    exit(amqp_host_down);
 	{_, #amqp_msg{payload = Payload}} ->
 	    ?LOG("Recv payload response (~b ms): ~s", [timer:now_diff(erlang:now(), Start) div 1000, Payload]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});

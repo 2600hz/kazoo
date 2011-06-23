@@ -314,8 +314,8 @@ basic_publish(Exchange, Queue, Payload) ->
 basic_publish(Exchange, Queue, Payload, ContentType) ->
     basic_publish(Exchange, Queue, Payload, ContentType, []).
 
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when not is_binary(Payload) ->
-    basic_publish(Exchange, Queue, whistle_util:to_binary(Payload), ContentType, Prop);
+basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
+    basic_publish(Exchange, Queue, iolist_to_binary(Payload), ContentType, Prop);
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) ->
     BP = #'basic.publish'{
       exchange = Exchange
@@ -367,7 +367,7 @@ basic_nack(DTag) ->
 
 -spec(is_host_available/0 :: () -> boolean()).
 is_host_available() ->
-    amqp_mgr:is_available().
+    amqp_manager:is_available().
 
 -spec(basic_qos/1 :: (PreFetch :: non_neg_integer()) -> ok).
 basic_qos(PreFetch) when is_integer(PreFetch) ->

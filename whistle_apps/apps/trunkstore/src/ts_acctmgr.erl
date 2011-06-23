@@ -69,12 +69,14 @@ has_credit(Acct) ->
 %% Does the account have enough credit to cover Amt
 -spec(has_credit/2 :: (Acct :: binary(), Amt :: integer()) -> boolean() | tuple(error, no_account)).
 has_credit(<<>>, _) ->
+    ?LOG("no_account at entry to has_credit/2"),
     {error, no_account};
 has_credit(Acct, Amt) ->
     gen_server:call(?SERVER, {has_credit, whistle_util:to_binary(Acct), [Amt]}, infinity).
 
 -spec(has_flatrates/1 :: (Acct :: binary()) -> boolean() | tuple(error, no_account)).
 has_flatrates(<<>>) ->
+    ?LOG("no_account at entry to has_flatrates/1"),
     {error, no_account};
 has_flatrates(Acct) ->
     gen_server:call(?SERVER, {has_flatrates, whistle_util:to_binary(Acct)}).
@@ -83,10 +85,12 @@ has_flatrates(Acct) ->
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
 -spec(reserve_trunk/4 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer(), FRE :: boolean()) ->
-			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds | not_found)).
+			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds | not_found | no_results)).
 reserve_trunk(<<>>, _, _, _) ->
+    ?LOG("no_account at entry to reserve_trunk/4"),
     {error, no_account};
 reserve_trunk(_, <<>>, _, _) ->
+    ?LOG("no_callid at entry to reserve_trunk/4"),
     {error, no_callid};
 reserve_trunk(Acct, CallID, Amt, FRE) ->
     gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt, FRE]}, infinity).
@@ -100,12 +104,13 @@ copy_reserve_trunk(AcctID, ACallID, BCallID, Amt) ->
 %% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
 -spec(release_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> ok | tuple(error, no_account | no_callid)).
 release_trunk(<<>>, _, _) ->
+    ?LOG("no_account at entry to release_trunk/4"),
     {error, no_account};
 release_trunk(_, <<>>, _) ->
+    ?LOG("no_callid at entry to release_trunk/4"),
     {error, no_callid};
 release_trunk(Acct, CallID, Amt) ->
-    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}),
-    ok.
+    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -185,13 +190,13 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
     spawn(fun() ->
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 
-		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
+		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
 		      {error, not_found}=E ->
 			  ?LOG(CallID, "View accounts/balance not found in DB ~s", [RDB]),
 			  gen_server:reply(From, E);
 		      {ok, []} ->
-			  ?LOG(CallID, "No view results for ~s, no_account", [AcctId]),
-			  gen_server:reply(From, {error, no_account});
+			  ?LOG(CallID, "No view results for ~s, no_results", [AcctId]),
+			  gen_server:reply(From, {error, no_results});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->

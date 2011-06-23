@@ -10,30 +10,17 @@
 
 -behaviour(gen_server).
 
+-include_lib("whistle/include/wh_log.hrl").
+-include("wh_couch.hrl").
+
 %% API
--export([start_link/0]).
+-export([start_link/0, get_ratios/0, force_compaction/2, view_cleanup/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(TIMEOUT, 1000 * 60 * 60). %% check every hour
--define(COMPACT_THRESHOLD, 500). %% ratio of DiskSize div DataSize
--define(MIN_DISK_SIZE, 131072). %% 2^17 in disk size
-
--record(design_data, {
-	  db_name = <<>> :: binary()
-	 ,design_name = <<>> :: binary()
-         ,shards = [] :: list(binary()) | []
-	 ,disk_size = 0 :: non_neg_integer()
-         ,data_size = 0 :: non_neg_integer()
-	 }).
--record(db_data, {
-	  db_name = <<>> :: binary()
-	 ,disk_size = 0 :: non_neg_integer()
-	 ,data_size = 0 :: non_neg_integer()
-	 }).
 
 %%%===================================================================
 %%% API
@@ -48,6 +35,17 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+-spec(get_ratios/0 :: () -> list(#db_data{}) | []).
+get_ratios() ->
+    gen_server:call(?SERVER, get_ratios).
+
+-spec(force_compaction/2 :: (MDS :: integer(), CT :: integer()) -> ok).
+force_compaction(MDS, CT) ->
+    gen_server:cast(?SERVER, {force_compaction, MDS, CT}).
+
+view_cleanup() ->
+    gen_server:cast(?SERVER, view_cleanup).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -65,6 +63,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ?LOG("Started compactor"),
     {ok, ok, ?TIMEOUT}.
 
 %%--------------------------------------------------------------------
@@ -81,8 +80,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call(get_ratios, _From, State) ->
+    {reply, get_dbs_and_designs(), State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -94,8 +93,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast({force_compaction, MDS, CT}, State) ->
+    [compact(D, MDS, CT) || D <- get_dbs_and_designs() ],
+    {noreply, State};
+handle_cast(view_cleanup, State) ->
+    {ok, DBs} = couch_mgr:db_info(),
+    [couch_mgr:db_view_cleanup(DB) || DB <- DBs ],
     {noreply, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,24 +113,16 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, ok) ->
+    ?LOG("Checking if compaction is needed"),
     spawn(fun() ->
-		  {ok, ShardDBs} = couch_mgr:admin_db_info(),
-
-		  DBs = [ binary:replace(DB, <<"/">>, <<"%2f">>, [global]) || DB <- ShardDBs ],
-
-		  Data1 = lists:foldr(fun(DBName, Acc) ->
-					      create_db_data(DBName, Acc)
-				      end, [], DBs),
-
-		  Data2 = get_design_docs(Data1),
-
-		  %% logger:format_log(info, "COMPACTOR(~p): ~p~n", [self(), length(Data2)]),
-		  %% changed to blocking to not overload bigcouch with compaction requests
-		  [ compact(D) || D <- Data2 ]
+		  %% changed to blocking + random sleep to not overload bigcouch with
+		  %% compaction requests
+		  [ compact(D, ?MIN_DISK_SIZE, ?COMPACT_THRESHOLD) || D <- get_dbs_and_designs() ]
 	  end),
     {noreply, ok, ?TIMEOUT};
 
 handle_info(_Info, State) ->
+    ?LOG("Unhandled message: ~p~n", [_Info]),
     {noreply, State, ?TIMEOUT}.
 
 %%--------------------------------------------------------------------
@@ -156,19 +153,23 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+get_dbs_and_designs() ->
+    {ok, ShardDBs} = couch_mgr:admin_db_info(),
+    ?LOG("Shards to check: ~b", [length(ShardDBs)]),
+    DBs = [ binary:replace(DB, <<"/">>, <<"%2f">>, [global]) || DB <- ShardDBs ],
+    get_design_docs([ create_db_data(DBName) || DBName <- DBs]).
 
 %% Sharded DB names from admin interface
--spec(create_db_data/2 :: (DBName :: binary(), L :: list()) -> list()).
-create_db_data(DBName, L) ->
+-spec(create_db_data/1 :: (DBName :: binary() ) -> #db_data{}).
+create_db_data(DBName) ->
     try
 	{ok, DBData} = couch_mgr:admin_db_info(DBName),
-	[#db_data{db_name=DBName
+	#db_data{db_name=DBName
 		  ,disk_size=wh_json:get_value(<<"disk_size">>, DBData, 0)
 		  ,data_size=wh_json:get_value([<<"other">>, <<"data_size">>], DBData, 0)
 		 }
-	 | L]
     catch
-	_:_ -> L
+	_:_ -> #db_data{}
     end.
 
 get_design_docs(L) ->
@@ -191,24 +192,22 @@ get_design_docs(L) ->
 			  | L0]
 		end, L, DBandDocs).
 
-compact(#db_data{db_name=DBName, data_size=DataSize, disk_size=DiskSize})
-  when DiskSize > ?MIN_DISK_SIZE andalso DiskSize div DataSize > ?COMPACT_THRESHOLD ->
+compact(#db_data{db_name=DBName, data_size=DataSize, disk_size=DiskSize}, MDS, CT)
+  when DiskSize > MDS andalso (DiskSize div DataSize) > CT ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
-    logger:format_log(info, "compact db ~p: ~p", [DBName, couch_mgr:admin_db_compact(DBName)]);
-compact(#design_data{shards=Shards, design_name=Design, data_size=DataSize, disk_size=DiskSize})
-  when DiskSize > ?MIN_DISK_SIZE andalso DiskSize div DataSize > ?COMPACT_THRESHOLD ->
+    ?LOG("Compact DB ~p: ~p and VC: ~p", [DBName, couch_mgr:admin_db_compact(DBName), couch_mgr:db_view_cleanup(DBName)]);
+compact(#design_data{shards=Shards, design_name=Design, data_size=DataSize, disk_size=DiskSize}, MDS, CT)
+  when DiskSize > MDS andalso (DiskSize div DataSize) > CT ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
-    [ logger:format_log(info, "compact ds: ~p:~p: ~p~n", [DBName, Design, couch_mgr:admin_design_compact(DBName, Design)]) || DBName <- Shards ];
-compact(_) -> ok.
+    [ ?LOG("Compact design ~s for ~s: ~p", [Design, DBName, couch_mgr:admin_design_compact(DBName, Design)]) || DBName <- Shards ];
+compact(_, _, _) -> ok.
 
 find_shards(DBName, DBs) ->
     find_shards(DBName, DBs, []).
 
+find_shards(_, [], Acc) -> Acc;
 find_shards(DBName, [#db_data{db_name=Shard}|DBs], Acc) ->
     case binary:match(Shard, DBName) of
 	nomatch -> find_shards(DBName, DBs, Acc);
 	_ -> find_shards(DBName, DBs, [Shard | Acc])
-    end;
-find_shards(DBName, [_|DBs], Acc) ->
-    find_shards(DBName, DBs, Acc);
-find_shards(_, [], Acc) -> Acc.
+    end.

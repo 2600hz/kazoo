@@ -16,6 +16,9 @@
 -export([constrain_weight/1, is_ipv4/1, is_ipv6/1, get_base_channel_vars/1]).
 -export([todays_db_name/1, calculate_cost/5]).
 
+-export([get_rate_factors/1, get_call_duration/1, lookup_user_flags/2, lookup_did/1]).
+-export([invite_format/2]).
+
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
@@ -108,3 +111,76 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 	true -> Sur + ((RM / 60) * R);
 	false -> Sur + ((RM / 60) * R) + ( whistle_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
+
+-spec(lookup_did/1 :: (DID :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+lookup_did(DID) ->
+    Options = [{<<"key">>, DID}],
+    case wh_cache:fetch({lookup_did, DID}) of
+	{ok, _}=Resp ->
+	    %% wh_timer:tick("lookup_did/1 cache hit"),
+	    {ok, Resp};
+	{error, not_found} ->
+	    %% wh_timer:tick("lookup_did/1 cache miss"),
+	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
+		{ok, []} -> {error, no_did_found};
+		{ok, [{struct, _}=ViewJObj]} ->
+		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
+		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
+		    wh_cache:store({lookup_did, DID}, Resp),
+		    {ok, Resp};
+		{ok, [{struct, _}=ViewJObj | _Rest]} ->
+		    ?LOG("Looking up DID ~s resulted in more than one result", [DID]),
+		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
+		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
+		    wh_cache:store({lookup_did, DID}, Resp),
+		    {ok, Resp};
+		{error, _}=E -> E
+	    end
+    end.
+
+-spec(lookup_user_flags/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+lookup_user_flags(Name, Realm) ->
+    %% wh_timer:tick("lookup_user_flags/2"),
+    case wh_cache:fetch({lookup_user_flags, Realm, Name}) of
+	{ok, _}=Result -> Result;
+	{error, not_found} ->
+	    case couch_mgr:get_results(?TS_DB, <<"LookUpUser/LookUpUserFlags">>, [{<<"key">>, [Realm, Name]}]) of
+		{error, _}=E -> E;
+		{ok, []} -> {error, <<"No user@realm found">>};
+		{ok, [User|_]} ->
+		    ValJObj = wh_json:get_value(<<"value">>, User),
+		    JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
+		    wh_cache:store({lookup_user_flags, Realm, Name}, JObj),
+		    {ok, JObj}
+	    end
+    end.
+
+-spec(get_call_duration/1 :: (JObj :: json_object()) -> integer()).
+get_call_duration(JObj) ->
+    whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)).
+
+-spec(get_rate_factors/1 :: (JObj :: json_object()) -> tuple(float(), pos_integer(), pos_integer(), float())).
+get_rate_factors(JObj) ->
+    CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    { whistle_util:to_float(wh_json:get_value(<<"Rate">>, CCV, 0.0))
+      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Increment">>, CCV, 60))
+      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Minimum">>, CCV, 60))
+      ,whistle_util:to_float(wh_json:get_value(<<"Surcharge">>, CCV, 0.0))
+    }.
+
+-spec(invite_format/2 :: (Format :: binary(), To :: binary()) -> proplist()).
+invite_format(<<"e.164">>, To) ->
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
+invite_format(<<"e164">>, To) ->
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
+invite_format(<<"1npanxxxxxx">>, To) ->
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
+invite_format(<<"1npan">>, To) ->
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
+invite_format(<<"npanxxxxxx">>, To) ->
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
+invite_format(<<"npan">>, To) ->
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
+invite_format(_, _) ->
+    [{<<"Invite-Format">>, <<"username">>} ].
+

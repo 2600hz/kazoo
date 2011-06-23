@@ -52,7 +52,7 @@
         delete_attachment/4, put_attachment/4, put_attachment/5, 
         all_docs/1, all_docs/2, view/2, view/3,
         ensure_full_commit/1, ensure_full_commit/2,
-        compact/1, compact/2,
+        compact/1, compact/2, view_cleanup/1,
         changes/1, changes/2, changes_wait/2, changes_wait/3,
         changes_wait_once/1, changes_wait_once/2]).
 
@@ -794,6 +794,19 @@ compact(#db{server=Server, options=IbrowseOpts}=Db) ->
 %% @spec compact(Db::db(), ViewName::string()) -> ok|{error, term()}
 compact(#db{server=Server, options=IbrowseOpts}=Db, DesignName) ->
     Url = make_url(Server, [db_url(Db), "/_compact/", DesignName], []),
+    Headers = [{"Content-Type", "application/json"}],
+    case db_request(post, Url, ["202"], IbrowseOpts, Headers) of
+        {ok, _, _, _} ->
+            ok;
+        Error -> 
+            Error
+    end.
+
+%% @doc Clean up outdated view indexes
+%% See [http://wiki.apache.org/couchdb/Compaction#View_compaction] for more information
+%% @spec compact(Db::db()) -> ok|{error, term()}
+view_cleanup(#db{server=Server, options=IbrowseOpts}=Db) ->
+    Url = make_url(Server, [db_url(Db), "/_view_cleanup"], []),
     Headers = [{"Content-Type", "application/json"}],
     case db_request(post, Url, ["202"], IbrowseOpts, Headers) of
         {ok, _, _, _} ->
