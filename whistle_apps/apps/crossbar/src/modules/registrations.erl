@@ -263,13 +263,15 @@ validate([], #wm_reqdata{req_qs=QS}, #cb_context{req_verb = <<"get">>, db_name=D
     {ok, Doc} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
     _DocKeys =  [wh_json:get_value(<<"key">>, Elm) || Elm <- Doc],
 
-    ?LOG("+++++ Found DocKeys ~p", [_DocKeys]),
     DocKeys = case QS of
                [] -> _DocKeys;
-               _  -> ?LOG("++++ fetching regs with keys == ~p", [_DocKeys]),
-                     filter_results_on_qs(_DocKeys, QS, ?REG_DB)
-                 end,
-    crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"keys">>, DocKeys}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2);
+               _  -> filter_results_on_qs(_DocKeys, QS, ?REG_DB)
+              end,
+
+    case DocKeys of
+        [] -> crossbar_util:response_faulty_request(Context); %% Should be a 404 here
+        _ -> crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"keys">>, DocKeys}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2)
+    end;
 
 validate([], _, #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
     Context#cb_context{db_name=?REG_DB};
@@ -301,18 +303,9 @@ normalize_view_results(JObj, Acc) ->
 filter_results_on_qs(DocKeys, [{Param, Value} | _], DbName) ->
     ParamBin = list_to_binary(Param),
     ValueBin = list_to_binary(Value),
-    ?LOG("Searching for keys ~p with value ~p in ~p", [ParamBin, ValueBin, DocKeys]),
-    FilteredDocIDs = [DocKey || DocKey <- DocKeys, is_doc_valid_against_filter(DocKey, {ParamBin, ValueBin}, DbName) =:= true],
-    ?LOG(" ???? Valid keys are ~p", [FilteredDocIDs]),
-    FilteredDocIDs.
+    [DocKey || DocKey <- DocKeys, is_doc_valid_against_filter(DocKey, {ParamBin, ValueBin}, DbName) =:= true].
 
 is_doc_valid_against_filter(DocKey, {Param, Value}, DbName) ->
-    ?LOG(" >>> Calling filter on key ~p ~p ~p ~p", [DocKey, Param, Value, DbName]),
     {ok, [PreDoc]} = couch_mgr:get_results(DbName, ?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, DocKey}, {<<"include_docs">>, true}]),
     Doc = wh_json:get_value(<<"doc">>, PreDoc),
-    ?LOG(" +++++++ Doc found ~p", [Doc]),
-
-    Ret = wh_json:get_value(Param, Doc)  =:= Value, 
-    ?LOG(" +++++++ Prop found ~p", [Ret]),
-    Ret.
-    
+    wh_json:get_value(Param, Doc)  =:= Value.
