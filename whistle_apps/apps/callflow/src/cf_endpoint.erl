@@ -70,7 +70,6 @@ create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=I
             ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, SIP)}
             ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Endpoint-ID">>, EndpointId}]}}
            ],
-    io:format("~p~n", [Prop]),
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined ]}.
 
 create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=ReqUser, inception=Inception
