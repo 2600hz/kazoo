@@ -214,6 +214,7 @@ handle_amqp_msg(Payload, _WsdlModel) ->
 	       ,{"Content-Length", binary:referenced_byte_size(XML)}
 	       ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
 	      ],
+
     case ibrowse:send_req(?DTH_URL, Headers, post, XML) of
 	{ok, "200", _, RespXML} ->
 	    ?LOG_END("XML sent to DTH successfully: ~s", [RespXML]);
