@@ -118,23 +118,25 @@ lookup_did(DID) ->
     case wh_cache:fetch({lookup_did, DID}) of
 	{ok, _}=Resp ->
 	    %% wh_timer:tick("lookup_did/1 cache hit"),
-	    {ok, Resp};
+            ?LOG("Cache hit for ~s", [DID]),
+	    Resp;
 	{error, not_found} ->
 	    %% wh_timer:tick("lookup_did/1 cache miss"),
 	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
-		{ok, []} -> {error, no_did_found};
+		{ok, []} -> ?LOG("Cache miss for ~s, no results", [DID]), {error, no_did_found};
 		{ok, [{struct, _}=ViewJObj]} ->
+                    ?LOG("Cache miss for ~s, found result with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
 		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
 		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
 		    wh_cache:store({lookup_did, DID}, Resp),
 		    {ok, Resp};
 		{ok, [{struct, _}=ViewJObj | _Rest]} ->
-		    ?LOG("Looking up DID ~s resulted in more than one result", [DID]),
+                    ?LOG("Cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
 		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
 		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
 		    wh_cache:store({lookup_did, DID}, Resp),
 		    {ok, Resp};
-		{error, _}=E -> E
+		{error, _}=E -> ?LOG("Cache miss for ~s, error ~p", [DID, E]), E
 	    end
     end.
 
@@ -142,12 +144,13 @@ lookup_did(DID) ->
 lookup_user_flags(Name, Realm) ->
     %% wh_timer:tick("lookup_user_flags/2"),
     case wh_cache:fetch({lookup_user_flags, Realm, Name}) of
-	{ok, _}=Result -> Result;
+	{ok, _}=Result -> ?LOG("Cache hit for ~s@~s", [Name, Realm]), Result;
 	{error, not_found} ->
 	    case couch_mgr:get_results(?TS_DB, <<"LookUpUser/LookUpUserFlags">>, [{<<"key">>, [Realm, Name]}]) of
-		{error, _}=E -> E;
-		{ok, []} -> {error, <<"No user@realm found">>};
+		{error, _}=E -> ?LOG("Cache miss for ~s@~s, err: ~p", [Name, Realm, E]), E;
+		{ok, []} -> ?LOG("Cache miss for ~s@~s, no results", [Name, Realm]), {error, <<"No user@realm found">>};
 		{ok, [User|_]} ->
+                    ?LOG("Cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
 		    ValJObj = wh_json:get_value(<<"value">>, User),
 		    JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
 		    wh_cache:store({lookup_user_flags, Realm, Name}, JObj),
@@ -183,4 +186,3 @@ invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
-

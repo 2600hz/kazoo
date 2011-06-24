@@ -259,11 +259,11 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 		      non_existant ->
 			  case trunk_type(WDB, AcctId, CallID) of
 			      non_existant -> ?LOG(CallID, "Failed to find trunk to release for ~s", [AcctId]);
-			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+			      per_min -> ?LOG(CallID, "Released per minute trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt))]);
+			      flat_rate -> ?LOG(CallID, "Released flat rate trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))])
 			  end;
-		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+		      per_min -> ?LOG(CallID, "Released per minute trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt))]);
+		      flat_rate -> ?LOG(CallID, "Released flat rate trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))])
 		  end
 	  end),
     {noreply, S}.
@@ -397,7 +397,7 @@ account_doc(AcctId, Credit, Trunks) ->
 				       ]).
 
 reserve_doc(AcctId, CallID, flat_rate) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, reserve_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, flat_rate}
 		       ,{<<"trunks">>, 1}
@@ -405,7 +405,7 @@ reserve_doc(AcctId, CallID, flat_rate) ->
 		       ,{<<"doc_type">>, <<"reserve">>}
 		      ]);
 reserve_doc(AcctId, CallID, per_min) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, reserve_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, 0}
@@ -413,14 +413,14 @@ reserve_doc(AcctId, CallID, per_min) ->
 		      ]).
 
 release_doc(AcctId, CallID, flat_rate) ->
-    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    credit_doc(AcctId, 0, 1, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 			      ,{<<"call_id">>, CallID}
 			      ,{<<"trunk_type">>, flat_rate}
 			      ,{<<"doc_type">>, <<"release">>}
 			     ]).
 
 release_doc(AcctId, CallID, per_min, Amt) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
@@ -428,7 +428,7 @@ release_doc(AcctId, CallID, per_min, Amt) ->
 		      ]).
 
 release_error_doc(AcctId, CallID, flat_rate) ->
-    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    credit_doc(AcctId, 0, 1, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 			      ,{<<"call_id">>, CallID}
 			      ,{<<"trunk_type">>, flat_rate}
 			      ,{<<"doc_type">>, <<"release">>}
@@ -436,13 +436,18 @@ release_error_doc(AcctId, CallID, flat_rate) ->
 			     ]).
 
 release_error_doc(AcctId, CallID, per_min, Amt) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
 		       ,{<<"doc_type">>, <<"release">>}
 		       ,{<<"release_error">>, true}
 		      ]).
+
+release_doc_id(CallID, AcctID) ->
+    <<"release-", CallID/binary, "-", AcctID/binary>>.
+reserve_doc_id(CallID, AcctID) ->
+    <<"reserve-", CallID/binary, "-", AcctID/binary>>.
 
 credit_doc(AcctId, Credit, Trunks, Extra) ->
     [{<<"acct_id">>, AcctId}
