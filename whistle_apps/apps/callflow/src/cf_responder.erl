@@ -255,7 +255,6 @@ process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
     C2 = C1#cf_call{cf_responder = Self
                     ,ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
                     ,account_db = whapps_util:get_db_name(AccountId, encoded)
-                    ,channel_vars=wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)
                    },
     ?LOG_END("imported custom channel vars, starting callflow"),
 

@@ -227,7 +227,7 @@ bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
 bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
     bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, undefined, Call).
 bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
-       , #cf_call{call_id=CallId, amqp_q=AmqpQ, owner_id=OwnerId, authorizing_id=AuthId, inception=Inception}=Call) ->
+       , #cf_call{call_id=CallId, amqp_q=AmqpQ, owner_id=OwnerId, authorizing_id=AuthId, inception=Inception, channel_vars=CCVs}=Call) ->
     {CIDNum, CIDName} = case Inception of
                             <<"off-net">> -> {undefined, undefined};
                             _ -> cf_attributes:caller_id(CIDType, AuthId, OwnerId, Call)
@@ -240,9 +240,11 @@ bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
                ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, Ringback}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
+               ,{<<"Custom-Channel-Vars">>, CCVs}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
+    io:format("~p~n", [Command]),
     {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
