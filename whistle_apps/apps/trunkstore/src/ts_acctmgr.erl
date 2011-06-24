@@ -390,21 +390,6 @@ trunk_type(DB, AcctId, CallID) ->
 	{ok, [{struct, [{<<"key">>,_}, {<<"value">>, <<"per_min">>}] }] } -> per_min
     end.
 
-%% -spec(trunk_status/3 :: (DB :: binary(), AcctId :: binary(), CallID :: binary()) -> active | inactive).
-%% trunk_status(DB, AcctId, CallID) ->
-%%     case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group_level">>, <<"2">>}]) of
-%% 	{ok, []} -> in_active;
-%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"active">>}] }] } -> active;
-%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"inactive">>}] }] } -> inactive
-%%     end.
-
-%% -spec(trunks_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
-%% trunks_available(DB, AcctId) ->
-%%     case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
-%% 	{ok, []} -> 0;
-%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>, Ts}] }] } -> whistle_util:to_integer(Ts)
-%%     end.
-
 %% should be the diffs from the last account update to now
 account_doc(AcctId, Credit, Trunks) ->
     credit_doc(AcctId, Credit, Trunks, [{<<"_id">>, AcctId}
@@ -475,7 +460,7 @@ debit_doc(AcctId, Extra) ->
 
 -spec(get_accts/1 :: (DB :: binary()) -> list(binary()) | []).
 get_accts(DB) ->
-    case couch_mgr:get_results(DB, <<"accounts/listing">>, [{<<"group">>, <<"true">>}]) of
+    case couch_mgr:get_results(DB, <<"accounts/listing">>, [{<<"group">>, true}]) of
 	{ok, []} -> [];
 	{ok, AcctsDoc} -> couch_mgr:get_result_keys(AcctsDoc);
 	_ -> []
@@ -498,10 +483,10 @@ transfer_acct(AcctId, RDB, WDB) ->
 
 -spec(transfer_active_calls/3 :: (AcctId :: binary(), RDB :: binary(), WDB :: binary()) -> no_return()).
 transfer_active_calls(AcctId, RDB, WDB) ->
-    case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
+    case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, true]}, {<<"group_level">>, <<"2">>}]) of
 	{ok, []} -> ?LOG_SYS("No active calls for ~s in ~s", [AcctId, RDB]);
 	{ok, Calls} when is_list(Calls) ->
-	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, <<"active">>}] }) ->
+	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, 1}] }) ->
 				  spawn(fun() ->
 						case is_call_active(CallId) of
 						    true ->
