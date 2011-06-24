@@ -223,7 +223,7 @@ generate_local_path(MediaName) ->
 request_media(MediaName, CallId) ->
     request_media(MediaName, <<"new">>, CallId).
 
--spec(request_media/3 :: (MediaName :: binary(), Type :: binary(), CallID :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
+-spec(request_media/3 :: (MediaName :: binary(), Type :: extant | continuous, CallID :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
 request_media(MediaName, Type, CallID) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
         {ok, Path} ->
@@ -234,14 +234,25 @@ request_media(MediaName, Type, CallID) ->
             lookup_remote(MediaName, Type, CallID)
     end.
 
-lookup_remote(MediaName, StreamType, CallID) ->
+lookup_remote(MediaName, extant, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
-               ,{<<"Stream-Type">>, StreamType}
+               ,{<<"Stream-Type">>, <<"extant">>}
 	       ,{<<"Call-ID">>, CallID}
                | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
+    lookup_remote(MediaName, Request);
+lookup_remote(MediaName, continuous, CallID) ->
+    Request = [
+                {<<"Media-Name">>, MediaName}
+               ,{<<"Stream-Type">>, <<"continuous">>}
+	       ,{<<"Call-ID">>, CallID}
+               | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    lookup_remote(MediaName, Request).
 
+-spec(lookup_remote/2 :: (MediaName :: binary(), Request :: proplist()) -> tuple('ok', binary()) | tuple('error', 'not_local')).
+lookup_remote(MediaName, Request) ->
     try
 	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
 	true = whistle_api:media_resp_v(MediaResp),

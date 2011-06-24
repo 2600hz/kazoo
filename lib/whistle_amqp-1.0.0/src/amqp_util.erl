@@ -308,7 +308,7 @@ basic_cancel(Queue) ->
 %% Use <<"#">> for a default Queue
 -spec(basic_publish/3 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist()) -> ok).
 -spec(basic_publish/4 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist(), ContentType :: binary()) -> ok).
--spec(basic_publish/5 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist(), ContentType :: binary(), Prop :: proplist()) -> ok).
+-spec(basic_publish/5 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist()|binary(), ContentType :: binary(), Prop :: proplist()) -> ok).
 basic_publish(Exchange, Queue, Payload) ->
     basic_publish(Exchange, Queue, Payload, <<"application/json">>).
 basic_publish(Exchange, Queue, Payload, ContentType) ->
@@ -316,7 +316,7 @@ basic_publish(Exchange, Queue, Payload, ContentType) ->
 
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Exchange, Queue, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) ->
+basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payload) ->
     BP = #'basic.publish'{
       exchange = Exchange
       ,routing_key = Queue

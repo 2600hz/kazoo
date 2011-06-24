@@ -280,14 +280,14 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec(restart_amqp_queue/1 :: (Queue :: binary()) -> 'ok' | tuple('error', term())).
+-spec(restart_amqp_queue/1 :: (Queue :: binary()) -> 'ok' | tuple('error', 'amqp_error')).
 restart_amqp_queue(Queue) ->
     case amqp_util:new_callctl_queue(Queue) of
 	Q when Q =:= Queue ->
 	    _ = amqp_util:bind_q_to_callctl(Queue),
 	    _ = amqp_util:basic_consume(Queue),
 	    ok;
-	{error, _}=E ->
+	{error, amqp_error}=E ->
 	    E
     end.
 

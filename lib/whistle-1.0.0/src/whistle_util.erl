@@ -25,20 +25,22 @@ call_response(CallId, CtrlQ, Code, Cause, Media) ->
                         ,{<<"Response-Message">>, Cause}
                         ,{<<"Call-ID">>, CallId}]
               },
-    Commands = case Media of
-                   undefined ->
-                       [Respond];
-                   MediaName ->
-                        [Respond
-                         ,{struct, [{<<"Application-Name">>, <<"play">>}
-                                    ,{<<"Media-Name">>, MediaName}
-                                    ,{<<"Call-ID">>, CallId}]
-                          }
-                         ,{struct, [{<<"Application-Name">>, <<"progress">>}
-                                    ,{<<"Call-ID">>, CallId}]
-                          }
-                        ]
-               end,
+    call_response1(CallId, CtrlQ, Media, Respond).
+
+call_response1(CallId, CtrlQ, undefined, Respond) ->
+    call_response1(CallId, CtrlQ, [Respond]);
+call_response1(CallId, CtrlQ, Media, Respond) ->
+    call_response1(CallId, CtrlQ, [Respond
+				   ,{struct, [{<<"Application-Name">>, <<"play">>}
+					      ,{<<"Media-Name">>, Media}
+					      ,{<<"Call-ID">>, CallId}]
+				    }
+				   ,{struct, [{<<"Application-Name">>, <<"progress">>}
+					      ,{<<"Call-ID">>, CallId}]
+				    }
+				  ]).
+
+call_response1(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
@@ -91,7 +93,7 @@ to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
 to_1npan(Other) ->
     Other.
 
--spec(to_integer/1 :: (X :: list() | binary() | integer() | float() | atom()) -> integer()).
+-spec(to_integer/1 :: (X :: string() | binary() | integer() | float() | atom()) -> integer()).
 to_integer(X) when is_float(X) ->
     round(X);
 to_integer(X) when is_binary(X) ->
@@ -105,7 +107,7 @@ to_integer(X) when is_list(X) ->
 to_integer(X) when is_integer(X) ->
     X.
 
--spec(to_float/1 :: (X :: list() | binary() | integer() | float()) -> float()).
+-spec(to_float/1 :: (X :: string() | binary() | integer() | float()) -> float()).
 to_float(X) when is_binary(X) ->
     to_float(binary_to_list(X));
 to_float(X) when is_list(X) ->
@@ -133,7 +135,7 @@ to_list(X) when is_list(X) ->
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec(to_binary/1 :: (X :: atom() | list() | binary() | integer() | float()) -> binary()).
+-spec(to_binary/1 :: (X :: atom() | list(0..255) | binary() | integer() | float()) -> binary()).
 to_binary(X) when is_float(X) ->
     to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) ->
