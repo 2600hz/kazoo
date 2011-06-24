@@ -220,10 +220,15 @@ start_amqp() ->
 process_req({<<"dialplan">>, <<"route_req">>}, JObj) ->
     case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
         ?EMPTY_JSON_OBJECT ->
-            ?LOG_START("received inbound dialplan route request"),
+            ?LOG_START("received new inbound dialplan route request"),
             _ =  inbound_handler(JObj);
-        _ ->
-            ok
+        CCVs ->
+            case wh_json:get_value(<<"Offnet-Loopback-Number">>, CCVs) of
+                undefined -> ok;
+                Number ->
+                    ?LOG_START("received inter account inbound dialplan route request"),
+                    _ =  inbound_handler(Number, JObj)
+            end
     end;
 
 process_req({_, _}, _) ->
@@ -238,6 +243,8 @@ process_req({_, _}, _) ->
 -spec(inbound_handler/1 :: (JObj :: json_object()) -> no_return()).
 inbound_handler(JObj) ->
     Number = get_dest_number(JObj),
+    inbound_handler(Number, JObj).
+inbound_handler(Number, JObj) ->
     case lookup_account_by_number(Number) of
         {ok, AccountId} ->
             ?LOG("number associated with account ~s", [AccountId]),

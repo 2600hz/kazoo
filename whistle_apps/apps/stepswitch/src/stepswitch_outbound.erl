@@ -573,8 +573,10 @@ evaluate_rules([Regex|T], Number) ->
                                 -> proplist()).
 build_loopback_request(JObj, Number, Q) ->
     Endpoints = [{struct, [{<<"Invite-Format">>, <<"route">>}
-                          ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
-                          ,{<<"Custom-Channel-Vars">>, [{<<"Inter-Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}]}
+                           ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
+                           ,{<<"Custom-Channel-Vars">>, {struct,[{<<"Offnet-Loopback-Number">>, Number}
+                                                                 ,{<<"Offnet-Loopback-Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
+                                                                ]}}
                          ]}],
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
