@@ -603,7 +603,7 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_all_results/2 :: (DbName :: binary(), DesignDoc :: binary()) ->
-				tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+				tuple(ok, json_objects()) | tuple(error, atom())).
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 

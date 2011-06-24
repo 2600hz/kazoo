@@ -94,11 +94,11 @@ handle_call(get_ratios, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({force_compaction, MDS, CT}, State) ->
-    [compact(D, MDS, CT) || D <- get_dbs_and_designs() ],
+    _ = [compact(D, MDS, CT) || D <- get_dbs_and_designs() ],
     {noreply, State};
 handle_cast(view_cleanup, State) ->
     {ok, DBs} = couch_mgr:db_info(),
-    [couch_mgr:db_view_cleanup(DB) || DB <- DBs ],
+    _ = [couch_mgr:db_view_cleanup(DB) || DB <- DBs ],
     {noreply, State}.
 
 

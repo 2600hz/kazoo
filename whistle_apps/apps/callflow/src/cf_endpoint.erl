@@ -64,16 +64,17 @@ create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=I
             ,{<<"Ignore-Early-Media">>, wh_json:get_binary_boolean(<<"ignore_early_media">>, Media)}
             ,{<<"Bypass-Media">>, wh_json:get_binary_boolean(<<"bypass_media">>, Media)}
             ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_binary_value(<<"progress_timeout">>, Media)}
-            ,{<<"Endpoint-Leg-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
-            ,{<<"Endpoint-Leg-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
+            ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
+            ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Media)}
             ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, SIP)}
             ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Endpoint-ID">>, EndpointId}]}}
            ],
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined ]}.
 
-create_call_fwd_endpoint(Endpoint, CallFwd, Properties
-                         ,#cf_call{request_user=ReqUser, inception=Inception, cid_number=CIDNum, cid_name=CIDName}=Call) ->
+create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=ReqUser, inception=Inception
+                                                                 ,authorizing_id=AuthId, owner_id=AuthOwnerId
+                                                                 ,cid_number=CIDNum, cid_name=CIDName}=Call) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     ?LOG("creating call forward endpoint for ~s", [EndpointId]),
@@ -82,7 +83,8 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties
 
     {CallerNum, CallerName} = case Inception of
                                   <<"off-net">> -> {CIDNum, CIDName};
-                                  _ -> {undefined, undefined}
+                                  _ ->
+                                      cf_attributes:callee_id(<<"internal">>, AuthId, AuthOwnerId, Call)
                               end,
 
     SIP = wh_json:get_value(<<"sip">>, Endpoint, ?EMPTY_JSON_OBJECT),
@@ -120,8 +122,6 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties
             ,{<<"Endpoint-Leg-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Leg-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, SIP)}
-            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Call-Fwd-Endpoint-ID">>, EndpointId}
-                                                   ,{<<"Clobber-Channel-Vars">>, <<"true">>}
-                                                  ] ++ CCV2}}
+            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Authorizing-ID">>, EndpointId}] ++ CCV2}}
            ],
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined ]}.

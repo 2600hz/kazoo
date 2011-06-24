@@ -301,7 +301,7 @@ get_bridge_endpoint(JObj) ->
     end.
 
 -spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
--spec(media_path/3 :: (MediaName :: binary(), Type :: binary(), UUID :: binary()) -> binary()).
+-spec(media_path/3 :: (MediaName :: binary(), Type :: extant | continuous, UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} ->
@@ -421,11 +421,11 @@ set_ringback(Node, UUID, RingBack) ->
     ok = set(Node, UUID, RB),
     set(Node, UUID, "instant_ringback=true").
 
--spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
+-spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
 
--spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: list() | binary()) -> ok | timeout | {error, string()}).
+-spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", whistle_util:to_list(Arg)).
 

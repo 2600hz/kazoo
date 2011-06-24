@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
@@ -12,7 +13,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/5, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -25,12 +26,12 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    Id = wh_json:get_value(<<"id">>, Data),
-    ?LOG("loading endpoint ~s", [Id]),
-    {ok, Endpoint} = cf_endpoint:build(Id, Call),
+    EndpointId = wh_json:get_value(<<"id">>, Data),
+    ?LOG("loading endpoint ~s", [EndpointId]),
+    {ok, Endpoint} = cf_endpoint:build(EndpointId, Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-    IgnoreEarlyMedia = wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint),
-    case b_bridge([Endpoint], Timeout, <<"single">>, IgnoreEarlyMedia, Call) of
+    IgnoreEarlyMedia = wh_json:get_binary_boolean(<<"Ignore-Early-Media">>, Endpoint),
+    case b_bridge(Endpoint, Timeout, <<"internal">>, <<"single">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("bridged to endpoint"),
             _ = wait_for_unbridge(),

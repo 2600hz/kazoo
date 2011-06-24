@@ -36,16 +36,21 @@ call_forward(DeviceId, OwnerId, Call) ->
 %%-----------------------------------------------------------------------------
 -spec(caller_id/4 :: (CIDType :: cf_api_binary(), DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), Call :: #cf_call{})
                      -> tuple(cf_api_binary(), cf_api_binary())).
-caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num}=Call) ->
+caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num, cid_name=Name, channel_vars=CCVs}=Call) ->
     Ids = [begin ?LOG("looking for caller id type ~s on doc ~s", [CIDType, Id]), Id end
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
-    Attributes = fetch_attributes(caller_id, 3600, Call),
-    CID = case search_attributes(CIDType, Ids, Attributes) of
-              undefined ->
-                  search_attributes(<<"default">>, [AccountId], Attributes);
-              Property -> Property
-          end,
-    {wh_json:get_value(<<"number">>, CID, Num), wh_json:get_value(<<"name">>, CID, <<>>)}.
+    case whistle_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
+        true ->
+            {Num, Name};
+        false ->
+            Attributes = fetch_attributes(caller_id, 3600, Call),
+            CID = case search_attributes(CIDType, Ids, Attributes) of
+                      undefined ->
+                          search_attributes(<<"default">>, [AccountId], Attributes);
+                      Property -> Property
+                  end,
+            {wh_json:get_value(<<"number">>, CID, Num), wh_json:get_value(<<"name">>, CID, <<>>)}
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public

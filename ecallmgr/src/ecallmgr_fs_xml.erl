@@ -133,7 +133,8 @@ get_leg_vars(Prop) ->
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> list(string())).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
-    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
+    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
+    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
 get_channel_vars({<<"Timeout">>, V}, Vars) ->
@@ -194,6 +195,8 @@ get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
     [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->
     [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Overwrite-Channel-Vars">>, V}, Vars) ->
+    [ list_to_binary([<<"local_var_clobber=">>, whistle_util:to_list(V)]) | Vars];
 %% SPECIAL CASE: Custom Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
     lists:foldl(fun
