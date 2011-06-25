@@ -750,4 +750,133 @@ segment() ->
 markers() -> 
     ?LET(S, ?LAZY(union([[$#, $., c()], [$*, $., b()]])), lists:flatten(S)).
 
+proper_test_() ->
+    {"Runs the module's PropEr tests for rebar quick commands",
+     {timeout, 15000,
+      [
+          ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
+    ]}}.
+
+%%% PropEr tests
+%% Checks that the patterns for paths (a.#.*.c) match or do not
+%% match a given expanded path.
+prop_expands() ->
+    ?FORALL(Paths, expanded_paths(),
+     ?WHENFAIL(io:format("Failed on ~p~n",[Paths]),
+         lists:all(fun(X) -> X end, %% checks if all true
+            [binding_matches(Pattern, Expanded) =:= Expected ||
+                {Pattern, Expanded, Expected} <- Paths]))).
+
+%%% GENERATORS
+
+%% Gives a list of paths that were expanded, some of them to fail on purpose,
+%% some of them not to.
+expanded_paths() ->
+    ?LET(P, path(),
+        begin
+            B = list_to_binary(P),
+            ?LET({{Expanded1, IsRight1},{Expanded2, IsRight2}},
+                {wrong(P), right(P)},
+                [{B, list_to_binary(Expanded1), IsRight1},
+                 {B, list_to_binary(Expanded2), IsRight2}])
+        end).
+
+%% Tries to make a pattern wrong. Will not always suceed because a pattern
+%% like "#" can be anything at all.
+%%
+%% Returns {Str, ShouldMatchOriginal}.
+wrong(Path) ->
+    ?LET(P, Path,
+        begin
+            {Str, Bool} = wrong(P, true, []),
+            {re:replace(Str, <<"\\.+">>, <<".">>, [{return, list}]), Bool}
+        end).
+
+%% Will expand the patterns according to the rules so they should always match
+%%
+%% Returns {Str, ShouldMatchOriginal}.
+right(Path) ->
+    ?LET(P, Path, {right1(P), true}).
+
+%% Here's why some patterns will always succeed even if we try to make them
+%% wrong. This is the case of "#" which we will have to simply ignore.
+%%
+%% Returns {Str, ShouldMatchOriginal}.
+wrong([], Bool, Acc) ->
+    {lists:reverse(Acc), Bool};
+wrong("*.#." ++ Rest, _Bool, Acc) ->
+    wrong(Rest, false, [$.|Acc]);
+wrong(".*.#." ++ Rest, _Bool, Acc) ->
+    wrong(Rest, false, [$.|Acc]);
+wrong("*.#", _Bool, Acc) ->  %% same as above, end of string
+    {lists:reverse(Acc), false};
+wrong("*." ++ Rest, _Bool, Acc) ->
+    wrong(Rest, false, Acc);
+wrong(".*", _Bool, Acc) ->
+    {lists:reverse(Acc), false};
+wrong(".#." ++ Rest, Bool, Acc) -> %% can't make this one wrong
+    wrong(Rest, Bool, [$.|Acc]);
+wrong("#." ++ Rest, Bool, Acc) -> %% same, start of string
+    wrong(Rest, Bool, Acc);
+wrong(".#", Bool, Acc) -> %% same as above, end of string
+    {lists:reverse(Acc), Bool};
+wrong([Char|Rest], Bool, Acc) when Char =/= $*, Char =/= $# ->
+    wrong(Rest, Bool, [Char|Acc]).
+
+%% Returns an expanded string according to the rules
+right1([]) -> [];
+right1("*" ++ Rest) ->
+    ?LET(S, segment(), S++right1(Rest));
+right1(".#" ++ Rest) ->
+    ?LET(X,
+        union([
+            "",
+            ?LAZY(?LET(S, segment(), [$.]++S)),
+            ?LAZY(?LET({A,B}, {segment(), segment()}, [$.]++A++[$.]++B)),
+            ?LAZY(?LET({A,B,C}, {segment(), segment(), segment()}, [$.]++A++[$.]++B++[$.]++C))
+        ]),
+        X ++ right1(Rest));
+right1("#." ++ Rest) ->
+    ?LET(X,
+        union([
+            "",
+            ?LAZY(?LET(S, segment(), S++[$.])),
+            ?LAZY(?LET({A,B}, {segment(), segment()}, A++[$.]++B++[$.])),
+            ?LAZY(?LET({A,B,C}, {segment(), segment(), segment()}, A++[$.]++B++[$.]++C++[$.]))
+        ]),
+        X ++ right1(Rest));
+right1([Char|Rest]) ->
+    [Char|right1(Rest)].
+
+%% Building a basic pattern/path string
+path() ->
+    ?LET(Base, ?LAZY(weighted_union([{3,a()}, {1,b()}])),
+        ?LET({H,T}, {union(["*.","#.",""]), union([".*",".#",""])},
+            H ++ Base ++ T)).
+
+a() ->
+    ?LET({X,Y}, {segment(), ?LAZY(union([b(), markers()]))},
+        X ++ [$.] ++ Y). 
+
+b() ->
+    ?LET({X,Y}, {segment(), ?LAZY(union([b(), c()]))},
+        X ++ [$.] ++ Y). 
+
+c() ->
+    ?LAZY(union([segment(), markers()])).
+
+segment() ->
+    ?SUCHTHAT(
+        X,
+        list(union([choose($a,$z), choose($A,$Z), choose($0,$9)])),
+        length(X) =/= 0
+    ).
+
+markers() -> 
+    ?LET(S, ?LAZY(union([
+        [$#, $., b()],
+        [$#, $., c()],
+        [$*, $., b()],
+        [$*, $., c()]
+    ])), lists:flatten(S)).
 -endif.
