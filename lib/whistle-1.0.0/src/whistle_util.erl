@@ -1,5 +1,6 @@
 -module(whistle_util).
 
+-export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1]).
@@ -7,6 +8,45 @@
 -export([current_tstamp/0]).
 
 -include_lib("proper/include/proper.hrl").
+
+-spec(call_response/3 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary()) -> ok).
+-spec(call_response/4 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary(), Cause :: undefined|binary()) -> ok).
+-spec(call_response/5 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary(), Cause :: undefined|binary(), Media :: undefined|binary()) -> ok).
+
+call_response(CallId, CtrlQ, Code) ->
+    call_response(CallId, CtrlQ, Code, <<>>).
+call_response(CallId, CtrlQ, Code, undefined) ->
+    call_response(CallId, CtrlQ, Code, <<>>);
+call_response(CallId, CtrlQ, Code, Cause) ->
+    call_response(CallId, CtrlQ, Code, Cause, undefined).
+call_response(CallId, CtrlQ, Code, Cause, Media) ->
+    Respond = {struct, [{<<"Application-Name">>, <<"respond">>}
+                        ,{<<"Response-Code">>, Code}
+                        ,{<<"Response-Message">>, Cause}
+                        ,{<<"Call-ID">>, CallId}]
+              },
+    call_response1(CallId, CtrlQ, Media, Respond).
+
+call_response1(CallId, CtrlQ, undefined, Respond) ->
+    call_response1(CallId, CtrlQ, [Respond]);
+call_response1(CallId, CtrlQ, Media, Respond) ->
+    call_response1(CallId, CtrlQ, [Respond
+				   ,{struct, [{<<"Application-Name">>, <<"play">>}
+					      ,{<<"Media-Name">>, Media}
+					      ,{<<"Call-ID">>, CallId}]
+				    }
+				   ,{struct, [{<<"Application-Name">>, <<"progress">>}
+					      ,{<<"Call-ID">>, CallId}]
+				    }
+				  ]).
+
+call_response1(CallId, CtrlQ, Commands) ->
+    Command = [{<<"Application-Name">>, <<"queue">>}
+               ,{<<"Call-ID">>, CallId}
+               ,{<<"Commands">>, Commands}
+               | whistle_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
+    {ok, Payload} = whistle_api:queue_req(Command),
+    amqp_util:callctl_publish(CtrlQ, Payload).
 
 %% must be a term that can be changed to a list
 -spec(to_hex/1 :: (S :: term()) -> string()).
@@ -53,7 +93,7 @@ to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
 to_1npan(Other) ->
     Other.
 
--spec(to_integer/1 :: (X :: list() | binary() | integer() | float() | atom()) -> integer()).
+-spec(to_integer/1 :: (X :: string() | binary() | integer() | float() | atom()) -> integer()).
 to_integer(X) when is_float(X) ->
     round(X);
 to_integer(X) when is_binary(X) ->
@@ -67,7 +107,7 @@ to_integer(X) when is_list(X) ->
 to_integer(X) when is_integer(X) ->
     X.
 
--spec(to_float/1 :: (X :: list() | binary() | integer() | float()) -> float()).
+-spec(to_float/1 :: (X :: string() | binary() | integer() | float()) -> float()).
 to_float(X) when is_binary(X) ->
     to_float(binary_to_list(X));
 to_float(X) when is_list(X) ->
@@ -95,7 +135,7 @@ to_list(X) when is_list(X) ->
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec(to_binary/1 :: (X :: atom() | list() | binary() | integer() | float()) -> binary()).
+-spec(to_binary/1 :: (X :: atom() | list(0..255) | binary() | integer() | float()) -> binary()).
 to_binary(X) when is_float(X) ->
     to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) ->
@@ -157,7 +197,7 @@ floor(X) when X < 0 ->
         true -> T;
         false -> T - 1
     end;
-floor(X) -> 
+floor(X) ->
     trunc(X).
 
 %% found via trapexit

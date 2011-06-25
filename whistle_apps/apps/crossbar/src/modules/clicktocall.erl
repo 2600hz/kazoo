@@ -30,10 +30,7 @@
 -define(HISTORY, <<"history">>).
 -define(VIEW_FILE, <<"views/c2c.json">>).
 -define(PVT_TYPE, <<"click2call">>).
-
-						%-include_lib("whistle/include/whistle_amqp.hrl").
-						%-include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
-
+-define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {<<"accounts">>, [_]}]).
 
 %%%===================================================================
 %%% API
@@ -130,6 +127,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Co
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD, Context | Params]}, State) ->
+    ?LOG("------- > PARAMETERS GET ~p~n", [Params]),
     spawn(fun() ->
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
@@ -161,15 +159,19 @@ handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>,  {RD, #cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}=Context}}, State) ->
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
+    Pid ! {binding_result, false,Payload},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, Payload}, State) ->
     Pid ! {binding_result, true, Payload},
     {noreply, State};
 
-handle_info({binding_fired, Pid, _, Payload}, State) ->
+handle_info({binding_fired, Pid, _B, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
@@ -179,6 +181,7 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
+    ?LOG_SYS("------- > PARAMETERS ~p~n", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -218,12 +221,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.clicktocall">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.clicktocall">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.clicktocall">>),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.#.clicktocall">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
@@ -338,11 +341,27 @@ load_c2c_history(C2CId, Context) ->
 update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
     crossbar_doc:load_merge(C2CId, Doc, Context).
 
-establish_c2c(C2CId, #cb_context{req_data=Req}=Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% NOTICE: This is very temporary, placeholder until the schema work is
+%% complete!
+%% @end
+%%--------------------------------------------------------------------
+-spec(is_valid_connect_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
+is_valid_connect_doc(JObj) ->
+    case lists:any(fun(undefined) -> true; (_) -> false end, [wh_json:get_value(<<"contact">>, JObj)]) of
+	true -> {false, [<<"contact">>]};
+	_ -> {true, []}
+    end.
+
+establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId, db_name=DbName}=Context) ->                                                                 #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
+
     Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
     Callee = whistle_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
-    Realm = wh_json:get_value(<<"realm">>, C2C),
+    AccountRealm = wh_json:get_value(<<"realm">>, C2C),
+    Realm = case AccountRealm of                                                                                                                                             undefined ->                                                                                                                                                     {ok, Doc} = couch_mgr:open_doc(DbName, AccountId),
+                    wh_json:get_value(<<"realm">>, Doc);                                                                                                                     _ ->  AccountRealm                                                                                                                                       end,
     C2CName = wh_json:get_value(<<"name">>, C2C),
 
     Status = originate_call(Caller, Callee, Realm, C2CName),
@@ -405,7 +424,7 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName) ->
 	       ,{<<"Custom-Channel-Vars">>, {struct, [{"Realm", CalleeRealm}] } }
                ,{<<"Application-Name">>, <<"transfer">>}
 	       ,{<<"Application-Data">>, {struct, [{"Route", CalleeExtension}]} }
-               | whistle_api:default_headers(Amqp, <<"originate">>, <<"resource_req">>, <<"clicktocall">>, <<"0.1">>)
+               | whistle_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
               ],
 
     {ok, Json} = whistle_api:resource_req({struct, JObjReq}),
@@ -415,7 +434,7 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName) ->
 	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
 	    JObj = mochijson2:decode(Payload),
 	    case wh_json:get_value(<<"Event-Name">>, JObj) of
-		<<"resource_resp">> ->
+		<<"originate_resp">> ->
 		    logger:format_log(info, ">>> Click to call ... Success! Call established ", []),
 		    {success, [wh_json:get_value(<<"Call-ID">>, JObj), null]};
 		<<"resource_error">> ->

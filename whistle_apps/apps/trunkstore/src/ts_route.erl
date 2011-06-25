@@ -22,18 +22,16 @@
 -spec(handle_req/1 :: (ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
 handle_req(ApiJObj) ->
     %% wh_timer:start("ts_route"),
-    case wh_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj) of
-	undefined ->
-	    {error, "No Custom Vars"};
-	?EMPTY_JSON_OBJECT -> %% assuming call authed via ACL, meaning carrier IP was known, hence an inbound call
-	    inbound_handler(wh_json:set_value([<<"Direction">>], <<"inbound">>, ApiJObj));
-	{struct, _}=CCVs ->
-	    case wh_json:get_value(<<"Direction">>, CCVs) of
-		<<"outbound">>=D ->
-		    outbound_handler(wh_json:set_value([<<"Direction">>], D, ApiJObj));
-		<<"inbound">>=D ->
-		    inbound_handler(wh_json:set_value([<<"Direction">>], D, ApiJObj))
-	    end
+    case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj), wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)} of
+        {AcctID, undefined} when is_binary(AcctID) ->
+            %% Coming from carrier (off-net)
+            inbound_handler(wh_json:set_value([<<"Direction">>], <<"inbound">>, ApiJObj));
+        {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
+            %% Coming from PBX (on-net); authed by Registrar or ts_auth
+            outbound_handler(wh_json:set_value(<<"Direction">>, <<"outbound">>, ApiJObj));
+        {_AcctID, _AuthID} ->
+            ?LOG("Error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
+            {error, no_account_id}
     end.
 
 %%%===================================================================
@@ -207,17 +205,23 @@ find_outbound_route(#route_flags{callid=CallID, account_doc_id=AccountDocId}=Fla
 	    response(500, ApiJObj, Flags)
     end.
 
--spec(route_over_carriers/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec(route_over_carriers/2 :: (Flags :: #route_flags{}, ApiJObj :: json_object()) -> ok).
 route_over_carriers(Flags, ApiJObj) ->
     %% wh_timer:tick("route_over_carriers/2"),
-    case ts_carrier:route(Flags) of
-	{ok, Routes} ->
-	    %% wh_timer:tick("routes found, response time"),
-	    response(Routes, ApiJObj, Flags#route_flags{routes_generated=Routes});
-	{error, _Error} ->
-	    ?LOG("Outbound routing error: ~p", [_Error]),
-	    {error, "We don't handle this route"}
-    end.
+    {ok, Pid} = ts_call_sup:start_proc([Flags#route_flags.callid, Flags]),
+    %% wh_timer:tick("response/3 routes start_call_handler"),
+    {ok, Q} = ts_call_handler:get_queue(Pid),
+    %% wh_timer:tick("response/3 routes got queue of call_handler"),
+    JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
+                       ,{<<"Routes">>, []}
+                       ,{<<"Method">>, <<"park">>}
+		       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
+	    },
+    RespQ = wh_json:get_value(<<"Server-ID">>, ApiJObj),
+    JSON = whistle_api:route_resp(JObj1),
+    ?LOG("Sending to ~s: ~s", [RespQ, JSON]),
+    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>),
+    ?LOG_END("Sent").
 
 -spec(inbound_route/1 :: (Flags :: #route_flags{}) -> tuple(ok, json_objects(), #route_flags{}) | tuple(error, string())).
 inbound_route(#route_flags{auth_user=U, auth_realm=R, to_user=To, inbound_format=InFormat, failover=Failover
@@ -335,6 +339,7 @@ create_flags(Did, ApiJObj) ->
 
 create_flags(_, ApiJObj, DidJObj) ->
     ChannelVars = wh_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, ?EMPTY_JSON_OBJECT),
+    AccountID = wh_json:get_value(<<"Account-ID">>, ApiJObj),
 
     F1 = case DidJObj of
 	     ?EMPTY_JSON_OBJECT -> add_auth_user(add_auth_realm(#route_flags{}, wh_json:get_value(<<"Realm">>, ChannelVars)), wh_json:get_value(<<"Username">>, ChannelVars));
@@ -345,9 +350,9 @@ create_flags(_, ApiJObj, DidJObj) ->
     Realm = F1#route_flags.auth_realm,
 
     {ok, D} = lookup_user_flags(AuthUser, Realm),
-    Id = wh_json:get_value(<<"id">>, D),
+    AccountID = wh_json:get_value(<<"id">>, D),
 
-    F2 = flags_from_srv(wh_json:get_value(<<"server">>, D, ?EMPTY_JSON_OBJECT), F1#route_flags{account_doc_id = Id}),
+    F2 = flags_from_srv(wh_json:get_value(<<"server">>, D, ?EMPTY_JSON_OBJECT), F1#route_flags{account_doc_id = AccountID}),
     F3 = flags_from_account(wh_json:get_value(<<"account">>, D, ?EMPTY_JSON_OBJECT), F2),
     flags_from_api(ApiJObj, ChannelVars, F3).
 
@@ -401,7 +406,7 @@ flags_from_did(DidJObj, Flags) ->
 %% - Failover <- only if it hasn't been set on the DID level
 %% - Trunks <- Max trunks allowed on the server
 %% - Auth Realm <- just in case it wasn't set from the DID
-%% - 
+%% -
 -spec(flags_from_srv/2 :: (Srv :: json_object(), Flags :: #route_flags{}) -> #route_flags{}).
 flags_from_srv(Srv, Flags) ->
     %% wh_timer:tick("flags_from_srv/2"),

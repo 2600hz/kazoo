@@ -176,7 +176,7 @@ handle_resource_req(Payload) ->
     end.
 
 -spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
-get_resources({<<"originate">>, <<"resource_req">>, <<"audio">>=Type}, Options) ->
+get_resources({<<"resource">>, <<"originate_req">>, <<"audio">>=Type}, Options) ->
     format_log(info, "RSCMGR.get_res(~p): Type ~p Options: ~p~n", [self(), Type, Options]),
     FSAvail = ecallmgr_fs_handler:request_resource(Type, Options), % merge other switch results into this list as well (eventually)
     lists:usort(fun sort_resources/2, FSAvail);
@@ -233,7 +233,7 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 	       ,{<<"Call-ID">>, UUID}
 	       ,{<<"Control-Queue">>, CtlQ}
-		| whistle_api:default_headers(CtlQ, <<"originate">>, <<"resource_resp">>, ?APP_NAME, ?APP_VERSION)],
+		| whistle_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
     format_log(info, "RSC_MGR: Sending resp to ~p: ~s~n", [AppQ, JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).

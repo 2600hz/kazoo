@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<book_store xmlns="http://www.books.org">
+        <book ISBN="978 90 5759 316 1">
+                <title>Het zijn net mensen</title>
+                <author>Joris Luyendijk</author>
+                <date>2006</date>
+                <publisher>Podium</publisher>
+        </book>
+        <book ISBN="0-697-75645-0">
+                <title>Portnoy's Complaint</title>
+                <author>Philip Roth</author>
+                <date>1993</date>
+                <publisher>Vintage</publisher>
+        </book>
+        <book ISBN="1-56592-235-2">
+                <title>My Life and Times</title>
+                <author>Paul McCartney</author>
+                <date>1998</date>
+                <publisher>McMillin publishing</publisher>
+        </book>
+        <book ISBN="0-440-34319-4">
+                <title>Illusions The Adventures of a Reluctant Messiah</title>
+                <author>Richard Bach</author>
+                <date>1977</date>
+                <publisher>Dell publishing Co.</publisher>
+        </book>
+        <book ISBN="0-06-064831-7">
+                <title>The First and Last Freedom</title>
+                <author>J. Krishnamurti</author>
+                <publisher>Harper &amp; Row</publisher>
+        </book>
+</book_store>

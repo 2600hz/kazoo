@@ -8,7 +8,11 @@
 %% routing keys to use in the callmgr exchange
 -define(KEY_AUTH_REQ, <<"auth.req">>). %% corresponds to the auth_req/1 api call
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
--define(KEY_RESOURCE_REQ, <<"resource.req">>). %% corresponds to resource_req/1 api call
+
+-define(KEY_RESOURCE_REQ, <<"originate.resource.req">>). %% corresponds to resource_req/1 api call
+-define(KEY_ORGN_RESOURCE_REQ, <<"orginate.resource.req">>). %% corresponds to originate_resource_req/1 api call
+-define(KEY_OFFNET_RESOURCE_REQ, <<"offnet.resource.req">>). %% corresponds to offnet_resource_req/1 api call
+-define(RESOURCE_QUEUE_NAME, <<"resource.provider">>).
 
 -define(KEY_CALL_MEDIA_REQ, <<"call.media">>). %% corresponds to media_req/1
 -define(KEY_CALL_EVENT, <<"call.event.">>). %% corresponds to the call_event/1 api call

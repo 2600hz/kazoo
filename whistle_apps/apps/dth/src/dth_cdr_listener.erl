@@ -19,11 +19,23 @@
 
 -include("dth.hrl").
 
+-define(DTH_URL, "http://173.203.64.57/dthsoapapi/dthsoap.asmx").
+-define(DTH_SUBMITCALLRECORD, <<"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
+<s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><SubmitCallRecord xmlns=\"http://tempuri.org/\"><oCallRecord><OriginatingNumber>~s</OriginatingNumber><DestinationNumber>~s</DestinationNumber><StartTime>~s</StartTime><Duration>~s</Duration><UniqueID>~s</UniqueID><BilledDuration>0</BilledDuration><CallCost>0</CallCost><CallTotal>0</CallTotal><Direction>0</Direction><WholesaleRate>0</WholesaleRate><WholesaleCost>0</WholesaleCost><RetailRate>0</RetailRate><CallTax>0</CallTax><IsIncluded>0</IsIncluded><BilledTier>0</BilledTier><PrintIndicator>0</PrintIndicator><EndTime>0001-01-01T00:00:00</EndTime><CallType>~s</CallType></oCallRecord></SubmitCallRecord></s:Body></s:Envelope>">>).
+%% OriginatingNumber: 2223334444
+%% DestinationNumber: 2223334444
+%% StartTime: 2010-05-24T01:55:00
+%% Duration: 100
+%% UniqueID: callid
+%% CallType: Interstate
+
 -define(SERVER, ?MODULE).
+-define(PREFIX, "p").
 -record(state, {
           is_amqp_up = false :: boolean()
          ,amqp_timeout = 1000 :: pos_integer()
          ,max_timeout = 5000 :: 5000
+         ,wsdl_model = undefined :: undefined | term()
          }).
 
 %%%===================================================================
@@ -56,7 +68,19 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}, 0}.
+    WSDLFile = [code:priv_dir(dth), "/dthsoap.wsdl"],
+    WSDLHrlFile = [code:lib_dir(dth, include), "/dthsoap.hrl"],
+
+    true = filelib:is_regular(WSDLFile),
+
+    case filelib:is_regular(WSDLHrlFile) of
+        true -> ok;
+        false ->
+            true = filelib:is_regular(WSDLFile),
+            ok = detergent:write_hrl(WSDLFile, WSDLHrlFile, ?PREFIX) %% no prefix
+    end,
+
+    {ok, #state{wsdl_model=detergent:initModel(WSDLFile, ?PREFIX)}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,11 +129,18 @@ handle_info(timeout, #state{is_amqp_up=false, amqp_timeout=Timeout, max_timeout=
 handle_info(timeout, #state{is_amqp_up=false, amqp_timeout=Timeout}=State) ->
     Q = start_amqp(),
     {noreply, State#state{is_amqp_up=is_binary(Q), amqp_timeout=Timeout*2}, Timeout};
-handle_info(timeout, #state{is_amqp_up=true}) ->
-    {noreply, #state{is_amqp_up=true}};
+handle_info(timeout, State) ->
+    {noreply, State#state{is_amqp_up=true}};
 
-handle_info({_, #amqp_msg{payload=Payload}}, State) ->
-    spawn(fun() -> handle_amqp_msg(Payload) end),
+handle_info({_, #amqp_msg{payload=Payload}}, #state{wsdl_model=WsdlModel}=State) ->
+    spawn(fun() -> handle_amqp_msg(Payload, WsdlModel) end),
+    {noreply, State};
+
+handle_info({amqp_host_down, _H}, State) ->
+    ?LOG_SYS("Amqp host went down: ~s", [_H]),
+    {noreply, State#state{is_amqp_up=false}, 0};
+
+handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -158,21 +189,40 @@ start_amqp() ->
             {error, amqp_error}
     end.
 
-handle_amqp_msg(Payload) ->
+handle_amqp_msg(Payload, _WsdlModel) ->
     JObj = mochijson2:decode(Payload),
 
-    <<"call-detail">> = wh_json:get_value(<<"Event-Category">>, JObj),
-    <<"cdr">> = wh_json:get_value(<<"Event-Name">>, JObj),
+    true = whistle_api:call_cdr_v(JObj),
 
-    Timestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj)),
-    BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)),
+    MicroTimestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp() * 1000000)),
+    BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
-    CallRecord = #dth_call_record{
-      customer_id = wh_json:get_value([<<"Custom-Channel-Variables">>, <<"Account-ID">>], JObj, <<"0000000000">>)
-      ,originating_number = wh_json:get_value(<<"From-Uri">>, JObj)
-      ,destination_number = wh_json:get_value(<<"To-Uri">>, JObj)
-      ,start_time = Timestamp - BillingSec
-      ,duration = BillingSec
-      ,unique_id = wh_json:get_value(<<"Call-ID">>, JObj)
-      ,call_type = ?DTH_CT_OTHER
-     }.
+    ?LOG(CallID, "Recv CDR: ~s", [Payload]),
+    DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec, 1970),
+    ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
+
+    XML = iolist_to_binary(io_lib:format(?DTH_SUBMITCALLRECORD
+					 ,[wh_json:get_value(<<"Caller-ID-Number">>, JObj)
+					   ,wh_json:get_value(<<"Callee-ID-Number">>, JObj)
+					   ,DateTime
+					   ,whistle_util:to_binary(BillingSec)
+					   ,CallID
+					   ,?DTH_CALL_TYPE_OTHER
+					  ])),
+    Headers = [{"Content-Type", "text/xml; charset=utf-8"}
+	       ,{"Content-Length", binary:referenced_byte_size(XML)}
+	       ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
+	      ],
+
+    case ibrowse:send_req(?DTH_URL, Headers, post, XML) of
+	{ok, "200", _, RespXML} ->
+	    ?LOG_END("XML sent to DTH successfully: ~s", [RespXML]);
+	_Resp ->
+	    ?LOG("Error with request: ~p", [_Resp])
+    end.
+
+now_to_datetime(Secs, ExtraYears) ->
+    {{YY,MM,DD},{Hour,Min,Sec}} = calendar:gregorian_seconds_to_datetime(Secs),
+      iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
+                    [YY+ExtraYears, MM, DD, Hour, Min, Sec])).

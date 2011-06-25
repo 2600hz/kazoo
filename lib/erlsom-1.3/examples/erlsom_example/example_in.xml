@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<i:calcAverage xmlns:i="http://www.example.org">
+    <i:argument>3</i:argument>
+    <i:argument>7</i:argument>
+    <i:argument>1</i:argument>
+    <i:argument>123</i:argument>
+    <i:argument>17</i:argument>
+    <i:precision>2</i:precision>
+</i:calcAverage>

@@ -29,7 +29,7 @@
 -define(VMBOXES_LIST, <<"vmboxes/listing_by_id">>).
 
 -define(MESSAGES_RESOURCE, <<"messages">>).
--define(MESSAGE_AUDIO_EXT, <<".wav">>).
+-define(MESSAGE_AUDIO_EXT, <<".mp3">>).
 -define(BIN_DATA, <<"raw">>).
 -define(MEDIA_MIME_TYPES, [ "application/octet-stream"]).
 
@@ -142,9 +142,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Con
 	    spawn(fun() ->
 			  Name = attachment_name(AttachmentId),
 			  Context1 = Context#cb_context{resp_headers = [
-				      {<<"Content-Type">> ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc)}, 
+				      {<<"Content-Type">> ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc)},
 				      {<<"Content-Disposition">>, << "Content-Disposition: attachment; filename=", Name/binary>>},
-				      {<<"Content-Length">> ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}  
+				      {<<"Content-Length">> ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
 				      | Context#cb_context.resp_headers]},
 
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -279,7 +279,7 @@ allowed_methods([_, ?MESSAGES_RESOURCE]) ->
     {true, ['GET']};
 allowed_methods([_, ?MESSAGES_RESOURCE, _]) ->
     {true, ['GET', 'POST', 'DELETE']};
-allowed_methods([_, ?MESSAGES_RESOURCE, _, ?BIN_DATA]) ->   
+allowed_methods([_, ?MESSAGES_RESOURCE, _, ?BIN_DATA]) ->
     {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
@@ -491,8 +491,8 @@ delete_message(DocId, AttachmentId, Context) ->
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     Messages = wh_json:get_value(<<"messages">>, Doc),
 
-    case get_message_index(AttachmentId, Messages) of 
-	Index when Index > 0 ->  
+    case get_message_index(AttachmentId, Messages) of
+	Index when Index > 0 ->
 	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, Doc),
 	    Context1#cb_context{doc=Doc1};
 	0 ->
@@ -504,7 +504,7 @@ delete_message(DocId, AttachmentId, Context) ->
 %% @private
 %% @doc
 %% Initiate the recursive search of the message index
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_message_index/2 :: (AttachmentId :: binary(), Messages :: json_objects()) -> non_neg_integer()).
@@ -514,8 +514,8 @@ get_message_index(AttachmentId, Messages) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Recursively finds the index of message 
-%% 
+%% Recursively finds the index of message
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec(find_index/3 :: (AttachmentId :: binary(), list(), Index :: non_neg_integer()) -> non_neg_integer()).
@@ -537,7 +537,7 @@ find_index(AttachmentId, [Messages | Other], Index) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(update_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_message(DocId, AttachmentId, #cb_context{req_data=JObj}=Context) ->    
+update_message(DocId, AttachmentId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
@@ -550,8 +550,8 @@ update_message1(DocId, AttachmentId, Context) ->
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     Messages = wh_json:get_value(<<"messages">>, Doc),
 
-    case get_message_index(AttachmentId, Messages) of 
-  	Index when Index > 0 ->  
+    case get_message_index(AttachmentId, Messages) of
+  	Index when Index > 0 ->
 	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, Doc),
 	    Context1#cb_context{doc=Doc1};
 	0 ->
@@ -568,4 +568,3 @@ update_message1(DocId, AttachmentId, Context) ->
 load_messages_from_doc(DocId, Context) ->
     #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     wh_json:get_value(<<"messages">>, Doc).
-

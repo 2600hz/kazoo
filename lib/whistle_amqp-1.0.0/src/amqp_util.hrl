@@ -23,6 +23,9 @@
 -define(EXCHANGE_CALLEVT, <<"callevt">>).
 -define(TYPE_CALLEVT, <<"topic">>).
 
+%% Resource Exchange
+%% - Request for resources are published and consumed from this queue.  Topics are used to
+%%   distinguish the types of resource
 -define(EXCHANGE_RESOURCE, <<"resource">>).
 -define(TYPE_RESOURCE, <<"fanout">>).
 

@@ -12,9 +12,12 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/4, wait_for_bridge/1, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/7, wait_for_unbridge/0, find_failure_branch/2]).
 
 -define(VIEW_BY_RULES, <<"resources/listing_active_by_rules">>).
+
+-type endpoint() :: tuple(binary(), json_objects(), raw | binary()).
+-type endpoints() :: [] | [endpoint()].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -23,10 +26,13 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(_, #cf_call{call_id=CallId}=Call) ->
+handle(Data, #cf_call{call_id=CallId}=Call) ->
     put(callid, CallId),
-    {ok, Gateways} = find_gateways(Call),
-    bridge_to_gateways(Gateways, Call).
+    {ok, Endpoints} = find_endpoints(Call),
+    Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
+    IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data),
+    Ringback = wh_json:get_value(<<"ringback">>, Data),
+    bridge_to_resources(Endpoints, Timeout, IgnoreEarlyMedia, Ringback, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -35,28 +41,37 @@ handle(_, #cf_call{call_id=CallId}=Call) ->
 %% is successfull (not necessarly the call but the bridge).
 %%
 %% When this function gets to the end of the resource list this function
-%% will not match, causing the process to crash and the callflow to 
+%% will not match, causing the process to crash and the callflow to
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_to_gateways/2 :: (Resources :: proplist(), Call :: #cf_call{}) -> no_return()).
-bridge_to_gateways([{DestNum, Gateways, CIDType}|T], #cf_call{cf_pid=CFPid}=Call) ->
-    case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways], <<"60">>, CIDType, Call) of
+-spec(bridge_to_resources/5 :: (Endpoints :: endpoints(), Timeout :: cf_api_binary()
+                                ,IngoreEarlyMeida :: cf_api_binary(), Ringback :: cf_api_binary()
+                                ,Call :: #cf_call{}) -> no_return()).
+bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid}=Call) ->
+    case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways]
+                  ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             ?LOG("resource acquired"),
             wait_for_unbridge(),
             ?LOG("resource released"),
-            CFPid ! {stop};
-        {error, {bridge_failed, R}} ->
-            ?LOG("resource failed ~s", [R]),
-            bridge_to_gateways(T, Call);
+            CFPid ! { stop };
+        {fail, Reason} when T =:= [] ->
+            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            ?LOG("resource failed ~s:~s", [Cause, Code]),
+            find_failure_branch({Cause, Code}, Call)
+                orelse bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
+        {fail, Reason} ->
+            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            ?LOG("resource failed ~s:~s", [Code, Cause]),
+            bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
         {error, R} ->
-            ?LOG("resource failed ~w", [R]),
-            bridge_to_gateways(T, Call)
+            ?LOG("resource error ~w", [R]),
+            bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
     end;
-bridge_to_gateways([], #cf_call{cf_pid=CFPid}) ->
+bridge_to_resources([], _, _, _, #cf_call{cf_pid=CFPid}) ->
     ?LOG("resources exhausted without success"),
-    CFPid ! {continue}.
+    CFPid ! { continue }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -73,8 +88,7 @@ create_endpoint(DestNum, JObj) ->
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     ?LOG("attempting resource ~s", [Rule]),
-    Endpoint = [
-                 {<<"Invite-Format">>, <<"route">>}
+    Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
                 ,{<<"Auth-User">>, wh_json:get_value(<<"username">>, JObj)}
                 ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, JObj)}
@@ -87,29 +101,35 @@ create_endpoint(DestNum, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Retrieve a complete list of resources in this database that are 
+%% Retrieve a complete list of resources in this database that are
 %% enabled.  Remove any where the rules do not apply, and the destination
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec(find_gateways/1 :: (Call :: #cf_call{}) -> tuple(ok, proplist()) | tuple(error, atom())).
-find_gateways(#cf_call{account_db=Db, dest_number=DestNum}=Call) ->
-    ?LOG("searching for resources"),
+-spec(find_endpoints/1 :: (Call :: #cf_call{}) -> {ok, endpoints()} | tuple(error, atom())).
+find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
+    ?LOG("searching for resource endpoints"),
     case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             ?LOG("found resources, filtering by rules"),
-            {ok, [ {Number
-                    ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
-                    ,get_caller_id_type(Resource, Call)}
-                   || Resource <- Resources
-			 , Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), DestNum)
-			 , Number =/= []
+            {ok, [{Number
+                   ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
+                   ,get_caller_id_type(Resource, Call)}
+                  || Resource <- Resources
+			 ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ReqNum)
+			 ,Number =/= []
                  ]};
         {error, R}=E ->
             ?LOG("search failed ~w", [R]),
             E
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec(get_caller_id_type/2 :: (Resource :: json_object(), Call :: #cf_call{}) -> raw | binary()).
 get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
     case whistle_util:is_true(wh_json:get_value(<<"CF-Keep-Caller-ID">>, CVs)) of
@@ -121,12 +141,12 @@ get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
 %% @private
 %% @doc
 %% This function recieves a resource rule (regex) and determines if
-%% the destination number matches.  If it does and the regex has a 
-%% capture group return the group, if not but it matched return the 
+%% the destination number matches.  If it does and the regex has a
+%% capture group return the group, if not but it matched return the
 %% full destination number otherwise return an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec(evaluate_rules/2 :: (Key :: list(), DestNum:: binary()) -> list()).
+-spec(evaluate_rules/2 :: (Key :: list(), DestNum:: binary()) -> [] | [binary()]).
 evaluate_rules([_, Regex], DestNum) ->
     case re:run(DestNum, Regex) of
         {match, [_, {Start,End}|_]} ->

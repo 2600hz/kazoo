@@ -105,14 +105,14 @@ handle_call({set_host, Host}, _, State) ->
 	{error, _}=E -> {reply, E, State, 0}
     end;
 
+handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
+    {reply, erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid), State};
+
 handle_call(_, _, #state{handler_pid = undefined}=State) ->
     {reply, {error, amqp_down}, State};
 
 handle_call(get_host, _, State) ->
     {reply, State#state.host, State};
-
-handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
-    {reply, erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid), State};
 
 handle_call({publish, BP, AM}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:publish(HPid, From, BP, AM) end),

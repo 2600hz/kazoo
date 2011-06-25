@@ -290,7 +290,7 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
     erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName};
 send_ctl_event(_, _, _, _) -> ok.
 
--spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist() | []) -> ok).
+-spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist() | []) -> 'ok').
 publish_msg(_, []) -> ok;
 publish_msg(UUID, Prop) ->
     EvtName = props:get_value(<<"Event-Name">>, Prop),
@@ -318,7 +318,7 @@ publish_msg(UUID, Prop) ->
     end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
--spec(add_amqp_listener/1 :: (CallID :: binary()) -> binary() | tuple(error, term())).
+-spec(add_amqp_listener/1 :: (CallID :: binary()) -> binary() | tuple('error', 'amqp_error')).
 add_amqp_listener(CallID) ->
     case amqp_util:new_queue(<<>>) of
 	{error, _} = E -> E;
@@ -337,12 +337,14 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
 	    io:format("WHISTLE_API: Didn't find ~p in supported", [Application]),
 	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
         <<"play_and_collect_digits">> ->
-	    [{<<"Application-Name">>, <<"play_and_collect_digits">>} 
+	    [{<<"Application-Name">>, <<"play_and_collect_digits">>}
 	     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
 	    ];
         <<"bridge">> ->
-	    [{<<"Application-Name">>, <<"bridge">>} 
+	    [{<<"Application-Name">>, <<"bridge">>}
 	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
+             ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+	     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
 	    ];
 	AppName ->
 	    [{<<"Application-Name">>, AppName}
@@ -371,7 +373,9 @@ event_specific(<<"CHANNEL_UNBRIDGE">>, Prop) ->
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>,props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}];
 event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
@@ -379,6 +383,7 @@ event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
 event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
@@ -387,6 +392,7 @@ event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
 event_specific(<<"RECORD_STOP">>, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -442,11 +448,11 @@ query_call(Node, CallID) ->
 
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
 
--spec(send_queued/2 :: (UUID :: binary(), Evts :: list()) -> no_return()).
+-spec(send_queued/2 :: (UUID :: binary(), Evts :: list(proplist())) -> no_return()).
 send_queued(UUID, Evts) ->
     send_queued(UUID, lists:reverse(Evts), 0).
 
--spec(send_queued/3 :: (UUID :: binary(), Evts :: list(), Tries :: integer()) -> no_return()).
+-spec(send_queued/3 :: (UUID :: binary(), Evts :: list(proplist()), Tries :: integer()) -> no_return()).
 send_queued(_UUID, _, 10=Tries) ->
     ?LOG(_UUID, "Failed to send queued events after ~b times, going down", [Tries]);
 send_queued(_UUID, [], _) ->

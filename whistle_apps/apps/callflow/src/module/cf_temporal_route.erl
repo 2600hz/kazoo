@@ -12,10 +12,9 @@
 
 -export([handle/2]).
 
--import(calendar, [
-                    day_of_the_week/1, day_of_the_week/3, gregorian_seconds_to_datetime/1
-                   ,datetime_to_gregorian_seconds/1, date_to_gregorian_days/1, date_to_gregorian_days/3
-                   ,last_day_of_the_month/2, gregorian_days_to_date/1, universal_time/0
+-import(calendar, [gregorian_seconds_to_datetime/1, datetime_to_gregorian_seconds/1
+                   ,date_to_gregorian_days/1, date_to_gregorian_days/3, universal_time/0
+                   ,last_day_of_the_month/2, gregorian_days_to_date/1
                   ]).
 
 -define(FIND_RULES, <<"temporal_route/listing_by_next_occurrence">>).
@@ -38,14 +37,14 @@
 
 -record(rule, {
            id = <<>> :: binary()
-          ,name = <<>> :: binary()
+          ,name = <<"no_name">> :: binary()
           ,cycle = <<>> :: cycle_type()
           ,interval = 1 :: non_neg_integer()
-          ,days = [] :: [] | [wh_day()]
-          ,wdays = [] :: [] | [wday()]
-          ,ordinal = undefined :: undefined | ordinal()
-          ,month = undefined :: undefined | wh_month()
-          ,start_date = <<>> :: wh_date()
+          ,days = [] :: [wh_day()]
+          ,wdays = [] :: [wday()]
+          ,ordinal = <<"first">> :: ordinal()
+          ,month = 1 :: wh_month()
+          ,start_date = {2011, 1, 1} :: wh_date()
           ,wtime_start = 0 :: non_neg_integer()
           ,wtime_stop = 86400 :: non_neg_integer()
          }).
@@ -54,10 +53,10 @@
            temporal_id = <<>> :: binary()
           ,enabled = true :: boolean()
           ,local_sec = 0 :: non_neg_integer()
-          ,local_date = undefined :: undefined | wh_date()                
-          ,local_time = undefined :: undefined | wh_time()
+          ,local_date = {2011, 1, 1} :: wh_date()
+          ,local_time = {0, 0, 0} :: wh_time()
           ,default = <<>> :: binary()
-          ,routes = [] :: []|[#rule{}]
+          ,routes = [] :: proplist()
           ,timezone = <<"America/Los_Angeles">> :: binary()
           ,prompts=#prompts{}
          }).
@@ -95,25 +94,25 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Test all rules in reference to the current temporal routes, and 
+%% Test all rules in reference to the current temporal routes, and
 %% returns the first valid callflow, or the default.
 %% @end
 %%--------------------------------------------------------------------
--spec(process_rules/3 :: (Temporal :: #temporal{}, Rules :: []|[#rule{}], Call :: #cf_call{}) 
+-spec(process_rules/3 :: (Temporal :: #temporal{}, Rules :: [#rule{}], Call :: #cf_call{})
                          -> {error, atom()} | json_object()).
-process_rules(#temporal{enabled=false}=Temporal, [_|_], Call) ->
+process_rules(#temporal{enabled=false, default=FlowId}, _, Call) ->
     ?LOG("time based routes disabled"),
-    process_rules(Temporal, [], Call);
+    find_callflow(FlowId, Call);
 process_rules(#temporal{default=FlowId}, [], Call) ->
     ?LOG("continuing with default callflow"),
     find_callflow(FlowId, Call);
-process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}, routes=Routes}=T, 
+process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}, routes=Routes}=T,
               [#rule{id=Id, name=Name, wtime_start=TStart, wtime_stop=TStop}=R|H]
               ,Call) ->
     ?LOG("processing temporal rule ~s (~s)", [Id, Name]),
     BaseDate = next_rule_date(R, {Y, M, D - 1}),
     ?LOG("determined the occurrence date to be ~w", [BaseDate]),
-    BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),    
+    BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
     case {BastTime + TStart, BastTime + TStop} of
         {Start, _} when LSec < Start ->
             ?LOG("rule applies in the future, moving to next rule"),
@@ -135,13 +134,13 @@ process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}, routes=Routes}=T,
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% attempts to retriev the 'flow' key off the document ID in the database 
+%% attempts to retriev the 'flow' key off the document ID in the database
 %% that this call belongs to
 %% @end
 %%--------------------------------------------------------------------
--spec(find_callflow/2 :: (Id :: binary()|undefined, Call :: #cf_call{}) 
-                         -> {error, atom()}|json_object()).
-find_callflow(Id, #cf_call{account_db=Db}) ->    
+-spec(find_callflow/2 :: (Id :: binary(), Call :: #cf_call{})
+                         -> {error, atom()} | json_object()).
+find_callflow(Id, #cf_call{account_db=Db}) ->
     ?LOG("loading callflow ~s", [Id]),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj}->
@@ -164,23 +163,24 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                                                  ,{<<"endkey">>, LSec}
                                                  ,{<<"include_docs">>, true}]) of
         {ok, JObj} ->
+            Default=#rule{},
             [#rule{
                  id = wh_json:get_value(<<"id">>, R)
-                ,name = wh_json:get_value([<<"doc">>, <<"name">>], R, <<"unknown">>)
-                ,cycle = wh_json:get_value([<<"doc">>, <<"cycle">>], R)
+                ,name = wh_json:get_value([<<"doc">>, <<"name">>], R, Default#rule.name)
+                ,cycle = wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
                 ,interval = whistle_util:to_integer(
-                              wh_json:get_value([<<"doc">>, <<"interval">>], R, 1))
-                ,days = wh_json:get_value([<<"doc">>, <<"days">>], R, [])
-                ,wdays = wh_json:get_value([<<"doc">>, <<"wdays">>], R, [])
-                ,ordinal = wh_json:get_value([<<"doc">>, <<"ordinal">>], R)
-                ,month = wh_json:get_value([<<"doc">>, <<"month">>], R)
+                              wh_json:get_value([<<"doc">>, <<"interval">>], R, Default#rule.interval))
+                ,days = wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
+                ,wdays = wh_json:get_value([<<"doc">>, <<"wdays">>], R, Default#rule.wdays)
+                ,ordinal = wh_json:get_value([<<"doc">>, <<"ordinal">>], R, Default#rule.ordinal)
+                ,month = wh_json:get_value([<<"doc">>, <<"month">>], R, Default#rule.month)
                 ,start_date = get_date(wh_json:get_value([<<"doc">>, <<"start_date">>], R, LSec))
                 ,wtime_start = whistle_util:to_integer(
-                                 wh_json:get_value([<<"doc">>, <<"time_window_start">>], R, 0))
+                                 wh_json:get_value([<<"doc">>, <<"time_window_start">>], R, Default#rule.wtime_start))
                 ,wtime_stop = whistle_util:to_integer(
-                               wh_json:get_value([<<"doc">>, <<"time_window_stop">>], R, 86400))
+                               wh_json:get_value([<<"doc">>, <<"time_window_stop">>], R, Default#rule.wtime_stop))
                }
-             || R <- JObj, 
+             || R <- JObj,
                 lists:keymember(wh_json:get_value(<<"id">>, R), 1, Routes)];
         {error, _} ->
             []
@@ -202,11 +202,11 @@ get_temporal_route(Data, #cf_call{account_db=Db}) ->
             {struct, Routes} = wh_json:get_value(<<"temporal_rules">>, JObj, ?EMPTY_JSON_OBJECT),
             load_current_time(#temporal{
                                   temporal_id = Id
-                                 ,enabled = 
-                                     whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj, true))
-                                 ,default = wh_json:get_value(<<"default_callflow_id">>, JObj)
+                                 ,enabled =
+                                     whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj, Default#temporal.enabled))
+                                 ,default = wh_json:get_value(<<"default_callflow_id">>, JObj, Default#temporal.default)
                                  ,routes = Routes
-                                 ,timezone = 
+                                 ,timezone =
                                      wh_json:get_value(<<"timezone">>, JObj, Default#temporal.timezone)
                                 });
         {error, R} ->
@@ -245,12 +245,12 @@ toggle_temporal_route(#temporal{enabled=false}=Temporal, Call) ->
 %% @private
 %% @doc
 %% Retrieve and update the enabled key on the temporal route document.
-%% Also plays messages to the caller based on the results of that 
+%% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
-%%--------------------------------------------------------------------    
+%%--------------------------------------------------------------------
 -spec(disable_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
-disable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->    
+disable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->
     ?LOG("disabling temporal route ~s", [Id]),
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
@@ -267,12 +267,12 @@ disable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{acco
 %% @private
 %% @doc
 %% Retrieve and update the enabled key on the temporal route document.
-%% Also plays messages to the caller based on the results of that 
+%% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
 -spec(enable_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
-enable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->    
+enable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->
     ?LOG("enabling temporal route ~s", [Id]),
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
@@ -288,12 +288,12 @@ enable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{accou
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% determines the appropriate gregorian seconds to be used as the 
+%% determines the appropriate gregorian seconds to be used as the
 %% current date/time for this temporal route selection
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_current_time/1 :: (Temporal :: #temporal{}) -> #temporal{}).
-load_current_time(#temporal{timezone=Timezone}=Temporal)->  
+load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
                                 calendar:universal_time()
                                ,whistle_util:to_list(Timezone)
@@ -306,8 +306,8 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% The big daddy 
-%% Calculates the date of the next event given the type, interval, 
+%% The big daddy
+%% Calculates the date of the next event given the type, interval,
 %% rule, start date, and current date.
 %%
 %% GOTCHA!
@@ -318,9 +318,6 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %%--------------------------------------------------------------------
 -spec(next_rule_date/2 :: (Rule :: #rule{}, Current :: wh_date()) -> wh_date()).
 next_rule_date(#rule{cycle = <<"date">>, start_date=Date0}, _) ->
-    Date0;
-
-next_rule_date(#rule{interval=0, start_date=Date0}, _) ->
     Date0;
 
 next_rule_date(#rule{cycle = <<"daily">>, interval=I0
@@ -341,9 +338,9 @@ next_rule_date(#rule{cycle = <<"weekly">>, interval=I0
         %% During an 'active' week but before the last weekday in the list
         %%   move to the next day this week
         [Day|_] when Distance =:= Offset ->
-            normalize_date({Y1, M1, D1 + Day - DOW0}); 
+            normalize_date({Y1, M1, D1 + Day - DOW0});
         %% Empty list:
-        %%   The last DOW during an 'active' week, 
+        %%   The last DOW during an 'active' week,
         %% Non Empty List that failed the guard:
         %%   During an 'inactive' week
         _ ->
@@ -353,7 +350,7 @@ next_rule_date(#rule{cycle = <<"weekly">>, interval=I0
     end;
 
 next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal = <<"every">>
-                         ,wdays=[Weekday], start_date={Y0, M0, _}}, {Y1, M1, D1}) ->    
+                         ,wdays=[Weekday], start_date={Y0, M0, _}}, {Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
     case Distance =:= Offset andalso find_next_weekday({Y1, M1, D1}, Weekday) of
@@ -380,7 +377,7 @@ next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal = <<"last">>
         %% If today is before the occurace day on an 'active' month since
         %%   the 'last' only happens once per month if we havent passed it
         %%   then it must be this month
-        {_, _, D2}=Date when D1 < D2 -> 
+        {_, _, D2}=Date when D1 < D2 ->
             Date;
         %% In an 'inactive' month or when we have already passed
         %%   the last occurance of the DOW
@@ -390,7 +387,7 @@ next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal = <<"last">>
 
 %% WARNING: There is a known bug when requesting the fifth occurance
 %%   of a weekday when I0 > 1 and the current month only has four instances
-%%   of the given weekday, the calculation is incorrect.  I was told not 
+%%   of the given weekday, the calculation is incorrect.  I was told not
 %%   to worry about that now...
 next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal=Ordinal
                      ,wdays=[Weekday], start_date={Y0, M0, _}}, {Y1, M1, D1}) ->
@@ -398,17 +395,17 @@ next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal=Ordinal
     Offset = trunc( Distance / I0 ) * I0,
     case Distance =:= Offset andalso {find_ordinal_weekday(Y1, M1, Weekday, Ordinal), I0} of
         %% If today is before the occurance day on an 'active' month and
-        %%   the occurance does not cross month/year boundaries then the 
+        %%   the occurance does not cross month/year boundaries then the
         %%   calculated date is accurate
-        {{_, M1, D2}=Date, _} when D1 < D2, I0 > 1 -> 
-            Date;        
+        {{_, M1, D2}=Date, _} when D1 < D2, I0 > 1 ->
+            Date;
         %% If today is before the occurance day on an 'active' month and
         %%   the iterval =:= 1 then it happens every month so it doesnt
         %%   matter if it crosses month/year boundaries
-        {{_, M2, D2}=Date, 1} when D1 < D2; M1 < M2 -> 
+        {{_, M2, D2}=Date, 1} when D1 < D2; M1 < M2 ->
             Date;
         %% false:
-        %%   In an 'inactive' month 
+        %%   In an 'inactive' month
         %% {wh_date(), integer()}:
         %%   We have already passed the last occurance of the DOW
         _ ->
@@ -427,12 +424,12 @@ next_rule_date(#rule{cycle = <<"monthly">>, interval=I0
         %%   All of the days in the list have already happened
         %% Non Empty List that failed the guard:
         %%   The day hasn't happend on an 'inactive' month
-        _ -> 
+        _ ->
             normalize_date({Y0, M0 + Offset + I0, hd( Days )})
     end;
 
 %% WARNING: This function does not ensure the provided day actually
-%%   exists in the month provided.  For temporal routes that isnt 
+%%   exists in the month provided.  For temporal routes that isnt
 %%   an issue because we will 'pass' the invalid date and compute
 %%   the next
 next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
@@ -441,7 +438,7 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
     Offset = trunc( Distance / I0 ) * I0,
     %% If it is currently an 'active' year before the requested
     %%   month or on the requested month but before the day
-    %%   then just provide the occurance.  Otherwise work out 
+    %%   then just provide the occurance.  Otherwise work out
     %%   the next occurance.
     case M1 =< Month andalso D1 < Day of
         %% It is before the requested month or
@@ -452,7 +449,7 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
         %%   The guard failed, so this is an 'inactive'
         %%   month.
         %% false:
-        %%   The requested month or day in that month has 
+        %%   The requested month or day in that month has
         %%   already passed
         _ -> {Y0 + Offset + I0, Month, Day}
     end;
@@ -499,7 +496,7 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal=Ordinal
                      ,month=Month, wdays=[Weekday], start_date={Y0, _, _}}, {Y1, M1, D1}) ->
     Distance = Y1 - Y0,
     Offset = trunc( Distance / I0 ) * I0,
-    case Distance =:= Offset andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal) of 
+    case Distance =:= Offset andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal) of
         %% During an 'active' year before the target month the calculated
         %%   occurance is accurate
         {Y1, Month, _}=Date when M1 < Month ->
@@ -510,7 +507,7 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal=Ordinal
             Date;
         %% During an 'inactive' year or after the calculated
         %%   occurance determine the next iteration
-        _ ->            
+        _ ->
             find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal)
     end.
 
@@ -539,7 +536,7 @@ normalize_date({Y, M, D}=Date) ->
 %% @private
 %% @doc
 %% Convert the ordinal words to cardinal numbers representing
-%% the position 
+%% the position
 %% @end
 %%--------------------------------------------------------------------
 -spec(from_ordinal/1 :: (Ordinal :: strict_ordinal()) -> 0..4).
@@ -552,7 +549,7 @@ from_ordinal(<<"fifth">>) -> 4.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Map the days of the week to cardinal numbers representing the 
+%% Map the days of the week to cardinal numbers representing the
 %% position, in accordance with ISO 8601
 %% @end
 %%--------------------------------------------------------------------
@@ -569,7 +566,7 @@ to_dow(<<"sunday">>) -> 7.
 %% @private
 %% @doc
 %% Calculates the date of the next occurance of a weekday from the given
-%% start date.  
+%% start date.
 %%
 %% NOTICE!
 %% It is possible for this function to cross month/year boundaries.
@@ -578,13 +575,13 @@ to_dow(<<"sunday">>) -> 7.
 -spec(find_next_weekday/2 :: (Date :: wh_date(), Weekday :: wday()) -> wh_date()).
 find_next_weekday({Y, M, D}, Weekday) ->
     RefDOW = to_dow(Weekday),
-    case calendar:day_of_the_week({Y, M, D}) of
-        %% Today is the DOW we wanted, calculate for next week 
+    case day_of_the_week({Y, M, D}) of
+        %% Today is the DOW we wanted, calculate for next week
         RefDOW ->
             normalize_date({Y, M, D + 7});
         %% If the DOW has not occured this week yet
         DOW when RefDOW > DOW ->
-            normalize_date({Y, M, D + (RefDOW - DOW)});            
+            normalize_date({Y, M, D + (RefDOW - DOW)});
         %% If the DOW occurance has already happend, calculate
         %%   for the next week using the current DOW as a reference
         DOW ->
@@ -595,7 +592,7 @@ find_next_weekday({Y, M, D}, Weekday) ->
 %% @private
 %% @doc
 %% Safety wrapper on date_of_dow used to loop over failing attempts
-%% until the date can be calculated.  The date can be provided as an 
+%% until the date can be calculated.  The date can be provided as an
 %% improper date.
 %%
 %% NOTICE!
@@ -619,7 +616,7 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Calculates the date of the last occurance of a weekday within a 
+%% Calculates the date of the last occurance of a weekday within a
 %% given month/year.  The date can be provided as an improper date.
 %%
 %% Assumption/Principle:
@@ -649,7 +646,7 @@ find_last_weekday({Y, M, _}, Weekday) ->
 %% @private
 %% @doc
 %% Unsafe calculation of the date for a specific day of the week, this
-%% function will explode on occasion. 
+%% function will explode on occasion.
 %% @end
 %%--------------------------------------------------------------------
 -spec(date_of_dow/4 :: (Year :: wh_year(), Month :: improper_month()
@@ -725,6 +722,20 @@ iso_week_number(Date) ->
 	false -> our_iso_week_number(Date)
     end.
 
+-spec(day_of_the_week/1 :: (Date :: wh_date()) -> wh_day()).
+day_of_the_week({Year, Month, Day}=Date) ->
+    case erlang:function_exported(calendar, day_of_the_week, 1) of
+	true -> calendar:day_of_the_week(Date);
+	false -> our_day_of_the_week(Year, Month, Day)
+    end.
+
+-spec(day_of_the_week/3 :: (wh_year(), wh_month(), wh_day()) -> wh_day()).
+day_of_the_week(Year, Month, Day) ->
+    case erlang:function_exported(calendar, day_of_the_week, 3) of
+	true -> calendar:day_of_the_week(Year, Month, Day);
+	false -> our_day_of_the_week(Year, Month, Day)
+    end.
+
 %% TAKEN FROM THE R14B02 SOURCE FOR calender.erl
 our_iso_week_number({Year,_Month,_Day}=Date) ->
     D = calendar:date_to_gregorian_days(Date),
@@ -735,9 +746,9 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
 	    {Year, (D - W01_1_Year) div 7 + 1};
 	D < W01_1_Year ->
 	    % Previous Year 52 or 53
-	    PWN = case calender:day_of_the_week(Year - 1, 1, 1) of
+	    PWN = case day_of_the_week(Year - 1, 1, 1) of
 		4 -> 53;
-		_ -> case calendar:day_of_the_week(Year - 1, 12, 31) of
+		_ -> case day_of_the_week(Year - 1, 12, 31) of
 			4 -> 53;
 			_ -> 52
 		     end
@@ -758,6 +769,13 @@ gregorian_days_of_iso_w01_1(Year) ->
 	D0101 + 7 - DOW + 1
     end.
 
+%% day_of_the_week(Year, Month, Day)
+%% day_of_the_week({Year, Month, Day})
+%%
+%% Returns: 1 | .. | 7. Monday = 1, Tuesday = 2, ..., Sunday = 7.
+-spec our_day_of_the_week(calendar:year(), calendar:month(), calendar:day()) -> calendar:daynum().
+our_day_of_the_week(Year, Month, Day) ->
+    (calendar:date_to_gregorian_days(Year, Month, Day) + 5) rem 7 + 1.
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
@@ -924,9 +942,9 @@ weekly_recurrence_test() ->
     ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,14})),
     ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,15})),
     ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,16})),
-    %% multiple DOWs over month boundary 
+    %% multiple DOWs over month boundary
     ?assertEqual({2011,2,7}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,28})),
-    %% multiple DOWs over year boundary 
+    %% multiple DOWs over year boundary
     ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2010,1,1}}, {2010,12,31})),
     %% current date on (interval)
     ?assertEqual({2011,1,17}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,3})),
@@ -949,7 +967,7 @@ weekly_recurrence_test() ->
     ?assertEqual({2011,5,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=4, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,4,11})).
 
 monthly_every_recurrence_test() ->
-    %% basic increment (also crosses month boundary) 
+    %% basic increment (also crosses month boundary)
     ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
     ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,3})),
     ?assertEqual({2011,1,17}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,10})),
@@ -986,7 +1004,7 @@ monthly_every_recurrence_test() ->
     ?assertEqual({2011,1,23}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,16})),
     ?assertEqual({2011,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,23})),
     ?assertEqual({2011,2,6}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,30})),
-    %% increment over year boundary 
+    %% increment over year boundary
     ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2010,1,1}}, {2010,12,27})),
     ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2010,1,1}}, {2010,12,28})),
     ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2010,1,1}}, {2010,12,29})),
@@ -994,7 +1012,7 @@ monthly_every_recurrence_test() ->
     ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2010,1,1}}, {2010,12,31})),
     ?assertEqual({2011,1,1}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2010,1,1}}, {2010,12,25})),
     ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2010,1,1}}, {2010,12,26})),
-    %% leap year (into) 
+    %% leap year (into)
     ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,28})),
     %% leap year (over)
     ?assertEqual({2008,3,1}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,28})),
@@ -1050,7 +1068,7 @@ monthly_every_recurrence_test() ->
     ?assertEqual({2011,3,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,1,1})).
 
 monthly_last_recurrence_test() ->
-    %% basic increment 
+    %% basic increment
     ?assertEqual({2011,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
     ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
     ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
@@ -1098,7 +1116,7 @@ monthly_last_recurrence_test() ->
     ?assertEqual({2011,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2008,8,1}}, {2011,1,1})),
     ?assertEqual({2011,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2009,7,1}}, {2011,1,1})),
     ?assertEqual({2011,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2010,6,1}}, {2011,1,1})),
-    %% even step (small) 
+    %% even step (small)
     ?assertEqual({2011,3,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,3,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,3,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
@@ -1106,7 +1124,7 @@ monthly_last_recurrence_test() ->
     ?assertEqual({2011,3,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,3,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,3,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
-    %% odd step (small) 
+    %% odd step (small)
     ?assertEqual({2011,4,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,4,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,4,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
@@ -1114,7 +1132,7 @@ monthly_last_recurrence_test() ->
     ?assertEqual({2011,4,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,4,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,4,24}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
-    %% even step (large) 
+    %% even step (large)
     ?assertEqual({2014,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2014,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2014,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
@@ -1122,7 +1140,7 @@ monthly_last_recurrence_test() ->
     ?assertEqual({2014,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2014,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2014,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
-    %% odd step (large) 
+    %% odd step (large)
     ?assertEqual({2014,2,24}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2014,2,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2014,2,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
@@ -1341,18 +1359,18 @@ monthly_every_ordinal_recurrence_test() ->
 
 monthly_date_recurrence_test() ->
     %% basic increment
-    lists:foreach(fun(D) ->                          
+    lists:foreach(fun(D) ->
                           ?assertEqual({2011,1,D + 1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[D + 1], start_date={2011,1,1}}, {2011,1,D}))
                   end, lists:seq(1, 30)),
-    lists:foreach(fun(D) ->                          
+    lists:foreach(fun(D) ->
                           ?assertEqual({2011,6,D + 1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[D + 1], start_date={2011,6,1}}, {2011,6,D}))
                   end, lists:seq(1, 29)),
     %% same day, before
     ?assertEqual({2011,3,25}, next_rule_date(#rule{cycle = <<"monthly">>, days=[25], start_date={2011,1,1}}, {2011,3,24})),
-    %% increment over month boundary   
+    %% increment over month boundary
     ?assertEqual({2011,2,1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[1], start_date={2011,1,1}}, {2011,1,31})),
     ?assertEqual({2011,7,1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[1], start_date={2011,6,1}}, {2011,6,30})),
-    %% increment over year boundary    
+    %% increment over year boundary
     ?assertEqual({2011,1,1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[1], start_date={2010,1,1}}, {2010,12,31})),
     %% leap year (into)
     ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"monthly">>, days=[29], start_date={2008,1,1}}, {2008,2,28})),
@@ -1497,7 +1515,7 @@ yearly_every_ordinal_recurrence_test() ->
     ?assertEqual({2011,4,29}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
     ?assertEqual({2011,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
 %%!!    ?assertEqual({2017,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
-    %% same month, before 
+    %% same month, before
     ?assertEqual({2011,4,4}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,4,1})),
     ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,4,10})),
     %% current date on (simple)
@@ -1553,6 +1571,6 @@ yearly_every_ordinal_recurrence_test() ->
 %%!!    ?assertEqual({2013,4,29}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
 %%!!    ?assertEqual({2013,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
 %%!!    ?assertEqual({2017,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
-    ok. 
+    ok.
 
 -endif.

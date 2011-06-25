@@ -44,11 +44,15 @@ handle_req(JObj) ->
 
     {ok, AuthJObj} = lookup_user(AuthU, AuthR),
 
+    AcctID = wh_json:get_value(<<"id">>, AuthJObj),
+
     Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, [
 						       {<<"Direction">>, Direction}
 						       ,{<<"Username">>, AuthU}
 						       ,{<<"Realm">>, AuthR}
+						       ,{<<"Account-ID">>, AcctID}
+						       ,{<<"Authorizing-ID">>, AcctID}
 						      ]
 					     }}
 		| whistle_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
@@ -92,14 +96,14 @@ handle_req(JObj) ->
     %% 	    false
     %% end.
 
--spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, string())).
+-spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, user_not_found)).
 lookup_user(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
-	{ok, []} -> {error, "No user/realm found"};
+	{ok, []} -> {error, user_not_found};
 	{ok, [{struct, _}=User|_]} ->
 	    Auth = wh_json:get_value(<<"value">>, User),
-	    {ok, Auth}
+	    {ok, wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), Auth)}
     end.
 
 -spec(response/2 :: (AuthJObj :: json_object() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
