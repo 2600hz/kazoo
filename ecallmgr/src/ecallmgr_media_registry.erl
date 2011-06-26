@@ -111,7 +111,7 @@ handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
 			end, Dict),
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
-            {reply, {error, not_local}, Dict};        
+            {reply, {error, not_local}, Dict};
 	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
 	    spawn(fun() ->
 			  process_flag(trap_exit, true),
@@ -149,7 +149,7 @@ handle_call(_Request, _From, Dict) ->
 %% @private
 %% @doc
 %% Handling cast messages
-%% 
+%%
 %% @spec handle_cast(Msg, State) -> {noreply, State} |
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
@@ -223,7 +223,7 @@ generate_local_path(MediaName) ->
 request_media(MediaName, CallId) ->
     request_media(MediaName, <<"new">>, CallId).
 
--spec(request_media/3 :: (MediaName :: binary(), Type :: extant | continuous, CallID :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
+-spec(request_media/3 :: (MediaName :: binary(), Type :: binary(), CallID :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
 request_media(MediaName, Type, CallID) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
         {ok, Path} ->
@@ -234,7 +234,7 @@ request_media(MediaName, Type, CallID) ->
             lookup_remote(MediaName, Type, CallID)
     end.
 
-lookup_remote(MediaName, extant, CallID) ->
+lookup_remote(MediaName, <<"extant">>, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"extant">>}
@@ -242,10 +242,10 @@ lookup_remote(MediaName, extant, CallID) ->
                | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request);
-lookup_remote(MediaName, continuous, CallID) ->
+lookup_remote(MediaName, <<"new">>, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
-               ,{<<"Stream-Type">>, <<"continuous">>}
+               ,{<<"Stream-Type">>, <<"new">>}
 	       ,{<<"Call-ID">>, CallID}
                | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
