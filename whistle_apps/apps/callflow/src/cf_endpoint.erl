@@ -17,11 +17,17 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Fetches a endpoint defintion from the database and returns the
-%% whistle_api endpoint json
+%% Fetches a endpoint defintion from the database, and creates one
+%% or more whistle API endpoints for use in a bridge string.  Takes
+%% into account settings on the callflow, the endpoint, call forwarding,
+%% and ringtones.  More functionality to come, but as it is added
+%% it will be implicit in all functions that 'ring an endpoing' like
+%% devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec(build/2 :: (Id :: binary(), Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec(build/2 :: (Id :: binary(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(build/3 :: (Id :: binary(), Properties :: json_object(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).
+
 build(EndpointId, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
 
@@ -39,20 +45,42 @@ build(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
             E
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creates the whistle API endpoint for a bridge call command. This
+%% endpoint is comprised of the endpoint definition (commonally a
+%% device) and the properties of this endpoint in the callflow.
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_endpoint/3 :: (Endpoint :: json_object(), Properties :: json_object(), Call :: #cf_call{})
+                           -> json_object()).
 create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=Inception}=Call) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     ?LOG("creating endpoint for ~s", [EndpointId]),
 
-    {CalleeNum, CalleeName} = case Inception of
-                                     <<"off-net">> ->
-                                         cf_attributes:callee_id(<<"external">>, EndpointId, OwnerId, Call);
-                                     _ ->
-                                         cf_attributes:callee_id(<<"internal">>, EndpointId, OwnerId, Call)
-                                 end,
-
     SIP = wh_json:get_value(<<"sip">>, Endpoint, ?EMPTY_JSON_OBJECT),
     Media = wh_json:get_value(<<"media">>, Endpoint, ?EMPTY_JSON_OBJECT),
+
+    case Inception of
+        <<"off-net">> ->
+            {CalleeNum, CalleeName} =
+                cf_attributes:callee_id(<<"external">>, EndpointId, OwnerId, Call),
+            SIPHeaders =
+                merge_sip_headers(
+                  wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint)
+                  ,wh_json:get_value(<<"custom_sip_headers">>, SIP));
+        _ ->
+            {CalleeNum, CalleeName} =
+                cf_attributes:callee_id(<<"internal">>, EndpointId, OwnerId, Call),
+            SIPHeaders =
+                merge_sip_headers(
+                  wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint)
+                  ,wh_json:get_value(<<"custom_sip_headers">>, SIP))
+    end,
+
+io:format("~p~n", [SIPHeaders]),
 
     Prop = [{<<"Invite-Format">>, wh_json:get_value(<<"invite_format">>, SIP, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value(<<"username">>, SIP)}
@@ -67,11 +95,23 @@ create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=I
             ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Media)}
-            ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, SIP)}
+            ,{<<"SIP-Headers">>, SIPHeaders}
             ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Endpoint-ID">>, EndpointId}]}}
            ],
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined ]}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creates the whistle API endpoint for a bridge call command when
+%% the deivce (or owner) has forwarded their phone.  This endpoint
+%% is comprised of a route based on CallFwd, the relevant settings
+%% from the actuall endpoint, and the properties of this endpoint in
+%% the callflow.
+%% @end
+%%--------------------------------------------------------------------
+-spec(create_call_fwd_endpoint/4 :: (Endpoint :: json_object(), CallFwd :: json_object(), Properties :: json_object(), Call :: #cf_call{})
+                                    -> json_object()).
 create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=ReqUser, inception=Inception
                                                                  ,authorizing_id=AuthId, owner_id=AuthOwnerId
                                                                  ,cid_number=CIDNum, cid_name=CIDName}=Call) ->
@@ -125,3 +165,21 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=Re
             ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Authorizing-ID">>, EndpointId}] ++ CCV2}}
            ],
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined ]}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creates the sip headers json object for the whistle API with by
+%% merging the 'ringtones' (alert-info) with any custom sip headers
+%% @end
+%%--------------------------------------------------------------------
+-spec(merge_sip_headers/2 :: (AlertInfo :: undefined | json_object(), CustomHeaders :: undefined | json_object())
+                             -> undefined | json_object()).
+merge_sip_headers(undefined, undefined) ->
+    undefined;
+merge_sip_headers(AlertInfo, undefined) ->
+    {struct, [{<<"Alert-Info">>, AlertInfo}]};
+merge_sip_headers(undefined, CustomHeaders) ->
+    CustomHeaders;
+merge_sip_headers(AlertInfo, {struct, Params}) ->
+    {struct, Params ++ [{<<"Alert-Info">>, AlertInfo}]}.
