@@ -4,7 +4,7 @@
 %%% @doc
 %%% Registration viewer / creator
 %%% @end
-%%% Created : 15 Apr 2011 by James Aimonetti <>
+%%% Created : 15 Apr 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(registrations).
 
@@ -19,7 +19,6 @@
 
 -include("../../include/crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
--include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(REG_DB, <<"registrations">>).
