@@ -70,6 +70,7 @@ init([Node, UUID, CtlPid]) ->
     process_flag(trap_exit, true),
     put(callid, UUID),
     is_pid(CtlPid) andalso link(CtlPid),
+    ?LOG(UUID, "Init complete. CtlPid: ~p", [CtlPid]),
     {ok, #state{node=Node, uuid=UUID, ctlpid=CtlPid}, 0}.
 
 %%--------------------------------------------------------------------
@@ -114,11 +115,20 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{node=Node, uuid=UUID}=State) ->
     erlang:monitor_node(Node, true),
+    ?LOG("Monitoring ~s", [Node]),
     case freeswitch:handlecall(Node, UUID) of
 	ok ->
+	    ?LOG("Handling call events for ~s", [Node]),
 	    Q = add_amqp_listener(UUID),
 	    {noreply, State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}};
-	_ ->
+	timeout ->
+	    ?LOG("Timed out trying to handle events for ~s, trying again", [Node]),
+	    {noreply, State, 0};
+	{error, badsession} ->
+	    ?LOG("Bad session received when handling events for ~s", [Node]),
+	    {stop, normal, State};
+	_E ->
+	    ?LOG("Failed to handle call events for ~s: ~p", [Node, _E]),
 	    {stop, normal, State}
     end;
 
@@ -232,8 +242,10 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
 	false ->
 	    case FNC > ?MAX_FAILED_NODE_CHECKS of
 		true ->
+		    ?LOG(UUID, "Node ~s appears down, and we've checked ~b times now; going down", [Node, FNC]),
 		    {stop, normal, State};
 		false ->
+		    ?LOG(UUID, "Node ~s appears down, and we've checked ~b times now; will check again", [Node, FNC]),
 		    {noreply, State#state{is_node_up=IsUp, failed_node_checks=FNC+1}}
 	    end
     end;
