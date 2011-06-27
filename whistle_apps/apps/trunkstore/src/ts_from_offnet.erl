@@ -51,10 +51,19 @@ start_amqp(#state{route_req_jobj=JObj}=State) ->
     ?LOG("AMQP started: ~s", [Q]),
     endpoint_data(State#state{my_q=Q}, JObj).
 
-endpoint_data(State, JObj) ->
-    {endpoint, EP} = endpoint_data(JObj),
-    ?LOG("Endpoint loaded"),
-    send_park(State#state{endpoint=EP}).
+endpoint_data(#state{aleg_callid=CallID, acctid=AcctID}=State, JObj) ->
+    try
+        {endpoint, EP} = endpoint_data(JObj),
+        ?LOG("Endpoint loaded"),
+        send_park(State#state{endpoint=EP})
+    catch
+        _A:_B ->
+            ?LOG("Exception when routing from offnet"),
+            ?LOG("~p:~p", [_A, _B]),
+            ?LOG("Stacktrace: ~p", [erlang:get_stacktrace()]),
+            ?LOG("release ~s for ~s", [CallID, AcctID]),
+            ts_acctmgr:release_trunk(AcctID, CallID, 0)
+    end.
 
 send_park(#state{route_req_jobj=JObj, my_q=Q, aleg_callid=CallID, acctid=AcctID}=State) ->
     JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -91,6 +100,7 @@ wait_for_win(#state{aleg_callid=CallID, my_q=Q, acctid=AcctID}=State, Timeout) -
 
                 _ = amqp_util:bind_q_to_callevt(Q, CallID),
                 _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+                amqp_util:basic_consume(Q, [{exclusive, false}]), %% not sure yet if need to re-call consume/2 here
 
                 CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
 
@@ -250,22 +260,17 @@ try_failover_sip(#state{acctid=AcctID, aleg_callid=CallID, callctl_q = <<>>}, _)
     ?LOG("No control queue to try SIP failover"),
     ?LOG("Release ~s from ~s", [CallID, AcctID]),
     ts_acctmgr:release_trunk(AcctID, CallID, 0);
-try_failover_sip(#state{endpoint=EP, aleg_callid=CallID, callctl_q=CtlQ}=State, SIPUri) ->
+try_failover_sip(#state{aleg_callid=CallID, callctl_q=CtlQ}=State, SIPUri) ->
     EndPoint = {struct, [
 			 {<<"Invite-Format">>, <<"route">>}
 			 ,{<<"Route">>, SIPUri}
 			]},
 
+    %% since we only route to one endpoint, we specify most options on the endpoint's leg
     Command = [
 	       {<<"Call-ID">>, CallID}
 	       ,{<<"Application-Name">>, <<"bridge">>}
 	       ,{<<"Endpoints">>, [EndPoint]}
-	       ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, EP)}
-	       ,{<<"Bypass-Media">>, wh_json:get_value(<<"Bypass-Media">>, EP)}
-	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
-	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
-	       ,{<<"Outgoing-Callee-ID-Name">>, wh_json:get_value(<<"Outgoing-Callee-ID-Name">>, EP)}
-	       ,{<<"Outgoing-Callee-ID-Number">>, wh_json:get_value(<<"Outgoing-Callee-ID-Number">>, EP)}
 	      ],
 
     {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
@@ -436,8 +441,8 @@ routing_data(ToDID) ->
 
     AuthOpts = wh_json:get_value(<<"auth">>, Settings, ?EMPTY_JSON_OBJECT),
     Acct = wh_json:get_value(<<"account">>, Settings, ?EMPTY_JSON_OBJECT),
-    DidOptions = wh_json:get_value(<<"DID_Opts">>, Settings, ?EMPTY_JSON_OBJECT),
-    RouteOpts = wh_json:get_value(<<"options">>, DidOptions, []),
+    DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, ?EMPTY_JSON_OBJECT),
+    RouteOpts = wh_json:get_value(<<"options">>, DIDOptions, []),
 
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),
     AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
@@ -457,25 +462,48 @@ routing_data(ToDID) ->
 
     SrvOptions = wh_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
 
+    {CalleeName, CalleeNumber} = callee_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
+                                            ,wh_json:get_value(<<"callerid_account">>, Settings)
+                                            ,wh_json:get_value(<<"callerid_server">>, Settings)
+                                           ]),
+
+    %% Bridge Endpoint fields go here
+    %% See http://wiki.2600hz.org/display/whistle/Dialplan+Actions#DialplanActions-Endpoint
     RD0 = [KV || {_,V}=KV <- [ {<<"Invite-Format">>, wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>)}
                                ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv)}
                                ,{<<"Bypass-Media">>, wh_json:get_value(<<"media_handling">>, SrvOptions)}
-                               ,{<<"Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, SrvOptions)}
+                               ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, SrvOptions)}
+                               ,{<<"Endpoint-Delay">>, wh_json:get_value(<<"delay">>, DIDOptions)}
+                               ,{<<"SIP-Headers">>, wh_json:get_value(<<"sip_headers">>, SrvOptions)}
                                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, SrvOptions)}
+                               ,{<<"Endpoint-Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
+                               ,{<<"Callee-ID-Name">>, CalleeName}
+                               ,{<<"Callee-ID-Number">>, CalleeNumber}
                                ,{<<"To-User">>, AuthU}
                                ,{<<"To-Realm">>, AuthR}
-                               ,{<<"Route-Options">>, RouteOpts}
                                ,{<<"To-DID">>, ToDID}
+                               ,{<<"Route-Options">>, RouteOpts}
                              ],
                  V =/= undefined,
                  V =/= <<>> ],
 
     ?LOG("Created Routing data"),
 
-    case wh_json:get_value(<<"failover">>, DidOptions
+    case wh_json:get_value(<<"failover">>, DIDOptions
 			   ,wh_json:get_value(<<"failover">>, Srv
 					      ,wh_json:get_value(<<"failover">>, AcctStuff))
 			  ) of
 	undefined -> RD0;
 	F -> [{<<"Failover">>, F} | RD0] %% {struct, [{<<"e164 or sip">>, <<"sip:foo@bar.com or +12223334444">>}]}
+    end.
+
+callee_id([]) -> {undefined, undefined};
+callee_id([undefined | T]) -> callee_id(T);
+callee_id([?EMPTY_JSON_OBJECT | T]) -> callee_id(T);
+callee_id([<<>> | T]) -> callee_id(T);
+callee_id([{struct, [_|_]}=JObj | T]) ->
+    case {wh_json:get_value(<<"cid_name">>, JObj), wh_json:get_value(<<"cid_number">>, JObj)} of
+        {undefined, undefined} ->
+            callee_id(T);
+        CalleeID -> CalleeID
     end.

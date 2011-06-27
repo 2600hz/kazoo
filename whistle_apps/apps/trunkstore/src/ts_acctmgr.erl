@@ -251,22 +251,31 @@ handle_cast(update_views, #state{current_read_db=RDB}=S) ->
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
     spawn(fun() ->
-		  ?LOG(CallID, "Release trunk for ~s: $~p", [AcctId, Amt]),
+                  put(callid, CallID),
+		  ?LOG("Release trunk for ~s: $~p", [AcctId, Amt]),
 
 		  load_account(AcctId, WDB, Self),
 
 		  case trunk_type(RDB, AcctId, CallID) of
 		      non_existant ->
+                          ?LOG("Trunk for ~s not found in ~s, trying ~s", [AcctId, RDB, WDB]),
 			  case trunk_type(WDB, AcctId, CallID) of
 			      non_existant -> ?LOG(CallID, "Failed to find trunk to release for ~s", [AcctId]);
-			      per_min -> ?LOG(CallID, "Released per minute trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt))]);
-			      flat_rate -> ?LOG(CallID, "Released flat rate trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))])
+			      per_min -> release(per_min, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt)));
+			      flat_rate -> release(flat_rate, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate)))
 			  end;
-		      per_min -> ?LOG(CallID, "Released per minute trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt))]);
-		      flat_rate -> ?LOG(CallID, "Released flat rate trunk: ~p", [couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))])
+		      per_min -> release(per_min, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt)));
+		      flat_rate -> release(flat_rate, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate)))
 		  end
 	  end),
     {noreply, S}.
+
+release(per_min, {ok, _}) ->
+    ?LOG("Released per minute trunk");
+release(flat_rate, {ok, _}) ->
+    ?LOG("Released flat rate trunk");
+release(_, {error, _E}) ->
+    ?LOG("Failed to release trunk: ~p", [_E]).
 
 %%--------------------------------------------------------------------
 %% @private
