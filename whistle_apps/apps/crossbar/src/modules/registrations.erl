@@ -4,7 +4,7 @@
 %%% @doc
 %%% Registration viewer / creator
 %%% @end
-%%% Created : 15 Apr 2011 by James Aimonetti <>
+%%% Created : 15 Apr 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(registrations).
 
@@ -18,12 +18,13 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 -define(REG_DB, <<"registrations">>).
 -define(REG_VIEW_FILE, <<"views/registrations.json">>).
 -define(LOOKUP_ACCOUNT_REGS, <<"reg_doc/lookup_realm_user">>).
-
+-define(LOOKUP_ACCOUNT_USER_REALM, <<"reg_doc/realm_and_username">>).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -114,7 +115,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.registrations">>
 handle_info({binding_fired, Pid, <<"v1_resource.validate.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
 		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
+		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
@@ -148,6 +149,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>,
 		  crossbar_util:binding_heartbeat(Pid),
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
+    Pid ! {binding_result, true, ?REG_VIEW_FILE},
     {noreply, State};
 
 handle_info(timeout, State) ->
@@ -238,7 +243,7 @@ allowed_methods(_) ->
 -spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
 resource_exists([]) ->
     {true, []};
-resource_exists([_RegistrationsID]) ->
+resource_exists([_]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -252,28 +257,54 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    Context1 = crossbar_doc:load_view(<<"devices/sip_credentials">>, [{<<"limit">>, <<"1">>}], Context),
-    logger:format_log(info, "CB_REG(~p): get acct sip auth: ~p~n", [self(), Context1#cb_context.doc]),
-    Context1;
-    %% crossbar_doc:load_view(?LOOKUP_ACCOUNT_REGS, [{<<"group_level">>, <<"1">>}
-    %% 						  ,{<<"startkey">>, [<<"acct_auth_realm">>]}
-    %% 						  ,{<<"endkey">>, [<<"auth_realm">>, true]}
-    %% 						 ], Context);
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QS}, #cb_context{req_verb = <<"get">>, db_name=DbName}=Context) ->
+    {ok, Doc} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
+    _DocKeys =  [wh_json:get_value(<<"key">>, Elm) || Elm <- Doc],
 
-validate([], #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
-    Context;
-    
-validate([RegID], #cb_context{req_verb = <<"get">>}=Context) ->
-    crossbar_doc:load(RegID, Context);
+    DocKeys = case QS of
+               [] -> _DocKeys;
+               _  -> filter_results_on_qs(_DocKeys, QS, ?REG_DB)
+              end,
 
-validate([RegID], #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
-    crossbar_doc:load_merge(RegID, Data, Context);
+    case DocKeys of
+        [] -> crossbar_util:response_faulty_request(Context); %% Should be a 404 here
+        _ -> crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"keys">>, DocKeys}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2)
+    end;
 
-validate([RegID], #cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) ->
-    crossbar_doc:delete(crossbar_doc:load(RegID, Context));
+validate([], _, #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
+    Context#cb_context{db_name=?REG_DB};
 
-validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
+validate([RegID], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB});
+
+validate([RegID], _, #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
+    crossbar_doc:load_merge(RegID, Data, Context#cb_context{db_name=?REG_DB});
+
+validate([RegID], _, #cb_context{req_verb = <<"delete">>}=Context) ->
+    crossbar_doc:delete(crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB}));
+
+validate(Params, _, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
     logger:format_log(info, "CB_REG.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%% -spec(filter_results/2 :: ()).
+filter_results_on_qs(DocKeys, [{Param, Value} | _], DbName) ->
+    ParamBin = list_to_binary(Param),
+    ValueBin = list_to_binary(Value),
+    [DocKey || DocKey <- DocKeys, is_doc_valid_against_filter(DocKey, {ParamBin, ValueBin}, DbName) =:= true].
+
+is_doc_valid_against_filter(DocKey, {Param, Value}, DbName) ->
+    {ok, [PreDoc]} = couch_mgr:get_results(DbName, ?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, DocKey}, {<<"include_docs">>, true}]),
+    Doc = wh_json:get_value(<<"doc">>, PreDoc),
+    wh_json:get_value(Param, Doc)  =:= Value.
