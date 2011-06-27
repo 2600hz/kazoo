@@ -185,6 +185,8 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
 	false -> {error, <<"bridge failed to execute as JObj did not validate">>};
 	true ->
             ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
+            %% NOTE: at this time FS is not honoring call_timeout when set in the bridge string, arg...
+            ok = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
             ok = set(Node, UUID, "failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"),
 	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
 				<<"simultaneous">> -> ",";
@@ -320,8 +322,7 @@ media_path(MediaName, Type, UUID) ->
 
 -spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
 get_fs_playback(<<"http://", _/binary>>=Url) ->
-    {ok, Settings} = file:consult(?SETTINGS_FILE),
-    RemoteAudioScript = props:get_value(remote_audio_script, Settings, <<"/tmp/fetch_remote_audio.sh">>),
+    RemoteAudioScript = get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
     <<"shell_stream://", (whistle_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
@@ -414,12 +415,24 @@ set_terminators(Node, UUID, Ts) ->
     set(Node, UUID, Terms).
 
 -spec(set_ringback/3 :: (Node :: atom(), UUID :: binary(), RingBack :: undefined | binary()) -> ok | timeout | {error, string()}).
-set_ringback(_Node, _UUID, undefined) ->
-    ok;
+set_ringback(Node, UUID, undefined) ->
+    RB = list_to_binary(["ringback=", get_setting(default_ringback, "%(2000,4000,440,480)")]),
+    ok = set(Node, UUID, RB);
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=", media_path(RingBack, <<"extant">>, UUID)]),
     ok = set(Node, UUID, RB),
     set(Node, UUID, "instant_ringback=true").
+
+-spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), Timeout :: undefined | binary()) -> ok | timeout | {error, string()}).
+set_timeout(_Node, _UUID, undefined) ->
+    ok;
+set_timeout(Node, UUID, Timeout) ->
+    case whistle_util:to_integer(Timeout) of
+        TO when TO > 0 ->
+            set(Node, UUID, <<"call_timeout=", (whistle_util:to_binary(TO))/binary>>);
+        _Else ->
+            ok
+    end.
 
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
@@ -530,3 +543,19 @@ send_error_response(App, Msg, UUID, JObj) ->
             ],
     {ok, Payload} = whistle_api:error_resp(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+
+-spec(get_setting/2 :: (Setting :: term(), Default :: term()) -> term()).
+get_setting(Setting, Default) ->
+    case wh_cache:fetch({ecallmgr_setting, Setting}) of
+        {ok, Value} -> Value;
+        {error, _} ->
+            case file:consult(?SETTINGS_FILE) of
+                {ok, Settings} ->
+                    Value = props:get_value(Setting, Settings, Default),
+                    wh_cache:store({ecallmgr_setting, Setting}, Value),
+                    Value;
+                {error, _} ->
+                    wh_cache:store({ecallmgr_setting, Setting}, Default),
+                    Default
+            end
+    end.

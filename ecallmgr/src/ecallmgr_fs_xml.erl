@@ -137,8 +137,6 @@ get_channel_vars(Prop) ->
     ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
-get_channel_vars({<<"Timeout">>, V}, Vars) ->
-    [ list_to_binary(["call_timeout='", whistle_util:to_list(V), "'"]) | Vars];
 get_channel_vars({<<"Outgoing-Caller-ID-Name">>, V}, Vars) ->
     [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Outgoing-Caller-ID-Number">>, V}, Vars) ->
@@ -217,6 +215,14 @@ get_channel_vars({<<"SIP-Headers">>, {struct, SIPHeaders}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
 			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
 		end, Vars, SIPHeaders);
+%% SPECIAL CASE: Timeout must be larger than zero
+get_channel_vars({<<"Timeout">>, V}, Vars) ->
+    case whistle_util:to_integer(V) of
+        TO when TO > 0 ->
+            [ <<"call_timeout=", (whistle_util:to_binary(TO))/binary>> | Vars];
+        _Else ->
+            Vars
+    end;
 get_channel_vars(_, Vars) ->
     Vars.
 
