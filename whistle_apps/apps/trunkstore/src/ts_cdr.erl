@@ -21,18 +21,17 @@ start_link() ->
 cdr_init() ->
     {_, {H,Min,S}} = calendar:universal_time(),
     MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
-    {ok, _} = timer:send_after(MillisecsToMidnight, ?EOD),
 
     _ = create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
 
-    cdr_loop().
+    cdr_loop(MillisecsToMidnight).
 
-cdr_loop() ->
+cdr_loop(Timeout) ->
     receive
-	?EOD ->
+    after
+	Timeout ->
 	    _ = create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
-	    {ok, _} = timer:send_after(?MILLISECS_PER_DAY, ?EOD),
-	    cdr_loop()
+	    cdr_loop(?MILLISECS_PER_DAY)
     end.
 
 create_cdr_db(DB) ->

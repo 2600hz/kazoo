@@ -29,13 +29,9 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   , [
-	      ?CHILD(ts_call_sup, supervisor)
-	      ,?CHILD(ts_responder_sup, supervisor)
-	      ,?CHILD(ts_responder, worker)
-	      ,?CHILD(ts_acctmgr, worker)
-	      ,?CHILD(ts_credit, worker)
-              ,?CHILD(ts_cdr, worker)
-	      ,?CHILD(ts_onnet_sup, supervisor)
-	      ,?CHILD(ts_offnet_sup, supervisor)
+	      ?CHILD(ts_responder_sup, supervisor) %% manages responders to AMQP requests
+	      ,?CHILD(ts_acctmgr, worker) %% handles reserving/releasing trunks
+	      ,?CHILD(ts_credit, worker)  %% handles looking up rating info on the To-DID
+	      ,?CHILD(ts_onnet_sup, supervisor) %% handles calls originating on-net (customer)
+	      ,?CHILD(ts_offnet_sup, supervisor) %% handles calls originating off-net (carrier)
 	     ]} }.
-

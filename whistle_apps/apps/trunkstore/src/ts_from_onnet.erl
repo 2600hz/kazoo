@@ -84,7 +84,16 @@ onnet_data(#state{aleg_callid=CallID, my_q=Q, acctid=AcctID}=State, JObj) ->
                        ,{<<"Custom-Channel-Vars">>, {struct, RateData}}
                        | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
                       ],
-            send_park(State#state{acctid=AcctID}, Command)
+            try
+                send_park(State#state{acctid=AcctID}, Command)
+            catch
+                _A:_B ->
+                    ?LOG("Exception connecting from onnet"),
+                    ?LOG("~p:~p", [_A, _B]),
+                    ?LOG("Stacktrace: ~p", [erlang:get_stacktrace()]),
+                    ?LOG("Release ~s for ~s", [CallID, AcctID]),
+                    ts_acctmgr:release_trunk(CallID, AcctID, 0)
+            end
     end.
 
 send_park(#state{route_req_jobj=JObj, my_q=Q}=State, Command) ->
@@ -102,6 +111,7 @@ send_park(#state{route_req_jobj=JObj, my_q=Q}=State, Command) ->
 
 wait_for_win(#state{aleg_callid=CallID, my_q=Q}=State, Command, Timeout) ->
     receive
+        #'basic.consume_ok'{} -> wait_for_win(State, Command, Timeout);
 	{_, #amqp_msg{payload=Payload}} ->
 	    WinJObj = mochijson2:decode(Payload),
 	    true = whistle_api:route_win_v(WinJObj),
@@ -243,8 +253,8 @@ wait_for_bridge(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout) 
                     ?LOG("release ~s for ~s", [ALeg, AcctID]),
 		    ts_acctmgr:release_trunk(AcctID, ALeg, 0),
 		    ?LOG("Execution failed");
-		_Other ->
-		    ?LOG("Received other: ~p~n", [_Other]),
+		{_App, _, _Evt} ->
+		    ?LOG("Received other: ~s: ~s", [_Evt, _App]),
 		    Diff = Timeout - (timer:now_diff(erlang:now(), Start) div 1000),
 		    ?LOG("~b left to timeout", [Diff]),
 		    wait_for_bridge(State, Diff)
