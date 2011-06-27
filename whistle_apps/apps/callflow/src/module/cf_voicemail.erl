@@ -106,15 +106,18 @@
          }).
 
 -record(mailbox, {
-           has_unavailable_greeting = false
-          ,mailbox_id = undefined
-          ,mailbox_number = <<>>
-          ,exists = false
-          ,skip_instructions = <<"false">>
-          ,skip_greeting = <<"false">>
-          ,pin = <<>>
-          ,timezone = <<"America/Los_Angeles">>
-          ,max_login_attempts = 3
+           has_unavailable_greeting = false :: boolean()
+          ,mailbox_id = undefined :: undefined | binary()
+          ,mailbox_number = <<>> :: binary()
+          ,exists = false :: boolean()
+          ,skip_instructions = false :: boolean()
+          ,skip_greeting = false :: boolean()
+          ,pin = <<>> :: binary()
+          ,timezone = <<"America/Los_Angeles">> :: binary()
+          ,max_login_attempts = 3 :: non_neg_integer()
+          ,require_pin = false :: boolean()
+          ,check_if_owner = true :: boolean()
+          ,owner_id = <<>> :: binary()
           ,keys = #keys{}
           ,prompts = #prompts{}
          }).
@@ -136,12 +139,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
             CFPid ! {stop};
         <<"check">> ->
             answer(Call),
-            _ = case wh_json:get_value(<<"id">>, Data) of
-		    undefined ->
-			find_mailbox(Call);
-		    _ ->
-			check_mailbox(get_mailbox_profile(Data, Call), Call)
-		end,
+            check_mailbox(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         _ ->
             CFPid ! {continue}
@@ -155,17 +153,31 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %%--------------------------------------------------------------------
 -spec(check_mailbox/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 -spec(check_mailbox/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
-
-check_mailbox(#mailbox{prompts=Prompts, pin = <<>>}, Call) ->
-    ?LOG("attempted to sign into a mailbox with no pin"),
-    b_play(Prompts#prompts.goodbye, Call);
 check_mailbox(Box, Call) ->
+    %% Wrapper to initalize the attempt counter
     check_mailbox(Box, Call, 1).
 
-check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts
-		       ,prompts=#prompts{abort_login=AbortLogin, enter_password=EnterPass, invalid_login=InvalidLogin}
+check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts, prompts=#prompts{abort_login=AbortLogin}}
+              ,Call, Loop) when Loop > MaxLoginAttempts ->
+    %% if we have exceeded the maximum loop attempts then terminate this call
+    ?LOG("maximum number of invalid attempts to check mailbox"),
+    b_play(AbortLogin, Call);
+check_mailbox(#mailbox{exists=false}=Box, Call, Loop) ->
+    %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
+    find_mailbox(Box, Call, Loop);
+check_mailbox(#mailbox{require_pin=false, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call, _) ->
+    %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
+    %% right to the main menu
+    main_menu(Box, Call);
+check_mailbox(#mailbox{prompts=Prompts, pin = <<>>}, Call, _) ->
+    %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
+    %% then terminate this call.
+    ?LOG("attempted to sign into a mailbox with no pin"),
+    b_play(Prompts#prompts.goodbye, Call);
+check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
 		       ,pin=Pin}=Box, Call, Loop) ->
     try
+        %% Request the pin number from the caller but crash if it doesnt match the mailbox
         ?LOG("requesting pin number to check mailbox"),
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, <<"8000">>, Call),
         main_menu(Box, Call)
@@ -173,12 +185,7 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts
         _:R ->
             ?LOG("invalid mailbox login ~w", [R]),
             _ = b_play(InvalidLogin, Call),
-            case Loop < MaxLoginAttempts of
-		true -> check_mailbox(Box, Call, Loop+1);
-                false ->
-                    ?LOG("maximum number of invalid attempts to check mailbox"),
-                    b_play(AbortLogin, Call)
-            end
+            check_mailbox(Box, Call, Loop+1)
     end.
 
 %%--------------------------------------------------------------------
@@ -187,35 +194,26 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(find_mailbox/1 :: (Call :: #cf_call{}) -> no_return()).
--spec(find_mailbox/2 :: (Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
+-spec(find_mailbox/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
 
-find_mailbox(Call) ->
-    find_mailbox(Call, 1).
+find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=EnterPwd, invalid_login=Invalid}}=Box
+             ,#cf_call{account_db=Db}=Call, Loop) ->
+    ?LOG("requesting mailbox number to check"),
+    {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, <<"8000">>, Call),
 
-find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
-    Prompts = #prompts{},
-    try
-        ?LOG("requesting mailbox number to check"),
-        {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_mailbox, <<"1">>, <<"8000">>, Call),
-        ?LOG("requesting pin number for mailbox ~s", [Mailbox]),
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, Prompts#prompts.enter_password, <<"1">>, <<"8000">>, Call),
-        {ok, [JObj]} = couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, Mailbox}]),
-        Box = get_mailbox_profile({struct, [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]}, Call ),
-        Pin = Box#mailbox.pin,
-        main_menu(Box, Call)
-    catch
-        _:R ->
-            ?LOG("unable to find or login to mailbox ~w", [R]),
-            B = #mailbox{},
-            _ = b_play(Prompts#prompts.invalid_login, Call),
-            if
-                Loop < B#mailbox.max_login_attempts ->
-                    find_mailbox(Call, Loop+1);
-                true ->
-                    ?LOG("maximum number of invalid attempts to find mailbox"),
-                    b_play(Prompts#prompts.abort_login, Call)
-            end
+    %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
+    %% caller is the owner, and the pin is not required then we skip requesting the pin
+    case couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, Mailbox}]) of
+        {ok, [JObj]} ->
+            ReqBox = get_mailbox_profile({struct, [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]}, Call),
+            check_mailbox(ReqBox, Call, Loop);
+        _ ->
+            %% we dont want to alert the caller that the mailbox number doesnt match or people could use
+            %% that to determine the mailboxs on this system then try brute force to guess the pwd.
+            ?LOG("invalid mailbox ~s, faking user out...", [Mailbox]),
+            b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPwd, <<"1">>, <<"8000">>, Call),
+            _ = b_play(Invalid, Call),
+            check_mailbox(Box, Call, Loop + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -225,6 +223,9 @@ find_mailbox(#cf_call{account_db=Db}=Call, Loop) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(compose_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call) ->
+    ?LOG("caller is the owner of this mailbox, overriding action as check (instead of compose)"),
+    check_mailbox(Box, Call);
 compose_voicemail(#mailbox{exists=false, prompts=#prompts{no_mailbox=NoMailbox}}, Call) ->
     ?LOG("attempted to compose voicemail for missing mailbox"),
     b_play(NoMailbox, Call);
@@ -233,8 +234,8 @@ compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipIns
 			   ,keys=#keys{login=Login}}=Box, Call) ->
     ?LOG("playing mailbox greeting to caller"),
 
-    not whistle_util:is_true(SkipGreeting) andalso play_greeting(Box, Call),
-    not whistle_util:is_true(SkipInstructions) andalso play(RecordInstructions, Call),
+    not SkipGreeting andalso play_greeting(Box, Call),
+    not SkipInstructions andalso play(RecordInstructions, Call),
 
     noop(Call),
 
@@ -245,7 +246,7 @@ compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipIns
             _ = flush(Call),
             case Digit of
                 Login ->
-                    find_mailbox(Call);
+                    check_mailbox(Box, Call);
                 _ ->
                     record_voicemail(tmp_file(), Box, Call)
             end;
@@ -603,21 +604,31 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_mailbox_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #mailbox{}).
-get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser}) ->
+get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             ?LOG("loaded voicemail box ~s", [Id]),
-            Default=#mailbox{},
-            #mailbox{
-                       mailbox_id = Id
-                      ,skip_instructions = wh_json:get_value(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
-                      ,skip_greeting = wh_json:get_value(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
-                      ,has_unavailable_greeting = wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
-                      ,pin = wh_json:get_value(<<"pin">>, JObj, <<>>)
-                      ,timezone = wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
-                      ,mailbox_number = wh_json:get_value(<<"mailbox">>, JObj, ReqUser)
-                      ,exists=true
+            Default = #mailbox{},
+            %% dont check if the voicemail box belongs to the owner (by default) if the call was not
+            %% specificly to him, IE: calling a ring group and going to voicemail should not check
+            CheckIfOwner = ((undefined =:= LastAct) orelse (cf_device =:= LastAct)),
+            #mailbox{mailbox_id = Id
+                     ,skip_instructions =
+                         whistle_util:is_true(wh_json:get_value(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions))
+                     ,skip_greeting =
+                         whistle_util:is_true(wh_json:get_value(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting))
+                     ,has_unavailable_greeting = wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
+                     ,pin =
+                         whistle_util:to_binary(wh_json:get_value(<<"pin">>, JObj, <<>>))
+                     ,timezone = wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
+                     ,mailbox_number =
+                         whistle_util:to_binary(wh_json:get_value(<<"mailbox">>, JObj, ReqUser))
+                     ,require_pin = whistle_util:is_true(wh_json:get_value(<<"require_pin">>, JObj, false))
+                     ,check_if_owner =
+                         whistle_util:is_true(wh_json:get_value(<<"check_if_owner">>, JObj, CheckIfOwner))
+                     ,owner_id = wh_json:get_value(<<"owner_id">>, JObj)
+                     ,exists = true
                     };
         {error, R} ->
             ?LOG("failed to load voicemail box ~s, ~w", [Id, R]),
