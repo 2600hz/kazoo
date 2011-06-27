@@ -8,8 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(wh_json).
 
--export([get_binary_boolean/2]).
--export([get_binary_value/2]).
+-export([get_binary_boolean/2, get_binary_boolean/3]).
+-export([get_binary_value/2, get_binary_value/3]).
 
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
@@ -27,10 +27,24 @@ get_binary_boolean(Key, JObj) ->
         Value -> whistle_util:to_binary(whistle_util:is_true(Value))
     end.
 
+-spec(get_binary_boolean/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
+get_binary_boolean(Key, JObj, Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> whistle_util:to_binary(whistle_util:is_true(Default));
+        Value -> whistle_util:to_binary(whistle_util:is_true(Value))
+    end.
+
 -spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
 get_binary_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
+        Value -> whistle_util:to_binary(Value)
+    end.
+
+-spec(get_binary_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
+get_binary_value(Key, JObj, Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> whistle_util:to_binary(Default);
         Value -> whistle_util:to_binary(Value)
     end.
 
