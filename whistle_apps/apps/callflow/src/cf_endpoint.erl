@@ -26,12 +26,32 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(build/2 :: (Id :: binary(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).
--spec(build/3 :: (Id :: binary(), Properties :: json_object(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec(build/3 :: (Id :: binary(), Properties :: undefined | json_object(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).
 
 build(EndpointId, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
 
-build(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
+build(EndpointId, undefined, Call) ->
+    build(EndpointId, ?EMPTY_JSON_OBJECT, Call);
+build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
+    case whistle_util:is_false(wh_json:get_value(<<"can_call_self">>, Properties, false))
+        andalso EndpointId =:= AuthId of
+        true ->
+            ?LOG("call is from endpoint ~s, skipping", [EndpointId]),
+            {error, called_self};
+        false ->
+            get_endpoints(EndpointId, Properties, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Collects all the appropriate endpoints to reach this endpoint ID
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_endpoints/3 :: (EndpointId :: binary(), Properties :: json_object(),  Call :: #cf_call{})
+                         -> tuple(ok, json_objects()) | tuple(error, atom())).
+get_endpoints(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, EndpointId) of
         {ok, Endpoint} ->
             case whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Endpoint)) of
@@ -79,8 +99,6 @@ create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=I
                   wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint)
                   ,wh_json:get_value(<<"custom_sip_headers">>, SIP))
     end,
-
-io:format("~p~n", [SIPHeaders]),
 
     Prop = [{<<"Invite-Format">>, wh_json:get_value(<<"invite_format">>, SIP, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value(<<"username">>, SIP)}
