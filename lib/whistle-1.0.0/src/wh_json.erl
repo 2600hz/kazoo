@@ -9,7 +9,9 @@
 -module(wh_json).
 
 -export([get_binary_boolean/2, get_binary_boolean/3]).
+-export([get_integer_value/2, get_integer_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
+-export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
@@ -20,20 +22,6 @@
 
 -include_lib("whistle/include/whistle_types.hrl").
 
--spec(get_binary_boolean/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
-get_binary_boolean(Key, JObj) ->
-    case wh_json:get_value(Key, JObj) of
-        undefined -> undefined;
-        Value -> whistle_util:to_binary(whistle_util:is_true(Value))
-    end.
-
--spec(get_binary_boolean/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
-get_binary_boolean(Key, JObj, Default) ->
-    case wh_json:get_value(Key, JObj) of
-        undefined -> whistle_util:to_binary(whistle_util:is_true(Default));
-        Value -> whistle_util:to_binary(whistle_util:is_true(Value))
-    end.
-
 -spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
 get_binary_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
@@ -43,10 +31,45 @@ get_binary_value(Key, JObj) ->
 
 -spec(get_binary_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
 get_binary_value(Key, JObj, Default) ->
+    whistle_util:to_binary(wh_json:get_value(Key, JObj, Default)).
+
+-spec(get_integer_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | integer()).
+get_integer_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
-        undefined -> whistle_util:to_binary(Default);
-        Value -> whistle_util:to_binary(Value)
+        undefined -> undefined;
+        Value -> whistle_util:to_integer(Value)
     end.
+
+-spec(get_integer_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> integer()).
+get_integer_value(Key, JObj, Default) ->
+    whistle_util:to_integer(wh_json:get_value(Key, JObj, Default)).
+
+-spec(is_false/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+is_false(Key, JObj) ->
+    is_false(Key, JObj, true).
+
+-spec(is_false/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
+is_false(Key, JObj, Default) ->
+    whistle_util:is_false(wh_json:get_value(Key, JObj, Default)).
+
+-spec(is_true/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+is_true(Key, JObj) ->
+    is_true(Key, JObj, false).
+
+-spec(is_true/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
+is_true(Key, JObj, Default) ->
+    whistle_util:is_true(wh_json:get_value(Key, JObj, Default)).
+
+-spec(get_binary_boolean/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+get_binary_boolean(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> whistle_util:to_binary(whistle_util:is_true(Value))
+    end.
+
+-spec(get_binary_boolean/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
+get_binary_boolean(Key, JObj, Default) ->
+    whistle_util:to_binary(is_true(Key, JObj, Default)).
 
 -spec(get_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | term()).
 get_value(Key, Doc) ->
