@@ -242,6 +242,8 @@ extract_node_data(Node) ->
     process_status(Lines).
 
 -spec(process_status/1 :: (Lines :: list()) -> proplist()).
+process_status([Uptime, _, SessSince, Sess30, SessMax, CPU]) ->
+    process_status([Uptime, SessSince, Sess30, SessMax, CPU]);
 process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
     {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
     UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
