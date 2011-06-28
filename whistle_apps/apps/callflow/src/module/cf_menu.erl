@@ -141,13 +141,15 @@ try_match_digits(Digits, Menu, Call) ->
 -spec(is_callflow_child/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_callflow_child(Digits, _, #cf_call{cf_pid=CFPid}) ->
     CFPid ! {attempt, Digits},
-    ok =:= receive
-               {attempt_resp, Resp} ->
-                   ?LOG("selection is a callflow child"),
-                   Resp
-           after 1000 ->
-                   {error, timeout}
-           end.
+    receive
+        {attempt_resp, ok} ->
+            ?LOG("selection is a callflow child"),
+            true;
+        {attempt_resp, _} ->
+            false
+    after 1000 ->
+            false
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -211,11 +213,11 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid, account_id=AccountId}=Call) ->
     ?LOG("hunting for ~s in account ~s", [Digits, AccountId]),
     case gen_server:call(CFRPid, {find_flow, Digits, AccountId}, 2000) of
-        {ok, Flow} ->
+        {ok, Flow, false} ->
             ?LOG("callflow hunt succeeded, branching"),
             _ = cf_call_command:flush_dtmf(Call),
             _ = b_play(Prompts#prompts.hunt_transfer, Call),
-            CFPid ! { branch, Flow },
+            CFPid ! { branch, wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT) },
             true;
         _ ->
             ?LOG("callflow hunt failed"),
