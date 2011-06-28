@@ -22,10 +22,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/callflows.json">>).
--define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
-
--define(AGG_DB, <<"callflows">>).
--define(AGG_FILTER, <<"callflows/export">>).
+-define(CALLFLOWS_LIST, {<<"callflows">>, <<"cb_listing">>}).
 
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
@@ -110,16 +107,14 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -141,7 +136,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     whapps_util:update_all_accounts(?VIEW_FILE),
-    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info (_Info, State) ->
