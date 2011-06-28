@@ -53,9 +53,7 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Verb = get_http_verb(RD, Context1#cb_context.req_json),
     Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
 
-    logger:format_log(info, "v1: Processing new request ~p as ~p but treating as ~p"
-		      ,[ wrq:raw_path(RD), wrq:method(RD), Verb]),
-    logger:format_log(info, "v1: JSON Payload ~p", [Context1#cb_context.req_json]),
+    ?LOG_SYS("~s-ing new request ~s, treating as a ~s" ,[wrq:method(RD), wrq:raw_path(RD), Verb]),
 
     case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
@@ -119,7 +117,7 @@ forbidden(RD, Context) ->
     end.
 
 resource_exists(RD, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
-    logger:format_log(info, "v1: requested resource with no nouns", []),
+    ?LOG_SYS("Requested resource with no nouns"),
     {false, RD, Context};
 resource_exists(RD, Context) ->
     ?TIMER_TICK("v1.resource_exists start"),
@@ -128,10 +126,10 @@ resource_exists(RD, Context) ->
             {RD1, Context1} = validate(RD, Context),
             case succeeded(Context1) of
                 true ->
-                    logger:format_log(info, "v1: requested resource validated", []),
+		    ?LOG_SYS("requested resource validated"),
                     execute_request(add_cors_headers(RD1, Context1), Context1);
                 false ->
-                    logger:format_log(info, "v1: requested resource did not validate", []),
+		    ?LOG_SYS("requested resource did not validate"),
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
                     ReturnCode = Context1#cb_context.resp_error_code,
@@ -139,7 +137,7 @@ resource_exists(RD, Context) ->
                     {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
             end;
 	false ->
-            logger:format_log(info, "v1: requested resource does not exist", []),
+	    ?LOG_SYS("requested resource does not exist"),
 	    ?TIMER_TICK("v1.resource_exists false end"),
 	    {false, RD, Context}
     end.
@@ -208,14 +206,14 @@ finish_request(RD, #cb_context{start=T1, session=undefined}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
-    logger:format_log(info, "Request fulfilled in ~p ms~n", [timer:now_diff(now(), T1)*0.001]),
+    ?LOG_SYS("Request fulfilled in ~p ms", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
     {true, RD1, Context1};
 finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
-    logger:format_log(info, "Request fulfilled in ~p ms, finish session~n", [timer:now_diff(now(), T1)*0.001]),
+    ?LOG_SYS("Request fulfilled in ~p ms, finish session", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
     {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}.
 
@@ -346,7 +344,7 @@ get_json_body(RD) ->
 	_:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
 	    {malformed, list_to_binary(["Failed to decode: comma error around char ", whistle_util:to_list(S)])};
 	_:E ->
-	    logger:format_log(error, "v1_resource: failed to convert to json(~p)~n", [E]),
+	    ?LOG_SYS("failed to convert to json(~p)", [E]),
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
 
@@ -354,20 +352,21 @@ get_json_body(RD) ->
 extract_files_and_params(RD, Context) ->
     try
 	Boundry = webmachine_multipart:find_boundary(RD),
-	logger:format_log(info, "v1: extracting files with boundry: ~p~n", [Boundry]),
+	?LOG_SYS("extracting files with boundry: ~p", [Boundry]),
 	{ReqProp, FilesProp} = get_streamed_body(
 				 webmachine_multipart:stream_parts(
 				   wrq:stream_req_body(RD, 1024), Boundry), [], []),
 	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
     catch
-	A:B ->
-	    logger:format_log(error, "v1.extract_files_and_params: exception ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]),
+	_A:_B ->
+	    ?LOG_SYS("exception extracting files and params: ~p:~p", [_A, _B]),
+	    ?LOG_SYS("stacktrace: ~p", [erlang:get_stacktrace()]),
 	    Context
     end.
 
 -spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
 extract_file(RD, Context) ->
-    logger:format_log(info, "v1: extracting files (if any)~n", []),
+    ?LOG_SYS("extracting files (if any)"),
     FileContents = whistle_util:to_binary(wrq:req_body(RD)),
     ContentType = wrq:get_req_header("Content-Type", RD),
     ContentSize = wrq:get_req_header("Content-Length", RD),
@@ -559,29 +558,30 @@ execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Cont
     ?TIMER_TICK("v1.execute_request start"),
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [RD, Context] ++ Params,
-    logger:format_log(info, "Execute request ~p", [Event]),
+    ?LOG_SYS("Execute request ~s", [Event]),
     case crossbar_bindings:fold(Event, Payload) of
 	[RD1, Context1 | _] ->
 	    execute_request_results(RD1, Context1);
 	{error, _E} ->
-	    logger:format_log(info, "v1.exec_req error: ~p, 500 the request~n", [_E]),
+	    ?LOG_SYS("Error executing request: ~p", [_E]),
 	    {{halt, 500}, RD, Context}
     end;
 execute_request(RD, Context) ->
+    ?LOG_SYS("Execute request false end"),
     ?TIMER_TICK("v1.execute_request false end"),
     {false, RD, Context}.
 
 execute_request_results(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     case succeeded(Context) of
         false ->
-            logger:format_log(info, "v1: failed to execute ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+	    ?LOG_SYS("failed to execute ~s request for ~s: ~p", [Verb, Mod, Params]),
             Content = create_resp_content(RD, Context),
             RD1 = wrq:append_to_response_body(Content, RD),
             ReturnCode = Context#cb_context.resp_error_code,
 	    ?TIMER_TICK("v1.execute_request halt end"),
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD1), Context};
         true ->
-            logger:format_log(info, "v1: executed ~p req for ~p: ~p~n", [Verb, Mod, Params]),
+	    ?LOG_SYS("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
 	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
 	    {Verb =/= <<"put">>, RD, Context}
     end.
@@ -678,9 +678,9 @@ succeeded(_) ->
 -spec(set_resp_headers/2 :: (RD0 :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
 set_resp_headers(RD0, #cb_context{resp_headers=[]}) -> RD0;
 set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
-    logger:format_log(info, "v1.set_resp_headers: ~p~n", [Headers]),
     lists:foldl(fun({Header, Value}, RD) ->
 			{H, V} = fix_header(RD, Header, Value),
+			?LOG_SYS("Response header: ~s: ~s", [H, V]),
 			wrq:set_resp_header(H, V, wrq:remove_resp_header(H, RD))
 		end, RD0, Headers).
 
@@ -692,9 +692,8 @@ fix_header(RD, "Location"=H, Url) ->
 	       P -> [":", whistle_util:to_list(P)]
 	   end,
 
-    logger:format_log(info, "v1.fix_header: host_tokens: ~p~n", [wrq:host_tokens(RD)]),
     Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
-    logger:format_log(info, "v1.fix_header: host: ~s~n", [Host]),
+    ?LOG_SYS("host: ~s", [Host]),
 
     %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
     PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
@@ -736,6 +735,7 @@ is_cors_request(RD) ->
 add_cors_headers(RD, Context) ->
     case is_cors_request(RD) of
         true ->
+	    ?LOG_SYS("Adding CORS headers"),
             wrq:set_resp_headers(get_cors_headers(Context), RD);
         false ->
             RD

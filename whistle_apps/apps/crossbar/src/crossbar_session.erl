@@ -20,8 +20,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -define(SERVER, ?MODULE).
 -define(MAX_AGE, 1800). % 30 minutes
 -define(VIEW_FILE, "views/sessions.json").
@@ -317,7 +315,7 @@ clean_expired() ->
 				     end
 				 end || {struct, Prop} <- Sessions ]
 			      ,clean_expired_(D)],
-	    format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
+	    ?LOG_SYS("Cleaned ~b sessions", [length(Docs)]),
 	    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs)
     end.
 

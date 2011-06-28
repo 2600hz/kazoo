@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, create_account/1]).
+-export([start_link/0, create_account/1, get_realm_from_db/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -48,6 +48,15 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+-spec(get_realm_from_db/1 :: (DBName :: binary()) -> tuple(ok, binary()) | tuple(error, atom())).
+get_realm_from_db(DBName) ->
+    Doc = whapps_util:get_db_name(DBName, raw),
+    case couch_mgr:open_doc(DBName, Doc) of
+	{ok, JObj} -> {ok, wh_json:get_value(<<"realm">>, JObj)};
+	{error, _}=E -> E
+    end.
+    
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -199,7 +208,7 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "ACCOUNTS(~p): unhandled info ~p~n", [self(), _Info]),
+    ?LOG_SYS("unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -346,17 +355,19 @@ load_account_summary(AccountId, Context) ->
 create_account(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-	    logger:format_log(info, "Is invalid Doc: ~p: ~p~n", [JObj, Fields]),
+	    ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
             crossbar_util:response_invalid_data(Fields, Context);
         {true, _} ->
+	    ?LOG_SYS("JSON is valid"),
             case is_unique_realm(undefined, Context) of
                 true ->
+		    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
                     Context#cb_context{
                       doc=set_private_fields(JObj)
                       ,resp_status=success
                      };
                 false ->
-		    logger:format_log(info, "Invalid Realm for ~p~n", [JObj]),
+		    ?LOG_SYS("Invalid or non-unique realm: ~s", [wh_json:get_value(<<"realm">>, JObj)]),
                     crossbar_util:response_invalid_data([<<"realm">>], Context)
             end
     end.
@@ -382,14 +393,16 @@ load_account(AccountId, Context) ->
 update_account(AccountId, #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {false, Fields} ->
+	    ?LOG_SYS("Failed to validate JSON"),
              crossbar_util:response_invalid_data(Fields, Context);
         {true, _} ->
             case is_unique_realm(AccountId, Context) of
                 true ->
 		    %% Update the aggregate accounts DB (/accounts/AB/CB)
-		    logger:format_log(info, "Update account ~p ~n", [AccountId]),
+		    ?LOG_SYS("Realm is valid for ~s", [AccountId]),
 		    crossbar_doc:load_merge(AccountId, Data, Context);
                 false ->
+		    ?LOG_SYS("Realm isn't valid for ~s", [AccountId]),
                     crossbar_util:response_invalid_data([<<"realm">>], Context)
             end
     end.
@@ -599,7 +612,7 @@ set_api_keys(JObj) ->
 -spec(load_account_db/2 :: (AccountId :: list(binary()) | json_object(), #cb_context{}) -> #cb_context{}).
 load_account_db(AccountId, Context)->
     DbName = whapps_util:get_db_name(AccountId, encoded),
-    logger:format_log(info, "Account determined that db name ~p", [DbName]),
+    ?LOG_SYS("Account determined that db name: ~s", [DbName]),
     case couch_mgr:db_exists(DbName) of
         false ->
             Context#cb_context{
@@ -625,10 +638,10 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
     DbName = whapps_util:get_db_name(couch_mgr:get_uuid(), encoded),
     case couch_mgr:db_create(DbName) of
         false ->
-            logger:format_log(error, "ACCOUNTS(~p): Failed to create database: ~p", [self(), DbName]),
+	    ?LOG_SYS("Failed to create database: ~s", [DbName]),
             crossbar_util:response_db_fatal(Context);
         true ->
-            logger:format_log(info, "ACCOUNTS(~p): Created DB for account id ~p", [self(), whapps_util:get_db_name(DbName, raw)]),
+	    ?LOG_SYS("Created DB for account id ~s", [whapps_util:get_db_name(DbName, raw)]),
             JObj = wh_json:set_value(<<"_id">>, whapps_util:get_db_name(DbName, raw), Doc),
             case crossbar_doc:save(Context#cb_context{db_name=DbName, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
@@ -640,7 +653,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                              end),
                     Context1;
                 Else ->
-                    logger:format_log(info, "ACCTS(~p): Other PUT resp: ~p: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
+		    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
                     Else
             end
     end.
@@ -665,7 +678,7 @@ is_unique_realm(undefined, Context, Realm) ->
 	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
 	    #cb_context{resp_status=success, doc=[]} -> []
 	end,
-    logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, undefined, V]),
+    ?LOG_SYS("Is unique realm: ~s AcctID: undefined V: ~p", [Realm, V]),
     is_unique_realm1(Realm, V);
 is_unique_realm(AccountId, Context, Realm) ->
     V = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}
@@ -675,7 +688,7 @@ is_unique_realm(AccountId, Context, Realm) ->
 	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
 	    #cb_context{resp_status=success, doc=[]} -> []
 	end,
-    logger:format_log(info, "Is unique(~p): ~p, ~p~n", [Realm, AccountId, V]),
+    ?LOG_SYS("Is unique realm: ~s AcctID: ~s V: ~p", [Realm, AccountId, V]),
     is_unique_realm1(Realm, V).
 
 is_unique_realm1(undefined, [_]) -> false;
