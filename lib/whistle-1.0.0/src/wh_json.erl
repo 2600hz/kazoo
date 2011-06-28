@@ -37,12 +37,17 @@ get_binary_value(Key, JObj, Default) ->
 get_integer_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
-        Value -> whistle_util:to_integer(Value)
+        Value -> to_integer(Value, 0)
     end.
 
 -spec(get_integer_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> integer()).
 get_integer_value(Key, JObj, Default) ->
-    whistle_util:to_integer(wh_json:get_value(Key, JObj, Default)).
+    to_integer(wh_json:get_value(Key, JObj), Default).
+
+to_integer(Term, Default) ->
+    try
+        whistle_util:to_integer(Term)
+    catch _:_ -> to_integer(Default, 0) end.
 
 -spec(is_false/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
 is_false(Key, JObj) ->
