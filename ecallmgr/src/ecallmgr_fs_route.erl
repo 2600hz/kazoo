@@ -226,6 +226,7 @@ code_change(_OldVsn, State, _Extra) ->
 handle_route_req(Node, FSID, CallID, FSData) ->
     put(callid, CallID),
     Pid = spawn_link(fun() ->
+                             put(callid, CallID),
 			     DefProp = [{<<"Msg-ID">>, FSID}
 					,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
 					,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
@@ -242,8 +243,15 @@ handle_route_req(Node, FSID, CallID, FSData) ->
 			     true = whistle_api:route_resp_v(RespProp),
 
 			     {ok, Xml} = ecallmgr_fs_xml:route_resp_xml(RespProp),
-			     ok = freeswitch:fetch_reply(Node, FSID, Xml), % only start control if freeswitch recv'd reply
-			     start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp))
+                             case freeswitch:fetch_reply(Node, FSID, Xml) of
+                                 ok ->
+                                     %% only start control if freeswitch recv'd reply
+                                     start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp));
+                                 {error, Reason} ->
+                                     ?LOG("freeswitch rejected our route response, ~p", [Reason]);
+                                 timeout ->
+                                     ?LOG("received no reply from freeswitch, timeout", [])
+                             end
 		     end),
     {ok, Pid}.
 
