@@ -236,6 +236,8 @@ wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, Timeout) ->
                     ?LOG("Release ~s from ~s", [Leg, AcctID]),
 		    ts_acctmgr:release_trunk(AcctID, Leg, Cost),
 
+		    ts_cdr:store(JObj),
+
 		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
                 _ ->
                     wait_for_cdr(State, ?WAIT_FOR_HANGUP_TIMEOUT)
