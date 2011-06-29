@@ -188,4 +188,13 @@ start_amqp() ->
 
 handle_cdr(JObj, _State) ->
     AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
-    {ok, _} = couch_mgr:save_doc(AccountDb, JObj).
+
+    {Mega,Sec,_} = erlang:now(),
+    Now =  Mega*1000000+Sec,
+
+    DocType = wh_json:set_value(<<"pvt_type">>, <<"cdr">>, JObj),
+    DocCreated = wh_json:set_value(<<"pvt_created">>, Now, DocType),
+    DocModified = wh_json:set_value(<<"pvt_modified">>, Now, DocCreated),
+    DocVersion = wh_json:set_value(<<"pvt_version">>, 1, DocModified),
+    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, AccountDb, DocVersion),
+    {ok, _} = couch_mgr:save_doc(AccountDb, DocAccountDb).
