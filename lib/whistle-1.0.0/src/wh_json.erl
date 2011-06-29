@@ -15,7 +15,7 @@
 
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
--export([delete_key/2]).
+-export([delete_key/2, delete_key/3]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).

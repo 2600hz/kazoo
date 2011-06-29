@@ -868,7 +868,8 @@ encode_xml([{K, V}|T], Xml) ->
 %% element
 %% @end
 %%--------------------------------------------------------------------
--spec(list_to_xml/2 :: (List :: list(), Xml :: iolist()) -> iolist()).
+
+-spec(list_to_xml/2 :: (Objs :: mochijson(), Xml :: iolist()) -> iolist()).
 list_to_xml([], Xml) ->
     Xml;
 list_to_xml([{struct, Terms}|T], Xml) ->

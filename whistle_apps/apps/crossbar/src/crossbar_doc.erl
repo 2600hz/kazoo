@@ -29,7 +29,7 @@
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(current_doc_vsn/0 :: () -> binary()).
+-spec(current_doc_vsn/0 :: () -> <<_:8>>).
 current_doc_vsn() ->
     ?CROSSBAR_DOC_VSN.
 
@@ -154,7 +154,11 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_view/4 :: (View :: binary(), Options :: proplist(), Context :: #cb_context{}, Filter :: function()) -> #cb_context{}).
+-spec load_view/4 :: (View, Options, Context, Filter) -> #cb_context{} when
+      View :: binary(),
+      Options :: proplist(),
+      Context :: #cb_context{},
+      Filter :: fun((Item :: json_object(), Acc :: json_objects()) -> json_objects()).
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->

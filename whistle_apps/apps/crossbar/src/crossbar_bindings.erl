@@ -84,10 +84,10 @@ any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 -spec(all/1 :: (Res :: proplist()) -> boolean()).
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec(failed/1 :: (Res :: proplist()) -> proplist()).
+-spec(failed/1 :: (Res :: proplist_bool()) -> proplist_bool()).
 failed(Res) when is_list(Res) -> [R || R <- Res, filter_out_succeeded(R)].
 
--spec(succeeded/1 :: (Res :: proplist()) -> proplist()).
+-spec(succeeded/1 :: (Res :: proplist_bool()) -> proplist_bool()).
 succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 
 %%--------------------------------------------------------------------

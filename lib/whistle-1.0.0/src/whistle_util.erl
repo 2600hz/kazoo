@@ -212,7 +212,7 @@ ceiling(X) ->
     end.
 
 %% returns current seconds
--spec(current_tstamp/0 :: () -> integer()).
+-spec(current_tstamp/0 :: () -> non_neg_integer()).
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
