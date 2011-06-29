@@ -70,15 +70,17 @@
 %%--------------------------------------------------------------------
 -spec(load_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 load_doc_from_file(DbName, App, File) ->
-    Path = lists:flatten([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
-    ?LOG_SYS("Read into ~p from CouchDB dir: ~p~n", [DbName, Path]),
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    ?LOG_SYS("Read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	?MODULE:save_doc(DbName, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
         _Type:{badmatch,{error,Reason}} ->
+	    ?LOG_SYS("badmatch error: ~p", [Reason]),
             {error, Reason};
  	_Type:Reason ->
+	    ?LOG_SYS("exception: ~p", [Reason]),
             {error, Reason}
     end.
 
@@ -92,7 +94,7 @@ load_doc_from_file(DbName, App, File) ->
 -spec(update_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
-    ?LOG_SYS("Update into ~p from CouchDB dir: ~p~n", [DbName, Path]),
+    ?LOG_SYS("Update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	{struct, Prop} = mochijson2:decode(Bin),
@@ -101,8 +103,10 @@ update_doc_from_file(DbName, App, File) ->
 	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
     catch
         _Type:{badmatch,{error,Reason}} ->
+	    ?LOG_SYS("bad match: ~p", [Reason]),
             {error, Reason};
  	_Type:Reason ->
+	    ?LOG_SYS("exception: ~p", [Reason]),
             {error, Reason}
     end.
 
@@ -116,9 +120,12 @@ update_doc_from_file(DbName, App, File) ->
 -spec(revise_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
-        {error, _} ->
+        {error, _E} ->
+	    ?LOG_SYS("failed to update doc: ~p", [_E]),
             ?MODULE:load_doc_from_file(DbName, App, File);
-        {ok, _} -> ok
+        {ok, _}=Resp ->
+	    ?LOG_SYS("revised"),
+	    Resp
     end.
 
 %%--------------------------------------------------------------------
