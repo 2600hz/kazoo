@@ -29,6 +29,7 @@
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).
 -define(VIEW_FILE, <<"views/c2c.json">>).
+-define(CB_LIST, {<<"click2call">>, <<"crossbar_listing">>}).
 -define(PVT_TYPE, <<"click2call">>).
 -define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {<<"accounts">>, [_]}]).
 
@@ -325,7 +326,7 @@ normalize_view_results(JObj, Acc) ->
 
 
 load_c2c_summary(Context) ->
-    crossbar_doc:load_view(<<"click2call/listing_by_id">>, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 load_c2c(C2CId, Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
@@ -353,20 +354,14 @@ is_valid_connect_doc(JObj) ->
 	_ -> {true, []}
     end.
 
-establish_c2c(C2CId, #cb_context{req_data=Req, account_id=[AccountId|_], db_name=DbName}=Context) ->
+establish_c2c(C2CId, #cb_context{req_data=Req, account_id=[AccountId|_]}=Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
 
     Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
     Callee = whistle_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
-    AccountRealm = wh_json:get_value(<<"realm">>, C2C),
-    Realm = case AccountRealm of
-                undefined -> {ok, Doc} = couch_mgr:open_doc(DbName, AccountId),
-                             wh_json:get_value(<<"realm">>, Doc);
-                _ ->  AccountRealm
-            end,
     C2CName = wh_json:get_value(<<"name">>, C2C),
 
-    Status = originate_call(Caller, Callee, Realm, C2CName, AccountId),
+    Status = originate_call(Caller, Callee, C2CName, AccountId),
 
     case Status of
 	{success, [CallID, CdrID]} ->
@@ -402,8 +397,8 @@ create_c2c_history_item(Req, CallID, CdrID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName, AccountId) ->
-    logger:format_log(info, " ..... Establishing clicktocall ~p from ~p@~p to ~p@~p ...~n", [C2CName, CallerNumber, CalleeRealm, CalleeExtension, CalleeRealm]),
+originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
+    ?LOG("attempting clicktocall ~s from ~s to ~s in account ~s", [C2CName, CallerNumber, CalleeExtension, AccountId]),
 
     %% create, bind & consume amqp queue
     Amqp = amqp_util:new_queue(),
@@ -411,7 +406,7 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName, AccountId) -
     amqp_util:basic_consume(Amqp),
 
     %basic call info to display on phone's screen
-    CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary, "@", CalleeRealm/binary,
+    CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary,
 		  ",origination_caller_id_number=", CalleeExtension/binary,
 		  ",origination_callee_id_name='", C2CName/binary, "'",
 		  ",origination_callee_id_number=", CallerNumber/binary >>,
@@ -423,7 +418,7 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName, AccountId) -
                ,{<<"Resource-Type">>, <<"audio">>}
                ,{<<"Invite-Format">>, <<"route">>}
 	       ,{<<"Route">>, OrigStringPart}
-	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Realm">>, CalleeRealm}, {<<"Account-ID">>, AccountId}] } }
+	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Account-ID">>, AccountId}] } }
                ,{<<"Application-Name">>, <<"transfer">>}
 	       ,{<<"Application-Data">>, {struct, [{<<"Route">>, CalleeExtension}]} }
                | whistle_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
@@ -437,14 +432,15 @@ originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName, AccountId) -
 	    JObj = mochijson2:decode(Payload),
 	    case wh_json:get_value(<<"Event-Name">>, JObj) of
 		<<"originate_resp">> ->
-		    logger:format_log(info, ">>> Click to call ... Success! Call established ", []),
+                    whapps_util:put_callid(JObj),
+                    ?LOG("established clicktocall ~s from ~s to ~s in account ~s", [C2CName, CallerNumber, CalleeExtension, AccountId]),
 		    {success, [wh_json:get_value(<<"Call-ID">>, JObj), null]};
 		<<"resource_error">> ->
-		    logger:format_log(info, ">>> Click to call ... Error, cannot establish call, server may be busy", []),
+                    ?LOG("cannot establish click to call, ~s", [wh_json:get_value(<<"Failure-Message">>, JObj, <<>>)]),
 		    {error, []}
 	    end
     after
 	15000 ->
-	    logger:format_log(info, ">>> Click to call ... Timeout, cannot establish call.", []),
+            ?LOG("cannot establish click to call, timeout"),
 	    {timeout, []}
     end.
