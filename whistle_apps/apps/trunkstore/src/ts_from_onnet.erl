@@ -67,7 +67,7 @@ onnet_data(#state{aleg_callid=CallID, my_q=Q, acctid=AcctID}=State, JObj) ->
     RouteOptions = wh_json:get_value(<<"options">>, DIDJObj, []),
 
     case ts_credit:reserve(ToDID, CallID, AcctID, outbound, RouteOptions) of
-        {error, _}=E -> ?LOG("release ~s for ~s", [CallID, AcctID]), ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
+        {error, _}=E -> ?LOG("release ~s for ~s", [CallID, AcctID]), ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
         {ok, RateData} ->
             Command = [
                        {<<"Call-ID">>, CallID}
@@ -136,7 +136,7 @@ send_offnet(State, Command) ->
     amqp_util:offnet_resource_publish(Payload),
     wait_for_offnet_bridge(State, ?WAIT_FOR_OFFNET_RESPONSE_TIMEOUT).
 
-wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, Timeout) ->
+wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q, callctl_q=CtlQ}=State, Timeout) ->
     Start = erlang:now(),
     receive
 	{_, #amqp_msg{payload=Payload}} ->
@@ -144,14 +144,21 @@ wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, 
 	    case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { <<"offnet_resp">>, <<"resource">> } ->
 		    BLegCallID = wh_json:get_value(<<"Call-ID">>, JObj),
-		    amqp_util:bind_q_to_callevt(Q, BLegCallID, cdr),
+		    _ = amqp_util:bind_q_to_callevt(Q, BLegCallID, cdr),
+		    ?LOG("Bridging to offnet callid ~s", [BLegCallID]),
+		    ?LOG(BLegCallID, "Bridged to aleg ~s", [CallID]),
 		    wait_for_cdr(State#state{bleg_callid=BLegCallID}, ?WAIT_FOR_HANGUP_TIMEOUT);
                 { <<"resource_error">>, <<"resource">> } ->
-		    ?LOG("Failed to failover to e164"),
-		    ?LOG("Failure message: ~s", [wh_json:get_value(<<"Failure-Message">>, JObj)]),
-		    ?LOG("Failure code: ~s", [wh_json:get_value(<<"Failure-Code">>, JObj)]),
+		    Code = wh_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
+		    Message = wh_json:get_value(<<"Failure-Message">>, JObj),
 
-		    %% TODO: Send Commands to CtlQ to play media depending on failure code
+		    ?LOG("Failed to bridge to offnet"),
+		    ?LOG("Failure message: ~s", [Message]),
+		    ?LOG("Failure code: ~s", [Code]),
+
+		    %% send failure code to Call
+		    whistle_util:call_response(CallID, CtlQ, Code, Message),
+
                     ?LOG("release ~s for ~s", [CallID, AcctID]),
 		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
@@ -200,12 +207,19 @@ wait_for_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID}=State, Ti
 		    ?LOG("Leg to be billed for ~b seconds", [Duration]),
 		    ?LOG("Acct ~s to be charged ~p if per_min", [AcctID, Cost]),
 
-		    case Leg =:= BLeg of
-			true -> ?LOG("release ~s for ~s", [Leg, AcctID]), ts_acctmgr:release_trunk(AcctID, Leg, Cost);
-			false -> ?LOG("release ~s for ~s", [ALeg, AcctID]), ts_acctmgr:release_trunk(AcctID, ALeg, Cost)
-		    end,
-
-		    ts_cdr:store(JObj),
+		    CDR0 = wh_json:set_value(<<"Call-Cost">>, Cost, JObj),
+		    _ = case Leg =:= BLeg of
+			    true ->
+				?LOG(ALeg, "releasing b-leg ~s for ~s", [Leg, AcctID]),
+				?LOG(BLeg, "release ~s for ~s", [Leg, AcctID]),
+				ok = ts_acctmgr:release_trunk(AcctID, Leg, Cost),
+				ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR0));
+			    false ->
+				?LOG(BLeg, "releasing a-leg ~s for ~s", [ALeg, AcctID]),
+				?LOG(ALeg, "release ~s for ~s", [ALeg, AcctID]),
+				ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
+				ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR0))
+			end,
 
 		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
                 _ ->
@@ -245,15 +259,15 @@ wait_for_bridge(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout) 
 			Cause ->
 			    ?LOG("Failed to bridge: ~s", [Cause]),
                             ?LOG("release ~s for ~s", [ALeg, AcctID]),
-			    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
+			    ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0)
 		    end;
 		{ _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     ?LOG("release ~s for ~s", [ALeg, AcctID]),
-		    ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+		    ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
 		    ?LOG("Channel hungup");
 		{ _, _, <<"error">> } ->
                     ?LOG("release ~s for ~s", [ALeg, AcctID]),
-		    ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+		    ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
 		    ?LOG("Execution failed");
 		{_App, _, _Evt} ->
 		    ?LOG("Received other: ~s: ~s", [_Evt, _App]),

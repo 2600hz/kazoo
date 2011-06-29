@@ -186,11 +186,11 @@ process_event(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout, JO
                 end;
             { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                 ?LOG("Release ~s from ~s", [ALeg, AcctID]),
-                ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+                ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
                 ?LOG("Channel hungup");
             { _, _, <<"error">> } ->
                 ?LOG("Release ~s from ~s", [ALeg, AcctID]),
-                ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+                ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
                 ?LOG("Execution failed");
             _Other ->
                 ?LOG("Received other: ~p~n", [_Other]),
@@ -234,9 +234,9 @@ wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, Timeout) ->
 		    ?LOG("Acct ~s to be charged ~p if per_min", [AcctID, Cost]),
 
                     ?LOG("Release ~s from ~s", [Leg, AcctID]),
-		    ts_acctmgr:release_trunk(AcctID, Leg, Cost),
+		    ok = ts_acctmgr:release_trunk(AcctID, Leg, Cost),
 
-		    ts_cdr:store(JObj),
+		    _ = ts_cdr:store(JObj),
 
 		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
                 _ ->
@@ -251,7 +251,7 @@ wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, Timeout) ->
 try_failover(#state{failover=?EMPTY_JSON_OBJECT, aleg_callid=CallID, acctid=AcctID}) ->
     ?LOG_END("No failover configured, ending"),
     ?LOG("Release ~s from ~s", [CallID, AcctID]),
-    ts_acctmgr:release_trunk(AcctID, CallID, 0);
+    ok = ts_acctmgr:release_trunk(AcctID, CallID, 0);
 try_failover(#state{failover=FailJObj}=State) ->
     case wh_json:get_value(<<"e164">>, FailJObj) of
 	undefined -> try_failover_sip(State, wh_json:get_value(<<"sip">>, FailJObj));
@@ -261,7 +261,7 @@ try_failover(#state{failover=FailJObj}=State) ->
 try_failover_sip(#state{acctid=AcctID, aleg_callid=CallID, callctl_q = <<>>}, _) ->
     ?LOG("No control queue to try SIP failover"),
     ?LOG("Release ~s from ~s", [CallID, AcctID]),
-    ts_acctmgr:release_trunk(AcctID, CallID, 0);
+    ok = ts_acctmgr:release_trunk(AcctID, CallID, 0);
 try_failover_sip(#state{aleg_callid=CallID, callctl_q=CtlQ}=State, SIPUri) ->
     EndPoint = {struct, [
 			 {<<"Invite-Format">>, <<"route">>}
@@ -298,7 +298,7 @@ try_failover_e164(#state{acctid=AcctID, aleg_callid=CallID, callctl_q=CallctlQ, 
 	       ,{<<"Application-Name">>, <<"bridge">>}
 	       ,{<<"Custom-Channel-Vars">>, {struct, RateData}}
 	       ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
-	       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP, <<"26">>)}
+	       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
 	       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
 	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
 	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
@@ -309,7 +309,7 @@ try_failover_e164(#state{acctid=AcctID, aleg_callid=CallID, callctl_q=CallctlQ, 
     amqp_util:offnet_resource_publish(Payload),
     wait_for_offnet_bridge(State#state{aleg_callid=FailCallID}, ?WAIT_FOR_OFFNET_BRIDGE).
 
-wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, Timeout) ->
+wait_for_offnet_bridge(#state{aleg_callid=CallID, callctl_q=CtlQ, acctid=AcctID, my_q=Q}=State, Timeout) ->
     Start = erlang:now(),
     receive
 	{_, #amqp_msg{payload=Payload}} ->
@@ -317,15 +317,22 @@ wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, 
 	    case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { <<"offnet_resp">>, <<"resource">> } ->
 		    BLegCallID = wh_json:get_value(<<"Call-ID">>, JObj),
-		    amqp_util:bind_q_to_callevt(Q, BLegCallID, cdr),
+		    _ = amqp_util:bind_q_to_callevt(Q, BLegCallID, cdr),
+		    ?LOG("Bridging offnet to callid ~s", [BLegCallID]),
+		    ?LOG(BLegCallID, "Bridged to a-leg ~s", [CallID]),
 		    wait_for_offnet_cdr(State#state{bleg_callid=BLegCallID}, ?WAIT_FOR_HANGUP_TIMEOUT);
                 { <<"resource_error">>, <<"resource">> } ->
-		    ?LOG("Failed to failover to e164"),
-		    ?LOG("Failure message: ~s", [wh_json:get_value(<<"Failure-Message">>, JObj)]),
-		    ?LOG("Failure code: ~s", [wh_json:get_value(<<"Failure-Code">>, JObj)]),
+		    Code = wh_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
+		    Message = wh_json:get_value(<<"Failure-Message">>, JObj),
 
-		    %% TODO: Send Commands to CtlQ to play media depending on failure code
-                    ?LOG("Release ~s from ~s", [CallID, AcctID]),
+		    ?LOG("Failed to bridge offnet"),
+		    ?LOG("Failure message: ~s", [Message]),
+		    ?LOG("Failure code: ~s", [Code]),
+
+		    %% send failure code to Call
+		    whistle_util:call_response(CallID, CtlQ, Code, Message),
+
+                    ?LOG("release ~s for ~s", [CallID, AcctID]),
 		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
 		    ?LOG("Hangup received"),
@@ -419,7 +426,7 @@ endpoint_data(JObj) ->
     ?LOG("EP: AuthRealm: ~s", [AuthRealm]),
 
     case ts_credit:reserve(ToDID, CallID, AcctID, inbound, props:get_value(<<"Route-Options">>, RoutingData)) of
-        {error, _}=E -> ?LOG("Release ~s from ~s", [CallID, AcctID]), ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
+        {error, _}=E -> ?LOG("Release ~s from ~s", [CallID, AcctID]), ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
         {ok, RateData} ->
             InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
             Invite = ts_util:invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ RoutingData,
@@ -464,40 +471,80 @@ routing_data(ToDID) ->
 
     SrvOptions = wh_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
 
-    {CalleeName, CalleeNumber} = callee_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
+    true = whistle_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)),
+
+    InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
+
+    {CalleeName, CalleeNumber} = callee_id([
+					    wh_json:get_value(<<"caller_id">>, DIDOptions)
                                             ,wh_json:get_value(<<"callerid_account">>, Settings)
                                             ,wh_json:get_value(<<"callerid_server">>, Settings)
                                            ]),
 
+    ProgressTimeout = progress_timeout([
+					wh_json:get_value(<<"progress_timeout">>, DIDOptions)
+					,wh_json:get_value(<<"progress_timeout">>, SrvOptions)
+					,wh_json:get_value(<<"progress_timeout">>, AcctStuff)
+				       ]),
+
+    BypassMedia = bypass_media([
+				wh_json:get_value(<<"media_handling">>, DIDOptions)
+				,wh_json:get_value(<<"media_handling">>, SrvOptions)
+				,wh_json:get_value(<<"media_handling">>, AcctStuff)
+			       ]),
+
+    Failover = failover([
+			 wh_json:get_value(<<"failover">>, DIDOptions)
+			 ,wh_json:get_value(<<"failover">>, SrvOptions)
+			 ,wh_json:get_value(<<"failover">>, AcctStuff)
+			]),
+
+    Delay = delay([
+		   wh_json:get_value(<<"delay">>, DIDOptions)
+		   ,wh_json:get_value(<<"delay">>, SrvOptions)
+		   ,wh_json:get_value(<<"delay">>, AcctStuff)
+		  ]),
+
+    SIPHeaders = sip_headers([
+			      wh_json:get_value(<<"sip_headers">>, DIDOptions)
+			      ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
+			      ,wh_json:get_value(<<"sip_headers">>, AcctStuff)
+			      ]),
+
+    IgnoreEarlyMedia = ignore_early_media([
+					   wh_json:get_value(<<"ignore_early_media">>, DIDOptions)
+					   ,wh_json:get_value(<<"ignore_early_media">>, SrvOptions)
+					   ,wh_json:get_value(<<"ignore_early_media">>, AcctStuff)
+					  ]),
+
+    Timeout = ep_timeout([
+			  wh_json:get_value(<<"timeout">>, DIDOptions)
+			  ,wh_json:get_value(<<"timeout">>, SrvOptions)
+			  ,wh_json:get_value(<<"timeout">>, AcctStuff)
+			 ]),
+
     %% Bridge Endpoint fields go here
     %% See http://wiki.2600hz.org/display/whistle/Dialplan+Actions#DialplanActions-Endpoint
-    RD0 = [KV || {_,V}=KV <- [ {<<"Invite-Format">>, wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>)}
-                               ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv)}
-                               ,{<<"Bypass-Media">>, wh_json:get_value(<<"media_handling">>, SrvOptions)}
-                               ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, SrvOptions)}
-                               ,{<<"Endpoint-Delay">>, wh_json:get_value(<<"delay">>, DIDOptions)}
-                               ,{<<"SIP-Headers">>, wh_json:get_value(<<"sip_headers">>, SrvOptions)}
-                               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, SrvOptions)}
-                               ,{<<"Endpoint-Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
-                               ,{<<"Callee-ID-Name">>, CalleeName}
-                               ,{<<"Callee-ID-Number">>, CalleeNumber}
-                               ,{<<"To-User">>, AuthU}
-                               ,{<<"To-Realm">>, AuthR}
-                               ,{<<"To-DID">>, ToDID}
-                               ,{<<"Route-Options">>, RouteOpts}
-                             ],
-                 V =/= undefined,
-                 V =/= <<>> ],
-
-    ?LOG("Created Routing data"),
-
-    case wh_json:get_value(<<"failover">>, DIDOptions
-			   ,wh_json:get_value(<<"failover">>, Srv
-					      ,wh_json:get_value(<<"failover">>, AcctStuff))
-			  ) of
-	undefined -> RD0;
-	F -> [{<<"Failover">>, F} | RD0] %% {struct, [{<<"e164 or sip">>, <<"sip:foo@bar.com or +12223334444">>}]}
-    end.
+    [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
+			 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv)}
+			 ,{<<"Bypass-Media">>, BypassMedia}
+			 ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
+			 ,{<<"Failover">>, Failover}
+			 ,{<<"Endpoint-Delay">>, Delay}
+			 ,{<<"SIP-Headers">>, SIPHeaders}
+			 ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+			 ,{<<"Endpoint-Timeout">>, Timeout}
+			 ,{<<"Callee-ID-Name">>, CalleeName}
+			 ,{<<"Callee-ID-Number">>, CalleeNumber}
+			 ,{<<"To-User">>, AuthU}
+			 ,{<<"To-Realm">>, AuthR}
+			 ,{<<"To-DID">>, ToDID}
+			 ,{<<"Route-Options">>, RouteOpts}
+			 %% ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
+			 %% ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
+		       ],
+	   V =/= undefined,
+	   V =/= <<>> ].
 
 callee_id([]) -> {undefined, undefined};
 callee_id([undefined | T]) -> callee_id(T);
@@ -509,3 +556,41 @@ callee_id([{struct, [_|_]}=JObj | T]) ->
             callee_id(T);
         CalleeID -> CalleeID
     end.
+
+sip_headers(L) ->
+    sip_headers(L, []).
+sip_headers([undefined | T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([?EMPTY_JSON_OBJECT | T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([{struct, [_|_]=H}|T], Acc) ->
+    sip_headers(T, H ++ Acc);
+sip_headers([_|T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([], []) ->
+    undefined;
+sip_headers([], Acc) ->
+    {struct, lists:reverse(Acc)}.
+
+%% cascade from DID to Srv to Acct
+failover(L) -> simple_extract(L).
+progress_timeout(L) -> simple_extract(L).
+bypass_media(L) -> simple_extract(L).
+delay(L) -> simple_extract(L).
+ignore_early_media(L) -> simple_extract(L).
+ep_timeout(L) -> simple_extract(L).
+
+-spec simple_extract/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+simple_extract([undefined|T]) ->
+    simple_extract(T);
+simple_extract([?EMPTY_JSON_OBJECT | T]) ->
+    simple_extract(T);
+simple_extract([{struct, _}=F | _]) ->
+    F;
+simple_extract([B | _]) when is_binary(B) andalso B =/= <<>> ->
+    B;
+simple_extract([_ | T]) ->
+    simple_extract(T);
+simple_extract([]) ->
+    undefined.
