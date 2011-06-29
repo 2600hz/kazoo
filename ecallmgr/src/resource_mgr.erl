@@ -249,7 +249,7 @@ send_failed_req(JObj, Failed) ->
 
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Attempts">>, Failed}
-		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
+		| whistle_api:default_headers(<<>>, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     ?LOG("sending resource error ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
@@ -262,7 +262,7 @@ send_failed_consume(Route, JObj, E) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Route">>, Route}
 		,{<<"Failure-Message">>, whistle_util:to_binary(E)}
-		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
+		| whistle_api:default_headers(<<>>, <<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
     ?LOG("sending originate error ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
