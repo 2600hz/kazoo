@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/servers.json">>).
--define(SERVERS_LIST, <<"servers/listing_by_id">>).
+-define(CB_LIST, {<<"servers">>, <<"crossbar_listing">>}).
 
 %%%===================================================================
 %%% API
@@ -140,7 +140,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.servers">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
     spawn(fun() ->
-                  %% The validation will stop us before we get here if the deploy is running, 
+                  %% The validation will stop us before we get here if the deploy is running,
                   %% and we will not execute unless we are able to update the document (using the doc
                   %% as a mutex basicly).  However, if a server achieves the 'lock' and dies nothing
                   %% cleans it up at the moment.
@@ -171,7 +171,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, 
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -298,7 +298,7 @@ validate([ServerId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_server(ServerId, Context);
 validate([ServerId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_server(ServerId, Context);
-validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context) ->   
+validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
@@ -326,7 +326,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_server_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_server_summary(Context) ->
-    crossbar_doc:load_view(?SERVERS_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -341,7 +341,7 @@ create_server(#cb_context{req_data=JObj}=Context) ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, _} ->
             JObj1=wh_json:set_value(<<"pvt_type">>, <<"server">>, JObj),
-            JObj2=wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, JObj1),            
+            JObj2=wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, JObj1),
             JObj3=wh_json:set_value(<<"pvt_db_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(5))), JObj2),
             JObj4=wh_json:set_value(<<"pvt_cookie">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(24))), JObj3),
             Context#cb_context{
@@ -375,7 +375,7 @@ update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
         {true, _} ->
             crossbar_doc:load_merge(ServerId, JObj, Context)
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -400,8 +400,8 @@ is_valid_doc(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Execute the deploy command with the provided arguments, ensuring the 
-%% doc is updated afterward.  Because the doc is are mutex for the 
+%% Execute the deploy command with the provided arguments, ensuring the
+%% doc is updated afterward.  Because the doc is are mutex for the
 %% deployment there are try..catches so any failures release the lock
 %% @end
 %%--------------------------------------------------------------------
@@ -409,11 +409,11 @@ is_valid_doc(JObj) ->
 execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
     case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deploy_status">>, <<"running">>, JObj)) of
         {ok, _} ->
-            ServerId = wh_json:get_value(<<"_id">>, JObj),                
-            try 
+            ServerId = wh_json:get_value(<<"_id">>, JObj),
+            try
                 Ip = wh_json:get_value(<<"ip">>, JObj),
-                Roles = fun([H|T], Sep) -> 
-                                <<H/binary, (list_to_binary([<<(Sep)/binary, X/binary>> || X <- T]))/binary>> 
+                Roles = fun([H|T], Sep) ->
+                                <<H/binary, (list_to_binary([<<(Sep)/binary, X/binary>> || X <- T]))/binary>>
                         end(wh_json:get_value(<<"roles">>, JObj), <<",">>),
                 Password = wh_json:get_value(<<"password">>, Data),
                 Hostname = wh_json:get_value(<<"hostname">>, JObj),
@@ -431,8 +431,8 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                                              ,$ , $" ,(wh_json:get_value(<<"pvt_cookie">>, JObj))/binary, $"
                                              ,$ , $" ,(wh_json:get_value(<<"pvt_db_key">>, JObj))/binary, $"
                                              ,$ , $" ,(Db)/binary, $"
-                                           >>),                
-               spawn(fun() -> 
+                                           >>),
+               spawn(fun() ->
                              try
                                  Port = open_port({spawn, Cmd}, [stderr_to_stdout, {line, 256}, exit_status, binary]),
                                  monitor_deployment(Port, Db, ServerId, <<>>)
@@ -443,7 +443,7 @@ execute_deploy_cmd(#cb_context{db_name=Db, doc=JObj, req_data=Data}=Context) ->
                              {ok, _} = mark_deploy_complete(Db, ServerId)
                      end),
                 crossbar_util:response([], Context)
-            catch 
+            catch
                 _:_ ->
                     _ = mark_deploy_complete(Db, ServerId),
                     crossbar_util:response(error, <<"failed to start deployment">>, Context)
@@ -470,11 +470,11 @@ mark_deploy_complete(Db, ServerId) ->
 %% This is the db trashing function, every new line update the attachment
 %% TODO: implement batching
 %% @end
-%%--------------------------------------------------------------------                   
+%%--------------------------------------------------------------------
 -spec(monitor_deployment/4 :: (Port :: port(), Db :: binary(), ServerId :: binary(), Acc :: binary()) -> no_return()).
-monitor_deployment(Port, Db, ServerId, Acc) ->    
+monitor_deployment(Port, Db, ServerId, Acc) ->
     receive
-        {Port, {data, {eol, Bin}}} ->            
+        {Port, {data, {eol, Bin}}} ->
             Acc1 = <<Acc/binary, Bin/binary>>,
             couch_mgr:put_attachment(Db, ServerId, <<"deployment.log">>, Acc1),
             monitor_deployment(Port, Db, ServerId, Acc1);
@@ -490,5 +490,5 @@ monitor_deployment(Port, Db, ServerId, Acc) ->
             couch_mgr:put_attachment(Db, ServerId, <<"deployment.log">>, Acc);
         {Port, eof} ->
             port_close(Port),
-            couch_mgr:put_attachment(Db, ServerId, <<"deployment.log">>, Acc)   
+            couch_mgr:put_attachment(Db, ServerId, <<"deployment.log">>, Acc)
     end.

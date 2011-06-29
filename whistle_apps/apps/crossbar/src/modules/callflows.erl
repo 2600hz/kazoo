@@ -22,11 +22,15 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/callflows.json">>).
+
 -define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
 -define(FIXTURE_LIST, [<<"611.callflow.json">>]).
 
 -define(AGG_DB, <<"callflows">>).
 -define(AGG_FILTER, <<"callflows/export">>).
+
+-define(CB_LIST, {<<"callflows">>, <<"crossbar_listing">>}).
+
 
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
@@ -111,16 +115,14 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -143,7 +145,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     whapps_util:update_all_accounts(?VIEW_FILE),
-    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info (_Info, State) ->
@@ -258,7 +259,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_callflow_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_callflow_summary(Context) ->
-    crossbar_doc:load_view(?CALLFLOWS_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private

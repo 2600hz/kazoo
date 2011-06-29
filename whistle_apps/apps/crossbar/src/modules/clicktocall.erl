@@ -3,7 +3,7 @@
 %%% @author Eduoard Swiac <edouard@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% Click to call
 %%%
 %%% Allow embeddable HTML forms (or other ways to POST to the URL)
@@ -29,6 +29,7 @@
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).
 -define(VIEW_FILE, <<"views/c2c.json">>).
+-define(CB_LIST, {<<"click2call">>, <<"crossbar_listing">>}).
 -define(PVT_TYPE, <<"click2call">>).
 -define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {<<"accounts">>, [_]}]).
 
@@ -127,7 +128,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Co
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD, Context | Params]}, State) ->
-    ?LOG("------- > PARAMETERS GET ~p~n", [Params]),
     spawn(fun() ->
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
@@ -135,7 +135,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  crossbar_util:binding_heartbeat(Pid),		  
+		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = crossbar_doc:save(Context),
      		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -155,7 +155,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.clicktocall">>, [
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -181,7 +181,6 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("------- > PARAMETERS ~p~n", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -327,8 +326,8 @@ normalize_view_results(JObj, Acc) ->
 
 
 load_c2c_summary(Context) ->
-    crossbar_doc:load_view(<<"click2call/listing_by_id">>, [], Context, fun normalize_view_results/2).
- 
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
 load_c2c(C2CId, Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
     C2C1 = wh_json:set_value(<<"history_items">>, length(wh_json:get_value(<<"history">>, C2C)), wh_json:delete_key(<<"history">>, C2C)),
@@ -355,18 +354,16 @@ is_valid_connect_doc(JObj) ->
 	_ -> {true, []}
     end.
 
-establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId, db_name=DbName}=Context) ->                                                                 #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
+establish_c2c(C2CId, #cb_context{req_data=Req, account_id=[AccountId|_]}=Context) ->
+    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
 
     Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
     Callee = whistle_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
-    AccountRealm = wh_json:get_value(<<"realm">>, C2C),
-    Realm = case AccountRealm of                                                                                                                                             undefined ->                                                                                                                                                     {ok, Doc} = couch_mgr:open_doc(DbName, AccountId),
-                    wh_json:get_value(<<"realm">>, Doc);                                                                                                                     _ ->  AccountRealm                                                                                                                                       end,
     C2CName = wh_json:get_value(<<"name">>, C2C),
 
-    Status = originate_call(Caller, Callee, Realm, C2CName),
+    Status = originate_call(Caller, Callee, C2CName, AccountId),
 
-    case Status of 
+    case Status of
 	{success, [CallID, CdrID]} ->
 	    History = wh_json:get_value(<<"history">>, C2C, []),
 	    List = [create_c2c_history_item(Req, CallID, CdrID) | History],
@@ -388,61 +385,62 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
 
 create_c2c_history_item(Req, CallID, CdrID) ->
     Now = whistle_util:current_tstamp(),
-    {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)}, 
+    {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)},
 	       {<<"timestamp">>, Now},
 	       {<<"call_id">>, CallID},
-	       {<<"cdr_id">>, CdrID} 
+	       {<<"cdr_id">>, CdrID}
 	     ]}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
-originate_call(CallerNumber, CalleeExtension, CalleeRealm, C2CName) ->
-    logger:format_log(info, " ..... Establishing clicktocall ~p from ~p@~p to ~p@~p ...~n", [C2CName, CallerNumber, CalleeRealm, CalleeExtension, CalleeRealm]),
-    
+originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
+    ?LOG("attempting clicktocall ~s from ~s to ~s in account ~s", [C2CName, CallerNumber, CalleeExtension, AccountId]),
+
     %% create, bind & consume amqp queue
     Amqp = amqp_util:new_queue(),
     amqp_util:bind_q_to_targeted(Amqp),
     amqp_util:basic_consume(Amqp),
 
     %basic call info to display on phone's screen
-    CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary, "@", CalleeRealm/binary,
+    CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary,
 		  ",origination_caller_id_number=", CalleeExtension/binary,
 		  ",origination_callee_id_name='", C2CName/binary, "'",
 		  ",origination_callee_id_number=", CallerNumber/binary >>,
 
-    OrigStringPart = <<"{ecallmgr_Realm=",CalleeRealm/binary, CallInfo/binary, "}loopback/", CallerNumber/binary, "/context_2">>,
+    OrigStringPart = <<"{ecallmgr_Account-ID=",AccountId/binary, CallInfo/binary, "}loopback/", CallerNumber/binary, "/context_2">>,
 
     JObjReq = [
 	       {<<"Msg-ID">>, whistle_util:current_tstamp()}
                ,{<<"Resource-Type">>, <<"audio">>}
-               ,{<<"Invite-Format">>, <<"route">>} 
+               ,{<<"Invite-Format">>, <<"route">>}
 	       ,{<<"Route">>, OrigStringPart}
-	       ,{<<"Custom-Channel-Vars">>, {struct, [{"Realm", CalleeRealm}] } }
+	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Account-ID">>, AccountId}] } }
                ,{<<"Application-Name">>, <<"transfer">>}
-	       ,{<<"Application-Data">>, {struct, [{"Route", CalleeExtension}]} }
+	       ,{<<"Application-Data">>, {struct, [{<<"Route">>, CalleeExtension}]} }
                | whistle_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
               ],
 
     {ok, Json} = whistle_api:resource_req({struct, JObjReq}),
     amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ),
-    
+
     receive
 	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
 	    JObj = mochijson2:decode(Payload),
 	    case wh_json:get_value(<<"Event-Name">>, JObj) of
 		<<"originate_resp">> ->
-		    logger:format_log(info, ">>> Click to call ... Success! Call established ", []),
+                    whapps_util:put_callid(JObj),
+                    ?LOG("established clicktocall ~s from ~s to ~s in account ~s", [C2CName, CallerNumber, CalleeExtension, AccountId]),
 		    {success, [wh_json:get_value(<<"Call-ID">>, JObj), null]};
 		<<"resource_error">> ->
-		    logger:format_log(info, ">>> Click to call ... Error, cannot establish call, server may be busy", []),
+                    ?LOG("cannot establish click to call, ~s", [wh_json:get_value(<<"Failure-Message">>, JObj, <<>>)]),
 		    {error, []}
 	    end
     after
 	15000 ->
-	    logger:format_log(info, ">>> Click to call ... Timeout, cannot establish call.", []),
+            ?LOG("cannot establish click to call, timeout"),
 	    {timeout, []}
     end.

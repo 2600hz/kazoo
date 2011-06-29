@@ -618,16 +618,20 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          whistle_util:is_true(wh_json:get_value(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions))
                      ,skip_greeting =
                          whistle_util:is_true(wh_json:get_value(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting))
-                     ,has_unavailable_greeting = wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
+                     ,has_unavailable_greeting =
+                         wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                      ,pin =
                          whistle_util:to_binary(wh_json:get_value(<<"pin">>, JObj, <<>>))
-                     ,timezone = wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
+                     ,timezone =
+                         wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
                      ,mailbox_number =
                          whistle_util:to_binary(wh_json:get_value(<<"mailbox">>, JObj, ReqUser))
-                     ,require_pin = whistle_util:is_true(wh_json:get_value(<<"require_pin">>, JObj, false))
+                     ,require_pin =
+                         whistle_util:is_true(wh_json:get_value(<<"require_pin">>, JObj, false))
                      ,check_if_owner =
                          whistle_util:is_true(wh_json:get_value(<<"check_if_owner">>, JObj, CheckIfOwner))
-                     ,owner_id = wh_json:get_value(<<"owner_id">>, JObj)
+                     ,owner_id =
+                         wh_json:get_value(<<"owner_id">>, JObj)
                      ,exists = true
                     };
         {error, R} ->

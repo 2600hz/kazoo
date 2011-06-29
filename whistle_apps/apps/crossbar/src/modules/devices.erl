@@ -25,8 +25,12 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/devices.json">>).
+
 -define(DEVICES_LIST, <<"devices/listing_by_id">>).
 -define(FIXTURE_LIST, [<<"611.device.json">>]). %% fixtures to load into each account DB
+
+-define(CB_LIST, {<<"devices">>, <<"crossbar_listing">>}).
+
 
 -define(AGG_DB, <<"sip_auth">>).
 -define(AGG_FILTER, <<"devices/export_sip">>).
@@ -276,7 +280,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_device_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_device_summary(Context) ->
-    crossbar_doc:load_view(?DEVICES_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -330,7 +334,7 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].    
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private

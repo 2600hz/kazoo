@@ -110,7 +110,7 @@ init([Host, Conn]) when is_pid(Conn) ->
 %%                                   {stop, Reason, Reply, State} |
 %%                                   {stop, Reason, State}
 %% @end
-%%--------------------------------------------------------------------				   
+%%--------------------------------------------------------------------
 handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
     case Mgr =:= From of
 	true -> {stop, normal, ok, State};
@@ -132,7 +132,6 @@ handle_cast({get_misc_channel, From}, #state{misc_channel={C,_,T}}=State) ->
     {noreply, State};
 
 handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=State) ->
-    ?LOG_SYS("publishing to channel ~p", [C]),
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
     {noreply, State};
 
@@ -409,7 +408,7 @@ start_channel(Connection, Pid) ->
 	    amqp_channel:register_return_handler(C, Pid),
 	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util:access_request()),
 	    Channel;
-	E -> 
+	E ->
             ?LOG_SYS("failed to start new channel ~p", [E]),
             E
     end.
@@ -426,11 +425,11 @@ load_exchanges(Channel, Ticket) ->
 
 -spec(remove_ref/2 :: (Ref :: reference(), State :: #state{}) -> #state{}).
 remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref,_}}=State) ->
-    ?LOG_SYS("reference was for publish channel ~p, restarting", [C]), 
+    ?LOG_SYS("reference was for publish channel ~p, restarting", [C]),
     State#state{publish_channel=start_channel(Conn)};
 
 remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref,_}}=State) ->
-    ?LOG_SYS("reference was for misc channel ~p, restarting", [C]), 
+    ?LOG_SYS("reference was for misc channel ~p, restarting", [C]),
     State#state{misc_channel=start_channel(Conn)};
 
 remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
