@@ -22,7 +22,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/callflows.json">>).
--define(CALLFLOWS_LIST, {<<"callflows">>, <<"cb_listing">>}).
+-define(CB_LIST, {<<"callflows">>, <<"crossbar_listing">>}).
 
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
@@ -250,7 +250,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_callflow_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_callflow_summary(Context) ->
-    crossbar_doc:load_view(?CALLFLOWS_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private

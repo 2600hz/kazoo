@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/resources.json">>).
--define(RESOURCES_LIST, <<"resources/listing_by_id">>).
+-define(CB_LIST, {<<"resources">>, <<"crossbar_listing">>}).
 
 %%%===================================================================
 %%% API
@@ -143,7 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -267,7 +267,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_resource_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_resource_summary(Context) ->
-    crossbar_doc:load_view(?RESOURCES_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private

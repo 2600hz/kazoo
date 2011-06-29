@@ -27,7 +27,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/conferences.json">>).
--define(CONFERENCES_LIST, <<"conferences/listing_by_id">>).
+-define(CB_LIST, {<<"conferences">>, <<"crossbar_listing">>}).
 
 %%%===================================================================
 %%% API
@@ -145,7 +145,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.conferences">>, [
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -269,7 +269,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_conference_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_conference_summary(Context) ->
-    crossbar_doc:load_view(?CONFERENCES_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -322,7 +322,7 @@ update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].    
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private

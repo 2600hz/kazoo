@@ -25,8 +25,8 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/users.json">>).
--define(VIEW_BY_ID, <<"users/listing_by_id">>).
--define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
+-define(CB_LIST, {<<"users">>, <<"crossbar_listing">>}).
+-define(GROUP_BY_USERNAME, {<<"users">>, <<"group_by_username">>}).
 
 %%%===================================================================
 %%% API
@@ -144,7 +144,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Co
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -268,7 +268,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_user_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_user_summary(Context) ->
-    crossbar_doc:load_view(?VIEW_BY_ID, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -357,7 +357,7 @@ is_valid_doc(JObj) ->
 	[] -> {true, []};
 	_ -> {false, ErrorFields}
     end.
-		   
+
 -spec(field_exists/2 :: (Field :: binary(), JObj :: json_object()) -> boolean()).
 field_exists(Field, JObj) ->
     is_binary(wh_json:get_value(Field, JObj)).
@@ -386,11 +386,11 @@ hash_password(#cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function will determine if the username in the request is 
+%% This function will determine if the username in the request is
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec(is_unique_username/2 :: (UserId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).            
+-spec(is_unique_username/2 :: (UserId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
 is_unique_username(UserId, Context) ->
     Username = wh_json:get_value(<<"username">>, Context#cb_context.req_data),
     JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of
@@ -404,4 +404,3 @@ is_unique_username(UserId, Context) ->
         Id ->
             Assignments =:= [] orelse Assignments =:= [[Id]]
     end.
-

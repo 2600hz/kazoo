@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/menus.json">>).
--define(MENUS_LIST, <<"menus/listing_by_id">>).
+-define(CB_LIST, {<<"menus">>, <<"crossbar_listing">>}).
 
 %%%===================================================================
 %%% API
@@ -143,7 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.menus">>, [RD, Co
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->    
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -267,7 +267,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_menu_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_menu_summary(Context) ->
-    crossbar_doc:load_view(?MENUS_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
