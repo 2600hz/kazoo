@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/vmboxes.json">>).
--define(VMBOXES_LIST, <<"vmboxes/listing_by_id">>).
+-define(CB_LIST, {<<"vmboxes">>, <<"crossbar_listing">>}).
 
 -define(MESSAGES_RESOURCE, <<"messages">>).
 -define(MESSAGE_AUDIO_EXT, <<".mp3">>).
@@ -354,7 +354,7 @@ validate(_Other, Context) ->
 %%--------------------------------------------------------------------
 -spec(load_vmbox_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 load_vmbox_summary(Context) ->
-    crossbar_doc:load_view(?VMBOXES_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
