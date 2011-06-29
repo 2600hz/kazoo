@@ -88,15 +88,16 @@ onnet_data(#state{aleg_callid=CallID, my_q=Q, acctid=AcctID}=State, JObj) ->
                 send_park(State#state{acctid=AcctID}, Command)
             catch
                 _A:_B ->
+                    ST = erlang:get_stacktrace(),
                     ?LOG("Exception connecting from onnet"),
                     ?LOG("~p:~p", [_A, _B]),
-                    ?LOG("Stacktrace: ~p", [erlang:get_stacktrace()]),
+                    ?LOG("Stacktrace: ~p", [ST]),
                     ?LOG("Release ~s for ~s", [CallID, AcctID]),
                     ts_acctmgr:release_trunk(CallID, AcctID, 0)
             end
     end.
 
-send_park(#state{route_req_jobj=JObj, my_q=Q}=State, Command) ->
+send_park(#state{aleg_callid=CallID, route_req_jobj=JObj, my_q=Q}=State, Command) ->
     JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                        ,{<<"Routes">>, []}
                        ,{<<"Method">>, <<"park">>}
@@ -107,26 +108,32 @@ send_park(#state{route_req_jobj=JObj, my_q=Q}=State, Command) ->
     ?LOG("Sending park to ~s: ~s", [RespQ, JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>),
 
+    ?LOG(CallID, "Binding to events and cdrs for queue ~s", [Q]),
+    _ = amqp_util:bind_q_to_callevt(Q, CallID),
+    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+    _ = amqp_util:basic_consume(Q),
+
     wait_for_win(State, Command, ?WAIT_FOR_WIN_TIMEOUT).
 
-wait_for_win(#state{aleg_callid=CallID, my_q=Q}=State, Command, Timeout) ->
+wait_for_win(#state{aleg_callid=CallID}=State, Command, Timeout) ->
     receive
         #'basic.consume_ok'{} -> wait_for_win(State, Command, Timeout);
-	{_, #amqp_msg{payload=Payload}} ->
+	{#'basic.deliver'{exchange= <<"targeted">>}, #amqp_msg{payload=Payload}}=AmqpMsg ->
 	    WinJObj = mochijson2:decode(Payload),
-	    true = whistle_api:route_win_v(WinJObj),
-	    CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
 
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID),
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+            ?LOG("Is a route_win: ~s", [Payload]),
+	    case whistle_api:route_win_v(WinJObj) of
+                false ->
+                    self() ! AmqpMsg,
+                    wait_for_win(State, Command, Timeout);
+                true ->
+                    CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
+                    CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
 
-	    CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
-
-	    send_offnet(State#state{callctl_q=CallctlQ}, [{<<"Control-Queue">>, CallctlQ} | Command])
+                    send_offnet(State#state{callctl_q=CallctlQ}, [{<<"Control-Queue">>, CallctlQ} | Command])
+            end
     after Timeout ->
-	    ?LOG("Timed out(~b) waiting for route_win", [Timeout]),
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID),
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+	    ?LOG("Timed out(~b ms) waiting for route_win", [Timeout]),
 	    wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT)
     end.
 
@@ -188,6 +195,7 @@ wait_for_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID}=State, Ti
 		    ?LOG("Received error in event stream, waiting for CDR"),
 		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
 		{ <<"cdr">>, <<"call_detail">> } ->
+                    ?LOG("Is call cdr: ~s", [Payload]),
 		    true = whistle_api:call_cdr_v(JObj),
 
 		    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -223,6 +231,7 @@ wait_for_bridge(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout) 
     receive
 	{_, #amqp_msg{payload=Payload}} ->
 	    JObj = mochijson2:decode(Payload),
+            ?LOG("Is call event: ~s", [Payload]),
 	    true = whistle_api:call_event_v(JObj),
 
 	    case { wh_json:get_value(<<"Application-Name">>, JObj)
