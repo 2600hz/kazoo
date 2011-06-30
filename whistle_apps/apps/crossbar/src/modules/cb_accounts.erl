@@ -56,7 +56,7 @@ get_realm_from_db(DBName) ->
 	{ok, JObj} -> {ok, wh_json:get_value(<<"realm">>, JObj)};
 	{error, _}=E -> E
     end.
-    
+
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -364,7 +364,7 @@ create_account(#cb_context{req_data=JObj}=Context) ->
                 true ->
 		    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
                     Context#cb_context{
-                      doc=set_private_fields(JObj)
+                      doc=set_private_fields(JObj, Context)
                       ,resp_status=success
                      };
                 false ->
@@ -586,22 +586,31 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 %% document
 %% @end
 %%--------------------------------------------------------------------
--spec(set_private_fields/1 :: (JObj :: json_object()) -> json_object()).
-set_private_fields(JObj) ->
-    JObj1 = wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj),
-    JObj2 = wh_json:set_value(<<"pvt_tree">>, [], JObj1),
-    set_api_keys(JObj2).
+-spec(set_private_fields/2 :: (JObj :: json_object(), Context :: #cb_context{}) -> json_object()).
+set_private_fields(JObj0, Context) ->
+    lists:foldl(fun(Fun, JObj1) ->
+                        Fun(JObj1, Context)
+                end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function returns the private fields to be added to a new account
-%% document
-%% @end
-%%--------------------------------------------------------------------
--spec(set_api_keys/1 :: (JObj :: json_object()) -> json_object()).
-set_api_keys(JObj) ->
+add_pvt_type(JObj, _) ->
+    wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj).
+
+add_pvt_api_key(JObj, _) ->
     wh_json:set_value(<<"pvt_api_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))), JObj).
+
+add_pvt_tree(JObj, #cb_context{auth_doc=undefined}) ->
+    wh_json:set_value(<<"pvt_tree">>, [], JObj);
+add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
+    AuthAccId = wh_json:get_value(<<"account_id">>, Token),
+    case is_binary(AuthAccId) andalso couch_mgr:open_doc(whapps_util:get_db_name(AuthAccId, encoded), AuthAccId) of
+        {ok, AuthJObj} ->
+            ParentTree = wh_json:get_value(<<"pvt_tree">>, AuthJObj, []),
+            wh_json:set_value(<<"pvt_tree">>, ParentTree ++ [AuthAccId], JObj);
+        false ->
+            wh_json:set_value(<<"pvt_tree">>, [], JObj);
+        _ ->
+            wh_json:set_value(<<"pvt_tree">>, [AuthAccId], JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
