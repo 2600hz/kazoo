@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(devices).
+-module(cb_devices).
 
 -behaviour(gen_server).
 

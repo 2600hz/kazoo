@@ -1,15 +1,12 @@
-%%%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
+%%%-------------------------------------------------------------------
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Resources module
-%%%
-%%% Handle client requests for resource documents
-%%%
+%%% Registration viewer / creator
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 15 Apr 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(resources).
+-module(cb_registrations).
 
 -behaviour(gen_server).
 
@@ -21,12 +18,13 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(VIEW_FILE, <<"views/resources.json">>).
--define(CB_LIST, {<<"resources">>, <<"crossbar_listing">>}).
-
+-define(REG_DB, <<"registrations">>).
+-define(REG_VIEW_FILE, <<"views/registrations.json">>).
+-define(LOOKUP_ACCOUNT_REGS, <<"reg_doc/lookup_realm_user">>).
+-define(LOOKUP_ACCOUNT_USER_REALM, <<"reg_doc/realm_and_username">>).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -74,8 +72,7 @@ init(_) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,63 +97,71 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.resources">>, Payload}, State) ->
+
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.registrations">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.resources">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.registrations">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.resources">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+		  crossbar_util:binding_heartbeat(Pid),
+		  Context1 = validate(Params, RD, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.resources">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.resources">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+		  crossbar_util:binding_heartbeat(Pid),
+		  {Context1, Resp} = case Context#cb_context.resp_status =:= success of
+					 true -> {crossbar_doc:save(Context), true};
+					 false -> {Context, false}
+				     end,
+		  Pid ! {binding_result, Resp, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+		  crossbar_util:binding_heartbeat(Pid),
+		  Pid ! {binding_result, true, [RD, Context, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>, [RD, Context | Params]}, State) ->
+    spawn(fun() ->
+		  crossbar_util:binding_heartbeat(Pid),
+		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
+    Pid ! {binding_result, true, ?REG_VIEW_FILE},
     {noreply, State};
 
 handle_info(timeout, State) ->
+    setup_couch(),
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
+    logger:format_log(info, "CB_REG(~p): Unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -187,26 +192,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
+-spec(setup_couch/0 :: () -> no_return()).
+setup_couch() ->
+    couch_mgr:db_create(?REG_DB),
+    case couch_mgr:update_doc_from_file(?REG_DB, crossbar, ?REG_VIEW_FILE) of
+	{error, _} ->
+	    couch_mgr:load_doc_from_file(?REG_DB, crossbar, ?REG_VIEW_FILE);
+	{ok, _} -> ok
+    end.
+
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.resources">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.resources">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.resources">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.registrations">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.registrations">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.registrations">>),
     crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%% Paths contains the tokenized portions of the URI after the module
+%% /account/{AID}/registrations => Paths == []
+%% /account/{AID}/registrations/{RegistrationsID} => Paths = [<<RegistrationsID>>]
+%% /account/{AID}/registrations/{RegistrationsID}/raw => Paths = [<<"RegistrationsID">>, <<"raw">>]
 %%
 %% Failure here returns 405
 %% @end
@@ -214,15 +223,19 @@ bind_to_crossbar() ->
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
-allowed_methods([_]) ->
+allowed_methods([_RegID]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function determines if the provided list of Nouns are valid.
+%% Paths contains the tokenized portions of the URI after the module
+%% /account/{AID}/registrations => Paths == []
+%% /account/{AID}/registrations/{RegistrationsID} => Paths = [<<<RegistrationsID>>]
+%% /account/{AID}/registrations/{RegistrationsID}/raw => Paths = [<<"RegistrationsID">>, <<"raw">>]
 %%
 %% Failure here returns 404
 %% @end
@@ -244,74 +257,36 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_resource_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_resource(Context);
-validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_resource(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_resource(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_resource(DocId, Context);
-validate(_, Context) ->
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QS}, #cb_context{req_verb = <<"get">>, db_name=DbName}=Context) ->
+    {ok, Doc} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
+    _DocKeys =  [wh_json:get_value(<<"key">>, Elm) || Elm <- Doc],
+
+    DocKeys = case QS of
+               [] -> _DocKeys;
+               _  -> filter_results_on_qs(_DocKeys, QS, ?REG_DB)
+              end,
+
+    case DocKeys of
+        [] -> crossbar_util:response_faulty_request(Context); %% Should be a 404 here
+        _ -> crossbar_doc:load_view(?LOOKUP_ACCOUNT_USER_REALM, [{<<"keys">>, DocKeys}], Context#cb_context{db_name=?REG_DB}, fun normalize_view_results/2)
+    end;
+
+validate([], _, #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
+    Context#cb_context{db_name=?REG_DB};
+
+validate([RegID], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB});
+
+validate([RegID], _, #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
+    crossbar_doc:load_merge(RegID, Data, Context#cb_context{db_name=?REG_DB});
+
+validate([RegID], _, #cb_context{req_verb = <<"delete">>}=Context) ->
+    crossbar_doc:delete(crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB}));
+
+validate(Params, _, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
+    logger:format_log(info, "CB_REG.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
     crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
-%% @end
-%%--------------------------------------------------------------------
--spec(load_resource_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-load_resource_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new resource document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec(create_resource/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_resource(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, _} ->
-            Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
-                ,resp_status=success
-            }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a resource document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec(load_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_resource(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing resource document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec(update_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, _} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -319,17 +294,17 @@ update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
-is_valid_doc(JObj) ->
-    {(wh_json:get_value(<<"gateways">>, JObj) =/= undefined), [<<"gateways">>]}.
+%% -spec(filter_results/2 :: ()).
+filter_results_on_qs(DocKeys, [{Param, Value} | _], DbName) ->
+    ParamBin = list_to_binary(Param),
+    ValueBin = list_to_binary(Value),
+    [DocKey || DocKey <- DocKeys, is_doc_valid_against_filter(DocKey, {ParamBin, ValueBin}, DbName) =:= true].
+
+is_doc_valid_against_filter(DocKey, {Param, Value}, DbName) ->
+    {ok, [PreDoc]} = couch_mgr:get_results(DbName, ?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, DocKey}, {<<"include_docs">>, true}]),
+    Doc = wh_json:get_value(<<"doc">>, PreDoc),
+    wh_json:get_value(Param, Doc)  =:= Value.

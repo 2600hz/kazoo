@@ -1,0 +1,9 @@
+{
+   "_id": "_design/cdr",
+   "language": "javascript",
+   "views": {
+       "listing_by_id": {
+           "map": "function(doc) { if(doc.pvt_deleted || doc.pvt_type != 'cdr') return; emit(doc._id, {'id':doc._id, 'call_id':doc.call_id})}"
+       }
+   }
+}

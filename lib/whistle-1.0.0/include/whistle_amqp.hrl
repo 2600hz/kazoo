@@ -24,6 +24,10 @@
 
 -define(KEY_MWI_UPDATE, <<"mwi.update">>).
 
+-define(KEY_CONF_DISCOVERY_REQ, <<"conference.discovery">>).
+-define(KEY_CONF_SERVICE_REQ, <<"conference.service.">>).
+-define(CONF_DISCOVERY_QUEUE_NAME, <<"conference_discovery">>).
+
 %% To listen for auth requests, bind your queue in the CallMgr Exchange with the <<"auth.req">> routing key.
 %% To listen for route requests, bind your queue in the CallMgr Exchange with the <<"route.req">> routing key.
 

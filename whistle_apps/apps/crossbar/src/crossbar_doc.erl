@@ -23,7 +23,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Returns the version number attached to created/updated documents. 
+%% Returns the version number attached to created/updated documents.
 %% Indicates what pvt fields are created/updated when saving.
 %%
 %% Failure here returns 410, 500, or 503
@@ -122,25 +122,25 @@ load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
 %%--------------------------------------------------------------------
 -spec(load_view/3 :: (View :: binary(), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
 load_view(_View, _Options, #cb_context{db_name=undefined}=Context) ->
-    ?LOG_SYS("db missing from #cb_context for view ~s", [_View]),
+    ?LOG_SYS("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
     crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:get_results(DB, View, Options) of
 	{error, invalid_view_name} ->
-	    ?LOG_SYS("loading view ~s from ~s failed: invalid view", [View, DB]),
+	    ?LOG_SYS("loading view ~s from ~s failed: invalid view", [view_name_to_binary(View), DB]),
             crossbar_util:response_missing_view(Context);
 	{error, not_found} ->
-	    ?LOG_SYS("loading view ~s from ~s failed: not found", [View, DB]),
+	    ?LOG_SYS("loading view ~s from ~s failed: not found", [view_name_to_binary(View), DB]),
 	    crossbar_util:response_missing_view(Context);
 	{ok, Doc} ->
-	    ?LOG_SYS("loaded view ~s from ~s", [View, DB]),
+	    ?LOG_SYS("loaded view ~s from ~s", [view_name_to_binary(View), DB]),
             Context#cb_context{
 	      doc=Doc
 	      ,resp_status=success
 	      ,resp_etag=rev_to_etag(Doc)
 	     };
         _Else ->
-	    ?LOG_SYS("loading view ~s from ~s failed: unexpected ~p", [View, DB, _Else]),
+	    ?LOG_SYS("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
             Context#cb_context{doc=[]}
     end.
 
@@ -470,5 +470,12 @@ add_pvt_created(JObj, _) ->
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
+
+view_name_to_binary({Cat, View}) ->
+    <<(whistle_util:to_binary(Cat))/binary, "/", (whistle_util:to_binary(View))/binary>>;
+view_name_to_binary(View) when is_binary(View) ->
+    View;
+view_name_to_binary(View) ->
+    whistle_util:to_binary(View).
 
 %% ADD Unit Tests for private/public field filtering and merging
