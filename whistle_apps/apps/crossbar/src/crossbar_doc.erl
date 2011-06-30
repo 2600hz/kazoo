@@ -464,13 +464,26 @@ add_pvt_account_id(JObj, DBName) ->
     wh_json:set_value(<<"pvt_account_id">>, whapps_util:get_db_name(DBName, raw), JObj).
 
 add_pvt_created(JObj, _) ->
-    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    wh_json:set_value(<<"pvt_created">>, Timestamp, JObj).
+    case wh_json:get_value(<<"_rev">>, JObj) of
+        undefined ->
+            Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+            wh_json:set_value(<<"pvt_created">>, Timestamp, JObj);
+        _ ->
+            JObj
+    end.
 
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Standardize the view data structure as a binary for use in the
+%% logs
+%% @end
+%%--------------------------------------------------------------------
+-spec(view_name_to_binary/1 :: (View :: tuple(binary() | string(), binary() | string()) | binary() | string()) -> binary()).
 view_name_to_binary({Cat, View}) ->
     <<(whistle_util:to_binary(Cat))/binary, "/", (whistle_util:to_binary(View))/binary>>;
 view_name_to_binary(View) when is_binary(View) ->
