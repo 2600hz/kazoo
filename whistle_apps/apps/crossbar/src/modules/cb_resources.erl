@@ -1,15 +1,15 @@
-%%%-------------------------------------------------------------------
+%%%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Menus module
+%%% Resources module
 %%%
-%%% Handle client requests for menu documents
+%%% Handle client requests for resource documents
 %%%
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(menus).
+-module(cb_resources).
 
 -behaviour(gen_server).
 
@@ -24,8 +24,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/menus.json">>).
--define(CB_LIST, {<<"menus">>, <<"crossbar_listing">>}).
+-define(VIEW_FILE, <<"views/resources.json">>).
+-define(CB_LIST, {<<"resources">>, <<"crossbar_listing">>}).
 
 %%%===================================================================
 %%% API
@@ -100,21 +100,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.menus">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.resources">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.menus">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.resources">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.menus">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
                 Context1 = validate(Params, Context),
@@ -122,21 +122,21 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.menus">>, [RD, Context 
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.menus">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.menus">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.menus">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -196,10 +196,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.menus">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.menus">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.menus">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.menus">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.resources">>),
     crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
@@ -246,15 +246,15 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_menu_summary(Context);
+    load_resource_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_menu(Context);
+    create_resource(Context);
 validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_menu(DocId, Context);
+    load_resource(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_menu(DocId, Context);
+    update_resource(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_menu(DocId, Context);
+    load_resource(DocId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -265,24 +265,24 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_menu_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-load_menu_summary(Context) ->
+-spec(load_resource_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_resource_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new menu document with the data provided, if it is valid
+%% Create a new resource document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_menu/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_menu(#cb_context{req_data=JObj}=Context) ->
+-spec(create_resource/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_resource(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, _} ->
             Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"menu">>, JObj)
+                 doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
                 ,resp_status=success
             }
     end.
@@ -290,26 +290,26 @@ create_menu(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a menu document from the database
+%% Load a resource document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_menu/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_menu(DocId, Context) ->
+-spec(load_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_resource(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing menu document with the data provided, if it is
+%% Update an existing resource document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_menu/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_menu(DocId, #cb_context{req_data=JObj}=Context) ->
+-spec(update_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {false, Fields} ->
+            crossbar_util:response_invalid_data(Fields, Context);
+        {true, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -330,6 +330,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+is_valid_doc(JObj) ->
+    {(wh_json:get_value(<<"gateways">>, JObj) =/= undefined), [<<"gateways">>]}.

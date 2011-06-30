@@ -325,7 +325,7 @@ worker_busy(Q, From, Ref, Parent) ->
 	    ?LOG("recieved response after ~b ms, ~s", [timer:now_diff(erlang:now(), Start) div 1000, Payload]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
 	{'DOWN', Ref, process, Pid, _Info} ->
-	    ?LOG("requestor (~w) down, giving up on task", [Pid])
+	    ?LOG_END("requestor (~w) down, giving up on task", [Pid])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},

@@ -7,7 +7,7 @@
 %%% @end
 %%% Created :  3 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
 %%%============================================================================
--module (callflows).
+-module(cb_callflows).
 
 -behaviour(gen_server).
 
