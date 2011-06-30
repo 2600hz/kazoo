@@ -200,10 +200,11 @@ find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=En
              ,#cf_call{account_db=Db}=Call, Loop) ->
     ?LOG("requesting mailbox number to check"),
     {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, <<"8000">>, Call),
+    BoxNum = try whistle_util:to_integer(Mailbox) catch _:_ -> 0 end,
 
     %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
     %% caller is the owner, and the pin is not required then we skip requesting the pin
-    case couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, Mailbox}]) of
+    case couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, BoxNum}]) of
         {ok, [JObj]} ->
             ReqBox = get_mailbox_profile({struct, [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]}, Call),
             check_mailbox(ReqBox, Call, Loop);
