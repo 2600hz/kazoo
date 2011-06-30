@@ -12,7 +12,7 @@
 %%% @end
 %%% Created : 09 May 2011 by Karl Anderson <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(clicktocall).
+-module(cb_clicktocall).
 
 -behaviour(gen_server).
 

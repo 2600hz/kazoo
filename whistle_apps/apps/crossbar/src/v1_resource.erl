@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%% Created :  05 Jan 2011 by Karl Anderson <karl@2600hz.org>
-%%%------------------------------------------------------------------- 
+%%%-------------------------------------------------------------------
 -module(v1_resource).
 
 -export([init/1]).
@@ -47,7 +47,7 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
 		   "application/x-json" ++ _ ->
 		       Context#cb_context{req_json=get_json_body(RD)};
 		   _ ->
-		       extract_file(RD, Context#cb_context{req_json=get_json_body(RD)})
+		       extract_file(RD, Context#cb_context{req_json=?EMPTY_JSON_OBJECT})
 	       end,
 
     Verb = get_http_verb(RD, Context1#cb_context.req_json),
@@ -284,11 +284,11 @@ parse_path_tokens(Tokens) ->
 parse_path_tokens([], _Loaded, Events) ->
     Events;
 parse_path_tokens([Mod|T], Loaded, Events) ->
-    case lists:member(Mod, Loaded) of
+    case lists:member(<<"cb_", (Mod)/binary>>, Loaded) of
         false ->
             parse_path_tokens([], Loaded, []);
         true ->
-            {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(Elem, Loaded) end, T),
+            {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(<<"cb_", (Elem)/binary>>, Loaded) end, T),
             Params1 = [ whistle_util:to_binary(P) || P <- Params ],
             parse_path_tokens(List2, Loaded, [{Mod, Params1} | Events])
     end.
@@ -902,4 +902,3 @@ xml_tag(Value, Type) ->
     io_lib:format("<~s>~s</~s>~n", [Type, Value, Type]).
 xml_tag(Key, Value, Type) ->
     io_lib:format("<~s type=\"~s\">~s</~s>~n", [Key, Type, string:strip(Value, both, $"), Key]).
-

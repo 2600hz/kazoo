@@ -2,14 +2,15 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% NoAuth module
+%%% Simple authorization module
 %%%
-%%% Authenticates any request
+%%% Authenticates tokens if they are accessing the parent or
+%%% child account only
 %%%
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(noauthz).
+-module(cb_simple_authz).
 
 -behaviour(gen_server).
 
@@ -23,6 +24,10 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
+
+-define(ACCOUNTS_DB, <<"accounts">>).
+
+-define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 
 %%%===================================================================
 %%% API
@@ -97,8 +102,32 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
-    Pid ! {binding_result, true, {RD, Context}},
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"accounts">>,[]}]}=Context}}, State) ->
+    %% Only sys-admins can do this?
+    Pid ! {binding_result, false, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns}=Context}}, State) ->
+    spawn(fun() ->
+                  case props:get_value(<<"accounts">>, Nouns) of
+                      undefined ->
+                          Pid ! {binding_result, false, {RD, Context}};
+                      Params ->
+                          AuthAccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
+                          ReqAccountId = hd(Params),
+                          case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, [
+                                                                                {<<"startkey">>, [ReqAccountId]}
+                                                                                ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ] } ] ) of
+                              {ok, []} ->
+                                  Pid ! {binding_result, false, {RD, Context}};
+                              {ok, [JObj]} ->
+                                  [_, Tree] = wh_json:get_value(<<"key">>, JObj),
+                                  Pid ! {binding_result, lists:member(AuthAccountId, Tree), {RD, Context}};
+                              {error, _} ->
+                                  Pid ! {binding_result, false, {RD, Context}}
+                          end
+                  end
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -124,7 +153,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+     ok.
 
 %%--------------------------------------------------------------------
 %% @private

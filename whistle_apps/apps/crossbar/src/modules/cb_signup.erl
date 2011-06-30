@@ -16,7 +16,7 @@
 %%% @end
 %%% Created : 22 Apr 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(signup).
+-module(cb_signup).
 
 -behaviour(gen_server).
 
@@ -432,17 +432,17 @@ is_unique_realm1(_, _) -> false.
 
 
 cleanup_signups() ->
-    logger:format_log(info, "---- Cleaning old registrations ...", []), 
+    logger:format_log(info, "---- Cleaning old registrations ...", []),
     {ok, Docs} = couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_NOT_EXPIRED, [{<<"include_docs">>, true}]),
     Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     Fun = fun(Doc) -> check_for_expiration(wh_json:get_value(<<"doc">>, Doc), Now) end,
     lists:foreach(Fun, Docs),
-    
+
     logger:format_log(info, "----- Registrations cleaned", []).
 
 check_for_expiration(Doc, Now) ->
     logger:format_log(info, "---- Checking for registrations for ID:~p", [wh_json:get_value([<<"pvt_user">>, <<"email">>], Doc)]),
-    
+
     NewDoc = wh_json:set_value( <<"pvt_has_expired">>, is_expired( wh_json:get_value( <<"pvt_created">>, Doc ), Now ), Doc ),
     case couch_mgr:save_doc(?SIGNUP_DB, NewDoc) of
 	{error, conflict} ->
@@ -452,6 +452,6 @@ check_for_expiration(Doc, Now) ->
 	{_,_} ->
 	    error
     end.
-	    
+
 is_expired(Timestamp, Now) ->
     Timestamp < (Now + ?SIGNUP_LIFESPAN).
