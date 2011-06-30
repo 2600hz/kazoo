@@ -200,10 +200,11 @@ find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=En
              ,#cf_call{account_db=Db}=Call, Loop) ->
     ?LOG("requesting mailbox number to check"),
     {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, <<"8000">>, Call),
+    BoxNum = try whistle_util:to_integer(Mailbox) catch _:_ -> 0 end,
 
     %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
     %% caller is the owner, and the pin is not required then we skip requesting the pin
-    case couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, Mailbox}]) of
+    case couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, BoxNum}]) of
         {ok, [JObj]} ->
             ReqBox = get_mailbox_profile({struct, [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]}, Call),
             check_mailbox(ReqBox, Call, Loop);
@@ -306,9 +307,18 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
 %% @end
 %%--------------------------------------------------------------------
 -spec(main_menu/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+-spec(main_menu/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
+main_menu(Box, Call) ->
+    main_menu(Box, Call, 1).
+
+main_menu(#mailbox{prompts=#prompts{goodbye=Goodbye}}, Call, Loop) when Loop > 4 ->
+    %% If there have been too may loops with no action from the caller this
+    %% is likely a abandonded channel, terminate
+    ?LOG("entered main menu with too many invalid entries"),
+    b_play(Goodbye, Call);
 main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMessages, saved=Saved, to_hear_new=ToHearNew
 				    ,press=Press, to_hear_saved=ToHearSaved, to_configure=ToConfigure, to_exit=ToExit}
-		   ,keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call) ->
+		   ,keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call, Loop) ->
     ?LOG("playing mailbox main menu"),
     Messages = get_messages(Box, Call),
     audio_macro([
@@ -354,7 +364,7 @@ main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMe
 	{error, _} ->
 	    ok;
 	_ ->
-	    main_menu(Box, Call)
+	    main_menu(Box, Call, Loop + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -415,7 +425,8 @@ play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
 	    set_folder(?FOLDER_SAVED, H, Box, Call),
 	    play_messages(T, Box, Call)
     end;
-play_messages([], _, _) -> ok.
+play_messages(_, Box, Call) ->
+    main_menu(Box, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -424,9 +435,15 @@ play_messages([], _, _) -> ok.
 %% @end
 %%--------------------------------------------------------------------
 -spec(config_menu/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+-spec(config_menu/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
+config_menu(Box, Call) ->
+    config_menu(Box, Call, 1).
+
+config_menu(Box, Call, Loop) when Loop > 4 ->
+    main_menu(Box, Call);
 config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press=Press, to_rec_name=ToRecName
 				     ,to_change_pin=ToChangePin, to_return_main=ToReturnMain}
-		     ,keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName, set_pin=SetPin, return_main=ReturnMain}}=Box, Call) ->
+		     ,keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName, set_pin=SetPin, return_main=ReturnMain}}=Box, Call, Loop) ->
     ?LOG("playing mailbox configuration menu"),
     audio_macro([
                   {play, ToRecUnavailable}
@@ -464,7 +481,7 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
         {error, _} ->
             ok;
 	_ ->
-	    config_menu(Box, Call)
+	    config_menu(Box, Call, Loop + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -646,8 +663,14 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
 %% @end
 %%--------------------------------------------------------------------
 -spec(review_recording/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, record | save | no_selection)).
+-spec(review_recording/4 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> tuple(ok, record | save | no_selection)).
+review_recording(MediaName, Box, Call) ->
+    review_recording(MediaName, Box, Call, 1).
+
+review_recording(_, _, _, Loop) when Loop > 4 ->
+    {ok, no_selection};
 review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToListen, to_save=ToSave, to_rerecord=ToRerecord}
-				     ,keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call) ->
+				     ,keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call, Loop) ->
     ?LOG("playing review options"),
     audio_macro([
                   {play, Press}
@@ -676,7 +699,7 @@ review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToL
             ?LOG("channel hungup while waiting for dtmf"),
 	    {ok, no_selection};
         _ ->
-	    review_recording(MediaName, Box, Call)
+	    review_recording(MediaName, Box, Call, Loop + 1)
     end.
 
 %%--------------------------------------------------------------------

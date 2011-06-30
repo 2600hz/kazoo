@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(accounts).
+-module(cb_accounts).
 
 -behaviour(gen_server).
 
@@ -291,7 +291,8 @@ resource_exists([_]) ->
 resource_exists([_, Path]) ->
     Valid = lists:member(Path, [<<"parent">>, <<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]),
     {Valid, []};
-resource_exists(_) ->
+resource_exists(_T) ->
+    io:format("~p~n", [_T]),
     {false, []}.
 
 %%--------------------------------------------------------------------
