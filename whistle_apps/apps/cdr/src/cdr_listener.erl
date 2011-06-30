@@ -56,8 +56,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting CDR listener"),
-    ?LOG("ensuring CDR view exist in all accounts"),
-    whapps_util:revise_whapp_views_in_accounts(cdr),
     {ok, #state{self=self()}, 0}.
 
 %%--------------------------------------------------------------------
