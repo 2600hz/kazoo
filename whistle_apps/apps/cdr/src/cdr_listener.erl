@@ -102,6 +102,7 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
         {ok, Q} = start_amqp(),
+        create_anonymous_cdr_db(?ANONYMOUS_CDR_DB),
         {noreply, State#state{amqp_q=Q}}
     catch
         _:_ ->
@@ -186,7 +187,12 @@ start_amqp() ->
     end.
 
 handle_cdr(JObj, _State) ->
-    AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
+    _AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
+
+    Db = case couch_mgr:db_exists(_AccountDb) of
+        true -> _AccountDb;
+        false -> ?ANONYMOUS_CDR_DB
+    end,
 
     {Mega,Sec,_} = erlang:now(),
     Now =  Mega*1000000+Sec,
@@ -196,8 +202,14 @@ handle_cdr(JObj, _State) ->
     DocCreated = wh_json:set_value(<<"pvt_created">>, Now, DocType),
     DocModified = wh_json:set_value(<<"pvt_modified">>, Now, DocCreated),
     DocVersion = wh_json:set_value(<<"pvt_version">>, 1, DocModified),
-    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, AccountDb, DocVersion),
+    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, Db, DocVersion),
 
-    {ok, _} = couch_mgr:save_doc(AccountDb, DocAccountDb),
-    ?LOG("CDR from Call-ID ~p stored", [wh_json:get_value(<<"Call-ID">>, DocAccountDb)]).
+    {ok, _} = couch_mgr:save_doc(Db, DocAccountDb),
+    ?LOG("CDR for Call-ID:~p stored", [wh_json:get_value(<<"Call-ID">>, DocAccountDb)]).
 
+create_anonymous_cdr_db(DB) ->
+    couch_mgr:db_create(DB),
+    case couch_mgr:load_doc_from_file(DB, cdr, <<"cdr.json">>) of
+	{ok, _} -> ok;
+	{error, _} -> couch_mgr:update_doc_from_file(DB, cdr, <<"cdr.json">>)
+    end.
