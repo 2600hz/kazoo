@@ -56,7 +56,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting CDR listener"),
-    %% ?LOG("ensuring callflow views exist in all accounts"),
+    ?LOG("ensuring CDR view exist in all accounts"),
+    whapps_util:revise_whapp_views_in_accounts(cdr),
     {ok, #state{self=self()}, 0}.
 
 %%--------------------------------------------------------------------
@@ -192,9 +193,13 @@ handle_cdr(JObj, _State) ->
     {Mega,Sec,_} = erlang:now(),
     Now =  Mega*1000000+Sec,
 
-    DocType = wh_json:set_value(<<"pvt_type">>, <<"cdr">>, JObj),
+    NormDoc = wh_json:normalize_jobj(JObj),
+    DocType = wh_json:set_value(<<"pvt_type">>, <<"cdr">>, NormDoc),
     DocCreated = wh_json:set_value(<<"pvt_created">>, Now, DocType),
     DocModified = wh_json:set_value(<<"pvt_modified">>, Now, DocCreated),
     DocVersion = wh_json:set_value(<<"pvt_version">>, 1, DocModified),
     DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, AccountDb, DocVersion),
-    {ok, _} = couch_mgr:save_doc(AccountDb, DocAccountDb).
+
+    {ok, _} = couch_mgr:save_doc(AccountDb, DocAccountDb),
+    ?LOG("CDR from Call-ID ~p stored", [wh_json:get_value(<<"Call-ID">>, DocAccountDb)]).
+
