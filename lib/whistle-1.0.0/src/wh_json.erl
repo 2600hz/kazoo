@@ -17,6 +17,8 @@
 -export([set_value/3]).
 -export([delete_key/2, delete_key/3]).
 
+-export([normalize_jobj/1]).
+
 %% not for public use
 -export([prune/2, no_prune/2]).
 
@@ -362,3 +364,34 @@ set_value_multiple_object_test() ->
     ?assertEqual(?T3R5, set_value([3, "new_key"], "added", ?D5)).
 
 -endif.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Normalize a JSON object for storage as a Document
+%% All dashes are replaced by underscores, all upper case character are
+%% converted to lower case
+%%
+%% @end
+%%--------------------------------------------------------------------
+normalize_jobj({struct, DataTuples}) ->
+    {struct, lists:map(fun normalizer/1, DataTuples)};
+normalize_jobj({Key, {struct, DataTuples}}) ->
+    {normalize_key(Key), {struct, lists:map(fun normalizer/1, DataTuples)}}.
+
+normalize_binary_tuple({Key,Val}) ->
+    {normalize_key(Key), Val}.
+
+normalize_key(Key) ->
+    NoDashKey = lists:map( fun($-) -> $_; (C) -> C end, binary_to_list(Key)),
+    list_to_binary(string:to_lower(NoDashKey)).
+
+normalizer(DataTuple) ->
+    case DataTuple of
+        {_, {struct, _DataTuples}} ->
+            normalize_jobj(DataTuple);
+        {_,_} ->
+            normalize_binary_tuple(DataTuple);
+        _ ->
+            logger:format_log(info, "Error in normalization for ~p~n", [DataTuple])
+    end.
