@@ -45,7 +45,7 @@ get_sip_request(Prop) ->
 
 -spec(get_orig_ip/1 :: (Prop :: proplist()) -> binary()).
 get_orig_ip(Prop) ->
-    get_value(<<"ip">>, Prop).
+    get_value(<<"X-AUTH-IP">>, Prop, get_value(<<"ip">>, Prop)).
 
 %% Extract custom channel variables to include in the event
 -spec(custom_channel_vars/1 :: (Prop :: proplist()) -> proplist()).
