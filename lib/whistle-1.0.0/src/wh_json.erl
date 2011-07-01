@@ -252,6 +252,36 @@ replace_in_list(1, V1, [_OldV | Vs], Acc) ->
 replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Normalize a JSON object for storage as a Document
+%% All dashes are replaced by underscores, all upper case character are
+%% converted to lower case
+%%
+%% @end
+%%--------------------------------------------------------------------
+normalize_jobj({struct, DataTuples}) ->
+    {struct, lists:map(fun normalizer/1, DataTuples)};
+normalize_jobj({Key, {struct, DataTuples}}) ->
+    {normalize_key(Key), {struct, lists:map(fun normalizer/1, DataTuples)}}.
+
+normalize_binary_tuple({Key,Val}) ->
+    {normalize_key(Key), Val}.
+
+normalize_key(Key) ->
+    NoDashKey = lists:map( fun($-) -> $_; (C) -> C end, binary_to_list(Key)),
+    list_to_binary(string:to_lower(NoDashKey)).
+
+normalizer(DataTuple) ->
+    case DataTuple of
+        {_, {struct, _DataTuples}} ->
+            normalize_jobj(DataTuple);
+        {_,_} ->
+            normalize_binary_tuple(DataTuple);
+        _ ->
+            crash
+    end.
+
 %% EUNIT TESTING
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -363,35 +393,18 @@ set_value_multiple_object_test() ->
     %% Set a non-existing key in a non-existing json_object()
     ?assertEqual(?T3R5, set_value([3, "new_key"], "added", ?D5)).
 
+-define(T4R1,  {struct, [{<<"Caller-ID">>, 1234},{<<"The_Name">>, <<"Smith">>} ]}).
+-define(T4R1V, {struct, [{<<"caller_id">>, 1234},{<<"the_name">>, <<"Smith">>} ]}).
+-define(T4R2,  {struct, [{<<"Account-ID">>, <<"45AHGJDF8DFDS2130S">>}, {<<"TRUNK">>, false}, {<<"Node1">>, ?T4R1 }, {<<"Node2">>, ?T4R1 }]}).
+-define(T4R2V, {struct, [{<<"account_id">>, <<"45AHGJDF8DFDS2130S">>}, {<<"trunk">>, false}, {<<"node1">>, ?T4R1V}, {<<"node2">>, ?T4R1V}]}).
+-define(T4R3,  {struct, [{<<"Node-1">>, {struct, [{<<"Node-2">>, ?T4R2  }] }}, {<<"Another-Node">>, ?T4R1 }] }).
+-define(T4R3V, {struct, [{<<"node_1">>, {struct, [{<<"node_2">>, ?T4R2V }] }}, {<<"another_node">>, ?T4R1V}] }).
+
+set_value_normalizer_test() ->
+    %% Normalize a flat JSON object
+    ?assertEqual(normalize_jobj(?T4R1), ?T4R1V),
+    %% Normalize a single nested JSON object
+    ?assertEqual(normalize_jobj(?T4R2), ?T4R2V),
+    %% Normalize multiple nested JSON object
+    ?assertEqual(normalize_jobj(?T4R3), ?T4R3V).
 -endif.
-
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Normalize a JSON object for storage as a Document
-%% All dashes are replaced by underscores, all upper case character are
-%% converted to lower case
-%%
-%% @end
-%%--------------------------------------------------------------------
-normalize_jobj({struct, DataTuples}) ->
-    {struct, lists:map(fun normalizer/1, DataTuples)};
-normalize_jobj({Key, {struct, DataTuples}}) ->
-    {normalize_key(Key), {struct, lists:map(fun normalizer/1, DataTuples)}}.
-
-normalize_binary_tuple({Key,Val}) ->
-    {normalize_key(Key), Val}.
-
-normalize_key(Key) ->
-    NoDashKey = lists:map( fun($-) -> $_; (C) -> C end, binary_to_list(Key)),
-    list_to_binary(string:to_lower(NoDashKey)).
-
-normalizer(DataTuple) ->
-    case DataTuple of
-        {_, {struct, _DataTuples}} ->
-            normalize_jobj(DataTuple);
-        {_,_} ->
-            normalize_binary_tuple(DataTuple);
-        _ ->
-            logger:format_log(info, "Error in normalization for ~p~n", [DataTuple])
-    end.
