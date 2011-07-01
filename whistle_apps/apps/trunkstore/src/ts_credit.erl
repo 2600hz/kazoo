@@ -186,6 +186,8 @@ set_flat_flags(Flags, <<"outbound">>) ->
 -spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary()) | json_object()) -> boolean()).
 options_match(RouteOptions, {struct, RateOptions}) ->
     options_match(RouteOptions, RateOptions);
+options_match({struct, RouteOptions}, RateOptions) ->
+    options_match(RouteOptions, RateOptions);
 options_match([], []) ->
     true;
 options_match([], _) ->

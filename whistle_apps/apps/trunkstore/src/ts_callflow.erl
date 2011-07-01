@@ -132,29 +132,33 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 
 	{_, <<"offnet_resp">>, <<"resource">>} ->
 	    BLeg = wh_json:get_value(<<"Call-ID">>, JObj),
-	    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-	    amqp_util:basic_consume(Q),
 	    ?LOG("Bridged to ~s successful", [BLeg]),
 	    ?LOG(BLeg, "Bridged from ~s successful", [ALeg]),
+
+	    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
+	    amqp_util:basic_consume(Q),
 	    {bridged, State#state{bleg_callid=BLeg}};
 
 	{ _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
-	    BLeg = wh_json:get_value(<<"Other-Leg-Call-Id">>, JObj),
-	    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-	    amqp_util:basic_consume(Q),
+	    BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
 	    ?LOG("Bridged to ~s successful", [BLeg]),
 	    ?LOG(BLeg, "Bridged from ~s successful", [ALeg]),
+
+	    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
+	    amqp_util:basic_consume(Q),
 	    {bridged, State#state{bleg_callid=BLeg}};
 
 	{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
 	    ?LOG("Bridge event received"),
 	    case wh_json:get_value(<<"Application-Response">>, JObj) of
 		<<"SUCCESS">> ->
-		    BLeg = wh_json:get_value(<<"Other-Leg-Call-Id">>, JObj),
-		    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-		    amqp_util:basic_consume(Q),
+		    BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
 		    ?LOG("Bridged to ~s successful", [BLeg]),
 		    ?LOG(BLeg, "Bridged from ~s successful", [ALeg]),
+
+		    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
+		    amqp_util:basic_consume(Q),
+
 		    {bridged, State#state{bleg_callid=BLeg}};
 		Cause ->
 		    ?LOG("Failed to bridge: ~s", [Cause]),
@@ -213,11 +217,15 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 	    ?LOG("Hangup received, waiting on CDR"),
 	    {hangup, State};
 
+        { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
+            ?LOG("Unbridge received, waiting on CDR"),
+            {hangup, State};
+
 	{ <<"error">>, _ } ->
 	    ?LOG("Error received, waiting on CDR"),
 	    {hangup, State};
 
-	{ <<"cdr">>, <<"call_detail">> } ->
+	{ <<"call_detail">>, <<"cdr">> } ->
 	    true = whistle_api:call_cdr_v(JObj),
 	    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
 	    Duration = ts_util:get_call_duration(JObj),
@@ -246,7 +254,7 @@ send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
     Command = [
 	       {<<"Application-Name">>, <<"hangup">>}
 	       ,{<<"Call-ID">>, CallID}
-	       | whistle_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	       | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
     {ok, JSON} = whistle_api:hangup_req(Command),
     ?LOG("Sending hangup to ~s: ~s", [CtlQ, JSON]),

@@ -68,7 +68,14 @@ onnet_data(State) ->
                        | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
                       ],
 
-	    send_park(State, Command)
+            try
+                send_park(State, Command)
+            catch
+                _A:_B ->
+                    ?LOG("Exception ~p:~p", [_A, _B]),
+                    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()]),
+                    wait_for_cdr(State)
+            end
     end.
 
 send_park(State, Command) ->
@@ -86,7 +93,8 @@ wait_for_win(State, Command) ->
     end.
 
 send_offnet(State, Command) ->
-    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    CtlQ = ts_callflow:get_control_queue(State),
+    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- [{<<"Control-Queue">>, CtlQ} | Command], V =/= undefined ]),
     ?LOG("Sending offnet: ~s", [Payload]),
     amqp_util:offnet_resource_publish(Payload),
     wait_for_bridge(State).
@@ -141,8 +149,9 @@ wait_for_cdr(State) ->
 
 	    ALeg = ts_callflow:get_aleg_id(State3),
 	    AcctID = ts_callflow:get_account_id(State3),
+            Cost = ts_callflow:get_call_cost(State3),
 
-	    ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+	    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
 	    ts_callflow:send_hangup(State3)
     end.
 
@@ -174,6 +183,7 @@ wait_for_other_leg(_State, Leg, {timeout, State1}) ->
 
     ALeg = ts_callflow:get_aleg_id(State1),
     AcctID = ts_callflow:get_account_id(State1),
+    Cost = ts_callflow:get_call_cost(State1),
 
-    ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
     ts_callflow:send_hangup(State1).

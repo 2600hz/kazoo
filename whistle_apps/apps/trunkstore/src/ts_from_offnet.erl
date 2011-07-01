@@ -117,8 +117,9 @@ wait_for_cdr(State) ->
 
 	    ALeg = ts_callflow:get_aleg_id(State3),
 	    AcctID = ts_callflow:get_account_id(State3),
+            Cost = ts_callflow:get_call_cost(State3),
 
-	    ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+	    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
 	    ts_callflow:send_hangup(State3)
     end.
 
@@ -150,8 +151,9 @@ wait_for_other_leg(_State, Leg, {timeout, State1}) ->
 
     ALeg = ts_callflow:get_aleg_id(State1),
     AcctID = ts_callflow:get_account_id(State1),
+    Cost = ts_callflow:get_call_cost(State1),
 
-    ok = ts_acctmgr:release_trunk(AcctID, ALeg, 0),
+    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
     ts_callflow:send_hangup(State1).
 
 try_failover(State) ->
