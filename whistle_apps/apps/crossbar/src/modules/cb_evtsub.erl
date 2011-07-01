@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : 10 Feb 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(evtsub).
+-module(cb_evtsub).
 
 -behaviour(gen_server).
 

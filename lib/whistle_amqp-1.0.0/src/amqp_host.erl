@@ -12,6 +12,7 @@
 
 %% API
 -export([start_link/2, publish/4, consume/3, get_misc_channel/2, misc_req/3, misc_req/4, stop/1]).
+-export([register_return_handler/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -39,6 +40,7 @@
           ,publish_channel = undefined :: undefined | channel_data()
           ,misc_channel = undefined :: undefined | channel_data()
           ,consumers = dict:new() :: amqp_host:dict(pid(), consumer_data())
+          ,return_handlers = dict:new() %% ref, pid() - list of PIDs that are interested in returned messages
           ,manager = undefined :: undefined | pid()
           ,amqp_h = undefined :: undefined | binary()
 	 }).
@@ -74,6 +76,10 @@ misc_req(Srv, From, Req) ->
 
 misc_req(Srv, From, Req1, Req2) ->
     gen_server:cast(Srv, {misc_req, From, Req1, Req2}).
+
+-spec(register_return_handler/2 :: (Srv :: pid(), From :: tuple(pid(), reference())) -> ok).
+register_return_handler(Srv, From) ->
+    gen_server:cast(Srv, {register_return_handler, From}).
 
 stop(Srv) ->
     gen_server:call(Srv, stop).
@@ -134,6 +140,11 @@ handle_cast({get_misc_channel, From}, #state{misc_channel={C,_,T}}=State) ->
 handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=State) ->
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
     {noreply, State};
+
+handle_cast({register_return_handler, {FromPid, _}=From}, #state{return_handlers=RHDict}=State) ->
+    gen_server:reply(From, ok),
+    ?LOG_SYS("adding ~p as a return handler", [FromPid]),
+    {noreply, State#state{return_handlers=dict:store(erlang:monitor(process, FromPid), FromPid, RHDict)}};
 
 handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
@@ -328,6 +339,7 @@ handle_info(timeout, {Host, Conn}) ->
     case start_channel(Conn) of
 	{Channel, _, Ticket} = PubChan ->
 	    load_exchanges(Channel, Ticket),
+            amqp_channel:register_return_handler(Channel, self()),
 	    {noreply, #state{
 	       connection = {Conn, Ref}
 	       ,publish_channel = PubChan
@@ -343,14 +355,21 @@ handle_info(timeout, {Host, Conn}) ->
 	    {stop, E, Conn}
     end;
 
-handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}}=State) ->
-    ?LOG_SYS("recieved down notification for our connection to the amqp broker"),
-    {stop, Reason, State};
+handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, #state{return_handlers=RHDict}=State) ->
+    spawn(fun() ->
+                  ?LOG_SYS("recieved notification a message couldnt be delivered, forwarding to registered return handlers"),
+                  dict:map(fun(_, Pid) -> Pid ! ReturnMsg end, RHDict)
+          end),
+    {noreply, State};
 
-handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{}=State) ->
-    ?LOG_SYS("recieved notification monitored process(~p) went down, searching for reference: ~w", [_Pid, _Reason]),
+handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}, return_handlers=RHDict}=State) ->
+    ?LOG_SYS("recieved notification our connection to the amqp broker died ~p", [Reason]),
+    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}};
+
+handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict}=State) ->
+    ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
     erlang:demonitor(Ref, [flush]),
-    {noreply, remove_ref(Ref, State)};
+    {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)})};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -369,7 +388,7 @@ handle_info(_Info, State) ->
 -spec(terminate/2 :: (Reason :: term(), State :: #state{}) -> ok).
 terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
     notify_consumers({amqp_host_down, Host}, Consumers),
-    ?LOG_SYS("amqp host, for ~s, ~p termination", [Host, _Reason]).
+    ?LOG_SYS("amqp host for ~s terminated ~p", [Host, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -435,7 +454,7 @@ remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref,_}}=State) ->
 remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
     State#state{consumers =
 		    dict:fold(fun(FromPid, {C,Ref1,_,FromRef}, AccDict) when Ref =:= Ref1 ->
-                                      ?LOG_SYS("reference was for a consumer channel ~p for ~p, restarting", [C, FromPid]),
+                                      ?LOG_SYS("reference was for a channel ~p for ~p, restarting", [C, FromPid]),
 				      case start_channel(Conn, FromPid) of
 					  {CNew, RefNew, TNew} -> dict:store(FromPid, {CNew, RefNew, TNew, FromRef}, AccDict);
 					  {error, no_connection} ->
@@ -456,7 +475,7 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 				      case erlang:is_process_alive(FromPid) of
 					  true -> AccDict;
 					  false ->
-                                              ?LOG_SYS("reference was a consumer ~p that unexpectly shutdown, removing channel ~p", [FromPid, C]),
+                                              ?LOG_SYS("reference was a consumer ~p that shutdown, removing channel ~p", [FromPid, C]),
 					      erlang:demonitor(FromRef, [flush]),
 					      erlang:demonitor(CRef, [flush]),
 					      amqp_channel:close(C),

@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(users).
+-module(cb_users).
 
 -behaviour(gen_server).
 

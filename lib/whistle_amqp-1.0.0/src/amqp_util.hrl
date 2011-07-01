@@ -38,6 +38,13 @@
 -define(EXCHANGE_CALLMGR, <<"callmgr">>).
 -define(TYPE_CALLMGR, <<"topic">>).
 
+%% Conference Exchange
+%% - applications can publish conference discovery request to the appropriate queue in this
+%%   exchange to identify the SIP url for a conference focus
+%% - conference services use this exchange to share state information
+-define(EXCHANGE_CONFERENCE, <<"conference">>).
+-define(TYPE_CONFERENCE, <<"topic">>).
+
 %% Monitor Manager Exchange
 %% - monitor manager will publish requests to this exchange using routing keys
 %%   agents that want to handle certain messages will create a queue with the appropriate routing key

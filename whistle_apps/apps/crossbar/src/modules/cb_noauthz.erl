@@ -4,12 +4,12 @@
 %%% @doc
 %%% NoAuth module
 %%%
-%%% Authenticates everyone! PARTY TIME!
+%%% Authenticates any request
 %%%
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(noauthn).
+-module(cb_noauthz).
 
 -behaviour(gen_server).
 
@@ -53,7 +53,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init(_) ->
     {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
@@ -97,7 +97,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
@@ -142,4 +142,4 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"v1_resource.authenticate">>).
+    crossbar_bindings:bind(<<"v1_resource.authorize">>).

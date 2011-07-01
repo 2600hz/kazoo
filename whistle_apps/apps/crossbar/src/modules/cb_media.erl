@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : Mar 8 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(media).
+-module(cb_media).
 
 -behaviour(gen_server).
 
