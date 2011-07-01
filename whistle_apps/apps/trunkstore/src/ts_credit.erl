@@ -183,7 +183,7 @@ set_flat_flags(Flags, <<"outbound">>) ->
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
--spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary()) | json_object()) -> boolean()).
+-spec(options_match/2 :: (RouteOptions :: list(binary()) | json_object(), RateOptions :: list(binary()) | json_object()) -> boolean()).
 options_match(RouteOptions, {struct, RateOptions}) ->
     options_match(RouteOptions, RateOptions);
 options_match({struct, RouteOptions}, RateOptions) ->
