@@ -31,25 +31,26 @@ get_binary_value(Key, JObj) ->
         Value -> whistle_util:to_binary(Value)
     end.
 
--spec(get_binary_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
+-spec(get_binary_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: binary()) -> binary()).
 get_binary_value(Key, JObj, Default) ->
-    whistle_util:to_binary(wh_json:get_value(Key, JObj, Default)).
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> whistle_util:to_binary(Value)
+    end.
 
 -spec(get_integer_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | integer()).
 get_integer_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
-        Value -> to_integer(Value, 0)
+        Value -> whistle_util:to_integer(Value)
     end.
 
--spec(get_integer_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> integer()).
+-spec(get_integer_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: integer()) -> integer()).
 get_integer_value(Key, JObj, Default) ->
-    to_integer(wh_json:get_value(Key, JObj), Default).
-
-to_integer(Term, Default) ->
-    try
-        whistle_util:to_integer(Term)
-    catch _:_ -> to_integer(Default, 0) end.
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> whistle_util:to_integer(Value)
+    end.
 
 -spec(is_false/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
 is_false(Key, JObj) ->
@@ -179,11 +180,15 @@ delete_key(Key, JObj) when not is_list(Key) ->
 delete_key(Keys, JObj) ->
     delete_key(Keys, JObj, no_prune).
 
+%% prune removes the parent key if the result of the delete is an empty list; no prune leaves the parent intact
+%% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in
+%%   no_prune -> {struct, [{<<"k1">>, []}]}
+%%   prune -> {struct, []}
 -spec(delete_key/3 :: (Keys :: list() | binary(), JObj :: json_object() | json_objects(), PruneOpt :: prune | no_prune) -> json_object() | json_objects()).
 delete_key(Key, JObj, PruneOpt) when not is_list(Key) ->
-    apply(?MODULE, PruneOpt, [[Key], JObj]);
+    (?MODULE):PruneOpt([Key], JObj);
 delete_key(Keys, JObj, PruneOpt) ->
-    apply(?MODULE, PruneOpt, [Keys, JObj]).
+    (?MODULE):PruneOpt(Keys, JObj).
 
 prune([], JObj) ->
     JObj;
@@ -227,8 +232,6 @@ no_prune([K], {struct, Doc}) ->
 no_prune([K|T], {struct, Doc}=JObj) ->
     case props:get_value(K, Doc) of
 	undefined -> JObj;
-	%% {struct, _}=V ->
-	%%     {struct, lists:keydelete(K, 1, no_prune(T, V))};
 	V ->
 	    {struct, [{K, no_prune(T, V)} | lists:keydelete(K, 1, Doc)]}
     end;
@@ -261,26 +264,26 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 normalize_jobj({struct, DataTuples}) ->
-    {struct, lists:map(fun normalizer/1, DataTuples)};
+    {struct, [normalizer(DT) || DT <- DataTuples]};
 normalize_jobj({Key, {struct, DataTuples}}) ->
-    {normalize_key(Key), {struct, lists:map(fun normalizer/1, DataTuples)}}.
+    {normalize_key(Key), {struct, [normalizer(DT) || DT <- DataTuples]}}.
 
 normalize_binary_tuple({Key,Val}) ->
     {normalize_key(Key), Val}.
 
-normalize_key(Key) ->
-    NoDashKey = lists:map( fun($-) -> $_; (C) -> C end, binary_to_list(Key)),
-    list_to_binary(string:to_lower(NoDashKey)).
+normalize_key(Key) when is_binary(Key) ->
+    << <<(normalize_key_char(B))>> || <<B>> <= Key>>.
 
-normalizer(DataTuple) ->
-    case DataTuple of
-        {_, {struct, _DataTuples}} ->
-            normalize_jobj(DataTuple);
-        {_,_} ->
-            normalize_binary_tuple(DataTuple);
-        _ ->
-            crash
-    end.
+normalize_key_char($-) -> $_;
+normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
+normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
+normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
+normalize_key_char(C) -> C.
+
+normalizer({_, {struct, _}}=DataTuple) ->
+    normalize_jobj(DataTuple);
+normalizer({_,_}=DataTuple) ->
+    normalize_binary_tuple(DataTuple).
 
 %% EUNIT TESTING
 -ifdef(TEST).
