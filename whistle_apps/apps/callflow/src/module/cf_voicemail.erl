@@ -75,6 +75,10 @@
           ,invalid_login = <<"/system_media/vm-fail_auth">>
           ,abort_login = <<"/system_media/vm-abort">>
 
+          ,setup_intro = <<"/system_media/vm-setup_intro">>
+          ,setup_rec_greet = <<"/system_media/vm-setup_rec_greeting">>
+          ,setup_complete = <<"/system_media/vm-setup_complete">>
+
           ,you_have = <<"/system_media/vm-you_have">>
           ,new = <<"/system_media/vm-new">>
           ,messages = <<"/system_media/vm-messages">>
@@ -120,6 +124,7 @@
           ,require_pin = false :: boolean()
           ,check_if_owner = true :: boolean()
           ,owner_id = <<>> :: binary()
+          ,is_setup = false :: boolean()
           ,keys = #keys{}
           ,prompts = #prompts{}
          }).
@@ -312,6 +317,8 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, messag
 %%--------------------------------------------------------------------
 -spec(main_menu/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 -spec(main_menu/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
+main_menu(#mailbox{is_setup=false}=Box, Call) ->
+    main_menu(setup_mailbox(Box, Call), Call, 1);
 main_menu(Box, Call) ->
     main_menu(Box, Call, 1).
 
@@ -519,6 +526,74 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec(setup_mailbox/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> #mailbox{}).
+setup_mailbox(#mailbox{prompts=#prompts{setup_intro=SetupIntro
+                                        ,setup_rec_greet=SetupRecGreet
+                                        ,setup_complete=SetupComplete}}=Box, Call) ->
+    b_play(SetupIntro, Call),
+    change_pin(Box, Call),
+    b_play(SetupRecGreet, Call),
+    record_unavailable_greeting(tmp_file(), Box, Call),
+    mark_mailbox_setup(Box, Call),
+    b_play(SetupComplete, Call),
+    Box#mailbox{is_setup=true}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object())).
+record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec
+                                                 ,message_saved=Saved, message_deleted=Deleted}}=Box, Call) ->
+    ?LOG("recording name"),
+    audio_macro([
+                  {play,  RecordName}
+                 ,{tones, ToneSpec}
+                ], Call),
+    {ok, _} = b_record(MediaName, Call),
+    case review_recording(MediaName, Box, Call) of
+	{ok, record} ->
+	    record_name(MediaName, Box, Call);
+	{ok, save} ->
+	    store_recording(MediaName, ?NAME_RECORDING, Box, Call),
+            b_play(Saved, Call);
+        {ok, no_selection} ->
+            b_play(Deleted, Call),
+            ok
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(change_pin/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> stop | continue).
+change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=ReenterNewPin
+                                    ,new_pin_saved=SavedPin, new_pin_bad=BadPin}
+		    ,mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
+    ?LOG("requesting new mailbox pin number"),
+    try
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, <<"8000">>, Call),
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, <<"8000">>, Call),
+        if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
+        {ok, JObj} = couch_mgr:open_doc(Db, Id),
+        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj)),
+        b_play(SavedPin, Call),
+        ?LOG("updated mailbox pin number")
+    catch
+        _:_ ->
+            ?LOG("new pin was invalid, trying again"),
+            b_play(BadPin, Call),
+            change_pin(Box, Call)
+    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec(new_message/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call_id=CallID
                                                              ,from=From, from_user=FromU, from_realm=FromR
@@ -577,58 +652,6 @@ save_metadata(NewMessage, Db, Id) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object())).
-record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec
-                                                 ,message_saved=Saved, message_deleted=Deleted}}=Box, Call) ->
-    ?LOG("recording name"),
-    audio_macro([
-                  {play,  RecordName}
-                 ,{tones, ToneSpec}
-                ], Call),
-    {ok, _} = b_record(MediaName, Call),
-    case review_recording(MediaName, Box, Call) of
-	{ok, record} ->
-	    record_name(MediaName, Box, Call);
-	{ok, save} ->
-	    store_recording(MediaName, ?NAME_RECORDING, Box, Call),
-            b_play(Saved, Call);
-        {ok, no_selection} ->
-            b_play(Deleted, Call),
-            ok
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec(change_pin/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> stop | continue).
-change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=ReenterNewPin
-                                    ,new_pin_saved=SavedPin, new_pin_bad=BadPin}
-		    ,mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
-    ?LOG("requesting new mailbox pin number"),
-    try
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, <<"8000">>, Call),
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, <<"8000">>, Call),
-        if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
-        {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj)),
-        b_play(SavedPin, Call),
-        ?LOG("updated mailbox pin number")
-    catch
-        _:_ ->
-            ?LOG("new pin was invalid, trying again"),
-            b_play(BadPin, Call),
-            change_pin(Box, Call)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Fetches the mailbox parameters from the datastore and loads the
 %% mailbox record
 %% @end
@@ -662,11 +685,26 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          whistle_util:is_true(wh_json:get_value(<<"check_if_owner">>, JObj, CheckIfOwner))
                      ,owner_id =
                          wh_json:get_value(<<"owner_id">>, JObj)
+                     ,is_setup =
+                         whistle_util:is_true(wh_json:get_value(<<"is_setup">>, JObj, false))
                      ,exists = true
                     };
         {error, R} ->
             ?LOG("failed to load voicemail box ~s, ~w", [Id, R]),
             #mailbox{}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(mark_mailbox_setup/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+mark_mailbox_setup(#mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
+    {ok, JObj} = couch_mgr:open_doc(Db, Id),
+    case couch_mgr:save_doc(Db, wh_json:set_value(<<"is_setup">>, true, JObj)) of
+        {ok, _} -> ok;
+        {error, conflict} -> mark_mailbox_setup(Box, Call)
     end.
 
 %%--------------------------------------------------------------------
