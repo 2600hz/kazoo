@@ -11,9 +11,6 @@
 %% API
 -export([handle_req/1]).
 
--define(APP_NAME, <<"ts_responder.auth">>).
--define(APP_VERSION, <<"0.3.6">>).
-
 -include("ts.hrl").
 
 %%%===================================================================

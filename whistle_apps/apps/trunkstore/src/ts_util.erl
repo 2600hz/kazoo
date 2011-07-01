@@ -19,6 +19,10 @@
 -export([get_rate_factors/1, get_call_duration/1, lookup_user_flags/2, lookup_did/1]).
 -export([invite_format/2]).
 
+%% Cascading settings
+-export([sip_headers/1, failover/1, progress_timeout/1, bypass_media/1, delay/1
+	 ,ignore_early_media/1, ep_timeout/1]).
+
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
@@ -186,3 +190,68 @@ invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
+
+-spec sip_headers/1 :: (L) -> undefined | json_object() when
+      L :: list(undefined | json_object()).
+-spec sip_headers/2 :: (L, Acc) -> undefined | json_object() when
+      L :: list(undefined | json_object()),
+      Acc :: proplist().
+sip_headers(L) ->
+    sip_headers(L, []).
+sip_headers([undefined | T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([?EMPTY_JSON_OBJECT | T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([{struct, [_|_]=H}|T], Acc) ->
+    sip_headers(T, H ++ Acc);
+sip_headers([_|T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([], []) ->
+    undefined;
+sip_headers([], Acc) ->
+    {struct, lists:reverse(Acc)}.
+
+-spec failover/1 :: (L) -> undefined | json_object() when
+      L :: list(undefined | json_object() | binary()).
+%% cascade from DID to Srv to Acct
+failover(L) ->
+    case simple_extract(L) of
+	B when is_binary(B) ->
+	    undefined;
+	Other -> Other
+    end.
+
+-spec progress_timeout/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+progress_timeout(L) -> simple_extract(L).
+
+-spec bypass_media/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+bypass_media(L) -> simple_extract(L).
+
+-spec delay/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+delay(L) -> simple_extract(L).
+
+-spec ignore_early_media/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+ignore_early_media(L) -> simple_extract(L).
+
+-spec ep_timeout/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+ep_timeout(L) -> simple_extract(L).
+
+-spec simple_extract/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+simple_extract([undefined|T]) ->
+    simple_extract(T);
+simple_extract([?EMPTY_JSON_OBJECT | T]) ->
+    simple_extract(T);
+simple_extract([{struct, _}=F | _]) ->
+    F;
+simple_extract([B | _]) when is_binary(B) andalso B =/= <<>> ->
+    B;
+simple_extract([_ | T]) ->
+    simple_extract(T);
+simple_extract([]) ->
+    undefined.
