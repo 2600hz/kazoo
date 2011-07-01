@@ -308,14 +308,15 @@
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Call CDR
--define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
-			       ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
-			       ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
-			       ,<<"Digits-Dialed">>
-			  ]).
--define(OPTIONAL_CALL_CDR_HEADERS, [<<"Custom-Channel-Vars">>, <<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
+-define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
+-define(OPTIONAL_CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
+                                        ,<<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
 					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
 					,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
+                                        ,<<"Timestamp">>
+                                        ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
+                                        ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
+                                        ,<<"Digits-Dialed">>
 				   ]).
 -define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call_detail">>}
 			  ,{<<"Event-Name">>, <<"cdr">>}
