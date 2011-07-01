@@ -5,4 +5,4 @@
 -define(APP_NAME, <<"cdr">>).
 -define(APP_VERSION, <<"0.4.0">>).
 
--define(JSON_FILES, [<<"cdr.json">>]).
+-define(ANONYMOUS_CDR_DB, <<"anonymous_cdrs">>).
