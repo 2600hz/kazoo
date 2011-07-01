@@ -99,8 +99,10 @@
           ,record_name = <<"/system_media/vm-record_name1">>
           ,record_unavail_greeting = <<"/system_media/vm-record_greeting">>
 
-          ,enter_new_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Enter+your+new+password+followed+by+the+pound+key.">>
-          ,reenter_new_pin = <<"shout://translate.google.com/translate_tts?tl=en&q=Re-enter+your+new+password+followed+by+the+pound+key+to+confirm.">>
+          ,enter_new_pin = <<"/system_media/vm-enter_new_pin">>
+          ,reenter_new_pin = <<"/system_media/vm-enter_new_pin_confirm">>
+          ,new_pin_saved = <<"/system_media/vm-pin_set">>
+          ,new_pin_bad = <<"/system_media/vm-pin_invalid">>
 
           ,tone_spec = [{struct, [{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}]}]
          }).
@@ -279,7 +281,7 @@ play_greeting(#mailbox{mailbox_id=Id, has_unavailable_greeting=true}, #cf_call{a
 %% @end
 %%--------------------------------------------------------------------
 -spec(record_voicemail/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, Call) ->
+record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, message_saved=Saved}}=Box, Call) ->
     tones(ToneSpec, Call),
     ?LOG("composing new voicemail"),
     case b_record(MediaName, Call) of
@@ -288,9 +290,11 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec}}=Box, 
                 {ok, record} ->
                     record_voicemail(MediaName, Box, Call);
 		{ok, save} ->
-		    new_message(MediaName, Box, Call);
+		    new_message(MediaName, Box, Call),
+                    b_play(Saved, Call);
                 {ok, no_selection} ->
-		    new_message(MediaName, Box, Call)
+		    new_message(MediaName, Box, Call),
+                    b_play(Saved, Call)
             end;
         {error, channel_hungup} ->
             _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
@@ -446,7 +450,7 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
 		     ,keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName, set_pin=SetPin, return_main=ReturnMain}}=Box, Call, Loop) ->
     ?LOG("playing mailbox configuration menu"),
     audio_macro([
-                  {play, ToRecUnavailable}
+                 {play, ToRecUnavailable}
                  ,{play, Press}
                  ,{say,  RecUnavailable}
 
@@ -462,7 +466,7 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
                  ,{play, Press}
                  ,{say,  ReturnMain}
                 ], Call),
-    DTMF = wait_for_dtmf(30000),
+    DTMF = wait_for_dtmf(20000),
     _ = flush(Call),
     case DTMF of
 	{ok, RecUnavailable} ->
@@ -491,7 +495,8 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
 %% @end
 %%--------------------------------------------------------------------
 -spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting, tone_spec=ToneSpec}}=Box, Call) ->
+record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting, tone_spec=ToneSpec
+                                                                 ,message_saved=Saved, message_deleted=Deleted}}=Box, Call) ->
     ?LOG("recoding unavailable greeting"),
     audio_macro([
                   {play,  RecordUnavailGreeting}
@@ -502,8 +507,10 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 	{ok, record} ->
 	    record_unavailable_greeting(MediaName, Box, Call);
 	{ok, save} ->
-	    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call);
+	    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call),
+            b_play(Saved, Call);
         {ok, no_selection} ->
+            b_play(Deleted, Call),
             ok
     end.
 
@@ -574,7 +581,8 @@ save_metadata(NewMessage, Db, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object())).
-record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec}}=Box, Call) ->
+record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec
+                                                 ,message_saved=Saved, message_deleted=Deleted}}=Box, Call) ->
     ?LOG("recording name"),
     audio_macro([
                   {play,  RecordName}
@@ -585,8 +593,10 @@ record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_sp
 	{ok, record} ->
 	    record_name(MediaName, Box, Call);
 	{ok, save} ->
-	    store_recording(MediaName, ?NAME_RECORDING, Box, Call);
+	    store_recording(MediaName, ?NAME_RECORDING, Box, Call),
+            b_play(Saved, Call);
         {ok, no_selection} ->
+            b_play(Deleted, Call),
             ok
     end.
 
@@ -597,7 +607,8 @@ record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_sp
 %% @end
 %%--------------------------------------------------------------------
 -spec(change_pin/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> stop | continue).
-change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=ReenterNewPin}
+change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=ReenterNewPin
+                                    ,new_pin_saved=SavedPin, new_pin_bad=BadPin}
 		    ,mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
     ?LOG("requesting new mailbox pin number"),
     try
@@ -606,10 +617,12 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
         {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj)),
+        b_play(SavedPin, Call),
         ?LOG("updated mailbox pin number")
     catch
-        _:R ->
-            ?LOG("new pin was invalid ~s, trying again", [R]),
+        _:_ ->
+            ?LOG("new pin was invalid, trying again"),
+            b_play(BadPin, Call),
             change_pin(Box, Call)
     end.
 
