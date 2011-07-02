@@ -34,4 +34,5 @@ init([]) ->
 	      ,?CHILD(ts_credit, worker)  %% handles looking up rating info on the To-DID
 	      ,?CHILD(ts_onnet_sup, supervisor) %% handles calls originating on-net (customer)
 	      ,?CHILD(ts_offnet_sup, supervisor) %% handles calls originating off-net (carrier)
+	      ,?CHILD(ts_cdr, worker)
 	     ]} }.

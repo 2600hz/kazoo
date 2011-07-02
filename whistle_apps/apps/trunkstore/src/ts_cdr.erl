@@ -16,7 +16,7 @@
 -include("ts.hrl").
 
 start_link() ->
-    {ok, proc_lib:spawn_link(fun() -> cdr_init() end)}.
+    {ok, proc_lib:spawn_link(fun cdr_init/0)}.
 
 cdr_init() ->
     {_, {H,Min,S}} = calendar:universal_time(),
