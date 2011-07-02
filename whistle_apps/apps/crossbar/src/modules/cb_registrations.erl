@@ -258,14 +258,14 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QS}, #cb_context{req_verb = <<"get">>, db_name=DbName}=Context) ->
+validate([], #wm_reqdata{req_qs=_}, #cb_context{req_verb = <<"get">>, db_name=DbName}=Context) ->
     {ok, Doc} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
-    _DocKeys =  [wh_json:get_value(<<"key">>, Elm) || Elm <- Doc],
+    DocKeys =  [wh_json:get_value(<<"key">>, Elm) || Elm <- Doc],
 
-    DocKeys = case QS of
-               [] -> _DocKeys;
-               _  -> filter_results_on_qs(_DocKeys, QS, ?REG_DB)
-              end,
+    %% DocKeys = case QS of
+    %%           [] -> _DocKeys;
+    %%           _  -> filter_results_on_qs(_DocKeys, QS, ?REG_DB)
+    %%          end,
 
     case DocKeys of
         [] -> crossbar_util:response_faulty_request(Context); %% Should be a 404 here
@@ -299,12 +299,12 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %% -spec(filter_results/2 :: ()).
-filter_results_on_qs(DocKeys, [{Param, Value} | _], DbName) ->
-    ParamBin = list_to_binary(Param),
-    ValueBin = list_to_binary(Value),
-    [DocKey || DocKey <- DocKeys, is_doc_valid_against_filter(DocKey, {ParamBin, ValueBin}, DbName) =:= true].
+%%filter_results_on_qs(DocKeys, [{Param, Value} | _], DbName) ->
+%%    ParamBin = list_to_binary(Param),
+%%    ValueBin = list_to_binary(Value),
+%%    [DocKey || DocKey <- DocKeys, is_doc_valid_against_filter(DocKey, {ParamBin, ValueBin}, DbName) =:= true].
 
-is_doc_valid_against_filter(DocKey, {Param, Value}, DbName) ->
-    {ok, [PreDoc]} = couch_mgr:get_results(DbName, ?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, DocKey}, {<<"include_docs">>, true}]),
-    Doc = wh_json:get_value(<<"doc">>, PreDoc),
-    wh_json:get_value(Param, Doc)  =:= Value.
+%%is_doc_valid_against_filter(DocKey, {Param, Value}, DbName) ->
+%%    {ok, [PreDoc]} = couch_mgr:get_results(DbName, ?LOOKUP_ACCOUNT_USER_REALM, [{<<"key">>, DocKey}, {<<"include_docs">>, true}]),
+%%    Doc = wh_json:get_value(<<"doc">>, PreDoc),
+%%    wh_json:get_value(Param, Doc)  =:= Value.
