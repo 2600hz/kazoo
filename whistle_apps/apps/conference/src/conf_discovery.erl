@@ -133,7 +133,6 @@ handle_info({amqp_host_down, _}, State) ->
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-                  io:format("Discovery RX: ~p~n", [JObj]),
                   _ = process_req(whapps_util:get_event_type(JObj), JObj, State)
           end),
     {noreply, State};
@@ -198,6 +197,7 @@ start_amqp() ->
 %%--------------------------------------------------------------------
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
 process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
+    %% TODO: If I had more time this additional Q could propbably worked out, or at least pooled...
     S1 = #search{conf_id = wh_json:get_value(<<"Conference-ID">>, JObj)
                  ,account_id = wh_json:get_value(<<"Account-ID">>, JObj)
                  ,amqp_q = Q = amqp_util:new_queue()
@@ -209,14 +209,27 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
     put(callid, CallId),
     ?LOG_START("recieved discovery request for conference"),
 
+    %% Bind to call events for collecting conference numbers, pins, and playing prompts
     amqp_util:bind_q_to_callevt(Q, CallId),
     amqp_util:basic_consume(Q),
 
     {ok, _} = play_greeting(S1),
 
+    %% Ensure that a provided conference ID is valid, or if there is none ask the
+    %% caller for the conference number and look it up in the db.  Either way pins
+    %% is loaded with the pin numbers for the conference (based on the callers role)
     {ok, S2} = validate_conference_id(S1#search{loop_count=1}),
+
+    %% If the role of this caller has pin numbers defined then request it from the
+    %% caller and confirm it is valid.
     {ok, S3} = validate_conference_pin(S2#search{loop_count=1}),
 
+    %% hmmm, avert your eyes....
+    %% when building a conference service if two calls are executing at the same
+    %% time the initial request to add a caller will be returned, both will try
+    %% to create new services, however one will fail because the queue is exclusive.
+    %% when that happens the one with the failing service just needs to re-send the
+    %% add caller request... Quick and dirty...
     try send_add_caller(S3) catch _:_ -> send_add_caller(S3) end.
 
 %%--------------------------------------------------------------------
@@ -226,10 +239,14 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
 %% @end
 %%--------------------------------------------------------------------
 send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ctrl_q=CtrlQ, moderator=Moderator, amqp_q=Q}) ->
-
     ?LOG("attempting to handoff call control to conference service"),
 
+    %% Bind to conference events for this confid so we will know if an existing service accepts the
+    %% add caller request (since it has to produce this event anyway lets just have it do double duty)
     amqp_util:bind_q_to_conference(Q, events, ConfId),
+
+    %% However, if there is no service running there will be no consumers when we publish our add caller
+    %% message, so register our self as a return handler so we will be notified.
     amqp_util:register_return_handler(),
 
     Caller = [{<<"Conference-ID">>, ConfId}
@@ -239,16 +256,36 @@ send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ct
               ,{<<"Moderator">>, Moderator}
                | whistle_api:default_headers(Q, <<"conference">>, <<"add_caller">>, ?APP_NAME, ?APP_VERSION)
               ],
+    %% TODO: Add this to the whistle_api once finalized
     Payload = whistle_util:to_binary(mochijson2:encode({struct, Caller})),
 
     amqp_util:conference_publish(Payload, service, ConfId, [{immediate, true}]),
     wait_for_handoff(AccountId, ConfId, Caller).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Wait in a receive loop to see what happens to our add caller request.
+%%
+%% If we recieve a returned message whose payload is exactly the same as our
+%% add caller request (remeber we will be recieving ALL returned messages) then
+%% no service exsits. Try to start the service but it will not be able to start
+%% if we are in a race condition.  However, that means some other discovery
+%% server has JUST started it, the try..catch on send_add_caller will repeat
+%% the request if it crashes here.
+%%
+%% If we recieve a AMQP message that is a conference added caller event for
+%% our call-id we know a service accept it. Since we will be recieving all
+%% kinds of events, and added callers for other discovery services throw
+%% if it isnt ours, then catch that and go back to waiting for a response.
+%% @end
+%%--------------------------------------------------------------------
 wait_for_handoff(AccountId, ConfId, Caller) ->
     AddCallerPayload = whistle_util:to_binary(mochijson2:encode({struct, Caller})),
     receive
         {#'basic.return'{}, #amqp_msg{payload=AddCallerPayload}} ->
             ?LOG("no conference service is running, starting new"),
+            %% TODO: If I had more time this should come from validate_conference_id...
             {ok, Conference} =
                 couch_mgr:open_doc(whapps_util:get_db_name(AccountId, encoded), ConfId),
             {ok, _} = conf_service_sup:start_service(ConfId, Conference, Caller),
@@ -271,7 +308,8 @@ wait_for_handoff(AccountId, ConfId, Caller) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% Plays the greeting prompt (if defined) for this accounts conference
+%% service.
 %% @end
 %%--------------------------------------------------------------------
 play_greeting(#search{prompts=Prompts}=Search) ->
@@ -280,7 +318,18 @@ play_greeting(#search{prompts=Prompts}=Search) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% If the discovery request has a conference id already on it find out
+%% if that is valid. If so we are good, if not forget about it and
+%% ask the caller for a conference number.
+%%
+%% If the discovery request did not specify a conference id then ask
+%% the caller for a conference number and figure out the id from that.
+%% They will have three chances to do so.
+%%
+%% Either way, the result of this function is to return a with a validated
+%% conference id and the pins property of the record loaded with any pin
+%% numbers defined for the type of conference participant (member or
+%% moderator)
 %% @end
 %%--------------------------------------------------------------------
 validate_conference_id(#search{prompts=Prompts, loop_count=Loop}=Search) when Loop > 4 ->
@@ -325,7 +374,9 @@ validate_conference_id(#search{conf_id=ConfId, account_id=AccountId, loop_count=
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% If the search record has pin numbers defined ask the caller to enter
+%% theirs then validate that it matches one of the pins in the list.
+%% Callers have three chances to enter a pin before we give up.
 %% @end
 %%--------------------------------------------------------------------
 validate_conference_pin(#search{pins=[]}=Search) ->
@@ -347,7 +398,8 @@ validate_conference_pin(#search{prompts=Prompts, pins=Pins, loop_count=Loop}=Sea
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% Plays media the caller that we are searching for the conference for
+%% unless that media is undefined (as in an account didnt want a greeting).
 %% @end
 %%--------------------------------------------------------------------
 play(undefined, _) ->
@@ -366,7 +418,8 @@ play(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% Plays media then collect digits from the caller that we are searching
+%% for the conference for
 %% @end
 %%--------------------------------------------------------------------
 play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
@@ -389,7 +442,7 @@ play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% Waits for a command to complete, error out, or the caller hangs up
 %% @end
 %%--------------------------------------------------------------------
 wait_for_command(Command) ->
