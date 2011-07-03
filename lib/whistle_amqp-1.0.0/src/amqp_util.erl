@@ -10,7 +10,7 @@
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
 -export([monitor_exchange/0, monitor_publish/3]).
--export([conference_exchange/0, conference_publish/2, conference_publish/3]).
+-export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
 
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
@@ -18,7 +18,8 @@
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 -export([bind_q_to_monitor/2]).
--export([bind_q_to_conference/2]).
+-export([bind_q_to_conference/2, bind_q_to_conference/3]).
+-export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
 
 -export([new_targeted_queue/0, new_targeted_queue/1]).
 -export([new_callctl_queue/1, delete_callctl_queue/1]).
@@ -108,17 +109,26 @@ offnet_resource_publish(Payload, ContentType) ->
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
-%% conference
--spec(conference_publish/2 :: (Payload :: binary(), Queue :: discovery | binary()) -> ok).
--spec(conference_publish/3 :: (Payload :: binary(), Queue :: discovery | binary(), Options :: proplist()) -> ok).
+-spec(conference_publish/2 :: (Payload :: binary(), Queue :: discovery | events | service) -> ok).
+-spec(conference_publish/3 :: (Payload :: binary(), Queue :: events | service, ConfId :: binary()) -> ok).
+-spec(conference_publish/4 :: (Payload :: binary(), Queue :: discovery | events | service, ConfId :: undefined | binary(), Options :: proplist()) -> ok).
 conference_publish(Payload, discovery) ->
-    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, <<"application/json">>);
-conference_publish(Payload, ConfId) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, <<"application/json">>).
+    conference_publish(Payload, discovery, undefined, []);
+conference_publish(Payload, events) ->
+    conference_publish(Payload, events, <<"*">>);
+conference_publish(Payload, service) ->
+    conference_publish(Payload, service, <<"*">>).
 
-conference_publish(Payload, discovery, Options) ->
+conference_publish(Payload, events, ConfId) ->
+    conference_publish(Payload, events, ConfId, []);
+conference_publish(Payload, service, ConfId) ->
+    conference_publish(Payload, events, ConfId, []).
+
+conference_publish(Payload, discovery, _, Options) ->
     basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, <<"application/json">>, Options);
-conference_publish(Payload, ConfId, Options) ->
+conference_publish(Payload, events, ConfId, Options) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, Payload, <<"application/json">>, Options);
+conference_publish(Payload, service, ConfId, Options) ->
     basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, <<"application/json">>, Options).
 
 %% generic publisher for an Exchange.Queue
@@ -250,13 +260,12 @@ new_monitor_queue(Queue) ->
 new_conference_queue(discovery) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_conference_queue(ConfId) ->
-    new_queue(list_to_binary([?KEY_CONF_SERVICE_REQ, ConfId])
-	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 new_conference_queue(discovery, Options) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, Options);
 new_conference_queue(ConfId, Options) ->
-    new_queue(list_to_binary([?KEY_CONF_SERVICE_REQ, ConfId]), Options).
+    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Options).
 
 %% Declare a queue and returns the queue Name
 -spec(new_queue/0 :: () -> binary() | tuple(error, amqp_error)).
@@ -368,22 +377,33 @@ bind_q_to_callmgr(Queue, Routing) ->
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
--spec(bind_q_to_conference/2 :: (Queue :: binary(), Routing :: discovery | service | binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
-bind_q_to_conference(Queue, service) ->
-    bind_q_to_conference(Queue, <<"*">>);
+-spec(bind_q_to_conference/2 :: (Queue :: binary(), Routing :: discovery | service | events) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec(bind_q_to_conference/3 :: (Queue :: binary(), Routing :: discovery | service | events, ConfId :: undefined | binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
 bind_q_to_conference(Queue, discovery) ->
-    bind_q_to_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE);
-bind_q_to_conference(Queue, ConfId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
+    bind_q_to_conference(Queue, discovery, undefined);
+bind_q_to_conference(Queue, service) ->
+    bind_q_to_conference(Queue, service, <<"*">>);
+bind_q_to_conference(Queue, events) ->
+    bind_q_to_conference(Queue, events, <<"*">>).
+
+bind_q_to_conference(Queue, discovery, _) ->
+    bind_q_to_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE, false);
+bind_q_to_conference(Queue, service, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, false);
+bind_q_to_conference(Queue, events, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, false).
 
 %% generic binder
 -spec(bind_q_to_exchange/3 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
-bind_q_to_exchange(Queue, Routing, Exchange) when is_binary(Queue), is_binary(Routing) ->
+-spec(bind_q_to_exchange/4 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary(), NoWait :: boolean()) -> #'basic.consume_ok'{} | tuple(error, term())).
+bind_q_to_exchange(Queue, Routing, Exchange) ->
+    bind_q_to_exchange(Queue, Routing, Exchange, true).
+bind_q_to_exchange(Queue, Routing, Exchange, NoWait) when is_binary(Queue), is_binary(Routing) ->
     QB = #'queue.bind'{
       queue = Queue %% what queue does the binding attach to?
       ,exchange = Exchange %% what exchange does the binding attach to?
       ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
-      ,nowait = true
+      ,nowait = NoWait
       ,arguments = []
      },
     amqp_manager:consume(QB).
