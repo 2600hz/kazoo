@@ -78,7 +78,7 @@
 
 %% Authentication Requests
 -define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
-			       , <<"Auth-User">>, <<"Auth-Domain">>]).
+			       ,<<"Method">>, <<"Auth-User">>, <<"Auth-Domain">>]).
 -define(OPTIONAL_AUTH_REQ_HEADERS, []).
 -define(AUTH_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			  ,{<<"Event-Name">>, <<"auth_req">>}
@@ -300,7 +300,7 @@
 
 %% Call Status Response
 -define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
--define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>]).
+-define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Node">>, <<"Error-Msg">>]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
 				  ,{<<"Event-Name">>, <<"status_resp">>}
 				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
@@ -647,6 +647,19 @@
 -define(CONFERENCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                                ,{<<"Conference-ID">>, fun is_binary/1}
                               ]).
+
+
+%% Conference Discovery
+-define(CONF_DISCOVERY_REQ_HEADERS, [<<"Account-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
+-define(OPTIONAL_CONF_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>]).
+-define(CONF_DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                    ,{<<"Event-Name">>, <<"discovery">>}
+                                    ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
+                                   ]).
+-define(CONF_DISCOVERY_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                                   ,{<<"Control-Queue">>, fun is_binary/1}
+                                   ,{<<"Conference-ID">>, fun is_binary/1}
+                                  ]).
 
 %% Conference Members
 -define(CONF_MEMBERS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).

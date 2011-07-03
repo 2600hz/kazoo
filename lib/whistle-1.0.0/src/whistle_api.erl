@@ -47,7 +47,7 @@
 % Conference Members
 -export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1,
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
-         conference_move_req/1
+         conference_move_req/1, conference_discovery_req/1
 	]).
 
 %% Validation functions
@@ -68,8 +68,10 @@
 
 -export([conference_members_req_v/1, conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
-         ,conference_move_req_v/1, noop_req_v/1, fetch_req_v/1, mwi_update_v/1
+         ,conference_move_req_v/1, conference_discovery_req_v/1
 	]).
+
+-export([noop_req_v/1, fetch_req_v/1, mwi_update_v/1]).
 
 -export([route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1]).
 
@@ -1052,6 +1054,27 @@ conference_req_v({struct, Prop}) ->
     conference_req_v(Prop);
 conference_req_v(Prop) ->
     validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Conference::discovery - Used to identify the conference ID
+%% if not provided, locate the conference focus, and return sip url
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(conference_discovery_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+conference_discovery_req({struct, Prop}) ->
+    conference_discovery_req(Prop);
+conference_discovery_req(Prop) ->
+    case conference_discovery_req_v(Prop) of
+	true -> build_message(Prop, ?CONF_DISCOVERY_REQ_HEADERS, ?OPTIONAL_CONF_DISCOVERY_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for conference_discovery_req"}
+    end.
+
+-spec(conference_discovery_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+conference_discovery_req_v({struct, Prop}) ->
+    conference_discovery_req_v(Prop);
+conference_discovery_req_v(Prop) ->
+    validate(Prop, ?CONF_DISCOVERY_REQ_HEADERS, ?CONF_DISCOVERY_REQ_VALUES, ?CONF_DISCOVERY_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference::members - Lists all members of a conference
