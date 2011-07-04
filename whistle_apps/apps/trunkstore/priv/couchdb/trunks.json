@@ -3,7 +3,7 @@
   ,"views":{
      "trunk_status":{
        "map": "function(doc) { if ( ! doc.trunk_type ) return; emit([doc.acct_id, doc.call_id], doc.doc_type == 'reserve' ? 1 : -1); }"
-       ,"reduce":"function(k, vs) { return sum(vs) == 0 ? \"inactive\" : \"active\"; }"
+       ,"reduce":"function(k, vs) { return sum(vs); }"
       }
      ,"trunk_type":{
 	"map": "function(doc) { if ( typeof doc.trunk_type == 'undefined' ) return; emit([doc.acct_id, doc.call_id], doc.trunk_type); }"
@@ -16,5 +16,5 @@
      ,"release_errors":{
         "map": "function(doc) { if ( ! doc.release_error ) return; emit([doc.acct_id, doc.call_id], doc.amount); }"
      }
-    }
+  }
 }

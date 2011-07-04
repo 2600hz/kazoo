@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end
@@ -8,14 +8,75 @@
 %%%-------------------------------------------------------------------
 -module(wh_json).
 
+-export([get_binary_boolean/2, get_binary_boolean/3]).
+-export([get_integer_value/2, get_integer_value/3]).
+-export([get_binary_value/2, get_binary_value/3]).
+-export([is_true/2, is_true/3, is_false/2, is_false/3]).
+
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
--export([delete_key/2]).
+-export([delete_key/2, delete_key/3]).
+
+-export([normalize_jobj/1]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
 
 -include_lib("whistle/include/whistle_types.hrl").
+
+-spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+get_binary_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> whistle_util:to_binary(Value)
+    end.
+
+-spec(get_binary_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
+get_binary_value(Key, JObj, Default) ->
+    whistle_util:to_binary(wh_json:get_value(Key, JObj, Default)).
+
+-spec(get_integer_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | integer()).
+get_integer_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> to_integer(Value, 0)
+    end.
+
+-spec(get_integer_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> integer()).
+get_integer_value(Key, JObj, Default) ->
+    to_integer(wh_json:get_value(Key, JObj), Default).
+
+to_integer(Term, Default) ->
+    try
+        whistle_util:to_integer(Term)
+    catch _:_ -> to_integer(Default, 0) end.
+
+-spec(is_false/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+is_false(Key, JObj) ->
+    is_false(Key, JObj, true).
+
+-spec(is_false/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
+is_false(Key, JObj, Default) ->
+    whistle_util:is_false(wh_json:get_value(Key, JObj, Default)).
+
+-spec(is_true/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+is_true(Key, JObj) ->
+    is_true(Key, JObj, false).
+
+-spec(is_true/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
+is_true(Key, JObj, Default) ->
+    whistle_util:is_true(wh_json:get_value(Key, JObj, Default)).
+
+-spec(get_binary_boolean/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+get_binary_boolean(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> whistle_util:to_binary(whistle_util:is_true(Value))
+    end.
+
+-spec(get_binary_boolean/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
+get_binary_boolean(Key, JObj, Default) ->
+    whistle_util:to_binary(is_true(Key, JObj, Default)).
 
 -spec(get_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | term()).
 get_value(Key, Doc) ->
@@ -48,13 +109,13 @@ get_value1(_, _, Default) -> Default.
 
 %% Figure out how to set the current key among a list of objects
 
--spec(set_value/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object()).
+-spec(set_value/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object() | json_objects()).
 set_value(Key, Value, {struct, _}=Doc) ->
     set_value1(Key, Value, Doc);
 set_value(Key, Value, [{struct, _} | _]=Docs) ->
     set_value1(Key, Value, Docs).
 
--spec(set_value1/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object()).
+-spec(set_value1/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object() | json_objects()).
 set_value1(Key, Value, Doc) when not is_list(Key) ->
     set_value1([Key], Value, Doc);
 set_value1([Key|T], Value, [{struct, _}|_]=Doc) ->
@@ -145,7 +206,7 @@ prune([K|T], {struct, Doc}=JObj) ->
 	    end
     end;
 prune(_, []) -> [];
-prune([K|T], [_|_]=JObjs) -> 
+prune([K|T], [_|_]=JObjs) ->
     V = lists:nth(K, JObjs),
     case prune(T, V) of
 	?EMPTY_JSON_OBJECT ->
@@ -172,7 +233,7 @@ no_prune([K|T], {struct, Doc}=JObj) ->
 	    {struct, [{K, no_prune(T, V)} | lists:keydelete(K, 1, Doc)]}
     end;
 no_prune(_, []) -> [];
-no_prune([K|T], [_|_]=JObjs) when is_integer(K) -> 
+no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
     V = lists:nth(K, JObjs),
     V1 = no_prune(T, V),
     case V1 =:= V of
@@ -192,8 +253,8 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
 
 %% EUNIT TESTING
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 -define(D1, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
 -define(D2, {struct, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}]}).
@@ -303,3 +364,34 @@ set_value_multiple_object_test() ->
     ?assertEqual(?T3R5, set_value([3, "new_key"], "added", ?D5)).
 
 -endif.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Normalize a JSON object for storage as a Document
+%% All dashes are replaced by underscores, all upper case character are
+%% converted to lower case
+%%
+%% @end
+%%--------------------------------------------------------------------
+normalize_jobj({struct, DataTuples}) ->
+    {struct, lists:map(fun normalizer/1, DataTuples)};
+normalize_jobj({Key, {struct, DataTuples}}) ->
+    {normalize_key(Key), {struct, lists:map(fun normalizer/1, DataTuples)}}.
+
+normalize_binary_tuple({Key,Val}) ->
+    {normalize_key(Key), Val}.
+
+normalize_key(Key) ->
+    NoDashKey = lists:map( fun($-) -> $_; (C) -> C end, binary_to_list(Key)),
+    list_to_binary(string:to_lower(NoDashKey)).
+
+normalizer(DataTuple) ->
+    case DataTuple of
+        {_, {struct, _DataTuples}} ->
+            normalize_jobj(DataTuple);
+        {_,_} ->
+            normalize_binary_tuple(DataTuple);
+        _ ->
+            logger:format_log(info, "Error in normalization for ~p~n", [DataTuple])
+    end.

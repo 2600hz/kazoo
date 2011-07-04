@@ -3,6 +3,7 @@
 -include_lib("whistle/include/whistle_amqp.hrl").
 -include_lib("whistle/include/freeswitch_xml.hrl").
 -include_lib("whistle/src/whistle_api.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -record(handler_stats, {lookups_success = 0 :: integer()
 			,lookups_failed = 0 :: integer()
@@ -18,7 +19,7 @@
 		     ,fs_uptime = 0 :: integer() % in microseconds
 		    }).
 
--define(DEFAULT_DOMAIN, <<"trunks.2600hz.com">>).
+-define(DEFAULT_DOMAIN, <<"trunks.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 300000). % 5 minutes
 -define(POST_HANGUP_COMMANDS, [<<"store">>]). %% list of dialplan Application-Names that can execute after a call has hung up
 

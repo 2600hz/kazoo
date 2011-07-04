@@ -18,7 +18,7 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% Author:      Manolis Papadakis <manopapad@gmail.com>
+%%% Author:      Manolis Papadakis
 %%% Description: Documentation processing script: This script will call EDoc on
 %%%              the application's source files, after inlining all types
 %%%              denoted as aliases, and removing from the exported types lists
@@ -108,10 +108,10 @@ process(Filename) ->
 pretty_print(Forms, Comments) ->
     FormsWithLines = add_lines_to_forms(Forms),
     CommentsWithLines =
-	[{[Line],[["%",Str,"\n"] || Str <- Text]}
+	[{[Line],[["%",Str,"\n"] || Str <- Text] ++ "%@end\n"}
 	 || {Line,_Col,_Ind,Text} <- Comments],
     CodeWithLines = lists:keymerge(1, FormsWithLines, CommentsWithLines),
-    [[S,"\n"] || {_L,S} <- CodeWithLines].
+    [S || {_L,S} <- CodeWithLines].
 
 -spec add_lines_to_forms([abs_form()]) -> [charlist_with_lines()].
 add_lines_to_forms(Forms) ->

@@ -17,13 +17,17 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
 %%% @version {@version}
-%%% @author Manolis Papadakis <manopapad@gmail.com>
-%%% @doc The generator subsystem and generators for basic types are contained
-%%%	 in this module.
+%%% @author Manolis Papadakis
+
+%%% @doc Generator subsystem and generators for basic types.
+%%%
+%%% You can use <a href="#index">these</a> functions to try out the random
+%%% instance generation and shrinking subsystems.
+%%%
+%%% CAUTION: These functions should never be used inside properties. They are
+%%% meant for demonstration purposes only.
 
 -module(proper_gen).
 -export([pick/1, pick/2, sample/1, sample/3, sampleshrink/1, sampleshrink/2]).
@@ -50,21 +54,30 @@
 %% Types
 %%-----------------------------------------------------------------------------
 
--type instance() :: term().
 %% TODO: update imm_instance() when adding more types: be careful when reading
 %%	 anything that returns it
+%% @private_type
 -type imm_instance() :: proper_types:raw_type()
 		      | instance()
 		      | {'$used', imm_instance(), imm_instance()}
 		      | {'$to_part', imm_instance()}.
+-type instance() :: term().
+%% A value produced by the random instance generator.
 -type error_reason() :: 'arity_limit' | 'cant_generate' | {'typeserver',term()}.
 
+%% @private_type
 -type sized_generator() :: fun((size()) -> imm_instance()).
+%% @private_type
 -type nosize_generator() :: fun(() -> imm_instance()).
+%% @private_type
 -type generator() :: sized_generator() | nosize_generator().
+%% @private_type
 -type reverse_gen() :: fun((instance()) -> imm_instance()).
+%% @private_type
 -type combine_fun() :: fun((instance()) -> imm_instance()).
+%% @private_type
 -type alt_gens() :: fun(() -> [imm_instance()]).
+%% @private_type
 -type fun_seed() :: {non_neg_integer(),non_neg_integer()}.
 
 
@@ -161,11 +174,14 @@ generate(Type, TriesLeft, Fallback) ->
 	{false,false} -> generate(Type, TriesLeft - 1, Fallback)
     end.
 
--spec pick(proper_types:raw_type()) -> {'ok',instance()} | 'error'.
+%% @equiv pick(Type, 10)
+-spec pick(Type::proper_types:raw_type()) -> {'ok',instance()} | 'error'.
 pick(RawType) ->
     pick(RawType, 10).
 
--spec pick(proper_types:raw_type(), size()) -> {'ok',instance()} | 'error'.
+%% @doc Generates a random instance of `Type', of size `Size'.
+-spec pick(Type::proper_types:raw_type(), size()) ->
+	  {'ok',instance()} | 'error'.
 pick(RawType, Size) ->
     proper:global_state_init_size(Size),
     case clean_instance(safe_generate(RawType)) of
@@ -185,11 +201,14 @@ pick(RawType, Size) ->
 	    error
     end.
 
--spec sample(proper_types:raw_type()) -> 'ok'.
+%% @equiv sample(Type, 10, 20)
+-spec sample(Type::proper_types:raw_type()) -> 'ok'.
 sample(RawType) ->
     sample(RawType, 10, 20).
 
--spec sample(proper_types:raw_type(), size(), size()) -> 'ok'.
+%% @doc Generates and prints one random instance of `Type' for each size from
+%% `StartSize' up to `EndSize'.
+-spec sample(Type::proper_types:raw_type(), size(), size()) -> 'ok'.
 sample(RawType, StartSize, EndSize) when StartSize =< EndSize ->
     Tests = EndSize - StartSize + 1,
     Prop = ?FORALL(X, RawType, begin io:format("~p~n",[X]), true end),
@@ -197,11 +216,15 @@ sample(RawType, StartSize, EndSize) when StartSize =< EndSize ->
     _ = proper:quickcheck(Prop, Opts),
     ok.
 
--spec sampleshrink(proper_types:raw_type()) -> 'ok'.
+%% @equiv sampleshrink(Type, 10)
+-spec sampleshrink(Type::proper_types:raw_type()) -> 'ok'.
 sampleshrink(RawType) ->
     sampleshrink(RawType, 10).
 
--spec sampleshrink(proper_types:raw_type(), size()) -> 'ok'.
+%% @doc Generates a random instance of `Type', of size `Size', then shrinks it
+%% as far as it goes. The value produced on each step of the shrinking process
+%% is printed on the screen.
+-spec sampleshrink(Type::proper_types:raw_type(), size()) -> 'ok'.
 sampleshrink(RawType, Size) ->
     proper:global_state_init_size(Size),
     Type = proper_types:cook_outer(RawType),

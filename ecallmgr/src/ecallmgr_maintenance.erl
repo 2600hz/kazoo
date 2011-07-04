@@ -21,7 +21,9 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {}).
+-record(state, {
+	  is_amqp_up = false :: boolean()
+	 }).
 
 %%%===================================================================
 %%% API
@@ -95,8 +97,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, State) ->
-    start_amqp(),
+handle_info(timeout, #state{is_amqp_up=false}=State) ->
+    {noreply, State#state{is_amqp_up=is_binary(start_amqp())}, 1000};
+handle_info(timeout, #state{is_amqp_up=true}=State) ->
     {noreply, State};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
@@ -136,9 +139,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 start_amqp() ->
-    Q = amqp_util:new_queue(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_MWI_UPDATE),
-    amqp_util:basic_consume(Q).
+    try
+	true = is_binary(Q = amqp_util:new_queue()),
+	_ = amqp_util:bind_q_to_callmgr(Q, ?KEY_MWI_UPDATE),
+	_ = amqp_util:basic_consume(Q),
+	Q
+    catch
+	_:_ -> {error, amqp_error}
+    end.
 
 handle_maintenance_req(Payload) ->
     JObj = mochijson2:decode(Payload),
@@ -169,4 +177,4 @@ handle_maintenance_req({<<"maintenance">>, <<"mwi">>}, JObj) ->
 	      ],
     {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
     Resp = freeswitch:sendevent(Node, 'MESSAGE_WAITING', [ {whistle_util:to_list(K), whistle_util:to_list(V)} || {K, V} <- Headers ]),
-    logger:format_log(info, "ECALL_MAIN(~p): Sending MWI Update to ~p(~p) with headers: ~p~n", [self(), Node, Resp, Headers]).
+    ?LOG("Sending MWI Update to ~p(~p)", [Node, Resp]).

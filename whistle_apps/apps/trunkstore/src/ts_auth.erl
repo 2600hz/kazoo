@@ -1,18 +1,15 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.com>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Respond to Authentication requests
 %%% @end
-%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.com>
+%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ts_auth).
 
 %% API
 -export([handle_req/1]).
-
--define(APP_NAME, <<"ts_responder.auth">>).
--define(APP_VERSION, <<"0.3.4">>).
 
 -include("ts.hrl").
 
@@ -33,12 +30,10 @@ handle_req(JObj) ->
     %% until we introduce IP-based auth
     Direction = <<"outbound">>,
 
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>),
-
     AuthR = case ts_util:is_ipv4(AuthR0) of
 		true ->
 		    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-		    logger:debug("~s | Log | ~p.~p(~p): Auth-Realm (~s) not a hostname, trying To-Domain (~s)", [MsgId, ?MODULE, ?LINE, self(), AuthR0, ToDomain]),
+		    ?LOG("Auth-Realm (~s) not a hostname, trying To-Domain (~s)", [AuthR0, ToDomain]),
 		    ToDomain;
 		false ->
 		    AuthR0
@@ -46,11 +41,15 @@ handle_req(JObj) ->
 
     {ok, AuthJObj} = lookup_user(AuthU, AuthR),
 
-    Defaults = [{<<"Msg-ID">>, MsgId}
+    AcctID = wh_json:get_value(<<"id">>, AuthJObj),
+
+    Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, [
 						       {<<"Direction">>, Direction}
 						       ,{<<"Username">>, AuthU}
 						       ,{<<"Realm">>, AuthR}
+						       ,{<<"Account-ID">>, AcctID}
+						       ,{<<"Authorizing-ID">>, AcctID}
 						      ]
 					     }}
 		| whistle_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
@@ -94,14 +93,14 @@ handle_req(JObj) ->
     %% 	    false
     %% end.
 
--spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, string())).
+-spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, user_not_found)).
 lookup_user(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
-	{ok, []} -> {error, "No user/realm found"};
+	{ok, []} -> {error, user_not_found};
 	{ok, [{struct, _}=User|_]} ->
 	    Auth = wh_json:get_value(<<"value">>, User),
-	    {ok, Auth}
+	    {ok, wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), Auth)}
     end.
 
 -spec(response/2 :: (AuthJObj :: json_object() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).

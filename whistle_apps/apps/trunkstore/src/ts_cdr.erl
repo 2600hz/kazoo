@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Receive a callmgr CDR and augment it with Trunkstore-specific fields,
 %%% storing it in the database.
@@ -11,37 +11,42 @@
 %%%-------------------------------------------------------------------
 -module(ts_cdr).
 
--export([start_link/0, store_cdr/3, fetch_cdr/2]).
+-export([start_link/0, store_cdr/3, fetch_cdr/2, store/1]).
 
 -include("ts.hrl").
 
 start_link() ->
-    {ok, proc_lib:spawn_link(fun() -> cdr_init() end)}.
+    {ok, proc_lib:spawn_link(fun cdr_init/0)}.
 
 cdr_init() ->
     {_, {H,Min,S}} = calendar:universal_time(),
     MillisecsToMidnight = ?MILLISECS_PER_DAY - timer:hms(H,Min,S),
-    {ok, _} = timer:send_after(MillisecsToMidnight, ?EOD),
 
-    create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
+    _ = create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
 
-    cdr_loop().
+    cdr_loop(MillisecsToMidnight).
 
-cdr_loop() ->
+cdr_loop(Timeout) ->
     receive
-	?EOD ->
-	    create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
-	    {ok, _} = timer:send_after(?MILLISECS_PER_DAY, ?EOD),
-	    cdr_loop()
+    after
+	Timeout ->
+	    _ = create_cdr_db(ts_util:todays_db_name(?TS_CDR_PREFIX)),
+	    cdr_loop(?MILLISECS_PER_DAY)
     end.
 
 create_cdr_db(DB) ->
-    logger:format_log(info, "TS_CDR(~p): Creating new cdr db ~p~n", [self(), DB]),
     couch_mgr:db_create(DB),
     case couch_mgr:load_doc_from_file(DB, trunkstore, <<"ts_cdr.json">>) of
 	{ok, _} -> ok;
 	{error, _} -> couch_mgr:update_doc_from_file(DB, trunkstore, <<"ts_cdr.json">>)
     end.
+
+-spec store/1 :: (CDR) -> tuple(ok, json_object()) | tuple(error, atom()) when
+      CDR :: json_object().
+store(CDR) ->
+    DB = ts_util:todays_db_name(?TS_CDR_PREFIX),
+    CDR1 = wh_json:set_value(<<"_id">>, wh_json:get_value(<<"Call-ID">>, CDR), CDR),
+    couch_mgr:save_doc(DB, CDR1).
 
 -spec(store_cdr/3 :: (CDR :: json_object(), Flags :: #route_flags{}, DB :: binary()) -> no_return()).
 store_cdr({struct, CDRProp}=CDRJObj, #route_flags{routes_generated=RGs, direction=Dir, account_doc_id=DocID, rate_name=RateName}, DB) ->
@@ -86,5 +91,5 @@ fetch_cdr(CallID, DB) ->
 	{ok, ?EMPTY_JSON_OBJECT} ->
 	    {error, not_found};
 	{ok, Doc} ->
-	    Doc
+	    {ok, Doc}
     end.

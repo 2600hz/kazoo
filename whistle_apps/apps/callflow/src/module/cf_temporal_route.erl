@@ -1,133 +1,525 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 8 April 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 12 June 2012 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route).
 
 -include("../callflow.hrl").
 
--export([handle/2, test/4]).
+-export([handle/2]).
 
--import(calendar, [
-                    day_of_the_week/1, day_of_the_week/3, gregorian_seconds_to_datetime/1
-                   ,datetime_to_gregorian_seconds/1, date_to_gregorian_days/1, date_to_gregorian_days/3
-                   ,last_day_of_the_month/2, gregorian_days_to_date/1, universal_time/0
+-import(calendar, [gregorian_seconds_to_datetime/1, datetime_to_gregorian_seconds/1
+                   ,date_to_gregorian_days/1, date_to_gregorian_days/3, universal_time/0
+                   ,last_day_of_the_month/2, gregorian_days_to_date/1
                   ]).
+
+-define(FIND_RULES, <<"temporal_route/listing_by_next_occurrence">>).
+
+-type improper_month() :: non_neg_integer().
+-type improper_day() :: non_neg_integer().
+-type improper_date() :: tuple(wh_year(), improper_month(), improper_day()).
+-type strict_ordinal() :: binary(). %%<<"first">> | <<"second">> | <<"third">> | <<"fourth">> | <<"fifth">>.
+-type broad_ordinal() :: binary(). %%<<"every">> | <<"last">>.
+-type ordinal() :: strict_ordinal() | broad_ordinal().
+-type wday() :: binary(). %%<<"monday">> | <<"tuesday">> | <<"wensday">> | <<"thursday">>
+%%                 | <<"friday">> | <<"saturday">> | <<"sunday">>.
+-type cycle_type() :: binary(). %%<<"date">> | <<"daily">> | <<"weekly">> | <<"monthly">> | <<"yearly">>.
+
+-record(prompts, {
+           route_enabled = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+enabled.">>
+          ,route_disabled = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+have+been+disabled,all+calls+will+be+sent+to+the+default+route.">>
+          ,route_update_error = <<"shout://translate.google.com/translate_tts?tl=en&q=Unable+to+update+the+time+and+date+status+at+this+time.">>
+         }).
+
+-record(rule, {
+           id = <<>> :: binary()
+          ,name = <<"no_name">> :: binary()
+          ,cycle = <<>> :: cycle_type()
+          ,interval = 1 :: non_neg_integer()
+          ,days = [] :: [wh_day()]
+          ,wdays = [] :: [wday()]
+          ,ordinal = <<"first">> :: ordinal()
+          ,month = 1 :: wh_month()
+          ,start_date = {2011, 1, 1} :: wh_date()
+          ,wtime_start = 0 :: non_neg_integer()
+          ,wtime_stop = 86400 :: non_neg_integer()
+         }).
+
+-record(temporal, {
+           temporal_id = <<>> :: binary()
+          ,enabled = true :: boolean()
+          ,local_sec = 0 :: non_neg_integer()
+          ,local_date = {2011, 1, 1} :: wh_date()
+          ,local_time = {0, 0, 0} :: wh_time()
+          ,default = <<>> :: binary()
+          ,routes = [] :: proplist()
+          ,timezone = <<"America/Los_Angeles">> :: binary()
+          ,prompts=#prompts{}
+         }).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(continue, binary())).
-handle(_, #cf_call{cf_pid=CFPid}=Call) ->
-    CFPid ! find_temporal_routes(Call).
-
-find_temporal_routes(#cf_call{account_db=Db}) ->
-    case couch_mgr:get_all_results(Db, <<"temporal-route/listing_by_occurence">>) of
-        {ok, JObj} ->
-            logger:format_log(info, "FOUND: ~p", [JObj]),
-            {continue, <<"match">>};
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
+    Temporal = get_temporal_route(Data, Call),
+    case wh_json:get_value(<<"action">>, Data) of
+        <<"toggle">> ->
+            toggle_temporal_route(Temporal, Call),
+            CFPid ! {stop};
+        <<"enable">> ->
+            enable_temporal_route(Temporal, Call),
+            CFPid ! {stop};
+        <<"disable">> ->
+            disable_temporal_route(Temporal, Call),
+            CFPid ! {stop};
         _ ->
-            {continue, <<"no_match">>}
+            Rules = get_temporal_rules(Temporal, Call),
+            case process_rules(Temporal, Rules, Call) of
+                {error, R} ->
+                    ?LOG("failed to find callflow ~w, nothing left to do", [R]),
+                    CFPid ! {stop};
+                Flow ->
+                    CFPid ! {branch, Flow}
+            end
     end.
-
-test(Rule, Every, Modifier, Count) ->
-    T0 = current_date(),
-    lists:foldr(fun(Seq, T1) ->
-                        T = event_date(Rule, Every, Modifier, T0, T1),
-                        logger:format_log(info, "~p) ~p", [Seq, T]),
-                        T
-                end, T0, lists:seq(Count, 1, -1)).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Test all rules in reference to the current temporal routes, and
+%% returns the first valid callflow, or the default.
 %% @end
 %%--------------------------------------------------------------------
-event_date("daily", 1, _, _, {Y1, M1, D1}) ->
-    normalize_date({Y1, M1, D1 + 1});
+-spec(process_rules/3 :: (Temporal :: #temporal{}, Rules :: [#rule{}], Call :: #cf_call{})
+                         -> {error, atom()} | json_object()).
+process_rules(#temporal{enabled=false, default=FlowId}, _, Call) ->
+    ?LOG("time based routes disabled"),
+    find_callflow(FlowId, Call);
+process_rules(#temporal{default=FlowId}, [], Call) ->
+    ?LOG("continuing with default callflow"),
+    find_callflow(FlowId, Call);
+process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}, routes=Routes}=T,
+              [#rule{id=Id, name=Name, wtime_start=TStart, wtime_stop=TStop}=R|H]
+              ,Call) ->
+    ?LOG("processing temporal rule ~s (~s)", [Id, Name]),
+    BaseDate = next_rule_date(R, {Y, M, D - 1}),
+    ?LOG("determined the occurrence date to be ~w", [BaseDate]),
+    BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
+    case {BastTime + TStart, BastTime + TStop} of
+        {Start, _} when LSec < Start ->
+            ?LOG("rule applies in the future, moving to next rule"),
+            process_rules(T, H, Call);
+        {_, End} when LSec > End ->
+            ?LOG("rule was valid today but has expired, moving to the next rule"),
+            process_rules(T, H, Call);
+        {_, _} ->
+            ?LOG("within active time window for the rule"),
+            {_, FlowId} = lists:keyfind(Id, 1, Routes),
+            case find_callflow(FlowId, Call) of
+                {error, R} ->
+                    ?LOG("failed to load callflow ~w, moving to the next rule", [R]),
+                    process_rules(T, H, Call);
+                Flow -> Flow
+            end
+    end.
 
-event_date("daily", I0, _, {Y0, M0, D0}, {Y1, M1, D1}) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% attempts to retriev the 'flow' key off the document ID in the database
+%% that this call belongs to
+%% @end
+%%--------------------------------------------------------------------
+-spec(find_callflow/2 :: (Id :: binary(), Call :: #cf_call{})
+                         -> {error, atom()} | json_object()).
+find_callflow(Id, #cf_call{account_db=Db}) ->
+    ?LOG("loading callflow ~s", [Id]),
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj}->
+            wh_json:get_value(<<"flow">>, JObj, {error, flow_not_found});
+        {error, _}=E ->
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Finds and returns a list of rule records that have do not occur in
+%% the future as well as pertain to this temporal route mapping.
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_temporal_rules/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> json_objects()).
+get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
+                   ,#cf_call{account_db=Db}) ->
+    case couch_mgr:get_results(Db, ?FIND_RULES, [{<<"startkey">>, null}
+                                                 ,{<<"endkey">>, LSec}
+                                                 ,{<<"include_docs">>, true}]) of
+        {ok, JObj} ->
+            Default=#rule{},
+            [#rule{
+                 id = wh_json:get_value(<<"id">>, R)
+                ,name = wh_json:get_value([<<"doc">>, <<"name">>], R, Default#rule.name)
+                ,cycle = wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
+                ,interval = whistle_util:to_integer(
+                              wh_json:get_value([<<"doc">>, <<"interval">>], R, Default#rule.interval))
+                ,days = wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
+                ,wdays = wh_json:get_value([<<"doc">>, <<"wdays">>], R, Default#rule.wdays)
+                ,ordinal = wh_json:get_value([<<"doc">>, <<"ordinal">>], R, Default#rule.ordinal)
+                ,month = wh_json:get_value([<<"doc">>, <<"month">>], R, Default#rule.month)
+                ,start_date = get_date(wh_json:get_value([<<"doc">>, <<"start_date">>], R, LSec))
+                ,wtime_start = whistle_util:to_integer(
+                                 wh_json:get_value([<<"doc">>, <<"time_window_start">>], R, Default#rule.wtime_start))
+                ,wtime_stop = whistle_util:to_integer(
+                               wh_json:get_value([<<"doc">>, <<"time_window_stop">>], R, Default#rule.wtime_stop))
+               }
+             || R <- JObj,
+                lists:keymember(wh_json:get_value(<<"id">>, R), 1, Routes)];
+        {error, _} ->
+            []
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Loads the temporal record with data from the db.
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_temporal_route/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #temporal{}).
+get_temporal_route(Data, #cf_call{account_db=Db}) ->
+    Id = wh_json:get_value(<<"id">>, Data),
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            ?LOG("loading temporal route ~s", [Id]),
+            Default=#temporal{},
+            {struct, Routes} = wh_json:get_value(<<"temporal_rules">>, JObj, ?EMPTY_JSON_OBJECT),
+            load_current_time(#temporal{
+                                  temporal_id = Id
+                                 ,enabled =
+                                     whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj, Default#temporal.enabled))
+                                 ,default = wh_json:get_value(<<"default_callflow_id">>, JObj, Default#temporal.default)
+                                 ,routes = Routes
+                                 ,timezone =
+                                     wh_json:get_value(<<"timezone">>, JObj, Default#temporal.timezone)
+                                });
+        {error, R} ->
+            ?LOG("failed to load temporal route ~s, ~w", [Id, R]),
+            load_current_time(#temporal{})
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Accepts a term and tries to convert it to a wh_date()
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_date/1 :: (Term :: wh_datetime()|binary()|integer()) -> wh_date()).
+get_date({{_,_,_}=Date, {_,_,_}})->
+    Date;
+get_date(Term) when is_binary(Term) ->
+    get_date(whistle_util:to_integer(Term));
+get_date(Term) when is_integer(Term) ->
+   get_date(calendar:gregorian_seconds_to_datetime(Term)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determines the current status of the temporal route and executes the
+%% function to move it to the opposite.
+%% @end
+%%--------------------------------------------------------------------
+-spec(toggle_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
+toggle_temporal_route(#temporal{enabled=true}=Temporal, Call)->
+    disable_temporal_route(Temporal, Call);
+toggle_temporal_route(#temporal{enabled=false}=Temporal, Call) ->
+    enable_temporal_route(Temporal, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Retrieve and update the enabled key on the temporal route document.
+%% Also plays messages to the caller based on the results of that
+%% operation.
+%% @end
+%%--------------------------------------------------------------------
+-spec(disable_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
+disable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->
+    ?LOG("disabling temporal route ~s", [Id]),
+    try
+        {ok, JObj} = couch_mgr:open_doc(Db, Id),
+        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, false, JObj)),
+        ?LOG("set temporal route status to disabled"),
+        _ = cf_call_command:b_play(Prompts#prompts.route_disabled, Call)
+    catch
+        _:R ->
+            ?LOG("unable to update temporal route ~w",[R]),
+            _ = cf_call_command:b_play(Prompts#prompts.route_update_error, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Retrieve and update the enabled key on the temporal route document.
+%% Also plays messages to the caller based on the results of that
+%% operation.
+%% @end
+%%--------------------------------------------------------------------
+-spec(enable_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
+enable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->
+    ?LOG("enabling temporal route ~s", [Id]),
+    try
+        {ok, JObj} = couch_mgr:open_doc(Db, Id),
+        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, true, JObj)),
+        ?LOG("set temporal route status to enabled"),
+        _ = cf_call_command:b_play(Prompts#prompts.route_enabled, Call)
+    catch
+        _:R ->
+            ?LOG("unable to update temporal route ~w",[R]),
+            _ = cf_call_command:b_play(Prompts#prompts.route_update_error, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% determines the appropriate gregorian seconds to be used as the
+%% current date/time for this temporal route selection
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_current_time/1 :: (Temporal :: #temporal{}) -> #temporal{}).
+load_current_time(#temporal{timezone=Timezone}=Temporal)->
+    {LocalDate, LocalTime} = localtime:utc_to_local(
+                                calendar:universal_time()
+                               ,whistle_util:to_list(Timezone)
+                              ),
+    ?LOG("local time for ~s is ~w on ~w", [Timezone, LocalTime, LocalDate]),
+    Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})
+                      ,local_date=LocalDate
+                      ,local_time=LocalTime}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% The big daddy
+%% Calculates the date of the next event given the type, interval,
+%% rule, start date, and current date.
+%%
+%% GOTCHA!
+%% Weird predictions? Bet your weekdays or days are not in order....
+%%   - monday, tuesday, wensday, thursday, friday, saturday, sunday
+%%   - 1,2,3..31
+%% @end
+%%--------------------------------------------------------------------
+-spec(next_rule_date/2 :: (Rule :: #rule{}, Current :: wh_date()) -> wh_date()).
+next_rule_date(#rule{cycle = <<"date">>, start_date=Date0}, _) ->
+    Date0;
+
+next_rule_date(#rule{cycle = <<"daily">>, interval=I0
+                     ,start_date={Y0, M0, D0}}, {Y1, M1, D1}) ->
+    %% Calculate the distance in days as a function of
+    %%   the interval and fix
     DS0 = date_to_gregorian_days({Y0, M0, D0}),
     DS1 = date_to_gregorian_days({Y1, M1, D1}),
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
     normalize_date({Y0, M0, D0 + Offset + I0});
 
-event_date("weekly", 1, DOWs, _, {Y1, M1, D1}) ->
-    DOW1 = day_of_the_week({Y1, M1, D1}),
-    Offset = hd([ DOW || DOW <- [ to_dow(D) || D <- DOWs ], DOW > DOW1 ]
-                ++ [ to_dow( hd( DOWs ) ) + 7 ])
-               - DOW1,
-    normalize_date({Y1, M1, D1 + Offset});
-
-event_date("weekly", I0, DOWs, {Y0, M0, D0}, {Y1, M1, D1}) ->
-    DOW1 = day_of_the_week({Y1, M1, D1}),
-    case [ DOW || DOW <- [to_dow(D) || D <- DOWs], DOW > DOW1 ] of
-        [] ->
-            W0 = iso_week_number({Y0, M0, D0}),
-            W1 = iso_week_number({Y1, M1, D1}),
-            Offset = trunc( iso_week_difference(W0, W1) / I0 ) * I0,
-            {Y2, M2, D2} = iso_week_to_gregorian_date({element(1, W0), element(2, W0) + Offset + I0}),
-            normalize_date({Y2, M2, D2 - 1 + to_dow( hd( DOWs ) )});
-        [Offset|_] ->
-            normalize_date({Y1, M1, D1 + Offset - DOW1})
-    end;
-
-event_date("monthly", 1, {every, DOW0}, _, {Y1, M1, D1}) ->
-    DOW1 = to_dow(DOW0),
-    case calendar:day_of_the_week({Y1, M1, D1}) of
-        DOW1 ->
-            normalize_date({Y1, M1, D1 + 7});
-        D ->
-            Offset = ( 7 - D ) + DOW1,
-            normalize_date({Y1, M1, D1 + Offset})
-    end;
-
-event_date("monthly", 1, {last, DOW0}, _, {Y1, M1, _}) ->
-    try
-        date_of_dow(Y1, M1, to_dow(DOW0), 4)
-    catch
-        _:_ ->
-            date_of_dow(Y1, M1, to_dow(DOW0), 3)
-    end;
-
-event_date("monthly", 1, {When, DOW0}, _, {Y1, M1, _}) ->
-    find_next_weekday(Y1, M1, convert_when(When), to_dow(DOW0));
-
-event_date("monthly", 1, Days, _, {Y1, M1, D1}) when is_list(Days) ->
-    Offset = hd([D || D <- Days, D > D1]
-                ++ [last_day_of_the_month(Y1, M1) + hd(Days)]),
-    normalize_date({Y1, M1, Offset});
-
-event_date("monthly", I0, Days, {Y0, M0, _}, {Y1, M1, D1}) when is_list(Days) ->
-    case [D || D <- Days, D > D1] of
-        [] ->
-            Distance = ( Y1 - Y0 ) * 12 + M0 - M1,
-            Offset = trunc( Distance / I0 ) * I0,
-            normalize_date({Y1, M0 + Offset + I0, hd( Days )});
-        [Day|_] ->
-            normalize_date({Y1, M1, Day})
-    end;
-
-event_date("monthly", I0, {When, DOW0}, {Y0, M0, _}, {Y1, M1, _D1}) ->
-    Distance = ( Y1 - Y0 ) * 12 + abs(M0 - M1),
+next_rule_date(#rule{cycle = <<"weekly">>, interval=I0
+                     ,wdays=Weekdays, start_date={Y0, M0, D0}}, {Y1, M1, D1}) ->
+    DOW0 = day_of_the_week({Y1, M1, D1}),
+    Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
     Offset = trunc( Distance / I0 ) * I0,
-    find_next_weekday(Y1, M0 + Offset + I0, convert_when(When), to_dow(DOW0));
+    case [ DOW1 || DOW1 <- [to_dow(D) || D <- Weekdays], DOW1 > DOW0 ] of
+        %% During an 'active' week but before the last weekday in the list
+        %%   move to the next day this week
+        [Day|_] when Distance =:= Offset ->
+            normalize_date({Y1, M1, D1 + Day - DOW0});
+        %% Empty list:
+        %%   The last DOW during an 'active' week,
+        %% Non Empty List that failed the guard:
+        %%   During an 'inactive' week
+        _ ->
+            {WY0, W0} = iso_week_number({Y0, M0, D0}),
+            {Y2, M2, D2} = iso_week_to_gregorian_date({WY0, W0 + Offset + I0}),
+            normalize_date({Y2, M2, ( D2 - 1 ) + to_dow( hd( Weekdays ) )})
+    end;
 
-event_date(_, _, _, _, _) ->
-    error.
+next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal = <<"every">>
+                         ,wdays=[Weekday], start_date={Y0, M0, _}}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_next_weekday({Y1, M1, D1}, Weekday) of
+        %% If the next occurence of the weekday is during an 'active' month
+        %%   and does not span the current month/year then it is correct
+        {Y1, M1, _}=Date ->
+            Date;
+        %% In the special case were the next weekday does span the current
+        %%   month/year but it should be every month (I0 == 1) then the
+        %%   date is also correct
+        Date when I0 =:= 1 ->
+            Date;
+        %% During an 'inactive' month, or when it inappropriately spans
+        %%   a month/year boundary calculate the next iteration
+        _ ->
+            find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, <<"first">>)
+    end;
+
+next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal = <<"last">>
+                         ,wdays=[Weekday], start_date={Y0, M0, _}}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_last_weekday({Y1, M1, 1}, Weekday) of
+        %% If today is before the occurace day on an 'active' month since
+        %%   the 'last' only happens once per month if we havent passed it
+        %%   then it must be this month
+        {_, _, D2}=Date when D1 < D2 ->
+            Date;
+        %% In an 'inactive' month or when we have already passed
+        %%   the last occurance of the DOW
+        _ ->
+            find_last_weekday({Y0, M0 + Offset + I0, 1}, Weekday)
+    end;
+
+%% WARNING: There is a known bug when requesting the fifth occurance
+%%   of a weekday when I0 > 1 and the current month only has four instances
+%%   of the given weekday, the calculation is incorrect.  I was told not
+%%   to worry about that now...
+next_rule_date(#rule{cycle = <<"monthly">>, interval=I0, ordinal=Ordinal
+                     ,wdays=[Weekday], start_date={Y0, M0, _}}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso {find_ordinal_weekday(Y1, M1, Weekday, Ordinal), I0} of
+        %% If today is before the occurance day on an 'active' month and
+        %%   the occurance does not cross month/year boundaries then the
+        %%   calculated date is accurate
+        {{_, M1, D2}=Date, _} when D1 < D2, I0 > 1 ->
+            Date;
+        %% If today is before the occurance day on an 'active' month and
+        %%   the iterval =:= 1 then it happens every month so it doesnt
+        %%   matter if it crosses month/year boundaries
+        {{_, M2, D2}=Date, 1} when D1 < D2; M1 < M2 ->
+            Date;
+        %% false:
+        %%   In an 'inactive' month
+        %% {wh_date(), integer()}:
+        %%   We have already passed the last occurance of the DOW
+        _ ->
+            find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, Ordinal)
+    end;
+
+next_rule_date(#rule{cycle = <<"monthly">>, interval=I0
+                     ,days=Days, start_date={Y0, M0, _}}, {Y1, M1, D1}) ->
+    Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
+    Offset = trunc( Distance / I0 ) * I0,
+    case [D || D <- Days, D > D1] of
+        %% The day hasn't happend on an 'active' month
+        [Day|_] when Distance =:= Offset ->
+            normalize_date({Y0, M0 + Offset, Day});
+        %% Empty List:
+        %%   All of the days in the list have already happened
+        %% Non Empty List that failed the guard:
+        %%   The day hasn't happend on an 'inactive' month
+        _ ->
+            normalize_date({Y0, M0 + Offset + I0, hd( Days )})
+    end;
+
+%% WARNING: This function does not ensure the provided day actually
+%%   exists in the month provided.  For temporal routes that isnt
+%%   an issue because we will 'pass' the invalid date and compute
+%%   the next
+next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, month=Month
+                 ,days=[Day], start_date={Y0, _, _}}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    %% If it is currently an 'active' year before the requested
+    %%   month or on the requested month but before the day
+    %%   then just provide the occurance.  Otherwise work out
+    %%   the next occurance.
+    case M1 =< Month andalso D1 < Day of
+        %% It is before the requested month or
+        %%   on the requested month but before the day
+        %%   but only on an 'active' year
+        true when Distance =:= Offset -> {Y1, Month, Day};
+        %% true:
+        %%   The guard failed, so this is an 'inactive'
+        %%   month.
+        %% false:
+        %%   The requested month or day in that month has
+        %%   already passed
+        _ -> {Y0 + Offset + I0, Month, Day}
+    end;
+
+next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal = <<"every">>
+                     ,month=Month, wdays=[Weekday], start_date={Y0, _, _}}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_next_weekday({Y1, Month, D1}, Weekday) of
+        %% During an 'active' year before the target month the calculated
+        %%   occurance is accurate
+        {Y1, Month, _}=Date when M1 < Month ->
+            Date;
+        %% During an 'active' year on the target month before the
+        %%   calculated occurance day it is accurate
+        {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
+            Date;
+        %% During an 'inactive' year, or after the target month
+        %%   calculate the next iteration
+        _ ->
+            find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, <<"first">>)
+    end;
+
+next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal = <<"last">>
+                         ,month=Month, wdays=[Weekday], start_date={Y0, _, _}}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_last_weekday({Y1, Month, 1}, Weekday) of
+        %% During an 'active' year before the target month the calculated
+        %%   occurance is accurate
+        {Y1, _, _}=Date when M1 < Month ->
+            Date;
+        %% During an 'active' year on the target month before the
+        %%   calculated occurance day it is accurate
+        {Y1, _, D2}=Date when M1 =:= Month, D1 < D2 ->
+            Date;
+        %% During an 'inactive' year, or after the target month
+        %%   calculate the next iteration
+        _ ->
+            find_last_weekday({Y0 + Offset + I0, Month, 1}, Weekday)
+    end;
+
+next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal=Ordinal
+                     ,month=Month, wdays=[Weekday], start_date={Y0, _, _}}, {Y1, M1, D1}) ->
+    Distance = Y1 - Y0,
+    Offset = trunc( Distance / I0 ) * I0,
+    case Distance =:= Offset andalso find_ordinal_weekday(Y1, Month, Weekday, Ordinal) of
+        %% During an 'active' year before the target month the calculated
+        %%   occurance is accurate
+        {Y1, Month, _}=Date when M1 < Month ->
+            Date;
+        %% During an 'active' year on the target month before the
+        %%   calculated occurance day it is accurate
+        {Y1, Month, D2}=Date when M1 =:= Month, D1 < D2 ->
+            Date;
+        %% During an 'inactive' year or after the calculated
+        %%   occurance determine the next iteration
+        _ ->
+            find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Normalizes dates, for example corrects for months that are given
+%% with more days then they have (ie: {2011, 1, 36} -> {2011, 2, 5}).
+%% I have been refering to this as 'spanning a month/year border'
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_date/1 :: (Date :: date()) -> date()).
+-spec(normalize_date/1 :: (Date :: improper_date()) -> wh_date()).
 normalize_date({Y, M, D}) when M =:= 13 ->
     normalize_date({Y + 1, 1, D});
 normalize_date({Y, M, D}) when M > 12 ->
@@ -143,112 +535,167 @@ normalize_date({Y, M, D}=Date) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Convert the ordinal words to cardinal numbers representing
+%% the position
 %% @end
 %%--------------------------------------------------------------------
--spec(current_date/0 :: () -> date()).
-current_date() ->
-    {Date, _} = localtime:utc_to_local(universal_time(), "America/Los_Angeles"),
-    Date.
+-spec(from_ordinal/1 :: (Ordinal :: strict_ordinal()) -> 0..4).
+from_ordinal(<<"first">>) -> 0;
+from_ordinal(<<"second">>) -> 1;
+from_ordinal(<<"third">>) -> 2;
+from_ordinal(<<"fourth">>) -> 3;
+from_ordinal(<<"fifth">>) -> 4.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Map the days of the week to cardinal numbers representing the
+%% position, in accordance with ISO 8601
 %% @end
 %%--------------------------------------------------------------------
-%% -spec(current_date_in_seconds/0 :: () -> seconds()).
-%% current_date_in_seconds() ->
-%%     datetime_to_gregorian_seconds({current_date(), {0, 0, 0}}).
+-spec(to_dow/1 :: (Weekday :: wday()) -> wh_daynum()).
+to_dow(<<"monday">>) -> 1;
+to_dow(<<"tuesday">>) -> 2;
+to_dow(<<"wensday">>) -> 3;
+to_dow(<<"thursday">>) -> 4;
+to_dow(<<"friday">>) -> 5;
+to_dow(<<"saturday">>) -> 6;
+to_dow(<<"sunday">>) -> 7.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Calculates the date of the next occurance of a weekday from the given
+%% start date.
+%%
+%% NOTICE!
+%% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
-convert_when(first) -> 0;
-convert_when(second) -> 1;
-convert_when(third) -> 2;
-convert_when(fourth) -> 3;
-convert_when(fifth) -> 4.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-to_dow(monday) -> 1;
-to_dow(tuesday) -> 2;
-to_dow(wensday) -> 3;
-to_dow(thursday) -> 4;
-to_dow(friday) -> 5;
-to_dow(saturday) -> 6;
-to_dow(sunday) -> 7.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-find_next_weekday(Y1, M1, When, Weekday) when M1 =:= 13 ->
-    find_next_weekday(Y1 + 1, 1, When, Weekday);
-find_next_weekday(Y1, M1, When, Weekday) when M1 > 12 ->
-    find_next_weekday(Y1 + 1, M1 - 12, When, Weekday);
-find_next_weekday(Y1, M1, When, Weekday) ->
-    try
-        date_of_dow(Y1, M1, Weekday, When)
-    catch
-        _:_ ->
-            find_next_weekday(Y1, M1 + 1, When, Weekday)
+-spec(find_next_weekday/2 :: (Date :: wh_date(), Weekday :: wday()) -> wh_date()).
+find_next_weekday({Y, M, D}, Weekday) ->
+    RefDOW = to_dow(Weekday),
+    case day_of_the_week({Y, M, D}) of
+        %% Today is the DOW we wanted, calculate for next week
+        RefDOW ->
+            normalize_date({Y, M, D + 7});
+        %% If the DOW has not occured this week yet
+        DOW when RefDOW > DOW ->
+            normalize_date({Y, M, D + (RefDOW - DOW)});
+        %% If the DOW occurance has already happend, calculate
+        %%   for the next week using the current DOW as a reference
+        DOW ->
+            normalize_date({Y, M, D + ( 7 - DOW ) + RefDOW})
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Safety wrapper on date_of_dow used to loop over failing attempts
+%% until the date can be calculated.  The date can be provided as an
+%% improper date.
+%%
+%% NOTICE!
+%% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec(date_of_dow/4 :: (Year :: non_neg_integer(), Month :: 2..13
-                       ,DOW :: 1..7, Occurance :: 0..4) -> date()).
-date_of_dow(Year, 1, DOW, Occurance) ->
-    date_of_dow(Year - 1, 13, DOW, Occurance);
-date_of_dow(Year, Month, DOW, Occurance) ->
+-spec(find_ordinal_weekday/4 :: (Year :: wh_year(), Month :: improper_month()
+                                 ,Weekday :: wday(), Ordinal :: strict_ordinal()) -> wh_date()).
+find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 =:= 13 ->
+    find_ordinal_weekday(Y1 + 1, 1, Weekday, Ordinal);
+find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 > 12 ->
+    find_ordinal_weekday(Y1 + 1, M1 - 12, Weekday, Ordinal);
+find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
+    try
+        date_of_dow(Y1, M1, Weekday, Ordinal)
+    catch
+        _:_ ->
+            find_ordinal_weekday(Y1, M1 + 1, Weekday, Ordinal)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Calculates the date of the last occurance of a weekday within a
+%% given month/year.  The date can be provided as an improper date.
+%%
+%% Assumption/Principle:
+%%   A DOW can never occur more than four times in a month.
+%% ---------------------------------------------------------
+%% First attempt to calulate the date of the fouth DOW
+%% occurance.  Since the function corrects an invalid
+%% date by crossing month/year boundries, cause a badmatch
+%% if this happens. Therefore, during the exception the last
+%% occurance MUST be in the third week.
+%% @end
+%%--------------------------------------------------------------------
+-spec(find_last_weekday/2 :: (Date :: improper_date(), Weekday :: wday()) -> wh_date()).
+find_last_weekday({Y, M, D}, Weekday) when M =:= 13 ->
+    find_last_weekday({Y + 1, 1, D}, Weekday);
+find_last_weekday({Y, M, D}, Weekday) when M > 12 ->
+    find_last_weekday({Y + 1, M - 12, D}, Weekday);
+find_last_weekday({Y, M, _}, Weekday) ->
+    try
+        {Y, M, _} = date_of_dow(Y, M, Weekday, <<"fifth">>)
+    catch
+        _:_ ->
+            date_of_dow(Y, M, Weekday, <<"fourth">>)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Unsafe calculation of the date for a specific day of the week, this
+%% function will explode on occasion.
+%% @end
+%%--------------------------------------------------------------------
+-spec(date_of_dow/4 :: (Year :: wh_year(), Month :: improper_month()
+                       ,Weekday :: wday(), Ordinal :: strict_ordinal()) -> wh_date()).
+date_of_dow(Year, 1, Weekday, Ordinal) ->
+    date_of_dow(Year - 1, 13, Weekday, Ordinal);
+date_of_dow(Year, Month, Weekday, Ordinal) ->
     RefDate = {Year, Month - 1, last_day_of_the_month(Year, Month - 1)},
     RefDays = date_to_gregorian_days(RefDate),
+    DOW = to_dow(Weekday),
+    Occurance = from_ordinal(Ordinal),
     Days = case day_of_the_week(RefDate) of
                DOW ->
-                   RefDays + 7 + (7 * Occurance);
+                   RefDays + 7 + (7 * Occurance );
                RefDOW when DOW < RefDOW ->
                    RefDays + DOW + (7 - RefDOW) + (7 * Occurance);
                RefDOW ->
                    RefDays + abs(DOW - RefDOW) + (7 * Occurance)
           end,
-    {Year, Month, Day} = gregorian_days_to_date(Days),
-    normalize_date({Year, Month, Day}).
+    {Y, M, D} = gregorian_days_to_date(Days),
+    normalize_date({Y, M, D}).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Calculates the distance, in total ISO weeks, between two dates
+%%
+%% I rather dislike this approach, but it is the best of MANY evils that I came up with...
+%% The idea here is to find the difference (in days) between the ISO 8601 mondays
+%% of the start and end dates.  This takes care of all the corner cases for us such as:
+%%    - Start date in ISO week of previous year
+%%    - End date in ISO week of previous year
+%%    - Spanning years
+%% All while remaining ISO 8601 compliant.
 %% @end
 %%--------------------------------------------------------------------
--spec(iso_week_difference/2 :: (Week0 :: iso_week(), Week1 :: iso_week()) -> non_neg_integer()).
-iso_week_difference({Y0, W0}, {Y0, W1}) ->
-    abs( W0 - W1 );
-iso_week_difference({Y0, W0}, {Y1, W1}) when Y1 - Y0 == 1->
-    {Y0, W} = iso_week_number({Y0, 12, last_day_of_the_month(Y0, 12)}),
-    ( W - W0 ) + W1;
-iso_week_difference({Y0, W0}, {Y1, W1}) ->
-    {_, Partial} = iso_week_number({Y0, 12, last_day_of_the_month(Y0, 12)}),
-    lists:foldr(fun(Y, Acc) ->
-                        case iso_week_number({Y, 12, last_day_of_the_month(Y, 12)}) of
-                            {_, 1} -> 52 + Acc;
-                            {Y, W} -> W + Acc
-                        end
-                end, abs(Partial - W0), lists:seq(Y0 + 1, Y1)) + W1.
+-spec(iso_week_difference/2 :: (Week0 :: wh_date(), Week1 :: wh_date()) -> non_neg_integer()).
+iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
+    DS0 = date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y0, M0, D0}))),
+    DS1 = date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y1, M1, D1}))),
+    trunc( abs( DS0 - DS1 ) / 7 ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Caclulates the gregorian date of a given ISO 8601 week
 %% @end
 %%--------------------------------------------------------------------
--spec(iso_week_to_gregorian_date/1 :: (Date :: iso_week()) -> date()).
+-spec(iso_week_to_gregorian_date/1 :: (Date :: wh_iso_week()) -> wh_date()).
 iso_week_to_gregorian_date({Year, Week}) ->
     Jan1 = date_to_gregorian_days(Year, 1, 1),
     Offset = 4 - day_of_the_week(Year, 1, 4),
@@ -261,11 +708,32 @@ iso_week_to_gregorian_date({Year, Week}) ->
         end,
     gregorian_days_to_date(Days).
 
-%% I don't know what this should be doing!
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Wrapper for calender:iso_week_number introduced in R14B02 (?) using
+%% a local copy on older systems
+%% @end
+%%--------------------------------------------------------------------
+-spec(iso_week_number/1 :: (Date :: wh_date()) -> wh_iso_week()).
 iso_week_number(Date) ->
     case erlang:function_exported(calendar, iso_week_number, 1) of
 	true -> calendar:iso_week_number(Date);
 	false -> our_iso_week_number(Date)
+    end.
+
+-spec(day_of_the_week/1 :: (Date :: wh_date()) -> wh_day()).
+day_of_the_week({Year, Month, Day}=Date) ->
+    case erlang:function_exported(calendar, day_of_the_week, 1) of
+	true -> calendar:day_of_the_week(Date);
+	false -> our_day_of_the_week(Year, Month, Day)
+    end.
+
+-spec(day_of_the_week/3 :: (wh_year(), wh_month(), wh_day()) -> wh_day()).
+day_of_the_week(Year, Month, Day) ->
+    case erlang:function_exported(calendar, day_of_the_week, 3) of
+	true -> calendar:day_of_the_week(Year, Month, Day);
+	false -> our_day_of_the_week(Year, Month, Day)
     end.
 
 %% TAKEN FROM THE R14B02 SOURCE FOR calender.erl
@@ -278,9 +746,9 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
 	    {Year, (D - W01_1_Year) div 7 + 1};
 	D < W01_1_Year ->
 	    % Previous Year 52 or 53
-	    PWN = case calender:day_of_the_week(Year - 1, 1, 1) of
+	    PWN = case day_of_the_week(Year - 1, 1, 1) of
 		4 -> 53;
-		_ -> case calendar:day_of_the_week(Year - 1, 12, 31) of
+		_ -> case day_of_the_week(Year - 1, 12, 31) of
 			4 -> 53;
 			_ -> 52
 		     end
@@ -300,3 +768,809 @@ gregorian_days_of_iso_w01_1(Year) ->
     true ->
 	D0101 + 7 - DOW + 1
     end.
+
+%% day_of_the_week(Year, Month, Day)
+%% day_of_the_week({Year, Month, Day})
+%%
+%% Returns: 1 | .. | 7. Monday = 1, Tuesday = 2, ..., Sunday = 7.
+-spec our_day_of_the_week(calendar:year(), calendar:month(), calendar:day()) -> calendar:daynum().
+our_day_of_the_week(Year, Month, Day) ->
+    (calendar:date_to_gregorian_days(Year, Month, Day) + 5) rem 7 + 1.
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+daily_recurrence_test() ->
+    %% basic increment
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,6,2}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2011,6,1}}, {2011,6,1})),
+    %%  increment over month boundary
+    ?assertEqual({2011,2,1}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,7,1}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2011,6,1}}, {2011,6,30})),
+    %% increment over year boundary
+    ?assertEqual({2011,1,1}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,1}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2010,6,1}}, {2010,12,31})),
+    %% leap year (into)
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2008,1,1}}, {2008,2,28})),
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2008,1,1}}, {2008,2,28})),
+    %% leap year (over)
+    ?assertEqual({2008,3,1}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2008,1,1}}, {2008,2,29})),
+    ?assertEqual({2008,3,1}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2008,1,1}}, {2008,2,29})),
+    %% shift start date (no impact)
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2008,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2009,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"daily">>, start_date={2010,1,1}}, {2011,1,1})),
+    %% even step (small)
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,2}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,1,1}}, {2011,1,29})),
+    ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,6,5}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,7,3}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,6,1}}, {2011,6,29})),
+    %% odd step (small)
+    ?assertEqual({2011,1,8}, next_rule_date(#rule{cycle = <<"daily">>, interval=7, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"daily">>, interval=7, start_date={2011,1,1}}, {2011,1,29})),
+    ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"daily">>, interval=7, start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,6,8}, next_rule_date(#rule{cycle = <<"daily">>, interval=7, start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,7,6}, next_rule_date(#rule{cycle = <<"daily">>, interval=7, start_date={2011,6,1}}, {2011,6,29})),
+    %% even step (large)
+    ?assertEqual({2011,2,18}, next_rule_date(#rule{cycle = <<"daily">>, interval=48, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"daily">>, interval=48, start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,7,19}, next_rule_date(#rule{cycle = <<"daily">>, interval=48, start_date={2011,6,1}}, {2011,6,1})),
+    %% odd step (large)
+    ?assertEqual({2011,3,27}, next_rule_date(#rule{cycle = <<"daily">>, interval=85, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,3,2}, next_rule_date(#rule{cycle = <<"daily">>, interval=85, start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,8,25}, next_rule_date(#rule{cycle = <<"daily">>, interval=85, start_date={2011,6,1}}, {2011,6,1})),
+    %% current date on (interval)
+    ?assertEqual({2011,1,9}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,1,5}}, {2011,1,5})),
+    %% current date after (interval)
+    ?assertEqual({2011,1,9}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,1,5}}, {2011,1,6})),
+    %% shift start date
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,2,1}}, {2011,2,3})),
+    ?assertEqual({2011,2,6}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={2011,2,2}}, {2011,2,3})),
+    %% long span
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,4,12}, next_rule_date(#rule{cycle = <<"daily">>, interval=4, start_date={1983,4,11}}, {2011,4,11})).
+
+
+weekly_recurrence_test() ->
+    %% basic increment
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,6}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,8}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %%  increment over month boundary
+    ?assertEqual({2011,2,7}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,2,1}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,25})),
+    ?assertEqual({2011,2,2}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,26})),
+    ?assertEqual({2011,2,3}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,27})),
+    ?assertEqual({2011,2,4}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,28})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,29})),
+    ?assertEqual({2011,2,6}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,30})),
+    %%  increment over year boundary
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>], start_date={2010,1,1}}, {2010,12,27})),
+    ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"tuesday">>], start_date={2010,1,1}}, {2010,12,28})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"wensday">>], start_date={2010,1,1}}, {2010,12,29})),
+    ?assertEqual({2011,1,6}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"thursday">>], start_date={2010,1,1}}, {2010,12,30})),
+    ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"friday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,1}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"saturday">>], start_date={2010,1,1}}, {2010,12,25})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"sunday">>], start_date={2010,1,1}}, {2010,12,26})),
+    %%  leap year (into)
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,28})),
+    %%  leap year (over)
+    ?assertEqual({2008,3,1}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,28})),
+    ?assertEqual({2008,3,7}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,29})),
+    %% current date on (simple)
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,3})),
+    ?assertEqual({2011,1,11}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,4})),
+    ?assertEqual({2011,1,12}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,5})),
+    ?assertEqual({2011,1,13}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,6})),
+    ?assertEqual({2011,1,14}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,7})),
+    ?assertEqual({2011,1,8}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,9}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,2})),
+    %% shift start date (no impact)
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>], start_date={2008,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>], start_date={2009,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>], start_date={2010,1,2}}, {2011,1,1})),
+    %% multiple DOWs
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>,<<"tuesday">>,<<"wensday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>,<<"tuesday">>,<<"wensday">>,<<"thursday">>,<<"friday">>,<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"tuesday">>,<<"wensday">>,<<"thursday">>,<<"friday">>,<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"wensday">>,<<"thursday">>,<<"friday">>,<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,6}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"thursday">>,<<"friday">>,<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"friday">>,<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %% last DOW of an active week
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, wdays=[<<"monday">>,<<"tuesday">>,<<"wensday">>,<<"thursday">>,<<"friday">>], start_date={2011,1,1}}, {2011,1,7})),
+    %% even step (small)
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,11}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,12}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,13}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,14}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    %%                and google calendar agrees (thunderbird and outlook be damned!)
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,16}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,2})),
+    %% odd step (small)
+    ?assertEqual({2011,1,17}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,18}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,19}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,21}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,22}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,23}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,2})),
+    %% even step (large)
+    ?assertEqual({2011,6,13}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,6,14}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,6,15}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,6,16}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,6,17}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,6,18}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,6,19}, next_rule_date(#rule{cycle = <<"weekly">>, interval=24, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,2})),
+    %% odd step (large)
+    ?assertEqual({2011,9,12}, next_rule_date(#rule{cycle = <<"weekly">>, interval=37, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,9,13}, next_rule_date(#rule{cycle = <<"weekly">>, interval=37, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,9,14}, next_rule_date(#rule{cycle = <<"weekly">>, interval=37, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,9,15}, next_rule_date(#rule{cycle = <<"weekly">>, interval=37, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,9,16}, next_rule_date(#rule{cycle = <<"weekly">>, interval=37, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,9,17}, next_rule_date(#rule{cycle = <<"weekly">>, interval=37, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %%     SIDE NOTE: No event engines seem to agree on this case, so I am doing what makes sense to me
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=36, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,9,11}, next_rule_date(#rule{cycle = <<"weekly">>, interval=36, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,2})),
+    %% multiple DOWs with step (currently on start)
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,2})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,3})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,4})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,5})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,6})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,7})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,8})),
+    %% multiple DOWs with step (start in past)
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,9})),
+    ?assertEqual({2011,1,12}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,10})),
+    ?assertEqual({2011,1,12}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,11})),
+    ?assertEqual({2011,1,14}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,12})),
+    ?assertEqual({2011,1,14}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,13})),
+    ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,14})),
+    ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,15})),
+    ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,16})),
+    %% multiple DOWs over month boundary
+    ?assertEqual({2011,2,7}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2011,1,1}}, {2011,1,28})),
+    %% multiple DOWs over year boundary
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=2, wdays=[<<"monday">>, <<"wensday">>, <<"friday">>], start_date={2010,1,1}}, {2010,12,31})),
+    %% current date on (interval)
+    ?assertEqual({2011,1,17}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,3})),
+    ?assertEqual({2011,1,18}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,4})),
+    ?assertEqual({2011,1,19}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,5})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,6})),
+    ?assertEqual({2011,1,21}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,7})),
+    ?assertEqual({2011,1,22}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,23}, next_rule_date(#rule{cycle = <<"weekly">>, interval=3, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,2})),
+    %% shift start date
+    ?assertEqual({2011,1,31}, next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"monday">>], start_date={2004,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,18}, next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"tuesday">>], start_date={2005,2,8}}, {2011,1,1})),
+    ?assertEqual({2011,2,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"wensday">>], start_date={2006,3,15}}, {2011,1,1})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"thursday">>], start_date={2007,4,22}}, {2011,1,1})),
+    ?assertEqual({2011,2,4}, next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"friday">>], start_date={2008,5,29}}, {2011,1,1})),
+    ?assertEqual({2011,1,22}, next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"saturday">>], start_date={2009,6,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"sunday">>], start_date={2010,7,8}}, {2011,1,1})),
+    %% long span
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"weekly">>, interval=4, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,5,2}, next_rule_date(#rule{cycle = <<"weekly">>, interval=4, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,4,11})).
+
+monthly_every_recurrence_test() ->
+    %% basic increment (also crosses month boundary)
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,3})),
+    ?assertEqual({2011,1,17}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,10})),
+    ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,17})),
+    ?assertEqual({2011,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,24})),
+    ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,11}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,4})),
+    ?assertEqual({2011,1,18}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,11})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,18})),
+    ?assertEqual({2011,2,1}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,25})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,12}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,5})),
+    ?assertEqual({2011,1,19}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,12})),
+    ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,19})),
+    ?assertEqual({2011,2,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,26})),
+    ?assertEqual({2011,1,6}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,13}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,6})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,13})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,20})),
+    ?assertEqual({2011,2,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,27})),
+    ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,14}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,7})),
+    ?assertEqual({2011,1,21}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,14})),
+    ?assertEqual({2011,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,21})),
+    ?assertEqual({2011,2,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,28})),
+    ?assertEqual({2011,1,8}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,8})),
+    ?assertEqual({2011,1,22}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,15})),
+    ?assertEqual({2011,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,22})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,29})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,9}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,2})),
+    ?assertEqual({2011,1,16}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,9})),
+    ?assertEqual({2011,1,23}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,16})),
+    ?assertEqual({2011,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,23})),
+    ?assertEqual({2011,2,6}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,30})),
+    %% increment over year boundary
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2010,1,1}}, {2010,12,27})),
+    ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2010,1,1}}, {2010,12,28})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2010,1,1}}, {2010,12,29})),
+    ?assertEqual({2011,1,6}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2010,1,1}}, {2010,12,30})),
+    ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,1}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2010,1,1}}, {2010,12,25})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2010,1,1}}, {2010,12,26})),
+    %% leap year (into)
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,28})),
+    %% leap year (over)
+    ?assertEqual({2008,3,1}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,28})),
+    %% current date on (simple)
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,3})),
+    ?assertEqual({2011,1,18}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,10}}, {2011,1,11})),
+    ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,17}}, {2011,1,19})),
+    %% current date after (simple)
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,5})),
+    ?assertEqual({2011,1,18}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,10}}, {2011,1,14})),
+    ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,17}}, {2011,1,21})),
+    %% shift start date (no impact)
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2004,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,11}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2005,2,1}}, {2011,1,4})),
+    ?assertEqual({2011,1,19}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2006,3,1}}, {2011,1,12})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2007,4,1}}, {2011,1,20})),
+    ?assertEqual({2011,2,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2008,5,1}}, {2011,1,28})),
+    ?assertEqual({2011,1,8}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2009,6,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,9}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2010,7,1}}, {2011,1,2})),
+    %% even step (small)
+    ?assertEqual({2011,3,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,1}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,25})),
+    ?assertEqual({2011,3,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,26})),
+    ?assertEqual({2011,3,3}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,27})),
+    ?assertEqual({2011,3,4}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,28})),
+    ?assertEqual({2011,3,5}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,29})),
+    ?assertEqual({2011,3,6}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,30})),
+    %% odd step (small)
+    ?assertEqual({2011,9,5}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,6,1}}, {2011,6,27})),
+    ?assertEqual({2011,9,6}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,6,1}}, {2011,6,28})),
+    ?assertEqual({2011,9,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,6,1}}, {2011,6,29})),
+    ?assertEqual({2011,9,1}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2011,6,1}}, {2011,6,30})),
+    ?assertEqual({2011,9,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2011,6,1}}, {2011,6,24})),
+    ?assertEqual({2011,9,3}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2011,6,1}}, {2011,6,25})),
+    ?assertEqual({2011,9,4}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2011,6,1}}, {2011,6,26})),
+    %% current date on (interval)
+    ?assertEqual({2011,5,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=4, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,5,3}, next_rule_date(#rule{cycle = <<"monthly">>, interval=4, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,10}}, {2011,1,25})),
+    ?assertEqual({2011,5,4}, next_rule_date(#rule{cycle = <<"monthly">>, interval=4, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,17}}, {2011,1,26})),
+    %% current date after (interval)
+    ?assertEqual({2011,5,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=4, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,2,2})),
+    ?assertEqual({2011,5,3}, next_rule_date(#rule{cycle = <<"monthly">>, interval=4, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2011,1,10}}, {2011,3,14})),
+    ?assertEqual({2011,5,4}, next_rule_date(#rule{cycle = <<"monthly">>, interval=4, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2011,1,17}}, {2011,3,21})),
+    %% shift start date
+    ?assertEqual({2011,2,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={2004,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,5,3}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"tuesday">>], start_date={2005,2,1}}, {2011,1,1})),
+    ?assertEqual({2011,3,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"wensday">>], start_date={2006,3,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,6}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"thursday">>], start_date={2007,4,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,1}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"friday">>], start_date={2008,5,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"saturday">>], start_date={2009,6,1}}, {2011,1,1})),
+    ?assertEqual({2011,5,1}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"sunday">>], start_date={2010,7,1}}, {2011,1,1})),
+    %% long span
+    ?assertEqual({2011,3,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"every">>, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,1,1})).
+
+monthly_last_recurrence_test() ->
+    %% basic increment
+    ?assertEqual({2011,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %% basic increment (mid year)
+    ?assertEqual({2011,6,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,6,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,6,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,6,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,6,24}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,6,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,6,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,6,1}}, {2011,6,1})),
+    %% increment over month boundary
+    ?assertEqual({2011,2,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,2,22}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,2,23}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,2,24}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,2,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,2,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,2,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% increment over year boundary
+    ?assertEqual({2011,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2010,1,1}}, {2010,12,31})),
+    ?assertEqual({2011,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2010,1,1}}, {2010,12,31})),
+    %% leap year
+    ?assertEqual({2008,2,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,23}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,24}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2008,1,1}}, {2008,2,1})),
+    %% shift start date (no impact)
+    ?assertEqual({2011,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2004,12,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2005,10,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2006,11,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2007,9,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2008,8,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2009,7,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2010,6,1}}, {2011,1,1})),
+    %% even step (small)
+    ?assertEqual({2011,3,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,31}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% odd step (small)
+    ?assertEqual({2011,4,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,24}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% even step (large)
+    ?assertEqual({2014,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=36, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% odd step (large)
+    ?assertEqual({2014,2,24}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,2,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,2,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,2,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,2,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,2,22}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2014,2,23}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% shift start date
+    ?assertEqual({2011,3,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={2010,12,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={2010,10,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,23}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={2010,11,1}}, {2011,1,1})),
+    ?assertEqual({2011,3,31}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={2010,9,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={2010,8,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={2010,7,1}}, {2011,1,1})),
+    ?assertEqual({2011,3,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={2010,6,1}}, {2011,1,1})),
+    %% long span
+    ?assertEqual({2011,3,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"last">>, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"last">>, wdays=[<<"tuesday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"last">>, wdays=[<<"wensday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,31}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"last">>, wdays=[<<"thursday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"last">>, wdays=[<<"friday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"last">>, wdays=[<<"saturday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"last">>, wdays=[<<"sunday">>], start_date={1983,4,11}}, {2011,1,1})).
+
+monthly_every_ordinal_recurrence_test() ->
+    %% basic first
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,6}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,7}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %% basic second
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,11}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,12}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,13}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,14}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,8}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,9}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %% basic third
+    ?assertEqual({2011,1,17}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,18}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,19}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,21}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,16}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %% basic fourth
+    ?assertEqual({2011,1,24}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,22}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,23}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %% basic fifth
+    ?assertEqual({2011,1,31}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,1}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,30}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,1})),
+    %% on occurance
+    ?assertEqual({2011,2,7}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,3})),
+    ?assertEqual({2011,2,14}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,10})),
+    ?assertEqual({2011,2,21}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,17})),
+    ?assertEqual({2011,2,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,24})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% leap year first
+    ?assertEqual({2008,2,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"tuesday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,6}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"wensday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,7}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"thursday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,3,7}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"sunday">>], start_date={2008,1,1}}, {2008,2,1})),
+    %% leap year second
+    ?assertEqual({2008,2,11}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"monday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,12}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"tuesday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,13}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"wensday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,14}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"thursday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,8}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,9}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,10}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"sunday">>], start_date={2008,1,1}}, {2008,2,1})),
+    %% leap year third
+    ?assertEqual({2008,2,18}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"monday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,19}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"tuesday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,20}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"wensday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,21}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"thursday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,15}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,16}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,17}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"sunday">>], start_date={2008,1,1}}, {2008,2,1})),
+    %% leap year fourth
+    ?assertEqual({2008,2,25}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"monday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,26}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"tuesday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"wensday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,28}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"thursday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,22}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,23}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,24}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"sunday">>], start_date={2008,1,1}}, {2008,2,1})),
+    %% leap year fifth
+    ?assertEqual({2008,3,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"monday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,3,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"tuesday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,3,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"wensday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,3,6}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"thursday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"friday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,3,1}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"saturday">>], start_date={2008,1,1}}, {2008,2,1})),
+    ?assertEqual({2008,3,2}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"sunday">>], start_date={2008,1,1}}, {2008,2,1})),
+    %% shift start date (no impact)
+    ?assertEqual({2011,1,3}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2004,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,11}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"tuesday">>], start_date={2005,2,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,19}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"third">>, wdays=[<<"wensday">>], start_date={2006,3,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fourth">>, wdays=[<<"thursday">>], start_date={2007,4,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,4}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"fifth">>, wdays=[<<"friday">>], start_date={2008,5,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"first">>, wdays=[<<"saturday">>], start_date={2009,6,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,9}, next_rule_date(#rule{cycle = <<"monthly">>, ordinal = <<"second">>, wdays=[<<"sunday">>], start_date={2010,7,1}}, {2011,1,1})),
+    %% even step first (small)
+    ?assertEqual({2011,3,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,1}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"first">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"first">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,3}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"first">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,4}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"first">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,5}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"first">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,6}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"first">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% even step second (small)
+    ?assertEqual({2011,3,14}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"second">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,8}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"second">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,9}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"second">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,10}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"second">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,11}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"second">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,12}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"second">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,13}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"second">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% even step third (small)
+    ?assertEqual({2011,3,21}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"third">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,15}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"third">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,16}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"third">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,17}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"third">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,18}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"third">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,19}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"third">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,20}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"third">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% even step fourth (small)
+    ?assertEqual({2011,3,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,22}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,23}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,24}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% even step fifth (small)
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,3,31}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% odd step first (small)
+    ?assertEqual({2011,4,4}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,5}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"first">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,6}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"first">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"first">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,1}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"first">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"first">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,3}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"first">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% odd step second (small)
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"second">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,12}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"second">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,13}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"second">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,14}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"second">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,8}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"second">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,9}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"second">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,10}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"second">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% odd step third (small)
+    ?assertEqual({2011,4,18}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"third">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,19}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"third">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,20}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"third">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,21}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"third">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,15}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"third">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,16}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"third">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,17}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"third">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% odd step fourth (small)
+    ?assertEqual({2011,4,25}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fourth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fourth">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fourth">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fourth">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,22}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fourth">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,23}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fourth">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,24}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fourth">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% odd step fifth (small)
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fifth">>, wdays=[<<"monday">>], start_date={2011,1,1}}, {2011,1,31})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fifth">>, wdays=[<<"tuesday">>], start_date={2011,1,1}}, {2011,1,31})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fifth">>, wdays=[<<"wensday">>], start_date={2011,1,1}}, {2011,1,31})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fifth">>, wdays=[<<"thursday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fifth">>, wdays=[<<"friday">>], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,4,30}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fifth">>, wdays=[<<"saturday">>], start_date={2011,1,1}}, {2011,1,31})),
+%%!!    ?assertEqual({2011, ?, ??}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, ordinal = <<"fifth">>, wdays=[<<"sunday">>], start_date={2011,1,1}}, {2011,1,31})),
+    %% shift start date
+    ?assertEqual({2011,2,7}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"first">>, wdays=[<<"monday">>], start_date={2004,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,5,10}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"second">>, wdays=[<<"tuesday">>], start_date={2005,2,1}}, {2011,1,1})),
+    ?assertEqual({2011,3,16}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"third">>, wdays=[<<"wensday">>], start_date={2006,3,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,27}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"fourth">>, wdays=[<<"thursday">>], start_date={2007,4,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"fifth">>, wdays=[<<"friday">>], start_date={2008,5,1}}, {2011,1,1})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"first">>, wdays=[<<"saturday">>], start_date={2009,6,1}}, {2011,1,1})),
+    ?assertEqual({2011,5,8}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"second">>, wdays=[<<"sunday">>], start_date={2010,7,1}}, {2011,1,1})),
+    %% long span
+    ?assertEqual({2011,3,28}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"fourth">>, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,29}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"fifth">>, wdays=[<<"tuesday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"first">>, wdays=[<<"wensday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,10}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"second">>, wdays=[<<"thursday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,18}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"third">>, wdays=[<<"friday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,26}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"fourth">>, wdays=[<<"saturday">>], start_date={1983,4,11}}, {2011,1,1})),
+    ?assertEqual({2011,3,6}, next_rule_date(#rule{cycle = <<"monthly">>, interval=5, ordinal = <<"first">>, wdays=[<<"sunday">>], start_date={1983,4,11}}, {2011,1,1})).
+
+monthly_date_recurrence_test() ->
+    %% basic increment
+    lists:foreach(fun(D) ->
+                          ?assertEqual({2011,1,D + 1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[D + 1], start_date={2011,1,1}}, {2011,1,D}))
+                  end, lists:seq(1, 30)),
+    lists:foreach(fun(D) ->
+                          ?assertEqual({2011,6,D + 1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[D + 1], start_date={2011,6,1}}, {2011,6,D}))
+                  end, lists:seq(1, 29)),
+    %% same day, before
+    ?assertEqual({2011,3,25}, next_rule_date(#rule{cycle = <<"monthly">>, days=[25], start_date={2011,1,1}}, {2011,3,24})),
+    %% increment over month boundary
+    ?assertEqual({2011,2,1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[1], start_date={2011,1,1}}, {2011,1,31})),
+    ?assertEqual({2011,7,1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[1], start_date={2011,6,1}}, {2011,6,30})),
+    %% increment over year boundary
+    ?assertEqual({2011,1,1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[1], start_date={2010,1,1}}, {2010,12,31})),
+    %% leap year (into)
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"monthly">>, days=[29], start_date={2008,1,1}}, {2008,2,28})),
+    %% leap year (over)
+    ?assertEqual({2008,3,1}, next_rule_date(#rule{cycle = <<"monthly">>, days=[1], start_date={2008,1,1}}, {2008,2,29})),
+    %% shift start date (no impact)
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, days=[2], start_date={2008,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, days=[2], start_date={2009,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, days=[2], start_date={2010,1,1}}, {2011,1,1})),
+    %% multiple dates
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,2})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,3})),
+    ?assertEqual({2011,1,5}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,4})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,5})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,6})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,7})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,8})),
+    ?assertEqual({2011,1,10}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,9})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,10})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,11})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,12})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,13})),
+    ?assertEqual({2011,1,15}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,14})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,15})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,16})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,17})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,18})),
+    ?assertEqual({2011,1,20}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,19})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,20})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,21})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,22})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,23})),
+    ?assertEqual({2011,1,25}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,24})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,25})),
+    ?assertEqual({2011,2,5}, next_rule_date(#rule{cycle = <<"monthly">>, days=[5,10,15,20,25], start_date={2011,1,1}}, {2011,1,26})),
+    %% even step (small)
+    ?assertEqual({2011,3,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, days=[2], start_date={2011,1,1}}, {2011,1,2})),
+    ?assertEqual({2011,5,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, days=[2], start_date={2011,1,1}}, {2011,3,2})),
+    ?assertEqual({2011,7,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, days=[2], start_date={2011,1,1}}, {2011,5,2})),
+    ?assertEqual({2011,6,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, days=[2], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,8,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=2, days=[2], start_date={2011,6,1}}, {2011,6,2})),
+    %% odd step (small)
+    ?assertEqual({2011,4,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2011,1,1}}, {2011,1,2})),
+    ?assertEqual({2011,7,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2011,1,1}}, {2011,4,2})),
+    ?assertEqual({2011,10,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2011,1,1}}, {2011,7,2})),
+    ?assertEqual({2011,6,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2011,9,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2011,6,1}}, {2011,6,2})),
+    %% even step (large)
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=24, days=[2], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2013,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=24, days=[2], start_date={2011,1,1}}, {2011,1,2})),
+    ?assertEqual({2011,6,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=24, days=[2], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2013,6,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=24, days=[2], start_date={2011,6,1}}, {2011,6,2})),
+    %% odd step (large)
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, days=[2], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2014,2,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, days=[2], start_date={2011,1,1}}, {2011,4,2})),
+    ?assertEqual({2011,6,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, days=[2], start_date={2011,6,1}}, {2011,6,1})),
+    ?assertEqual({2014,7,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=37, days=[2], start_date={2011,6,1}}, {2011,6,2})),
+    %% shift start date
+    ?assertEqual({2011,2,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2007,5,1}}, {2011,1,1})),
+    ?assertEqual({2011,3,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2008,6,2}}, {2011,1,1})),
+    ?assertEqual({2011,1,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2009,7,3}}, {2011,1,1})),
+    ?assertEqual({2011,2,2}, next_rule_date(#rule{cycle = <<"monthly">>, interval=3, days=[2], start_date={2010,8,4}}, {2011,1,1})),
+    %% long span
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"monthly">>, interval=4, days=[11], start_date={1983,4,11}}, {2011,1,1})).
+
+yearly_date_recurrence_test() ->
+    %% basic increment
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2011,1,1}}, {2011,2,1})),
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2011,1,1}}, {2011,3,1})),
+    %% same month, before
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2011,1,1}}, {2011,4,1})),
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2011,1,1}}, {2011,4,10})),
+    %% increment over year boundary
+    ?assertEqual({2012,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2011,1,1}}, {2011,4,11})),
+    %% leap year (into)
+    ?assertEqual({2008,2,29}, next_rule_date(#rule{cycle = <<"yearly">>, month=2, days=[29], start_date={2008,1,1}}, {2008,2,28})),
+    %% leap year (over)
+    ?assertEqual({2009,2,29}, next_rule_date(#rule{cycle = <<"yearly">>, month=2, days=[29], start_date={2008,1,1}}, {2008,2,29})),
+    %% shift start date (no impact)
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2008,10,11}}, {2011,1,1})),
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2009,11,11}}, {2011,1,1})),
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, month=4, days=[11], start_date={2010,12,11}}, {2011,1,1})),
+    %% even step (small)
+    ?assertEqual({2013,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, month=4, days=[11], start_date={2011,1,1}}, {2011,4,11})),
+    ?assertEqual({2015,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, month=4, days=[11], start_date={2011,1,1}}, {2014,4,11})),
+    %% odd step (small)
+    ?assertEqual({2014,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=3, month=4, days=[11], start_date={2011,1,1}}, {2011,4,11})),
+    ?assertEqual({2017,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=3, month=4, days=[11], start_date={2011,1,1}}, {2016,4,11})),
+    %% shift start dates
+    ?assertEqual({2013,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={2008,10,11}}, {2011,1,1})),
+    ?assertEqual({2014,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={2009,11,11}}, {2011,1,1})),
+    ?assertEqual({2015,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={2010,12,11}}, {2011,1,1})),
+    %% long span
+    ?assertEqual({2013,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=5, month=4, days=[11], start_date={1983,4,11}}, {2011,1,1})).
+
+yearly_every_recurrence_test() ->
+    ok.
+
+yearly_last_recurrence_test() ->
+    ok.
+
+yearly_every_ordinal_recurrence_test() ->
+    %% basic first
+    ?assertEqual({2011,4,4}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,5}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,6}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,7}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,1}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,2}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,3}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    %% basic second
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,12}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,13}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,14}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,8}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,9}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,10}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    %% basic third
+    ?assertEqual({2011,4,18}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,19}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,20}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,21}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,15}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,16}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,17}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    %% basic fourth
+    ?assertEqual({2011,4,25}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,26}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,27}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,28}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,22}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,23}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,24}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    %% basic fifth
+    ?assertEqual({2012,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+%%!!    ?assertEqual({2013,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+%%!!    ?assertEqual({2014,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+%%!!    ?assertEqual({2015,4,28}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,29}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+%%!!    ?assertEqual({2017,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,1,1})),
+    %% same month, before
+    ?assertEqual({2011,4,4}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,4,1})),
+    ?assertEqual({2011,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,4,10})),
+    %% current date on (simple)
+    ?assertEqual({2011,4,4}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,3,11})),
+    ?assertEqual({2012,4,2}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,4,11})),
+    %% current date after (simple)
+    ?assertEqual({2012,4,2}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,6,21})),
+    %% shift start dates (no impact)
+    ?assertEqual({2011,4,4}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2004,1,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,12}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"tuesday">>], month=4, start_date={2005,2,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,20}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"third">>, wdays=[<<"wensday">>], month=4, start_date={2006,3,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,28}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fourth">>, wdays=[<<"thursday">>], month=4, start_date={2007,4,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,29}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"fifth">>, wdays=[<<"friday">>], month=4, start_date={2008,5,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,2}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"first">>, wdays=[<<"saturday">>], month=4, start_date={2009,6,1}}, {2011,1,1})),
+    ?assertEqual({2011,4,10}, next_rule_date(#rule{cycle = <<"yearly">>, ordinal = <<"second">>, wdays=[<<"sunday">>], month=4, start_date={2010,7,1}}, {2011,1,1})),
+    %% even step first (small)
+    ?assertEqual({2013,4,1}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"first">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,2}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"first">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,3}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"first">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,4}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"first">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,5}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"first">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,6}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"first">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,7}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"first">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    %% even step second (small)
+    ?assertEqual({2013,4,8}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"second">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,9}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"second">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,10}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"second">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,11}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"second">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,12}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"second">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,13}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"second">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,14}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"second">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    %% even step third (small)
+    ?assertEqual({2013,4,15}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"third">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,16}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"third">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,17}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"third">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,18}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"third">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,19}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"third">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,20}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"third">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,21}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"third">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    %% even step fourth (small)
+    ?assertEqual({2013,4,22}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,23}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,24}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,25}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,26}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,27}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,28}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fourth">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    %% basic fifth (small)
+    ?assertEqual({2013,4,29}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"monday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ?assertEqual({2013,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"tuesday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+%%!!    ?assertEqual({2014,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"wensday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+%%!!    ?assertEqual({2015,4,28}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"thursday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+%%!!    ?assertEqual({2013,4,29}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"friday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+%%!!    ?assertEqual({2013,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"saturday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+%%!!    ?assertEqual({2017,4,30}, next_rule_date(#rule{cycle = <<"yearly">>, interval=2, ordinal = <<"fifth">>, wdays=[<<"sunday">>], month=4, start_date={2011,1,1}}, {2011,5,1})),
+    ok.
+
+-endif.

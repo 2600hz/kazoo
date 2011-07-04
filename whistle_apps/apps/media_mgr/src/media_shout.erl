@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4, stop/1]).
+-export([start_link/5, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,8 +47,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Media, To, Type, Port) ->
-    gen_server:start_link(?MODULE, [Media, To, Type, Port], []).
+start_link(Media, To, Type, Port, CallID) ->
+    gen_server:start_link(?MODULE, [Media, To, Type, Port, CallID], []).
 
 stop(Srv) ->
     gen_server:cast(Srv, stop).
@@ -68,10 +68,10 @@ stop(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Media, To, Type, Port]) ->
+init([Media, To, Type, Port, CallID]) ->
+    put(callid, CallID),
     {MediaName, Db, Doc, Attachment} = Media,
-    logger:debug("~p.~p(~p): Starting up SHOUT server on port ~p for Media ~s of type ~p"
-		 ,[?MODULE, ?LINE, self(), Port, MediaName, Type]),
+    ?LOG_START("starting a ~s stream server to provide ~s", [Type, MediaName]),
     case inet:getstat(Port) of
 	{ok, _} ->
 	    process_flag(trap_exit, true),
@@ -85,7 +85,7 @@ init([Media, To, Type, Port]) ->
 	       ,stream_type=Type
 	      }, 0};
 	{error, Posix} ->
-	    logger:err("~p.~p(~p): Server failed to start; lsock ~p error: ~p", [Port, Posix]),
+	    ?LOG("stream server failed to start; lsock ~p error ~p", [Port, Posix]),
 	    {stop, Posix}
     end.
 
@@ -142,10 +142,11 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 			false -> ?CHUNKSIZE
 		    end,
 
+	CallID = get(callid),
 	{Resp, Header, CT, StreamUrl} = case filename:extension(Attachment) of
 					    <<".mp3">> ->
 						Self = self(),
-						spawn(fun() -> start_shout_acceptor(Self, LSocket) end),
+						spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
 						Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
 
 						{
@@ -156,7 +157,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 						};
 					    <<".wav">> ->
 						Self = self(),
-						spawn(fun() -> start_stream_acceptor(Self, LSocket) end),
+						spawn(fun() -> put(callid, CallID), start_stream_acceptor(Self, LSocket) end),
 						{
 						  get_http_response_headers(?CONTENT_TYPE_WAV, Size)
 						  ,undefined
@@ -165,37 +166,39 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 						}
 					end,
 
-	logger:debug(info, "~p.~p(~p): Sending ShoutURL ~s to ~s", [?MODULE, ?LINE, self(), StreamUrl, SendTo]),
-
 	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
 	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 				,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
-	MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
+
+	MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
 
 	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
     catch A:B ->
-	    logger:err(info, "~p.~p(~p): Exception Thrown: ~p:~p~p", [?MODULE, ?LINE, self(), A, B, erlang:get_stacktrace()]),
+	    ?LOG("exception thrown ~p:~p", [A, B]),
+	    ?LOG("stacktrace ~p", [erlang:get_stacktrace()]),
 	    {stop, normal, S}
     end;
 
 handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=MediaName, db=Db, doc=Doc, attachment=Attachment}=S) ->
+    CallID = get(callid),
     spawn(fun() ->
                   Media = {MediaName, Db, Doc, Attachment},
-		  {ok, ShoutSrv} = media_shout_sup:start_shout(Media, ListenerQ, continuous, media_srv:next_port()),
+		  {ok, ShoutSrv} = media_shout_sup:start_shout(Media, ListenerQ, continuous, media_srv:next_port(), CallID),
 		  media_srv:add_stream(MediaName, ShoutSrv)
 	  end),
     {noreply, S};
 
-handle_info({add_listener, ListenerQ}, #state{media_name=#media_file{stream_url=StreamUrl}=MediaName, send_to=SendTo}=S) ->
+handle_info({add_listener, ListenerQ}, #state{media_file=#media_file{stream_url=StreamUrl}, media_name=MediaName, send_to=SendTo}=S) ->
     send_media_resp(MediaName, StreamUrl, ListenerQ),
     {noreply, S#state{send_to=[ListenerQ | SendTo]}};
 
-handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile, media_name=MediaName}=S) ->
-    MediaLoop = spawn_link(fun() -> play_media(MediaFile) end),
+handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile}=S) ->
+    CallID = get(callid),
+    ?LOG("starting a new process to satisfy send media request"),
+    MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
     gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
-    logger:debug("~p.~p(~p): MediaLoop for ~s started(~p)", [?MODULE, ?LINE, self(), MediaName, MediaLoop]),
     {noreply, S#state{media_loop = MediaLoop}};
 handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
     gen_tcp:controlling_process(Socket, MediaLoop),
@@ -203,18 +206,16 @@ handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
     {noreply, S};
 
 handle_info({'EXIT', From, ok}, #state{media_loop=MediaLoop}=S) when From =:= MediaLoop ->
-    logger:debug("~p.~p(~p): MediaLoop ~p went down ok, stopping", [?MODULE, ?LINE, self(), From]),
     {stop, normal, S};
 handle_info({'EXIT', From, normal}, #state{media_loop=MediaLoop}=S) when From =:= MediaLoop ->
-    logger:debug("~p.~p(~p): MediaLoop ~p went down normally, stopping", [?MODULE, ?LINE, self(), From]),
     {stop, normal, S};
 handle_info({'EXIT', From, Reason}, #state{media_loop=MediaLoop, media_file=MediaFile}=S) when From =:= MediaLoop ->
-    MediaLoop1 = spawn_link(fun() -> play_media(MediaFile) end),
-    logger:debug("~p.~p(~p): MediaLoop(~p) went down (~p), restarting as ~p", [?MODULE, ?LINE, self(), From, Reason, MediaLoop1]),
+    CallID = get(callid),
+    MediaLoop1 = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
+    ?LOG("media stream process ~p unexpectly died ~s, restarting", [From, Reason]),
     {noreply, S#state{media_loop = MediaLoop1}};
 
 handle_info(_Info, State) ->
-    logger:debug("~p.~p(~p): Unhandled message: ~p", [?MODULE, ?LINE, self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -229,10 +230,12 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{lsocket=undefined}) ->
-    logger:debug("~p.~p(~p): Terminating: ~p", [?MODULE, ?LINE, self(), _Reason]);
+    ?LOG_END("stream server ~s termination", [_Reason]);
 terminate(_Reason, #state{lsocket=LSock}) ->
-    logger:debug("~p.~p(~p): Terminating: ~p", [?MODULE, ?LINE, self(), _Reason]),
-    gen_tcp:close(LSock).
+    {ok, PortNo} = inet:port(LSock),
+    ?LOG("closing port ~b", [PortNo]),
+    gen_tcp:close(LSock),
+    ?LOG_END("stream server ~s termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -254,21 +257,23 @@ send_media_resp(MediaName, Url, To) ->
 	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
 
     {ok, JSON} = whistle_api:media_resp(Prop),
-    logger:debug("~p.~p(~p): Sending media location data to ~p: ~s", [?MODULE, ?LINE, self(), To, JSON]),
+    ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
     amqp_util:targeted_publish(To, JSON).
 
 start_shout_acceptor(Parent, LSock) ->
-    logger:debug("~p.~p(~p): SHOUT waiting on a connection", [?MODULE, ?LINE, self()]),
+    {ok, PortNo} = inet:port(LSock),
+    ?LOG_START("shout acceptor listening on ~b for client connections", [PortNo]),
     case gen_tcp:accept(LSock) of
 	{ok, S} ->
-	    spawn(fun() -> start_shout_acceptor(Parent, LSock) end),
-	    logger:debug("~p.~p(~p): SHOUT connection started ~p", [?MODULE, ?LINE, self(), S]),
+	    CallID = get(callid),
+	    spawn(fun() -> put(callid, CallID), start_shout_acceptor(Parent, LSock) end),
+            
 	    case wh_shout:get_request(S) of
 		void ->
-		    logger:debug("~p.~p(~p): SHOUT socket(~p) closed", [?MODULE, ?LINE, self(), S]),
+                    ?LOG_END("recieved invalid client request"),
 		    gen_tcp:close(S);
-		Request ->
-		    logger:debug("~p.~p(~p): SHOUT socket(~p) has client connection, requested ~s", [?MODULE, ?LINE, self(), S, Request]),
+	        _ ->
+                    ?LOG_END("new client connected"),
 		    gen_tcp:controlling_process(S, Parent),
 		    Parent ! {send_media, S}
 	    end;
@@ -276,11 +281,15 @@ start_shout_acceptor(Parent, LSock) ->
     end.
 
 start_stream_acceptor(Parent, LSock) ->
-    logger:debug("~p.~p(~p): STREAM waiting on a connection", [?MODULE, ?LINE, self()]),
+    {ok, PortNo} = inet:port(LSock),
+    ?LOG_START("raw acceptor listening on ~b for client connections", [PortNo]),
     case gen_tcp:accept(LSock) of
 	{ok, S} ->
-	    spawn(fun() -> start_stream_acceptor(Parent, LSock) end),
-	    logger:debug("~p.~p(~p): STREAM connection started ~p", [?MODULE, ?LINE, self(), S]),
+	    CallID = get(callid),
+	    spawn(fun() -> put(callid, CallID), start_stream_acceptor(Parent, LSock) end),
+
+            {ok, {Address, Port}} = inet:peername(S),
+            ?LOG_END("client connected from ~s:~b", [inet_parse:ntoa(Address), Port]),
 
 	    _Req = wh_shout:get_request(S),
 
@@ -293,38 +302,38 @@ play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile) ->
     play_media(MediaFile, [], 0, byte_size(Contents), <<>>, Header).
 
 play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile, [], _, Stop, _, _) ->
+    ?LOG_START("started new process to stream media to client"),
     receive
 	{add_socket, S} ->
-	    logger:debug("~p.~p(~p): MediaLoop: Adding first socket ~p", [?MODULE, ?LINE, self(), S]),
+	    ?LOG("started stream"),
 	    gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
-	    logger:debug("~p.~p(~p): MediaLoop: Shutdown received", [?MODULE, ?LINE, self()])
+	    ?LOG_END("stream shutdown")
     after ?MAX_WAIT_FOR_LISTENERS ->
-	    logger:debug("~p.~p(~p): MediaLoop: Stood up waiting for connection, outta here", [?MODULE, ?LINE, self()])
+	    ?LOG_END("stream stood up waiting for connection, outta here")
     end;
 play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile
 	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
-	    logger:debug("~p.~p(~p): MediaLoop: Adding another socket ~p", [?MODULE, ?LINE, self(), S]),
 	    gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
-	    logger:debug("~p.~p(~p): MediaLoop: Shutdown received", [?MODULE, ?LINE, self()])
+	    ?LOG_END("stream shutdown")
     after 0 ->
-	    logger:debug("~p.~p(~p): MediaLoop: Playing at offset ~p", [?MODULE, ?LINE, self(), Offset]),
+	    ?LOG("playing at offset ~p", [Offset]),
 	    case wh_shout:play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
 		{Socks1, Header1, Offset1, SoFar1} ->
-		    logger:debug("~p.~p(~p): MediaLoop: Continue playing at offset ~p", [?MODULE, ?LINE, self(), Offset1]),
+		    ?LOG("continue playing at offset ~p", [Offset1]),
 		    play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);
 		{done, Socks1} ->
 		    case Continuous of
 			true ->
-			    logger:debug("~p.~p(~p): MediaLoop: Looping to stream again", [?MODULE, ?LINE, self()]),
+			    ?LOG("end of stream, looping"),
 			    play_media(MediaFile, Socks1, 0, Stop, <<>>, ShoutHeader);
 			false ->
-			    logger:debug("~p.~p(~p): MediaLoop: Finished streaming", [?MODULE, ?LINE, self()]),
+			    ?LOG_END("end of stream"),
 			    [gen_tcp:close(S) || S <- Socks1]
 		    end
 	    end

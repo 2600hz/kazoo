@@ -45,7 +45,7 @@ start_handlers(Node, Options) when is_atom(Node) ->
       end
       || H <- [<<"_auth">>, <<"_route">>, <<"_node">>] ].
 
--spec(stop_handlers/1 :: (Node :: atom()) -> no_return()).
+-spec(stop_handlers/1 :: (Node :: atom()) -> list(ok | tuple(error, running | not_found | simple_one_for_one))).
 stop_handlers(Node) when is_atom(Node) ->
     NodeB = whistle_util:to_binary(Node),
     [ begin

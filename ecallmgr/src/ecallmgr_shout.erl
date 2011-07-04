@@ -13,7 +13,7 @@
 -export([start_link/2, get_recv_url/1, get_srv_url/1, get_path/1]).
 
 %% gen_server callbacks
--export([init_recv/2, init_srv/2]).
+-export([init_recv/2, init_srv/2, init_auth/3]).
 
 -include("ecallmgr.hrl").
 -include_lib("whistle/include/wh_media.hrl").
@@ -79,16 +79,19 @@ init_recv(Parent, Path) ->
 
     {ok, Port} = inet:port(LSock),
     SrvRef = make_ref(),
-    Self = self(),
 
-    spawn_link(fun() ->
-		       {ok, S} = gen_tcp:accept(LSock),
-		       gen_tcp:controlling_process(S, self()),
-		       auth_loop(S, [], Self, SrvRef)
-	       end),
+    spawn_link(?MODULE, init_auth, [LSock, self(), SrvRef]),
+
     main_loop(Path, Port, SrvRef, LSock).
 
+-spec(init_auth/3 :: (LSock :: port(), Parent :: pid(), Ref :: reference()) -> no_return()).
+init_auth(LSock, Parent, Ref) ->
+    {ok, S} = gen_tcp:accept(LSock),
+    ok = gen_tcp:controlling_process(S, self()),
+    auth_loop(S, [], Parent, Ref).
+
 %% start a socket to stream a local file for "playback"
+-spec(init_srv/2 :: (Parent :: pid(), Path :: binary()) -> no_return()).
 init_srv(Parent, Path) ->
     {ok, LSock} = gen_tcp:listen(0, ?PORT_OPTIONS),
     proc_lib:init_ack(Parent, {ok, self()}),
@@ -99,7 +102,7 @@ init_srv(Parent, Path) ->
 
     spawn_link(fun() ->
 		       {ok, S} = gen_tcp:accept(LSock),
-		       gen_tcp:controlling_process(S, self()),
+		       ok = gen_tcp:controlling_process(S, self()),
 		       send_loop(S, Path, Self, SrvRef)
 	       end),
     main_loop(Path, Port, SrvRef, LSock).
@@ -129,15 +132,14 @@ main_loop(Path, Port, SrvRef, LSock) ->
 	    Sender ! {Ref, Url},
 	    main_loop(Path, Port, SrvRef, LSock);
 	{error, SrvRef} ->
-	    logger:format_log(info, "SHOUT main loop for path: ~p: error, going down~n", [Path]),
+	    ?LOG("SHOUT main loop for path: ~p: error, going down", [Path]),
 	    gen_tcp:close(LSock),
 	    throw(shout_writer_error);
 	{done, SrvRef} ->
-	    logger:format_log(info, "SHOUT main loop for path: ~p: done, going down~n", [Path]),
-	    gen_tcp:close(LSock),
-	    ok;
+	    ?LOG("SHOUT main loop for path: ~p: done, going down", [Path]),
+	    gen_tcp:close(LSock);
 	_Other ->
-	    logger:format_log(info, "SHOUT main loop for path: ~p: Other ~p~n", [Path, _Other]),
+	    ?LOG("SHOUT main loop for path: ~p: Unhandled message: ~p", [Path, _Other]),
 	    main_loop(Path, Port, SrvRef, LSock)
     end.
 
@@ -172,23 +174,21 @@ writer_loop(Sock, Data, Parent, SrvRef) ->
 	    writer_loop(Sock, [Bin | Data], Parent, SrvRef);
 	{tcp_closed, Sock} ->
 	    Path = ecallmgr_shout:get_path(Parent),
-	    logger:format_log(info, "ECALL_SHOUT_WRITER: data recv for ~p~n", [Path]),
 	    ok = file:write_file(Path, lists:reverse(Data)),
-	    logger:format_log(info, "ECALL_SHOUT_WRITER: data written for ~p~n", [Path]),
-	    gen_tcp:close(Sock),
-	    Parent ! {done, SrvRef};
+	    Parent ! {done, SrvRef},
+	    gen_tcp:close(Sock);
 	_Other ->
-	    logger:format_log(info, "ECALL_SHOUT_WRITER: unknown receive ~p~n", [_Other]),
+	    ?LOG("ECALL_SHOUT_WRITER: unknown receive ~p", [_Other]),
 	    writer_loop(Sock, Data, Parent, SrvRef)
     after ?TIMEOUT ->
 	    exit(timeout)
     end.
 
--spec(send_loop/4 :: (Sock :: port(), Path :: binary(), Parent :: pid(), SrvRef :: reference()) -> no_return()).
+-spec(send_loop/4 :: (Sock :: port(), Path :: binary(), Parent :: pid(), SrvRef :: reference()) -> ok).
 send_loop(Sock, Path, Parent, SrvRef) ->
     case wh_shout:get_request(Sock) of
 	void ->
-	    logger:format_log(info, "SHOUT.accept(~p): Socket ~p closed~n", [self(), Sock]),
+	    ?LOG("ECALL_SHOUT_SEND: Socket ~p closed", [Sock]),
 	    gen_tcp:close(Sock);
 	_Request ->
 	    {ok, Contents} = file:read_file(Path),
@@ -210,9 +210,9 @@ send_loop(Sock, Path, Parent, SrvRef) ->
 	    MediaFile = #media_file{stream_url=StreamUrl, contents=Contents, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
 				,shout_header={0,Header}},
 	    play_media(MediaFile, Sock),
-	    gen_tcp:close(Sock),
 
-	    Parent ! {done, SrvRef}
+	    Parent ! {done, SrvRef},
+	    gen_tcp:close(Sock)
     end.
 
 play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile, Sock) ->
@@ -227,12 +227,13 @@ play_media(MediaFile, Sock, Offset, Stop, SoFar, Header) ->
     end.
 
 %% check the headers
+-spec(is_auth_req_headers/2 :: (Headers :: binary(), Path :: binary()) -> boolean()).
 is_auth_req_headers(Headers, Path) ->
     Base = filename:basename(Path),
-
     lists:all(fun(H) -> is_auth_req_header(H, Base) end, binary:split(Headers, <<"\r\n">>, [global])).
 
 %% check a header
+-spec(is_auth_req_header/2 :: (Header :: binary(), Base :: binary()) -> boolean()).
 is_auth_req_header(<<"SOURCE /", Rest/binary>>, Base) ->
     Base1 = <<"fs_", Base/binary>>,
     binary:longest_common_prefix([Rest, Base1]) =:= byte_size(Base1);
@@ -247,5 +248,5 @@ is_auth_req_header(<<>>, _) ->
 is_auth_req_header(<<"ice-", _/binary>>, _) ->
     true;
 is_auth_req_header(H, _) ->
-    logger:format_log(error, "IS_AUTH_REQ_H: unknown h: ~p~n", [H]),
+    ?LOG("ECALL_SHOUT: IS_AUTH_REQ_H unknown header: ~s", [H]),
     false.

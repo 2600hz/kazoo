@@ -71,12 +71,25 @@ fSetupUser() {
 
     echo "# git config ${CLEVEL}user.email $EMAIL"
     git config ${CLEVEL}user.email "$EMAIL"
-
 }
 
 fEnableRerere() {
     echo "# git config ${CLEVEL}rerere.enabled 1"
     git config ${CLEVEL}rerere.enabled 1
+}
+
+fEnableColor() {
+    echo "# git config ${CLEVEL}color.ui true"
+    git config ${CLEVEL}color.ui true
+}
+
+fLineEndingPrefs() {
+  echo "# git config ${CLEVEL}core.autocrlf input"
+  git config ${CLEVEL}core.autocrlf input
+  # git config --global core.autocrlf true ## Windows
+
+  echo "# git config ${CLEVEL}core.safecrlf true"
+  git config ${CLEVEL}core.safecrlf true
 }
 
 cd `dirname $0`
@@ -90,6 +103,8 @@ fGetEmail
 
 fSetupUser
 fEnableRerere
+fEnableColor
+fLineEndingPrefs
 
 echo "Git configuration complete."
 

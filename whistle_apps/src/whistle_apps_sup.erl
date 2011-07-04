@@ -4,7 +4,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_app/1, stop_app/1]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -19,14 +19,6 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec(start_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
-start_app(App) ->
-    supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
-
-stop_app(App) ->
-    _ = supervisor:terminate_child(?MODULE, App),
-    supervisor:delete_child(?MODULE, App).
-
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
@@ -34,7 +26,8 @@ stop_app(App) ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   , [
-	      ?CHILD(whapps_controller, worker)
+	      ?CHILD(whapps_sup, supervisor)
+	      ,?CHILD(whapps_controller, worker)
 	      ,?CHILD(wh_cache, worker)
 	      ,?CHILD(wh_timer, worker)
 	     ]

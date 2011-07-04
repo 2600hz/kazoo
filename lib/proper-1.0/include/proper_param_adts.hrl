@@ -17,10 +17,9 @@
 %%% You should have received a copy of the GNU General Public License
 %%% along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
-%%% @copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
-%%%                      Eirini Arvaniti <eirinibob@gmail.com>
-%%%                  and Kostis Sagonas <kostis@cs.ntua.gr>
-%%% @author Manolis Papadakis <manopapad@gmail.com>
+%%% @copyright 2010-2011 Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas
+%%% @version {@version}
+%%% @author Manolis Papadakis
 %%% @doc Complementary user header file: This file can be included in any
 %%%      module, to allow for the use of parametric versions of some common
 %%%      opaque datatypes from STDLIB. PropEr will recognize these types as

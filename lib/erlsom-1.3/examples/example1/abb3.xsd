@@ -1,0 +1,11 @@
+<schema xmlns="http://www.w3.org/2001/XMLSchema">
+    <element name="root">
+        <complexType>
+            <sequence>
+                <element name="a" type="integer"/>
+                <element name="b" type="string"/>
+                <element name="b" type="string"/>
+            </sequence>
+        </complexType>
+    </element>
+</schema>

@@ -1,36 +1,30 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
 %%% Created : 23 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% Updated : 19 Jun 2011 by Edouard Swiac <edouard@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(cdr_listener).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_amqp_host/1, set_couch_host/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
--define(CDR_DB, "cdrs").
+-include("cdr.hrl").
 
--include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
--include_lib("whistle/include/whistle_amqp.hrl").
-
--import(logger, [format_log/3]).
-
+-define(SERVER, ?MODULE).
 -record(state, {
-	  couch_host = "" :: string()
-	  ,amqp_host = "" :: string()
-	  ,q = <<>> :: binary()
-	 }).
-
+            self :: pid()
+	   ,amqp_q = <<>> :: binary()
+         }).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -44,12 +38,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-set_amqp_host(H) ->
-    gen_server:cast(?MODULE, {set_amqp_host, H}).
-
-set_couch_host(H) ->
-    gen_server:cast(?MODULE, {set_couch_host, H}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -67,7 +55,8 @@ set_couch_host(H) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    ?LOG_SYS("starting CDR listener"),
+    {ok, #state{self=self()}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -97,28 +86,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({set_amqp_host, H}, #state{q = <<>>}=State) ->
-    try
-	Q = start_amqp(H),
-	{noreply, State#state{amqp_host=H, q=Q}}
-    catch
-	_:_ -> {noreply, State}
-    end;
-handle_cast({set_amqp_host, H}, #state{amqp_host=OldH, q=OldQ}=State) ->
-    try
-	Q = start_amqp(H),
-	amqp_util:delete_queue(OldH, OldQ),
-	{noreply, State#state{amqp_host=H, q=Q}}
-    catch
-	_:_ -> {noreply, State}
-    end;
-handle_cast({set_couch_host, H}, #state{}=State) ->
-    try
-	ok = couch_mgr:set_host(H),
-	{noreply, State#state{couch_host=H}}
-    catch
-	_:_ -> {noreply, State}
-    end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -132,9 +99,47 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
-    spawn(fun() -> handle_cdr(Props#'P_basic'.content_type, Payload) end),
+handle_info(timeout, #state{amqp_q = <<>>}=State) ->
+    try
+        {ok, Q} = start_amqp(),
+        create_anonymous_cdr_db(?ANONYMOUS_CDR_DB),
+        {noreply, State#state{amqp_q=Q}}
+    catch
+        _:_ ->
+            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+	    {noreply, State}
+    end;
+
+handle_info({amqp_reconnect, T}, State) ->
+    try
+	{ok, NewQ} = start_amqp(),
+	{noreply, State#state{amqp_q=NewQ}}
+    catch
+	_:_ ->
+            case T * 2 of
+                Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {noreply, State};
+                Timeout ->
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {noreply, State}
+            end
+    end;
+
+handle_info({amqp_host_down, _}, State) ->
+    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {noreply, State#state{amqp_q = <<>>}};
+
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
+    %% spawn(fun() -> handle_cdr(Props#'P_basic'.content_type, Payload) end),
+    JObj = mochijson2:decode(Payload),
+    _ = handle_cdr(JObj, State),
     {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -149,8 +154,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{q=Q}) ->
-    amqp_util:delete_queue(Q),
+terminate(_Reason, _State) ->
+    ?LOG_SYS("CDR listener ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -167,15 +172,44 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/1 :: (Host :: string()) -> binary()).
-start_amqp(Host) ->
-    amqp_util:callevt_exchange(Host),
-    Q = amqp_util:new_callevt_queue(Host, <<>>),
-    amqp_util:bind_q_to_callevt(Host, Q, <<"*">>, cdr), % bind to all CDR events
-    amqp_util:basic_consume(Host, Q),
-    Q.
+start_amqp() ->
+    try
+        _ = amqp_util:callevt_exchange(),
+        Q = amqp_util:new_callmgr_queue(<<>>),
+        amqp_util:bind_q_to_callevt(Q, <<"*">>, cdr), % bind to all CDR events
+        amqp_util:basic_consume(Q),
+        ?LOG_SYS("connected to AMQP"),
+        {ok, Q}
+    catch
+        _:R ->
+            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
+            {error, amqp_error}
+    end.
 
-handle_cdr(<<"application/json">>, JSON) ->
-    {struct, Prop} = mochijson2:decode(binary_to_list(JSON)),
-    format_log(info, "CDR_L(~p): Recv ~s~n", [self(), JSON]),
-    {ok, _} = couch_mgr:save_doc(?CDR_DB, Prop).
+handle_cdr(JObj, _State) ->
+    _AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
+
+    Db = case couch_mgr:db_exists(_AccountDb) of
+        true -> _AccountDb;
+        false -> ?ANONYMOUS_CDR_DB
+    end,
+
+    {Mega,Sec,_} = erlang:now(),
+    Now =  Mega*1000000+Sec,
+
+    NormDoc = wh_json:normalize_jobj(JObj),
+    DocType = wh_json:set_value(<<"pvt_type">>, <<"cdr">>, NormDoc),
+    DocCreated = wh_json:set_value(<<"pvt_created">>, Now, DocType),
+    DocModified = wh_json:set_value(<<"pvt_modified">>, Now, DocCreated),
+    DocVersion = wh_json:set_value(<<"pvt_version">>, 1, DocModified),
+    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, Db, DocVersion),
+
+    {ok, _} = couch_mgr:save_doc(Db, DocAccountDb),
+    ?LOG("CDR for Call-ID:~p stored", [wh_json:get_value(<<"Call-ID">>, DocAccountDb)]).
+
+create_anonymous_cdr_db(DB) ->
+    couch_mgr:db_create(DB),
+    case couch_mgr:load_doc_from_file(DB, cdr, <<"cdr.json">>) of
+	{ok, _} -> ok;
+	{error, _} -> couch_mgr:update_doc_from_file(DB, cdr, <<"cdr.json">>)
+    end.

@@ -1,6 +1,7 @@
 -include_lib("whistle/include/whistle_amqp.hrl").
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 -include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange
@@ -22,12 +23,9 @@
 -define(EXCHANGE_CALLEVT, <<"callevt">>).
 -define(TYPE_CALLEVT, <<"topic">>).
 
-%% Broadcast Exchange
-%% - Any consumer can create a queue to get any message published to the exchange
-%% - Many publishers to the exchange, one consumer per queue
--define(EXCHANGE_BROADCAST, <<"broadcast">>).
--define(TYPE_BROADCAST, <<"fanout">>).
-
+%% Resource Exchange
+%% - Request for resources are published and consumed from this queue.  Topics are used to
+%%   distinguish the types of resource
 -define(EXCHANGE_RESOURCE, <<"resource">>).
 -define(TYPE_RESOURCE, <<"fanout">>).
 
@@ -39,6 +37,13 @@
 %%   routing keys they want messages for.
 -define(EXCHANGE_CALLMGR, <<"callmgr">>).
 -define(TYPE_CALLMGR, <<"topic">>).
+
+%% Conference Exchange
+%% - applications can publish conference discovery request to the appropriate queue in this
+%%   exchange to identify the SIP url for a conference focus
+%% - conference services use this exchange to share state information
+-define(EXCHANGE_CONFERENCE, <<"conference">>).
+-define(TYPE_CONFERENCE, <<"topic">>).
 
 %% Monitor Manager Exchange
 %% - monitor manager will publish requests to this exchange using routing keys

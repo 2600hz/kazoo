@@ -1,6 +1,7 @@
+
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -12,50 +13,57 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6, wait_for_bridge/1, wait_for_unbridge/0, set/3, b_fetch/2]).
+-import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Entry point for this module, attempts to call an endpoint as defined
-%% in the Data payload.  Returns continue if fails to connect or 
+%% in the Data payload.  Returns continue if fails to connect or
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
-handle(Data, #cf_call{cf_pid=CFPid}=Call) ->    
-    {ok, Endpoint} = cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call),
-    Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),  
-    IgnoreEarlyMedia = wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint),
-    case b_bridge([Endpoint], Timeout, {undefined, undefined}, <<"single">>, IgnoreEarlyMedia, Call) of
-        {ok, _} ->
-            update_call_realm(Call),
-            _ = wait_for_unbridge(),
-            CFPid ! { stop };
-        {error, _} ->
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+    put(callid, CallId),
+    EndpointId = wh_json:get_value(<<"id">>, Data),
+    case cf_endpoint:build(EndpointId, Data, Call) of
+        {ok, Endpoints} ->
+            Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+            IgnoreEarlyMedia = lists:foldr(fun(Endpoint, Acc) ->
+                                                   whistle_util:is_true(wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint)) or Acc
+                                           end, false, Endpoints),
+            case bridge_to_endpoints(Endpoints, Timeout, IgnoreEarlyMedia, Call) of
+                {ok, complete} ->
+                    CFPid ! { stop };
+                _ ->
+                    CFPid ! { continue }
+            end;
+        {error, Reason} ->
+            ?LOG("no endpoints to bridge to, ~w", [Reason]),
             CFPid ! { continue }
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% When the bridge is successfull this is used to set the realm of 
-%% the endpoint on the a-leg.  This is necessary, for example, in 
-%% blind transfers to external numbers where the a-leg is seen
-%% as the 'orginator'. 
+%% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec(update_call_realm/1 :: (Call :: #cf_call{}) -> no_return()).
-update_call_realm(Call) ->
-    case b_fetch(true, Call) of
-        {error, _} ->
-            ok;
-        {ok, undefined} ->
-            ok;
-        {ok, Vars} ->
-            case wh_json:get_value(<<"Realm">>, Vars) of 
-                undefined -> ok;
-                <<>> -> ok;
-                Realm -> set(undefined, {struct, [{<<"Realm">>, Realm}]}, Call)
-            end
+-spec(bridge_to_endpoints/4 :: (Endpoints :: json_object(), Timeout :: binary(), IgnoreEarlyMedia :: binary(), Call :: #cf_call{})
+                               -> tuple(ok, complete) | tuple(fail, json_object()) | tuple(error, atom())).
+bridge_to_endpoints(Endpoints, Timeout, IgnoreEarlyMedia, Call) ->
+    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"single">>, IgnoreEarlyMedia, Call) of
+        {ok, _} ->
+            ?LOG("bridged to endpoint"),
+            _ = wait_for_unbridge(),
+            ?LOG("bridge completed"),
+            {ok, complete};
+        {fail, Reason}=Fail ->
+            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
+            Fail;
+        {error, R}=Error ->
+            ?LOG("failed to bridge to endpoint ~w", [R]),
+            Error
     end.

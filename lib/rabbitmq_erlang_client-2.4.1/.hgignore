@@ -1,0 +1,11 @@
+\.beam$
+^tmp/
+^dist/
+^deps/
+^erl_crash.dump$
+^doc/
+^rabbit_common\.app$
+^ebin/amqp_client\.app$
+^cover/
+^deps\.mk$
+

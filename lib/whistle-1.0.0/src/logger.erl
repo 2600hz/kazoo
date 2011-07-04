@@ -57,5 +57,9 @@ format_log(error, Format, Data) ->
     format_log(err, Format, Data);
 
 format_log(Type, Format, Data) ->
-    Str = io_lib:format(Format, Data),
-    try syslog:log(Type, binary_to_list(list_to_binary(Str))) catch A:B -> io:format("Logger error ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]), ok end.
+    try
+	Str = io_lib:format(Format, Data),
+	syslog:log(Type, binary_to_list(list_to_binary(Str)))
+    catch
+	A:B -> io:format("Logger error ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]), ok
+    end.

@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+
+<!-- Revision 2002-08-16 -->
+
+  <!-- Types for search - result elements, directory categories -->
+
+
+    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+                xmlns:typens="urn:GoogleSearch"
+                xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+                targetNamespace="urn:GoogleSearch">
+
+      <xsd:element name="GoogleSearchResult" type="typens:GoogleSearchResult"/>
+            
+      <xsd:complexType name="GoogleSearchResult">
+        <xsd:all>
+          <xsd:element name="documentFiltering"           type="xsd:boolean"/>
+          <xsd:element name="searchComments"              type="xsd:string"/>
+          <xsd:element name="estimatedTotalResultsCount"  type="xsd:int"/>
+          <xsd:element name="estimateIsExact"             type="xsd:boolean"/>
+          <xsd:element name="resultElements"              type="typens:ResultElementArray"/>
+          <xsd:element name="searchQuery"                 type="xsd:string"/>
+          <xsd:element name="startIndex"                  type="xsd:int"/>
+          <xsd:element name="endIndex"                    type="xsd:int"/>
+          <xsd:element name="searchTips"                  type="xsd:string"/>
+          <xsd:element name="directoryCategories"         type="typens:DirectoryCategoryArray"/>
+          <xsd:element name="searchTime"                  type="xsd:double"/>
+        </xsd:all>
+      </xsd:complexType>
+
+      <xsd:complexType name="ResultElement">
+        <xsd:all>
+          <xsd:element name="summary" type="xsd:string"/>
+          <xsd:element name="URL" type="xsd:string"/>
+          <xsd:element name="snippet" type="xsd:string"/>
+          <xsd:element name="title" type="xsd:string"/>
+          <xsd:element name="cachedSize" type="xsd:string"/>
+          <xsd:element name="relatedInformationPresent" type="xsd:boolean"/>
+          <xsd:element name="hostName" type="xsd:string"/>
+          <xsd:element name="directoryCategory" type="typens:DirectoryCategory"/>
+          <xsd:element name="directoryTitle" type="xsd:string"/>
+        </xsd:all>
+      </xsd:complexType>
+  
+      <xsd:complexType name="ResultElementArray">
+        <xsd:sequence>
+          <xsd:element name="item" type="typens:ResultElement" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+      <xsd:complexType name="DirectoryCategoryArray">
+        <xsd:sequence>
+          <xsd:element name="item" type="typens:DirectoryCategory" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+      <xsd:complexType name="DirectoryCategory">
+        <xsd:all>
+          <xsd:element name="fullViewableName" type="xsd:string"/>
+          <xsd:element name="specialEncoding" type="xsd:string"/>
+        </xsd:all>
+      </xsd:complexType>
+
+      <xsd:element name="doGoogleSearch" type="typens:doGoogleSearch"/>
+
+      <xsd:complexType name="doGoogleSearch">
+        <xsd:sequence>
+          <xsd:element name="key"            type="xsd:string"/>
+          <xsd:element name="q"              type="xsd:string"/>
+          <xsd:element name="start"          type="xsd:int"/>
+          <xsd:element name="maxResults"     type="xsd:int"/>
+          <xsd:element name="filter"         type="xsd:boolean"/>
+          <xsd:element name="restrict"       type="xsd:string"/>
+          <xsd:element name="safeSearch"     type="xsd:boolean"/>
+          <xsd:element name="lr"             type="xsd:string"/>
+          <xsd:element name="ie"             type="xsd:string"/>
+          <xsd:element name="oe"             type="xsd:string"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+    </xsd:schema>

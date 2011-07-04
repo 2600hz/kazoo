@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Directory lookups from FS
 %%% @end
@@ -17,7 +17,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
 -define(VSN, <<"0.5.0">>).
 
@@ -113,39 +113,39 @@ handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! Type,
     receive
 	ok ->
-	    logger:format_log(info, "FS_AUTH(~p): Bound ~p to ~p~n", [self(), Type, Node]),
+	    ?LOG_SYS("bound to directory request on ~s", [Node]),
 	    {noreply, State};
 	{error, Reason} ->
-	    logger:format_log(info, "FS_AUTH(~p): Failed to bind: ~p~n", [self(), Reason]),
+	    ?LOG_SYS("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
 	    {stop, Reason, State}
     after ?FS_TIMEOUT ->
-	    logger:format_log(info, "FS_AUTH(~p): Failed to bind: TIMEOUT~n", [self()]),
+	    ?LOG_SYS("timed out binding to directory requests on ~s", [Node]),
 	    {stop, timeout, State}
     end;
 
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
+    ?LOG_START(ID, "received fetch request for domain parameters (user creds) from ~s", [Node]),
     case props:get_value(<<"Event-Name">>, Data) of
 	<<"REQUEST_PARAMS">> ->
 	    {ok, LookupPid} = ecallmgr_fs_auth_sup:start_req(Node, ID, Data),
 	    erlang:monitor(process, LookupPid),
 
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-	    logger:format_log(info, "FETCH_USER(~p): fetch directory: Id: ~p Lookup ~p (Number ~p)~n", [self(), ID, LookupPid, LookupsReq]),
 	    {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
 	_Other ->
-	    logger:format_log(info, "FETCH_USER(~p): Ignoring event ~p~n~p~n", [self(), _Other, Data]),
 	    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+	    ?LOG_END("ignoring request for ~s", [Node, _Other]),
 	    {noreply, State}
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    logger:format_log(info, "FETCH_USER(~p): fetch unknown: Se: ~p So: ~p, K: ~p V: ~p ID: ~p~n~p~n"
-	       ,[self(), _Section, _Something, _Key, _Value, ID, _Data]),
+    ?LOG_START(ID, "received fetch request for ~s ~s from ~s", [ _Section, _Something, Node]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+    ?LOG_END("ignoring request from for ~s", [Node, props:get_value(<<"Event-Name">>, _Data)]),
     {noreply, State};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    logger:format_log(error, "FETCH_USER(~p): Node ~p exited", [self(), Node]),
+    ?LOG("node ~w down", [Node]),
     freeswitch:close(Node),
     {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State};
@@ -155,10 +155,10 @@ handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
 handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
     case ecallmgr_fs_handler:is_node_up(Node) of
 	true ->
-	    logger:format_log(info, "FS_ROUTE(~p): Node ~p recovered, restarting~n", [self(), Node]),
+	    ?LOG("node ~p recovered, rebinding", [Node]),
 	    {noreply, State, 0};
 	false ->
-	    logger:format_log(error, "FS_ROUTE(~p): Node ~p down, retrying in ~p ms~n", [self(), Node, Timeout]),
+	    ?LOG("node ~p still down, retrying in ~b ms", [Node, Timeout]),
 	    {ok, _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
 	    {noreply, State}
     end;
@@ -171,7 +171,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 			  end
 		  end, LUs),
     freeswitch:close(Node),
-    logger:format_log(error, "FETCH_USER(~p): shutting down~n", [self()]),
+    ?LOG("asked to shut down for node ~w", [Node]),
     {stop, normal, State};
 
 handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
@@ -183,15 +183,13 @@ handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
     {noreply, State};
 
 handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
-    logger:format_log(info, "FS_AUTH(~p): Lookup ~p down~n", [self(), LU]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
 
-handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
-    logger:format_log(info, "FS_AUTH(~p): Lookup ~p exited~n", [self(), LU]),
+handle_info({'EXIT', LU, _Reason}, #state{node=Node, lookups=LUs}=State) ->
+    ?LOG_SYS("lookup ~w for node ~s exited unexpectedly", [LU, Node]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "FS_AUTH(~p): Other recv: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -224,21 +222,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 lookup_user(Node, ID, Data) ->
     Pid = spawn_link(fun() ->
+                             put(callid, ID),
+
 			     %% build req for rabbit
 			     AuthReq = [{<<"Msg-ID">>, ID}
 					,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
 					,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
 					,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
+                                        ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
 					,{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
 					,{<<"Auth-Domain">>, props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Domain">>, Data))}
 					| whistle_api:default_headers(<<>>, <<"directory">>, <<"auth_req">>, <<"ecallmgr.auth">>, ?VSN)],
-			     {ok, {struct, AuthResp}} = ecallmgr_amqp_pool:auth_req(AuthReq),
 
-			     true = whistle_api:auth_resp_v(AuthResp),
+			     ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [props:get_value(<<"Auth-User">>, AuthReq)
+                                                                                      ,props:get_value(<<"Auth-Domain">>, AuthReq)
+                                                                                      ,props:get_value(<<"Method">>, AuthReq)
+                                                                                     ]),
+                             try
+                                 {ok, {struct, AuthResp}} = ecallmgr_amqp_pool:auth_req(AuthReq),
 
-			     {ok, Xml} = ecallmgr_fs_xml:auth_resp_xml([{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
-									,{<<"Auth-Domain">>, props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Domain">>, Data))}
-									| AuthResp]),
-			     freeswitch:fetch_reply(Node, ID, Xml)
+                                 true = whistle_api:auth_resp_v(AuthResp),
+                                 ?LOG(ID, "received auth_resp", []),
+                                 {ok, Xml} = ecallmgr_fs_xml:auth_resp_xml([{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
+                                                                            ,{<<"Auth-Domain">>, props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Domain">>, Data))}
+                                                                            | AuthResp]),
+                                 ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
+                                 freeswitch:fetch_reply(Node, ID, Xml)
+                             catch
+                                 _:_ ->
+                                     ?LOG("auth request lookup failed")
+                             end
 		     end),
     {ok, Pid}.

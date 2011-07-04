@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_shout/4]).
+-export([start_link/0, start_shout/5]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -32,8 +32,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_shout(Media, To, Type, Port) ->
-    supervisor:start_child(?SERVER, [Media, To, Type, Port]).
+start_shout(Media, To, Type, Port, CallID) ->
+    supervisor:start_child(?SERVER, [Media, To, Type, Port, CallID]).
 
 %%%===================================================================
 %%% Supervisor callbacks

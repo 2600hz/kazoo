@@ -1,6 +1,6 @@
 %%%============================================================================
 %%% @author Vladimir Darmin <vova@2600hz.org>
-%%% @copyright (C) 2011, Vladimir Darmin
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Callflow executioner, executes the head node and waits for further
 %%% instructions
@@ -28,35 +28,43 @@
 start_link(Call, Flow) ->
     proc_lib:start_link(?MODULE, init, [self(), Call, Flow]).
 
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% initialize the new call flow execution process
+%% @end
+%%-----------------------------------------------------------------------------
 -spec(init/3 :: (Parent :: pid(), Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
-init(Parent, #cf_call{dest_number=DestNum, call_id=CallId}=Call, Flow) ->
+init(Parent, #cf_call{authorizing_id=AuthId}=Call, Flow) ->
     process_flag(trap_exit, true),
+    _ = call_info(Call),
     AmqpQ = init_amqp(Call),
-    cache_account(Call),
     proc_lib:init_ack(Parent, {ok, self()}),
-    logger:format_log(info, "CF_EXECUTIONER(~p): Executing callflow for ~p (~p)", [self(), DestNum, CallId]),
-    next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow).
+    _ = next(Call#cf_call{cf_pid=self()
+                          ,amqp_q=AmqpQ
+                          ,owner_id=cf_attributes:owner_id(AuthId, Call)}, Flow).
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
 %% Executes the top most call flow node on a given call,
 %% then waits for the modules reply, unexpected death, or timeout.
 %% @end
 %%--------------------------------------------------------------------
--spec(next/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> ok).
+-spec(next/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
 next(Call, Flow) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
-    try list_to_existing_atom(binary_to_list(Module)) of
-        CF_Module ->
-            logger:format_log(info, "CF EXECUTIONER (~p): Executing ~p...", [self(), Module]),
-            wait(Call, Flow, spawn_link(CF_Module, handle, [Data, Call]))
+    try
+        CF_Module = whistle_util:to_atom(Module, true),
+        Pid = spawn_link(CF_Module, handle, [Data, Call]),
+        ?LOG("moving to action ~s", [Module]),
+        _ = wait(Call#cf_call{last_action=CF_Module}, Flow, Pid)
     catch
         _:_ ->
-            logger:format_log(error, "CF EXECUTIONER (~p): Module ~p doesn't exist!", [self(), Module]),
+            ?LOG("unknown action ~s, skipping", [Module]),
             self() ! {continue, <<"_">>},
-            wait(Call, Flow, undefined)
+            _ = wait(Call, Flow, undefined)
     end.
 
 %%--------------------------------------------------------------------
@@ -66,24 +74,23 @@ next(Call, Flow) ->
 %% unexpectly die, or timeout and advance the call flow accordingly
 %% @end
 %%--------------------------------------------------------------------
--spec(wait/3 :: (Call :: #cf_call{}, Flow :: json_object(), Pid :: pid() | undefined) -> ok).
+-spec(wait/3 :: (Call :: #cf_call{}, Flow :: json_object(), Pid :: pid() | undefined) -> no_return()).
 wait(Call, Flow, Pid) ->
    receive
        {'EXIT', Pid, Reason} when Reason =/= normal ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Module died unexpectedly (~p)", [self(), Reason]),
+           ?LOG("action ~w died unexpectedly, ~p", [Pid, Reason]),
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue} ->
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue, Key} ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Advancing to the next node...", [self()]),
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
-                   logger:format_log(error, "CF EXECUTIONER (~p): Unexpected end of callflow...", [self()]),
+                   ?LOG_END("child node doesn't exist"),
                    cf_call_command:hangup(Call);
                ?EMPTY_JSON_OBJECT ->
-                   logger:format_log(info, "CF EXECUTIONER (~p): Child node doesn't exist, hanging up...", [self()]),
+                   ?LOG_END("unexpected end of callflow"),
                    cf_call_command:hangup(Call);
                NewFlow ->
                    next(Call, NewFlow)
@@ -112,14 +119,18 @@ wait(Call, Flow, Pid) ->
        {branch, NewFlow} ->
            next(Call, NewFlow);
        {stop} ->
-           logger:format_log(info, "CF EXECUTIONER (~p): Callflow execution has been stopped", [self()]);
+           ?LOG_END("execution has been stopped");
        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
            Msg = mochijson2:decode(Payload),
            is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
            wait(Call, Flow, Pid);
        _Msg ->
-           logger:format_log(error, "CF_EXECUTIONER (~p): Roque message recieved: ~p", [self(), _Msg]),
+           %% dont let the mailbox grow unbounded if
+           %%   this process hangs around...
            wait(Call, Flow, Pid)
+   after
+       360000 ->
+           ?LOG_SYS("no call events received after 3600 seconds, shuting down")
    end.
 
 %%--------------------------------------------------------------------
@@ -136,22 +147,21 @@ init_amqp(#cf_call{call_id=CallId}) ->
     amqp_util:basic_consume(AmqpQ),
     AmqpQ.
 
-%%--------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load the account into the cache for use by the callflow modules
-%% (primarily for default values)
+%% load the callid into to the process dictionary then log information about
+%% the call that is about to be processed
 %% @end
-%%--------------------------------------------------------------------
--spec(cache_account/1 :: (Call :: #cf_call{}) -> no_return()).
-cache_account(#cf_call{account_db=Db}) ->
-    spawn(fun() ->
-                  case wh_cache:fetch({account, Db}) =/= {error, not_found}
-                      orelse couch_mgr:get_results(Db, <<"account/listing_by_id">>, [{<<"include_docs">>, true}]) of
-                      {ok, [JObj]} -> wh_cache:store({account, Db}, wh_json:get_value(<<"doc">>, JObj));
-                      true -> ok;
-                      {error, _} -> ok
-                  end
-          end).
-
-    
+%%-----------------------------------------------------------------------------
+-spec(call_info/1 :: (Call :: #cf_call{}) -> no_return()).
+call_info(#cf_call{flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
+               ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
+    put(callid, CallId),
+    ?LOG_START("executing callflow ~s", [FlowId]),
+    ?LOG("request ~s", [Request]),
+    ?LOG("to ~s", [To]),
+    ?LOG("from ~s", [From]),
+    ?LOG("CID ~s ~s", [CIDNumber, CIDName]),
+    ?LOG("inception ~s", [Inception]),
+    ?LOG("authorizing id ~s", [AuthorizingId]).

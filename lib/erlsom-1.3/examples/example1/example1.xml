@@ -1,0 +1,81 @@
+<testConfig>
+<path>.</path>
+
+<case>
+  <name>abb1</name>
+  <result>OK</result>
+  <xsd>abb1.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb2</name>
+  <result>OK</result>
+  <xsd>abb2.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb3</name>
+  <result>OK</result>
+  <xsd>abb3.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb4</name>
+  <result>OK</result>
+  <xsd>abb4.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb5</name>
+  <result>OK</result>
+  <xsd>abb5.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb6</name>
+  <result>OK</result>
+  <xsd>abb6.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb7</name>
+  <result>OK</result>
+  <xsd>abb7.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb8</name>
+  <result>OK</result>
+  <xsd>abb8.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb9</name>
+  <result>OK</result>
+  <xsd>abb9.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb10</name>
+  <result>OK</result>
+  <xsd>abb10.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+<case>
+  <name>abb11</name>
+  <result>OK</result>
+  <xsd>abb11.xsd</xsd>
+  <xml>valid.xml</xml>
+</case>
+
+</testConfig>

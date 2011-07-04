@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Maintain a pool of ts_responders
 %%% @end
@@ -63,7 +63,7 @@ init([]) ->
     Shutdown = 2000,
     Type = worker,
 
-    AChild = {ts_responder, {ts_responder, start_link, []},
+    AChild = {ts_responder, {ts_responder, start_responder, []},
 	      Restart, Shutdown, Type, [ts_responder]},
 
     {ok, {SupFlags, [AChild]}}.

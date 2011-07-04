@@ -11,9 +11,14 @@
 -export([get_db_name/1, get_db_name/2]).
 -export([update_all_accounts/1]).
 -export([replicate_from_accounts/2, replicate_from_account/3]).
+-export([revise_whapp_views_in_accounts/1]).
+-export([get_all_accounts/0, get_all_accounts/1]).
 -export([get_account_by_realm/1]).
+-export([get_event_type/1, put_callid/1]).
+-export([get_call_termination_reason/1]).
 
 -include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(REPLICATE_ENCODING, encoded).
 -define(AGG_DB, <<"accounts">>).
@@ -59,7 +64,9 @@ get_db_name(AccountId, encoded) when is_binary(AccountId) ->
 get_db_name(<<"account%2F", AccountId/binary>>, raw) ->
     binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
 get_db_name(<<"account/", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"/">>, <<>>, [global]).
+    binary:replace(AccountId, <<"/">>, <<>>, [global]);
+get_db_name(AccountId, raw) ->
+    AccountId.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -71,14 +78,22 @@ get_db_name(<<"account/", AccountId/binary>>, raw) ->
 %%--------------------------------------------------------------------
 -spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
 update_all_accounts(File) ->
-    {ok, Databases} = couch_mgr:db_info(),
-    lists:foreach(fun(ClientDb) ->
-                          case couch_mgr:update_doc_from_file(ClientDb, crossbar, File) of
-                              {error, _} ->
-                                  couch_mgr:load_doc_from_file(ClientDb, crossbar, File);
-                              {ok, _} -> ok
-                          end
-                  end, [get_db_name(Db, encoded) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
+    lists:foreach(fun(AccountDb) ->
+                          couch_mgr:revise_doc_from_file(AccountDb, crossbar, File)
+                  end, get_all_accounts(?REPLICATE_ENCODING)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will import every .json file found in the given
+%% application priv/couchdb/views/ folder into every account
+%% @end
+%%--------------------------------------------------------------------
+-spec(revise_whapp_views_in_accounts/1 :: (App :: atom()) -> no_return()).
+revise_whapp_views_in_accounts(App) ->
+    lists:foreach(fun(AccountDb) ->
+                          couch_mgr:revise_views_from_folder(AccountDb, App)
+                  end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -89,35 +104,53 @@ update_all_accounts(File) ->
 %%--------------------------------------------------------------------
 -spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
-    {ok, Databases} = couch_mgr:db_info(),
     BaseReplicate = [{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                     ],
     couch_mgr:db_create(TargetDb),
-    lists:foreach(fun(SourceDb) when TargetDb =/= SourceDb ->
-                          logger:format_log(info, "Replicate ~p to ~p using filter ~p", [SourceDb, TargetDb, FilterDoc]),
-                          R = couch_mgr:db_replicate([{<<"source">>, SourceDb} | BaseReplicate]),
-			  logger:format_log(info, "DB REPLICATE: ~p~n", [R]);
+    lists:foreach(fun(AccountDb) when TargetDb =/= AccountDb ->
+                          R = couch_mgr:db_replicate([{<<"source">>, AccountDb} | BaseReplicate]),
+                          ?LOG_SYS("replicate ~s to ~s using filter ~s returned ~s", [AccountDb, TargetDb, FilterDoc, element(1, R)]);
 		     (_) -> ok
-                  end, [get_db_name(Db, ?REPLICATE_ENCODING) || Db <- Databases, fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)]).
+                  end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function will replicate the results of the filter from the 
+%% This function will replicate the results of the filter from the
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec(replicate_from_account/3 :: (SourceDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
-replicate_from_account(SourceDb, TargetDb, FilterDoc) when SourceDb =/= TargetDb ->
-    BaseReplicate = [{<<"source">>, get_db_name(SourceDb, ?REPLICATE_ENCODING)}
+-spec(replicate_from_account/3 :: (AccountDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
+replicate_from_account(AccountDb, TargetDb, FilterDoc) when AccountDb =/= TargetDb ->
+    BaseReplicate = [{<<"source">>, get_db_name(AccountDb, ?REPLICATE_ENCODING)}
                      ,{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                     ],
     couch_mgr:db_create(TargetDb),
-    logger:format_log(info, "Replicate ~p to ~p using filter ~p", [get_db_name(SourceDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
+    ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(AccountDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
     couch_mgr:db_replicate(BaseReplicate);
 replicate_from_account(_,_,_) -> {error, matching_dbs}.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will return a list of all account database names
+%% in the requested encoding
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_all_accounts/0 :: () -> list()).
+-spec(get_all_accounts/1 :: (Encoding :: unencoded | encoded | raw) -> list()).
+
+get_all_accounts() ->
+    get_all_accounts(?REPLICATE_ENCODING).
+
+get_all_accounts(Encoding) ->
+    {ok, Databases} = couch_mgr:db_info(),
+    [get_db_name(Db, Encoding)
+     || Db <- Databases
+            ,fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -131,3 +164,43 @@ get_account_by_realm(Realm) ->
 	    {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
 	_ -> {error, not_found}
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an API JSON object extract the category and name into a
+%% tuple for easy processing
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_event_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary())).
+get_event_type(JObj) ->
+    { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an JSON Object extracts the Call-ID into the processes
+%% dictionary, failing that the Msg-ID and finally a generic
+%% @end
+%%--------------------------------------------------------------------
+-spec(put_callid/1 :: (JObj :: json_object()) -> no_return()).
+put_callid(JObj) ->
+    _ = put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an JSON Object for a hangup event, or bridge completion
+%% this returns the cause and code for the call termination
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_call_termination_reason/1 :: (JObj :: json_object()) -> {binary(), binary()}).
+get_call_termination_reason(JObj) ->
+    Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
+               <<>> ->
+                   wh_json:get_value(<<"Hangup-Cause">>, JObj, <<>>);
+               Response ->
+                   Response
+           end,
+    Code = wh_json:get_value(<<"Hangup-Code">>, JObj, <<>>),
+    {Cause, Code}.

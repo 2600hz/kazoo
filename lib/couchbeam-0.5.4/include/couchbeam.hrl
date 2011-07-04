@@ -36,7 +36,7 @@
 % record to keep database information
 -record(db, {
     server :: server(),
-    name :: string(),
+    name :: string() | binary(),
     options = [] :: list()
 }).
 

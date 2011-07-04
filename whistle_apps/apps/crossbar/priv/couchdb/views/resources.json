@@ -2,21 +2,12 @@
    "_id": "_design/resources",
    "language": "javascript",
    "views": {
-       "listing_by_gateway": {
-           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; for (var i in  doc.gateways) emit( doc.gateways[i].server, doc.gateways[i]); }"
-       },
-       "listing_by_type": {
-           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc.type, {'id': doc._id, 'rules': doc.rules, 'gateways': doc.gateways}); }"
-       },
-       "listing_by_rules": {
-           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'callerid_options': doc.callerid_options}); }"
+       "crossbar_listing": {
+           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name}); }"
        },
        "listing_active_by_rules": {
            "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options}); }"
-       },
-       "listing_by_id": {
-           "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'rules': doc.rules, 'gateways': doc.gateways}); }"
-       },
+       }
    },
    "filters": {
        "export": "function(doc, req) { return ( doc.pvt_type == 'resource' ); }"

@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Simple cache server
 %%% @end
@@ -45,8 +45,8 @@ start_local_link() ->
     gen_server:start_link(?MODULE, [], []).
 
 %% T - seconds to store the pair
--spec(store/2 :: (K :: term(), V :: term()) -> no_return()).
--spec(store/3 :: (K :: term(), V :: term(), T :: integer()) -> no_return()).
+-spec(store/2 :: (K :: term(), V :: term()) -> ok).
+-spec(store/3 :: (K :: term(), V :: term(), T :: integer()) -> ok).
 store(K, V) ->
     store(K, V, ?EXPIRES).
 store(K, V, T) ->
@@ -56,11 +56,11 @@ store(K, V, T) ->
 fetch(K) ->
     gen_server:call(?SERVER, {fetch, K}).
 
--spec(erase/1 :: (K :: term()) -> no_return()).
+-spec(erase/1 :: (K :: term()) -> ok).
 erase(K) ->
     gen_server:cast(?SERVER, {erase, K}).
 
--spec(flush/0 :: () -> no_return()).
+-spec(flush/0 :: () -> ok).
 flush() ->
     gen_server:cast(?SERVER, {flush}).
 
@@ -73,8 +73,8 @@ filter(Pred) when is_function(Pred) ->
     gen_server:call(?SERVER, {filter, Pred}).
 
 %% Local cache API
--spec(store_local/3 :: (Srv :: pid(), K :: term(), V :: term()) -> no_return()).
--spec(store_local/4 :: (Srv :: pid(), K :: term(), V :: term(), T :: integer()) -> no_return()).
+-spec(store_local/3 :: (Srv :: pid(), K :: term(), V :: term()) -> ok).
+-spec(store_local/4 :: (Srv :: pid(), K :: term(), V :: term(), T :: integer()) -> ok).
 store_local(Srv, K, V) when is_pid(Srv) ->
     store_local(Srv, K, V, ?EXPIRES).
 store_local(Srv, K, V, T) when is_pid(Srv) ->
@@ -84,11 +84,11 @@ store_local(Srv, K, V, T) when is_pid(Srv) ->
 fetch_local(Srv, K) when is_pid(Srv) ->
     gen_server:call(Srv, {fetch, K}).
 
--spec(erase_local/2 :: (Srv :: pid(), K :: term()) -> no_return()).
+-spec(erase_local/2 :: (Srv :: pid(), K :: term()) -> ok).
 erase_local(Srv, K) when is_pid(Srv) ->
     gen_server:cast(Srv, {erase, K}).
 
--spec(flush_local/1 :: (Srv :: pid()) -> no_return()).
+-spec(flush_local/1 :: (Srv :: pid()) -> ok).
 flush_local(Srv) when is_pid(Srv) ->
     gen_server:cast(Srv, {flush}).
 
@@ -116,9 +116,7 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    logger:format_log(info, "WH_CACHE: start", []),
     {ok, _} = timer:send_interval(1000, flush),
-    logger:format_log(info, "WH_CACHE: start interval", []),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
