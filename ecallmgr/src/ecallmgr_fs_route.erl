@@ -227,6 +227,7 @@ handle_route_req(Node, FSID, CallID, FSData) ->
     put(callid, CallID),
     Pid = spawn_link(fun() ->
                              put(callid, CallID),
+                             CCVs = ecallmgr_util:custom_channel_vars(FSData),
 			     DefProp = [{<<"Msg-ID">>, FSID}
 					,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
 					,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
@@ -234,7 +235,7 @@ handle_route_req(Node, FSID, CallID, FSData) ->
 					,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 					,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
 					,{<<"Call-ID">>, CallID}
-					,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+					,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
 					| whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
 
 			     %% Server-ID will be over-written by the pool worker
@@ -246,7 +247,7 @@ handle_route_req(Node, FSID, CallID, FSData) ->
                              case freeswitch:fetch_reply(Node, FSID, Xml) of
                                  ok ->
                                      %% only start control if freeswitch recv'd reply
-                                     start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp));
+                                     start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp), CCVs);
                                  {error, Reason} ->
                                      ?LOG("freeswitch rejected our route response, ~p", [Reason]);
                                  timeout ->
@@ -255,7 +256,7 @@ handle_route_req(Node, FSID, CallID, FSData) ->
 		     end),
     {ok, Pid}.
 
-start_control_and_events(Node, CallID, SendTo) ->
+start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
 	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
 	_ = amqp_util:bind_q_to_callctl(CtlQ),
@@ -267,6 +268,7 @@ start_control_and_events(Node, CallID, SendTo) ->
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}
 		   ,{<<"Control-Queue">>, CtlQ}
+                   ,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
 		   | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
 	send_control_queue(SendTo, CtlProp)
     catch

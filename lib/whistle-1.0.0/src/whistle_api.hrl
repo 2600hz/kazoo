@@ -210,10 +210,11 @@
 
 %% Route Winner
 -define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_ROUTE_WIN_HEADERS, []).
+-define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>]).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
 -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
 			  ,{<<"Control-Queue">>, fun is_binary/1}
+                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			 ]).
 
 %% Offnet Resource Request
