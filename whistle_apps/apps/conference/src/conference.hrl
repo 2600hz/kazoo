@@ -42,6 +42,7 @@
                ,route = undefined
                ,focus = undefined
                ,ctrl_q = undefined
+               ,auth_pwd = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">>
                ,member_pins = []
                ,moderator_pins = []
                ,member_join_muted = true
@@ -51,6 +52,7 @@
                ,max_members = 0
                ,require_moderator = false
                ,wait_for_moderator = false
+               ,bridges = dict:new()
                ,members = dict:new()
                ,moderators = dict:new()
               }).
