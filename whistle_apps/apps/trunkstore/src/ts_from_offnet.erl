@@ -78,11 +78,8 @@ wait_for_bridge(State) ->
 	{error, State2} ->
 	    try_failover(State2);
 	{hangup, State3} ->
-	    AcctID = ts_callflow:get_account_id(State3),
-	    CallID = ts_callflow:get_aleg_id(State3),
-	    ?LOG("Releasing ~s for ~s: costed 0", [CallID, AcctID]),
-	    ok = ts_acctmgr:release_trunk(AcctID, CallID, 0),
-	    ts_callflow:send_hangup(State3);
+	    ALeg = ts_callflow:get_aleg_id(State3),
+	    ts_callflow:finish_leg(State3, ALeg);
 	{timeout, State4} ->
 	    try_failover(State4)
     end.
@@ -114,13 +111,8 @@ wait_for_cdr(State) ->
 	    wait_for_other_leg(State2, aleg);
 	{timeout, State3} ->
 	    ?LOG("Timed out waiting for CDRs, cleaning up"),
-
-	    ALeg = ts_callflow:get_aleg_id(State3),
-	    AcctID = ts_callflow:get_account_id(State3),
-            Cost = ts_callflow:get_call_cost(State3),
-
-	    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
-	    ts_callflow:send_hangup(State3)
+	    CallID = ts_callflow:get_aleg_id(State3),
+	    ts_callflow:finish_leg(State3, CallID)
     end.
 
 wait_for_other_leg(State, WaitingOnLeg) ->
@@ -128,33 +120,17 @@ wait_for_other_leg(State, WaitingOnLeg) ->
 
 wait_for_other_leg(_State, aleg, {cdr, aleg, CDR, State1}) ->
     ALeg = ts_callflow:get_aleg_id(State1),
-    AcctID = ts_callflow:get_account_id(State1),
-    Cost = ts_callflow:get_call_cost(State1),
-
-    ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
-
     _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
-    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
-    ts_callflow:send_hangup(State1);
+    ts_callflow:finish_leg(State1, ALeg);
 wait_for_other_leg(_State, bleg, {cdr, bleg, CDR, State1}) ->
     BLeg = ts_callflow:get_bleg_id(State1),
-    AcctID = ts_callflow:get_account_id(State1),
-    Cost = ts_callflow:get_call_cost(State1),
-
-    ?LOG("b-leg CDR for ~s costs ~p", [AcctID, Cost]),
-
     _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
-    ok = ts_acctmgr:release_trunk(AcctID, BLeg, Cost),
-    ts_callflow:send_hangup(State1);
+    ts_callflow:finish_leg(State1, BLeg);
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     ?LOG("Timed out waiting for ~s CDR, cleaning up", [Leg]),
 
-    ALeg = ts_callflow:get_aleg_id(State1),
-    AcctID = ts_callflow:get_account_id(State1),
-    Cost = ts_callflow:get_call_cost(State1),
-
-    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
-    ts_callflow:send_hangup(State1).
+    ALeg = ts_callflow:get_bleg_id(State1),
+    ts_callflow:finish_leg(State1, ALeg).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of

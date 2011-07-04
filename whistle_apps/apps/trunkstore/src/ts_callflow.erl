@@ -10,6 +10,7 @@
 
 -export([init/1, start_amqp/1, send_park/1, wait_for_win/1
 	 ,wait_for_bridge/1, wait_for_cdr/1, send_hangup/1
+	 ,finish_leg/2
 	]).
 
 %% data access functions
@@ -245,6 +246,12 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 	    ?LOG("Ignorable event: ~p", [_E]),
 	    ignore
     end.
+
+finish_leg(State, undefined) ->
+    send_hangup(State);
+finish_leg(#state{acctid=AcctID, call_cost=Cost}=State, Leg) ->
+    ok = ts_acctmgr:release_trunk(AcctID, Leg, Cost),
+    send_hangup(State).
 
 -spec send_hangup/1 :: (State) -> ok when
       State :: #state{}.
