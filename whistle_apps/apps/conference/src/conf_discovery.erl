@@ -197,7 +197,7 @@ start_amqp() ->
 %%--------------------------------------------------------------------
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
 process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
-    %% TODO: If I had more time this additional Q could propbably worked out, or at least pooled...
+    %% TODO: If I had more time this additional Q is possibly not necessary, or at least pooled...
     S1 = #search{conf_id = wh_json:get_value(<<"Conference-ID">>, JObj)
                  ,account_id = wh_json:get_value(<<"Account-ID">>, JObj)
                  ,amqp_q = Q = amqp_util:new_queue()
@@ -258,9 +258,16 @@ send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ct
               ],
     %% TODO: Add this to the whistle_api once finalized
     Payload = whistle_util:to_binary(mochijson2:encode({struct, Caller})),
-
     amqp_util:conference_publish(Payload, service, ConfId, [{immediate, true}]),
-    wait_for_handoff(AccountId, ConfId, Caller).
+
+    case wait_for_handoff(AccountId, ConfId, Caller) of
+        {ok, added_caller} ->
+            %% TODO: notify requestor that we have succeeded!
+            ?LOG_END("conference service has accepted call");
+        {error, _} ->
+            %% TODO: notify requestor that we failed... sorry
+            ?LOG_END("conference discovery could not handoff control")
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -285,24 +292,24 @@ wait_for_handoff(AccountId, ConfId, Caller) ->
     receive
         {#'basic.return'{}, #amqp_msg{payload=AddCallerPayload}} ->
             ?LOG("no conference service is running, starting new"),
-            %% TODO: If I had more time this should come from validate_conference_id...
+            %% TODO: If I had more time this doc should come from validate_conference_id...
             {ok, Conference} =
                 couch_mgr:open_doc(whapps_util:get_db_name(AccountId, encoded), ConfId),
             {ok, _} = conf_service_sup:start_service(ConfId, Conference, Caller),
-            ?LOG_END("new conference service has accepted call");
+            wait_for_handoff(AccountId, ConfId, Caller);
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}} ->
             JObj = mochijson2:decode(Payload),
             try
                 {<<"conference">>, <<"added_caller">>} = whapps_util:get_event_type(JObj),
                 true = wh_json:get_value(<<"Call-ID">>, Caller) =:= wh_json:get_value(<<"Call-ID">>, JObj),
-                ?LOG_END("existing conference service has accepted call")
+                {ok, added_caller}
             catch
                 _:_ ->
                     wait_for_handoff(AccountId, ConfId, Caller)
             end
     after
         2500 ->
-            ?LOG_END("conference discovery timed out while tring to handoff control")
+            {error, timeout}
     end.
 
 %%--------------------------------------------------------------------
