@@ -19,6 +19,7 @@
 %% API
 -export([start_link/1, start_link/2]).
 -export([add_member/3, add_moderator/3]).
+-export([add_bridge/4]).
 -export([set_route/2, clear_route/1]).
 
 %% gen_server callbacks
@@ -45,11 +46,14 @@ start_link(Conference) ->
 start_link(Conference, Caller) ->
     gen_server:start_link(?MODULE, [Conference, Caller], []).
 
-add_member(Srv, CallId, ControllQ) ->
-    gen_server:cast(Srv, {add_member, CallId, ControllQ}).
+add_member(Srv, CallId, ControlQ) ->
+    gen_server:cast(Srv, {add_member, CallId, ControlQ}).
 
-add_moderator(Srv, CallId, ControllQ) ->
-    gen_server:cast(Srv, {add_moderator, CallId, ControllQ}).
+add_moderator(Srv, CallId, ControlQ) ->
+    gen_server:cast(Srv, {add_moderator, CallId, ControlQ}).
+
+add_bridge(Srv, CallId, BridgeId, ControlQ) ->
+    gen_server:cast(Srv, {add_bridge, CallId, BridgeId, ControlQ}).
 
 set_route(Srv, Node) ->
     gen_server:cast(Srv, {set_route, Node}).
@@ -94,7 +98,6 @@ handle_call(_Request, _From, Conf) ->
 handle_cast({set_route, Node}, #conf{route=undefined, conf_id=ConfId}=Conf) ->
     [_, Focus] = binary:split(Node, <<"@">>),
     Route = <<"sip:conference_", ConfId/binary, "@", Focus/binary>>,
-    io:format("set conference route to ~s~n", [Route]),
     ?LOG("set conference route to ~s", [Route]),
     {noreply, Conf#conf{route=Route, focus=Focus}};
 
@@ -106,22 +109,25 @@ handle_cast({Action, CallId, ControlQ}, #conf{route=undefined, amqp_q=Q}=Conf) -
     find_conference_route(CallId, Q),
     %% Put the request back into to mailbox after a brief timeout (hopefully we get the
     %% conference route by then) and re-processes it
+    ?LOG("delaying ~s ~s until the route is known", [Action, CallId]),
     timer:apply_after(500, ?MODULE, Action, [self(), CallId, ControlQ]),
     {noreply, Conf};
 
 handle_cast({add_member, CallId, ControlQ}, #conf{members=Members, amqp_q=Q}=Conf) ->
-    io:format("adding new conference memeber ~p~n", [CallId]),
-    ?LOG("adding new conference memeber ~p", [CallId]),
+    ?LOG("adding new conference memeber ~s", [CallId]),
     amqp_util:bind_q_to_callevt(Q, CallId),
     request_call_status(CallId, Q),
     {noreply, Conf#conf{members=dict:store(CallId, ControlQ, Members)}};
 
 handle_cast({add_moderator, CallId, ControlQ}, #conf{moderators=Moderators, amqp_q=Q}=Conf) ->
-    io:format("adding new conference moderator ~p~n", [CallId]),
-    ?LOG("adding new conference moderator ~p", [CallId]),
+    ?LOG("adding new conference moderator ~s", [CallId]),
     amqp_util:bind_q_to_callevt(Q, CallId),
     request_call_status(CallId, Q),
     {noreply, Conf#conf{moderators=dict:store(CallId, ControlQ, Moderators)}};
+
+handle_cast({add_bridge, CallId, BridgeId, ControlQ}, #conf{bridges=Bridges}=Conf) ->
+    ?LOG("adding new bridge ~s to ~s", [BridgeId, CallId]),
+    {noreply, Conf#conf{bridges=dict:store(CallId, {BridgeId, ControlQ}, Bridges)}};
 
 handle_cast(_Msg, Conf) ->
     {noreply, Conf}.
@@ -156,10 +162,10 @@ handle_info({amqp_host_down, _}, Conf) ->
     timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, Conf#conf{amqp_q = <<>>}};
 
-handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, Conf) ->
+handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
     spawn(fun() ->
+                  put(callid, ConfId),
                   JObj = mochijson2:decode(Payload),
-                  io:format("Service RX:~n~p~n", [JObj]),
                   _ = process_req(whapps_util:get_event_type(JObj), JObj, Conf)
           end),
     {noreply, Conf};
@@ -233,6 +239,7 @@ process_req({<<"conference">>, <<"add_caller">>}, JObj, #conf{service=Srv}) ->
     %% When we receive a request to add a caller to the conference, pass it to the logic that
     %% will determine if they should be added as a moderator and then places the request into
     %% the mailbox of the appropriate conference server.
+    ?LOG("recieved AMQP request to add a caller to the conference"),
     add_caller(JObj, Srv);
 
 process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{service=Srv, route=undefined}) ->
@@ -241,7 +248,9 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{service=Srv, rout
     %% route is known, the call status will be re-requested and the logic bellow applied
     case wh_json:get_value(<<"Node">>, JObj) of
         undefined -> ok;
-        Node -> set_route(Srv, Node)
+        Node ->
+            ?LOG("recieved call status, but hijacking it for the route"),
+            set_route(Srv, Node)
     end;
 
 process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{focus=Focus}=Conf) ->
@@ -249,6 +258,7 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{focus=Focus}=Conf
     %% - Bridge to the conference node
     %% - Join the conference
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG("recieved call status for ~s", [CallId]),
     case binary:split(wh_json:get_value(<<"Node">>, JObj), <<"@">>) of
         [_, Focus] ->
             join_local_conference(CallId, Conf);
@@ -256,45 +266,68 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{focus=Focus}=Conf
             bridge_to_conference(CallId, Conf)
     end;
 
-process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
+process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{conf_id=ConfId, amqp_q=Q, bridges=Bridges}=Conf) ->
+    %% If we get notification that a caller has executed the conference application then
+    %% fire off an event that they are now part of the conference. Also, notify the other
+    %% conference participants that they have joined.
     case wh_json:get_value(<<"Application-Name">>, JObj) of
         <<"conference">> ->
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-            case find_call(CallId, Conf) of
+            ?LOG("recieved call event that ~s has been placed in the conference", [CallId]),
+            Id = dict:fold(fun(C, {Acc, _}, Acc) -> C; (_, _, Acc) -> Acc end, CallId, Bridges),
+            case find_call(Id, Conf) of
                 {false, _} ->
-                    added_member_event(CallId, ConfId, Q);
+                    added_member_event(Id, ConfId, Q);
                 {true, _} ->
-                    added_moderator_event(CallId, ConfId, Q)
+                    added_moderator_event(Id, ConfId, Q)
             end;
         _ -> ok
     end;
 
 process_req({<<"directory">>, <<"auth_req">>}, JObj, #conf{conf_id=ConfId, auth_pwd=AuthPwd, amqp_q=Q}=Conf) ->
+    %% If we receive an auth requests for an invite to our conference then respond with the sip auth password
+    %% so if it was a bridge that we built it will be accepted.
     try
         <<"INVITE">> = wh_json:get_value(<<"Method">>, JObj),
         [<<"conference_", ConfId/binary>>, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
         AuthUser = wh_json:get_value(<<"Auth-User">>, JObj),
         {_, _} = find_call(AuthUser, Conf),
+        ?LOG("recieved auth request for a bridge on behalf of ~s", [AuthUser]),
         send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q)
     catch
         _:_ -> ok
     end;
 
-process_req({<<"dialplan">>, <<"route_req">>}, JObj, #conf{conf_id=ConfId, amqp_q=Q}) ->
+process_req({<<"dialplan">>, <<"route_req">>}, JObj, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
+    %% If a bridge that we built is requesting a route for this conference repond
     try
-        [<<"conference">>, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-        ConfId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Conference-ID">>], JObj),
+        [<<"conference_", ConfId/binary>>, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+        {_, _} = find_call(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj), Conf),
+        ?LOG("recieved route request for conference"),
         send_route_response(JObj, Q)
     catch
         _:_ -> ok
     end;
 
-process_req({_, <<"route_win">>}, JObj, Conf) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+process_req({_, <<"route_win">>}, JObj, #conf{service=Srv, amqp_q=Q}=Conf) ->
+    %% If we get the route win then determine (based on the original A-leg on the other node)
+    %% whether this is a moderator and have the new call join the conference locally
+    BridgeId = wh_json:get_value(<<"Call-ID">>, JObj),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
-    case find_call(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj) Conf) of
-    case find_call
-    join_local_conference(CallId, {false, CtrlQ}, Conf);
+    CallId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
+
+    %% TODO: fix the unbind helper functions so they have the same spec as the bind
+    amqp_util:unbind_q_from_callevt(Q, <<?KEY_CALL_EVENT/binary, CallId/binary>>),
+    amqp_util:bind_q_to_callevt(Q, BridgeId),
+
+    add_bridge(Srv, CallId, BridgeId, CtrlQ),
+    ?LOG("recieved route win for ~s", [BridgeId]),
+    case find_call(CallId, Conf) of
+        {true, _} ->
+            join_local_conference(BridgeId, {true, CtrlQ}, Conf);
+        {false, _} ->
+            join_local_conference(BridgeId, {false, CtrlQ}, Conf)
+    end;
 
 process_req(_, _, _) ->
     ok.
@@ -303,7 +336,7 @@ process_req(_, _, _) ->
 %% @private
 %% @doc
 %% Execute a local command to place the caller in a conference on the
-%% node their call is currently on
+%% node the call is currently on
 %% @end
 %%--------------------------------------------------------------------
 join_local_conference(CallId, Conf) ->
@@ -313,6 +346,7 @@ join_local_conference(CallId, {false, CtrlQ}, #conf{conf_id=ConfId
                                                     ,member_join_muted=MJM
                                                     ,member_join_deaf=MJD
                                                     ,amqp_q=Q}) ->
+    ?LOG("attempting to have member ~s join the conference locally", [CallId]),
     Command = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Mute">>, whistle_util:to_binary(MJM)}
@@ -321,13 +355,13 @@ join_local_conference(CallId, {false, CtrlQ}, #conf{conf_id=ConfId
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    io:format("SEND~n~p~n", [Command]),
     {ok, Payload} = whistle_api:conference_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload);
 join_local_conference(CallId, {true, CtrlQ}, #conf{conf_id=ConfId
                                                    ,moderator_join_muted=MJM
                                                    ,moderator_join_deaf=MJD
                                                    ,amqp_q=Q}) ->
+    ?LOG("attempting to have moderator ~s join the conference locally", [CallId]),
     Command = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Mute">>, whistle_util:to_binary(MJM)}
@@ -336,7 +370,6 @@ join_local_conference(CallId, {true, CtrlQ}, #conf{conf_id=ConfId
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    io:format("SEND~n~p~n", [Command]),
     {ok, Payload} = whistle_api:conference_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
@@ -344,16 +377,21 @@ join_local_conference(CallId, {true, CtrlQ}, #conf{conf_id=ConfId
 %% @private
 %% @doc
 %% Execute a local command to bridge the caller to the node the
-%% conference is hosted on
+%% conference is hosted on. The information is shared as follows:
+%% - Route request will be conference_{conf_id}@{conference_focus}
+%% - Auth user name will be the call id on the originating server
+%%     (the one that is trying to join the conference)
+%% - Auth password will be predetermined and in the conf record
 %% @end
 %%--------------------------------------------------------------------
 bridge_to_conference(CallId, Conf) ->
     bridge_to_conference(CallId, find_call(CallId, Conf), Conf).
 
-bridge_to_conference(CallId, {_, CtrlQ}, #conf{conf_id=ConfId, amqp_q=Q, route=Route, auth_pwd=AuthPwd}) ->
+bridge_to_conference(CallId, {_, CtrlQ}, #conf{amqp_q=Q, route=Route, auth_pwd=AuthPwd}) ->
+    ?LOG("bridging participant ~s to ~s", [CallId, Route]),
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Route}
-                ,{<<"Auth-User">>, CallID}
+                ,{<<"Auth-User">>, CallId}
                 ,{<<"Auth-Password">>, AuthPwd}
                ],
     Command = [{<<"Application-Name">>, <<"bridge">>}
@@ -364,7 +402,6 @@ bridge_to_conference(CallId, {_, CtrlQ}, #conf{conf_id=ConfId, amqp_q=Q, route=R
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    io:format("SEND~n~p~n", [Command]),
     {ok, Payload} = whistle_api:bridge_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
@@ -377,11 +414,14 @@ bridge_to_conference(CallId, {_, CtrlQ}, #conf{conf_id=ConfId, amqp_q=Q, route=R
 %%--------------------------------------------------------------------
 find_call(CallId, #conf{members=Members, moderators=Moderators}) ->
     case dict:find(CallId, Members) of
-        {ok, CtrlQ} -> {false, CtrlQ};
+        {ok, CtrlQ} ->
+            {false, CtrlQ};
         error ->
             case dict:find(CallId, Moderators) of
-                {ok, CtrlQ} -> {true, CtrlQ};
-                error -> error
+                {ok, CtrlQ} ->
+                    {true, CtrlQ};
+                error ->
+                    error
             end
     end.
 
@@ -458,12 +498,7 @@ add_caller(JObj, Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 find_conference_route(CallId, Q) ->
-    io:format("requesting status of call ~p~n", [CallId]),
-    Command = [{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Payload} = whistle_api:call_status_req({struct, Command}),
-    amqp_util:callevt_publish(CallId, Payload, status_req).
+    request_call_status(CallId, Q).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -477,6 +512,7 @@ find_conference_route(CallId, Q) ->
 %% @end
 %%--------------------------------------------------------------------
 request_call_status(CallId, Q) ->
+    ?LOG("requesting the status of participant ~s", [CallId]),
     Command = [{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
               ],
@@ -491,6 +527,7 @@ request_call_status(CallId, Q) ->
 %% @end
 %%--------------------------------------------------------------------
 added_moderator_event(CallId, ConfId, Q) ->
+    ?LOG("sending event that moderator ~s has been added to ~s", [CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Moderator">>, <<"true">>}
@@ -507,6 +544,7 @@ added_moderator_event(CallId, ConfId, Q) ->
 %% @end
 %%--------------------------------------------------------------------
 added_member_event(CallId, ConfId, Q) ->
+    ?LOG("sending event that member ~s has been added to ~s", [CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Moderator">>, <<"false">>}
@@ -522,7 +560,7 @@ added_member_event(CallId, ConfId, Q) ->
 %% @end
 %%--------------------------------------------------------------------
 send_route_response(JObj, Q) ->
-    io:format("sending route response~n", []),
+    ?LOG("sending route response"),
     Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                 ,{<<"Routes">>, []}
                 ,{<<"Method">>, <<"park">>}
@@ -531,7 +569,6 @@ send_route_response(JObj, Q) ->
     {ok, Payload} = whistle_api:route_resp(Response),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -539,7 +576,7 @@ send_route_response(JObj, Q) ->
 %% @end
 %%--------------------------------------------------------------------
 send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q) ->
-    io:format("sending auth response~n", []),
+    ?LOG("sending auth response for ~s to join ~s", [AuthUser, ConfId]),
     Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                 ,{<<"Auth-Password">>, AuthPwd}
                 ,{<<"Auth-Method">>, <<"password">>}
