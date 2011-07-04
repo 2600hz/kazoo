@@ -1,0 +1,10 @@
+{application,conference,
+             [{description,[]},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{conference_app,[]}},
+              {env,[]},
+              {modules,[conf_amqp,conf_command,conf_discovery,conf_responder,
+                        conf_service,conf_service_sup,conference,
+                        conference_app,conference_sup]}]}.

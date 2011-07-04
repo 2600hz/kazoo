@@ -2,7 +2,7 @@
              [{description,"Applications on top of Whistle"},
               {id,"9fd3b140-8727-11e0-9d78-0800200c9a66"},
               {vsn,"0.5.0"},
-              {modules,[whapps_controller,whapps_util,whistle_apps,
+              {modules,[whapps_controller,whapps_sup,whapps_util,whistle_apps,
                         whistle_apps_app,whistle_apps_cli,whistle_apps_deps,
                         whistle_apps_sup]},
               {registered,[whapps_controller]},
