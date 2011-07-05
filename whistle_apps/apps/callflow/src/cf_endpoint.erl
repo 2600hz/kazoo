@@ -51,14 +51,14 @@ build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
 %%--------------------------------------------------------------------
 -spec(get_endpoints/3 :: (EndpointId :: binary(), Properties :: json_object(),  Call :: #cf_call{})
                          -> tuple(ok, json_objects()) | tuple(error, atom())).
-get_endpoints(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
+get_endpoints(EndpointId, Properties, #cf_call{owner_id=OwnerId, account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, EndpointId) of
         {ok, Endpoint} ->
-            case whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Endpoint)) of
-                true ->
-                    {ok, [create_call_fwd_endpoint(Endpoint, wh_json:get_value(<<"call_forward">>, Endpoint), Properties, Call)]};
-                false ->
-                    {ok, [create_endpoint(Endpoint, Properties, Call)]}
+            case cf_attributes:call_forward(EndpointId, OwnerId, Call) of
+                undefined ->
+                    {ok, [create_endpoint(Endpoint, Properties, Call)]};
+                Fwd ->
+                    {ok, [create_call_fwd_endpoint(Endpoint, Fwd, Properties, Call)]}
             end;
         {error, Reason}=E ->
             ?LOG("failed to load endpoint ~s, ~w", [EndpointId, Reason]),
