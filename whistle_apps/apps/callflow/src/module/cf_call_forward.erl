@@ -196,22 +196,22 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_call_forward/1 :: (Call :: #cf_call{}) -> #callfwd{}|tuple(error, #callfwd{})).
-get_call_forward(#cf_call{authorizing_id=Id, account_db=Db}) ->
-    case couch_mgr:get_results(Db, <<"devices/listing_with_owner">>, [{<<"include_docs">>, true}, {<<"key">>, Id}]) of
-        {ok, [JObj]} ->
-            ?LOG("loaded call forwarding ~s", [Id]),
-            Owner = wh_json:get_value(<<"doc">>, JObj),
+get_call_forward(#cf_call{authorizing_id=AuthId, account_db=Db}) ->
+    Id = case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owner">>}, [{<<"key">>, AuthId}]) of
+             {ok, [Owner]} -> wh_json:get_value(<<"value">>, Owner, AuthId);
+             _E -> AuthId
+         end,
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            ?LOG("loaded call forwarding object from ~s", [Id]),
             #callfwd{
-                       doc_id = wh_json:get_value(<<"_id">>, Owner, wh_json:get_value(<<"id">>, JObj))
-                      ,enabled = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Owner, false))
-                      ,number = wh_json:get_value([<<"call_forward">>, <<"number">>], Owner, <<>>)
-                      ,require_keypress = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"require_keypress">>], Owner, true))
-                      ,keep_caller_id = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], Owner, true))
+                       doc_id = wh_json:get_value(<<"_id">>, JObj)
+                      ,enabled = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], JObj, false))
+                      ,number = wh_json:get_value([<<"call_forward">>, <<"number">>], JObj, <<>>)
+                      ,require_keypress = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"require_keypress">>], JObj, true))
+                      ,keep_caller_id = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], JObj, true))
                     };
-        {ok, []} ->
-            ?LOG("loaded empty call forwarding ~s", [Id]),
-            {error, #callfwd{}};
         {error, R} ->
-            ?LOG("failed to load call forwarding ~s, ~w", [Id, R]),
+            ?LOG("failed to load call forwarding object from ~s, ~w", [Id, R]),
             {error, #callfwd{}}
     end.
