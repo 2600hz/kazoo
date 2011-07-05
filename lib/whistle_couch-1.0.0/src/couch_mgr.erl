@@ -264,7 +264,9 @@ design_compact(DbName, Design) ->
         {} -> false;
         Conn ->
             case couchbeam:compact(open_db(DbName, Conn), Design) of
-                {error, _} -> false;
+                {error, _E} ->
+		    ?LOG_SYS("design compact failed with ~p", [_E]),
+		    false;
                 ok -> true
             end
     end.
@@ -275,7 +277,9 @@ admin_design_compact(DbName, Design) ->
         {} -> false;
         Conn ->
             case couchbeam:compact(open_db(DbName, Conn), Design) of
-                {error, _} -> false;
+                {error, _E} ->
+		    ?LOG_SYS("admin design compact failed with ~p", [_E]),
+		    false;
                 ok -> true
             end
     end.
@@ -286,7 +290,9 @@ db_view_cleanup(DbName) ->
         {} -> false;
         Conn ->
             case couchbeam:view_cleanup(open_db(DbName, Conn)) of
-                {error, _} -> false;
+                {error, _E} ->
+		    ?LOG_SYS("db view cleanup failed with ~p", [_E]),
+		    false;
                 ok -> true
             end
     end.
@@ -297,7 +303,9 @@ admin_db_view_cleanup(DbName) ->
 	{} -> false;
         Conn ->
             case couchbeam:view_cleanup(open_db(DbName, Conn)) of
-                {error, _} -> false;
+                {error, _E} ->
+		    ?LOG_SYS("admin db view cleanup failed with ~p", [_E]),
+		    false;
                 ok -> true
             end
     end.
