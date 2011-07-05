@@ -19,6 +19,8 @@
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
+%% TODO: This should use caching, however we need an 'absolute' expiration
+%% or on a busy system call forwarding will not appear to disable....
 %% @end
 %%-----------------------------------------------------------------------------
 -spec(call_forward/3 :: (DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), Call :: #cf_call{}) -> undefined | json_object()).
@@ -36,8 +38,13 @@ call_forward(DeviceId, OwnerId, #cf_call{account_db=Db}) ->
                       []
               end,
     case props:get_value(DeviceId, CallFwd) of
-        undefined -> props:get_value(OwnerId, CallFwd);
-        Fwd -> Fwd
+        undefined ->
+            Fwd = props:get_value(OwnerId, CallFwd),
+            Fwd =/= undefined andalso ?LOG("found enabled call forwarding on ~s", [OwnerId]),
+            Fwd;
+        Fwd ->
+            ?LOG("found enabled call forwarding on ~s", [DeviceId]),
+            Fwd
     end.
 
 %%-----------------------------------------------------------------------------
