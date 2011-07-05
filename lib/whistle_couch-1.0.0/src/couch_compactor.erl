@@ -178,7 +178,7 @@ code_change(_OldVsn, State, _Extra) ->
 get_dbs_and_designs() ->
     case get_dbs() of
 	[] -> [];
-	DBs -> DBs ++ get_design_docs(DBs)
+	DBs -> get_design_docs(DBs)
     end.
 
 -spec(get_dbs/0 :: () -> list(#db_data{}) | []).
@@ -223,7 +223,7 @@ get_design_docs(L) ->
 			[ #design_data{db_name=DBName, design_name=DesignID, shards=Shards
 				       ,disk_size=DiskSize, data_size=DataSize}
 			  | L0]
-		end, [], DBandDocs).
+		end, L, DBandDocs).
 
 get_db_design_docs(DB) ->
     Encoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
@@ -309,6 +309,6 @@ compact_a_db(DBName) ->
 					      [ #design_data{db_name=Name, design_name=DesignID, shards=find_shards(Name, L)
 							     ,disk_size=DiskSize, data_size=DataSize}
 						| L0]
-				      end, [], DBandDDocs),
-	    [compact(D, 1, 1) || D <- L ++ Compactable]
+				      end, L, DBandDDocs),
+	    [compact(D, 1, 1) || D <- Compactable]
     end.
