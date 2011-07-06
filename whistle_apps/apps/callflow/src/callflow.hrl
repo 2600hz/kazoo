@@ -54,4 +54,5 @@
             ,authorizing_id = undefined :: binary() | undefined     %% The ID of the record that authorized this call
             ,owner_id = undefined :: binary() | undefined           %% The ID of the that owns the authorizing endpoint
             ,channel_vars = undefined :: json_object() | undefined  %% Any custom channel vars that where provided with the route request
+            ,last_action = undefined :: undefined | atom()          %% Previous action
            }).

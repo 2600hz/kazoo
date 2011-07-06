@@ -19,6 +19,10 @@
 -export([get_rate_factors/1, get_call_duration/1, lookup_user_flags/2, lookup_did/1]).
 -export([invite_format/2]).
 
+%% Cascading settings
+-export([sip_headers/1, failover/1, progress_timeout/1, bypass_media/1, delay/1
+	 ,ignore_early_media/1, ep_timeout/1]).
+
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
@@ -118,23 +122,25 @@ lookup_did(DID) ->
     case wh_cache:fetch({lookup_did, DID}) of
 	{ok, _}=Resp ->
 	    %% wh_timer:tick("lookup_did/1 cache hit"),
-	    {ok, Resp};
+            ?LOG("Cache hit for ~s", [DID]),
+	    Resp;
 	{error, not_found} ->
 	    %% wh_timer:tick("lookup_did/1 cache miss"),
 	    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_DIDLOOKUP, Options) of
-		{ok, []} -> {error, no_did_found};
+		{ok, []} -> ?LOG("Cache miss for ~s, no results", [DID]), {error, no_did_found};
 		{ok, [{struct, _}=ViewJObj]} ->
+                    ?LOG("Cache miss for ~s, found result with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
 		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
 		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
 		    wh_cache:store({lookup_did, DID}, Resp),
 		    {ok, Resp};
 		{ok, [{struct, _}=ViewJObj | _Rest]} ->
-		    ?LOG("Looking up DID ~s resulted in more than one result", [DID]),
+                    ?LOG("Cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
 		    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
 		    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
 		    wh_cache:store({lookup_did, DID}, Resp),
 		    {ok, Resp};
-		{error, _}=E -> E
+		{error, _}=E -> ?LOG("Cache miss for ~s, error ~p", [DID, E]), E
 	    end
     end.
 
@@ -142,12 +148,13 @@ lookup_did(DID) ->
 lookup_user_flags(Name, Realm) ->
     %% wh_timer:tick("lookup_user_flags/2"),
     case wh_cache:fetch({lookup_user_flags, Realm, Name}) of
-	{ok, _}=Result -> Result;
+	{ok, _}=Result -> ?LOG("Cache hit for ~s@~s", [Name, Realm]), Result;
 	{error, not_found} ->
 	    case couch_mgr:get_results(?TS_DB, <<"LookUpUser/LookUpUserFlags">>, [{<<"key">>, [Realm, Name]}]) of
-		{error, _}=E -> E;
-		{ok, []} -> {error, <<"No user@realm found">>};
+		{error, _}=E -> ?LOG("Cache miss for ~s@~s, err: ~p", [Name, Realm, E]), E;
+		{ok, []} -> ?LOG("Cache miss for ~s@~s, no results", [Name, Realm]), {error, <<"No user@realm found">>};
 		{ok, [User|_]} ->
+                    ?LOG("Cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
 		    ValJObj = wh_json:get_value(<<"value">>, User),
 		    JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
 		    wh_cache:store({lookup_user_flags, Realm, Name}, JObj),
@@ -184,3 +191,67 @@ invite_format(<<"npan">>, To) ->
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 
+-spec sip_headers/1 :: (L) -> undefined | json_object() when
+      L :: list(undefined | json_object()).
+-spec sip_headers/2 :: (L, Acc) -> undefined | json_object() when
+      L :: list(undefined | json_object()),
+      Acc :: proplist().
+sip_headers(L) ->
+    sip_headers(L, []).
+sip_headers([undefined | T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([?EMPTY_JSON_OBJECT | T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([{struct, [_|_]=H}|T], Acc) ->
+    sip_headers(T, H ++ Acc);
+sip_headers([_|T], Acc) ->
+    sip_headers(T, Acc);
+sip_headers([], []) ->
+    undefined;
+sip_headers([], Acc) ->
+    {struct, lists:reverse(Acc)}.
+
+-spec failover/1 :: (L) -> undefined | json_object() when
+      L :: list(undefined | json_object() | binary()).
+%% cascade from DID to Srv to Acct
+failover(L) ->
+    case simple_extract(L) of
+	B when is_binary(B) ->
+	    undefined;
+	Other -> Other
+    end.
+
+-spec progress_timeout/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+progress_timeout(L) -> simple_extract(L).
+
+-spec bypass_media/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+bypass_media(L) -> simple_extract(L).
+
+-spec delay/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+delay(L) -> simple_extract(L).
+
+-spec ignore_early_media/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+ignore_early_media(L) -> simple_extract(L).
+
+-spec ep_timeout/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+ep_timeout(L) -> simple_extract(L).
+
+-spec simple_extract/1 :: (L) -> undefined | json_object() | binary() when
+      L :: list(undefined | json_object() | binary()).
+simple_extract([undefined|T]) ->
+    simple_extract(T);
+simple_extract([?EMPTY_JSON_OBJECT | T]) ->
+    simple_extract(T);
+simple_extract([{struct, _}=F | _]) ->
+    F;
+simple_extract([B | _]) when is_binary(B) andalso B =/= <<>> ->
+    B;
+simple_extract([_ | T]) ->
+    simple_extract(T);
+simple_extract([]) ->
+    undefined.

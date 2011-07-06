@@ -2,18 +2,12 @@
     "_id": "_design/devices"
     ,"language": "javascript"
     ,"views": {
-        "listing_by_id": {
-            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'status': doc.status}); }"
-        }
-        ,"listing_by_name": {
-            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc.name,  {'id': doc._id, 'name': doc.name, 'status': doc.status}); }"
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'owner_id': doc.owner_id}); }"
         }
         ,"sip_credentials": {
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit([doc.sip.realm, doc.sip.username], doc.sip); }"
         }
-        ,"listing_with_owner": {
-           "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'_id': doc.owner, 'device': doc}); }"
-       }
     }
     ,"filters": {
         "export":"function(doc, req) { return ( doc.pvt_type == 'device' ); }"

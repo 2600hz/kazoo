@@ -39,6 +39,7 @@ init([]) ->
 	 ,?CHILD(ecallmgr_fs_sup, supervisor)
 	 ,?CHILD(ecallmgr_fs_route_sup, supervisor)
 	 ,?CHILD(ecallmgr_fs_auth_sup, supervisor)
+         ,?CHILD(wh_cache, worker) % provides a cache
 	]
       }
     }.

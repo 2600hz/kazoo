@@ -8,17 +8,65 @@
 %%%-------------------------------------------------------------------
 -module(wh_json).
 
--export([get_binary_boolean/2]).
--export([get_binary_value/2]).
+-export([get_binary_boolean/2, get_binary_boolean/3]).
+-export([get_integer_value/2, get_integer_value/3]).
+-export([get_binary_value/2, get_binary_value/3]).
+-export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
 -export([get_value/2, get_value/3]).
 -export([set_value/3]).
--export([delete_key/2]).
+-export([delete_key/2, delete_key/3]).
+
+-export([normalize_jobj/1]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
 
 -include_lib("whistle/include/whistle_types.hrl").
+
+-spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+get_binary_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> whistle_util:to_binary(Value)
+    end.
+
+-spec(get_binary_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: binary()) -> binary()).
+get_binary_value(Key, JObj, Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> whistle_util:to_binary(Value)
+    end.
+
+-spec(get_integer_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | integer()).
+get_integer_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> whistle_util:to_integer(Value)
+    end.
+
+-spec(get_integer_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: integer()) -> integer()).
+get_integer_value(Key, JObj, Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> whistle_util:to_integer(Value)
+    end.
+
+-spec(is_false/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+is_false(Key, JObj) ->
+    is_false(Key, JObj, true).
+
+-spec(is_false/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
+is_false(Key, JObj, Default) ->
+    whistle_util:is_false(wh_json:get_value(Key, JObj, Default)).
+
+-spec(is_true/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+is_true(Key, JObj) ->
+    is_true(Key, JObj, false).
+
+-spec(is_true/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
+is_true(Key, JObj, Default) ->
+    whistle_util:is_true(wh_json:get_value(Key, JObj, Default)).
 
 -spec(get_binary_boolean/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
 get_binary_boolean(Key, JObj) ->
@@ -27,12 +75,9 @@ get_binary_boolean(Key, JObj) ->
         Value -> whistle_util:to_binary(whistle_util:is_true(Value))
     end.
 
--spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
-get_binary_value(Key, JObj) ->
-    case wh_json:get_value(Key, JObj) of
-        undefined -> undefined;
-        Value -> whistle_util:to_binary(Value)
-    end.
+-spec(get_binary_boolean/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
+get_binary_boolean(Key, JObj, Default) ->
+    whistle_util:to_binary(is_true(Key, JObj, Default)).
 
 -spec(get_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | term()).
 get_value(Key, Doc) ->
@@ -135,11 +180,15 @@ delete_key(Key, JObj) when not is_list(Key) ->
 delete_key(Keys, JObj) ->
     delete_key(Keys, JObj, no_prune).
 
+%% prune removes the parent key if the result of the delete is an empty list; no prune leaves the parent intact
+%% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in
+%%   no_prune -> {struct, [{<<"k1">>, []}]}
+%%   prune -> {struct, []}
 -spec(delete_key/3 :: (Keys :: list() | binary(), JObj :: json_object() | json_objects(), PruneOpt :: prune | no_prune) -> json_object() | json_objects()).
 delete_key(Key, JObj, PruneOpt) when not is_list(Key) ->
-    apply(?MODULE, PruneOpt, [[Key], JObj]);
+    (?MODULE):PruneOpt([Key], JObj);
 delete_key(Keys, JObj, PruneOpt) ->
-    apply(?MODULE, PruneOpt, [Keys, JObj]).
+    (?MODULE):PruneOpt(Keys, JObj).
 
 prune([], JObj) ->
     JObj;
@@ -183,8 +232,6 @@ no_prune([K], {struct, Doc}) ->
 no_prune([K|T], {struct, Doc}=JObj) ->
     case props:get_value(K, Doc) of
 	undefined -> JObj;
-	%% {struct, _}=V ->
-	%%     {struct, lists:keydelete(K, 1, no_prune(T, V))};
 	V ->
 	    {struct, [{K, no_prune(T, V)} | lists:keydelete(K, 1, Doc)]}
     end;
@@ -207,6 +254,42 @@ replace_in_list(1, V1, [_OldV | Vs], Acc) ->
     lists:reverse([V1 | Acc]) ++ Vs;
 replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Normalize a JSON object for storage as a Document
+%% All dashes are replaced by underscores, all upper case character are
+%% converted to lower case
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(normalize_jobj/1 :: (JObj :: json_object() | {Key :: binary(),  {struct, DataTuples :: json_array()}}) -> json_object() | {binary(), json_object()}).
+normalize_jobj({struct, DataTuples}) ->
+    {struct, [normalizer(DT) || DT <- DataTuples]};
+normalize_jobj({Key, {struct, DataTuples}}) ->
+    {normalize_key(Key), {struct, [normalizer(DT) || DT <- DataTuples]}}.
+
+-spec(normalize_binary_tuple/1 :: (BinaryTuple :: tuple(binary(), binary())) -> tuple(binary(), binary()) ).
+normalize_binary_tuple({Key,Val}) ->
+    {normalize_key(Key), Val}.
+
+-spec(normalize_key/1 :: (Key :: binary()) -> binary()).
+normalize_key(Key) when is_binary(Key) ->
+    << <<(normalize_key_char(B))>> || <<B>> <= Key>>.
+
+-spec(normalize_key_char/1 :: (C :: char()) -> char()).
+normalize_key_char($-) -> $_;
+normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
+%% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
+normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
+normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
+normalize_key_char(C) -> C.
+
+-spec(normalizer/1 :: (DataTuple :: {binary(), json_object()} | {binary(), binary()}) -> json_object() | {binary(),  binary()}).
+normalizer({_, {struct, _}}=DataTuple) ->
+    normalize_jobj(DataTuple);
+normalizer({_,_}=DataTuple) ->
+    normalize_binary_tuple(DataTuple).
 
 %% EUNIT TESTING
 -ifdef(TEST).
@@ -319,4 +402,29 @@ set_value_multiple_object_test() ->
     %% Set a non-existing key in a non-existing json_object()
     ?assertEqual(?T3R5, set_value([3, "new_key"], "added", ?D5)).
 
+%% "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ"
+-define(T4R1,  {struct, [{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#C0, 16#D6)), <<"Smith">>} ]}).
+%% "àáâãäåæçèéêëìíîïðñòóôõö"
+-define(T4R1V, {struct, [{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#E0, 16#F6)), <<"Smith">>} ]}).
+%% "ØÙÚÛÜÝÞ"
+-define(T5R1,  {struct, [{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#D8, 16#DE)), <<"Smith">>} ]}).
+%% "øùúûüýþ"
+-define(T5R1V, {struct, [{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#F8, 16#FE)), <<"Smith">>} ]}).
+
+-define(T4R2,  {struct, [{<<"Account-ID">>, <<"45AHGJDF8DFDS2130S">>}, {<<"TRUNK">>, false}, {<<"Node1">>, ?T4R1 }, {<<"Node2">>, ?T4R1 }]}).
+-define(T4R2V, {struct, [{<<"account_id">>, <<"45AHGJDF8DFDS2130S">>}, {<<"trunk">>, false}, {<<"node1">>, ?T4R1V}, {<<"node2">>, ?T4R1V}]}).
+-define(T4R3,  {struct, [{<<"Node-1">>, {struct, [{<<"Node-2">>, ?T4R2  }] }}, {<<"Another-Node">>, ?T4R1 }] }).
+-define(T4R3V, {struct, [{<<"node_1">>, {struct, [{<<"node_2">>, ?T4R2V }] }}, {<<"another_node">>, ?T4R1V}] }).
+
+
+
+set_value_normalizer_test() ->
+    %% Normalize a flat JSON object
+    ?assertEqual(normalize_jobj(?T4R1), ?T4R1V),
+    %% Normalize a single nested JSON object
+    ?assertEqual(normalize_jobj(?T4R2), ?T4R2V),
+    %% Normalize multiple nested JSON object
+    ?assertEqual(normalize_jobj(?T4R3), ?T4R3V),
+
+    ?assertEqual(normalize_jobj(?T5R1), ?T5R1V).
 -endif.

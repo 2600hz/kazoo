@@ -2,7 +2,9 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%%
+%%% Calls coming from offnet (in this case, likely stepswitch) potentially
+%%% destined for a trunkstore client, or, if the account exists and
+%%% failover is configured, to an external DID or SIP URI
 %%% @end
 %%% Created : 20 Jun 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -12,223 +14,183 @@
 
 -include("ts.hrl").
 
--record(state, {
-	  aleg_callid = <<>> :: binary()
-	  ,bleg_callid = <<>> :: binary()
-          ,acctid = <<>> :: binary()
-	  ,route_req_jobj = ?EMPTY_JSON_OBJECT :: json_object()
-          ,endpoint = ?EMPTY_JSON_OBJECT :: json_object()
-          ,my_q = <<>> :: binary()
-          ,callctl_q = <<>> :: binary()
-          ,failover = ?EMPTY_JSON_OBJECT :: json_object()
-	 }).
-
--define(APP_NAME, <<"ts_from_offnet">>).
--define(APP_VERSION, <<"0.1.0">>).
--define(WAIT_FOR_WIN_TIMEOUT, 5000).
--define(WAIT_FOR_BRIDGE_TIMEOUT, 10000).
--define(WAIT_FOR_HANGUP_TIMEOUT, 1000 * 60 * 60 * 2). %% 2 hours
--define(WAIT_FOR_CDR_TIMEOUT, 5000).
--define(WAIT_FOR_OFFNET_BRIDGE, 60000). %% 1 minute
-
 start_link(RouteReqJObj) ->
     proc_lib:start_link(?MODULE, init, [self(), RouteReqJObj]).
 
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {ok, self()}),
-    CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
-    put(callid, CallID),
-    start_amqp(#state{aleg_callid=CallID, route_req_jobj=RouteReqJObj}).
+    start_amqp(ts_callflow:init(RouteReqJObj)).
 
-start_amqp(#state{route_req_jobj=JObj}=State) ->
-    Q = amqp_util:new_queue(),
+start_amqp(State) ->
+    endpoint_data(ts_callflow:start_amqp(State)).
 
-    %% Bind the queue to an exchange
-    _ = amqp_util:bind_q_to_targeted(Q),
-    amqp_util:basic_consume(Q, [{exclusive, false}]),
+endpoint_data(State) ->
+    JObj = ts_callflow:get_request_data(State),
+    {endpoint, EP} = get_endpoint_data(JObj),
 
-    endpoint_data(State#state{my_q=Q}, JObj).
+    CallID = ts_callflow:get_aleg_id(State),
+    Q = ts_callflow:get_my_queue(State),
 
-endpoint_data(State, JObj) ->
-    {endpoint, EP} = endpoint_data(JObj),
-    send_park(State#state{endpoint=EP, acctid = wh_json:get_value(<<"Auth-User">>, EP)}).
+    true = whistle_api:bridge_req_endpoint_v(EP),
+    ?LOG("Valid endpoint"),
 
-send_park(#state{route_req_jobj=JObj, my_q=Q}=State) ->
-    JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                       ,{<<"Routes">>, []}
-                       ,{<<"Method">>, <<"park">>}
-		       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
-	    },
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    JSON = whistle_api:route_resp(JObj1),
-    ?LOG("Sending to ~s: ~s", [RespQ, JSON]),
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>),
-
-    wait_for_win(State, ?WAIT_FOR_WIN_TIMEOUT).
-
-wait_for_win(#state{aleg_callid=CallID, my_q=Q}=State, Timeout) ->
-    receive
-	{_, #amqp_msg{payload=Payload}} ->
-	    WinJObj = mochijson2:decode(Payload),
-	    true = whistle_api:route_win_v(WinJObj),
-	    CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
-
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID),
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-
-	    CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
-
-	    bridge_to_endpoint(State#state{callctl_q=CallctlQ})
-    after Timeout ->
-	    ?LOG("Timed out(~b) waiting for route_win", [Timeout]),
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID),
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-	    wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT)
-    end.
-
-bridge_to_endpoint(#state{callctl_q=CtlQ, aleg_callid=CallID, endpoint=EP}=State) ->
     Command = [
 	       {<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, [{struct, whistle_api:bridge_req_endpoint(EP)}]}
-               ,{<<"Timeout">>, 26}
-               ,{<<"Ignore-Early-Media">>, <<"false">>}
-               ,{<<"Ringback">>, <<"us-ring">>}
-               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-               ,{<<"Call-ID">>, CallID}
-               | whistle_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	       ,{<<"Endpoints">>, [EP]}
+	       ,{<<"Timeout">>, <<"26">>}
+	       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+	       ,{<<"Call-ID">>, CallID}
+	       | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    ?LOG(CallID, "Sending bridge command: ~s", [Payload]),
+    ?LOG("Endpoint loaded"),
+
+    State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, JObj, ?EMPTY_JSON_OBJECT)),
+
+    send_park(State1, Command).
+
+send_park(State, Command) ->
+    State1 = ts_callflow:send_park(State),
+    wait_for_win(State1, Command).
+
+wait_for_win(State, Command) ->
+    case ts_callflow:wait_for_win(State) of
+	{won, State1} ->
+	    ?LOG("Route won, sending command"),
+	    send_onnet(State1, Command);
+	{lost, State2} ->
+	    ?LOG("Didn't win route, passive listening"),
+	    wait_for_bridge(State2)
+    end.
+
+send_onnet(State, Command) ->
+    {ok, Payload} = whistle_api:bridge_req(Command),
+    ?LOG("Sending onnet command: ~s", [Payload]),
+
+    CtlQ = ts_callflow:get_control_queue(State),
+
     amqp_util:callctl_publish(CtlQ, Payload),
-    wait_for_bridge(State#state{failover=wh_json:get_value(<<"Failover">>, EP, ?EMPTY_JSON_OBJECT)}, ?WAIT_FOR_BRIDGE_TIMEOUT).
+    wait_for_bridge(State).
 
-wait_for_bridge(#state{aleg_callid=ALeg, acctid=AcctID, my_q=Q}=State, Timeout) ->
-    Start = erlang:now(),
-    receive
-	{_, #amqp_msg{payload=Payload}} ->
-	    JObj = mochijson2:decode(Payload),
-	    true = whistle_api:call_event_v(JObj),
-
-	    case { wh_json:get_value(<<"Application-Name">>, JObj)
-		   ,wh_json:get_value(<<"Event-Name">>, JObj)
-		   ,wh_json:get_value(<<"Event-Category">>, JObj) } of
-		{ _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
-		    BLeg = wh_json:get_value(<<"Other-Leg-Call-Id">>, JObj),
-		    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-		    ?LOG("Bridge to ~s successful", [BLeg]),
-		    wait_for_cdr(State#state{bleg_callid=BLeg});
-		{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-		    case wh_json:get_value(<<"Application-Response">>, JObj) of
-			<<"SUCCESS">> ->
-			    BLeg = wh_json:get_value(<<"Other-Leg-Call-Id">>, JObj),
-			    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-			    ?LOG("Bridge to ~s successful", [BLeg]),
-			    wait_for_cdr(State#state{bleg_callid=BLeg});
-			Cause ->
-			    ?LOG("Failed to bridge: ~s", [Cause]),
-			    try_failover(State)
-		    end;
-		{ _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
-		    ts_acctmgr:release_trunk(AcctID, ALeg, 0),
-		    ?LOG("Channel hungup");
-		{ _, _, <<"error">> } ->
-		    ts_acctmgr:release_trunk(AcctID, ALeg, 0),
-		    ?LOG("Execution failed");
-		_Other ->
-		    ?LOG("Received other: ~p~n", [_Other]),
-		    Diff = Timeout - (timer:now_diff(erlang:now(), Start) div 1000),
-		    ?LOG("~b left to timeout", [Diff]),
-		    wait_for_bridge(State, Diff)
-	    end
-    after Timeout ->
-	    ?LOG("Timed out(~b) waiting for bridge success", [Timeout])
+wait_for_bridge(State) ->
+    case ts_callflow:wait_for_bridge(State) of
+	{bridged, State1} ->
+	    wait_for_cdr(State1);
+	{error, State2} ->
+	    try_failover(State2);
+	{hangup, State3} ->
+	    ALeg = ts_callflow:get_aleg_id(State3),
+	    ts_callflow:finish_leg(State3, ALeg);
+	{timeout, State4} ->
+	    try_failover(State4)
     end.
 
 wait_for_cdr(State) ->
-    wait_for_cdr(State, ?WAIT_FOR_HANGUP_TIMEOUT).
-wait_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, Timeout) ->
-    receive
-	{_, #amqp_msg{payload=Payload}} ->
-	    JObj = mochijson2:decode(Payload),
-            case { wh_json:get_value(<<"Event-Category">>, JObj)
-		   ,wh_json:get_value(<<"Event-Name">>, JObj) } of
-                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-		    ?LOG("Hangup received, waiting on CDR"),
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-                { <<"error">>, _ } ->
-		    ?LOG("Received error in event stream, waiting for CDR"),
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-		{ <<"cdr">>, <<"call_detail">> } ->
-		    true = whistle_api:call_cdr_v(JObj),
-		    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
-		    Duration = ts_util:get_call_duration(JObj),
+    case ts_callflow:wait_for_cdr(State) of
+	{cdr, aleg, CDR, State1} ->
+	    ALeg = ts_callflow:get_aleg_id(State1),
+	    AcctID = ts_callflow:get_account_id(State1),
+	    Cost = ts_callflow:get_call_cost(State1),
 
-		    {R, RI, RM, S} = ts_util:get_rate_factors(JObj),
-		    Cost = ts_util:calculate_cost(R, RI, RM, S, Duration),
+	    ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
-		    ?LOG("CDR received for leg ~s", [Leg]),
-		    ?LOG("Leg to be billed for ~b seconds", [Duration]),
-		    ?LOG("Acct ~s to be charged ~p if per_min", [AcctID, Cost]),
+	    _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
+	    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
 
-		    ts_acctmgr:release_trunk(AcctID, Leg, Cost),
+	    wait_for_other_leg(State1, bleg);
+	{cdr, bleg, CDR, State2} ->
+	    BLeg = ts_callflow:get_bleg_id(State2),
+	    AcctID = ts_callflow:get_account_id(State2),
+	    Cost = ts_callflow:get_call_cost(State2),
 
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-                _ ->
-                    wait_for_cdr(State, ?WAIT_FOR_HANGUP_TIMEOUT)
-            end
-    after Timeout ->
-	    ?LOG("Timed out(~b) waiting for CDR"),
-	    %% will fail if already released
-	    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
+	    ?LOG("b-leg CDR for ~s costs ~p", [AcctID, Cost]),
+	    ?LOG(BLeg, "b-leg CDR for ~s costs ~p", [AcctID, Cost]),
+
+	    _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
+	    ok = ts_acctmgr:release_trunk(AcctID, BLeg, Cost),
+
+	    wait_for_other_leg(State2, aleg);
+	{timeout, State3} ->
+	    ?LOG("Timed out waiting for CDRs, cleaning up"),
+	    CallID = ts_callflow:get_aleg_id(State3),
+	    ts_callflow:finish_leg(State3, CallID)
     end.
 
-try_failover(#state{failover=?EMPTY_JSON_OBJECT, aleg_callid=CallID, acctid=AcctID}) ->
-    ?LOG_END("No failover configured, ending"),
-    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-try_failover(#state{failover=FailJObj}=State) ->
-    case wh_json:get_value(<<"e164">>, FailJObj) of
-	undefined -> try_failover_sip(State, wh_json:get_value(<<"sip">>, FailJObj));
-	DID -> try_failover_e164(State, DID)
+wait_for_other_leg(State, WaitingOnLeg) ->
+    wait_for_other_leg(State, WaitingOnLeg, ts_callflow:wait_for_cdr(State)).
+
+wait_for_other_leg(_State, aleg, {cdr, aleg, CDR, State1}) ->
+    ALeg = ts_callflow:get_aleg_id(State1),
+    _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
+    ts_callflow:finish_leg(State1, ALeg);
+wait_for_other_leg(_State, bleg, {cdr, bleg, CDR, State1}) ->
+    BLeg = ts_callflow:get_bleg_id(State1),
+    _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
+    ts_callflow:finish_leg(State1, BLeg);
+wait_for_other_leg(_State, Leg, {timeout, State1}) ->
+    ?LOG("Timed out waiting for ~s CDR, cleaning up", [Leg]),
+
+    ALeg = ts_callflow:get_bleg_id(State1),
+    ts_callflow:finish_leg(State1, ALeg).
+
+try_failover(State) ->
+    case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of
+	{<<>>, _} ->
+	    ?LOG("No callctl for failover"),
+	    wait_for_cdr(State);
+	{_, ?EMPTY_JSON_OBJECT} ->
+	    ?LOG("No failover configured"),
+	    wait_for_cdr(State);
+	{_, Failover} ->
+	    ?LOG("Trying failover"),
+	    case wh_json:get_value(<<"e164">>, Failover) of
+		undefined -> try_failover_sip(State, wh_json:get_value(<<"sip">>, Failover));
+		DID -> try_failover_e164(State, DID)
+	    end
     end.
 
-try_failover_sip(#state{callctl_q = <<>>}, _) ->
-    ?LOG("No control queue to try SIP failover");
-try_failover_sip(#state{endpoint=EP, aleg_callid=CallID, callctl_q=CtlQ}=State, SIPUri) ->
+try_failover_sip(State, undefined) ->
+    ?LOG("SIP failover undefined"),
+    wait_for_cdr(State);
+try_failover_sip(State, SIPUri) ->
+    CallID = ts_callflow:get_aleg_id(State),
+    CtlQ = ts_callflow:get_control_queue(State),
+    Q = ts_callflow:get_my_queue(State),
+
     EndPoint = {struct, [
 			 {<<"Invite-Format">>, <<"route">>}
 			 ,{<<"Route">>, SIPUri}
 			]},
 
+    %% since we only route to one endpoint, we specify most options on the endpoint's leg
     Command = [
 	       {<<"Call-ID">>, CallID}
 	       ,{<<"Application-Name">>, <<"bridge">>}
 	       ,{<<"Endpoints">>, [EndPoint]}
-	       ,{<<"Timeout">>, 6}
-	       ,{<<"Bypass-Media">>, true}
-	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
-	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
-	       ,{<<"Outgoing-Callee-ID-Name">>, wh_json:get_value(<<"Outgoing-Callee-ID-Name">>, EP)}
-	       ,{<<"Outgoing-Callee-ID-Number">>, wh_json:get_value(<<"Outgoing-Callee-ID-Number">>, EP)}
+	       | whistle_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
 
-    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = whistle_api:bridge_req(Command),
 
     ?LOG("Sending SIP failover for ~s: ~s", [SIPUri, Payload]),
 
-    amqp_util:targeted_publish(CtlQ, Payload),
-    wait_for_bridge(State#state{failover=?EMPTY_JSON_OBJECT}, ?WAIT_FOR_BRIDGE_TIMEOUT).
+    amqp_util:targeted_publish(CtlQ, Payload, <<"application/json">>),
+    wait_for_bridge(ts_callflow:set_failover(State, ?EMPTY_JSON_OBJECT)).
 
-try_failover_e164(#state{callctl_q = <<>>}, _) ->
-    ?LOG("No control queue to try E.164 failover");
-try_failover_e164(#state{acctid=AcctID, aleg_callid=CallID, callctl_q=CallctlQ, my_q=Q, endpoint=EP}=State, ToDID) ->
+try_failover_e164(State, ToDID) ->
+    CallID = ts_callflow:get_aleg_id(State),
     FailCallID = <<CallID/binary, "-failover">>,
+    AcctID = ts_callflow:get_account_id(State),
+    EP = ts_callflow:get_endpoint_data(State),
+    CtlQ = ts_callflow:get_control_queue(State),
+    Q = ts_callflow:get_my_queue(State),
+
     {ok, RateData} = ts_credit:reserve(ToDID, FailCallID, AcctID, outbound, wh_json:get_value(<<"Route-Options">>, EP)),
     Command = [
 	       {<<"Call-ID">>, CallID}
 	       ,{<<"Resource-Type">>, <<"audio">>}
 	       ,{<<"To-DID">>, ToDID}
 	       ,{<<"Account-ID">>, AcctID}
-	       ,{<<"Control-Queue">>, CallctlQ}
+	       ,{<<"Control-Queue">>, CtlQ}
 	       ,{<<"Application-Name">>, <<"bridge">>}
 	       ,{<<"Custom-Channel-Vars">>, {struct, RateData}}
 	       ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
@@ -239,159 +201,174 @@ try_failover_e164(#state{acctid=AcctID, aleg_callid=CallID, callctl_q=CallctlQ, 
 	       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
 	       | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
+
+    ?LOG("Sending E.164 failover: ~s", [Payload]),
+
     amqp_util:offnet_resource_publish(Payload),
-    wait_for_offnet_bridge(State#state{aleg_callid=FailCallID}, ?WAIT_FOR_OFFNET_BRIDGE).
-
-wait_for_offnet_bridge(#state{aleg_callid=CallID, acctid=AcctID, my_q=Q}=State, Timeout) ->
-    Start = erlang:now(),
-    receive
-	{_, #amqp_msg{payload=Payload}} ->
-	    JObj = mochijson2:decode(Payload),
-	    case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
-                { <<"offnet_resp">>, <<"resource">> } ->
-		    BLegCallID = wh_json:get_value(<<"Call-ID">>, JObj),
-		    amqp_util:bind_q_to_callevt(Q, BLegCallID, cdr),
-		    wait_for_offnet_cdr(State#state{bleg_callid=BLegCallID}, ?WAIT_FOR_HANGUP_TIMEOUT);
-                { <<"resource_error">>, <<"resource">> } ->
-		    ?LOG("Failed to failover to e164"),
-		    ?LOG("Failure message: ~s", [wh_json:get_value(<<"Failure-Message">>, JObj)]),
-		    ?LOG("Failure code: ~s", [wh_json:get_value(<<"Failure-Code">>, JObj)]),
-
-		    %% TODO: Send Commands to CtlQ to play media depending on failure code
-
-		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-                { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
-		    ?LOG("Hangup received"),
-		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-                { _, <<"error">> } ->
-		    ?LOG("Error received"),
-		    ts_acctmgr:release_trunk(AcctID, CallID, 0);
-                _ ->
-		    Diff = Timeout - (timer:now_diff(erlang:now(), Start) div 1000),
-                    wait_for_offnet_bridge(State, Diff)
-            end;
-        _ ->
-            Diff = Timeout - (timer:now_diff(erlang:now(), Start) div 1000),
-            wait_for_offnet_bridge(State, Diff)
-    after Timeout ->
-	    ?LOG("Offnet bridge timed out(~b)", [Timeout]),
-	    ts_acctmgr:release_trunk(AcctID, CallID, 0)
-    end.
-
-wait_for_offnet_cdr(#state{aleg_callid=ALeg, bleg_callid=BLeg, acctid=AcctID}=State, Timeout) ->
-    receive
-	{_, #amqp_msg{payload=Payload}} ->
-	    JObj = mochijson2:decode(Payload),
-            case { wh_json:get_value(<<"Event-Category">>, JObj)
-		   ,wh_json:get_value(<<"Event-Name">>, JObj) } of
-                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-		    ?LOG("Hangup received, waiting on CDR"),
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-                { <<"error">>, _ } ->
-		    ?LOG("Received error in event stream, waiting for CDR"),
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-		{ <<"cdr">>, <<"call_detail">> } ->
-		    true = whistle_api:call_cdr_v(JObj),
-
-		    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
-		    Duration = ts_util:get_call_duration(JObj),
-
-		    {R, RI, RM, S} = ts_util:get_rate_factors(JObj),
-		    Cost = ts_util:calculate_cost(R, RI, RM, S, Duration),
-
-		    ?LOG("CDR received for leg ~s", [Leg]),
-		    ?LOG("Leg to be billed for ~b seconds", [Duration]),
-		    ?LOG("Acct ~s to be charged ~p if per_min", [AcctID, Cost]),
-
-		    case Leg =:= BLeg of
-			true -> ts_acctmgr:release_trunk(AcctID, Leg, Cost);
-			false -> ts_acctmgr:release_trunk(AcctID, ALeg, Cost)
-		    end,
-
-		    wait_for_cdr(State, ?WAIT_FOR_CDR_TIMEOUT);
-                _ ->
-                    wait_for_cdr(State, ?WAIT_FOR_HANGUP_TIMEOUT)
-            end
-    after Timeout ->
-	    ?LOG("Timed out(~b) waiting for CDR"),
-	    %% will fail if already released
-	    ts_acctmgr:release_trunk(AcctID, ALeg, 0)
-    end.
+    wait_for_bridge(ts_callflow:set_failover(State, ?EMPTY_JSON_OBJECT)).
 
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
-endpoint_data(JObj) ->
+-spec get_endpoint_data/1 :: (JObj) -> tuple(endpoint, json_object()) | tuple(error, atom()) when
+      JObj :: json_object().
+get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
     AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
-    [ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-    ToDID = whistle_util:to_e164(ToUser),
+    ?LOG("EP: AcctID: ~s", [AcctID]),
+
+    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+                [<<"nouser">>, _] ->
+                    [ReqU, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+                    ?LOG("EP: ReqU: ~s", [ReqU]),
+                    whistle_util:to_e164(ReqU);
+                [T, _] ->
+                    ?LOG("EP: ToUser: ~s", [T]),
+                    whistle_util:to_e164(T)
+            end,
+    ?LOG("EP: ToDID: ~s", [ToDID]),
 
     RoutingData = routing_data(ToDID),
 
-    AuthUser = props:get_value(<<"Auth-User">>, RoutingData),
-    AuthRealm = props:get_value(<<"Auth-Realm">>, RoutingData),
+    AuthUser = props:get_value(<<"To-User">>, RoutingData),
+    AuthRealm = props:get_value(<<"To-Realm">>, RoutingData),
 
-    {ok, RateData} = ts_credit:reserve(ToDID, get(callid), AcctID, inbound, props:get_value(<<"Route-Options">>, RoutingData)),
+    ?LOG("EP: AuthUser: ~s", [AuthUser]),
+    ?LOG("EP: AuthRealm: ~s", [AuthRealm]),
 
-    InviteBase = [{<<"To-User">>, AuthUser}, {<<"To-Realm">>, AuthRealm} | RoutingData],
+    case ts_credit:reserve(ToDID, CallID, AcctID, inbound, props:get_value(<<"Route-Options">>, RoutingData)) of
+        {error, _}=E -> ?LOG("Release ~s from ~s", [CallID, AcctID]), ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
+        {ok, RateData} ->
+            InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
+            Invite = ts_util:invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ RoutingData,
 
-    InFormat = props:get_value(<<"Invite-Format">>, RoutingData),
-    Invite = ts_util:invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ InviteBase,
+            {endpoint, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
+                                                                       {<<"Auth-User">>, AuthUser}
+                                                                       ,{<<"Auth-Realm">>, AuthRealm}
+                                                                       ,{<<"Direction">>, <<"inbound">>}
+                                                                       | RateData
+                                                                      ]}
+                                 }
+                                 | Invite ]
+                       }}
+    end.
 
-    
-    {endpoint, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
-							       {<<"Auth-User">>, AuthUser}
-							       ,{<<"Auth-Realm">>, AuthRealm}
-							       ,{<<"Direction">>, <<"inbound">>}
-							       | RateData
-							      ]}
-			 }
-			 | Invite ]
-	       }}.
-
--spec(routing_data/1 :: (ToDID :: binary()) -> proplist()).
+-spec routing_data/1 :: (ToDID) -> proplist() when
+      ToDID :: binary().
 routing_data(ToDID) ->
     {ok, Settings} = ts_util:lookup_did(ToDID),
 
+    ?LOG("Got DID settings"),
+
     AuthOpts = wh_json:get_value(<<"auth">>, Settings, ?EMPTY_JSON_OBJECT),
     Acct = wh_json:get_value(<<"account">>, Settings, ?EMPTY_JSON_OBJECT),
-    DidOptions = wh_json:get_value(<<"DID_Opts">>, Settings, ?EMPTY_JSON_OBJECT),
-    RouteOpts = wh_json:get_value(<<"options">>, DidOptions, []),
+    DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, ?EMPTY_JSON_OBJECT),
+    RouteOpts = wh_json:get_value(<<"options">>, DIDOptions, []),
 
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),
     AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
 
-    {Srv, Acct} = try
+    {Srv, AcctStuff} = try
                       {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR),
+                      ?LOG("Got account settings"),
                       {
                         wh_json:get_value(<<"server">>, AccountSettings, ?EMPTY_JSON_OBJECT)
                         ,wh_json:get_value(<<"account">>, AccountSettings, ?EMPTY_JSON_OBJECT)
                       }
                   catch
-                      _:_ -> {?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT}
+                      _A:_B ->
+                          ?LOG("Failed to get account settings: ~p: ~p", [_A, _B]),
+                          {?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT}
                   end,
 
     SrvOptions = wh_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
 
-    RD0 = [ {<<"Invite-Format">>, wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>)}
-	    ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv, [])}
-	    ,{<<"Bypass-Media">>, wh_json:get_value(<<"media_handling">>, SrvOptions, <<"bypass">>)}
-	    ,{<<"Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, SrvOptions, 8)}
-	    ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, SrvOptions, <<"true">>)}
-	    ,{<<"Auth-User">>, AuthU}
-	    ,{<<"Auth-Realm">>, AuthR}
-	    ,{<<"To-User">>, AuthU}
-	    ,{<<"To-Realm">>, AuthR}
-	    ,{<<"Route-Options">>, RouteOpts}
-	    ,{<<"To-DID">>, ToDID}
-	  ],
-    case wh_json:get_value(<<"failover">>, DidOptions
-			   ,wh_json:get_value(<<"failover">>, Srv
-					      ,wh_json:get_value(<<"failover">>, Acct))
-			  ) of
-	undefined -> RD0;
-	F -> [{<<"Failover">>, F} | RD0]
+    true = whistle_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)),
+
+    InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
+
+    {CalleeName, CalleeNumber} = callee_id([
+					    wh_json:get_value(<<"caller_id">>, DIDOptions)
+                                            ,wh_json:get_value(<<"callerid_account">>, Settings)
+                                            ,wh_json:get_value(<<"callerid_server">>, Settings)
+                                           ]),
+
+    ProgressTimeout = ts_util:progress_timeout([
+						wh_json:get_value(<<"progress_timeout">>, DIDOptions)
+						,wh_json:get_value(<<"progress_timeout">>, SrvOptions)
+						,wh_json:get_value(<<"progress_timeout">>, AcctStuff)
+					       ]),
+
+    BypassMedia = ts_util:bypass_media([
+					wh_json:get_value(<<"media_handling">>, DIDOptions)
+					,wh_json:get_value(<<"media_handling">>, SrvOptions)
+					,wh_json:get_value(<<"media_handling">>, AcctStuff)
+				       ]),
+
+    Failover = ts_util:failover([
+				 wh_json:get_value(<<"failover">>, DIDOptions)
+				 ,wh_json:get_value(<<"failover">>, SrvOptions)
+				 ,wh_json:get_value(<<"failover">>, AcctStuff)
+				]),
+
+    Delay = ts_util:delay([
+			   wh_json:get_value(<<"delay">>, DIDOptions)
+			   ,wh_json:get_value(<<"delay">>, SrvOptions)
+			   ,wh_json:get_value(<<"delay">>, AcctStuff)
+			  ]),
+
+    SIPHeaders = ts_util:sip_headers([
+				      wh_json:get_value(<<"sip_headers">>, DIDOptions)
+				      ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
+				      ,wh_json:get_value(<<"sip_headers">>, AcctStuff)
+				     ]),
+
+    IgnoreEarlyMedia = ts_util:ignore_early_media([
+						   wh_json:get_value(<<"ignore_early_media">>, DIDOptions)
+						   ,wh_json:get_value(<<"ignore_early_media">>, SrvOptions)
+						   ,wh_json:get_value(<<"ignore_early_media">>, AcctStuff)
+						  ]),
+
+    Timeout = ts_util:ep_timeout([
+				  wh_json:get_value(<<"timeout">>, DIDOptions)
+				  ,wh_json:get_value(<<"timeout">>, SrvOptions)
+				  ,wh_json:get_value(<<"timeout">>, AcctStuff)
+				 ]),
+
+    %% Bridge Endpoint fields go here
+    %% See http://wiki.2600hz.org/display/whistle/Dialplan+Actions#DialplanActions-Endpoint
+    [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
+			 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Srv)}
+			 ,{<<"Bypass-Media">>, BypassMedia}
+			 ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
+			 ,{<<"Failover">>, Failover}
+			 ,{<<"Endpoint-Delay">>, Delay}
+			 ,{<<"SIP-Headers">>, SIPHeaders}
+			 ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+			 ,{<<"Endpoint-Timeout">>, Timeout}
+			 ,{<<"Callee-ID-Name">>, CalleeName}
+			 ,{<<"Callee-ID-Number">>, CalleeNumber}
+			 ,{<<"To-User">>, AuthU}
+			 ,{<<"To-Realm">>, AuthR}
+			 ,{<<"To-DID">>, ToDID}
+			 ,{<<"Route-Options">>, RouteOpts}
+			 %% ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
+			 %% ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
+		       ],
+	   V =/= undefined,
+	   V =/= <<>>
+    ].
+
+callee_id([]) -> {undefined, undefined};
+callee_id([undefined | T]) -> callee_id(T);
+callee_id([?EMPTY_JSON_OBJECT | T]) -> callee_id(T);
+callee_id([<<>> | T]) -> callee_id(T);
+callee_id([{struct, [_|_]}=JObj | T]) ->
+    case {wh_json:get_value(<<"cid_name">>, JObj), wh_json:get_value(<<"cid_number">>, JObj)} of
+        {undefined, undefined} ->
+            callee_id(T);
+        CalleeID -> CalleeID
     end.

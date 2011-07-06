@@ -4,6 +4,9 @@
 -include_lib("whistle/include/whistle_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+-define(APP_NAME, <<"trunkstore">>).
+-define(APP_VERSION, <<"0.9.0">>).
+
 %% couch params for the trunk store and its views
 -define(TS_DB, <<"ts">>).
 

@@ -79,7 +79,7 @@ handle_call({lookup_number, Number}, From, State) ->
     spawn(fun() ->
                   Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
                   case lookup_account_by_number(Num) of
-                      {ok, AccountId}=Ok ->
+                      {ok, AccountId, _}=Ok ->
                           ?LOG("found number is associated to account ~s", [AccountId]),
                           gen_server:reply(From, Ok);
                       {error, Reason}=E ->
@@ -220,10 +220,15 @@ start_amqp() ->
 process_req({<<"dialplan">>, <<"route_req">>}, JObj) ->
     case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
         ?EMPTY_JSON_OBJECT ->
-            ?LOG_START("received inbound dialplan route request"),
+            ?LOG_START("received new inbound dialplan route request"),
             _ =  inbound_handler(JObj);
-        _ ->
-            ok
+        CCVs ->
+            case wh_json:get_value(<<"Offnet-Loopback-Number">>, CCVs) of
+                undefined -> ok;
+                Number ->
+                    ?LOG_START("received inter account inbound dialplan route request"),
+                    _ =  inbound_handler(Number, JObj)
+            end
     end;
 
 process_req({_, _}, _) ->
@@ -238,8 +243,10 @@ process_req({_, _}, _) ->
 -spec(inbound_handler/1 :: (JObj :: json_object()) -> no_return()).
 inbound_handler(JObj) ->
     Number = get_dest_number(JObj),
+    inbound_handler(Number, JObj).
+inbound_handler(Number, JObj) ->
     case lookup_account_by_number(Number) of
-        {ok, AccountId} ->
+        {ok, AccountId, _} ->
             ?LOG("number associated with account ~s", [AccountId]),
             relay_route_req(
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined), JObj)
@@ -265,12 +272,12 @@ get_dest_number(JObj) ->
 %% lookup the account ID by number
 %% @end
 %%--------------------------------------------------------------------
--spec(lookup_account_by_number/1 :: (Number :: binary()) -> tuple(ok, binary())|tuple(error, atom())).
+-spec(lookup_account_by_number/1 :: (Number :: binary()) -> tuple(ok, binary(), boolean())|tuple(error, atom())).
 lookup_account_by_number(Number) ->
     ?LOG("lookup account for ~s", [Number]),
     case wh_cache:fetch({stepswitch_number, Number}) of
-	{ok, AccountId} ->
-	    {ok, AccountId};
+	{ok, {AccountId, ForceOut}} ->
+            {ok, AccountId, ForceOut};
 	{error, not_found} ->
             Options = [{<<"key">>, Number}],
 	    case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTES_BY_NUMBER, Options) of
@@ -280,13 +287,15 @@ lookup_account_by_number(Number) ->
 		    {error, not_found};
 		{ok, [{struct, _}=JObj]} ->
                     AccountId = wh_json:get_value(<<"id">>, JObj),
-                    wh_cache:store({stepswitch_number, Number}, AccountId),
-		    {ok, AccountId};
+                    ForceOut = whistle_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
+                    wh_cache:store({stepswitch_number, Number}, {AccountId, ForceOut}),
+		    {ok, AccountId, ForceOut};
 		{ok, [{struct, _}=JObj | _Rest]} ->
 		    ?LOG("number lookup resulted in more than one result, using the first"),
                     AccountId = wh_json:get_value(<<"id">>, JObj),
-                    wh_cache:store({stepswitch_number, Number}, AccountId),
-		    {ok, AccountId}
+                    ForceOut = whistle_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
+                    wh_cache:store({stepswitch_number, Number}, {AccountId, ForceOut}),
+		    {ok, AccountId, ForceOut}
 	    end
     end.
 

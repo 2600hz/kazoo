@@ -178,14 +178,14 @@ code_change(_OldVsn, State, _Extra) ->
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
     OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
-    ?LOG_SYS("Originate on node ~w: ~s", [OrigStr]),
+    ?LOG_SYS("Originate ~s on node ~s", [OrigStr, Node]),
     Result = freeswitch:bgapi(Node, originate, OrigStr),
     case Result of
 	{ok, JobId} ->
 	    receive
 		{bgok, JobId, X} ->
 		    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-		    ?LOG_START(CallID, "Originate on node ~w with JobID ~s received bgok: ~w", [Node, JobId, X]),
+		    ?LOG_START(CallID, "Originate on node ~w with JobID ~s received bgok ~s", [Node, JobId, X]),
 		    CtlQ = start_call_handling(Node, CallID),
 		    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 		{bgerror, JobId, Y} ->
@@ -242,6 +242,8 @@ extract_node_data(Node) ->
     process_status(Lines).
 
 -spec(process_status/1 :: (Lines :: list()) -> proplist()).
+process_status([Uptime, _, SessSince, Sess30, SessMax, CPU]) ->
+    process_status([Uptime, SessSince, Sess30, SessMax, CPU]);
 process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
     {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
     UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)

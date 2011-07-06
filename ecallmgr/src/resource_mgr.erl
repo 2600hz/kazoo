@@ -23,7 +23,7 @@
 
 -include("ecallmgr.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 
 -record(state, {callmgr_q = <<>> :: binary()}).
 
@@ -57,6 +57,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ?LOG_SYS("starting new resource manager"),
     try
 	{ok, #state{callmgr_q=start_amqp()}}
     catch
@@ -107,8 +108,8 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
 					   ,payload = Payload}}, State) ->
     spawn(fun() -> handle_resource_req(Payload) end),
     {noreply, State};
+
 handle_info(_Info, State) ->
-    format_log(info, "RSCMGR(~p): Unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -123,7 +124,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{callmgr_q=Q}) ->
-    format_log(info, "RSCMGR(~p): Going down(~p). Q: ~p~n", [self(), _Reason, Q]),
+    ?LOG_SYS("resource manager ~p termination", [_Reason]),
     amqp_util:queue_delete(Q).
 
 %%--------------------------------------------------------------------
@@ -146,9 +147,12 @@ start_amqp() ->
 	true = is_binary(Q = amqp_util:new_callmgr_queue(<<>>)),
 	_ = amqp_util:bind_q_to_callmgr(Q, ?KEY_RESOURCE_REQ),
 	_ = amqp_util:basic_consume(Q),
+        ?LOG_SYS("connected to AMQP"),
 	Q
     catch
-	_:_ -> {error, amqp_error}
+	_:R ->
+            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
+            {error, amqp_error}
     end.
 
 -spec(handle_resource_req/1 :: (Payload :: binary()) -> no_return()).
@@ -172,16 +176,16 @@ handle_resource_req(Payload) ->
 		ok -> ok
 	    end;
 	false ->
-	    format_log(error, "RSCMGR.h_res_req(~p): Failed to validate ~s~n", [self(), Payload])
+            ?LOG("failed to validate ~s", [Payload])
     end.
 
 -spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
 get_resources({<<"resource">>, <<"originate_req">>, <<"audio">>=Type}, Options) ->
-    format_log(info, "RSCMGR.get_res(~p): Type ~p Options: ~p~n", [self(), Type, Options]),
-    FSAvail = ecallmgr_fs_handler:request_resource(Type, Options), % merge other switch results into this list as well (eventually)
+    ?LOG("request to originate new ~s resource", [Type]),
+    %% merge other switch results into this list as well (eventually)
+    FSAvail = ecallmgr_fs_handler:request_resource(Type, Options),
     lists:usort(fun sort_resources/2, FSAvail);
 get_resources(_Type, _Options) ->
-    format_log(error, "RSCMGR.get_res(~p): Unknown request type ~p~n", [self(), _Type]),
     [].
 
 -spec(request_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary(), binary())).
@@ -235,7 +239,7 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
 	       ,{<<"Control-Queue">>, CtlQ}
 		| whistle_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_resp(RespProp),
-    format_log(info, "RSC_MGR: Sending resp to ~p: ~s~n", [AppQ, JSON]),
+    ?LOG("sending ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
 -spec(send_failed_req/2 :: (JObj :: json_object(), Failed :: integer()) -> no_return()).
@@ -245,9 +249,9 @@ send_failed_req(JObj, Failed) ->
 
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Attempts">>, Failed}
-		| whistle_api:default_headers(<<>>, <<"originate">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
+		| whistle_api:default_headers(<<>>, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
-    format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
+    ?LOG("sending resource error ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
 -spec(send_failed_consume/3 :: (Route :: binary() | list(), JObj :: json_object(), E :: binary()) -> no_return()).
@@ -258,12 +262,12 @@ send_failed_consume(Route, JObj, E) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Route">>, Route}
 		,{<<"Failure-Message">>, whistle_util:to_binary(E)}
-		| whistle_api:default_headers(<<>>, <<"originate">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
+		| whistle_api:default_headers(<<>>, <<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = whistle_api:resource_error(RespProp),
-    format_log(info, "RSC_MGR: Sending err to ~p~n~s~n", [AppQ, JSON]),
+    ?LOG("sending originate error ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
-%% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first) 
+%% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first)
 %% [
 %%   [{node, 1}, {p_u, 80}, {a_c, 3}, ...]
 %%  ,[{node, 2}, {p_u, 50}, {a_c, 5}, ...]

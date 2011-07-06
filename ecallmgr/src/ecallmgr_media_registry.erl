@@ -111,7 +111,7 @@ handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
 			end, Dict),
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
-            {reply, {error, not_local}, Dict};        
+            {reply, {error, not_local}, Dict};
 	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
 	    spawn(fun() ->
 			  process_flag(trap_exit, true),
@@ -149,7 +149,7 @@ handle_call(_Request, _From, Dict) ->
 %% @private
 %% @doc
 %% Handling cast messages
-%% 
+%%
 %% @spec handle_cast(Msg, State) -> {noreply, State} |
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
@@ -234,14 +234,25 @@ request_media(MediaName, Type, CallID) ->
             lookup_remote(MediaName, Type, CallID)
     end.
 
-lookup_remote(MediaName, StreamType, CallID) ->
+lookup_remote(MediaName, <<"extant">>, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
-               ,{<<"Stream-Type">>, StreamType}
+               ,{<<"Stream-Type">>, <<"extant">>}
 	       ,{<<"Call-ID">>, CallID}
                | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
+    lookup_remote(MediaName, Request);
+lookup_remote(MediaName, <<"new">>, CallID) ->
+    Request = [
+                {<<"Media-Name">>, MediaName}
+               ,{<<"Stream-Type">>, <<"new">>}
+	       ,{<<"Call-ID">>, CallID}
+               | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    lookup_remote(MediaName, Request).
 
+-spec(lookup_remote/2 :: (MediaName :: binary(), Request :: proplist()) -> tuple('ok', binary()) | tuple('error', 'not_local')).
+lookup_remote(MediaName, Request) ->
     try
 	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
 	true = whistle_api:media_resp_v(MediaResp),

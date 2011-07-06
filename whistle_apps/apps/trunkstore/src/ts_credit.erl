@@ -30,46 +30,49 @@ start_link() ->
     ?LOG("setup ~s DB for rates", [?TS_RATES_DB]),
     ignore.
 
--spec(reserve/5 :: (ToDID :: binary(), CallID :: binary(), AcctID :: binary(), Direction :: inbound | outbound, RouteOpts :: list(binary()) | []) -> tuple(ok, proplist())).
+-spec(reserve/5 :: (ToDID :: binary(), CallID :: binary(), AcctID :: binary(), Direction :: inbound | outbound, RouteOpts :: list(binary()) | []) -> tuple(ok, proplist()) | tuple(error, term())).
 reserve(ToDID, CallID, AcctID, inbound, RouteOpts) ->
-    {ok, #route_flags{
-       rate = R
-       ,rate_increment = RI
-       ,rate_minimum = RM
-       ,surcharge = S
-       ,rate_name = RN
-       ,flat_rate_enabled = FRE
-      }} = ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"inbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}),
+    case ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"inbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}) of
+        {error, _}=E -> E;
+        {ok, #route_flags{
+           rate = R
+           ,rate_increment = RI
+           ,rate_minimum = RM
+           ,surcharge = S
+           ,rate_name = RN
+           ,flat_rate_enabled = FRE
+          }} ->
+            TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
 
-    TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
-
-    {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
-	  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
-	  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
-	  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
-	  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
-	  ,{<<"Trunk-Type">>, TrunkType}
-	 ]};
+            {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
+                  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
+                  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
+                  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
+                  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
+                  ,{<<"Trunk-Type">>, TrunkType}
+                 ]}
+    end;
 reserve(ToDID, CallID, AcctID, outbound, RouteOpts) ->
-    {ok, #route_flags{
-       rate = R
-       ,rate_increment = RI
-       ,rate_minimum = RM
-       ,surcharge = S
-       ,rate_name = RN
-       ,flat_rate_enabled = FRE
-      }} = ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"outbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}),
+    case ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"outbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}) of
+        {error, _}=E -> E;
+        {ok, #route_flags{
+           rate = R
+           ,rate_increment = RI
+           ,rate_minimum = RM
+           ,surcharge = S
+           ,rate_name = RN
+           ,flat_rate_enabled = FRE
+          }} ->
+            TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
 
-    TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
-
-    {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
-	  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
-	  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
-	  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
-	  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
-	  ,{<<"Trunk-Type">>, TrunkType}
-	 ]}.
-
+            {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
+                  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
+                  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
+                  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
+                  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
+                  ,{<<"Trunk-Type">>, TrunkType}
+                 ]}
+    end.
 
 -spec(check/1 :: (Flags :: #route_flags{}) -> tuple(ok, #route_flags{}) | tuple(error, atom())).
 check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
@@ -112,7 +115,10 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 			    E3;
 			{error, not_found}=E4 ->
 			    ?LOG("Failed reserving a trunk; ts_acctmgr:reserve_trunk/4 failed"),
-			    E4
+			    E4;
+                        {error, no_results}=E5 ->
+                            ?LOG("No results from ts_acctmgr:reserve_trunk/4"),
+                            E5
 		    end
 	    end
     end.
@@ -162,7 +168,7 @@ set_flat_flags(Flags, <<"inbound">>) ->
       ,rate_increment = 0
       ,rate_minimum = 0
       ,surcharge = 0.0
-      ,rate_name = <<>>
+      ,rate_name = <<"flat-rate">>
       ,flat_rate_enabled = true
      };
 set_flat_flags(Flags, <<"outbound">>) ->
@@ -171,14 +177,16 @@ set_flat_flags(Flags, <<"outbound">>) ->
       ,rate_increment = 0
       ,rate_minimum = 0
       ,surcharge = 0.0
-      ,rate_name = <<>>
+      ,rate_name = <<"flat-rate">>
       ,flat_rate_enabled = true
      }.
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
--spec(options_match/2 :: (RouteOptions :: list(binary()), RateOptions :: list(binary()) | json_object()) -> boolean()).
+-spec(options_match/2 :: (RouteOptions :: list(binary()) | json_object(), RateOptions :: list(binary()) | json_object()) -> boolean()).
 options_match(RouteOptions, {struct, RateOptions}) ->
+    options_match(RouteOptions, RateOptions);
+options_match({struct, RouteOptions}, RateOptions) ->
     options_match(RouteOptions, RateOptions);
 options_match([], []) ->
     true;

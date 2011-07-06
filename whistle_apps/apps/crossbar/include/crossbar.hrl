@@ -29,35 +29,34 @@
 	  ,'_rev' = undefined :: binary() | undefined
           ,account_id = <<>> :: binary()
           ,expires = 0 :: integer() % secs
-          ,created = 0 :: integer() % timestamp
-          ,storage = [] :: proplist() % proplist
+          ,created = wh_util:current_tstamp() :: non_neg_integer() % timestamp
+          ,storage = ?EMPTY_JSON_OBJECT :: json_object()
          }).
 
 -record(cb_context, {
            content_types_provided = ?CONTENT_PROVIDED :: list(crossbar_content_handler()) | []
           ,content_types_accepted = ?CONTENT_ACCEPTED :: list(crossbar_content_handler()) | []
-	  ,allowed_methods = ?ALLOWED_METHODS :: list() | []
+	  ,allowed_methods = ?ALLOWED_METHODS :: list(atom()) | []
           ,allow_methods = ?ALLOWED_METHODS :: list(atom()) | []
 	  ,session = undefined :: undefined | #session{}
-          ,auth_token = <<"">> :: binary()
+          ,auth_token = <<>> :: binary()
           ,auth_doc = undefined :: json_object() | undefined
-          ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>
-          ,req_nouns = [{<<"404">>, []}|[]] :: list() | []
+          ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
+          ,req_nouns = [{<<"404">>, []}] :: list(tuple(binary(), list())) | []
           ,req_json = ?EMPTY_JSON_OBJECT :: json_object() | tuple(malformed, binary())
 	  ,req_files = [] :: list(tuple(binary(), json_object())) | []
           ,req_data = [] :: mochijson()
           ,account_id = undefined :: binary() | undefined
-          ,db_name = undefined :: binary() | string() | undefined
+          ,db_name = undefined :: binary() | undefined
           ,doc = undefined :: json_object() | json_objects() | undefined
           ,resp_expires = {{1999,1,1},{0,0,0}}
           ,resp_etag = undefined :: undefined | automatic | string()
 	  ,resp_status = error :: crossbar_status()
-	  ,resp_error_msg = undefined :: json_string()
+	  ,resp_error_msg = undefined :: json_string() | undefined
 	  ,resp_error_code = undefined :: json_number() | undefined
 	  ,resp_data = [] :: mochijson()
 	  ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
-          ,storage = [] :: proplist()
-          ,start = undefined
+	  ,start = erlang:now() :: tuple(integer(), integer(), integer())
 	 }).
 
 -ifdef(PROFILE).

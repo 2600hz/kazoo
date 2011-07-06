@@ -11,12 +11,14 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_handler/1]).
+-export([start_link/0, start_handler/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
+
+-define(CHILD(ID, Args), {ID, {ts_from_onnet, start_link, [Args]}, temporary, 2000, worker, [ts_from_onnet]}).
 
 %%%===================================================================
 %%% API functions
@@ -32,8 +34,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_handler(RouteReqJObj) ->
-    supervisor:start_child(?SERVER, [RouteReqJObj]).
+start_handler(ID, RouteReqJObj) ->
+    supervisor:start_child(?SERVER, ?CHILD(ID, RouteReqJObj)).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -53,20 +55,13 @@ start_handler(RouteReqJObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = one_for_one,
     MaxRestarts = 1,
     MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Restart = temporary,
-    Shutdown = 2000,
-    Type = worker,
-
-    AChild = {ts_from_onnet, {ts_from_onnet, start_link, []},
-              Restart, Shutdown, Type, [ts_from_onnet]},
-
-    {ok, {SupFlags, [AChild]}}.
+    {ok, {SupFlags, []}}.
 
 %%%===================================================================
 %%% Internal functions

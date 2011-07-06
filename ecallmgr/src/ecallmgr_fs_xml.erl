@@ -133,11 +133,10 @@ get_leg_vars(Prop) ->
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> list(string())).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
-    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
+    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
+    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
-get_channel_vars({<<"Timeout">>, V}, Vars) ->
-    [ list_to_binary(["call_timeout='", whistle_util:to_list(V), "'"]) | Vars];
 get_channel_vars({<<"Outgoing-Caller-ID-Name">>, V}, Vars) ->
     [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Outgoing-Caller-ID-Number">>, V}, Vars) ->
@@ -194,6 +193,8 @@ get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
     [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->
     [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Overwrite-Channel-Vars">>, V}, Vars) ->
+    [ list_to_binary([<<"local_var_clobber=">>, whistle_util:to_list(V)]) | Vars];
 %% SPECIAL CASE: Custom Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
     lists:foldl(fun
@@ -210,10 +211,18 @@ get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
                        [ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
                end, Vars, Custom);
 %% SPECIAL CASE: SIP Headers
-get_channel_vars({<<"SIP-Headers">>, {struct, [_]=SIPHeaders}}, Vars) ->
+get_channel_vars({<<"SIP-Headers">>, {struct, SIPHeaders}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
 			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
 		end, Vars, SIPHeaders);
+%% SPECIAL CASE: Timeout must be larger than zero
+get_channel_vars({<<"Timeout">>, V}, Vars) ->
+    case whistle_util:to_integer(V) of
+        TO when TO > 0 ->
+            [ <<"call_timeout=", (whistle_util:to_binary(TO))/binary>> | Vars];
+        _Else ->
+            Vars
+    end;
 get_channel_vars(_, Vars) ->
     Vars.
 

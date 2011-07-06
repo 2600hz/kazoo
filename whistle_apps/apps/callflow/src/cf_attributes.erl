@@ -19,14 +19,32 @@
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
+%% TODO: This should use caching, however we need an 'absolute' expiration
+%% or on a busy system call forwarding will not appear to disable....
 %% @end
 %%-----------------------------------------------------------------------------
 -spec(call_forward/3 :: (DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), Call :: #cf_call{}) -> undefined | json_object()).
-call_forward(DeviceId, OwnerId, Call) ->
-    Attributes = fetch_attributes(call_forward, 60, Call),
-    case props:get_value(DeviceId, Attributes) of
-        undefined -> props:get_value(OwnerId, Attributes);
-        Property -> Property
+call_forward(DeviceId, OwnerId, #cf_call{account_db=Db}) ->
+    CallFwd = case couch_mgr:get_all_results(Db, get_view(call_forward)) of
+                  {ok, JObj} ->
+                      [{Key, wh_json:get_value(<<"value">>, CF)}
+                       || CF <- JObj
+                              ,wh_json:is_true([<<"value">>, <<"enabled">>], CF)
+                              ,(begin
+                                    Key = wh_json:get_value(<<"key">>, CF),
+                                    lists:member(Key, [DeviceId, OwnerId])
+                                end)];
+                  _ ->
+                      []
+              end,
+    case props:get_value(DeviceId, CallFwd) of
+        undefined ->
+            Fwd = props:get_value(OwnerId, CallFwd),
+            Fwd =/= undefined andalso ?LOG("found enabled call forwarding on ~s", [OwnerId]),
+            Fwd;
+        Fwd ->
+            ?LOG("found enabled call forwarding on ~s", [DeviceId]),
+            Fwd
     end.
 
 %%-----------------------------------------------------------------------------
@@ -36,16 +54,21 @@ call_forward(DeviceId, OwnerId, Call) ->
 %%-----------------------------------------------------------------------------
 -spec(caller_id/4 :: (CIDType :: cf_api_binary(), DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), Call :: #cf_call{})
                      -> tuple(cf_api_binary(), cf_api_binary())).
-caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num}=Call) ->
+caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num, cid_name=Name, channel_vars=CCVs}=Call) ->
     Ids = [begin ?LOG("looking for caller id type ~s on doc ~s", [CIDType, Id]), Id end
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
-    Attributes = fetch_attributes(caller_id, 3600, Call),
-    CID = case search_attributes(CIDType, Ids, Attributes) of
-              undefined ->
-                  search_attributes(<<"default">>, [AccountId], Attributes);
-              Property -> Property
-          end,
-    {wh_json:get_value(<<"number">>, CID, Num), wh_json:get_value(<<"name">>, CID, <<>>)}.
+    case whistle_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
+        true ->
+            {Num, Name};
+        false ->
+            Attributes = fetch_attributes(caller_id, 3600, Call),
+            CID = case search_attributes(CIDType, Ids, Attributes) of
+                      undefined ->
+                          search_attributes(<<"default">>, [AccountId], Attributes);
+                      Property -> Property
+                  end,
+            {wh_json:get_value(<<"number">>, CID, Num), wh_json:get_value(<<"name">>, CID, <<>>)}
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public

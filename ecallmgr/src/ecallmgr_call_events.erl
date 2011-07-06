@@ -70,6 +70,7 @@ init([Node, UUID, CtlPid]) ->
     process_flag(trap_exit, true),
     put(callid, UUID),
     is_pid(CtlPid) andalso link(CtlPid),
+    ?LOG(UUID, "Init complete. CtlPid: ~p", [CtlPid]),
     {ok, #state{node=Node, uuid=UUID, ctlpid=CtlPid}, 0}.
 
 %%--------------------------------------------------------------------
@@ -114,11 +115,20 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{node=Node, uuid=UUID}=State) ->
     erlang:monitor_node(Node, true),
+    ?LOG("Monitoring ~s", [Node]),
     case freeswitch:handlecall(Node, UUID) of
 	ok ->
+	    ?LOG("Handling call events for ~s", [Node]),
 	    Q = add_amqp_listener(UUID),
 	    {noreply, State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}};
-	_ ->
+	timeout ->
+	    ?LOG("Timed out trying to handle events for ~s, trying again", [Node]),
+	    {noreply, State, 0};
+	{error, badsession} ->
+	    ?LOG("Bad session received when handling events for ~s", [Node]),
+	    {stop, normal, State};
+	_E ->
+	    ?LOG("Failed to handle call events for ~s: ~p", [Node, _E]),
 	    {stop, normal, State}
     end;
 
@@ -232,8 +242,10 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
 	false ->
 	    case FNC > ?MAX_FAILED_NODE_CHECKS of
 		true ->
+		    ?LOG(UUID, "Node ~s appears down, and we've checked ~b times now; going down", [Node, FNC]),
 		    {stop, normal, State};
 		false ->
+		    ?LOG(UUID, "Node ~s appears down, and we've checked ~b times now; will check again", [Node, FNC]),
 		    {noreply, State#state{is_node_up=IsUp, failed_node_checks=FNC+1}}
 	    end
     end;
@@ -290,7 +302,7 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pi
     erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName};
 send_ctl_event(_, _, _, _) -> ok.
 
--spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist() | []) -> ok).
+-spec(publish_msg/2 :: (UUID :: binary(), Prop :: proplist() | []) -> 'ok').
 publish_msg(_, []) -> ok;
 publish_msg(UUID, Prop) ->
     EvtName = props:get_value(<<"Event-Name">>, Prop),
@@ -318,7 +330,7 @@ publish_msg(UUID, Prop) ->
     end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
--spec(add_amqp_listener/1 :: (CallID :: binary()) -> binary() | tuple(error, term())).
+-spec(add_amqp_listener/1 :: (CallID :: binary()) -> binary() | tuple('error', 'amqp_error')).
 add_amqp_listener(CallID) ->
     case amqp_util:new_queue(<<>>) of
 	{error, _} = E -> E;
@@ -448,11 +460,11 @@ query_call(Node, CallID) ->
 
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
 
--spec(send_queued/2 :: (UUID :: binary(), Evts :: list()) -> no_return()).
+-spec(send_queued/2 :: (UUID :: binary(), Evts :: list(proplist())) -> no_return()).
 send_queued(UUID, Evts) ->
     send_queued(UUID, lists:reverse(Evts), 0).
 
--spec(send_queued/3 :: (UUID :: binary(), Evts :: list(), Tries :: integer()) -> no_return()).
+-spec(send_queued/3 :: (UUID :: binary(), Evts :: list(proplist()), Tries :: integer()) -> no_return()).
 send_queued(_UUID, _, 10=Tries) ->
     ?LOG(_UUID, "Failed to send queued events after ~b times, going down", [Tries]);
 send_queued(_UUID, [], _) ->

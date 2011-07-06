@@ -20,14 +20,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -define(SERVER, ?MODULE).
 -define(MAX_AGE, 1800). % 30 minutes
--define(VIEW_FILE, "views/sessions.json").
--define(COOKIE_NAME, "crossbar_session").
--define(SESSION_DB, "crossbar%2Fsessions").
--define(SESSION_EXPIRED, {"session", "expired_time"}).
+-define(VIEW_FILE, <<"views/sessions.json">>).
+-define(COOKIE_NAME, <<"crossbar_session">>).
+-define(SESSION_DB, <<"crossbar%2Fsessions">>).
+-define(SESSION_EXPIRED, <<"session/expired_time">>).
 
 -include_lib("webmachine/include/webmachine.hrl").
 -include("../include/crossbar.hrl").
@@ -66,37 +64,61 @@ is_authorized(#session{}=S) ->
     gen_server:call(?MODULE, {is_authorized, S}, infinity).
 
 %% increment the field's value
--spec(incr/2 :: (S :: #session{}, K :: term()) -> #session{}).
+-spec incr/2 :: (S, K) -> #session{} when
+      S :: #session{},
+      K :: atom() | binary().
 incr(#session{}=S, K) -> incr(S, K, 0).
 
--spec(incr/3 :: (S :: #session{}, K :: term(), D :: integer()) -> #session{}).
+-spec incr/3 :: (S, K, D) -> #session{} when
+      S :: #session{},
+      K :: atom() | binary(),
+      D :: integer().
 incr(#session{storage=Storage}=S, K, D) ->
-    case props:get_value(K, Storage) of
+    case wh_json:get_value(K, Storage) of
         undefined -> store(S, K, D);
         V -> store(S, K, V+1)
     end.
 
--spec(decr/2 :: (S :: #session{}, K :: term()) -> #session{}).
+-spec decr/2 :: (S, K) -> #session{} when
+      S :: #session{},
+      K :: atom() | binary().
 decr(#session{}=S, K) -> decr(S, K, 0).
--spec(decr/3 :: (S :: #session{}, K :: term(), D :: integer()) -> #session{}).
+
+-spec decr/3 :: (S, K, D) -> #session{} when
+      S :: #session{},
+      K :: atom() | binary(),
+      D :: integer().
 decr(#session{storage=Storage}=S, K, D) ->
-    case props:get_value(K, Storage) of
+    case wh_json:get_value(K, Storage) of
 	undefined -> store(S, K, D);
 	V -> store(S, K, V-1)
     end.
 
 %% store(#session(), key(), value()) -> #session().
+-spec store/3 :: (S, K, V) -> #session{} when
+      S :: #session{},
+      K :: atom() | binary(),
+      V :: atom() | integer() | binary().
 store(#session{storage=Storage}=S, K, V) ->
-    S#session{storage=[{K, V} | lists:keydelete(K, 1, Storage)]}.
+    S#session{storage=wh_json:set_value(K, V, Storage)}.
 
-%% retrieve(#session(), key()) -> undefined | term()
+-spec retrieve/2 :: (S, K) -> term() when
+      S :: #session{},
+      K :: atom() | binary().
 retrieve(#session{}=S, K) -> retrieve(S, K, undefined).
-%% retrieve(#session(), key()) -> D | term()
-retrieve(#session{storage=Storage}, K, D) -> props:get_value(K, Storage, D).
+
+-spec retrieve/3 :: (S, K, D) -> term() when
+      S :: #session{},
+      K :: atom() | binary(),
+      D :: term().
+retrieve(#session{storage=Storage}, K, D) -> wh_json:get_value(K, Storage, D).
 
 %% delete(#session(), key()) -> #session().
+-spec delete/2 :: (S, K) -> #session{} when
+      S :: #session{},
+      K :: atom() | binary().
 delete(#session{storage=Storage}=S, K) ->
-    S#session{storage=lists:keydelete(K, 1, Storage)}.
+    S#session{storage=wh_json:delete_key(K, Storage, prune)}.
 
 
 %%%===================================================================
@@ -117,8 +139,8 @@ delete(#session{storage=Storage}=S, K) ->
 init([]) ->
     couch_mgr:db_create(?SESSION_DB),
     couch_mgr:load_doc_from_file(?SESSION_DB, crossbar, ?VIEW_FILE),
-    {ok, _} = timer:send_interval(60000, ?MODULE, clean_expired),
-    {ok, ok}.
+    TRef = erlang:start_timer(60000, self(), clean_expired),
+    {ok, TRef}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -171,10 +193,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(clean_expired, State) ->
+handle_info({timeout, TRef, clean_expired}, TRef) ->
     spawn(fun() -> clean_expired() end),
-    {noreply, State};
+    TRef1 = erlang:start_timer(60000, self(), clean_expired),
+    {noreply, TRef1};
 handle_info(_Info, State) ->
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -189,7 +213,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    ?LOG_SYS("Terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,11 +253,13 @@ get_session(AuthToken) ->
 	    end
     end.
 
--spec(save_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
+-spec save_session/2 :: (S, RD) -> #wm_reqdata{} when
+      S :: #session{},
+      RD :: #wm_reqdata{}.
 save_session(#session{created=Created, expires=Expires}=S, RD) ->
     DateTime = calendar:universal_time(),
     Now = calendar:datetime_to_gregorian_seconds(DateTime),
-    case has_expired(Created + Expires) of
+    case has_expired(Created + Expires, Now) of
         true ->
             delete_session(S, RD);
         false ->
@@ -245,68 +271,77 @@ save_session(#session{created=Created, expires=Expires}=S, RD) ->
             end
     end.
 
--spec(delete_session/2 :: (S :: #session{}, RD :: #wm_reqdata{}) -> #wm_reqdata{}).
+-spec delete_session/2 :: (S, RD) -> #wm_reqdata{} when
+      S :: #session{},
+      RD :: #wm_reqdata{}.
 delete_session(S, RD) ->
     _ = crossbar_bindings:map(<<"session.delete">>, S),
     couch_mgr:del_doc(?SESSION_DB, to_doc(S)),
-    set_cookie_header(RD, S, calendar:local_time(), -1).
+    set_cookie_header(RD, S, calendar:universal_time(), 0).
 
--spec(to_doc/1 :: (S :: #session{}) -> json_object()).
+-spec to_doc/1 :: (S) -> json_object() when
+      S :: #session{}.
 to_doc(#session{created=Created}=S) -> to_doc(S, Created).
 
--spec(to_doc/2 :: (S :: #session{}, Now :: integer()) -> json_object()).
-to_doc(#session{'_id'=Id, '_rev'=undefined, storage=Storage}=S, Now) ->
-    {struct, [{<<"_id">>, Id}
-             ,{<<"session">>, tuple_to_list(S#session{created=whistle_util:to_integer(Now)
-					      ,expires=?MAX_AGE
-					      ,storage=encode_storage(Storage)
-					     })}
-    ]};
-to_doc(#session{'_id'=Id, '_rev'=Rev, storage=Storage}=S, Now) ->
-    {struct, [{<<"_id">>, Id}
-	      ,{<<"_rev">>, Rev}
-	      ,{<<"session">>, tuple_to_list(S#session{created= whistle_util:to_integer(Now)
-						       ,expires=?MAX_AGE
-						       ,storage=encode_storage(Storage)
-						      })}
-	     ]}.
+-spec to_doc/2 :: (S, Now) -> json_object() when
+      S :: #session{},
+      Now :: integer().
+to_doc(#session{'_id'=Id, '_rev'=undefined}=S, Now) ->
+    SessionTuple = tuple_to_list(S#session{created=whistle_util:to_integer(Now)
+					   ,expires=?MAX_AGE
+					  }),
 
--spec(encode_storage/1 :: (L :: proplist()) -> [] | json_object()).
-encode_storage([]) -> [];
-encode_storage(L) when is_list(L) -> {struct, L}.
+    lists:foldr(fun({K,V}, JObj) -> wh_json:set_value(K, V, JObj) end
+		,?EMPTY_JSON_OBJECT
+		,[{<<"_id">>, Id}
+		  ,{<<"session">>, SessionTuple}
+		 ]);
+to_doc(#session{'_id'=Id, '_rev'=Rev}=S, Now) ->
+    SessionTuple = tuple_to_list(S#session{created = whistle_util:to_integer(Now)
+					   ,expires = ?MAX_AGE
+					  }),
 
--spec(from_doc/1 :: (Doc :: json_object()) -> #session{}).
-from_doc({struct, Doc}) ->
-    Id = props:get_value(<<"_id">>, Doc),
-    Rev = props:get_value(<<"_rev">>, Doc),
-    #session{created=Created, expires=Expires}=S = setelement(1, list_to_tuple(props:get_value(<<"session">>, Doc)), session),
+    lists:foldr(fun({K,V}, JObj) -> wh_json:set_value(K, V, JObj) end
+		,?EMPTY_JSON_OBJECT
+		,[{<<"_id">>, Id}
+		  ,{<<"_rev">>, Rev}
+		  ,{<<"session">>, SessionTuple}
+		 ]).
+
+-spec(from_doc/1 :: (JObj :: json_object()) -> #session{}).
+from_doc(JObj) ->
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    #session{created=Created, expires=Expires}=S = setelement(1, list_to_tuple(wh_json:get_value(<<"session">>, JObj)), session),
     S#session{'_id'=Id, '_rev'=Rev
 	      ,created=whistle_util:to_integer(Created)
 	      ,expires=whistle_util:to_integer(Expires)
 	     }.
 
 %% create a new session record
-%% new() -> #session()
--spec(new/1 :: (Id :: binary()) -> #session{}).
+-spec new/1 :: (Id) -> #session{} when
+      Id :: binary().
 new(Id) ->
-    Now = current_seconds(),
+    Now = whistle_util:current_tstamp(),
     #session{created=Now, expires=?MAX_AGE, '_id'=Id}.
 
-%% set_cookie_header(request(), #session(), {date(), time()}, seconds()) -> request()
--spec(set_cookie_header/4 :: (RD :: #wm_reqdata{}, Session :: #session{}, DateTime :: tuple(), MaxAge :: integer()) -> #wm_reqdata{}).
+-spec set_cookie_header/4 :: (RD, Session, DateTime, MaxAge) -> #wm_reqdata{} when
+      RD :: #wm_reqdata{},
+      Session :: #session{},
+      DateTime :: wh_datetime(),
+      MaxAge :: 0 | ?MAX_AGE.
 set_cookie_header(RD, #session{'_id'=Id}, DateTime, MaxAge) ->
-    {CookieHeader, CookieValue} = mochiweb_cookies:cookie(?COOKIE_NAME, Id, [{max_age, MaxAge},
-									     {local_time, DateTime}
-									    ]),
+    {CookieHeader, CookieValue} =
+	mochiweb_cookies:cookie(?COOKIE_NAME, Id, [{max_age, MaxAge}, {local_time, DateTime}]),
     wrq:set_resp_header(CookieHeader, CookieValue, RD).
 
 %% Maintenance Functions
 
 %% Retrieve expired sessions and delete them from the DB
--spec(clean_expired/0 :: () -> no_return()).
+-spec clean_expired/0 :: () -> ok.
 clean_expired() ->
-    case couch_mgr:get_results(?SESSION_DB, ?SESSION_EXPIRED, [{"startkey", 0},
-							       {"endkey", current_seconds()}
+    case couch_mgr:get_results(?SESSION_DB, ?SESSION_EXPIRED, [{<<"startkey">>, 0},
+							       {<<"endkey">>, whistle_util:current_tstamp()}
 							      ]) of
 	{error, _} -> ok;
 	{ok, Sessions} ->
@@ -317,7 +352,7 @@ clean_expired() ->
 				     end
 				 end || {struct, Prop} <- Sessions ]
 			      ,clean_expired_(D)],
-	    format_log(info, "CB_SESSION(~p): Cleaned ~p sessions~n", [self(), length(Docs)]),
+	    ?LOG_SYS("Cleaned ~b sessions", [length(Docs)]),
 	    lists:foreach(fun(D) -> couch_mgr:del_doc(?SESSION_DB, D) end, Docs)
     end.
 
@@ -325,10 +360,13 @@ clean_expired_({struct, _}) -> true;
 clean_expired_(_) -> false.
 
 %% pass the secs representation of the expires time and compare to now
--spec(has_expired/1 :: (E :: integer()) -> boolean()).
+-spec has_expired/1 :: (E) -> boolean() when
+      E :: integer().
 has_expired(E) ->
-    E < current_seconds().
+    has_expired(E, whistle_util:current_tstamp()).
 
--spec(current_seconds/0 :: () -> integer()).
-current_seconds() ->
-    whistle_util:current_tstamp().
+-spec has_expired/2 :: (E, Now) -> boolean() when
+      E :: integer(),
+      Now :: integer().
+has_expired(E, Now) when E < Now -> true;
+has_expired(_, _) -> false.

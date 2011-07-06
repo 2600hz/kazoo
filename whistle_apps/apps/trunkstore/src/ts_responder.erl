@@ -223,11 +223,11 @@ process_req({<<"dialplan">>,<<"route_req">>}, ApiJObj) ->
             {AcctID, undefined} when is_binary(AcctID) ->
                 %% Coming from carrier (off-net)
                 ?LOG_START(CallID, "Offnet call starting", []),
-                ts_offnet_sup:start_handler(wh_json:set_value([<<"Direction">>], <<"inbound">>, ApiJObj));
+                ts_offnet_sup:start_handler(<<"offnet-", CallID/binary>>, ApiJObj);
             {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
                 %% Coming from PBX (on-net); authed by Registrar or ts_auth
                 ?LOG_START(CallID, "Onnet call starting", []),
-                ts_onnet_sup:start_handler(wh_json:set_value([<<"Direction">>], <<"outbound">>, ApiJObj));
+                ts_onnet_sup:start_handler(<<"onnet-", CallID/binary>>, ApiJObj);
             {_AcctID, _AuthID} ->
                 ?LOG("Error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID])
         end

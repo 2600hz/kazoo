@@ -230,7 +230,9 @@ get_routes(#route_flags{callid=CallID, to_user=User}=Flags, Carriers) ->
 %% see http://erldocs.com/R14A/stdlib/lists.html#sort/2
 %% return true when A should come before B
 %% so return true if A's weight is greater than B's weight
--spec(sort_carriers/2 :: (CarrierA :: tuple(), CarrierB :: tuple()) -> boolean()).
+-spec sort_carriers/2 :: (CarrierA, CarrierB) -> boolean() when
+      CarrierA :: {_, proplist()},
+      CarrierB :: {_, proplist()}.
 sort_carriers({_CarrierAName, CarrierAData}, {_CarrierBName, CarrierBData}) ->
     ts_util:constrain_weight(props:get_value(<<"weight_cost">>, CarrierAData, 0)) >= ts_util:constrain_weight(props:get_value(<<"weight_cost">>, CarrierBData, 0)).
 

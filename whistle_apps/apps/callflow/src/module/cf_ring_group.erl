@@ -26,8 +26,8 @@
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     Endpoints = get_endpoints(Data, Call),
-    Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-    Strategy = wh_json:get_value(<<"strategy">>, Data, <<"simultaneous">>),
+    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     case b_bridge(Endpoints, Timeout, <<"internal">>, Strategy, <<"true">>, Call) of
         {ok, _} ->

@@ -215,7 +215,7 @@ reconcile_account_route(AccountId, ?EMPTY_JSON_OBJECT) ->
             {error, skipped}
     end;
 reconcile_account_route(AccountId, Numbers) ->
-    ?LOG_SYS("reconsiled route for ~s", [AccountId]),
+    ?LOG_SYS("reconciled route for ~s", [AccountId]),
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     case couch_mgr:open_doc(?ROUTES_DB, AccountId) of
         {ok, J0} ->

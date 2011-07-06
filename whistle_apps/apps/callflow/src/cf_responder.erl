@@ -73,8 +73,8 @@ init([]) ->
 handle_call({find_flow, Number, AccountId}, From, State) ->
     spawn(fun() ->
                   case lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}) of
-                      {ok, Flow, _} ->
-                          gen_server:reply(From, {ok, wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT)});
+                      {ok, _, _}=OK ->
+                          gen_server:reply(From, OK);
                       {error, _} ->
                           gen_server:reply(From, {error, not_found})
                   end
@@ -204,10 +204,12 @@ start_amqp() ->
 %%-----------------------------------------------------------------------------
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
 process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
-    case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
-        ?EMPTY_JSON_OBJECT ->
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
+        undefined ->
             ok;
-        CVs ->
+        AccountId ->
+            CVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
             ?LOG_START("received route request"),
 
             Request = wh_json:get_value(<<"Request">>, JObj, <<"nouser@norealm">>),
@@ -232,7 +234,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
                             ,to_user = ToUser
                             ,to_realm = ToRealm
                             ,inception = wh_json:get_value(<<"Inception">>, CVs)
-                            ,account_id = wh_json:get_value(<<"Account-ID">>, CVs)
+                            ,account_id = AccountId
                             ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CVs)
                             ,channel_vars = CVs
                            },
@@ -242,7 +244,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
 process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
     ?LOG_START("received route win"),
 
-    {ok, #cf_call{request_user=Number, account_id=AccountId, channel_vars=CVs, no_match=NoMatch}=C1}
+    {ok, #cf_call{request_user=Number, account_id=AccountId, no_match=NoMatch}=C1}
         = wh_cache:fetch({cf_call, get(callid)}),
     {ok, Flow} = case NoMatch of
                      true -> wh_cache:fetch({cf_flow, ?NO_MATCH_CF, AccountId});
@@ -254,7 +256,6 @@ process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
                     ,ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
                     ,account_db = whapps_util:get_db_name(AccountId, encoded)
                    },
-    cf_call_command:set(undefined, CVs, C2),
     ?LOG_END("imported custom channel vars, starting callflow"),
 
     supervisor:start_child(cf_exe_sup, [C2, wh_json:get_value(<<"flow">>, Flow)]);
