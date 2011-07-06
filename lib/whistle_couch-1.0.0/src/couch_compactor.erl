@@ -14,7 +14,7 @@
 -include("wh_couch.hrl").
 
 %% API
--export([start_link/0, get_ratios/0, force_compaction/2, view_cleanup/0]).
+-export([start_link/0, get_ratios/0, force_compaction/2, view_cleanup/0, compact_db/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -43,6 +43,11 @@ get_ratios() ->
 -spec(force_compaction/2 :: (MDS :: integer(), CT :: integer()) -> ok).
 force_compaction(MDS, CT) ->
     gen_server:cast(?SERVER, {force_compaction, MDS, CT}).
+
+-spec compact_db/1 :: (DBName) -> ok when
+      DBName :: binary().
+compact_db(DBName) ->
+    gen_server:cast(?SERVER, {compact_db, DBName}).
 
 -spec(view_cleanup/0 :: () -> ok).
 view_cleanup() ->
@@ -107,7 +112,11 @@ handle_cast({force_compaction, MDS, CT}, State) ->
 handle_cast(view_cleanup, State) ->
     {ok, DBs} = couch_mgr:db_info(),
     _ = [couch_mgr:db_view_cleanup(DB) || DB <- DBs ],
+    {noreply, State};
+handle_cast({compact_db, DBName}, State) ->
+    spawn(fun() -> compact_a_db(DBName) end),
     {noreply, State}.
+
 
 
 %%--------------------------------------------------------------------
@@ -127,7 +136,8 @@ handle_info(timeout, ok) ->
 		  %% compaction requests
 		  case get_dbs_and_designs() of
 		      [] -> ok;
-		      Data -> [ compact(D, ?MIN_DISK_SIZE, ?COMPACT_THRESHOLD) || D <- Data ]
+		      Data ->
+			  [ compact(D, ?MIN_DISK_SIZE, ?COMPACT_THRESHOLD) || D <- Data ]
 		  end
 	  end),
     {noreply, ok, ?TIMEOUT};
@@ -181,6 +191,7 @@ get_dbs() ->
 -spec(create_db_data/1 :: (DBName :: binary()) -> #db_data{}).
 create_db_data(DBName) ->
     try
+	?LOG_SYS("Create db data for ~s" , [DBName]),
 	{ok, DBData} = get_db_data(DBName),
 	?LOG_SYS("Data for ~s: Dataset: ~b Disksize: ~b", [DBName
 							   ,wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)
@@ -191,19 +202,14 @@ create_db_data(DBName) ->
 		  ,data_size=wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)
 		 }
     catch
-	_:_ -> #db_data{db_name=DBName}
+	_:_ -> {db_error, DBName}
     end.
 
 get_design_docs(L) ->
     {ok, DBs} = couch_mgr:db_info(),
     ?LOG_SYS("DBs to get views from: ~b", [length(DBs)]),
 
-    DBandDocs = lists:flatten([ begin
-				    Encoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
-				    {ok, DDocs} = get_ddocs(Encoded),
-				    ?LOG_SYS("Got DDocs for ~s: ~b", [Encoded, length(DDocs)]),
-				    [{Encoded, binary:replace(wh_json:get_value(<<"id">>, DDoc), <<"_design/">>, <<>>, [global])} || DDoc <- DDocs ]
-				end || DB <- DBs ]),
+    DBandDocs = lists:flatten([ get_db_design_docs(DB) || DB <- DBs ]),
 
     lists:foldr(fun({DBName, DesignID}, L0) ->
 			{ok, DDocData} = get_design_data(DBName, DesignID),
@@ -217,7 +223,13 @@ get_design_docs(L) ->
 			[ #design_data{db_name=DBName, design_name=DesignID, shards=Shards
 				       ,disk_size=DiskSize, data_size=DataSize}
 			  | L0]
-		end, [], DBandDocs).
+		end, L, DBandDocs).
+
+get_db_design_docs(DB) ->
+    Encoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
+    {ok, DDocs} = get_ddocs(Encoded),
+    ?LOG_SYS("Got DDocs for ~s: ~b", [Encoded, length(DDocs)]),
+    [{Encoded, binary:replace(wh_json:get_value(<<"id">>, DDoc), <<"_design/">>, <<>>, [global])} || DDoc <- DDocs ].
 
 get_design_data(DB, Design) ->
     get_design_data(DB, Design, 0).
@@ -254,7 +266,7 @@ get_ddocs(DB, Cnt) ->
 compact(#db_data{db_name=DBName, data_size=DataSize, disk_size=DiskSize}, MDS, CT)
   when DiskSize > MDS andalso (DiskSize div DataSize) > CT ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
-    ?LOG_SYS("Compact DB ~p: ~p and VC: ~p", [DBName, couch_mgr:admin_db_compact(DBName), couch_mgr:db_view_cleanup(DBName)]);
+    ?LOG_SYS("Compact DB ~s: ~p and VC: ~p", [DBName, couch_mgr:admin_db_compact(DBName), couch_mgr:admin_db_view_cleanup(DBName)]);
 compact(#design_data{shards=Shards, design_name=Design, data_size=DataSize, disk_size=DiskSize}, MDS, CT)
   when DiskSize > MDS andalso (DiskSize div DataSize) > CT ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
@@ -269,4 +281,34 @@ find_shards(DBName, [#db_data{db_name=Shard}|DBs], Acc) ->
     case binary:match(Shard, DBName) of
 	nomatch -> find_shards(DBName, DBs, Acc);
 	_ -> find_shards(DBName, DBs, [Shard | Acc])
+    end.
+
+compact_a_db(DBName) ->
+    ?LOG_SYS("Compacting ~s", [DBName]),
+    {ok, ShardDBs} = couch_mgr:admin_db_info(),
+    ?LOG_SYS("Found ~b shards", [length(ShardDBs)]),
+    DBShards = [create_db_data(binary:replace(Shard, <<"/">>, <<"%2f">>, [global]))
+		|| Shard <- ShardDBs, binary:match(Shard, DBName) =/= nomatch],
+    case DBShards of
+	[] ->
+	    ?LOG_SYS("Sad, no shards matched ~s", [DBName]),
+	    sad_face;
+	L ->
+	    ?LOG_SYS("Found ~b shards related", [length(L)]),
+	    DBandDDocs = get_db_design_docs(DBName),
+	    ?LOG_SYS("DB and design docs: ~b", [length(DBandDDocs)]),
+
+	    Compactable = lists:foldr(fun({Name, DesignID}, L0) ->
+					      {ok, DDocData} = get_design_data(Name, DesignID),
+
+					      DataSize = wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1),
+					      DiskSize = wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1),
+
+					      ?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, Name, DataSize, DiskSize]),
+
+					      [ #design_data{db_name=Name, design_name=DesignID, shards=find_shards(Name, L)
+							     ,disk_size=DiskSize, data_size=DataSize}
+						| L0]
+				      end, L, DBandDDocs),
+	    [compact(D, 1, 1) || D <- Compactable]
     end.
