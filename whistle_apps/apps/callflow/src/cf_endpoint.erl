@@ -51,10 +51,10 @@ build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
 %%--------------------------------------------------------------------
 -spec(get_endpoints/3 :: (EndpointId :: binary(), Properties :: json_object(),  Call :: #cf_call{})
                          -> tuple(ok, json_objects()) | tuple(error, atom())).
-get_endpoints(EndpointId, Properties, #cf_call{owner_id=OwnerId, account_db=Db}=Call) ->
+get_endpoints(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, EndpointId) of
         {ok, Endpoint} ->
-            case cf_attributes:call_forward(EndpointId, OwnerId, Call) of
+            case cf_attributes:call_forward(EndpointId, Call) of
                 undefined ->
                     {ok, [create_endpoint(Endpoint, Properties, Call)]};
                 Fwd ->
