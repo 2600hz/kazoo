@@ -19,7 +19,6 @@
 
 -include("dth.hrl").
 
--define(DTH_URL, "http://1.2.3.4/dthsoap/url").
 -define(DTH_SUBMITCALLRECORD, <<"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
 <s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><SubmitCallRecord xmlns=\"http://tempuri.org/\"><oCallRecord><OriginatingNumber>~s</OriginatingNumber><DestinationNumber>~s</DestinationNumber><StartTime>~s</StartTime><Duration>~s</Duration><UniqueID>~s</UniqueID><BilledDuration>0</BilledDuration><CallCost>0</CallCost><CallTotal>0</CallTotal><Direction>0</Direction><WholesaleRate>0</WholesaleRate><WholesaleCost>0</WholesaleCost><RetailRate>0</RetailRate><CallTax>0</CallTax><IsIncluded>0</IsIncluded><BilledTier>0</BilledTier><PrintIndicator>0</PrintIndicator><EndTime>0001-01-01T00:00:00</EndTime><CallType>~s</CallType></oCallRecord></SubmitCallRecord></s:Body></s:Envelope>">>).
 %% OriginatingNumber: 2223334444
@@ -36,6 +35,7 @@
          ,amqp_timeout = 1000 :: pos_integer()
          ,max_timeout = 5000 :: 5000
          ,wsdl_model = undefined :: undefined | term()
+	 ,dth_cdr_url = <<>> :: binary()
          }).
 
 %%%===================================================================
@@ -68,6 +68,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    {ok, Configs} = file:consult([code:priv_dir(dth), "/startup.config"]),
+    URL = props:get_value(dth_cdr_url, Configs),
+    
     WSDLFile = [code:priv_dir(dth), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir(dth, include), "/dthsoap.hrl"],
 
@@ -77,10 +80,10 @@ init([]) ->
         true -> ok;
         false ->
             true = filelib:is_regular(WSDLFile),
-            ok = detergent:write_hrl(WSDLFile, WSDLHrlFile, ?PREFIX) %% no prefix
+            ok = detergent:write_hrl(WSDLFile, WSDLHrlFile, ?PREFIX)
     end,
 
-    {ok, #state{wsdl_model=detergent:initModel(WSDLFile, ?PREFIX)}, 0}.
+    {ok, #state{wsdl_model=detergent:initModel(WSDLFile, ?PREFIX), dth_cdr_url=URL}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -132,8 +135,8 @@ handle_info(timeout, #state{is_amqp_up=false, amqp_timeout=Timeout}=State) ->
 handle_info(timeout, State) ->
     {noreply, State#state{is_amqp_up=true}};
 
-handle_info({_, #amqp_msg{payload=Payload}}, #state{wsdl_model=WsdlModel}=State) ->
-    spawn(fun() -> handle_amqp_msg(Payload, WsdlModel) end),
+handle_info({_, #amqp_msg{payload=Payload}}, #state{wsdl_model=WsdlModel,dth_cdr_url=URL}=State) ->
+    spawn(fun() -> handle_amqp_msg(URL, Payload, WsdlModel) end),
     {noreply, State};
 
 handle_info({amqp_host_down, _H}, State) ->
@@ -189,7 +192,7 @@ start_amqp() ->
             {error, amqp_error}
     end.
 
-handle_amqp_msg(Payload, _WsdlModel) ->
+handle_amqp_msg(Url, Payload, _WsdlModel) ->
     JObj = mochijson2:decode(Payload),
 
     true = whistle_api:call_cdr_v(JObj),
@@ -215,7 +218,7 @@ handle_amqp_msg(Payload, _WsdlModel) ->
 	       ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
 	      ],
 
-    case ibrowse:send_req(?DTH_URL, Headers, post, XML) of
+    case ibrowse:send_req(Url, Headers, post, XML) of
 	{ok, "200", _, RespXML} ->
 	    ?LOG_END("XML sent to DTH successfully: ~s", [RespXML]);
 	_Resp ->
@@ -224,5 +227,5 @@ handle_amqp_msg(Payload, _WsdlModel) ->
 
 now_to_datetime(Secs, ExtraYears) ->
     {{YY,MM,DD},{Hour,Min,Sec}} = calendar:gregorian_seconds_to_datetime(Secs),
-      iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
-                    [YY+ExtraYears, MM, DD, Hour, Min, Sec])).
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
+				   [YY+ExtraYears, MM, DD, Hour, Min, Sec])).
