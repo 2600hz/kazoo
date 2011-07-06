@@ -12,13 +12,22 @@
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
 
+-define(IS_JSON_OBJECT,
+        fun({struct, L}) when is_list(L) ->
+                lists:all(fun({K, V}) when is_binary(K) andalso
+                                           (is_binary(V) orelse is_number(V)) -> true;
+                             (_) -> false
+                          end, L);
+           (_) -> false
+        end).
+
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTH_REQ, AUTH_RESP, etc, for *) to be considered valid.
 %%%
 %%% OPTIONAL_*_HEADERS defines a list of Keys that will be included in the final
 %%% message if included in the passed in Proplist.
 %%%
-%%% *_VALUES defines a proplist of {Key, Value} pairs where Key is either in 
+%%% *_VALUES defines a proplist of {Key, Value} pairs where Key is either in
 %%% *_HEADERS or OPTIONAL_*_HEADERS, and Value is either a singular value or a list
 %%% of values that the resulting message can have, given Key.
 %%% If Value is not a list, a direct match is required to validate;
@@ -91,12 +100,7 @@
 			 ]).
 -define(AUTH_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			  ,{<<"Auth-Password">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							       lists:all(fun({K, V}) when is_binary(K) andalso is_binary(V) -> true;
-									    (_) -> false
-									 end, L);
-							  (_) -> false
-						       end}
+			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			  ,{<<"Access-Group">>, fun is_binary/1}
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
@@ -138,7 +142,7 @@
 -define(REG_QUERY_RESP_TYPES, []).
 
 %% Route Requests
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>, <<"Destination-Number">>
+-define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 			   ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
@@ -151,9 +155,9 @@
 			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
 			  ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                          ,{<<"Destination-Number">>, fun is_binary/1}
 			  ,{<<"To">>, fun is_binary/1}
 			  ,{<<"From">>, fun is_binary/1}
+			  ,{<<"Request">>, fun is_binary/1}
 			  ,{<<"Call-ID">>, fun is_binary/1}
 			  ,{<<"Event-Queue">>, fun is_binary/1}
 			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
@@ -164,10 +168,7 @@
 								     end, L);
 						      (_) -> false
 						   end}
-			  ,{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							       true;
-							  (_) -> false
-						       end}
+			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			 ]).
 -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
 				    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
@@ -190,7 +191,7 @@
 				  ,{<<"Route">>, fun is_binary/1}
 				  ,{<<"To-User">>, fun is_binary/1}
 				  ,{<<"To-Realm">>, fun is_binary/1}
-				  ,{<<"SIP-Headers">>, fun is_list/1}
+				  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
 				]).
 
 %% Route Responses
@@ -215,15 +216,37 @@
 			  ,{<<"Control-Queue">>, fun is_binary/1}
 			 ]).
 
+%% Offnet Resource Request
+-define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Call-ID">>, <<"Resource-Type">>, <<"To-DID">>
+                                      ,<<"Account-ID">>, <<"Control-Queue">>, <<"Application-Name">>
+                                     ]).
+-define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>
+                                               ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                               ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                              ]).
+-define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
+                                     ,{<<"Event-Name">>, <<"offnet_req">>}
+                                     ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
+                                     ,{<<"Application-Name">>, [<<"bridge">>]}
+                                    ]).
+-define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                                    ,{<<"Account-ID">>, fun is_binary/1}
+                                    ,{<<"Control-Queue">>, fun is_binary/1}
+                                    ,{<<"To-DID">>, fun is_binary/1}
+                                    ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                                    ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                                    ,{<<"Flags">>, fun is_list/1}
+                                   ]).
+
 %% Resource Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
--define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>, <<"Custom-Channel-Vars">>
-					    ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>, <<"SIP-Headers">>
-					    ,<<"Application-Name">>, <<"Application-Data">>
+-define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>
+                                        ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+					,<<"Application-Name">>, <<"Application-Data">>, <<"SIP-Headers">>
+                                        ,<<"Custom-Channel-Vars">>
 				       ]).
--define(RESOURCE_REQ_VALUES, [
-			      {<<"Event-Category">>, <<"originate">>}
-			      ,{<<"Event-Name">>, <<"resource_req">>}
+-define(RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
+			      ,{<<"Event-Name">>, <<"originate_req">>}
 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
 			      ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>]}
 			      ,?INVITE_FORMAT_TUPLE
@@ -232,22 +255,27 @@
 			     ,{<<"Route">>, fun is_binary/1}
 			     ,{<<"To-User">>, fun is_binary/1}
 			     ,{<<"To-Realm">>, fun is_binary/1}
-			     ,{<<"SIP-Headers">>, fun is_list/1}
+			     ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                             ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			    ]).
 
 %% Resource Response
 -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_RESOURCE_RESP_HEADERS, []).
--define(RESOURCE_RESP_VALUES, [
-			       {<<"Event-Category">>, <<"originate">>}
-			       ,{<<"Event-Name">>, <<"resource_resp">>}
+-define(OPTIONAL_RESOURCE_RESP_HEADERS, [<<"To">>, <<"Timestamp">>, <<"Channel-Call-State">>
+                                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                             ,<<"Custom-Channel-Vars">>
+                                        ]).
+-define(RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
+			       ,{<<"Event-Name">>, [<<"offnet_resp">>, <<"originate_resp">>]}
 			      ]).
--define(RESOURCE_RESP_TYPES, []).
+-define(RESOURCE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Resource Error
 -define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>]).
--define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>]).
--define(RESOURCE_ERROR_VALUES, [{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}]).
+-define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>, <<"Failure-Code">>]).
+-define(RESOURCE_ERROR_VALUES, [{<<"Event-Category">>, <<"resource">>}
+                                ,{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}
+                               ]).
 -define(RESOURCE_ERROR_TYPES, []).
 
 %% Call Events
@@ -257,14 +285,10 @@
 					  ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
 					  ,<<"Other-Leg-Destination-Number">>,<<"Other-Leg-Unique-ID">> %% BRIDGE
 					  ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
-                                          ,<<"Terminator">>, <<"Hangup-Cause">> %% Hangup
+                                          ,<<"Terminator">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
 				     ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
--define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							       true;
-							  (_) -> false
-						       end}
-			  ]).
+-define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Call Status Request
 -define(CALL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
@@ -281,24 +305,25 @@
 				  ,{<<"Event-Name">>, <<"status_resp">>}
 				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
 				 ]).
--define(CALL_STATUS_RESP_TYPES, []).
+-define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Call CDR
--define(CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Call-ID">>, <<"Timestamp">>
-			       ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
-			       ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
-			       ,<<"Digits-Dialed">>
-			  ]).
--define(OPTIONAL_CALL_CDR_HEADERS, [<<"Custom-Channel-Vars">>, <<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
+-define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
+-define(OPTIONAL_CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
+                                        ,<<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
 					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
 					,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
+                                        ,<<"Timestamp">>
+                                        ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
+                                        ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
+                                        ,<<"Digits-Dialed">>
 				   ]).
 -define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call_detail">>}
 			  ,{<<"Event-Name">>, <<"cdr">>}
 			  ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
 			  ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
 			 ]).
--define(CALL_CDR_TYPES, []).
+-define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
@@ -397,8 +422,10 @@
 -define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
                                       ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
                                       ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
+                                      ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                      ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                       ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
-				      ,<<"SIP-Headers">>
+				      ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
@@ -407,9 +434,9 @@
 			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
 			    ,?INSERT_AT_TUPLE
 			   ]).
--define(BRIDGE_REQ_TYPES, [
-			   {<<"Endpoints">>, fun is_list/1}
-			   ,{<<"SIP-Headers">>, fun is_list/1}
+-define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
+			   ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			  ]).
 
 %% Bridge Endpoints
@@ -420,12 +447,15 @@
                                                     ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>
+                                                    ,<<"Custom-Channel-Vars">>
 					      ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                     ]).
--define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun is_list/1}]).
+-define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                                    ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                                   ]).
 
 %% Answer
 -define(ANSWER_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
@@ -436,6 +466,16 @@
 			    ,?INSERT_AT_TUPLE
 			   ]).
 -define(ANSWER_REQ_TYPES, []).
+
+%% Progress
+-define(PROGRESS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_PROGRESS_REQ_HEADERS, [<<"Insert-At">>]).
+-define(PROGRESS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"progress">>}
+			    ,?INSERT_AT_TUPLE
+			   ]).
+-define(PROGRESS_REQ_TYPES, []).
 
 %% Hangup
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
@@ -465,21 +505,8 @@
 			 ,{<<"Application-Name">>, <<"set">>}
 			 ,?INSERT_AT_TUPLE
 			 ]).
--define(SET_REQ_TYPES, [
-			{<<"Custom-Channel-Vars">>, fun({struct, L}) when is_list(L) ->
-							    lists:all(fun({K, V}) when is_binary(K) andalso
-										       (is_binary(V) orelse is_number(V)) -> true;
-									 (_) -> false
-								      end, L);
-						       (_) -> false
-						    end},
-			{<<"Custom-Call-Vars">>, fun({struct, L}) when is_list(L) ->
-							    lists:all(fun({K, V}) when is_binary(K) andalso
-										       (is_binary(V) orelse is_number(V)) -> true;
-									 (_) -> false
-								      end, L);
-						       (_) -> false
-						    end}
+-define(SET_REQ_TYPES, [{<<"Custom-Channel-Vars">>,?IS_JSON_OBJECT}
+			,{<<"Custom-Call-Vars">>, ?IS_JSON_OBJECT}
 		       ]).
 
 %% Fetch
@@ -530,8 +557,8 @@
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
 			   ,{<<"Event-Name">>, <<"media_resp">>}
 			  ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true; 
-                                                 (<<"http://", _/binary>>) -> true; 
+-define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
+                                                 (<<"http://", _/binary>>) -> true;
                                                  (_) -> false end}]).
 
 %% Media Error
@@ -584,6 +611,18 @@
 			]).
 -define(SAY_REQ_TYPES, []).
 
+%% Respond
+-define(RESPOND_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Response-Code">>]).
+-define(OPTIONAL_RESPOND_REQ_HEADERS, [<<"Insert-At">>, <<"Response-Message">>]).
+-define(RESPOND_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"respond">>}
+			    ,?INSERT_AT_TUPLE
+			   ]).
+-define(RESPOND_REQ_TYPES, [{<<"Response-Code">>, fun is_binary/1}
+                            ,{<<"Response-Message">>, fun is_binary/1}
+                           ]).
+
 %% Sleep
 -define(SLEEP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Time">>]).
 -define(OPTIONAL_SLEEP_REQ_HEADERS, [<<"Insert-At">>]).
@@ -593,7 +632,6 @@
 			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(SLEEP_REQ_TYPES, []).
-
 
 %% Conference
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).
@@ -762,7 +800,7 @@
                            ,{<<"deaf">>, <<"Deaf">>}
                            ,{<<"moderator">>, <<"Moderator">>}
                            ]).
-                                
+
 %% [{FreeSWITCH-App-Name, Whistle-App-Name}]
 %% Dialplan-related applications
 %% convert from FS-named applications to Whistle-named Dialplan applications
@@ -775,9 +813,11 @@
 				 ,{<<"export">>, <<"set">>}
 				 ,{<<"say">>, <<"say">>}
 				 ,{<<"sleep">>, <<"sleep">>}
+				 ,{<<"respond">>, <<"respond">>}
 				 ,{<<"bridge">>, <<"bridge">>}
 				 ,{<<"signal_bridge">>, <<"bridge">>}
 				 ,{<<"answer">>, <<"answer">>}
+				 ,{<<"pre_answer">>, <<"progress">>}
 				 ,{<<"tone_detect">>, <<"tone_detect">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				 ,{<<"respond">>, <<"respond">>}
@@ -807,6 +847,8 @@
 				,{<<"hangup">>, fun whistle_api:hangup_req_v/1}
 				,{<<"say">>, fun whistle_api:say_req_v/1}
 				,{<<"sleep">>, fun whistle_api:sleep_req_v/1}
+				,{<<"respond">>, fun whistle_api:respond_req_v/1}
+				,{<<"progress">>, fun whistle_api:progress_req_v/1}
 				,{<<"set">>, fun whistle_api:set_req_v/1}
 				,{<<"conference">>, fun whistle_api:conference_req_v/1}
 				,{<<"noop">>, fun whistle_api:noop_req_v/1}

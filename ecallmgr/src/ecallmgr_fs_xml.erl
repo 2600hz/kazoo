@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, auth_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, auth_resp_xml/1]).
 
 -include("ecallmgr.hrl").
 
@@ -91,8 +91,8 @@ build_route(Route, undefined) ->
 build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->
-    case props:get_value(<<"Route">>, RouteProp) of 
-        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>; 
+    case props:get_value(<<"Route">>, RouteProp) of
+        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>;
         R2 -> R2
     end;
 build_route(RouteProp, <<"username">>) ->
@@ -133,17 +133,26 @@ get_leg_vars(Prop) ->
 -spec(get_channel_vars/1 :: (JObj :: json_object() | proplist()) -> list(string())).
 get_channel_vars({struct, Prop}) -> get_channel_vars(Prop);
 get_channel_vars(Prop) ->
-    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"].
+    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
+    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"].
 
 -spec(get_channel_vars/2 :: (Pair :: tuple(binary(), term()), Vars :: list(binary())) -> list(binary())).
+get_channel_vars({<<"Outgoing-Caller-ID-Name">>, V}, Vars) ->
+    [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
+get_channel_vars({<<"Outgoing-Caller-ID-Number">>, V}, Vars) ->
+    [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
+get_channel_vars({<<"Outgoing-Callee-ID-Name">>, V}, Vars) ->
+    [ list_to_binary(["origination_callee_id_name='", V, "'"]) | Vars];
+get_channel_vars({<<"Outgoing-Callee-ID-Number">>, V}, Vars) ->
+    [ list_to_binary(["origination_callee_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Auth-User">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_username='", V, "'"]) | Vars];
 get_channel_vars({<<"Auth-Password">>, V}, Vars) ->
     [ list_to_binary(["sip_auth_password='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_caller_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Caller-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
+    [ list_to_binary(["effective_caller_id_number='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Name">>, V}, Vars) ->
     [ list_to_binary(["effective_callee_id_name='", V, "'"]) | Vars];
 get_channel_vars({<<"Callee-ID-Number">>, V}, Vars) ->
@@ -170,41 +179,51 @@ get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
     [ list_to_binary([<<"rate_minimum=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Surcharge">>, V}, Vars) ->
     [ list_to_binary([<<"surcharge=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->   
+get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->
     [ list_to_binary([<<"ignore_early_media=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->   
+get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->
     [ list_to_binary([<<"bypass_media=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->   
+get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->
     [ list_to_binary([<<"continue_on_fail=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"leg_timeout=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Progress-Timeout">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Progress-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"leg_progress_timeout=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
     [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->   
+get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->
     [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
+get_channel_vars({<<"Overwrite-Channel-Vars">>, V}, Vars) ->
+    [ list_to_binary([<<"local_var_clobber=">>, whistle_util:to_list(V)]) | Vars];
 %% SPECIAL CASE: Custom Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
     lists:foldl(fun
-                    %% These are a temporary abstraction leak until we can locate a call via the API, originate 
+                    %% These are a temporary abstraction leak until we can locate a call via the API, originate
                     %% on the located server only and transfer to an existing UUID...
                     ({<<"Confirm-File">>, V}, Vars0) ->
                         [ list_to_binary([<<"group_confirm_file=">>, whistle_util:to_list(V)]) | Vars0];
                     ({<<"Confirm-Key">>, V}, Vars0) ->
                        [ list_to_binary([<<"group_confirm_key=">>, whistle_util:to_list(V)]) | Vars0];
-                    ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->   
+                    ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->
                        [ list_to_binary([<<"group_confirm_cancel_timeout=">>, whistle_util:to_list(V)]) | Vars0];
                     %% end of leak
-                    ({K,V}, Vars0) ->                        
+                    ({K,V}, Vars0) ->
                        [ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
                end, Vars, Custom);
 %% SPECIAL CASE: SIP Headers
-get_channel_vars({<<"SIP-Headers">>, {struct, [_]=SIPHeaders}}, Vars) ->
+get_channel_vars({<<"SIP-Headers">>, {struct, SIPHeaders}}, Vars) ->
     lists:foldl(fun({K,V}, Vars0) ->
 			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
 		end, Vars, SIPHeaders);
-get_channel_vars({_K, _V}, Vars) ->
+%% SPECIAL CASE: Timeout must be larger than zero
+get_channel_vars({<<"Timeout">>, V}, Vars) ->
+    case whistle_util:to_integer(V) of
+        TO when TO > 0 ->
+            [ <<"call_timeout=", (whistle_util:to_binary(TO))/binary>> | Vars];
+        _Else ->
+            Vars
+    end;
+get_channel_vars(_, Vars) ->
     Vars.
 
 get_channel_params(Prop) ->

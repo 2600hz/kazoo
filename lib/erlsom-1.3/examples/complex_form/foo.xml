@@ -1,0 +1,5 @@
+<foo>
+        <myelement myattribute="red">x</myelement>
+        <myelement myattribute="blue">x</myelement>
+        <myelement myattribute="blue">y</myelement>
+</foo>

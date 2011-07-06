@@ -1,0 +1,18 @@
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <xsd:element name="root">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="a" type="xsd:string"/>
+                <xsd:group ref="bGroup"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:group name="bGroup">
+        <xsd:sequence>
+            <xsd:choice>
+                <xsd:element name="b" type="xsd:string" maxOccurs="2"/>
+                <xsd:element name="c" type="xsd:string"/>
+            </xsd:choice>
+        </xsd:sequence>
+    </xsd:group>
+</xsd:schema>

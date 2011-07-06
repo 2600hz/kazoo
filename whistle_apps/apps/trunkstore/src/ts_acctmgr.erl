@@ -69,12 +69,14 @@ has_credit(Acct) ->
 %% Does the account have enough credit to cover Amt
 -spec(has_credit/2 :: (Acct :: binary(), Amt :: integer()) -> boolean() | tuple(error, no_account)).
 has_credit(<<>>, _) ->
+    ?LOG("no_account at entry to has_credit/2"),
     {error, no_account};
 has_credit(Acct, Amt) ->
     gen_server:call(?SERVER, {has_credit, whistle_util:to_binary(Acct), [Amt]}, infinity).
 
 -spec(has_flatrates/1 :: (Acct :: binary()) -> boolean() | tuple(error, no_account)).
 has_flatrates(<<>>) ->
+    ?LOG("no_account at entry to has_flatrates/1"),
     {error, no_account};
 has_flatrates(Acct) ->
     gen_server:call(?SERVER, {has_flatrates, whistle_util:to_binary(Acct)}).
@@ -83,10 +85,12 @@ has_flatrates(Acct) ->
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
 -spec(reserve_trunk/4 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer(), FRE :: boolean()) ->
-			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds | not_found)).
+			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds | not_found | no_results)).
 reserve_trunk(<<>>, _, _, _) ->
+    ?LOG("no_account at entry to reserve_trunk/4"),
     {error, no_account};
 reserve_trunk(_, <<>>, _, _) ->
+    ?LOG("no_callid at entry to reserve_trunk/4"),
     {error, no_callid};
 reserve_trunk(Acct, CallID, Amt, FRE) ->
     gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt, FRE]}, infinity).
@@ -100,12 +104,13 @@ copy_reserve_trunk(AcctID, ACallID, BCallID, Amt) ->
 %% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
 -spec(release_trunk/3 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer()) -> ok | tuple(error, no_account | no_callid)).
 release_trunk(<<>>, _, _) ->
+    ?LOG("no_account at entry to release_trunk/4"),
     {error, no_account};
 release_trunk(_, <<>>, _) ->
+    ?LOG("no_callid at entry to release_trunk/4"),
     {error, no_callid};
 release_trunk(Acct, CallID, Amt) ->
-    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}),
-    ok.
+    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -185,13 +190,13 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
     spawn(fun() ->
 		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 
-		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}, {<<"stale">>, <<"ok">>}]) of
+		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
 		      {error, not_found}=E ->
 			  ?LOG(CallID, "View accounts/balance not found in DB ~s", [RDB]),
 			  gen_server:reply(From, E);
 		      {ok, []} ->
-			  ?LOG(CallID, "No view results for ~s, no_funds", [AcctId]),
-			  gen_server:reply(From, {error, no_account});
+			  ?LOG(CallID, "No view results for ~s, no_results", [AcctId]),
+			  gen_server:reply(From, {error, no_results});
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
@@ -246,22 +251,31 @@ handle_cast(update_views, #state{current_read_db=RDB}=S) ->
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
     spawn(fun() ->
-		  ?LOG(CallID, "Release trunk for ~s: $~p", [AcctId, Amt]),
+                  put(callid, CallID),
+		  ?LOG("Release trunk for ~s: $~p", [AcctId, Amt]),
 
 		  load_account(AcctId, WDB, Self),
 
 		  case trunk_type(RDB, AcctId, CallID) of
 		      non_existant ->
+                          ?LOG("Trunk for ~s not found in ~s, trying ~s", [AcctId, RDB, WDB]),
 			  case trunk_type(WDB, AcctId, CallID) of
 			      non_existant -> ?LOG(CallID, "Failed to find trunk to release for ~s", [AcctId]);
-			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+			      per_min -> release(per_min, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt)));
+			      flat_rate -> release(flat_rate, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate)))
 			  end;
-		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt));
-		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate))
+		      per_min -> release(per_min, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt)));
+		      flat_rate -> release(flat_rate, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate)))
 		  end
 	  end),
     {noreply, S}.
+
+release(per_min, {ok, _}) ->
+    ?LOG("Released per minute trunk");
+release(flat_rate, {ok, _}) ->
+    ?LOG("Released flat rate trunk");
+release(_, {error, _E}) ->
+    ?LOG("Failed to release trunk: ~p", [_E]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -385,21 +399,6 @@ trunk_type(DB, AcctId, CallID) ->
 	{ok, [{struct, [{<<"key">>,_}, {<<"value">>, <<"per_min">>}] }] } -> per_min
     end.
 
-%% -spec(trunk_status/3 :: (DB :: binary(), AcctId :: binary(), CallID :: binary()) -> active | inactive).
-%% trunk_status(DB, AcctId, CallID) ->
-%%     case couch_mgr:get_results(DB, {"trunks", "trunk_status"}, [ {<<"key">>, [AcctId, CallID]}, {<<"group_level">>, <<"2">>}]) of
-%% 	{ok, []} -> in_active;
-%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"active">>}] }] } -> active;
-%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>,<<"inactive">>}] }] } -> inactive
-%%     end.
-
-%% -spec(trunks_available/2 :: (DB :: binary(), AcctId :: binary()) -> integer()).
-%% trunks_available(DB, AcctId) ->
-%%     case couch_mgr:get_results(DB, {"trunks", "flat_rates_available"}, [{<<"key">>, AcctId}, {<<"group">>, <<"true">>}]) of
-%% 	{ok, []} -> 0;
-%% 	{ok, [{struct, [{<<"key">>,_},{<<"value">>, Ts}] }] } -> whistle_util:to_integer(Ts)
-%%     end.
-
 %% should be the diffs from the last account update to now
 account_doc(AcctId, Credit, Trunks) ->
     credit_doc(AcctId, Credit, Trunks, [{<<"_id">>, AcctId}
@@ -407,7 +406,7 @@ account_doc(AcctId, Credit, Trunks) ->
 				       ]).
 
 reserve_doc(AcctId, CallID, flat_rate) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, reserve_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, flat_rate}
 		       ,{<<"trunks">>, 1}
@@ -415,7 +414,7 @@ reserve_doc(AcctId, CallID, flat_rate) ->
 		       ,{<<"doc_type">>, <<"reserve">>}
 		      ]);
 reserve_doc(AcctId, CallID, per_min) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"reserve-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, reserve_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, 0}
@@ -423,14 +422,14 @@ reserve_doc(AcctId, CallID, per_min) ->
 		      ]).
 
 release_doc(AcctId, CallID, flat_rate) ->
-    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    credit_doc(AcctId, 0, 1, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 			      ,{<<"call_id">>, CallID}
 			      ,{<<"trunk_type">>, flat_rate}
 			      ,{<<"doc_type">>, <<"release">>}
 			     ]).
 
 release_doc(AcctId, CallID, per_min, Amt) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
@@ -438,7 +437,7 @@ release_doc(AcctId, CallID, per_min, Amt) ->
 		      ]).
 
 release_error_doc(AcctId, CallID, flat_rate) ->
-    credit_doc(AcctId, 0, 1, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    credit_doc(AcctId, 0, 1, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 			      ,{<<"call_id">>, CallID}
 			      ,{<<"trunk_type">>, flat_rate}
 			      ,{<<"doc_type">>, <<"release">>}
@@ -446,13 +445,18 @@ release_error_doc(AcctId, CallID, flat_rate) ->
 			     ]).
 
 release_error_doc(AcctId, CallID, per_min, Amt) ->
-    debit_doc(AcctId, [{<<"_id">>, <<"release-", CallID/binary, "-", AcctId/binary>>}
+    debit_doc(AcctId, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}
 		       ,{<<"trunk_type">>, per_min}
 		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
 		       ,{<<"doc_type">>, <<"release">>}
 		       ,{<<"release_error">>, true}
 		      ]).
+
+release_doc_id(CallID, AcctID) ->
+    <<"release-", CallID/binary, "-", AcctID/binary>>.
+reserve_doc_id(CallID, AcctID) ->
+    <<"reserve-", CallID/binary, "-", AcctID/binary>>.
 
 credit_doc(AcctId, Credit, Trunks, Extra) ->
     [{<<"acct_id">>, AcctId}
@@ -470,7 +474,7 @@ debit_doc(AcctId, Extra) ->
 
 -spec(get_accts/1 :: (DB :: binary()) -> list(binary()) | []).
 get_accts(DB) ->
-    case couch_mgr:get_results(DB, <<"accounts/listing">>, [{<<"group">>, <<"true">>}]) of
+    case couch_mgr:get_results(DB, <<"accounts/listing">>, [{<<"group">>, true}]) of
 	{ok, []} -> [];
 	{ok, AcctsDoc} -> couch_mgr:get_result_keys(AcctsDoc);
 	_ -> []
@@ -493,10 +497,10 @@ transfer_acct(AcctId, RDB, WDB) ->
 
 -spec(transfer_active_calls/3 :: (AcctId :: binary(), RDB :: binary(), WDB :: binary()) -> no_return()).
 transfer_active_calls(AcctId, RDB, WDB) ->
-    case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, <<"true">>]}, {<<"group_level">>, <<"2">>}]) of
+    case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, true]}, {<<"group_level">>, <<"2">>}]) of
 	{ok, []} -> ?LOG_SYS("No active calls for ~s in ~s", [AcctId, RDB]);
 	{ok, Calls} when is_list(Calls) ->
-	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, <<"active">>}] }) ->
+	    lists:foreach(fun({struct, [{<<"key">>, [_Acct, CallId]}, {<<"value">>, 1}] }) ->
 				  spawn(fun() ->
 						case is_call_active(CallId) of
 						    true ->

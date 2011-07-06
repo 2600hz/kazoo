@@ -198,9 +198,9 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
     end;
 
 handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
-    case lists:member(EvtName, whistle_api:convert_whistle_app_name(CurrApp)) of 
-        false -> 
-            {noreply, State}; 
+    case lists:member(EvtName, whistle_api:convert_whistle_app_name(CurrApp)) of
+        false ->
+            {noreply, State};
         true ->
 	    ?LOG("Event ~s execution complete, advance past ~s", [EvtName, CurrApp]),
 	    case INU andalso queue:out(CmdQ) of
@@ -212,7 +212,7 @@ handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ,
 		{{value, Cmd}, CmdQ1} ->
 		    execute_control_request(Cmd, State),
 		    {noreply, State#state{command_q = CmdQ1, current_app = wh_json:get_value(<<"Application-Name">>, Cmd)}}
-	    end       
+	    end
     end;
 
 handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU, current_app=CurrApp}=State) ->
@@ -280,14 +280,14 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec(restart_amqp_queue/1 :: (Queue :: binary()) -> 'ok' | tuple('error', term())).
+-spec(restart_amqp_queue/1 :: (Queue :: binary()) -> 'ok' | tuple('error', 'amqp_error')).
 restart_amqp_queue(Queue) ->
     case amqp_util:new_callctl_queue(Queue) of
 	Q when Q =:= Queue ->
 	    _ = amqp_util:bind_q_to_callctl(Queue),
 	    _ = amqp_util:basic_consume(Queue),
 	    ok;
-	{error, _}=E ->
+	{error, amqp_error}=E ->
 	    E
     end.
 

@@ -1,0 +1,14 @@
+{
+   "_id": "whistle-support-device-611",
+   "name": "Whistle Support Line",
+   "caller_id": {
+       "external": {
+           "name": "Ayudame",
+           "number": "611"
+       }
+   },
+   "sip": {
+       "route": "sip:support@2600hz.com",
+       "invite_format": "route"
+   }
+}

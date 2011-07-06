@@ -55,10 +55,9 @@
           ,retries = 3 :: pos_integer()
           ,timeout = <<"2000">> :: binary()
           ,max_length = <<"4">> :: binary()
-          ,hunt = false :: binary()
+          ,hunt = false :: boolean()
           ,hunt_deny = <<>> :: binary()
           ,hunt_allow = <<>> :: binary()
-          ,hunt_realm = <<>> :: binary()
           ,record_pin = <<>> :: binary()
           ,has_prompt_media = false :: boolean()
           ,prompts = #prompts{} :: #prompts{}
@@ -72,9 +71,10 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{call_id=CallId}=Call) ->
+handle(Data, #cf_call{call_id=CallId, account_id=AccountId}=Call) ->
     put(callid, CallId),
-    Menu = get_menu_profile(Data, Call#cf_call.account_db),
+    Db = whapps_util:get_db_name(AccountId, encoded),
+    Menu = get_menu_profile(Data, Db),
     answer(Call),
     menu_loop(Menu, Call).
 
@@ -90,13 +90,13 @@ handle(Data, #cf_call{call_id=CallId}=Call) ->
 menu_loop(#menu{retries=Retries, prompts=Prompts}, #cf_call{cf_pid=CFPid} = Call) when Retries =< 0 ->
     Prompts#prompts.exit =/= <<>> andalso b_play(Prompts#prompts.exit, Call),
     ?LOG("maxium number of retries reached"),
-    CFPid ! {continue}; %% too many retries, we're out
+    CFPid ! { continue }; %% too many retries, we're out
 menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
     try
 	case b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
-	    {ok, <<>>} ->                
+	    {ok, <<>>} ->
 		throw(no_digits_collected);
-	    {ok, RecordPin} ->                
+	    {ok, RecordPin} ->
                 ?LOG("selection matches recording pin"),
                 M = record_prompt(tmp_file(), Menu, Call),
                 ?LOG("returning caller to menu"),
@@ -114,7 +114,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
             ?LOG("invalid selection ~w", [R]),
             _ = play_invalid_prompt(Menu, Call),
             b_play(<<"silence_stream://250">>, Call),
-            menu_loop(Menu#menu{retries=Retries-1}, Call)
+            menu_loop(Menu#menu{retries=Retries - 1}, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -141,11 +141,15 @@ try_match_digits(Digits, Menu, Call) ->
 -spec(is_callflow_child/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_callflow_child(Digits, _, #cf_call{cf_pid=CFPid}) ->
     CFPid ! {attempt, Digits},
-    ok =:= receive
-               {attempt_resp, Resp} -> ?LOG("selection is a callflow child"), Resp
-           after 1000 ->
-                   {error, timeout}
-           end.
+    receive
+        {attempt_resp, ok} ->
+            ?LOG("selection is a callflow child"),
+            true;
+        {attempt_resp, _} ->
+            false
+    after 1000 ->
+            false
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -155,7 +159,7 @@ is_callflow_child(Digits, _, #cf_call{cf_pid=CFPid}) ->
 %%--------------------------------------------------------------------
 -spec(is_hunt_enabled/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
 is_hunt_enabled(_, #menu{hunt=Hunt}, _) ->
-    whistle_util:is_true(Hunt).
+    Hunt.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -173,7 +177,7 @@ is_hunt_allowed(Digits, #menu{hunt_allow=RegEx}, _) ->
         ?LOG("hunt_allow accepted digits"),
         true
     catch
-        _:_ -> 
+        _:_ ->
             ?LOG("hunt_allow denied digits"),
             false
     end.
@@ -194,7 +198,7 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
         ?LOG("hunt_deny denied digits"),
         true
     catch
-        _:_ -> 
+        _:_ ->
             ?LOG("hunt_deny accepted digits"),
             false
     end.
@@ -206,25 +210,14 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
-hunt_for_callflow(Digits, #menu{hunt_realm = <<>>}=Menu, #cf_call{from_realm=To, account_db=Db}=Call) ->        
-    case wh_cache:fetch({account, Db}) of
-        {ok, Account} when To =:= <<>> ->
-            hunt_for_callflow(Digits, Menu#menu{hunt_realm=(wh_json:get_value(<<"realm">>, Account, <<"norealm">>))}, Call);
-        {ok, Account} ->
-            hunt_for_callflow(Digits, Menu#menu{hunt_realm=(wh_json:get_value(<<"realm">>, Account, To))}, Call);
-        {error, _} when To =:= <<>> ->
-            hunt_for_callflow(Digits, Menu#menu{hunt_realm = <<"norealm">>}, Call);            
-        {error, _} ->
-            hunt_for_callflow(Digits, Menu#menu{hunt_realm = To}, Call)
-    end;
-hunt_for_callflow(Digits, #menu{prompts=Prompts, hunt_realm=Realm}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid}=Call) ->    
-    ?LOG("hunting for ~s", [<<Digits/binary, $@, Realm/binary>>]),
-    case gen_server:call(CFRPid, {find_flow, <<Digits/binary, $@, Realm/binary>>}, 2000) of
-        {ok, Flow} ->
+hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid, account_id=AccountId}=Call) ->
+    ?LOG("hunting for ~s in account ~s", [Digits, AccountId]),
+    case gen_server:call(CFRPid, {find_flow, Digits, AccountId}, 2000) of
+        {ok, Flow, false} ->
             ?LOG("callflow hunt succeeded, branching"),
             _ = cf_call_command:flush_dtmf(Call),
             _ = b_play(Prompts#prompts.hunt_transfer, Call),
-            CFPid ! {branch, Flow},
+            CFPid ! { branch, wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT) },
             true;
         _ ->
             ?LOG("callflow hunt failed"),
@@ -271,7 +264,7 @@ record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
                     _ = b_play(Prompts#prompts.message_saved, Call),
                     store_recording(MediaName, ?MEDIA_PROMPT, Menu, Call),
                     Menu#menu{has_prompt_media=true};
-                _Else ->
+                {ok, no_selection} ->
                     ?LOG("abandoning record greeting"),
                     _ = b_play(Prompts#prompts.message_deleted, Call),
                     Menu
@@ -286,7 +279,7 @@ record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(review_recording/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> tuple(ok, record | save) | tuple(error, term())).
+-spec(review_recording/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> tuple(ok, record | save | no_selection)).
 review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     ?LOG("playing menu greeting review options"),
     audio_macro([
@@ -302,16 +295,18 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, 
                  ,{say,  RecordKey}
                  ,{play, Prompts#prompts.to_rerecord}
                 ], Call),
-    {ok, Digits} = wait_for_dtmf(30000),
+    DTMF = wait_for_dtmf(30000),
     _ = flush(Call),
-    case Digits of 
-        ListenKey ->            
+    case DTMF of
+        {ok, ListenKey} ->
 	    _ = b_play(MediaName, Call),
 	    review_recording(MediaName, Menu, Call);
-	RecordKey ->
+	{ok, RecordKey} ->
 	    {ok, record};
-	SaveKey ->
-	    {ok, save};	
+	{ok, SaveKey} ->
+	    {ok, save};
+        {error, _} ->
+            {ok, no_selection};
         _ ->
 	    review_recording(MediaName, Menu, Call)
     end.
@@ -375,18 +370,19 @@ get_menu_profile(Data, Db) ->
         {ok, JObj} ->
             ?LOG("loaded menu route ~s", [Id]),
             Default=#menu{},
-            #menu{
-		   menu_id = Id
-                   ,retries = wh_json:get_value(<<"retries">>, JObj, Default#menu.retries)
-                   ,timeout = wh_json:get_value(<<"timeout">>, JObj, Default#menu.timeout)
-                   ,max_length = wh_json:get_value(<<"max_extension_length">>, JObj, Default#menu.max_length)
-                   ,hunt = wh_json:get_value(<<"hunt">>, JObj, Default#menu.hunt)
-                   ,hunt_deny = wh_json:get_value(<<"hunt_deny">>, JObj, Default#menu.hunt_deny)
-                   ,hunt_allow = wh_json:get_value(<<"hunt_allow">>, JObj, Default#menu.hunt_allow)
-                   ,hunt_realm = wh_json:get_value(<<"hunt_realm">>, JObj, <<>>)
-                   ,record_pin = wh_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
-                   ,has_prompt_media = wh_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
-                   ,s_prompt = wh_json:get_value(<<115,97,115,115,121,95,109,111,100,101>>, JObj) =/= undefined
+            #menu{menu_id = Id
+                  ,retries =
+                      whistle_util:to_integer(wh_json:get_value(<<"retries">>, JObj, Default#menu.retries))
+                  ,timeout = wh_json:get_value(<<"timeout">>, JObj, Default#menu.timeout)
+                  ,max_length =
+                      whistle_util:to_binary(wh_json:get_value(<<"max_extension_length">>, JObj, Default#menu.max_length))
+                  ,hunt =
+                      whistle_util:is_true(wh_json:get_value(<<"hunt">>, JObj, Default#menu.hunt))
+                  ,hunt_deny = wh_json:get_value(<<"hunt_deny">>, JObj, Default#menu.hunt_deny)
+                  ,hunt_allow = wh_json:get_value(<<"hunt_allow">>, JObj, Default#menu.hunt_allow)
+                  ,record_pin = wh_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
+                  ,has_prompt_media = wh_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
+                  ,s_prompt = wh_json:get_value(<<115,97,115,115,121,95,109,111,100,101>>, JObj) =/= undefined
                  };
         {error, R} ->
             ?LOG("failed to load menu route ~s, ~w", [Id, R]),

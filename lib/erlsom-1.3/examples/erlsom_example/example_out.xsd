@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="http://www.example.org/out"
+            xmlns="http://www.example.org/out"
+            elementFormDefault="qualified">
+    <xsd:element name="calcAverageResult" type="resultType"/>
+    <xsd:complexType name="resultType">
+        <xsd:choice>
+            <xsd:element name="okResult" 
+                         type="xsd:float" 
+                         />
+            <xsd:element name="error" type="errorType"/>
+        </xsd:choice>
+    </xsd:complexType>
+    <xsd:complexType name="errorType">
+        <xsd:sequence>
+            <xsd:element name="errorCode" type="xsd:string"/>
+            <xsd:element name="errorDesription" 
+                         type="xsd:string" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+</xsd:schema>

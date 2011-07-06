@@ -13,7 +13,7 @@
 %% API
 -export([set_host/1, get_host/0]).
 
--export([start_link/0, publish/2, consume/1, misc_req/1, misc_req/2]).
+-export([start_link/0, publish/2, consume/1, misc_req/1, misc_req/2, register_return_handler/0]).
 
 -export([is_available/0]).
 
@@ -68,6 +68,9 @@ misc_req(Req1, Req2) ->
 is_available() ->
     gen_server:call(?SERVER, is_available).
 
+register_return_handler() ->
+    gen_server:call(?SERVER, {register_return_handler}).
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -105,14 +108,14 @@ handle_call({set_host, Host}, _, State) ->
 	{error, _}=E -> {reply, E, State, 0}
     end;
 
+handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
+    {reply, erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid), State};
+
 handle_call(_, _, #state{handler_pid = undefined}=State) ->
     {reply, {error, amqp_down}, State};
 
 handle_call(get_host, _, State) ->
     {reply, State#state.host, State};
-
-handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
-    {reply, erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid), State};
 
 handle_call({publish, BP, AM}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:publish(HPid, From, BP, AM) end),
@@ -128,6 +131,13 @@ handle_call({misc_req, Req}, From, #state{handler_pid=HPid}=State) ->
 
 handle_call({misc_req, Req1, Req2}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:misc_req(HPid, From, Req1, Req2) end),
+    {noreply, State};
+
+handle_call({register_return_handler}, From, #state{handler_pid=HPid}=State)->
+    spawn(fun() -> amqp_host:register_return_handler(HPid, From) end),
+    {noreply, State};
+
+handle_call(_, _, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -148,21 +158,21 @@ handle_cast(_Req, State) ->
 handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
     ?LOG_SYS("attempting to connect to ~s", [Host]),
     case start_amqp_host(Host, State) of
-	{ok, State1} -> 
-            ?LOG_SYS("connected to AMQP host"),            
+	{ok, State1} ->
+            ?LOG_SYS("connected to AMQP host"),
             {noreply, State1};
-	{error, R} -> 
+	{error, R} ->
             ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
             {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
             {noreply, State}
-    end;   
+    end;
 
 handle_info({reconnect, T}, #state{host=Host}=State) ->
     ?LOG_SYS("attempting to reconnect to ~s", [Host]),
     case start_amqp_host(Host, State) of
-	{ok, State1} -> 
+	{ok, State1} ->
             {noreply, State1};
-	{error, _} -> 
+	{error, _} ->
             case T * 2 of
                 Timeout when Timeout > ?MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
@@ -278,10 +288,10 @@ start_amqp_host(Host, State, {ConnType, ConnParams} = ConnInfo) ->
 -spec(get_config/0 :: () -> proplist()).
 get_config() ->
     case file:consult(?STARTUP_FILE) of
-	{ok, Prop} -> 
+	{ok, Prop} ->
             ?LOG_SYS("loaded amqp manager configuration from ~s", [?STARTUP_FILE]),
             Prop;
-	E -> 
+	E ->
             ?LOG_SYS("unable to load amqp manager configuration ~p", [E]),
             []
     end.

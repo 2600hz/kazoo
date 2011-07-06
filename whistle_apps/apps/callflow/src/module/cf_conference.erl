@@ -74,9 +74,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_db=Db}=Call) ->
     put(callid, CallId),
-    Conf = update_members(get_conference_profile(Data, Call#cf_call.account_db), Call),
+    Conf = update_members(get_conference_profile(Data, Db), Call),
     answer(Call),
     _ = play_conference_name(Conf, Call),
     case check_pin(Conf, Call, 1) of
@@ -224,7 +224,7 @@ get_conference_profile(Data, Db) ->
                 ,wait_for_moderator = wh_json:get_value(<<"wait_for_moderator">>, JObj, Default#conf.wait_for_moderator)
          };
         {error, R} ->
-            ?LOG("failed to load conference ~s, ~w", [Id, R]),            
+            ?LOG("failed to load conference ~s, ~w", [Id, R]),
             #conf{}
     end.
 

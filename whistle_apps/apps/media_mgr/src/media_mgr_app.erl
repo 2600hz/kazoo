@@ -1,7 +1,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010 James Aimonetti
+%%% @copyright (C) 2010 VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% Created :  Tue, 15 Mar 2011 13:42:17 GMT: James Aimonetti <james@2600hz.org>
 -module(media_mgr_app).

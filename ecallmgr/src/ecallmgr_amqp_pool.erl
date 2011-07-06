@@ -33,6 +33,7 @@
           ,orig_worker_count = ?WORKER_COUNT :: integer() % scale back workers after a period of time
           ,workers = queue:new() :: queue()
           ,requests_per = 0 :: non_neg_integer()
+	  ,amqp_ref = undefined :: undefined | reference()
 	 }).
 
 %%%===================================================================
@@ -124,6 +125,7 @@ handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_coun
 	    {noreply, State#state{workers=W1, requests_per=RP+1}};
 	{empty, _} ->
 	    Worker = start_worker(),
+	    ?LOG("starting additional worker ~p", [Worker]),
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
 	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}}
     end.
@@ -152,24 +154,56 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
+    ?LOG("checking worker totals"),
     Count = case WC-queue:len(Ws) of X when X < 0 -> 0; Y -> Y end,
+    ?LOG("adding ~b workers", [Count]),
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
-    {ok, _} = timer:send_interval(?BACKOFF_PERIOD, reduce_labor_force),
+    erlang:start_timer(?BACKOFF_PERIOD, self(), reduce_labor_force),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
 handle_info({worker_free, W}, #state{workers=Ws}=State) ->
     {noreply, State#state{workers=queue:in(W, Ws)}};
 
+handle_info({'EXIT', W, amqp_host_down}, #state{workers=Ws, amqp_ref=undefined}=State) ->
+    ?LOG("AMQP host down, ~p exited, starting timer", [W]),
+    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
+    Ref = erlang:start_timer(1000, self(), {amqp_check, 1000}),
+    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1, amqp_ref=Ref}};
+
+handle_info({'EXIT', W, amqp_host_down}, #state{workers=Ws}=State) ->
+    ?LOG("AMQP host down, ~p exited", [W]),
+    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
+    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1}};
+
+handle_info({timeout, Ref, {amqp_check, LastTimeout}}, #state{amqp_ref=Ref}=State) ->
+    ?LOG("checking AMQP host connectivity"),
+    case amqp_util:is_host_available() of
+	true -> {noreply, State#state{worker_count=0, workers=queue:new(), amqp_ref=undefined}, 0};
+	false ->
+	    NewT = LastTimeout*2,
+	    Timeout = case NewT > ?BACKOFF_PERIOD of true -> ?BACKOFF_PERIOD; false -> NewT end,
+	    Ref1 = erlang:start_timer(Timeout, self(), {amqp_check, Timeout}),
+	    {noreply, State#state{amqp_ref=Ref1}}
+    end;
+
+handle_info({'EXIT', W, _Reason}, #state{workers=Ws, amqp_ref=Ref}=State) when is_reference(Ref) ->
+    ?LOG("Worker down, amqp_ref set so wait: ~p", [_Reason]),
+    Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) when WC < OWC ->
+    ?LOG("Worker down: ~p", [_Reason]),
     Ws1 = queue:in(start_worker(), queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws}=State) ->
+    ?LOG("Worker down: ~p", [_Reason]),
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
 
-handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC andalso WC > OWC ->
-    ?LOG("Reducing back to original labor force of ~p from ~p", [OWC, WC]),
+handle_info({timeout, _, reduce_labor_force}
+	    ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC andalso WC > OWC ->
+    ?LOG("reducing back to original labor force of ~p from ~p", [OWC, WC]),
     Ws1 = lists:foldl(fun(_, Q0) ->
 			      case queue:len(Q0) =< OWC of
 				  true -> Q0;
@@ -181,8 +215,9 @@ handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per
 		      end, Ws, lists:seq(1,WC-OWC)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
 
-handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC andalso WC > OWC ->
-    ?LOG("Scaling back labor force from ~p to ~p", [WC, WC-RP]),
+handle_info({timeout, _, reduce_labor_force}
+	    ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC andalso WC > OWC ->
+    ?LOG("scaling back labor force from ~p to ~p", [WC, WC-RP]),
     Ws1 = lists:foldl(fun(_, Q0) ->
 			      case queue:len(Q0) =< OWC of
 				  true -> Q0;
@@ -194,7 +229,7 @@ handle_info(reduce_labor_force, #state{workers=Ws, worker_count=WC, requests_per
 		      end, Ws, lists:seq(1,WC-RP)),
     {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
 
-handle_info(reduce_labor_force, State) ->
+handle_info({timeout, _, reduce_labor_force}, State) ->
     {noreply, State#state{requests_per=0}};
 
 handle_info(_Info, State) ->
@@ -237,23 +272,27 @@ worker_init() ->
 	Q = amqp_util:new_targeted_queue(),
 	_ = amqp_util:bind_q_to_targeted(Q),
 	_ = amqp_util:basic_consume(Q),
-	?LOG("Worker listening on ~s", [Q]),
+        ?LOG_SYS("connected to AMQP"),
 	worker_free(Q)
     catch
-	_:_ ->
-	    ?LOG("Failed to secure Queue")
+	_:R ->
+            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
+	    exit(amqp_host_down)
     end.
 
 -spec(worker_free/1 :: (Q :: binary()) -> no_return()).
 worker_free(Q) ->
+    put(callid, <<"0000000000">>),
     receive
 	{request, Prop, ApiFun, PubFun, {Pid, _}=From, Parent} ->
 	    Prop1 = [ {<<"Server-ID">>, Q} | lists:keydelete(<<"Server-ID">>, 1, Prop)],
 	    case ApiFun(Prop1) of
 		{ok, JSON} ->
+                    put_callid(Prop1),
 		    Ref = erlang:monitor(process, Pid),
 		    PubFun(JSON),
-		    ?LOG_SYS("Working for ~w and sent ~s", [Pid, JSON]),
+		    ?LOG("worker recieved task from ~w", [Pid]),
+		    ?LOG("worker sent ~s", [JSON]),
 		    worker_busy(Q, From, Ref, Parent);
 		{error, _}=E ->
 		    gen_server:reply(From, E),
@@ -261,22 +300,36 @@ worker_free(Q) ->
 	    end;
 	#'basic.consume_ok'{} ->
 	    worker_free(Q);
+	{amqp_host_down, _} ->
+	    ?LOG_SYS("lost AMQP connection"),
+	    exit(amqp_host_down);
+	{amqp_lost_channel,no_connection} ->
+	    ?LOG_SYS("lost AMQP connection"),
+	    exit(amqp_host_down);
 	shutdown ->
-	    ?LOG("Going on permanent leave");
+	    ?LOG_SYS("going on permanent leave");
 	_Other ->
-	    ?LOG("Recv other msg ~w", [_Other]),
 	    worker_free(Q)
     end.
 
 worker_busy(Q, From, Ref, Parent) ->
     Start = erlang:now(),
     receive
+	{amqp_host_down, _} ->
+	    ?LOG("lost AMQP connection"),
+	    exit(amqp_host_down);
+	{amqp_lost_channel,no_connection} ->
+	    ?LOG("lost AMQP connection"),
+	    exit(amqp_host_down);
 	{_, #amqp_msg{payload = Payload}} ->
-	    ?LOG("Recv payload response (~b ms): ~s", [timer:now_diff(erlang:now(), Start) div 1000, Payload]),
+	    ?LOG("recieved response after ~b ms, ~s", [timer:now_diff(erlang:now(), Start) div 1000, Payload]),
 	    gen_server:reply(From, {ok, mochijson2:decode(Payload)});
 	{'DOWN', Ref, process, Pid, _Info} ->
-	    ?LOG("Requestor(~w) down, so are we", [Pid])
+	    ?LOG_END("requestor (~w) down, giving up on task", [Pid])
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},
     worker_free(Q).
+
+put_callid(Props) ->
+    _ = put(callid, props:get_value(<<"Call-ID">>, Props, props:get_value(<<"Msg-ID">>, Props, <<"0000000000">>))).

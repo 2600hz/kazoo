@@ -1,3 +1,5 @@
+-ifndef(CROSSBAR_TYPES_INCLUDED).
+
 -type crossbar_status() :: success | error | fatal.
 -type crossbar_module_result() :: tuple(crossbar_status(), proplist())
 				  | tuple(crossbar_status(), proplist(), string())
@@ -14,3 +16,8 @@
 
 -type couch_doc_path() :: list(binary()).
 -type couch_schema() :: list(tuple(couch_doc_path(), validator_rules())).
+
+-type proplist_bool() :: list(tuple(boolean(), term())) | [].
+
+-define(CROSSBAR_TYPES_INCLUDED, true).
+-endif.

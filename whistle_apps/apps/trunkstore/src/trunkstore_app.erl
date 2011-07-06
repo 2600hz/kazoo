@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1, update_views/0, setup_views/0]).
+-export([start/2, stop/1, update_views/0, setup_views/0, setup_base_docs/0]).
 
 -include("ts.hrl").
 
@@ -13,8 +13,8 @@
 
 -spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
 start(_StartType, _StartArgs) ->
-    setup_views(),
-    setup_base_docs(),
+    trunkstore_app:setup_views(),
+    trunkstore_app:setup_base_docs(),
     case trunkstore:start_link() of
 	{ok, P} -> {ok, P};
 	{error,{already_started, P}} -> {ok, P};
