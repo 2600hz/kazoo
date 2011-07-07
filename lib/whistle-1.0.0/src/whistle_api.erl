@@ -23,7 +23,7 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% Authentication and Routing
--export([authn_req/1, auth_resp/1, reg_success/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
+-export([authn_req/1, authn_resp/1, reg_success/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
 -export([reg_query/1, reg_query_resp/1]).
 
 %% Resources
@@ -51,7 +51,7 @@
 	]).
 
 %% Validation functions
--export([authn_req_v/1, auth_resp_v/1]).
+-export([authn_req_v/1, authn_resp_v/1]).
 -export([reg_success_v/1, reg_query_v/1, reg_query_resp_v/1]).
 
 -export([offnet_resource_req_v/1, resource_req_v/1, resource_resp_v/1, resource_error_v/1]).
@@ -144,19 +144,19 @@ authn_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(auth_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
-auth_resp({struct, Prop}) ->
-    auth_resp(Prop);
-auth_resp(Prop) ->
-    case auth_resp_v(Prop) of
+-spec(authn_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+authn_resp({struct, Prop}) ->
+    authn_resp(Prop);
+authn_resp(Prop) ->
+    case authn_resp_v(Prop) of
 	true -> build_message(Prop, ?AUTH_RESP_HEADERS, ?OPTIONAL_AUTH_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for auth_resp"}
+	false -> {error, "Proplist failed validation for authn_resp"}
     end.
 
--spec(auth_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
-auth_resp_v({struct, Prop}) ->
-    auth_resp_v(Prop);
-auth_resp_v(Prop) ->
+-spec(authn_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+authn_resp_v({struct, Prop}) ->
+    authn_resp_v(Prop);
+authn_resp_v(Prop) ->
     validate(Prop, ?AUTH_RESP_HEADERS, ?AUTH_RESP_VALUES, ?AUTH_RESP_TYPES).
 
 %%--------------------------------------------------------------------

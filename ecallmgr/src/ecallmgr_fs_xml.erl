@@ -8,30 +8,30 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, auth_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, authn_resp_xml/1]).
 
 -include("ecallmgr.hrl").
 
-auth_resp_xml({struct, RespProp}) ->
-    auth_resp_xml(RespProp);
-auth_resp_xml(RespProp) ->
-    auth_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), RespProp).
+authn_resp_xml({struct, RespProp}) ->
+    authn_resp_xml(RespProp);
+authn_resp_xml(RespProp) ->
+    authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), RespProp).
 
-auth_resp_xml(<<"password">>, Prop) ->
+authn_resp_xml(<<"password">>, Prop) ->
     User = props:get_value(<<"Auth-User">>, Prop),
     Domain = props:get_value(<<"Auth-Domain">>, Prop),
     Pass = props:get_value(<<"Auth-Password">>, Prop),
     ChannelParams = get_channel_params(Prop),
     {ok, lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Domain, User, Pass, ChannelParams]))};
-auth_resp_xml(<<"a1-hash">>, Prop) ->
+authn_resp_xml(<<"a1-hash">>, Prop) ->
     User = props:get_value(<<"Auth-User">>, Prop),
     Domain = props:get_value(<<"Auth-Domain">>, Prop),
     Hash = props:get_value(<<"Auth-Password">>, Prop),
     ChannelParams = get_channel_params(Prop),
     {ok, lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams]))};
-auth_resp_xml(<<"ip">>, _Prop) ->
+authn_resp_xml(<<"ip">>, _Prop) ->
     {ok, ?EMPTYRESPONSE};
-auth_resp_xml(_, _) ->
+authn_resp_xml(_, _) ->
     {ok, ?EMPTYRESPONSE}.
 
 route_resp_xml({struct, RespProp}) ->

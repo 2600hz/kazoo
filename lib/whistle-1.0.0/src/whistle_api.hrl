@@ -95,7 +95,7 @@
 -define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTH_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
 -define(AUTH_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			   ,{<<"Event-Name">>, <<"auth_resp">>}
+			   ,{<<"Event-Name">>, <<"authn_resp">>}
 			   ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
 			 ]).
 -define(AUTH_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}

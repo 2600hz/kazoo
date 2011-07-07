@@ -241,9 +241,9 @@ lookup_user(Node, ID, Data) ->
                              try
                                  {ok, {struct, AuthResp}} = ecallmgr_amqp_pool:authn_req(AuthReq),
 
-                                 true = whistle_api:auth_resp_v(AuthResp),
-                                 ?LOG(ID, "received auth_resp", []),
-                                 {ok, Xml} = ecallmgr_fs_xml:auth_resp_xml([{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
+                                 true = whistle_api:authn_resp_v(AuthResp),
+                                 ?LOG(ID, "received authn_resp", []),
+                                 {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml([{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
                                                                             ,{<<"Auth-Domain">>, props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Domain">>, Data))}
                                                                             | AuthResp]),
                                  ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
