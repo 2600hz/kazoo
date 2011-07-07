@@ -22,7 +22,7 @@
         end).
 
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
-%%% (substitute AUTH_REQ, AUTH_RESP, etc, for *) to be considered valid.
+%%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
 %%%
 %%% OPTIONAL_*_HEADERS defines a list of Keys that will be included in the final
 %%% message if included in the passed in Proplist.
@@ -77,13 +77,13 @@
 			]).
 
 %% Authentication Requests
--define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
+-define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
 			       , <<"Auth-User">>, <<"Auth-Domain">>]).
--define(OPTIONAL_AUTH_REQ_HEADERS, []).
--define(AUTH_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
+-define(OPTIONAL_AUTHN_REQ_HEADERS, []).
+-define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			  ,{<<"Event-Name">>, <<"authn_req">>}
 			 ]).
--define(AUTH_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+-define(AUTHN_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			 ,{<<"To">>, fun is_binary/1}
 			 ,{<<"From">>, fun is_binary/1}
 			 ,{<<"Orig-IP">>, fun is_binary/1}
@@ -92,18 +92,22 @@
 			]).
 
 %% Authentication Responses
--define(AUTH_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
--define(OPTIONAL_AUTH_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
--define(AUTH_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
+-define(AUTHN_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
+-define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
+-define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			   ,{<<"Event-Name">>, <<"authn_resp">>}
 			   ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
 			 ]).
--define(AUTH_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+-define(AUTHN_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			  ,{<<"Auth-Password">>, fun is_binary/1}
 			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			  ,{<<"Access-Group">>, fun is_binary/1}
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
+
+%% Authorization Requests
+
+%% Authorization Responses
 
 %% Registration Success
 -define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"RPid">>

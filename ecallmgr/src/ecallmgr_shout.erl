@@ -22,7 +22,7 @@
 -define(PORT_OPTIONS, [binary, {packet,0}, {active,false}, {reuseaddr, true}]).
 -define(TIMEOUT, 10000). % wait ten seconds for the connection, then quit
 -define(PW_ENCODED, base64:encode(<<"foo:bar">>)).
--define(AUTH_RESP, <<"HTTP/1.0 200 OK\r\nServer: Whistle/1.0\r\nice-auth-user: 1\r\nice-auth-message: OK\r\n\r\n">>).
+-define(AUTHN_RESP, <<"HTTP/1.0 200 OK\r\nServer: Whistle/1.0\r\nice-auth-user: 1\r\nice-auth-message: OK\r\n\r\n">>).
 
 %%%===================================================================
 %%% API
@@ -154,7 +154,7 @@ auth_loop(Sock, Data, Parent, SrvRef) ->
 
 	    case is_authn_req_headers(Headers, Path) of
 		true ->
-		    ok = gen_tcp:send(Sock, ?AUTH_RESP),
+		    ok = gen_tcp:send(Sock, ?AUTHN_RESP),
 		    writer_loop(Sock, [], Parent, SrvRef);
 		false ->
 		    auth_loop(Sock, [Bin | Data], Parent, SrvRef)
@@ -248,5 +248,5 @@ is_authn_req_header(<<>>, _) ->
 is_authn_req_header(<<"ice-", _/binary>>, _) ->
     true;
 is_authn_req_header(H, _) ->
-    ?LOG("ECALL_SHOUT: IS_AUTH_REQ_H unknown header: ~s", [H]),
+    ?LOG("ECALL_SHOUT: IS_AUTHN_REQ_H unknown header: ~s", [H]),
     false.

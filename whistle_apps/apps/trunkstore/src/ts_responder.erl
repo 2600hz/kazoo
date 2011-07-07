@@ -256,7 +256,7 @@ start_amqp() ->
 
 	%% Bind the queue to an exchange
 	_ = amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
-	_ = amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
+	_ = amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTHN_REQ),
 
 	?LOG_SYS("Bound queues"),
 

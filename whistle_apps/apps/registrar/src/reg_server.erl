@@ -238,7 +238,7 @@ start_amqp() ->
 	Q = amqp_util:new_queue(?REG_QUEUE_NAME, [{exclusive, false}]),
 	amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
 	amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
-	amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ),
+	amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
 	amqp_util:basic_consume(Q, [{exclusive, false}]),
         ?LOG_SYS("connected to AMQP"),
 	{ok, Q}

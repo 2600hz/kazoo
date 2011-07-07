@@ -601,7 +601,7 @@ stop_consuming(Q) ->
     amqp_util:basic_cancel(Q).
 
 bind_to_exchange(<<"directory.authn_req">>, Q) ->
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ);
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ);
 bind_to_exchange(<<"dialplan.route_req">>, Q) ->
     amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ);
 bind_to_exchange(<<"events.", CallID/binary>>, Q) ->

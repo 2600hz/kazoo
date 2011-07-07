@@ -57,7 +57,7 @@ authn_req(Prop) ->
     authn_req(Prop, ?DEFAULT_TIMEOUT).
 authn_req(Prop, Timeout) ->
     gen_server:call(?SERVER, {request, Prop, fun whistle_api:authn_req/1
-			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTH_REQ) end
+			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTHN_REQ) end
 			      }, Timeout).
 
 route_req(Prop) ->

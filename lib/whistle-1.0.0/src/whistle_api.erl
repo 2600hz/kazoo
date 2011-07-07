@@ -129,7 +129,7 @@ authn_req({struct, Prop}) ->
     authn_req(Prop);
 authn_req(Prop) ->
     case authn_req_v(Prop) of
-	true -> build_message(Prop, ?AUTH_REQ_HEADERS, ?OPTIONAL_AUTH_REQ_HEADERS);
+	true -> build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for authn_req"}
     end.
 
@@ -137,7 +137,7 @@ authn_req(Prop) ->
 authn_req_v({struct, Prop}) ->
     authn_req_v(Prop);
 authn_req_v(Prop) ->
-    validate(Prop, ?AUTH_REQ_HEADERS, ?AUTH_REQ_VALUES, ?AUTH_REQ_TYPES).
+    validate(Prop, ?AUTHN_REQ_HEADERS, ?AUTHN_REQ_VALUES, ?AUTHN_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Response - see wiki
@@ -149,7 +149,7 @@ authn_resp({struct, Prop}) ->
     authn_resp(Prop);
 authn_resp(Prop) ->
     case authn_resp_v(Prop) of
-	true -> build_message(Prop, ?AUTH_RESP_HEADERS, ?OPTIONAL_AUTH_RESP_HEADERS);
+	true -> build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for authn_resp"}
     end.
 
@@ -157,7 +157,7 @@ authn_resp(Prop) ->
 authn_resp_v({struct, Prop}) ->
     authn_resp_v(Prop);
 authn_resp_v(Prop) ->
-    validate(Prop, ?AUTH_RESP_HEADERS, ?AUTH_RESP_VALUES, ?AUTH_RESP_TYPES).
+    validate(Prop, ?AUTHN_RESP_HEADERS, ?AUTHN_RESP_VALUES, ?AUTHN_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Registration Success - see wiki
