@@ -356,7 +356,7 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
--spec(close_node/1 :: (N :: #node_handler{}) -> list(ok | tuple(error, term()))).
+-spec(close_node/1 :: (N :: #node_handler{}) -> list(ok | tuple(error, atom()))).
 close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),
     ecallmgr_fs_sup:stop_handlers(Node).

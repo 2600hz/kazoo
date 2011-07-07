@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0, start_link/1, route_req/1, route_req/2, reg_query/1, reg_query/2, media_req/1, media_req/2]).
--export([auth_req/1, auth_req/2]).
+-export([authn_req/1, authn_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -53,10 +53,10 @@ start_link() ->
 start_link(WorkerCount) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [WorkerCount], []).
 
-auth_req(Prop) ->
-    auth_req(Prop, ?DEFAULT_TIMEOUT).
-auth_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun whistle_api:auth_req/1
+authn_req(Prop) ->
+    authn_req(Prop, ?DEFAULT_TIMEOUT).
+authn_req(Prop, Timeout) ->
+    gen_server:call(?SERVER, {request, Prop, fun whistle_api:authn_req/1
 			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTH_REQ) end
 			      }, Timeout).
 

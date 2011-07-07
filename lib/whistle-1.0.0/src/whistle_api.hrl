@@ -81,7 +81,7 @@
 			       , <<"Auth-User">>, <<"Auth-Domain">>]).
 -define(OPTIONAL_AUTH_REQ_HEADERS, []).
 -define(AUTH_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			  ,{<<"Event-Name">>, <<"auth_req">>}
+			  ,{<<"Event-Name">>, <<"authn_req">>}
 			 ]).
 -define(AUTH_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			 ,{<<"To">>, fun is_binary/1}

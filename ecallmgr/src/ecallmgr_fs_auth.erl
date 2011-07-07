@@ -232,14 +232,14 @@ lookup_user(Node, ID, Data) ->
                                         ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
 					,{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
 					,{<<"Auth-Domain">>, props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Domain">>, Data))}
-					| whistle_api:default_headers(<<>>, <<"directory">>, <<"auth_req">>, <<"ecallmgr.auth">>, ?VSN)],
+					| whistle_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, <<"ecallmgr.auth">>, ?VSN)],
 
 			     ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [props:get_value(<<"Auth-User">>, AuthReq)
                                                                                       ,props:get_value(<<"Auth-Domain">>, AuthReq)
                                                                                       ,props:get_value(<<"Method">>, AuthReq)
                                                                                      ]),
                              try
-                                 {ok, {struct, AuthResp}} = ecallmgr_amqp_pool:auth_req(AuthReq),
+                                 {ok, {struct, AuthResp}} = ecallmgr_amqp_pool:authn_req(AuthReq),
 
                                  true = whistle_api:auth_resp_v(AuthResp),
                                  ?LOG(ID, "received auth_resp", []),

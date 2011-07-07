@@ -152,7 +152,7 @@ auth_loop(Sock, Data, Parent, SrvRef) ->
 	    Headers = list_to_binary(lists:reverse([Bin | Data])),
 	    Path = ?MODULE:get_path(Parent),
 
-	    case is_auth_req_headers(Headers, Path) of
+	    case is_authn_req_headers(Headers, Path) of
 		true ->
 		    ok = gen_tcp:send(Sock, ?AUTH_RESP),
 		    writer_loop(Sock, [], Parent, SrvRef);
@@ -227,26 +227,26 @@ play_media(MediaFile, Sock, Offset, Stop, SoFar, Header) ->
     end.
 
 %% check the headers
--spec(is_auth_req_headers/2 :: (Headers :: binary(), Path :: binary()) -> boolean()).
-is_auth_req_headers(Headers, Path) ->
+-spec(is_authn_req_headers/2 :: (Headers :: binary(), Path :: binary()) -> boolean()).
+is_authn_req_headers(Headers, Path) ->
     Base = filename:basename(Path),
-    lists:all(fun(H) -> is_auth_req_header(H, Base) end, binary:split(Headers, <<"\r\n">>, [global])).
+    lists:all(fun(H) -> is_authn_req_header(H, Base) end, binary:split(Headers, <<"\r\n">>, [global])).
 
 %% check a header
--spec(is_auth_req_header/2 :: (Header :: binary(), Base :: binary()) -> boolean()).
-is_auth_req_header(<<"SOURCE /", Rest/binary>>, Base) ->
+-spec(is_authn_req_header/2 :: (Header :: binary(), Base :: binary()) -> boolean()).
+is_authn_req_header(<<"SOURCE /", Rest/binary>>, Base) ->
     Base1 = <<"fs_", Base/binary>>,
     binary:longest_common_prefix([Rest, Base1]) =:= byte_size(Base1);
-is_auth_req_header(<<"Authorization: Basic ", Base64/binary>>, _) ->
+is_authn_req_header(<<"Authorization: Basic ", Base64/binary>>, _) ->
     Base64 =:= ?PW_ENCODED;
-is_auth_req_header(<<"User-Agent: libshout/2.2.2">>, _) ->
+is_authn_req_header(<<"User-Agent: libshout/2.2.2">>, _) ->
     true;
-is_auth_req_header(<<"Content-Type: audio/mpeg">>, _) ->
+is_authn_req_header(<<"Content-Type: audio/mpeg">>, _) ->
     true;
-is_auth_req_header(<<>>, _) ->
+is_authn_req_header(<<>>, _) ->
     true;
-is_auth_req_header(<<"ice-", _/binary>>, _) ->
+is_authn_req_header(<<"ice-", _/binary>>, _) ->
     true;
-is_auth_req_header(H, _) ->
+is_authn_req_header(H, _) ->
     ?LOG("ECALL_SHOUT: IS_AUTH_REQ_H unknown header: ~s", [H]),
     false.

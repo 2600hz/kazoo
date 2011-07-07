@@ -303,14 +303,9 @@ get_bridge_endpoint(JObj) ->
     end.
 
 -spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
--spec(media_path/3 :: (MediaName :: binary(), Type :: extant | continuous, UUID :: binary()) -> binary()).
+-spec(media_path/3 :: (MediaName :: binary(), Type :: extant | new, UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
-    case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
-        {error, _} ->
-            MediaName;
-        {ok, Url} ->
-            get_fs_playback(Url)
-    end.
+    media_path(MediaName, new, UUID).
 
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
@@ -419,7 +414,7 @@ set_ringback(Node, UUID, undefined) ->
     RB = list_to_binary(["ringback=", get_setting(default_ringback, "%(2000,4000,440,480)")]),
     ok = set(Node, UUID, RB);
 set_ringback(Node, UUID, RingBack) ->
-    RB = list_to_binary(["ringback=", media_path(RingBack, <<"extant">>, UUID)]),
+    RB = list_to_binary(["ringback=", media_path(RingBack, extant, UUID)]),
     ok = set(Node, UUID, RB),
     set(Node, UUID, "instant_ringback=true").
 
@@ -438,7 +433,7 @@ set_timeout(Node, UUID, Timeout) ->
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
 
--spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
+-spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: binary()) -> ok | timeout | {error, string()}).
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", whistle_util:to_list(Arg)).
 
@@ -544,7 +539,9 @@ send_error_response(App, Msg, UUID, JObj) ->
     {ok, Payload} = whistle_api:error_resp(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
--spec(get_setting/2 :: (Setting :: term(), Default :: term()) -> term()).
+-spec get_setting/2 :: (Setting, Default) -> term() when
+      Setting :: atom(),
+      Default :: term().
 get_setting(Setting, Default) ->
     case wh_cache:fetch({ecallmgr_setting, Setting}) of
         {ok, Value} -> Value;

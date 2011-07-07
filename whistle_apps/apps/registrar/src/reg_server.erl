@@ -255,7 +255,7 @@ start_amqp() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{amqp_q=Queue}) ->
+process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue}) ->
     try
 	?LOG_START("received SIP authentication request"),
 
