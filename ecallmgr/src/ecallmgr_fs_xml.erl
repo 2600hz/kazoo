@@ -69,19 +69,20 @@ route_resp_xml(<<"bridge">>, Routes, _Prop) ->
     case Extensions of
 	[] ->
 	    ?LOG("No endpoints to route to"),
-	    {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Errors]))};
+	    {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Errors]))};
 	_ ->
-	    Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]),
+	    Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Extensions]),
 	    ?LOG("Bridge XML generated: ~s", [Xml]),
 	    {ok, lists:flatten(Xml)}
     end;
 route_resp_xml(<<"park">>, _Routes, _Prop) ->
-    ?LOG("Creating park XML: ~s", [?ROUTE_PARK_RESPONSE]),
-    {ok, ?ROUTE_PARK_RESPONSE};
+    Park = lists:flatten(io_lib:format(?ROUTE_PARK_RESPONSE, [?WHISTLE_CONTEXT])),
+    ?LOG("Creating park XML: ~s", [Park]),
+    {ok, Park};
 route_resp_xml(<<"error">>, _Routes, Prop) ->
     ErrCode = props:get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", props:get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
-    Xml = io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg]),
+    Xml = io_lib:format(?ROUTE_ERROR_RESPONSE, [?WHISTLE_CONTEXT, ErrCode, ErrMsg]),
     ?LOG("Creating error XML: ~s", [Xml]),
     {ok, lists:flatten(Xml)}.
 

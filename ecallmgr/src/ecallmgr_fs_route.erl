@@ -81,8 +81,7 @@ init([Node]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -130,7 +129,7 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
 
 handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
-	{<<"REQUEST_PARAMS">>, <<"context_2">>} ->
+	{<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
 	    {ok, LookupPid} = ecallmgr_fs_route_sup:start_req(Node, FSID, CallID, FSData),
 	    erlang:monitor(process, LookupPid),
 
