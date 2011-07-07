@@ -60,7 +60,7 @@
 %%--------------------------------------------------------------------
 -spec(map/2 :: (Routing :: binary(), Payload :: term()) -> list(tuple(term(), term()))).
 map(Routing, Payload) ->
-    gen_server:call(?MODULE, {map, Routing, Payload}, infinity).
+    gen_server:call(?MODULE, {map, Routing, Payload, get(callid)}, infinity).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,7 +71,7 @@ map(Routing, Payload) ->
 %%--------------------------------------------------------------------
 -spec(fold/2 :: (Routing :: binary(), Payload :: term()) -> term()).
 fold(Routing, Payload) ->
-    gen_server:call(?MODULE, {fold, Routing, Payload}, infinity).
+    gen_server:call(?MODULE, {fold, Routing, Payload, get(callid)}, infinity).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -148,10 +148,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({map, Routing, Payload}, From , #state{bindings=Bs}=State) ->
+handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
+                  put(callid, ReqId),
 		  ?TIMER_START(list_to_binary(["bindings.map ", Routing])),
-		  ?LOG_SYS("Running map: ~p", [Routing]),
+		  ?LOG("running map for binding ~s", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
                                     case binding_matches(B, Routing) of
@@ -165,10 +166,11 @@ handle_call({map, Routing, Payload}, From , #state{bindings=Bs}=State) ->
                   gen_server:reply(From, Reply)
           end),
     {noreply, State};
-handle_call({fold, Routing, Payload}, From , #state{bindings=Bs}=State) ->
+handle_call({fold, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
+                  put(callid, ReqId),
 		  ?TIMER_START(list_to_binary(["bindings.fold ", Routing])),
-                  ?LOG_SYS("Running fold: ~p", [Routing]),
+                  ?LOG("running fold for binding ~s", [Routing]),
                   Reply = lists:foldl(
                             fun({B, Ps}, Acc) ->
                                     case binding_matches(B, Routing) of
@@ -290,7 +292,7 @@ remove_subscriber(Pid, Subs) ->
 %%      Break both binaries on the '.' delimiter, reverse the resulting list of
 %%      symbols, and iterate through the lists until a determination is made of
 %%      whether there is a match.
-%%      
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec(binding_matches/2 :: (B :: binary(), R :: binary()) -> boolean()).
@@ -307,7 +309,7 @@ binding_matches(B, R) ->
 %% @end
 %%
 %% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
-%% 
+%%
 %%--------------------------------------------------------------------
 %% if both are empty, we made it!
 -spec(matches/2 :: (Bs :: list(binary()), Rs :: list(binary())) -> boolean()).
@@ -412,7 +414,7 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
 		    fold_bind_results(ReRunQ, Payload, Route, queue:len(ReRunQ), queue:new());
 		PidsLen ->
 		    %% If all Pids 'eoq'ed, ReRunQ will be the same queue, and Payload will be unchanged - exit the fold
-		    ?LOG_SYS("Loop detected for ~s, returning", [Route]),
+		    ?LOG("loop detected for ~s, returning", [Route]),
 		    Payload
 	    end;
 
@@ -513,7 +515,7 @@ simple_bind_test() ->
     logger:start(),
 
     Binding = <<"foo">>,
-    
+
     BindFun = fun() ->
 		      timer:sleep(500),
 		      ?assertEqual(ok, ?MODULE:bind(Binding)),
@@ -555,7 +557,7 @@ fold_bindings_server(B) ->
 fold_bindings_loop(B) ->
     receive
 	{binding_fired, Pid, _R, Payload} ->
-	    ?LOG_SYS("binding received: payload ~p", [Payload]),
+	    ?LOG("binding received payload ~p", [Payload]),
 	    Pid ! {binding_result, true, Payload+1},
 	    fold_bindings_loop(B);
 	{binding_flushed, _} ->
@@ -610,7 +612,7 @@ fold_and_route_test() ->
 			  ?assertEqual({R, N}, {R, Res})
 		  end, ?ROUTINGS_MAP_FOLD),
     stop_server().
-    
+
 
 map_and_route_test() ->
     start_server(fun map_bindings_server/1),
@@ -731,11 +733,11 @@ path() ->
 
 a() ->
     ?LET({X,Y}, {segment(), ?LAZY(union([b(), markers()]))},
-	 X ++ [$.] ++ Y). 
+	 X ++ [$.] ++ Y).
 
 b() ->
     ?LET({X,Y}, {segment(), ?LAZY(union([b(), c()]))},
-	 X ++ [$.] ++ Y). 
+	 X ++ [$.] ++ Y).
 
 c() ->
     segment().
@@ -747,7 +749,7 @@ segment() ->
        length(X) =/= 0
       ).
 
-markers() -> 
+markers() ->
     ?LET(S, ?LAZY(union([[$#, $., c()], [$*, $., b()]])), lists:flatten(S)).
 
 proper_test_() ->
@@ -856,11 +858,11 @@ path() ->
 
 a() ->
     ?LET({X,Y}, {segment(), ?LAZY(union([b(), markers()]))},
-        X ++ [$.] ++ Y). 
+        X ++ [$.] ++ Y).
 
 b() ->
     ?LET({X,Y}, {segment(), ?LAZY(union([b(), c()]))},
-        X ++ [$.] ++ Y). 
+        X ++ [$.] ++ Y).
 
 c() ->
     ?LAZY(union([segment(), markers()])).
@@ -872,7 +874,7 @@ segment() ->
         length(X) =/= 0
     ).
 
-markers() -> 
+markers() ->
     ?LET(S, ?LAZY(union([
         [$#, $., b()],
         [$#, $., c()],

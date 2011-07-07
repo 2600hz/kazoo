@@ -62,6 +62,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, _Options]) ->
+    ?LOG_SYS("starting new fs auth listener for ~s", [Node]),
     process_flag(trap_exit, true),
     Stats = #handler_stats{started=erlang:now()},
     {ok, #state{node=Node, stats=Stats}, 0}.
@@ -145,7 +146,7 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
     {noreply, State};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    ?LOG("node ~w down", [Node]),
+    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
     freeswitch:close(Node),
     {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State};
@@ -155,10 +156,10 @@ handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
 handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
     case ecallmgr_fs_handler:is_node_up(Node) of
 	true ->
-	    ?LOG("node ~p recovered, rebinding", [Node]),
+	    ?LOG_SYS("node ~s recovered, rebinding", [Node]),
 	    {noreply, State, 0};
 	false ->
-	    ?LOG("node ~p still down, retrying in ~b ms", [Node, Timeout]),
+	    ?LOG_SYS("node ~s still down, retrying in ~b ms", [Node, Timeout]),
 	    {ok, _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
 	    {noreply, State}
     end;
@@ -171,7 +172,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 			  end
 		  end, LUs),
     freeswitch:close(Node),
-    ?LOG("asked to shut down for node ~w", [Node]),
+    ?LOG_SYS("asked to shut down for node ~s", [Node]),
     {stop, normal, State};
 
 handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
@@ -204,6 +205,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ?LOG_SYS("fs auth ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------

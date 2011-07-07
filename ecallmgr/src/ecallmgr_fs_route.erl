@@ -62,6 +62,7 @@ start_link(Node, _Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node]) ->
+    ?LOG_SYS("starting new fs route listener for ~s", [Node]),
     process_flag(trap_exit, true),
     Stats = #handler_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats}, 0}.
@@ -113,13 +114,13 @@ handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! Type,
     receive
 	ok ->
-	    ?LOG("Bound ~p to ~p~n", [Type, Node]),
+	    ?LOG_SYS("bound to dialplan request on ~s", [Node]),
 	    {noreply, State};
 	{error, Reason} ->
-	    ?LOG("Failed to bind: ~p~n", [Reason]),
+	    ?LOG_SYS("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
 	    {stop, Reason, State}
     after ?FS_TIMEOUT ->
-	    ?LOG("Failed to bind: TIMEOUT"),
+	    ?LOG_SYS("timed out binding to dialplan requests on ~s", [Node]),
 	    {stop, timeout, State}
     end;
 
@@ -139,13 +140,13 @@ handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #sta
 	    {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
 				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
 	{_Other, _Context} ->
-	    ?LOG("Ignoring event ~s in context ~s", [_Other, _Context]),
+	    ?LOG("ignoring event ~s in context ~s", [_Other, _Context]),
 	    _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
 	    {noreply, State}
     end;
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    ?LOG("Node ~p down", [Node]),
+    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
     freeswitch:close(Node),
     {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
     {noreply, State};
@@ -155,10 +156,10 @@ handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
 handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
     case ecallmgr_fs_handler:is_node_up(Node) of
 	true ->
-	    ?LOG("Node ~p recovered, restarting", [self(), Node]),
+	    ?LOG("node ~p recovered, restarting", [self(), Node]),
 	    {noreply, State, 0};
 	false ->
-	    ?LOG("Node ~p still down, retrying in ~p ms", [self(), Node, Timeout]),
+	    ?LOG("node ~p still down, retrying in ~p ms", [self(), Node, Timeout]),
 	    {ok, _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
 	    {noreply, State}
     end;
@@ -170,7 +171,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 			      false -> ok
 			  end
 		  end, LUs),
-    ?LOG("Commanded to shutdown node ~p", [Node]),
+    ?LOG("commanded to shutdown node ~s", [Node]),
     {stop, normal, State};
 
 %% send diagnostic info
@@ -183,15 +184,14 @@ handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     {noreply, State};
 
 handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
-    ?LOG("Lookup ~p down: ~p", [LU, _Reason]),
+    ?LOG("lookup task ~p went down, ~p", [LU, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
 
 handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
-    ?LOG("Lookup ~p exited: ~p", [LU, _Reason]),
+    ?LOG("lookup task ~p exited, ~p", [LU, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
 
-handle_info(Other, State) ->
-    ?LOG("Unhandled message: ~p", [Other]),
+handle_info(_Other, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -206,6 +206,7 @@ handle_info(Other, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node=Node}) ->
+    ?LOG_SYS("fs route ~p termination", [_Reason]),
     freeswitch:close(Node).
 
 %%--------------------------------------------------------------------
@@ -262,8 +263,6 @@ start_control_and_events(Node, CallID, SendTo) ->
 	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, CtlQ),
 	{ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
 
-	?LOG("Started control(~p) and event(~p) procs", [CtlPid, _EvtPid]),
-
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}
 		   ,{<<"Control-Queue">>, CtlQ}
@@ -276,8 +275,8 @@ start_control_and_events(Node, CallID, SendTo) ->
 send_control_queue(SendTo, CtlProp) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->
-	    ?LOG("Sending route_win to ~s: ~s", [SendTo, JSON]),
+	    ?LOG("sending route_win to ~s", [SendTo]),
 	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
 	{error, _Msg} ->
-	    ?LOG("Sending route_win to ~s failed: ~p", [self(), SendTo, _Msg])
+	    ?LOG("sending route_win to ~s failed, ~p", [self(), SendTo, _Msg])
     end.
