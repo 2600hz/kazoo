@@ -2,7 +2,6 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%%
 %%% @end
 %%% Created : 7 April 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -10,7 +9,7 @@
 
 -include("callflow.hrl").
 
--export([call_forward/3]).
+-export([call_forward/2]).
 -export([caller_id/4]).
 -export([callee_id/4]).
 -export([caller_id_options/4]).
@@ -19,14 +18,33 @@
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
+%% TODO: This should use caching, however we need an 'absolute' expiration
+%% or on a busy system call forwarding will not appear to disable....
 %% @end
 %%-----------------------------------------------------------------------------
--spec(call_forward/3 :: (DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), Call :: #cf_call{}) -> undefined | json_object()).
-call_forward(DeviceId, OwnerId, Call) ->
-    Attributes = fetch_attributes(call_forward, 60, Call),
-    case props:get_value(DeviceId, Attributes) of
-        undefined -> props:get_value(OwnerId, Attributes);
-        Property -> Property
+-spec(call_forward/2 :: (DeviceId :: cf_api_binary(), Call :: #cf_call{}) -> undefined | json_object()).
+call_forward(DeviceId, #cf_call{account_db=Db}=Call) ->
+    OwnerId = owner_id(DeviceId, Call),
+    CallFwd = case couch_mgr:get_all_results(Db, get_view(call_forward)) of
+                  {ok, JObj} ->
+                      [{Key, wh_json:get_value(<<"value">>, CF)}
+                       || CF <- JObj
+                              ,wh_json:is_true([<<"value">>, <<"enabled">>], CF)
+                              ,(begin
+                                    Key = wh_json:get_value(<<"key">>, CF),
+                                    lists:member(Key, [DeviceId, OwnerId])
+                                end)];
+                  _ ->
+                      []
+              end,
+    case props:get_value(DeviceId, CallFwd) of
+        undefined ->
+            Fwd = props:get_value(OwnerId, CallFwd),
+            Fwd =/= undefined andalso ?LOG("found enabled call forwarding on ~s", [OwnerId]),
+            Fwd;
+        Fwd ->
+            ?LOG("found enabled call forwarding on ~s", [DeviceId]),
+            Fwd
     end.
 
 %%-----------------------------------------------------------------------------

@@ -35,7 +35,7 @@ build(EndpointId, undefined, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call);
 build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
     case whistle_util:is_false(wh_json:get_value(<<"can_call_self">>, Properties, false))
-        andalso EndpointId =:= AuthId of
+        andalso (is_binary(AuthId) andalso EndpointId =:= AuthId) of
         true ->
             ?LOG("call is from endpoint ~s, skipping", [EndpointId]),
             {error, called_self};
@@ -54,11 +54,11 @@ build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
 get_endpoints(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, EndpointId) of
         {ok, Endpoint} ->
-            case whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], Endpoint)) of
-                true ->
-                    {ok, [create_call_fwd_endpoint(Endpoint, wh_json:get_value(<<"call_forward">>, Endpoint), Properties, Call)]};
-                false ->
-                    {ok, [create_endpoint(Endpoint, Properties, Call)]}
+            case cf_attributes:call_forward(EndpointId, Call) of
+                undefined ->
+                    {ok, [create_endpoint(Endpoint, Properties, Call)]};
+                Fwd ->
+                    {ok, [create_call_fwd_endpoint(Endpoint, Fwd, Properties, Call)]}
             end;
         {error, Reason}=E ->
             ?LOG("failed to load endpoint ~s, ~w", [EndpointId, Reason]),
@@ -136,6 +136,7 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=Re
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     ?LOG("creating call forward endpoint for ~s", [EndpointId]),
+    ?LOG("call forwarding number set to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
 
     {CalleeNum, CalleeName} = cf_attributes:callee_id(<<"external">>, EndpointId, OwnerId, Call),
 
@@ -150,14 +151,17 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=Re
 
     CCV1 = case whistle_util:is_true(wh_json:get_value(<<"keep_caller_id">>, CallFwd)) of
                true ->
+                   ?LOG("call forwarding configured to keep the caller id"),
                    [{<<"Call-Forward">>, <<"true">>}
                     ,{<<"Retain-CID">>, <<"true">>}];
                false ->
+                   ?LOG("call forwarding configured use the caller id of the endpoint"),
                    [{<<"Call-Forward">>, <<"true">>}]
            end,
 
     CCV2 = case whistle_util:is_true(wh_json:get_value(<<"require_keypress">>, CallFwd)) of
                true ->
+                   ?LOG("call forwarding configured to require key press"),
                    IgnoreEarlyMedia = <<"true">>,
                    [{<<"Confirm-Key">>, <<"1">>}
                     ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}

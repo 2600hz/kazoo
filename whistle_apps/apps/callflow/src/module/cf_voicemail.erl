@@ -231,7 +231,8 @@ find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=En
 %% @end
 %%--------------------------------------------------------------------
 -spec(compose_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call) ->
+compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call)
+  when is_binary(OwnerId), OwnerId =/= <<>> ->
     ?LOG("caller is the owner of this mailbox, overriding action as check (instead of compose)"),
     check_mailbox(Box, Call);
 compose_voicemail(#mailbox{exists=false, prompts=#prompts{no_mailbox=NoMailbox}}, Call) ->
