@@ -153,9 +153,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
-    ?LOG("checking worker totals"),
-    Count = case WC-queue:len(Ws) of X when X < 0 -> 0; Y -> Y end,
+handle_info(timeout, #state{worker_count=WC, workers=Ws, orig_worker_count=OWC}=State) ->
+    ?LOG("checking worker totals: WC: ~b Q len: ~b", [WC, queue:len(Ws)]),
+    QLen = queue:len(Ws),
+    Count = case WC-QLen of
+		X when X =< 0 andalso QLen =:= 0 -> OWC;
+		X when X < 0 -> 0;
+		X -> X
+	    end,
     ?LOG("adding ~b workers", [Count]),
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
     erlang:start_timer(?BACKOFF_PERIOD, self(), reduce_labor_force),
