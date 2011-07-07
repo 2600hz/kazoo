@@ -105,10 +105,6 @@
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
 
-%% Authorization Requests
-
-%% Authorization Responses
-
 %% Registration Success
 -define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"RPid">>
 				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
@@ -144,6 +140,32 @@
 				,{<<"Event-Name">>, <<"reg_query_resp">>}
 			       ]).
 -define(REG_QUERY_RESP_TYPES, []).
+
+%% Authorization Requests
+-define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
+				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+			   ]).
+-define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
+-define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+			   ,{<<"Event-Name">>, <<"authz_req">>}
+			  ]).
+-define(AUTHZ_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+			  ,{<<"To">>, fun is_binary/1}
+			  ,{<<"From">>, fun is_binary/1}
+			  ,{<<"Call-ID">>, fun is_binary/1}
+			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
+			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
+			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+			 ]).
+
+%% Authorization Responses
+-define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
+-define(OPTIONAL_AUTHZ_RESP_HEADERS, []).
+-define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+			    ,{<<"Event-Name">>, <<"authz_resp">>}
+			    ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
+			   ]).
+-define(AUTHZ_RESP_TYPES, []).
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>

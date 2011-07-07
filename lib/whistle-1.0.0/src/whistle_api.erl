@@ -24,7 +24,7 @@
 
 %% Authentication and Routing
 -export([authn_req/1, authn_resp/1, reg_success/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
--export([reg_query/1, reg_query_resp/1]).
+-export([reg_query/1, reg_query_resp/1, authz_req/1, authz_resp/1]).
 
 %% Resources
 -export([offnet_resource_req/1, resource_req/1, resource_resp/1, resource_error/1]).
@@ -51,7 +51,7 @@
 	]).
 
 %% Validation functions
--export([authn_req_v/1, authn_resp_v/1]).
+-export([authn_req_v/1, authn_resp_v/1, authz_req_v/1, authz_resp_v/1]).
 -export([reg_success_v/1, reg_query_v/1, reg_query_resp_v/1]).
 
 -export([offnet_resource_req_v/1, resource_req_v/1, resource_resp_v/1, resource_error_v/1]).
@@ -298,6 +298,46 @@ route_resp_route_v({struct, Prop}) ->
     route_resp_route_v(Prop);
 route_resp_route_v(Prop) ->
     validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Authorization Request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(authz_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+authz_req({struct, Prop}) ->
+    authz_req(Prop);
+authz_req(Prop) ->
+    case authz_req_v(Prop) of
+	true -> build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for authz_req"}
+    end.
+
+-spec(authz_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+authz_req_v({struct, Prop}) ->
+    authz_req_v(Prop);
+authz_req_v(Prop) ->
+    validate(Prop, ?AUTHZ_REQ_HEADERS, ?AUTHZ_REQ_VALUES, ?AUTHZ_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Authentication Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(authz_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+authz_resp({struct, Prop}) ->
+    authz_resp(Prop);
+authz_resp(Prop) ->
+    case authz_resp_v(Prop) of
+	true -> build_message(Prop, ?AUTHZ_RESP_HEADERS, ?OPTIONAL_AUTHZ_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for authz_resp"}
+    end.
+
+-spec(authz_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+authz_resp_v({struct, Prop}) ->
+    authz_resp_v(Prop);
+authz_resp_v(Prop) ->
+    validate(Prop, ?AUTHZ_RESP_HEADERS, ?AUTHZ_RESP_VALUES, ?AUTHZ_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Winning Responder Message - see wiki
