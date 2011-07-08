@@ -300,7 +300,7 @@ wait_for_handoff(AccountId, ConfId, Caller) ->
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}} ->
             JObj = mochijson2:decode(Payload),
             try
-                {<<"conference">>, <<"added_caller">>} = whapps_util:get_event_type(JObj),
+                {<<"conference">>, <<"added_participant">>} = whapps_util:get_event_type(JObj),
                 true = wh_json:get_value(<<"Call-ID">>, Caller) =:= wh_json:get_value(<<"Call-ID">>, JObj),
                 {ok, added_caller}
             catch
