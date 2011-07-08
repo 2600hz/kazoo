@@ -53,7 +53,7 @@ start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
 init([Node, Options]) ->
-    ?LOG("Starting up"),
+    ?LOG_SYS("starting new fs node ~s", [Node]),
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
@@ -107,35 +107,40 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
 	<<"HEARTBEAT">> ->
 	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}};
 	<<"CUSTOM">> ->
-	    ?LOG("Custom Event received: ~p", [EvtName]),
-	    spawn(fun() -> process_custom_data(Data, ?APP_VERSION) end),
+	    spawn(fun() ->
+                          put(callid, props:get_value(<<"call-id">>, Data)),
+                          ?LOG("custom event received ~s", [EvtName]),
+                          process_custom_data(Data, ?APP_VERSION)
+                  end),
 	    {noreply, State};
 	_ ->
-	    ?LOG("Event received: ~p", [EvtName]),
 	    {noreply, State}
     end;
 
 handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
-    ?LOG(UUID, "Event received: ~p", [EvtName]),
     case EvtName of
 	<<"CHANNEL_CREATE">> ->
-	    ?LOG(UUID, "Create channel", []),
+	    ?LOG(UUID, "received channel create event", []),
 	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}};
 	<<"CHANNEL_DESTROY">> ->
 	    ChanState = props:get_value(<<"Channel-State">>, Data),
 	    case ChanState of
 		<<"CS_NEW">> -> % ignore
-		    ?LOG(UUID, "Ignore Channel Destroy because of CS_NEW", []),
+		    ?LOG(UUID, "ignoring channel destroy because of CS_NEW", []),
 		    {noreply, State};
 		<<"CS_DESTROY">> ->
-		    ?LOG(UUID, "Channel destroyed", []),
+		    ?LOG(UUID, "received channel destroyed", []),
 		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}}
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
 	<<"CUSTOM">> ->
-	    spawn(fun() -> process_custom_data(Data, ?APP_VERSION) end),
+	    spawn(fun() ->
+                          put(callid, props:get_value(<<"call-id">>, Data)),
+                          ?LOG("custom event received ~s", [EvtName]),
+                          process_custom_data(Data, ?APP_VERSION)
+                  end),
 	    {noreply, State};
 	_ ->
 	    {noreply, State}
@@ -163,46 +168,44 @@ handle_info({update_options, NewOptions}, State) ->
     {noreply, State#state{options=NewOptions}};
 
 handle_info(_Msg, State) ->
-    ?LOG("Unhandled message: ~p", [_Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
+    ?LOG_SYS("fs node ~p termination", [_Reason]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
-
 -spec(originate_channel/5 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer(), JObj :: json_object()) -> no_return()).
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
     OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
-    ?LOG_SYS("Originate ~s on node ~s", [OrigStr, Node]),
+    ?LOG_SYS("originate ~s on node ~s", [OrigStr, Node]),
     Result = freeswitch:bgapi(Node, originate, OrigStr),
     case Result of
 	{ok, JobId} ->
 	    receive
 		{bgok, JobId, X} ->
 		    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-		    ?LOG_START(CallID, "Originate on node ~w with JobID ~s received bgok ~s", [Node, JobId, X]),
+		    ?LOG_START(CallID, "originate with job id ~s received bgok ~s", [Node, JobId, X]),
 		    CtlQ = start_call_handling(Node, CallID),
 		    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 		{bgerror, JobId, Y} ->
 		    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-		    ?LOG_SYS("Failed to originate on node ~w: ~s", [Node, ErrMsg]),
+		    ?LOG_SYS("failed to originate, ~p", [Node, ErrMsg]),
 		    Pid ! {resource_error, ErrMsg}
 	    after
 		9000 ->
-		    ?LOG_SYS("Originate on node ~w timed out", [Node]),
+		    ?LOG_SYS("originate timed out", [Node]),
 		    Pid ! {resource_error, timeout}
 	    end;
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    ?LOG("Failed to originate on node ~w: ~s", [Node, ErrMsg]),
+	    ?LOG_SYS("failed to originate ~p", [Node, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    ?LOG("Originate on node ~w: request timed out", [Node]),
+	    ?LOG_SYS("originate timed out", [Node]),
 	    Pid ! {resource_error, timeout}
     end.
 
@@ -214,7 +217,6 @@ start_call_handling(Node, UUID) ->
 
 	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
 	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
-	?LOG(UUID, "Started control and event procs", []),
 	CtlQueue
     catch
 	_:_ -> {error, amqp_error}
@@ -226,7 +228,7 @@ diagnostics(Pid, Stats) ->
     Pid ! Resp.
 
 channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
-    ?LOG("Channels: Avail: ~p MinReq: ~p", [AvailChan, MinReq]),
+    ?LOG("requested for ~p channels with ~p avail", [MinReq, AvailChan]),
     case MinReq > AvailChan of
 	true -> Pid ! {resource_response, FSHandlerPid, []};
 	false -> Pid ! {resource_response, FSHandlerPid, [{node, FSHandlerPid}
@@ -280,10 +282,11 @@ publish_register_event(Data, AppVsn) ->
 				      V -> [{K, V} | Api]
 				  end
 			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
+    ?LOG("sending successful registration"),
     case whistle_api:reg_success(ApiProp) of
-	{error, E} -> ?LOG("Reg event: Failed API message creation: ~p", [E]);
+	{error, E} ->
+            ?LOG("failed API message creation: ~p", [E]);
 	{ok, JSON} ->
-	    ?LOG("Sending successful registration: ~s", [JSON]),
 	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
     end.
 
