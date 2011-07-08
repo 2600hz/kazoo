@@ -183,13 +183,26 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
 %                  Pid ! {binding_result, true, [RD, Context1, Params]},
 %       %%  end),
 %    {noreply, State};
-%
-%handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | Params]}, State) ->
-%    spawn(fun() ->
-%                  Context1 = crossbar_doc:delete(Context),
-%                  Pid ! {binding_result, true, [RD, Context1, Params]}
-%         end),
-%    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
+    spawn(fun() ->
+                  %% dont use the account id in cb_context as it may not represent the db_name...
+                  DbName = whapps_util:get_db_name(AccountId, encoded),
+                  try
+                      %% Ensure the DB that we are about to delete is an account
+                      {ok, JObj} = couch_mgr:open_doc(DbName, AccountId),
+                      <<"account">> = wh_json:get_value(<<"pvt_type">>, JObj),
+                      ?LOG("removing couch db ~s", [DbName]),
+                      case couch_mgr:db_delete(DbName) of
+                          true -> Pid ! {binding_result, true, [RD, Context#cb_context{resp_data=[]}, Params]};
+                          false -> Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]}
+                      end
+                  catch
+                      _:_ ->
+                          Pid ! {binding_result, true, [RD, crossbar_util:response_bad_identifier(AccountId, Context), Params]}
+                  end
+          end),
+    {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
@@ -208,7 +221,6 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
