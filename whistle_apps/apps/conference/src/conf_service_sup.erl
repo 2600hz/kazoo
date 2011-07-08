@@ -39,6 +39,7 @@ start_service(ConfId, Conference) ->
     start_service(ConfId, Conference, undefined).
 
 start_service(ConfId, Conference, Caller) ->
+    supervisor:delete_child(conf_service_sup, ConfId),
     supervisor:start_child(?SERVER, ?CHILD(ConfId, conf_service, [Conference, Caller])).
 
 %%%===================================================================
