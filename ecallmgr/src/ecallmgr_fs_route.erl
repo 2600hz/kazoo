@@ -260,13 +260,8 @@ route(Node, FSID, CallID, DefProp, AuthZPid) ->
     authorize(Node, FSID, CallID, RespJObj, AuthZPid).
 
 authorize(Node, FSID, CallID, RespJObj, undefined) ->
-    case ecallmgr_authz:default() of
-	false ->
-	    reply_forbidden(Node, FSID);
-	true ->
-	    true = whistle_api:route_resp_v(RespJObj),
-	    reply(Node, FSID, CallID, RespJObj)
-    end;
+    true = whistle_api:route_resp_v(RespJObj),
+    reply(Node, FSID, CallID, RespJObj);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid) ->
     case ecallmgr_authz:is_authorized(AuthZPid) of
 	false ->

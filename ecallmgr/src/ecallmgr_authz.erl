@@ -38,7 +38,7 @@ is_authorized(Pid) when is_pid(Pid) ->
     receive
 	{is_authorized, Ref, IsAuth} -> IsAuth
     after
-	5000 -> exit(timeout)
+	1000 -> default()
     end;
 is_authorized(undefined) -> false.
 
