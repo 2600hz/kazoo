@@ -55,4 +55,6 @@
                ,bridges = dict:new()
                ,members = dict:new()
                ,moderators = dict:new()
+               ,prompts = #prompts{}
+               ,controls = #control{}
               }).
