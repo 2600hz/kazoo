@@ -18,9 +18,11 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([add_member/3, add_moderator/3]).
+-export([add_member/3, remove_member/2]).
+-export([add_moderator/3, remove_moderator/2]).
 -export([add_bridge/4]).
--export([set_route/2, clear_route/1]).
+-export([set_route/2]).
+-export([set_control_queue/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -49,8 +51,14 @@ start_link(Conference, Caller) ->
 add_member(Srv, CallId, ControlQ) ->
     gen_server:cast(Srv, {add_member, CallId, ControlQ}).
 
+remove_member(Srv, CallId) ->
+    gen_server:cast(Srv, {remove_member, CallId}).
+
 add_moderator(Srv, CallId, ControlQ) ->
     gen_server:cast(Srv, {add_moderator, CallId, ControlQ}).
+
+remove_moderator(Srv, CallId) ->
+    gen_server:cast(Srv, {remove_moderator, CallId}).
 
 add_bridge(Srv, CallId, BridgeId, ControlQ) ->
     gen_server:cast(Srv, {add_bridge, CallId, BridgeId, ControlQ}).
@@ -58,8 +66,8 @@ add_bridge(Srv, CallId, BridgeId, ControlQ) ->
 set_route(Srv, Node) ->
     gen_server:cast(Srv, {set_route, Node}).
 
-clear_route(Srv) ->
-    gen_server:cast(Srv, {clear_route}).
+set_control_queue(Srv, CtrlQ) ->
+    gen_server:cast(Srv, {set_control_queue, CtrlQ}).
 
 %%-----------------------------------------------------------------------------
 %% GEN SERVER CALLBACKS
@@ -101,9 +109,9 @@ handle_cast({set_route, Node}, #conf{route=undefined, conf_id=ConfId}=Conf) ->
     ?LOG("set conference route to ~s", [Route]),
     {noreply, Conf#conf{route=Route, focus=Focus}};
 
-handle_cast({clear_route}, #conf{route=Route}=Conf) when is_binary(Route) ->
-    ?LOG("reset conference route"),
-    {noreply, Conf#conf{route=undefined}};
+handle_cast({set_control_queue, CtrlQ}, Conf) ->
+    ?LOG("set conference control queue ~s", [CtrlQ]),
+    {noreply, Conf#conf{ctrl_q=CtrlQ}};
 
 handle_cast({Action, CallId, ControlQ}, #conf{route=undefined, amqp_q=Q}=Conf) ->
     find_conference_route(CallId, Q),
@@ -117,13 +125,37 @@ handle_cast({add_member, CallId, ControlQ}, #conf{members=Members, amqp_q=Q}=Con
     ?LOG("adding new conference memeber ~s", [CallId]),
     amqp_util:bind_q_to_callevt(Q, CallId),
     request_call_status(CallId, Q),
-    {noreply, Conf#conf{members=dict:store(CallId, ControlQ, Members)}};
+    {noreply, Conf#conf{members=dict:store(CallId, {struct, [{<<"Control-Queue">>, ControlQ}]}, Members)}};
+
+handle_cast({remove_member, CallId}, #conf{moderators=Moderators, members=Members, bridges=Bridges, conf_id=ConfId, amqp_q=Q}=Conf) ->
+    ?LOG("removing conference member ~s", [CallId]),
+    NewMembers = dict:erase(CallId, Members),
+    remove_participant_event(CallId, ConfId, <<"false">>, Q),
+    case dict:size(Moderators) + dict:size(NewMembers) of
+        0 ->
+            ?LOG("last participant has left, shuting down"),
+            {stop, shutdown, Conf#conf{members=NewMembers, bridges=dict:erase(CallId, Bridges)}};
+        _ ->
+            {noreply, Conf#conf{members=NewMembers, bridges=dict:erase(CallId, Bridges)}}
+    end;
 
 handle_cast({add_moderator, CallId, ControlQ}, #conf{moderators=Moderators, amqp_q=Q}=Conf) ->
     ?LOG("adding new conference moderator ~s", [CallId]),
     amqp_util:bind_q_to_callevt(Q, CallId),
     request_call_status(CallId, Q),
-    {noreply, Conf#conf{moderators=dict:store(CallId, ControlQ, Moderators)}};
+    {noreply, Conf#conf{moderators=dict:store(CallId, {struct, [{<<"Control-Queue">>, ControlQ}]}, Moderators)}};
+
+handle_cast({remove_moderator, CallId}, #conf{moderators=Moderators, members=Members, bridges=Bridges, conf_id=ConfId, amqp_q=Q}=Conf) ->
+    ?LOG("removing conference moderator ~s", [CallId]),
+    NewModerators = dict:erase(CallId, Moderators),
+    remove_participant_event(CallId, ConfId, <<"true">>, Q),
+    case dict:size(NewModerators) + dict:size(Members) of
+        0 ->
+            ?LOG("last participant has left, shuting down"),
+            {stop, shutdown, Conf#conf{moderators=NewModerators, bridges=dict:erase(CallId, Bridges)}};
+        _ ->
+            {noreply, Conf#conf{moderators=NewModerators, bridges=dict:erase(CallId, Bridges)}}
+    end;
 
 handle_cast({add_bridge, CallId, BridgeId, ControlQ}, #conf{bridges=Bridges}=Conf) ->
     ?LOG("adding new bridge ~s to ~s", [BridgeId, CallId]),
@@ -162,7 +194,8 @@ handle_info({amqp_host_down, _}, Conf) ->
     timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, Conf#conf{amqp_q = <<>>}};
 
-handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
+%%handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
+handle_info({#'basic.deliver'{}, #amqp_msg{payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
     spawn(fun() ->
                   put(callid, ConfId),
                   JObj = mochijson2:decode(Payload),
@@ -183,7 +216,7 @@ handle_info(_Info, Conf) ->
 % @end
 %------------------------------------------------------------------------------
 terminate( _Reason, _Conf) ->
-    ?LOG_SYS("conference service ~p termination", [_Reason]),
+    ?LOG_END("conference service ~p termination", [_Reason]),
     ok.
 
 %------------------------------------------------------------------------------
@@ -266,7 +299,20 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{focus=Focus}=Conf
             bridge_to_conference(CallId, Conf)
     end;
 
-process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{conf_id=ConfId, amqp_q=Q, bridges=Bridges}=Conf) ->
+process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{service=Srv, ctrl_q=undefined}=Conf) ->
+    %% When a participant joins the conference but we have no control queue use the new new calls control queue
+    %% as the conference q
+    case wh_json:get_value(<<"Application-Name">>, JObj) of
+        <<"conference">> ->
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            {_, CtrlQ} = find_ctrl_q(CallId, Conf),
+            set_control_queue(Srv, CtrlQ),
+            process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, Conf#conf{ctrl_q=CtrlQ});
+        _ ->
+            ok
+    end;
+
+process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{conf_id=ConfId, amqp_q=Q, bridges=Bridges, prompts=Prompts}=Conf) ->
     %% If we get notification that a caller has executed the conference application then
     %% fire off an event that they are now part of the conference. Also, notify the other
     %% conference participants that they have joined.
@@ -275,12 +321,26 @@ process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{conf_id=ConfI
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
             ?LOG("recieved call event that ~s has been placed in the conference", [CallId]),
             Id = dict:fold(fun(C, {Acc, _}, Acc) -> C; (_, _, Acc) -> Acc end, CallId, Bridges),
-            case find_call(Id, Conf) of
-                {false, _} ->
-                    added_member_event(Id, ConfId, Q);
-                {true, _} ->
-                    added_moderator_event(Id, ConfId, Q)
-            end;
+            added_participant_event(Id, ConfId, is_moderator(Id, Conf), Q),
+            conf_command:play(Prompts#prompts.announce_join, Conf),
+            conf_command:participants(Conf);
+        _ -> ok
+    end;
+
+process_req({<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}, JObj, #conf{bridges=Bridges, prompts=Prompts, service=Srv}=Conf) ->
+    %% If we get notification that a caller has executed the conference application then
+    %% fire off an event that they are now part of the conference. Also, notify the other
+    %% conference participants that they have joined.
+    case wh_json:get_value(<<"Application-Name">>, JObj) of
+        <<"conference">> ->
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            Id = dict:fold(fun(C, {Acc, _}, Acc) -> C; (_, _, Acc) -> Acc end, CallId, Bridges),
+            case find_ctrl_q(Id, Conf) of
+                {false, _} -> remove_member(Srv, Id);
+                {true, _} -> remove_moderator(Srv, Id)
+            end,
+            conf_command:play(Prompts#prompts.announce_leave, Conf),
+            conf_command:participants(Conf);
         _ -> ok
     end;
 
@@ -291,7 +351,7 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj, #conf{conf_id=ConfId, auth_
         <<"INVITE">> = wh_json:get_value(<<"Method">>, JObj),
         [<<"conference_", ConfId/binary>>, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
         AuthUser = wh_json:get_value(<<"Auth-User">>, JObj),
-        {_, _} = find_call(AuthUser, Conf),
+        true = is_participant(AuthUser, Conf),
         ?LOG("recieved auth request for a bridge on behalf of ~s", [AuthUser]),
         send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q)
     catch
@@ -302,7 +362,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #conf{conf_id=ConfId, amqp_
     %% If a bridge that we built is requesting a route for this conference repond
     try
         [<<"conference_", ConfId/binary>>, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-        {_, _} = find_call(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj), Conf),
+        true = is_participant(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj), Conf),
         ?LOG("recieved route request for conference"),
         send_route_response(JObj, Q)
     catch
@@ -322,14 +382,14 @@ process_req({_, <<"route_win">>}, JObj, #conf{service=Srv, amqp_q=Q}=Conf) ->
 
     add_bridge(Srv, CallId, BridgeId, CtrlQ),
     ?LOG("recieved route win for ~s", [BridgeId]),
-    case find_call(CallId, Conf) of
-        {true, _} ->
-            join_local_conference(BridgeId, {true, CtrlQ}, Conf);
-        {false, _} ->
-            join_local_conference(BridgeId, {false, CtrlQ}, Conf)
-    end;
+    join_local_conference(BridgeId, {is_moderator(CallId, Conf), CtrlQ}, Conf);
 
-process_req(_, _, _) ->
+process_req({<<"conference">>, <<"participants">>}, JObj, Conf) ->
+    io:format("Participants: ~p~n", [JObj]),
+    ok;
+
+process_req(_, T, _) ->
+    io:format("~p~n", [T]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -340,7 +400,7 @@ process_req(_, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 join_local_conference(CallId, Conf) ->
-    join_local_conference(CallId, find_call(CallId, Conf), Conf).
+    join_local_conference(CallId, find_ctrl_q(CallId, Conf), Conf).
 
 join_local_conference(CallId, {false, CtrlQ}, #conf{conf_id=ConfId
                                                     ,member_join_muted=MJM
@@ -385,7 +445,7 @@ join_local_conference(CallId, {true, CtrlQ}, #conf{conf_id=ConfId
 %% @end
 %%--------------------------------------------------------------------
 bridge_to_conference(CallId, Conf) ->
-    bridge_to_conference(CallId, find_call(CallId, Conf), Conf).
+    bridge_to_conference(CallId, find_ctrl_q(CallId, Conf), Conf).
 
 bridge_to_conference(CallId, {_, CtrlQ}, #conf{amqp_q=Q, route=Route, auth_pwd=AuthPwd}) ->
     ?LOG("bridging participant ~s to ~s", [CallId, Route]),
@@ -412,17 +472,40 @@ bridge_to_conference(CallId, {_, CtrlQ}, #conf{amqp_q=Q, route=Route, auth_pwd=A
 %% the moderators list and the control queue.
 %% @end
 %%--------------------------------------------------------------------
-find_call(CallId, #conf{members=Members, moderators=Moderators}) ->
+find_participant(CallId, #conf{members=Members, moderators=Moderators}) ->
     case dict:find(CallId, Members) of
-        {ok, CtrlQ} ->
-            {false, CtrlQ};
+        {ok, JObj} ->
+            {false, JObj};
         error ->
             case dict:find(CallId, Moderators) of
-                {ok, CtrlQ} ->
-                    {true, CtrlQ};
+                {ok, JObj} ->
+                    {true, JObj};
                 error ->
                     error
             end
+    end.
+
+is_moderator(CallId, Conf) ->
+    case find_participant(CallId, Conf) of
+        {Moderator, _} -> Moderator;
+        error -> false
+    end.
+
+is_participant(CallId, Conf) ->
+    find_participant(CallId, Conf) =/= error.
+
+find_member_id(CallId, Conf) ->
+    case find_participant(CallId, Conf) of
+        {Moderator, JObj} ->
+            {Moderator, wh_json:get_value(<<"Member-ID">>, JObj)};
+        error -> error
+    end.
+
+find_ctrl_q(CallId, Conf) ->
+    case find_participant(CallId, Conf) of
+        {Moderator, JObj} ->
+            {Moderator, wh_json:get_value(<<"Control-Queue">>, JObj)};
+        error -> error
     end.
 
 %%--------------------------------------------------------------------
@@ -526,12 +609,12 @@ request_call_status(CallId, Q) ->
 %% this conference
 %% @end
 %%--------------------------------------------------------------------
-added_moderator_event(CallId, ConfId, Q) ->
-    ?LOG("sending event that moderator ~s has been added to ~s", [CallId, ConfId]),
+added_participant_event(CallId, ConfId, Moderator, Q) ->
+    ?LOG("sending event that member ~s has been added to ~s", [CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, CallId}
-               ,{<<"Moderator">>, <<"true">>}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"added_caller">>, ?APP_NAME, ?APP_VERSION)
+               ,{<<"Moderator">>, Moderator}
+               | whistle_api:default_headers(Q, <<"conference">>, <<"added_participant">>, ?APP_NAME, ?APP_VERSION)
               ],
     Payload = mochijson2:encode({struct, Command}),
     amqp_util:conference_publish(Payload, events, ConfId).
@@ -539,16 +622,16 @@ added_moderator_event(CallId, ConfId, Q) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% publish a conference event anouncing the addtion of a caller to
+%% publish a conference event anouncing the removal of a caller to
 %% this conference
 %% @end
 %%--------------------------------------------------------------------
-added_member_event(CallId, ConfId, Q) ->
-    ?LOG("sending event that member ~s has been added to ~s", [CallId, ConfId]),
+remove_participant_event(CallId, ConfId, Moderator, Q) ->
+    ?LOG("sending event that moderator ~s has been removed from ~s", [CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, CallId}
-               ,{<<"Moderator">>, <<"false">>}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"added_caller">>, ?APP_NAME, ?APP_VERSION)
+               ,{<<"Moderator">>, Moderator}
+               | whistle_api:default_headers(Q, <<"conference">>, <<"removed_participant">>, ?APP_NAME, ?APP_VERSION)
               ],
     Payload = mochijson2:encode({struct, Command}),
     amqp_util:conference_publish(Payload, events, ConfId).
@@ -561,7 +644,7 @@ added_member_event(CallId, ConfId, Q) ->
 %%--------------------------------------------------------------------
 send_route_response(JObj, Q) ->
     ?LOG("sending route response"),
-    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                 ,{<<"Routes">>, []}
                 ,{<<"Method">>, <<"park">>}
                 | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
