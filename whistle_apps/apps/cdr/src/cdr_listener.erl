@@ -202,7 +202,10 @@ handle_cdr(JObj, _State) ->
     DocCreated = wh_json:set_value(<<"pvt_created">>, Now, DocType),
     DocModified = wh_json:set_value(<<"pvt_modified">>, Now, DocCreated),
     DocVersion = wh_json:set_value(<<"pvt_version">>, 1, DocModified),
-    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, Db, DocVersion),
+
+    DocId = wh_json:set_value(<<"_id">>, wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()), DocVersion),
+
+    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, Db, DocId),
 
     {ok, _} = couch_mgr:save_doc(Db, DocAccountDb),
     ?LOG("CDR for Call-ID:~p stored", [wh_json:get_value(<<"Call-ID">>, DocAccountDb)]).

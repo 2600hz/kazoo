@@ -63,10 +63,15 @@ create_cdr(EvtProp) ->
 -spec(add_values/3 :: (Mappings :: proplist(), BaseProp :: proplist(), ChannelProp :: proplist()) -> proplist()).
 add_values(Mappings, BaseProp, ChannelProp) ->
     lists:foldl(fun({<<"ecallmgr">>, <<"Custom-Channel-Vars">>=WK}, WApi) ->
-			[{WK, {struct, ecallmgr_util:custom_channel_vars(ChannelProp)}} | WApi];
-		    ({FSKey, WK}, WApi) ->
-			case get_value(FSKey, ChannelProp) of
-			    undefined -> WApi;
-			    V -> [{WK, whistle_util:to_binary(V)} | WApi]
-			end
-		end, BaseProp, Mappings).
+                        [{WK, {struct, ecallmgr_util:custom_channel_vars(ChannelProp)}} | WApi];
+                   ({<<"Event-Date-Timestamp">>=FSKey, WK}, WApi) ->
+                        case get_value(FSKey, ChannelProp) of
+                            undefined -> WApi;
+                            V -> [{WK, whistle_util:to_binary(whistle_util:unix_seconds_to_gregorian_seconds(whistle_util:to_integer(V)))} | WApi]
+                        end;
+                   ({FSKey, WK}, WApi) ->
+                        case get_value(FSKey, ChannelProp) of
+                            undefined -> WApi;
+                            V -> [{WK, whistle_util:to_binary(V)} | WApi]
+                        end
+                end, BaseProp, Mappings).
