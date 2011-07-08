@@ -6,6 +6,7 @@
 -export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0]).
+-export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
 
 -include_lib("proper/include/proper.hrl").
 
@@ -216,6 +217,19 @@ ceiling(X) ->
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
+%% there are 719528 days between Jan 1, 0 and Jan 1, 1970.
+%% there are 86400 seconds in a day
+%% there are 62167219200 seconds between Jan 1, 0 and Jan 1, 1970
+-define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
+
+-spec(gregorian_seconds_to_unix_seconds/1 :: (GregorianSeconds :: non_neg_integer()) -> non_neg_integer()).
+gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
+    GregorianSeconds - ?UNIX_EPOCH_AS_GREG_SECONDS.
+
+-spec(unix_seconds_to_gregorian_seconds/1 :: (UnixSeconds :: non_neg_integer()) -> non_neg_integer()).
+unix_seconds_to_gregorian_seconds(UnixSeconds) ->
+    UnixSeconds + ?UNIX_EPOCH_AS_GREG_SECONDS.
+
 %% PROPER TESTING
 prop_to_integer() ->
     ?FORALL({F, I}, {float(), integer()},
@@ -303,4 +317,11 @@ to_1npan_test() ->
     Ans = <<"11234567890">>,
     lists:foreach(fun(N) -> ?assertEqual(to_1npan(N), Ans) end, Ns).
 
+greg_secs_to_unix_secs_test() ->
+    GregSecs = current_tstamp(),
+    ?assertEqual(GregSecs - ?UNIX_EPOCH_AS_GREG_SECONDS, gregorian_seconds_to_unix_seconds(GregSecs)).
+
+unix_secs_to_greg_secs_test() ->
+    UnixSecs = 1000000000,
+    ?assertEqual(UnixSecs + ?UNIX_EPOCH_AS_GREG_SECONDS, unix_seconds_to_gregorian_seconds(UnixSecs)).
 -endif.
