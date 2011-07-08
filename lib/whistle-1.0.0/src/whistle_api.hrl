@@ -78,8 +78,8 @@
 
 %% Authentication Requests
 -define(AUTH_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
-			       ,<<"Method">>, <<"Auth-User">>, <<"Auth-Domain">>]).
--define(OPTIONAL_AUTH_REQ_HEADERS, []).
+			       , <<"Auth-User">>, <<"Auth-Domain">>]).
+-define(OPTIONAL_AUTH_REQ_HEADERS, [<<"Method">>]).
 -define(AUTH_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			  ,{<<"Event-Name">>, <<"auth_req">>}
 			 ]).
@@ -214,7 +214,7 @@
 -define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
 -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
 			  ,{<<"Control-Queue">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			 ]).
 
 %% Offnet Resource Request
@@ -301,7 +301,7 @@
 
 %% Call Status Response
 -define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
--define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Node">>, <<"Error-Msg">>]).
+-define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Node">>]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
 				  ,{<<"Event-Name">>, <<"status_resp">>}
 				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
@@ -649,7 +649,6 @@
                                ,{<<"Conference-ID">>, fun is_binary/1}
                               ]).
 
-
 %% Conference Discovery
 -define(CONF_DISCOVERY_REQ_HEADERS, [<<"Account-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_CONF_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>]).
@@ -662,93 +661,92 @@
                                    ,{<<"Conference-ID">>, fun is_binary/1}
                                   ]).
 
-%% Conference Members
--define(CONF_MEMBERS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_CONF_MEMBERS_REQ_HEADERS, [<<"Insert-At">>]).
--define(CONF_MEMBERS_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                               ,{<<"Event-Name">>, <<"command">>}
-                               ,{<<"Application-Name">>, <<"members">>}
-                              ]).
--define(CONF_MEMBERS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+%% Conference Participants
+-define(CONF_PARTICIPANTS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONF_PARTICIPANTS_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CONF_PARTICIPANTS_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                       ,{<<"Event-Name">>, <<"command">>}
+                                       ,{<<"Application-Name">>, <<"participants">>}
+                                      ]).
+-define(CONF_PARTICIPANTS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
--define(CONF_MEMBERS_RESP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_CONF_MEMBERS_RESP_HEADERS, [<<"Insert-At">>, <<"Members">>, <<"Error">>]).
--define(CONF_MEMBERS_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                               ,{<<"Event-Name">>, <<"response">>}
-                               ,{<<"Application-Name">>, <<"members">>}
+-define(CONF_PARTICIPANTS_RESP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONF_PARTICIPANTS_RESP_HEADERS, [<<"Insert-At">>, <<"Participants">>, <<"Error">>]).
+-define(CONF_PARTICIPANTS_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                               ,{<<"Event-Name">>, <<"participants">>}
+                               ,{<<"Application-Name">>, <<"participants">>}
                               ]).
--define(CONF_MEMBERS_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
-
+-define(CONF_PARTICIPANTS_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Play
 -define(CONF_PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_CONF_PLAY_REQ_HEADERS, [<<"Insert-At">>, <<"Member-ID">>]).
+-define(OPTIONAL_CONF_PLAY_REQ_HEADERS, [<<"Insert-At">>, <<"Participant-ID">>]).
 -define(CONF_PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"play">>}
                               ]).
 -define(CONF_PLAY_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                               ,{<<"Media-Name">>, fun is_binary/1}
-                              ,{<<"Member-ID">>, fun is_binary/1}
+                              ,{<<"Participant-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference Deaf Member
--define(CONF_DEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+%% Conference Deaf Participant
+-define(CONF_DEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_CONF_DEAF_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_DEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"deaf">>}
                               ]).
 -define(CONF_DEAF_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                              ,{<<"Member-ID">>, fun is_binary/1}
+                              ,{<<"Participant-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference Undeaf Member
--define(CONF_UNDEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+%% Conference Undeaf Participant
+-define(CONF_UNDEAF_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_CONF_UNDEAF_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_UNDEAF_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"undeaf">>}
                                 ]).
 -define(CONF_UNDEAF_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                ,{<<"Member-ID">>, fun is_binary/1}
+                                ,{<<"Participant-ID">>, fun is_binary/1}
                                ]).
 
-%% Conference Mute Member
--define(CONF_MUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+%% Conference Mute Participant
+-define(CONF_MUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_CONF_MUTE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_MUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"mute">>}
                               ]).
 -define(CONF_MUTE_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                              ,{<<"Member-ID">>, fun is_binary/1}
+                              ,{<<"Participant-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference Unmute Member
--define(CONF_UNMUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+%% Conference Unmute Participant
+-define(CONF_UNMUTE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_CONF_UNMUTE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_UNMUTE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"unmute">>}
                                 ]).
 -define(CONF_UNMUTE_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                ,{<<"Member-ID">>, fun is_binary/1}
+                                ,{<<"Participant-ID">>, fun is_binary/1}
                                ]).
 
-%% Conference Kick Member
--define(CONF_KICK_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>]).
+%% Conference Kick Participant
+-define(CONF_KICK_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_CONF_KICK_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_KICK_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
                                ,{<<"Application-Name">>, <<"kick">>}
                               ]).
 -define(CONF_KICK_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                              ,{<<"Member-ID">>, fun is_binary/1}
+                              ,{<<"Participant-ID">>, fun is_binary/1}
                              ]).
 
-%% Conference Move Member
--define(CONF_MOVE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-From">>, <<"Conference-To">>, <<"Member-ID">>]).
+%% Conference Move Participant
+-define(CONF_MOVE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-From">>, <<"Conference-To">>, <<"Participant-ID">>]).
 -define(OPTIONAL_CONF_MOVE_REQ_HEADERS, [<<"Insert-At">>]).
 -define(CONF_MOVE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"command">>}
@@ -756,11 +754,11 @@
                               ]).
 -define(CONF_MOVE_REQ_TYPES, [{<<"Conference-From">>, fun is_binary/1}
                                ,{<<"Conference-To">>, fun is_binary/1}
-                               ,{<<"Member-ID">>, fun is_binary/1}
+                               ,{<<"Participant-ID">>, fun is_binary/1}
                               ]).
 
-%% Conference Relate Member
--define(CONF_RELATE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Member-ID">>, <<"Correlate-ID">>]).
+%% Conference Relate Participant
+-define(CONF_RELATE_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>, <<"Correlate-ID">>]).
 -define(OPTIONAL_CONF_RELATE_REQ_HEADERS, [<<"Insert-At">>, <<"Relationship">>]).
 -define(CONF_RELATE_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"command">>}
@@ -768,7 +766,7 @@
                                  ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"reset">>]}
                                 ]).
 -define(CONF_RELATE_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                ,{<<"Member-ID">>, fun is_binary/1}
+                                ,{<<"Participant-ID">>, fun is_binary/1}
                                 ,{<<"Correlate-ID">>, fun is_binary/1}
                                ]).
 
