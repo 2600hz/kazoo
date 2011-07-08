@@ -235,13 +235,25 @@ channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
 							 ]}
     end.
 
--spec(extract_node_data/1 :: (Node :: atom()) -> proplist()).
+-spec extract_node_data/1 :: (Node) -> [{'cpu',string()} |
+					{'sessions_max',integer()} |
+					{'sessions_per_thirty',integer()} |
+					{'sessions_since_startup',integer()} |
+					{'uptime',number()}
+					,...] when
+      Node :: atom().
 extract_node_data(Node) ->
     {ok, Status} = freeswitch:api(Node, status),
     Lines = string:tokens(whistle_util:to_list(Status), [$\n]),
     process_status(Lines).
 
--spec(process_status/1 :: (Lines :: list()) -> proplist()).
+-spec process_status/1 :: (Lines) -> [{'cpu',string()} |
+				      {'sessions_max',integer()} |
+				      {'sessions_per_thirty',integer()} |
+				      {'sessions_since_startup',integer()} |
+				      {'uptime',number()}
+				      ,...] when
+      Lines :: [nonempty_string(),...].
 process_status([Uptime, _, SessSince, Sess30, SessMax, CPU]) ->
     process_status([Uptime, SessSince, Sess30, SessMax, CPU]);
 process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->

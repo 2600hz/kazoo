@@ -34,8 +34,8 @@ authn_resp_xml(<<"ip">>, _Prop) ->
 authn_resp_xml(_, _) ->
     {ok, ?EMPTYRESPONSE}.
 
-route_resp_xml({struct, RespProp}) ->
-    route_resp_xml(RespProp);
+route_resp_xml({struct, RespProp}=RespJObj) ->
+    route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespProp);
 route_resp_xml(RespProp) ->
     route_resp_xml(props:get_value(<<"Method">>, RespProp), props:get_value(<<"Routes">>, RespProp), RespProp).
 

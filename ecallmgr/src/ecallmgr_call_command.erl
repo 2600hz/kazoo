@@ -317,7 +317,7 @@ media_path(MediaName, Type, UUID) ->
 
 -spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
 get_fs_playback(<<"http://", _/binary>>=Url) ->
-    RemoteAudioScript = get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
+    RemoteAudioScript = ecallmgr_util:get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
     <<"shell_stream://", (whistle_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
@@ -411,7 +411,7 @@ set_terminators(Node, UUID, Ts) ->
 
 -spec(set_ringback/3 :: (Node :: atom(), UUID :: binary(), RingBack :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_ringback(Node, UUID, undefined) ->
-    RB = list_to_binary(["ringback=", get_setting(default_ringback, "%(2000,4000,440,480)")]),
+    RB = list_to_binary(["ringback=", ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)")]),
     ok = set(Node, UUID, RB);
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=", media_path(RingBack, extant, UUID)]),
@@ -538,21 +538,3 @@ send_error_response(App, Msg, UUID, JObj) ->
             ],
     {ok, Payload} = whistle_api:error_resp(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
-
--spec get_setting/2 :: (Setting, Default) -> term() when
-      Setting :: atom(),
-      Default :: term().
-get_setting(Setting, Default) ->
-    case wh_cache:fetch({ecallmgr_setting, Setting}) of
-        {ok, Value} -> Value;
-        {error, _} ->
-            case file:consult(?SETTINGS_FILE) of
-                {ok, Settings} ->
-                    Value = props:get_value(Setting, Settings, Default),
-                    wh_cache:store({ecallmgr_setting, Setting}, Value),
-                    Value;
-                {error, _} ->
-                    wh_cache:store({ecallmgr_setting, Setting}, Default),
-                    Default
-            end
-    end.

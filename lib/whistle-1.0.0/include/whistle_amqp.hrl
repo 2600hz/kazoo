@@ -1,12 +1,13 @@
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% AMQP-specific things for Whistle
 %%% @end
 %%% Created :  3 Nov 2010 by James Aimonetti <james@2600hz.org>
 
 %% routing keys to use in the callmgr exchange
--define(KEY_AUTHN_REQ, <<"auth.req">>). %% corresponds to the auth_req/1 api call
+-define(KEY_AUTHN_REQ, <<"authn.req">>). %% corresponds to the auth_req/1 api call
+-define(KEY_AUTHZ_REQ, <<"authz.req">>). %% corresponds to the auth_req/1 api call
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
 
 -define(KEY_RESOURCE_REQ, <<"originate.resource.req">>). %% corresponds to resource_req/1 api call
