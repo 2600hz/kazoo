@@ -7,6 +7,6 @@
         }
     }
     ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'vmbox' ); }"
+        "export":"function(doc, req) { return ( doc.pvt_type == 'menu' ); }"
     }
 }
