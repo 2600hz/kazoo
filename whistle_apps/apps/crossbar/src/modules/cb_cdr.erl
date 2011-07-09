@@ -255,53 +255,13 @@ normalize_view_results(JObj, Acc) ->
 -spec(load_cdr_summary/2 :: (Context :: #cb_context{}, QueryString :: list()) -> #cb_context{}).
 load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryString) ->
     case QueryString of
-        [_|_] -> case do_filter(DbName, QueryString, []) of
+        [_|_] -> case crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryString, []) of
                      [_|_]=DocIds -> crossbar_doc:load_view(?CB_LIST, [{<<"keys">>, DocIds}], Context, fun normalize_view_results/2);
                      _ -> crossbar_util:response_faulty_request(Context)
 
                  end;
         _ -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of Doc ID from the crossbar_listing view,
-%% filtered on the query string params
-%% @end
-%%--------------------------------------------------------------------
--spec(do_filter/3 :: (DbName :: binary(), QueryString :: list(tuple(string(), term())), Options :: list()) -> list(binary())).
-do_filter(DbName, QueryString, _Options) ->
-    QueryStringBinary = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- QueryString],
-    ValidParams = lists:foldl(fun({<<"filter_", Param/binary>>, V}, Acc) -> [{Param, V} | Acc]; (_, Acc) -> Acc end, [], QueryStringBinary),
-
-    {ok, AllDocs} = couch_mgr:get_results(DbName, ?CB_LIST, [{<<"include_docs">>, true}]),
-    UnfilteredDocs = [wh_json:get_value(<<"doc">>, Doc, ?EMPTY_JSON_OBJECT) || Doc <- AllDocs],
-    filter_docs(UnfilteredDocs, ValidParams).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Return the Doc IDs for which all the parameters have the requested value
-%% @end
-%%--------------------------------------------------------------------
--spec(filter_docs/2 :: (Docs :: json_objects(), Props :: list(tuple(binary(), binary()))) -> list(binary())).
-filter_docs(Docs, Props) ->
-    [wh_json:get_value(<<"_id">>, Doc) || Doc <- Docs, lists:all(fun({Key,Val}) -> wh_json:get_value(Key, Doc) =:= Val end, Props)].
-
-
-build_filter_options(<<"filter_", Param/binary>>) ->
-    ok;
-build_filter_options(<<"created_from">>) ->
-    ok;
-build_filter_options(<<"created_to">>) ->
-    ok;
-build_filter_options(<<"modified_from">>) ->
-    ok;
-build_filter_options(<<"modified_to">>) ->
-    ok.
-%% build_filter_options(<<"range_", Param/binary, "_from">>) -> nyi.
-%% build_filter_options(<<"range_", Param/binary, "_to">>) -> nyi.
 
 %%--------------------------------------------------------------------
 %% @private
