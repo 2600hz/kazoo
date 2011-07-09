@@ -94,6 +94,7 @@ request_node(Type) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ?LOG_SYS("starting new fs handler"),
     process_flag(trap_exit, true),
     {ok, #state{}, 0}.
 
@@ -164,7 +165,6 @@ handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=Stat
     {noreply, State};
 
 handle_call(_Request, _From, State) ->
-    ?LOG("Unhandled call ~p", [_Request]),
     {reply, {error, unhandled_request}, State}.
 
 %%--------------------------------------------------------------------
@@ -191,13 +191,13 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
-    ?LOG("Node ~p has gone down", [Node]),
+    ?LOG_SYS("node ~p has gone down", [Node]),
     spawn(fun() ->
 		  [#node_handler{node=Node, options=Opts}] = [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1],
 		  erlang:monitor_node(Node, false),
 		  [ok,ok,ok] = ecallmgr_fs_sup:stop_handlers(Node),
 
-		  ?LOG("Node watch starting for ~p", [Node]),
+		  ?LOG_SYS("node watch starting for ~p", [Node]),
 		  watch_node_for_restart(Node, Opts)
 	  end),
 
@@ -206,16 +206,15 @@ handle_info(timeout, State) ->
     spawn(fun() ->
                   {ok, Startup} = file:consult(?STARTUP_FILE),
                   Nodes = props:get_value(fs_nodes, Startup, []),
-                  lists:foreach(fun(Node) -> 
-                                        add_fs_node(whistle_util:to_atom(Node, true)) 
+                  lists:foreach(fun(Node) ->
+                                        add_fs_node(whistle_util:to_atom(Node, true))
                                 end, Nodes)
-          end),    
+          end),
     {noreply, State};
 handle_info({'EXIT', Pid, _Reason}, State) ->
-    ?LOG("Pid ~p exited: ~p", [self(), Pid, _Reason]),
+    ?LOG_SYS("Pid ~p exited: ~p", [self(), Pid, _Reason]),
     {noreply, State};
 handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -230,7 +229,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{fs_nodes=Nodes}) ->
-    ?LOG("Terminating: ~p", [_Reason]),
+    ?LOG_SYS("fs handler ~p termination", [_Reason]),
     lists:foreach(fun close_node/1, Nodes).
 
 %%--------------------------------------------------------------------
@@ -263,16 +262,16 @@ watch_node_for_restart(Node, Opts, Timeout) ->
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
 	pong ->
-	    ?LOG("Node ~p has risen", [Node]),
+	    ?LOG_SYS("node ~p has risen", [Node]),
 	    ?MODULE:add_fs_node(Node, Opts);
 	pang ->
-	    ?LOG("Waiting ~p seconds to ping again", [Timeout div 1000]),
+	    ?LOG_SYS("waiting ~p seconds to ping again", [Timeout div 1000]),
 	    receive
 		shutdown ->
-		    ?LOG("Watcher for ~p asked to go down", [Node])
+		    ?LOG_SYS("watcher for ~p asked to go down", [Node])
 	    after
 		Timeout ->
-		    ?LOG("Pinging ~p again", [Node]),
+		    ?LOG_SYS("Pinging ~p again", [Node]),
 		    watch_node_for_restart(Node, Opts, Timeout)
 	    end
     end.
@@ -314,7 +313,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 	    case net_adm:ping(Node) of
 		pong ->
 		    erlang:monitor_node(Node, true),
-		    ?LOG("No node matching ~p found, adding", [Node]),
+		    ?LOG_SYS("no node matching ~p found, adding", [Node]),
 
 		    case lists:all(fun({ok, Pid}) when is_pid(Pid) -> true;
 				      ({error, {already_started, Pid}}) when is_pid(Pid) -> true;
@@ -326,11 +325,11 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 			    {{error, failed_starting_handlers}, State}
 		    end;
 		pang ->
-		    ?LOG("Node ~p not responding, can't connect", [Node]),
+		    ?LOG_SYS("node ~p not responding, can't connect", [Node]),
 		    {{error, no_connection}, State}
 	    end;
 	[#node_handler{node=Node}=N] ->
-	    ?LOG("Handlers known for node ~p", [Node]),
+	    ?LOG_SYS("handlers known for node ~p", [Node]),
 
 	    {_, _, NHP} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
 	    is_pid(NHP) andalso NHP ! {update_options, Options},
@@ -338,7 +337,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 	    case lists:any(fun(error) -> true; (undefined) -> true; (_) -> false end, tuple_to_list(Handlers)) of
 		true ->
 		    _ = ecallmgr_fs_sup:stop_handlers(Node),
-		    ?LOG("Removed handlers for node ~p because something is wonky: handlers: ~p", [Node, Handlers]),
+		    ?LOG_SYS("removed handlers for node ~p because something is wonky: handlers: ~p", [Node, Handlers]),
 		    add_fs_node(Node, Options, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)});
 		false ->
 		    {ok, State#state{fs_nodes=[N#node_handler{options=Options} | lists:keydelete(Node, 2, Nodes)]}}
@@ -349,10 +348,10 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
     case lists:keyfind(Node, 2, Nodes) of
 	false ->
-	    ?LOG("No handlers found for ~p", [Node]),
+	    ?LOG_SYS("no handlers found for ~s", [Node]),
 	    {{error, no_node, Node}, State};
 	N ->
-	    ?LOG("Found node handler for p: ~p", [Node, N]),
+	    ?LOG_SYS("closing node handler for ~s", [Node]),
 	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
@@ -372,5 +371,5 @@ process_resource_request(<<"audio">>=Type, Nodes, Options) ->
 		 end || #node_handler{node=Node} <- Nodes],
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
-    ?LOG("Unhandled resource request type ~p", [Type]),
+    ?LOG_SYS("unhandled resource request type ~p", [Type]),
     [].
