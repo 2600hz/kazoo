@@ -11,5 +11,6 @@ whistle_apps/apps/*/ebin/*.app
 whistle_apps/apps/*/log/*
 lib/whistle*/ebin/*.beam
 lib/whistle*/ebin/*.app
+lib/whistle*/log/*.sasl
 utils/*/ebin/*.beam
 utils/*/ebin/*.app

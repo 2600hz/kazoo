@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, set_host/5, get_host/0, get_port/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
--export([get_admin_port/0, get_admin_conn/0, get_admin_url/0]).
+-export([get_admin_port/0, get_admin_conn/0, get_admin_url/0, get_node_cookie/0, set_node_cookie/1]).
 
 %% System manipulation
 -export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_view_cleanup/1, db_delete/1, db_replicate/1]).
@@ -52,6 +52,7 @@
 	  ,admin_connection = #server{} :: #server{}
 	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
 	  ,change_handlers = dict:new() :: dict()
+	  ,cache = undefined :: undefined | pid()
 	 }).
 
 %%%===================================================================
@@ -649,6 +650,18 @@ get_uuids(Count) ->
     Conn = gen_server:call(?SERVER, get_conn),
     couchbeam:get_uuids(Conn, Count).
 
+-spec get_node_cookie/0 :: () -> atom().
+get_node_cookie() ->
+    case wh_cache:fetch_local(get_cache_pid(), bigcouch_cookie) of
+	{error, not_found} -> undefined;
+	{ok, Cookie} -> Cookie
+    end.
+
+-spec set_node_cookie/1 :: (Cookie) -> ok when
+      Cookie :: atom().
+set_node_cookie(Cookie) when is_atom(Cookie) ->
+    wh_cache:store_local(get_cache_pid(), bigcouch_cookie, Cookie, 24 * 3600).
+
 -spec(get_url/0 :: () -> binary()).
 get_url() ->
     case {whistle_util:to_binary(get_host()), get_creds(), get_port()} of
@@ -677,15 +690,20 @@ get_admin_url() ->
               ,":", (whistle_util:to_binary(P))/binary, $/>>
     end.
 
+-spec get_cache_pid/0 :: () -> pid() | undefined.
+get_cache_pid() ->
+    gen_server:call(?SERVER, get_cache_pid).
+
 add_change_handler(DBName, DocID) ->
-    logger:format_log(info, "ADD_CHANGE_HANDLER for Pid: ~p for DB: ~p and Doc: ~p~n", [self(), DBName, DocID]),
+    ?LOG_SYS("Add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
 
 add_change_handler(DBName, DocID, Pid) ->
-    logger:format_log(info, "ADD_CHANGE_HANDLER req by ~p for Pid: ~p for DB: ~p and Doc: ~p~n", [self(), Pid, DBName, DocID]),
+    ?LOG_SYS("Add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
+    ?LOG_SYS("RM change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
     gen_server:call(?SERVER, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
 
 %%%===================================================================
@@ -722,6 +740,9 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(get_cache_pid, _From, #state{cache=C}=State) ->
+    {reply, C, State};
+
 handle_call(get_host, _From, #state{host={H,_,_}}=State) ->
     {reply, H, State};
 
@@ -732,7 +753,7 @@ handle_call(get_admin_port, _From, #state{host={_,_,P}}=State) ->
     {reply, P, State};
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={OldHost,_,_}}=State) ->
-    logger:format_log(info, "WHISTLE_COUCH(~p): Updating host from ~p to ~p~n", [self(), OldHost, Host]),
+    ?LOG_SYS("Updating host from ~p to ~p", [OldHost, Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
     spawn(fun() -> save_config(Host, Port, User, Pass, AdminPort) end),
@@ -745,7 +766,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
 			   }};
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
-    logger:format_log(info, "WHISTLE_COUCH(~p): Setting host for the first time to ~p~n", [self(), Host]),
+    ?LOG_SYS("Setting host for the first time to ~p", [Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
     spawn(fun() -> save_config(Host, Port, User, Pass, AdminPort) end),
@@ -769,7 +790,7 @@ handle_call(get_creds, _, #state{creds=Cred}=State) ->
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
     spawn(fun() ->
 		  {ok, {Srv, _}} = dict:find(DBName, CH),
-		  logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Rm listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+		  ?LOG_SYS("Found CH(~p): Rm listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 		  change_handler:rm_listener(Srv, Pid, DocID)
 	  end),
     {reply, ok, State}.
@@ -787,12 +808,12 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
     case dict:find(DBName, CH) of
 	{ok, {Srv, _}} ->
-	    logger:format_log(info, "COUCH_MGR(~p): Found CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    ?LOG_SYS("Found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {noreply, State};
 	error ->
 	    {ok, Srv} = change_handler:start_link(couch_util:open_db(whistle_util:to_list(DBName), S), []),
-	    logger:format_log(info, "COUCH_MGR(~p): started CH(~p): Adding listener(~p) for doc ~p:~p~n", [self(), Srv, Pid, DBName, DocID]),
+	    ?LOG_SYS("Started CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
@@ -808,15 +829,15 @@ handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH,
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, Srv, complete}, #state{change_handlers=CH}=State) ->
-    logger:format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after complete~n", [self(), Srv]),
+    ?LOG_SYS("Srv ~p down after complete", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{change_handlers=CH}=State) ->
-    logger:format_log(error, "WHISTLE_COUCH(~p): Srv ~p down after conn closed~n", [self(), Srv]),
+    ?LOG_SYS("Srv ~p down after conn closed", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info(_Info, State) ->
-    logger:format_log(error, "WHISTLE_COUCH(~p): Unexpected info ~p~n", [self(), _Info]),
+    ?LOG_SYS("Unexpected message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -855,6 +876,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(init_state/0 :: () -> #state{}).
 init_state() ->
+    Pid = whereis(wh_couch_cache),
     case get_startup_config() of
 	{ok, Ts} ->
 	    {_, Host, NormalPort, User, Password, AdminPort} = case lists:keyfind(couch_host, 1, Ts) of
@@ -873,10 +895,15 @@ init_state() ->
 							       end,
 	    Conn = couch_util:get_new_connection(Host, whistle_util:to_integer(NormalPort), User, Password),
 	    AdminConn = couch_util:get_new_connection(Host, whistle_util:to_integer(AdminPort), User, Password),
+
+	    wh_cache:store_local(Pid, bigcouch_cookie, lists:keyfind(bigcouch_cookie, 1, Ts), 24*3600), % store for a day
+
 	    #state{connection=Conn
 		   ,admin_connection=AdminConn
 		   ,host={Host, whistle_util:to_integer(NormalPort), whistle_util:to_integer(AdminPort)}
-		   ,creds={User, Password}};
+		   ,creds={User, Password}
+		   ,cache=Pid
+		  };
 	_ -> #state{}
     end.
 
@@ -899,7 +926,10 @@ save_config(H, Port, U, P, AdminPort) ->
     {ok, Config} = get_startup_config(),
     file:write_file(?STARTUP_FILE
 		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
-				 , "", [{couch_host, H, Port, U, P, AdminPort} | lists:keydelete(couch_host, 1, Config)])
+				 , "", [{bigcouch_cookie, wh_cache:fetch_local(whereis(wh_couch_cache), bigcouch_cookie)}
+					,{couch_host, H, Port, U, P, AdminPort}
+					| lists:keydelete(couch_host, 1, Config)
+				       ])
 		   ).
 
 -spec(remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict()).
