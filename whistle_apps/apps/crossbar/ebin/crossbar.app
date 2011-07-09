@@ -8,7 +8,7 @@
                         cb_servers,cb_signup,cb_simple_authz,cb_token_auth,
                         cb_user_auth,cb_users,cb_vmboxes,crossbar,
                         crossbar_app,crossbar_bindings,crossbar_doc,
-                        crossbar_module_sup,crossbar_resource,
+                        crossbar_filter,crossbar_module_sup,crossbar_resource,
                         crossbar_session,crossbar_sup,crossbar_util,
                         crossbar_validator,fixtures,plists,static_resource,
                         t_evtsub,t_fixtures,v1_resource]},
