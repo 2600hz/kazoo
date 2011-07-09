@@ -17,7 +17,7 @@
 %% These are temporary until the viewing of numbers in an account can
 %% be standardized
 -define(TS_DB, <<"ts">>).
--define(CALLFLOW_VIEW, {<<"callflows">>, <<"listing_by_number">>}).
+-define(CALLFLOW_VIEW, {<<"callflow">>, <<"listing_by_number">>}).
 
 %%--------------------------------------------------------------------
 %% @public
