@@ -257,9 +257,6 @@ get_design_docs(Conn, AdminConn, DBData) ->
     lists:foldr(fun({DBName, DesignID}, Acc) ->
 			case get_design_data(Conn, DBName, DesignID) of
 			    {error, failed} -> Acc;
-			    {ok, _ErrCode, _, _Resp} ->
-				?LOG_SYS("Skipping ~s:~s, ~s: ~s", [DBName, DesignID, _ErrCode, _Resp]),
-				Acc;
 			    {ok, DDocData} ->
 				DataSize = wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1),
 				DiskSize = wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1),
@@ -320,7 +317,7 @@ get_db_data(_AC, _DB, Cnt) when Cnt > 10 ->
 get_db_data(AC, DB, Cnt) ->
     case couch_util:db_info(AC, DB) of
 	{ok, _}=Resp -> ?LOG_SYS("Found db data for ~s in ~b tries", [DB, Cnt]), Resp;
-	{error, _E} -> get_db_data(AC, DB, Cnt+1)
+	_ -> get_db_data(AC, DB, Cnt+1)
     end.	    
 
 -spec get_ddocs/2 :: (Conn, DB) -> {ok, [binary(),...] | []} | {error, failed} when
@@ -339,7 +336,7 @@ get_ddocs(_C, _DB, Cnt) when Cnt > 10 ->
 get_ddocs(Conn, DB, Cnt) ->
     case couch_util:all_design_docs(Conn, DB) of
 	{ok, _}=Resp -> ?LOG_SYS("Found ddocs for ~s in ~p tries", [DB, Cnt]), Resp;
-	{error, _E} -> get_ddocs(Conn, DB, Cnt+1)
+	_ -> get_ddocs(Conn, DB, Cnt+1)
     end.
 
 -spec compact/3 :: (Data, MDS, CT) -> ok when
