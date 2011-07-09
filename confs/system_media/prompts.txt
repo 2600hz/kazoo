@@ -1,0 +1,28 @@
+vm-abort: I'm sorry, there have been too many failed attempts to log in; goodbye.
+vm-main_menu: To hear new messages, press one. To hear your saved messages, press two. To change your settings, press five.
+vm-settings_menu: To record your mailbox greeting, press one. To record your name, press two. To change your password, press three. To return to the main menu, press zero.
+vm-enter_id: Please enter you mailbox number, then press pound.
+vm-enter_new_pin_confirm: To confirm, please enter your new password again, then press pound.
+vm-enter_pass: Please enter your password, then press pound.
+vm-fail_auth: Log in incorrect.
+vm-pin_invalid: I'm sorry, the passwords did not match or can not be used, please try again.
+vm-pin_set: Thank you, your new password has been saved.
+vm-no_access: I'm sorry, your mailbox is not configured to allow access from this phone.
+vm-record_greeting: At the tone please say your greeting, then press any key or stop talking to end the recording.
+vm-record_name: At the tone please say your name, then press any key or stop talking to end the recording.
+vm-recording_saved: Recording saved.
+vm-record_message: Record your message at the tone, press any key or stop talking to end the recording.
+vm-review_recording: To save this recording, press one. To listen, press two. To ree rekord, press three.
+vm-you_have: You have
+vm-new_message: new message
+vm-new_messages: new messages
+vm-saved_message: saved message
+vm-saved_messages: saved messages
+vm-new_and: new and
+vm-received_on: Message received on
+vm-message_menu: To save, press one. To replay, press two.  To delete, press seven. To return to the main menu, press zero.
+vm-mailbox_full: The voicemail box is full, please try your call again later.
+vm-not_available_no_voicemail: The person you are trying to reach is not available, and does not have voicemail.  Please try your call again later.
+vm-person: The person at extension
+vm-not_available: is not available.
+vm-no_messages: Mailbox is empty.
