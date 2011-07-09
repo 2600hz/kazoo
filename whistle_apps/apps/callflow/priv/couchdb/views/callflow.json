@@ -1,0 +1,9 @@
+{
+    "_id": "_design/callflow"
+    ,"language": "javascript"
+    ,"views": {       
+        "listing_by_number": {
+            "map": "function(doc) { if (doc.pvt_type != 'callflow' || doc.pvt_deleted) return; for (var i in doc.numbers) emit(doc.numbers[i], null); }"
+        }
+    }
+}
