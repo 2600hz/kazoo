@@ -55,12 +55,16 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, Doc} ->
 	    ?LOG_SYS("loaded doc ~s from ~s", [DocId, DB]),
-            Context#cb_context{
-	      doc=Doc
-	      ,resp_status=success
-	      ,resp_data=public_fields(Doc)
-	      ,resp_etag=rev_to_etag(Doc)
-	     };
+            case whistle_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
+                true ->
+                    crossbar_util:response_bad_identifier(DocId, Context);
+                false ->
+                    Context#cb_context{doc=Doc
+                                       ,resp_status=success
+                                       ,resp_data=public_fields(Doc)
+                                       ,resp_etag=rev_to_etag(Doc)
+                                      }
+            end;
         _Else ->
 	    ?LOG_SYS("Unexpected return from datastore: ~p", [_Else]),
             Context#cb_context{doc=[]}

@@ -67,7 +67,8 @@ add_values(Mappings, BaseProp, ChannelProp) ->
                    ({<<"Event-Date-Timestamp">>=FSKey, WK}, WApi) ->
                         case get_value(FSKey, ChannelProp) of
                             undefined -> WApi;
-                            V -> [{WK, whistle_util:to_binary(whistle_util:unix_seconds_to_gregorian_seconds(whistle_util:to_integer(V)))} | WApi]
+                            V -> VUnix =  whistle_util:unix_seconds_to_gregorian_seconds(whistle_util:microseconds_to_seconds(V)),
+                                 [{WK, whistle_util:to_binary(VUnix)} | WApi]
                         end;
                    ({FSKey, WK}, WApi) ->
                         case get_value(FSKey, ChannelProp) of

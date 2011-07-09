@@ -193,8 +193,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                       {ok, JObj} = couch_mgr:open_doc(DbName, AccountId),
                       <<"account">> = wh_json:get_value(<<"pvt_type">>, JObj),
                       ?LOG("removing couch db ~s", [DbName]),
+                      crossbar_doc:delete(Context),
                       case couch_mgr:db_delete(DbName) of
-                          true -> Pid ! {binding_result, true, [RD, Context#cb_context{resp_data=[]}, Params]};
+                          true -> Pid ! {binding_result, true, [RD, Context, Params]};
                           false -> Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]}
                       end
                   catch
