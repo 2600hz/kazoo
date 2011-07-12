@@ -49,11 +49,11 @@ onnet_data(State) ->
     AcctOptions = wh_json:get_value(<<"account">>, Options, ?EMPTY_JSON_OBJECT),
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, ?EMPTY_JSON_OBJECT),
 
-    BypassMedia = ts_util:bypass_media([
-					wh_json:get_value(<<"media_handling">>, DIDOptions)
-					,wh_json:get_value(<<"media_handling">>, SrvOptions)
-					,wh_json:get_value(<<"media_handling">>, AcctOptions)
-				       ]),
+    MediaHandling = ts_util:get_media_handling([
+                                                wh_json:get_value(<<"media_handling">>, DIDOptions)
+                                                ,wh_json:get_value(<<"media_handling">>, SrvOptions)
+                                                ,wh_json:get_value(<<"media_handling">>, AcctOptions)
+                                               ]),
 
     SIPHeaders = ts_util:sip_headers([
 				      wh_json:get_value(<<"sip_headers">>, DIDOptions)
@@ -77,7 +77,7 @@ onnet_data(State) ->
                        ,{<<"Account-ID">>, AcctID}
                        ,{<<"Application-Name">>, <<"bridge">>}
                        ,{<<"Flags">>, DIDFlags}
-                       ,{<<"Media">>, BypassMedia}
+                       ,{<<"Media">>, MediaHandling}
                        ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
                        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
                        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
