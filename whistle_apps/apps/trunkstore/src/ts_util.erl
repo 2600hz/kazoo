@@ -227,7 +227,7 @@ progress_timeout(L) -> simple_extract(L).
 
 -spec bypass_media/1 :: (L) -> undefined | json_object() | binary() when
       L :: list(undefined | json_object() | binary()).
-bypass_media(L) -> simple_extract(L).
+bypass_media(L) -> get_media_handling(simple_extract(L)).
 
 -spec delay/1 :: (L) -> undefined | json_object() | binary() when
       L :: list(undefined | json_object() | binary()).
