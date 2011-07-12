@@ -406,16 +406,20 @@ create_resrc(JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
     ?LOG_SYS("loading resource ~s", [Id]),
     #resrc{id = Id
-           ,rev = wh_json:get_value(<<"_rev">>, JObj)
+           ,rev =
+               wh_json:get_value(<<"_rev">>, JObj)
            ,weight_cost =
                constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
            ,grace_period =
                whistle_util:to_integer(wh_json:get_value(<<"grace_period">>, JObj, Default#resrc.grace_period))
-           ,flags = wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
-           ,rules = [R2 || R1 <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)
-                               ,(R2 = compile_rule(R1, Id)) =/= error]
-           ,gateways = [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
-                                             whistle_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
+           ,flags =
+               wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
+           ,rules =
+               [R2 || R1 <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)
+                          ,(R2 = compile_rule(R1, Id)) =/= error]
+           ,gateways =
+               [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
+                                         whistle_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
           }.
 
 %%--------------------------------------------------------------------
@@ -428,19 +432,28 @@ create_resrc(JObj) ->
 create_gateway(JObj, Id) ->
     Default = #gateway{},
     #gateway{resource_id = Id
-             ,server = wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
-             ,realm = wh_json:get_value(<<"realm">>, JObj, Default#gateway.realm)
-             ,username = wh_json:get_value(<<"username">>, JObj, Default#gateway.username)
-             ,password = wh_json:get_value(<<"password">>, JObj, Default#gateway.password)
-             ,route = wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
+             ,server =
+                 wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
+             ,realm =
+                 wh_json:get_value(<<"realm">>, JObj, Default#gateway.realm)
+             ,username =
+                 wh_json:get_value(<<"username">>, JObj, Default#gateway.username)
+             ,password =
+                 wh_json:get_value(<<"password">>, JObj, Default#gateway.password)
+             ,route =
+                 wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
              ,prefix =
                  whistle_util:to_binary(wh_json:get_value(<<"prefix">>, JObj, Default#gateway.prefix))
              ,suffix =
                  whistle_util:to_binary(wh_json:get_value(<<"suffix">>, JObj, Default#gateway.suffix))
-             ,codecs = wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
-             ,bypass_media = wh_json:get_value(<<"bypass_media">>, JObj, Default#gateway.bypass_media)
-             ,caller_id_type = wh_json:get_value(<<"caller_id_type">>, JObj, Default#gateway.caller_id_type)
-             ,sip_headers = wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
+             ,codecs =
+                 wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
+             ,bypass_media =
+                 wh_json:get_value(<<"bypass_media">>, JObj)
+             ,caller_id_type =
+                 wh_json:get_value(<<"caller_id_type">>, JObj, Default#gateway.caller_id_type)
+             ,sip_headers =
+                 wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
              ,progress_timeout =
                  whistle_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
             }.
@@ -610,6 +623,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Endpoints">>, build_endpoints(Endpoints, 0, [])}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
+               ,{<<"Bypass-Media">>, wh_json:get_value(<<"Bypass-Media">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}

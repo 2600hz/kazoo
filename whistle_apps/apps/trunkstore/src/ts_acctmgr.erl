@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, update_views/0]).
+-export([start_link/0]).
 
 %% Data Access API
 -export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
@@ -55,9 +55,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-update_views() ->
-    gen_server:cast(?SERVER, update_views).
 
 %%%===================================================================
 %%% Data Access API
@@ -245,9 +242,6 @@ handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(update_views, #state{current_read_db=RDB}=S) ->
-    spawn(fun() -> update_views(RDB) end),
-    {noreply, S};
 handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
     spawn(fun() ->
@@ -577,16 +571,7 @@ load_account(AcctId, DB, Srv) ->
 load_views(DB) ->
     couch_mgr:db_create(DB),
     lists:foreach(fun(Name) ->
-			  case couch_mgr:load_doc_from_file(DB, trunkstore, Name) of
-			      {ok, _} -> ok;
-			      {error, _} -> couch_mgr:update_doc_from_file(DB, trunkstore, Name)
-			  end
-		  end, ?TS_ACCTMGR_VIEWS).
-
--spec(update_views/1 :: (DB :: binary()) -> no_return()).
-update_views(DB) ->
-    lists:foreach(fun(File) ->
-			  couch_mgr:update_doc_from_file(DB, trunkstore, File)
+			  couch_mgr:revise_doc_from_file(DB, trunkstore, Name)
 		  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
