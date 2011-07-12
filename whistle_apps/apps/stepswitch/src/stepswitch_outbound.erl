@@ -32,7 +32,7 @@
           ,prefix = <<>>
           ,suffix = <<>>
           ,codecs = []
-          ,bypass_media = <<"false">>
+          ,bypass_media = undefined
           ,caller_id_type = undefined
           ,sip_headers = undefined
           ,progress_timeout = ?DEFAULT_PROGRESS_TIMEOUT
@@ -623,7 +623,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Endpoints">>, build_endpoints(Endpoints, 0, [])}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
-               ,{<<"Bypass-Media">>, wh_json:get_value(<<"Bypass-Media">>, JObj)}
+               ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
