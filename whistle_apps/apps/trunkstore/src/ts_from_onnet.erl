@@ -77,7 +77,7 @@ onnet_data(State) ->
                        ,{<<"Account-ID">>, AcctID}
                        ,{<<"Application-Name">>, <<"bridge">>}
                        ,{<<"Flags">>, DIDFlags}
-                       ,{<<"Bypass-Media">>, BypassMedia}
+                       ,{<<"Media">>, BypassMedia}
                        ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
                        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
                        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
