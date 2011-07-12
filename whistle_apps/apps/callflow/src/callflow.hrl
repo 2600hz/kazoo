@@ -13,11 +13,9 @@
 -define(APP_NAME, <<"callflow">>).
 -define(APP_VERSION, <<"0.8.2">> ).
 
--define ( DIALPLAN_MAP, [
-   { <<"tone">>, <<"tones">> }
-] ).
+-define(DIALPLAN_MAP, [{ <<"tone">>, <<"tones">> }]).
 
--define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
+-define(LIST_BY_NUMBER, {<<"callflow">>, <<"listing_by_number">>}).
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, 20).

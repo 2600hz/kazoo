@@ -78,18 +78,19 @@ reserve(ToDID, CallID, AcctID, outbound, RouteOpts) ->
 check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 		  ,account_doc_id=AccountDocId, callid=CallID, flat_rate_enabled=FlatRateEnabled}=Flags) ->
     <<Start:1/binary, _/binary>> = Number = whistle_util:to_1npan(To),
+    ?LOG("searching for rates in the range ~s to ~s", [Start, Number]),
     case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, whistle_util:to_integer(Start)}
 									    ,{<<"endkey">>, whistle_util:to_integer(Number)}]) of
-	{ok, []} -> ?LOG("No results"), {error, no_route_found};
-	{error, _E} -> ?LOG("Error in lookup: ~p", [_E]), {error, no_route_found};
+	{ok, []} -> ?LOG("rate lookup had no results"), {error, no_route_found};
+	{error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_route_found};
 	{ok, Rates} ->
-	    ?LOG("Rates found: ~b", [length(Rates)]),
+	    [?LOG("fetched rate definition ~s", [wh_json:get_value(<<"id">>, Rate)]) || Rate <- Rates],
 	    Matching = filter_rates(To, Direction, RouteOptions, Rates),
 	    case lists:usort(fun sort_rates/2, Matching) of
-		[] -> ?LOG("No rates left after filter"), {error, no_route_found};
+		[] -> ?LOG("no rates left after filter"), {error, no_route_found};
 		[Rate|_] ->
 		    %% wh_timer:tick("post usort data found"),
-		    ?LOG("Rate to use: ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
+		    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
 		    BaseCost = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
 			+ whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
@@ -102,22 +103,22 @@ check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
 			    ?LOG("per minute trunk reserved. at cost ~p", [BaseCost]),
 			    {ok, set_rate_flags(Flags, Direction, Rate)};
 			{error, entry_exists}=E ->
-			    ?LOG("Failed reserving a trunk; call-id exists in DB"),
+			    ?LOG("failed reserving a trunk; call-id exists in DB"),
 			    E;
 			{error, no_funds}=E1 ->
-			    ?LOG("Failed reserving a trunk; no funds or flat-rate trunks"),
+			    ?LOG("failed reserving a trunk; no funds or flat-rate trunks"),
 			    E1;
 			{error, no_account}=E2 ->
-			    ?LOG("Failed reserving a trunk; no account passed: ~p tried", [AccountDocId]),
+			    ?LOG("failed reserving a trunk; no account passed: ~p tried", [AccountDocId]),
 			    E2;
 			{error, no_callid}=E3 ->
-			    ?LOG("Failed reserving a trunk; no call id passed: ~p tried", [CallID]),
+			    ?LOG("failed reserving a trunk; no call id passed: ~p tried", [CallID]),
 			    E3;
 			{error, not_found}=E4 ->
-			    ?LOG("Failed reserving a trunk; ts_acctmgr:reserve_trunk/4 failed"),
+			    ?LOG("failed reserving a trunk; ts_acctmgr:reserve_trunk/4 failed"),
 			    E4;
                         {error, no_results}=E5 ->
-                            ?LOG("No results from ts_acctmgr:reserve_trunk/4"),
+                            ?LOG("no results from ts_acctmgr:reserve_trunk/4"),
                             E5
 		    end
 	    end

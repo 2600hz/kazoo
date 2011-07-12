@@ -194,18 +194,20 @@ handle_cdr(JObj, _State) ->
         false -> ?ANONYMOUS_CDR_DB
     end,
 
-    {Mega,Sec,_} = erlang:now(),
-    Now =  Mega*1000000+Sec,
+    Now = whistle_util:current_tstamp(),
 
     NormDoc = wh_json:normalize_jobj(JObj),
     DocType = wh_json:set_value(<<"pvt_type">>, <<"cdr">>, NormDoc),
     DocCreated = wh_json:set_value(<<"pvt_created">>, Now, DocType),
     DocModified = wh_json:set_value(<<"pvt_modified">>, Now, DocCreated),
     DocVersion = wh_json:set_value(<<"pvt_version">>, 1, DocModified),
-    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, Db, DocVersion),
+
+    DocId = wh_json:set_value(<<"_id">>, wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()), DocVersion),
+
+    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, Db, DocId),
 
     {ok, _} = couch_mgr:save_doc(Db, DocAccountDb),
-    ?LOG("CDR for Call-ID:~p stored", [wh_json:get_value(<<"Call-ID">>, DocAccountDb)]).
+    ?LOG("CDR for Call-ID:~p stored", [wh_json:get_value(<<"call_id">>, DocAccountDb)]).
 
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
