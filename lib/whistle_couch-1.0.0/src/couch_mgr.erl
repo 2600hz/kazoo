@@ -653,8 +653,8 @@ get_uuids(Count) ->
 -spec get_node_cookie/0 :: () -> atom().
 get_node_cookie() ->
     case wh_cache:fetch_local(get_cache_pid(), bigcouch_cookie) of
-	{error, not_found} -> undefined;
-	{ok, Cookie} -> Cookie
+	{ok, Cookie} -> Cookie;
+	{error, not_found} -> set_node_cookie(monster), monster
     end.
 
 -spec set_node_cookie/1 :: (Cookie) -> ok when
@@ -896,7 +896,11 @@ init_state() ->
 	    Conn = couch_util:get_new_connection(Host, whistle_util:to_integer(NormalPort), User, Password),
 	    AdminConn = couch_util:get_new_connection(Host, whistle_util:to_integer(AdminPort), User, Password),
 
-	    wh_cache:store_local(Pid, bigcouch_cookie, lists:keyfind(bigcouch_cookie, 1, Ts), 24*3600), % store for a day
+	    Cookie = case lists:keyfind(bigcouch_cookie, 1, Ts) of
+			 false -> monster;
+			 {_, C} -> C
+		     end,
+	    wh_cache:store_local(Pid, bigcouch_cookie, Cookie, 24*3600), % store for a day
 
 	    #state{connection=Conn
 		   ,admin_connection=AdminConn
@@ -924,9 +928,10 @@ get_startup_config() ->
 -spec(save_config/5 :: (H :: string(), Port :: integer(), U :: string(), P :: string(), AdminPort :: integer()) -> no_return()).
 save_config(H, Port, U, P, AdminPort) ->
     {ok, Config} = get_startup_config(),
+    {ok, Cookie} = wh_cache:fetch_local(whereis(wh_couch_cache), bigcouch_cookie),
     file:write_file(?STARTUP_FILE
 		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
-				 , "", [{bigcouch_cookie, wh_cache:fetch_local(whereis(wh_couch_cache), bigcouch_cookie)}
+				 , "", [{bigcouch_cookie, Cookie}
 					,{couch_host, H, Port, U, P, AdminPort}
 					| lists:keydelete(couch_host, 1, Config)
 				       ])

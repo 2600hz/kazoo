@@ -15,11 +15,26 @@
 %% API
 -export([start_link/0, force_compaction/0, force_compaction/2, compact_db/1]).
 
+-export([add_threshold/2, get_thresholds/0, rm_threshold/1]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
+-define(DEFAULT_THRESHOLDS, orddict:from_list([{0,1}])). %% catch-all to force compaction
+-define(LARGEST_MDS, round(math:pow(2,30))).
+
+-type thresholds() :: orddict:orddict().
+%% State :: orddict()
+%% Key :: Minimum Disk Size :: integer()
+%% Value :: Ratio of DiskSize to DataSize :: integer()
+%% When deciding whether to compact a database (or view), find its disk size
+%% then iterate through the State for the smallest key that is > disk size.
+%% So, DS = 500,000 and keys = [1, 1,000, 100,000, 1,000,000, 10,000,000], use key 1,000,000.
+%% With this key, use the value (the ratio) to determine if compaction is
+%% needed. So, one strategy could be, as disk size increases, ratio decreases,
+%% resulting in more aggressive compaction the bigger a DB grows.
 
 %%%===================================================================
 %%% API
@@ -43,12 +58,28 @@ force_compaction(MDS, CT) ->
 
 -spec force_compaction/0 :: () -> ok.
 force_compaction() ->
-    gen_server:cast(?SERVER, {force_compaction, 1, 1}).
+    gen_server:cast(?SERVER, {force_compaction, 0, 1}).
 
 -spec compact_db/1 :: (DBName) -> ok when
       DBName :: binary().
 compact_db(DBName) ->
     gen_server:cast(?SERVER, {compact_db, DBName}).
+
+%% Inserts or replaces the Ratio MDS
+-spec add_threshold/2 :: (MDS, Ratio) -> ok when
+      MDS :: integer(),
+      Ratio :: integer().
+add_threshold(MDS, Ratio) when is_integer(MDS) andalso is_integer(Ratio) ->
+    gen_server:cast(?SERVER, {add_threshold, MDS, Ratio}).
+
+-spec get_thresholds/0 :: () -> list(tuple(integer(), integer())) | [].
+get_thresholds() ->
+    gen_server:call(?SERVER, get_thresholds).
+
+-spec rm_threshold/1 :: (MDS) -> ok when
+      MDS :: integer().
+rm_threshold(MDS) when is_integer(MDS) ->
+    gen_server:cast(?SERVER, {rm_threshold, MDS}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -67,10 +98,10 @@ compact_db(DBName) ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("Started compactor"),
-    {ok, ok, ?TIMEOUT}.
+    {ok, ?DEFAULT_THRESHOLDS, ?TIMEOUT}.
 
-handle_call(_,_,State) ->
-    {noreply, State}.
+handle_call(get_thresholds, _From, Thresholds) ->
+    {reply, orddict:to_list(Thresholds), Thresholds}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -82,12 +113,16 @@ handle_call(_,_,State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({force_compaction, MDS, CT}, State) ->
-    spawn(fun() -> compact_nodes(MDS, CT) end),
-    {noreply, State};
-handle_cast({compact_db, DBName}, State) ->
+handle_cast({add_threshold, MDS, Ratio}, Thresholds) ->
+    {noreply, orddict:store(MDS, Ratio, Thresholds)};
+handle_cast({rm_threshold, MDS}, Thresholds) ->
+    {noreply, orddict:erase(MDS, Thresholds)};
+handle_cast({force_compaction, MDS, CT}, Thresholds) ->
+    spawn(fun() -> compact_nodes(orddict:from_list([{MDS, CT}])) end),
+    {noreply, Thresholds};
+handle_cast({compact_db, DBName}, Thresholds) ->
     spawn(fun() -> compact_a_db(DBName) end),
-    {noreply, State}.
+    {noreply, Thresholds}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -99,14 +134,14 @@ handle_cast({compact_db, DBName}, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, ok) ->
+handle_info(timeout, Thresholds) ->
     ?LOG_SYS("Checking if compaction is needed"),
-    spawn(fun() -> compact_nodes(?MIN_DISK_SIZE, ?COMPACT_THRESHOLD) end),
-    {noreply, ok, ?TIMEOUT};
+    spawn(fun() -> compact_nodes(Thresholds) end),
+    {noreply, Thresholds, ?TIMEOUT};
 
-handle_info(_Info, State) ->
+handle_info(_Info, Thresholds) ->
     ?LOG_SYS("Unhandled message: ~p~n", [_Info]),
-    {noreply, State, ?TIMEOUT}.
+    {noreply, Thresholds, ?TIMEOUT}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,34 +171,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec compact_nodes/2 :: (MDS, CT) -> ok when
-      MDS :: pos_integer(),
-      CT :: pos_integer().
-compact_nodes(MDS, CT) ->
+-spec compact_nodes/1 :: (Thresholds) -> ok when
+      Thresholds :: thresholds().
+compact_nodes(Thresholds) ->
     case couch_mgr:admin_all_docs(<<"nodes">>) of
 	{ok, []} ->
 	    ?LOG_SYS("No Nodes to compact");
 	{ok, Nodes} ->
-	    NodesData = [ get_node_data(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes ],
+	    NodesData = [ get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds) || Node <- Nodes ],
 	    put(callid, undefined),
-	    [ spawn(fun() -> [ compact(D, MDS, CT) || D <- NodeData ] end) || NodeData <- NodesData ];
+	    [ spawn(fun() -> [ compact(D) || D <- NodeData ] end) || NodeData <- NodesData ];
 	{error, _E} ->
 	    ?LOG_SYS("Failed to lookup nodes: ~p", [_E])
     end.
 
--spec get_node_data/1 :: (Node) -> [#db_data{} | #design_data{},...] | [] when
-      Node :: binary().
-get_node_data(Node) ->
-    put(callid, Node),
-    [_Name, H] = binary:split(Node, <<"@">>),
+-spec get_node_data/2 :: (Node, Thresholds) -> [#db_data{} | #design_data{} | {db_error, binary()},...] | [] when
+      Node :: binary(),
+      Thresholds :: thresholds().
+get_node_data(NodeBin, Thresholds) ->
+    put(callid, NodeBin),
+    [_Name, H] = binary:split(NodeBin, <<"@">>),
     Host = whistle_util:to_list(H),
+    Node = whistle_util:to_atom(NodeBin, true),
     ?LOG_SYS("Trying to contact host ~s (node ~s)", [Host, _Name]),
 
     {User,Pass} = couch_mgr:get_creds(),
-    {Port,AdminPort} = get_ports(whistle_util:to_atom(Node, true)),
+    {Port,AdminPort} = get_ports(Node),
 
     {Conn, AdminConn} = get_conns(Host, Port, User, Pass, AdminPort),
-    get_dbs_and_designs(Conn, AdminConn).
+    get_dbs_and_designs(Node, Conn, AdminConn, Thresholds).
 
 -spec get_conns/5 :: (Host, Port, User, Pass, AdminPort) -> {#server{}, #server{}} when
       Host :: string(),
@@ -178,8 +214,15 @@ get_conns(Host, Port, User, Pass, AdminPort) ->
 -spec get_ports/1 :: (Node) -> {integer(), integer()} when
       Node :: atom().
 get_ports(Node) ->
-    erlang:set_cookie(Node, couch_mgr:get_node_cookie()),
-    get_ports(Node, net_adm:ping(Node)).
+    Cookie = couch_mgr:get_node_cookie(),
+    ?LOG_SYS("Using cookie ~s on node ~s", [Cookie, Node]),
+    try
+	erlang:set_cookie(Node, Cookie),
+	get_ports(Node, net_adm:ping(Node))
+    catch
+	_:_ ->
+	    {?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT}
+    end.
 
 get_ports(Node, pong) ->
     ?LOG_SYS("Trying to find ports from node ~s", [Node]),
@@ -204,51 +247,70 @@ get_ports(_Node, pang) ->
     ?LOG_SYS("Using same ports as couch_mgr"),
     {couch_mgr:get_port(), couch_mgr:get_admin_port()}.
 
--spec get_dbs_and_designs/2 :: (Conn, AdminConn) -> [#db_data{} | #design_data{},...] | [] when
-      Conn :: #server{},
-      AdminConn :: #server{}.
-get_dbs_and_designs(Conn, AdminConn) ->
-    case get_dbs(Conn, AdminConn) of
-	[] -> [];
-	DBs -> get_design_docs(Conn, AdminConn, DBs)
-    end.
-
--spec get_dbs/2 :: (Conn, AdminConn) -> [#db_data{},...] | [] when
-      Conn :: #server{},
-      AdminConn :: #server{}.
-get_dbs(Conn, AdminConn) ->
-    {ok, ShardDBs} = couch_util:db_info(AdminConn),
-    ?LOG_SYS("Shards to check: ~b", [length(ShardDBs)]),
-    [ create_db_data(Conn, AdminConn, binary:replace(DB, <<"/">>, <<"%2f">>, [global])) || DB <- ShardDBs ].
-
-%% Sharded DB names from admin interface
--spec create_db_data/3 :: (Conn, AdminConn, DBName) -> #db_data{} when
+-spec get_dbs_and_designs/4 :: (Node, Conn, AdminConn, Thresholds) -> [#db_data{} | #design_data{} | {db_error, binary()},...] | [] when
+      Node :: atom(),
       Conn :: #server{},
       AdminConn :: #server{},
-      DBName :: binary().
-create_db_data(Conn, AdminConn, DBName) ->
+      Thresholds :: thresholds().
+get_dbs_and_designs(Node, Conn, AdminConn, Thresholds) ->
+    case get_dbs(Node, Conn, AdminConn, Thresholds) of
+	[] -> [];
+	DBs -> get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
+    end.
+
+-spec get_dbs/4 :: (Node, Conn, AdminConn, Thresholds) -> [#db_data{} | {db_error, binary()},...] | [] when
+      Node :: atom(),
+      Conn :: #server{},
+      AdminConn :: #server{},
+      Thresholds :: thresholds().
+get_dbs(Node, Conn, AdminConn, Thresholds) ->
+    {ok, ShardDBs} = couch_util:db_info(AdminConn),
+    ?LOG_SYS("Shards to check: ~b", [length(ShardDBs)]),
+    [ create_db_data(Node, Conn, AdminConn, binary:replace(DB, <<"/">>, <<"%2f">>, [global]), Thresholds) || DB <- ShardDBs ].
+
+%% Sharded DB names from admin interface
+-spec create_db_data/5 :: (Node, Conn, AdminConn, DBName, Thresholds) -> #db_data{} | {db_error, binary()} when
+      Node :: atom(),
+      Conn :: #server{},
+      AdminConn :: #server{},
+      DBName :: binary(),
+      Thresholds :: thresholds().
+create_db_data(Node, Conn, AdminConn, DBName, Thresholds) ->
     try
 	?LOG_SYS("Create db data for ~s" , [DBName]),
 	{ok, DBData} = get_db_data(AdminConn, DBName),
-	?LOG_SYS("Data for ~s: Dataset: ~b Disksize: ~b", [DBName
-							   ,wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)
-							   ,wh_json:get_value(<<"disk_size">>, DBData, -1)
-							  ]),
+
+	DiskSize = wh_json:get_value(<<"disk_size">>, DBData, -1),
+	DataSize = wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1),
+	CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+
+	{_MDS, Ratio} = orddict:fold(fun(K, V, Acc) -> filter_thresholds(K, V, Acc, DiskSize) end, {0,1}, Thresholds),
+	DoCompaction = (not CompactIsRunning) andalso ((DiskSize div DataSize) > Ratio),
+
+	?LOG_SYS("Data for ~s: Dataset: ~b Disksize: ~b", [DBName, DataSize, DiskSize]),
+	?LOG_SYS("Using MDS: ~b with ratio ~b", [_MDS, Ratio]),
+	?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
+	?LOG_SYS("Do Compaction: ~s", [DoCompaction]),
+
 	#db_data{db_name=DBName
-		 ,disk_size=wh_json:get_value(<<"disk_size">>, DBData, -1)
-		 ,data_size=wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)
+		 ,node=Node
+		 ,disk_size=DiskSize
+		 ,data_size=DataSize
 		 ,conn = Conn
 		 ,admin_conn = AdminConn
+		 ,do_compaction = DoCompaction
 		}
     catch
 	_:_ -> {db_error, DBName}
     end.
 
--spec get_design_docs/3 :: (Conn, AdminConn, DBData) -> [#db_data{} | #design_data{},...] when
+-spec get_design_docs/5 :: (Node, Conn, AdminConn, DBData, Thresholds) -> [#db_data{} | #design_data{} | {db_error, binary()},...] when
+      Node :: atom(),
       Conn :: #server{},
       AdminConn :: #server{},
-      DBData :: [#db_data{},...].
-get_design_docs(Conn, AdminConn, DBData) ->
+      DBData :: [#db_data{} | {db_error, binary()},...],
+      Thresholds :: thresholds().
+get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
     {ok, DBs} = couch_util:db_info(Conn),
     ?LOG_SYS("DBs to get views from: ~b", [length(DBs)]),
 
@@ -260,13 +322,25 @@ get_design_docs(Conn, AdminConn, DBData) ->
 			    {ok, DDocData} ->
 				DataSize = wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1),
 				DiskSize = wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1),
+				CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+
+				{_MDS, Ratio} = orddict:fold(fun(K, V, AccT) -> filter_thresholds(K, V, AccT, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
 
 				?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, DBName, DataSize, DiskSize]),
+				?LOG_SYS("Using MDS: ~b with ratio ~b", [_MDS, Ratio]),
+				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
+
 				Shards = find_shards(DBName, DBData),
 
-				[ #design_data{db_name=DBName, design_name=DesignID, shards=Shards
-					       ,disk_size=DiskSize, data_size=DataSize
-					       ,conn=Conn, admin_conn=AdminConn
+				[ #design_data{db_name=DBName
+					       ,design_name=DesignID
+					       ,node=Node
+					       ,shards=Shards
+					       ,disk_size=DiskSize
+					       ,data_size=DataSize
+					       ,conn=Conn
+					       ,admin_conn=AdminConn
+					       ,do_compaction = (not CompactIsRunning) andalso (DiskSize div DataSize) > Ratio
 					      }
 				  | Acc]
 			end
@@ -339,29 +413,34 @@ get_ddocs(Conn, DB, Cnt) ->
 	_ -> get_ddocs(Conn, DB, Cnt+1)
     end.
 
--spec compact/3 :: (Data, MDS, CT) -> ok when
-      Data :: #db_data{} | #design_data{},
-      MDS :: pos_integer(),
-      CT :: pos_integer().
-compact(#db_data{db_name=DBName, data_size=DataSize, disk_size=DiskSize, admin_conn=AC}, MDS, CT)
-  when DiskSize > MDS andalso (DiskSize div DataSize) > CT ->
+-spec compact/1 :: (Data) -> ok when
+      Data :: #db_data{} | #design_data{} | {db_error, binary()}.
+compact(#db_data{db_name=DBName, node=Node, admin_conn=AC, do_compaction=true}) ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
-    ?LOG_SYS("Compact DB ~s: ~p and VC: ~p", [DBName, couch_util:db_compact(DBName, AC), couch_util:db_view_cleanup(DBName, AC)]);
-compact(#design_data{shards=Shards, design_name=Design, data_size=DataSize, disk_size=DiskSize, admin_conn=AC}, MDS, CT)
-  when DiskSize > MDS andalso (DiskSize div DataSize) > CT ->
+    ?LOG_SYS("Compact DB ~s on ~s: ~p and VC: ~p", [DBName, Node, couch_util:db_compact(DBName, AC), couch_util:db_view_cleanup(DBName, AC)]);
+compact(#design_data{shards=Shards, node=Node, design_name=Design, admin_conn=AC, do_compaction=true}) ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
-    [ ?LOG_SYS("Compact design ~s for ~s: ~p", [Design, DBName, couch_util:design_compact(DBName, Design, AC)]) || DBName <- Shards ];
-compact(_, _, _) -> ok.
+    [ ?LOG_SYS("Compact design ~s for ~s on ~s: ~p", [Design, DBName, Node, couch_util:design_compact(DBName, Design, AC)]) || DBName <- Shards ];
+compact(_) -> ok.
 
+-spec find_shards/2 :: (DBName, DBs) -> [binary(),...] when
+      DBName :: binary(),
+      DBs :: [#db_data{} | {db_error, binary()},...].
 find_shards(DBName, DBs) ->
     find_shards(DBName, DBs, []).
 
+-spec find_shards/3 :: (DBName, DBs, Acc) -> [binary(),...] | [] when
+      DBName :: binary(),
+      DBs :: [#db_data{} | {db_error, binary()},...] | [],
+      Acc :: [binary(),...] | [].
 find_shards(_, [], Acc) -> Acc;
 find_shards(DBName, [#db_data{db_name=Shard}|DBs], Acc) ->
     case binary:match(Shard, DBName) of
 	nomatch -> find_shards(DBName, DBs, Acc);
 	_ -> find_shards(DBName, DBs, [Shard | Acc])
-    end.
+    end;
+find_shards(DBName, [_|DBs], Acc) ->
+    find_shards(DBName, DBs, Acc).
 
 compact_a_db(DBName) ->
     ?LOG_SYS("Compacting ~s", [DBName]),
@@ -370,12 +449,15 @@ compact_a_db(DBName) ->
 	{ok, []} ->
 	    ?LOG_SYS("No Nodes to compact ~s", [DBName]);
 	{ok, Nodes} ->
-	    NodesData = [ get_node_data(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes ],
-	    [ spawn(fun() -> [ compact(D, 1, 1) || D <- NodeData, is_the_db(binary:replace(DBName, <<"/">>, <<"%2f">>, [global]), D) ] end) || NodeData <- NodesData ];
+	    NodesData = [ get_node_data(wh_json:get_value(<<"id">>, Node), ?DEFAULT_THRESHOLDS) || Node <- Nodes ],
+	    [ spawn(fun() -> [ compact(D) || D <- NodeData, is_the_db(binary:replace(DBName, <<"/">>, <<"%2f">>, [global]), D) ] end) || NodeData <- NodesData ];
 	{error, _E} ->
 	    ?LOG_SYS("Failed to lookup nodes: ~p", [_E])
     end.
 
+-spec is_the_db/2 :: (DBName, Data) -> boolean() when
+      DBName :: binary(),
+      Data :: #db_data{} | #design_data{} | {db_error, binary()}.
 is_the_db(DBName, #db_data{db_name=Shard}) ->
     ?LOG_SYS("Does ~s match ~s?", [Shard, DBName]),
     binary:match(Shard, DBName) =/= nomatch;
@@ -384,3 +466,15 @@ is_the_db(DBName, #design_data{db_name=Shard}) ->
     binary:match(Shard, DBName) =/= nomatch;
 is_the_db(_,_) ->
     false.
+
+%% K and V come from the orddict
+%% The acc is the current threshold to use
+%% DiskSize is the size of the DB or design
+-spec filter_thresholds/4 :: (K, V, Acc, DiskSize) -> {integer(), integer()} when
+      K :: integer(),
+      V :: integer(),
+      Acc :: {integer(), integer()},
+      DiskSize :: integer().
+filter_thresholds(K, V, {AccK, _}, DiskSize) when K > DiskSize andalso K < AccK ->
+    {K,V};
+filter_thresholds(_, _, Acc, _) -> Acc.

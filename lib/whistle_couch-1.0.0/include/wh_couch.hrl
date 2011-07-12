@@ -5,18 +5,22 @@
 -record(design_data, {
 	  db_name = <<>> :: binary() %% the actual DB name, encoded (/ -> %2f)
 	 ,design_name = <<>> :: binary()
+	 ,node = undefined :: atom()
          ,shards = [] :: list(binary()) | []
 	 ,disk_size = 0 :: non_neg_integer()
          ,data_size = 0 :: non_neg_integer()
 	 ,conn = #server{} :: #server{}
 	 ,admin_conn = #server{} :: #server{}
+	 ,do_compaction = false :: boolean()
 	 }).
 -record(db_data, {
 	  db_name = <<>> :: binary() %% the shard name
+	 ,node = undefined :: atom()
 	 ,disk_size = 0 :: non_neg_integer()
 	 ,data_size = 0 :: non_neg_integer()
 	 ,conn = #server{} :: #server{}
 	 ,admin_conn = #server{} :: #server{}
+	 ,do_compaction = false :: boolean()
 	 }).
 
 -define(TIMEOUT, 1000 * 60 * 60). %% check every hour
