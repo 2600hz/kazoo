@@ -38,17 +38,35 @@ onnet_data(State) ->
 
     FromUser = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
 
-    ?LOG("From ~s(~s) to ~s", [FromUser, AcctID, ToDID]),
+    ?LOG("on-net request from ~s(~s) to ~s", [FromUser, AcctID, ToDID]),
 
-    DIDJObj = case ts_util:lookup_did(FromUser) of
-		  {ok, DIDFlags} -> DIDFlags;
+    Options = case ts_util:lookup_did(FromUser) of
+		  {ok, Opts} -> Opts;
 		  _ -> ?EMPTY_JSON_OBJECT
 	      end,
 
-    RouteOptions = wh_json:get_value(<<"options">>, DIDJObj, []),
+    DIDOptions = wh_json:get_value(<<"DID_Opts">>, Options, ?EMPTY_JSON_OBJECT),
+    AcctOptions = wh_json:get_value(<<"account">>, Options, ?EMPTY_JSON_OBJECT),
+    SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, ?EMPTY_JSON_OBJECT),
 
-    case ts_credit:reserve(ToDID, CallID, AcctID, outbound, RouteOptions) of
-        {error, _}=E -> ?LOG("release ~s for ~s", [CallID, AcctID]), ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
+    BypassMedia = ts_util:bypass_media([
+					wh_json:get_value(<<"media_handling">>, DIDOptions)
+					,wh_json:get_value(<<"media_handling">>, SrvOptions)
+					,wh_json:get_value(<<"media_handling">>, AcctOptions)
+				       ]),
+
+    SIPHeaders = ts_util:sip_headers([
+				      wh_json:get_value(<<"sip_headers">>, DIDOptions)
+				      ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
+				      ,wh_json:get_value(<<"sip_headers">>, AcctOptions)
+				     ]),
+
+    DIDFlags = wh_json:get_value(<<"options">>, DIDOptions, []),
+
+    case ts_credit:reserve(ToDID, CallID, AcctID, outbound, DIDFlags) of
+        {error, _}=E ->
+            ?LOG("release ~s for ~s", [CallID, AcctID]),
+            ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
         {ok, RateData} ->
 	    Q = ts_callflow:get_my_queue(State),
 
@@ -58,12 +76,12 @@ onnet_data(State) ->
                        ,{<<"To-DID">>, ToDID}
                        ,{<<"Account-ID">>, AcctID}
                        ,{<<"Application-Name">>, <<"bridge">>}
-                       ,{<<"Flags">>, RouteOptions}
-                       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDJObj)}
-                       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDJObj)}
-                       %% ,{<<"Outgoing-Caller-ID-Name">>, CallerIDName}
-                       %% ,{<<"Outgoing-Caller-ID-Number">>, CallerIDNum}
-                       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDJObj)}
+                       ,{<<"Flags">>, DIDFlags}
+                       ,{<<"Bypass-Media">>, BypassMedia}
+                       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
+                       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+                       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
+                       ,{<<"SIP-Headers">>, SIPHeaders}
                        ,{<<"Custom-Channel-Vars">>, {struct, RateData}}
                        | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
                       ],
@@ -85,17 +103,16 @@ send_park(State, Command) ->
 wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
 	{won, State1} ->
-	    ?LOG("Route won, sending command"),
+	    ?LOG("route won, sending offnet resource request"),
 	    send_offnet(State1, Command);
 	{lost, State2} ->
-	    ?LOG("Didn't win route, passive listening"),
+	    ?LOG("did not win route, passive listening"),
 	    wait_for_bridge(State2)
     end.
 
 send_offnet(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
     {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- [{<<"Control-Queue">>, CtlQ} | Command], V =/= undefined ]),
-    ?LOG("Sending offnet: ~s", [Payload]),
     amqp_util:offnet_resource_publish(Payload),
     wait_for_bridge(State).
 
@@ -139,7 +156,7 @@ wait_for_cdr(State) ->
 
 	    wait_for_other_leg(State2, aleg);
 	{timeout, State3} ->
-	    ?LOG("Timed out waiting for CDRs, cleaning up"),
+	    ?LOG("timed out waiting for CDRs, cleaning up"),
 
 	    ALeg = ts_callflow:get_aleg_id(State3),
 	    ts_callflow:finish_leg(State3, ALeg)
@@ -157,7 +174,7 @@ wait_for_other_leg(_State, bleg, {cdr, bleg, CDR, State1}) ->
     _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
     ts_callflow:finish_leg(State1, BLeg);
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
-    ?LOG("Timed out waiting for ~s CDR, cleaning up", [Leg]),
+    ?LOG("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ALeg = ts_callflow:get_aleg_id(State1),
     ts_callflow:finish_leg(State1, ALeg).
