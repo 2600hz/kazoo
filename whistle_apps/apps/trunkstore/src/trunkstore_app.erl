@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1, update_views/0, setup_views/0, setup_base_docs/0]).
+-export([start/2, stop/1, revise_views/0, setup_base_docs/0]).
 
 -include("ts.hrl").
 
@@ -13,7 +13,7 @@
 
 -spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
 start(_StartType, _StartArgs) ->
-    trunkstore_app:setup_views(),
+    trunkstore_app:revise_views(),
     trunkstore_app:setup_base_docs(),
     case trunkstore:start_link() of
 	{ok, P} -> {ok, P};
@@ -25,17 +25,10 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     ok.
 
-setup_views() ->
+revise_views() ->
     lists:foreach(fun(File) ->
-			  couch_mgr:load_doc_from_file(?TS_DB, trunkstore, File)
+			  couch_mgr:revise_doc_from_file(?TS_DB, trunkstore, File)
 		  end, ?TS_COUCH_DESIGN_DOCS).
-
-update_views() ->
-    lists:foreach(fun(File) ->
-			  couch_mgr:update_doc_from_file(?TS_DB, trunkstore, File)
-		  end, ?TS_COUCH_DESIGN_DOCS),
-    ts_acctmgr:update_views().
-
 
 setup_base_docs() ->
     lists:foreach(fun(File) -> couch_mgr:load_doc_from_file(?TS_DB, trunkstore, File) end, ?TS_COUCH_BASE_DOCS).
