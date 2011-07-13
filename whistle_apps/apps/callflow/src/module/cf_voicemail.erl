@@ -23,7 +23,7 @@
                            answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,store/3, b_play_and_collect_digits/6, b_play_and_collect_digit/2
                           ,noop/1, flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
-                          ,audio_macro/2
+                          ,audio_macro/2, flush_dtmf/1
                          ]).
 
 -record(keys, {
@@ -132,12 +132,12 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             answer(Call),
-            _ = flush(Call),
+            _ = flush_dtmf(Call),
             _ = compose_voicemail(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         <<"check">> ->
             answer(Call),
-            _ = flush(Call),
+            _ = flush_dtmf(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         _ ->

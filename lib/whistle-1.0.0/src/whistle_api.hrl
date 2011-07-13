@@ -221,7 +221,7 @@
 -define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Call-ID">>, <<"Resource-Type">>, <<"To-DID">>
                                       ,<<"Account-ID">>, <<"Control-Queue">>, <<"Application-Name">>
                                      ]).
--define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>
+-define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
                                                ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
                                                ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                               ]).
@@ -229,6 +229,7 @@
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
                                      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
                                      ,{<<"Application-Name">>, [<<"bridge">>]}
+                                     ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                     ]).
 -define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                                     ,{<<"Account-ID">>, fun is_binary/1}
@@ -426,12 +427,13 @@
                                       ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                       ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                       ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
-				      ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+				      ,<<"Media">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
 			    ,{<<"Application-Name">>, <<"bridge">>}
 			    ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
+                            ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
 			    ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
 			    ,?INSERT_AT_TUPLE
 			   ]).
