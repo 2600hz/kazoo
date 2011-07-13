@@ -290,14 +290,14 @@ to_binary(RD, #cb_context{resp_data=RespData}=Context) ->
 %% is returned.
 %% @end
 %%--------------------------------------------------------------------
--spec parse_path_tokens/1 :: (Tokens) -> [{binary(), term()},...] | [] when
+-spec parse_path_tokens/1 :: (Tokens) -> [{binary(), [binary(),...]},...] | [] when
       Tokens :: [binary(),...] | [].
 parse_path_tokens(Tokens) ->
     Loaded = [ whistle_util:to_binary(Mod) || {Mod, _, _, _} <- supervisor:which_children(crossbar_module_sup) ],
     parse_path_tokens(Tokens, Loaded, []).
 
--spec parse_path_tokens/3 :: (Tokens, Loaded, Events) -> proplist() when
-      Tokens :: [binary(),...],
+-spec parse_path_tokens/3 :: (Tokens, Loaded, Events) -> [{binary(), [binary(),...]},...] | [] when
+      Tokens :: [binary(),...] | [],
       Loaded :: [binary(),...],
       Events :: [{binary(), [binary(),...]},...] | [].
 parse_path_tokens([], _Loaded, Events) ->
@@ -305,7 +305,7 @@ parse_path_tokens([], _Loaded, Events) ->
 parse_path_tokens([Mod|T], Loaded, Events) ->
     case lists:member(<<"cb_", (Mod)/binary>>, Loaded) of
         false ->
-            parse_path_tokens([], Loaded, []);
+	    [];
         true ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(<<"cb_", (Elem)/binary>>, Loaded) end, T),
             Params1 = [ whistle_util:to_binary(P) || P <- Params ],
