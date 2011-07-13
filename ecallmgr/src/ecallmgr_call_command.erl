@@ -187,6 +187,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
             ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
             %% NOTE: at this time FS is not honoring call_timeout when set in the bridge string, arg...
             ok = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
+            ok = set_media_mode(Node, UUID, wh_json:get_value(<<"Media">>, JObj)),
             ok = set(Node, UUID, "failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"),
 	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
 				<<"simultaneous">> -> ",";
@@ -428,6 +429,16 @@ set_timeout(Node, UUID, Timeout) ->
         _Else ->
             ok
     end.
+
+-spec(set_media_mode/3 :: (Node :: atom(), UUID :: binary(), MediaMode :: undefined | binary()) -> ok | media_mode | {error, string()}).
+set_media_mode(Node, UUID, <<"process">>) ->
+    set(Node, UUID, <<"bypass_media=false">>);
+set_media_mode(Node, UUID, <<"bypass">>) ->
+    set(Node, UUID, <<"bypass_media=true">>);
+%%set_media_mode(_Node, _UUID, <<"auto">>) ->
+%%    set(Node, UUID, <<"bypass_media=TODO">>);
+set_media_mode(_Node, _UUID, _) ->
+    ok.
 
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
