@@ -211,18 +211,19 @@ sip_headers([], []) ->
 sip_headers([], Acc) ->
     {struct, lists:reverse(Acc)}.
 
--spec failover/1 :: (L) -> undefined | json_object() when
-      L :: list(undefined | json_object() | binary()).
+-spec failover/1 :: (L) -> json_object() when
+      L :: [json_object() | binary(),...].
 %% cascade from DID to Srv to Acct
 failover(L) ->
     case simple_extract(L) of
 	B when is_binary(B) ->
-	    undefined;
-	Other -> Other
+	    ?EMPTY_JSON_OBJECT;
+	Other ->
+	    Other
     end.
 
 -spec progress_timeout/1 :: (L) -> undefined | json_object() | binary() when
-      L :: list(undefined | json_object() | binary()).
+      L :: [undefined | json_object() | binary(),...].
 progress_timeout(L) -> simple_extract(L).
 
 -spec bypass_media/1 :: (L) -> undefined | json_object() | binary() when

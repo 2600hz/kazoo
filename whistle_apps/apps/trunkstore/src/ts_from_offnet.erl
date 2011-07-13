@@ -44,7 +44,7 @@ endpoint_data(State) ->
 	      ],
     ?LOG("Endpoint loaded"),
 
-    State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, JObj, ?EMPTY_JSON_OBJECT)),
+    State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, EP, ?EMPTY_JSON_OBJECT)),
 
     send_park(State1, Command).
 
