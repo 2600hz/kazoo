@@ -29,7 +29,7 @@
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).
 -define(VIEW_FILE, <<"views/c2c.json">>).
--define(CB_LIST, {<<"click2call">>, <<"crossbar_listing">>}).
+-define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(PVT_TYPE, <<"click2call">>).
 -define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {<<"accounts">>, [_]}]).
 
@@ -340,21 +340,7 @@ load_c2c_history(C2CId, Context) ->
 update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
     crossbar_doc:load_merge(C2CId, Doc, Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec(is_valid_connect_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
-is_valid_connect_doc(JObj) ->
-    case lists:any(fun(undefined) -> true; (_) -> false end, [wh_json:get_value(<<"contact">>, JObj)]) of
-	true -> {false, [<<"contact">>]};
-	_ -> {true, []}
-    end.
-
-establish_c2c(C2CId, #cb_context{req_data=Req, account_id=[AccountId|_]}=Context) ->
+establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId}=Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
 
     Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),

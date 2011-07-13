@@ -38,7 +38,7 @@
 
 -record(state, {
 	  subscriber_list = [] :: evtsub_subscriber_list()
-	 ,subscriptions_allowed = [<<"directory.auth_req">>, <<"dialplan.route_req">>
+	 ,subscriptions_allowed = [<<"directory.authn_req">>, <<"dialplan.route_req">>
 				       ,<<"events.*">>, <<"cdr.*">>] :: list(binary())
 	 }).
 -record(stream_state, {
@@ -600,8 +600,8 @@ start_consuming(Q) ->
 stop_consuming(Q) ->
     amqp_util:basic_cancel(Q).
 
-bind_to_exchange(<<"directory.auth_req">>, Q) ->
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ);
+bind_to_exchange(<<"directory.authn_req">>, Q) ->
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ);
 bind_to_exchange(<<"dialplan.route_req">>, Q) ->
     amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ);
 bind_to_exchange(<<"events.", CallID/binary>>, Q) ->
@@ -610,8 +610,8 @@ bind_to_exchange(<<"cdr.", CallID/binary>>, Q) ->
     amqp_util:bind_q_to_callevt(Q, CallID, cdr).
 
 -spec(validate_amqp/3 :: (Category :: binary(), Name :: binary(), Prop :: json_object()) -> boolean()).
-validate_amqp(<<"directory">>, <<"auth_req">>, Prop) ->
-    whistle_api:auth_req_v(Prop);
+validate_amqp(<<"directory">>, <<"authn_req">>, Prop) ->
+    whistle_api:authn_req_v(Prop);
 validate_amqp(<<"dialplan">>, <<"route_req">>, Prop) ->
     whistle_api:route_req_v(Prop);
 validate_amqp(<<"call_event">>, _, Prop) ->

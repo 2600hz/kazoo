@@ -290,12 +290,16 @@ to_binary(RD, #cb_context{resp_data=RespData}=Context) ->
 %% is returned.
 %% @end
 %%--------------------------------------------------------------------
--spec(parse_path_tokens/1 :: (Tokens :: list()) -> proplist()).
+-spec parse_path_tokens/1 :: (Tokens) -> [{binary(), term()},...] | [] when
+      Tokens :: [binary(),...] | [].
 parse_path_tokens(Tokens) ->
-    Loaded = lists:map(fun({Mod, _, _, _}) -> whistle_util:to_binary(Mod) end, supervisor:which_children(crossbar_module_sup)),
+    Loaded = [ whistle_util:to_binary(Mod) || {Mod, _, _, _} <- supervisor:which_children(crossbar_module_sup) ],
     parse_path_tokens(Tokens, Loaded, []).
 
--spec(parse_path_tokens/3 :: (Tokens :: list(), Loaded :: list(), Events :: list()) -> proplist()).
+-spec parse_path_tokens/3 :: (Tokens, Loaded, Events) -> proplist() when
+      Tokens :: [binary(),...],
+      Loaded :: [binary(),...],
+      Events :: [{binary(), [binary(),...]},...] | [].
 parse_path_tokens([], _Loaded, Events) ->
     Events;
 parse_path_tokens([Mod|T], Loaded, Events) ->
@@ -377,7 +381,8 @@ extract_files_and_params(RD, Context) ->
 	?LOG("extracting files with boundry: ~s", [Boundry]),
 	{ReqProp, FilesProp} = get_streamed_body(
 				 webmachine_multipart:stream_parts(
-				   wrq:stream_req_body(RD, 1024), Boundry), [], []),
+				   wrq:stream_req_body(RD, 1024), Boundry
+				  ), [], []),
 	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
     catch
 	_A:_B ->
@@ -770,7 +775,8 @@ add_cors_headers(RD, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_cors_headers/1 :: (Context :: #cb_context{}) -> proplist()).
+-spec get_cors_headers/1 :: (Context) -> [{binary(), binary() | string()},...] when
+      Context :: #cb_context{}.
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     ?LOG("adding CORS headers to response"),
     [
@@ -797,7 +803,8 @@ is_cors_preflight(RD) ->
 %% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(create_resp_envelope/1 :: (Context :: #cb_context{}) -> proplist()).
+-spec create_resp_envelope/1 :: (Context) -> [{binary(), binary() | atom() | json_object() | json_objects()},...] when
+      Context :: #cb_context{}.
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken}) ->
     ?LOG("generating sucessfull response"),
     [{<<"auth_token">>, AuthToken}
@@ -897,7 +904,9 @@ encode_xml([{K, V}|T], Xml) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec(list_to_xml/2 :: (Objs :: mochijson(), Xml :: iolist()) -> iolist()).
+-spec list_to_xml/2 :: (Objs, Xml) -> iolist() when
+      Objs :: mochijson(),
+      Xml :: iolist().
 list_to_xml([], Xml) ->
     Xml;
 list_to_xml([{struct, Terms}|T], Xml) ->
@@ -926,7 +935,9 @@ list_to_xml([E|T], Xml) ->
 %% attribute if called as xml_tag/3
 %% @end
 %%--------------------------------------------------------------------
--spec(xml_tag/2 :: (Value :: iolist(), Type :: iolist()) -> iolist()).
+-spec xml_tag/2 :: (Value, Type) -> iolist() when
+      Value :: iolist(),
+      Type :: iolist().
 xml_tag(Value, Type) ->
     io_lib:format("<~s>~s</~s>~n", [Type, Value, Type]).
 xml_tag(Key, Value, Type) ->

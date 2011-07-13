@@ -41,7 +41,7 @@
 -define(ROUTE_BRIDGE_RESPONSE,
 "<document type=\"freeswitch/xml\">
   <section name=\"dialplan\" description=\"Route Bridge Response\">
-    <context name=\"context_2\">
+    <context name=\"~s\">
     ~s
       <extension name=\"failed_bridge\" continue=\"false\">
         <condition>
@@ -68,7 +68,7 @@
 -define(ROUTE_PARK_RESPONSE,
 "<document type=\"freeswitch/xml\">
   <section name=\"dialplan\" description=\"Route Park Response\">
-    <context name=\"context_2\">
+    <context name=\"~s\">
       <extension name=\"park\">
         <condition>
           <action application=\"park\" />
@@ -91,7 +91,7 @@
 -define(ROUTE_ERROR_RESPONSE,
 "<document type=\"freeswitch/xml\">
   <section name=\"dialplan\" description=\"Route Bridge Response\">
-    <context name=\"context_2\">
+    <context name=\"~s\">
       <extension>
         <condition>
           <action application=\"respond\" data=\"~s~s\" />

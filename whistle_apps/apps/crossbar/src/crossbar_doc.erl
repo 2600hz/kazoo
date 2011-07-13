@@ -43,7 +43,7 @@ current_doc_vsn() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(load/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load(_DocId, #cb_context{db_name=undefined}=Context) ->
+load(_DocId, #cb_context{db_name = <<>>}=Context) ->
     crossbar_util:response_db_missing(Context);
 load(DocId, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:open_doc(DB, DocId) of
@@ -67,7 +67,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             end;
         _Else ->
 	    ?LOG_SYS("Unexpected return from datastore: ~p", [_Else]),
-            Context#cb_context{doc=[]}
+            Context#cb_context{doc=?EMPTY_JSON_OBJECT}
     end.
 
 %%--------------------------------------------------------------------
@@ -95,7 +95,7 @@ load_from_file(Db, File) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_merge/3 :: (DocId :: binary(), Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
-load_merge(_DocId, _Data, #cb_context{db_name=undefined}=Context) ->
+load_merge(_DocId, _Data, #cb_context{db_name = <<>>}=Context) ->
     ?LOG_SYS("db missing from #cb_context for doc ~s", [_DocId]),
     crossbar_util:response_db_missing(Context);
 load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
@@ -125,7 +125,7 @@ load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_view/3 :: (View :: binary(), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
-load_view(_View, _Options, #cb_context{db_name=undefined}=Context) ->
+load_view(_View, _Options, #cb_context{db_name = <<>>}=Context) ->
     ?LOG_SYS("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
     crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB}=Context) ->
@@ -145,7 +145,7 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 	     };
         _Else ->
 	    ?LOG_SYS("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
-            Context#cb_context{doc=[]}
+            Context#cb_context{doc=?EMPTY_JSON_OBJECT}
     end.
 
 %%--------------------------------------------------------------------
@@ -181,7 +181,7 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(load_attachment/3 :: (DocId :: binary(), AName :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_attachment(_DocId, _AName, #cb_context{db_name=undefined}=Context) ->
+load_attachment(_DocId, _AName, #cb_context{db_name = <<>>}=Context) ->
     ?LOG_SYS("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
     crossbar_util:response_db_missing(Context);
 load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
@@ -217,7 +217,7 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(save/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-save(#cb_context{db_name=undefined}=Context) ->
+save(#cb_context{db_name = <<>>}=Context) ->
     ?LOG_SYS("DB undefined, cannot save"),
     crossbar_util:response_db_missing(Context);
 save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context) ->
@@ -272,7 +272,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(save_attachment/5 :: (DocId :: binary(), AName :: binary(), Contents :: binary(), Context :: #cb_context{}, Options :: proplist()) -> #cb_context{}).
-save_attachment(_DocId, _AName, _, #cb_context{db_name=undefined}=Context, _) ->
+save_attachment(_DocId, _AName, _, #cb_context{db_name = <<>>}=Context, _) ->
     ?LOG_SYS("Saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
 save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
@@ -314,7 +314,7 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 %% @end
 %%--------------------------------------------------------------------
 -spec(delete/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-delete(#cb_context{db_name=undefined, doc=JObj}=Context) ->
+delete(#cb_context{db_name = <<>>, doc=JObj}=Context) ->
     ?LOG_SYS("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_util:response_db_missing(Context);
 delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
@@ -327,7 +327,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
 	{ok, _Doc} ->
 	    ?LOG_SYS("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
             Context#cb_context{
-	       doc=undefined
+	       doc = ?EMPTY_JSON_OBJECT
 	      ,resp_status=success
 	      ,resp_data=[]
 	     };
@@ -346,7 +346,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(delete_attachment/3 :: (DocId :: binary(), AName :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-delete_attachment(_DocId, _AName, #cb_context{db_name=undefined}=Context) ->
+delete_attachment(_DocId, _AName, #cb_context{db_name = <<>>}=Context) ->
     ?LOG_SYS("deleting attachment ~s from doc ~s failed: no db", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
 delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->

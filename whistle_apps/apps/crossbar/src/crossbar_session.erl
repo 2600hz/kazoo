@@ -308,7 +308,8 @@ to_doc(#session{'_id'=Id, '_rev'=Rev}=S, Now) ->
 		  ,{<<"session">>, SessionTuple}
 		 ]).
 
--spec(from_doc/1 :: (JObj :: json_object()) -> #session{}).
+-spec from_doc/1 :: (JObj) -> #session{} when
+      JObj :: json_object().
 from_doc(JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
     Rev = wh_json:get_value(<<"_rev">>, JObj),

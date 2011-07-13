@@ -259,7 +259,7 @@ authorize_api_key(Context, ApiKey) ->
     case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=[JObj|_]}->
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
-        #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
+        #cb_context{resp_status=success, doc=JObj} when JObj =/= ?EMPTY_JSON_OBJECT->
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
@@ -272,7 +272,7 @@ authorize_api_key(Context, ApiKey) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_token/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-create_token(_, #cb_context{doc=undefined}=Context) ->
+create_token(_, #cb_context{doc=?EMPTY_JSON_OBJECT}=Context) ->
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
