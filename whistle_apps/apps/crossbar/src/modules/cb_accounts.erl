@@ -640,14 +640,16 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
 -spec load_account_db/2 :: (AccountId, Context) -> #cb_context{} when
       AccountId :: binary() | [binary(),...],
       Context :: #cb_context{}.
-load_account_db(AccountId, Context)->
+load_account_db([AccountId|_], Context) ->
+    load_account_db(AccountId, Context);
+load_account_db(AccountId, Context) when is_binary(AccountId) ->
     DbName = whapps_util:get_db_name(AccountId, encoded),
     ?LOG_SYS("Account determined that db name: ~s", [DbName]),
     case couch_mgr:db_exists(DbName) of
         false ->
             Context#cb_context{
                  db_name = <<>>
-                ,account_id = undefined
+                ,account_id = <<>>
             };
         true ->
             Context#cb_context{
