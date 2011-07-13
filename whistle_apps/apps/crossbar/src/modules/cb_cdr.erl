@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/cdr.json">>).
--define(CB_LIST, {<<"cdr">>, <<"crossbar_listing">>}).
+-define(CB_LIST, <<"cdr/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -252,15 +252,15 @@ normalize_view_results(JObj, Acc) ->
 %% Attempt to load list of CDR, each summarized.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_cdr_summary/2 :: (Context :: #cb_context{}, QueryString :: list()) -> #cb_context{}).
-load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryString) ->
-    case QueryString of
-        [_|_] -> case crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryString, []) of
-                     [_|_]=DocIds -> crossbar_doc:load_view(?CB_LIST, [{<<"keys">>, DocIds}], Context, fun normalize_view_results/2);
-                     _ -> crossbar_util:response_faulty_request(Context)
-
-                 end;
-        _ -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2)
+-spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
+      Context :: #cb_context{},
+      QueryParams :: proplist().
+load_cdr_summary(Context, []) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    case crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams) of
+	[] -> crossbar_util:response_faulty_request(Context);
+	DocIds -> crossbar_doc:load_view(?CB_LIST, [{<<"keys">>, DocIds}], Context, fun normalize_view_results/2)
     end.
 
 %%--------------------------------------------------------------------
@@ -269,6 +269,8 @@ load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryString) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_cdr/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_cdr/2 :: (CdrId, Context) -> #cb_context{} when
+      CdrId :: binary(),
+      Context :: #cb_context{}.
 load_cdr(CdrId, Context) ->
     crossbar_doc:load(CdrId, Context).

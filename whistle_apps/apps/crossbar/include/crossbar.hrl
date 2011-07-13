@@ -47,8 +47,8 @@
 	  ,req_files = [] :: list(tuple(binary(), json_object())) | []
           ,req_data = [] :: mochijson()
           ,account_id = undefined :: binary() | undefined
-          ,db_name = undefined :: binary() | undefined
-          ,doc = undefined :: json_object() | json_objects() | undefined
+          ,db_name = <<>> :: binary()
+          ,doc = ?EMPTY_JSON_OBJECT :: json_object() | json_objects()
           ,resp_expires = {{1999,1,1},{0,0,0}}
           ,resp_etag = undefined :: undefined | automatic | string()
 	  ,resp_status = error :: crossbar_status()
