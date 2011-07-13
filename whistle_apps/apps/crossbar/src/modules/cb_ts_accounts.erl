@@ -270,9 +270,8 @@ create_ts_account(#cb_context{req_data=JObj1}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            JObj2 = wh_json:set_value(<<"_id">>, <<(wh_json:get_value(<<"name">>, JObj1))/binary>>, JObj1),
-            JObj3 = wh_json:set_value(<<"type">>, <<"sys_info">>, JObj2),
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_account">>, JObj3)
+            JObj2 = wh_json:set_value(<<"type">>, <<"sys_info">>, JObj1),
+            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"sip_service">>, JObj2)
                                ,resp_status=success
                               }
     end.
