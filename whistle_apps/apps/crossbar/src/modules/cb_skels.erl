@@ -25,8 +25,8 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/skels.json">>).
--define(CB_LIST, {<<"skels">>, <<"crossbar_listing">>}).
--define(GROUP_BY_SKELNAME, {<<"skels">>, <<"group_by_skelname">>}).
+-define(CB_LIST, <<"skels/crossbar_listing">>).
+-define(GROUP_BY_SKELNAME, <<"skels/group_by_skelname">>).
 
 %%%===================================================================
 %%% API
@@ -265,7 +265,8 @@ validate(_, Context) ->
 %% Create a new skel document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_skel/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_skel/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 create_skel(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -309,7 +310,8 @@ update_skel(SkelId, #cb_context{req_data=JObj}=Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(read_skel_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec read_skel_summary/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 read_skel_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -330,6 +332,10 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary(),...] | []} when
+      JObj :: json_object().
+is_valid_doc(JObj) ->
+    case wh_json:get_value(<<"default">>, JObj) of
+	undefined -> {false, [<<"default">>]};
+	_ -> {true, []}
+    end.
