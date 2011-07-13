@@ -270,8 +270,9 @@ create_ts_account(#cb_context{req_data=JObj1}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            JObj2 = wh_json:set_value(<<"_id">>, <<"info_", (wh_json:get_value(<<"name">>, JObj1))/binary>>, JObj1),
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_account">>, JObj2)
+            JObj2 = wh_json:set_value(<<"_id">>, <<(wh_json:get_value(<<"name">>, JObj1))/binary>>, JObj1),
+            JObj3 = wh_json:set_value(<<"type">>, <<"sys_info">>, JObj2),
+            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_account">>, JObj3)
                                ,resp_status=success
                               }
     end.
@@ -284,15 +285,7 @@ create_ts_account(#cb_context{req_data=JObj1}=Context) ->
 %%--------------------------------------------------------------------
 -spec(read_ts_account/2 :: (TSAccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 read_ts_account(TSAccountId, Context) ->
-    case crossbar_doc:load(<<"info_", TSAccountId/binary>>, Context) of
-        #cb_context{resp_status=success, resp_data=Data1}=Context1 ->
-            Id = case wh_json:get_value(<<"id">>, Data1) of
-                     <<"info_", Name/binary>> -> Name;
-                     Else -> Else
-                 end,
-            Context1#cb_context{resp_data=wh_json:set_value(<<"id">>, Id, Data1)};
-        Else -> Else
-    end.
+    crossbar_doc:load(TSAccountId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -307,7 +300,7 @@ update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            crossbar_doc:load_merge(<<"info_", TSAccountId/binary>>, JObj, Context)
+            crossbar_doc:load_merge(TSAccountId, JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
