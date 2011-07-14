@@ -17,6 +17,11 @@
 %% These are temporary until the viewing of numbers in an account can
 %% be standardized
 -define(TS_DB, <<"ts">>).
+
+%% TODO: This makes stepswitch dependent on callflow view... This is safe-ish
+%% beacuse if you reconcile without the callflow view then they will never
+%% run anyway (no callflow whapp connected to the db to execute). But it is
+%% still nasty...
 -define(CALLFLOW_VIEW, {<<"callflow">>, <<"listing_by_number">>}).
 
 %%--------------------------------------------------------------------
@@ -38,16 +43,16 @@ reconcile(all) ->
     done;
 reconcile(AccountId) when not is_binary(AccountId) ->
     reconcile(whistle_util:to_binary(AccountId));
-reconcile(<<"info_", _/binary>> = AccountId) ->
-    Numbers = get_trunkstore_account_numbers(AccountId),
-    reconcile_account_route(AccountId, Numbers),
-    done;
 reconcile(AccountId) ->
-    Numbers = get_callflow_account_numbers(
-                whapps_util:get_db_name(AccountId, encoded)),
+    Db = whapps_util:get_db_name(AccountId, encoded),
+    Numbers = case couch_mgr:db_exists(Db) of
+                  true ->
+                      get_callflow_account_numbers(Db);
+                  false ->
+                      get_trunkstore_account_numbers(AccountId)
+              end,
     reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
     done.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -183,6 +188,7 @@ get_trunkstore_account_numbers(Account) ->
         {ok, JObj} ->
 	    case is_trunkstore_account(JObj) of
 		true ->
+                    ?LOG("account ~s is a trunkstore doc...", [Account]),
 		    Assigned = [wh_json:get_value(<<"DIDs">>, Server, ?EMPTY_JSON_OBJECT)
 				|| Server <- wh_json:get_value(<<"servers">>, JObj, ?EMPTY_JSON_OBJECT)],
 		    Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, ?EMPTY_JSON_OBJECT)],
