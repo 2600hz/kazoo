@@ -619,6 +619,8 @@ build_loopback_request(JObj, Number, Q) ->
 -spec(build_bridge_request/3 :: (JObj :: json_object(), Endpoints :: endpoints(), Q :: binary())
                                 -> proplist()).
 build_bridge_request(JObj, Endpoints, Q) ->
+    CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
+                             ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, build_endpoints(Endpoints, 0, [])}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -630,7 +632,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
-               ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
+               ,{<<"Custom-Channel-Vars">>, CCVs}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
