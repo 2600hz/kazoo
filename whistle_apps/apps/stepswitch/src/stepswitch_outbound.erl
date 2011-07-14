@@ -749,7 +749,10 @@ wait_for_bridge(Timeout) ->
                 { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
                     {ok, JObj};
                 { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-                    {fail, JObj};
+                    case wh_json:get_value(<<"Application-Response">>, JObj) of
+                        <<"SUCCESS">> -> {ok, JObj};
+                        _ -> {fail, JObj}
+                    end;
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {hungup, JObj};
                 { _, _, <<"error">> } ->
