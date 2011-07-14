@@ -332,9 +332,9 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec is_valid_doc/1 :: (JObj :: json_object()) -> {boolean(), [binary(),...] | []}.
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"default">>, JObj) of
+    case wh_json:get_value(<<"account">>, JObj) of
 	undefined ->
-	    {false, [<<"default">>]};
+	    {false, [<<"account">>]};
 	_ ->
 	    {true, []}
     end.
