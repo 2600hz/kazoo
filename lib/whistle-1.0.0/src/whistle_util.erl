@@ -58,7 +58,7 @@ to_hex(S) ->
 %% +18001234567 -> +18001234567
 -spec(to_e164/1 :: (DID :: binary()) -> binary()).
 to_e164(<<"011", N/binary>>) ->
-    to_e164(N);
+    <<$+, N/binary>>;
 to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) =:= 80 -> % 8bits/ch * 10ch
     E164;
 %% 18001234567 -> +18001234567
