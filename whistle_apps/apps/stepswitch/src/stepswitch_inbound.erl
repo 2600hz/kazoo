@@ -218,17 +218,19 @@ start_amqp() ->
 %%--------------------------------------------------------------------
 -spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object()) -> no_return()).
 process_req({<<"dialplan">>, <<"route_req">>}, JObj) ->
-    case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
-        ?EMPTY_JSON_OBJECT ->
-            ?LOG_START("received new inbound dialplan route request"),
-            _ =  inbound_handler(JObj);
-        CCVs ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    case wh_json:get_value(<<"Account-ID">>, CCVs) of
+        undefined ->
             case wh_json:get_value(<<"Offnet-Loopback-Number">>, CCVs) of
-                undefined -> ok;
+                undefined ->
+                    ?LOG_START("received new inbound dialplan route request"),
+                    _ =  inbound_handler(JObj);
                 Number ->
                     ?LOG_START("received inter account inbound dialplan route request"),
                     _ =  inbound_handler(Number, JObj)
-            end
+            end;
+        _ ->
+            ok
     end;
 
 process_req({_, _}, _) ->
@@ -249,7 +251,7 @@ inbound_handler(Number, JObj) ->
         {ok, AccountId, _} ->
             ?LOG("number associated with account ~s", [AccountId]),
             relay_route_req(
-              wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined), JObj)
+              wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
             ?LOG_END("unable to get account id ~w", [R])
@@ -306,11 +308,16 @@ lookup_account_by_number(Number) ->
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec(custom_channel_vars/2 :: (AccountId :: binary(), AuthId :: binary()) -> json_object()).
-custom_channel_vars(AccountId, AuthId) ->
+-spec(custom_channel_vars/3 :: (AccountId :: binary(), AuthId :: binary(), JObj :: json_object()) -> json_object()).
+custom_channel_vars(AccountId, AuthId, JObj) ->
+    {struct, CCVs} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
     Vars = [{<<"Account-ID">>, AccountId}
             ,{<<"Inception">>, <<"off-net">>}
             ,{<<"Authorizing-ID">>, AuthId}
+            |[Var || {K, _}=Var <- CCVs
+                         ,K =/= <<"Account-ID">>
+                         ,K =/= <<"Inception">>
+                         ,K =/= <<"Authorizing-ID">>]
             ],
     {struct, [ KV || {_, V}=KV <- Vars, V =/= undefined ]}.
 

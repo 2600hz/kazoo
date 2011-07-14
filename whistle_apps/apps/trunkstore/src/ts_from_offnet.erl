@@ -34,9 +34,13 @@ endpoint_data(State) ->
     true = whistle_api:bridge_req_endpoint_v(EP),
     ?LOG("Valid endpoint"),
 
-    MediaHandling = case whistle_util:is_false(wh_json:get_value(<<"Bypass-Media">>, EP)) of
-                        true -> <<"process">>; %% bypass media is false, process media
-                        false -> <<"bypass">>
+    MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
+                        undefined ->
+                            case whistle_util:is_false(wh_json:get_value(<<"Bypass-Media">>, EP)) of
+                                true -> <<"process">>; %% bypass media is false, process media
+                                false -> <<"bypass">>
+                            end;
+                        _ -> <<"process">>
                     end,
 
     Command = [
