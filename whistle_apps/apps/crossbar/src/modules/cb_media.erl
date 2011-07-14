@@ -25,8 +25,6 @@
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
 -define(VIEW_FILE, <<"views/media_doc.json">>).
--define(AGG_DB, <<"media_files">>).
--define(AGG_FILTER, <<"media_doc/export">>).
 
 -define(MEDIA_MIME_TYPES, ["audio/x-wav", "audio/mpeg", "application/octet-stream"]).
 
@@ -162,31 +160,27 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Conte
     end,
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, Context | Params]}, State) ->
-    case Context#cb_context.req_files of
-	[] ->
-	    spawn(fun() ->
-			  crossbar_util:binding_heartbeat(Pid),
-			  {Context1, Resp} = case Context#cb_context.resp_status =:= success of
-						 true -> {crossbar_doc:save(Context), true};
-						 false -> {Context, false}
-					     end,
-			  Pid ! {binding_result, Resp, [RD, Context1, Params]}
-		  end);
-	[{_, FileObj}] ->
-	    spawn(fun() ->
-			  crossbar_util:binding_heartbeat(Pid),
-			  [MediaID, ?BIN_DATA] = Params,
-			  {struct, Headers} = wh_json:get_value(<<"headers">>, FileObj),
-			  Contents = wh_json:get_value(<<"contents">>, FileObj),
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_context{req_files=[], resp_status=RespStatus}=Context | Params]}, State) ->
+    spawn(fun() ->
+		  crossbar_util:binding_heartbeat(Pid),
+		  #cb_context{resp_status=Resp}=Context1 = case RespStatus =:= success of
+							       true -> crossbar_doc:save(Context);
+							       false -> Context
+							   end,
+		  Pid ! {binding_result, Resp, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
 
-			  Context1 = update_media_binary(MediaID, Contents, Context, Headers),
-			  spawn(fun() ->
-					whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
-				end),
-			  Pid ! {binding_result, (Context1#cb_context.resp_status =:= success), [RD, Context1, Params]}
-		  end)
-    end,
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_context{req_files=[{_, FileObj}]}=Context | Params]}, State) ->
+    spawn(fun() ->
+		  crossbar_util:binding_heartbeat(Pid, infinity),
+		  [MediaID, ?BIN_DATA] = Params,
+		  HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
+		  Contents = wh_json:get_value(<<"contents">>, FileObj),
+
+		  #cb_context{resp_status=RespStatus}=Context1 = update_media_binary(MediaID, Contents, Context, HeadersJObj),
+		  Pid ! {binding_result, (RespStatus =:= success), [RD, Context1, Params]}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.media">>, [RD, Context | Params]}, State) ->
@@ -199,7 +193,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.media">>, [RD, Conte
 						     DocID = wh_json:get_value(<<"id">>, RespData),
 						     {Context2#cb_context{resp_data=[], resp_headers=[{"Location", DocID} | RHs]}, true};
 						 Context3 ->
-						     logger:format_log(info, "MEDIA.v.PUT: ERROR~n", []),
+						     ?LOG_SYS("PUT: ERROR"),
 						     {Context3, false}
 					     end,
 			  Pid ! {binding_result, Resp, [RD, Context1, Params]};
@@ -236,14 +230,12 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, State) ->
-    couch_mgr:db_create(?AGG_DB),
     whapps_util:update_all_accounts(?VIEW_FILE),
-    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "MEDIA(~p): unhandled info ~p~n", [self(), _Info]),
+    ?LOG_SYS("Unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -394,10 +386,10 @@ validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
     get_media_binary(MediaID, Context);
 
 validate([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[]}=Context) ->
+    ?LOG_SYS("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context) ->
-    Contents = wh_json:get_value([<<"contents">>], FileObj),
-    case Contents of
+validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context) ->
+    case wh_json:get_value([<<"contents">>], FileObj, <<>>) of
 	<<>> ->
 	    crossbar_util:response_invalid_data([<<"empty_file">>], Context);
 	_ ->
@@ -405,7 +397,11 @@ validate([MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>, req_files=[{_,
     end;
 
 validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
-    logger:format_log(info, "Media.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
+    ?LOG_SYS("Failed validating request"),
+    ?LOG_SYS("Params: ~p", [Params]),
+    ?LOG_SYS("Verb: ~s", [Verb]),
+    ?LOG_SYS("Nouns: ~p", [Nouns]),
+    ?LOG_SYS("Data: ~p", [D]),
     crossbar_util:response_faulty_request(Context).
 
 create_media_meta(Data, Context) ->
@@ -417,16 +413,25 @@ create_media_meta(Data, Context) ->
 		       end, [], ?METADATA_FIELDS),
     crossbar_doc:save(Context#cb_context{doc={struct, [{<<"pvt_type">>, <<"media">>} | Doc1]}}).
 
-update_media_binary(MediaID, Contents, Context, Options) ->
-    %% logger:format_log(info, "media: save attachment: ~p: Opts: ~p~n", [MediaID, Options]),
-    Opts = [{content_type, props:get_value(<<"content-type">>, Options, <<"application/octet-stream">>)}
-	    ,{content_length, props:get_value(<<"content-length">>, Options, binary:referenced_byte_size(Contents))}],
+update_media_binary(MediaID, Contents, Context, {struct, Options}=HeadersJObj) ->
+    CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
+    CL = whistle_util:to_integer(wh_json:get_value(<<"content_length">>, HeadersJObj, binary:referenced_byte_size(Contents))),
+    Opts = [{content_type, CT}, {content_length, CL}],
+
+    ?LOG("Setting Content-Type to ~s", [CT]),
+    ?LOG("Setting Content-Length to ~b", [CL]),
+
     case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Opts) of
 	#cb_context{resp_status=success}=Context1 ->
+	    ?LOG("Saved attachement successfully"),
 	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
-	    Doc1 = lists:foldl(fun({K,V}, D0) -> wh_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0) end, Doc, Options),
+	    Doc1 = lists:foldl(fun({K,V}, D0) ->
+				       wh_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0)
+			       end, Doc, Options),
 	    crossbar_doc:save(Context1#cb_context{doc=Doc1});
-	C -> C
+	C ->
+	    ?LOG("Failed to save attachment"),
+	    C
     end.
 
 %% GET /media

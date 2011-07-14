@@ -299,7 +299,7 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
             };
         _Else ->
 	    ?LOG_SYS("Saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
-            Context
+            crossbar_util:response_datastore_conn_refused(Context)
     end.
 
 %%--------------------------------------------------------------------

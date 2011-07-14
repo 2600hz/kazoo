@@ -44,24 +44,28 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     ?LOG("host: ~s", [wrq:get_req_header("Host", RD)]),
     ?LOG("content type: ~s", [wrq:get_req_header("Content-Type", RD)]),
     ?LOG("accepts: ~s", [wrq:get_req_header("Accept", RD)]),
-    ?LOG("method: ~s", [wrq:method(RD)]),
+    ?LOG("method coming in: ~s", [wrq:method(RD)]),
     ?LOG("user-agent: ~s", [wrq:get_req_header("User-Agent", RD)]),
 
-    Body = wrq:req_body(RD),
-    Context1 = case wrq:get_req_header("Content-Type", RD) of
+    %% Body = wrq:req_body(RD),
+    #cb_context{req_json=ReqJSON}=Context1 = case wrq:get_req_header("Content-Type", RD) of
 		   "multipart/form-data" ++ _ ->
+		       extract_files_and_params(RD, Context);
+		   "application/x-www-form-urlencoded" ++ _ ->
 		       extract_files_and_params(RD, Context);
 		   "application/json" ++ _ ->
 		       Context#cb_context{req_json=get_json_body(RD)};
 		   "application/x-json" ++ _ ->
 		       Context#cb_context{req_json=get_json_body(RD)};
-		   _ when Body =:= undefined; Body =:= <<>> ->
-                       Context#cb_context{req_json=?EMPTY_JSON_OBJECT};
+		   %% _ when Body =:= undefined; Body =:= <<>> ->
+                   %%     Context#cb_context{req_json=?EMPTY_JSON_OBJECT};
 		   _ ->
 		       extract_file(RD, Context#cb_context{req_json=?EMPTY_JSON_OBJECT})
 	       end,
 
-    Verb = get_http_verb(RD, Context1#cb_context.req_json),
+    Verb = get_http_verb(RD, ReqJSON),
+    ?LOG("method using for request: ~s", [Verb]),
+
     Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
 
     case parse_path_tokens(Tokens) of
@@ -379,15 +383,16 @@ extract_files_and_params(RD, Context) ->
     try
 	Boundry = webmachine_multipart:find_boundary(RD),
 	?LOG("extracting files with boundry: ~s", [Boundry]),
-	{ReqProp, FilesProp} = get_streamed_body(
-				 webmachine_multipart:stream_parts(
-				   wrq:stream_req_body(RD, 1024), Boundry
-				  ), [], []),
+	StreamReqBody = wrq:stream_req_body(RD, 1024),
+	StreamParts = webmachine_multipart:stream_parts(StreamReqBody, Boundry),
+
+	{ReqProp, FilesProp} = get_streamed_body(StreamParts),
+	?LOG("extracted request vars(~b) and files(~b)", [length(ReqProp), length(FilesProp)]),
 	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
     catch
 	_A:_B ->
 	    ?LOG("exception extracting files and params: ~p:~p", [_A, _B]),
-	    ?LOG("stacktrace: ~p", [erlang:get_stacktrace()]),
+	    ?LOG_END("stacktrace: ~p", [erlang:get_stacktrace()]),
 	    Context
     end.
 
@@ -406,14 +411,21 @@ extract_file(RD, Context) ->
 				  }]
 		      }.
 
+get_streamed_body(StreamReq) ->
+    get_streamed_body(StreamReq, [], []).
+
 -spec(get_streamed_body/3 :: (Term :: term(), ReqProp :: proplist(), FilesProp :: proplist()) -> tuple(proplist(), proplist())).
 get_streamed_body(done_parts, ReqProp, FilesProp) ->
+    ?LOG("Done streaming body"),
     {ReqProp, FilesProp};
-get_streamed_body({{_, {Params, []}, Content}, Next}, ReqProp, FilesProp) ->
+get_streamed_body({{_Ignored, {Params, []}, Content}, Next}, ReqProp, FilesProp) ->
     Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
     Value = binary:replace(whistle_util:to_binary(Content), <<$\r,$\n>>, <<>>, [global]),
+
+    ?LOG("streamed query params: ~s: ~s", [Key, Value]),
+
     get_streamed_body(Next(), [{Key, Value} | ReqProp], FilesProp);
-get_streamed_body({{_, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
+get_streamed_body({{_Ignored, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
     Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
     FileName = whistle_util:to_binary(props:get_value(<<"filename">>, Params)),
 
@@ -421,11 +433,14 @@ get_streamed_body({{_, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
 
     ?LOG("streamed file headers ~p", [Hdrs]),
     ?LOG("streamed file name ~s (~s)", [Key, FileName]),
-    get_streamed_body(Next(), ReqProp, [{Key, {struct, [{<<"headers">>, {struct, Hdrs}}
+    get_streamed_body(Next(), ReqProp, [{Key, {struct, [{<<"headers">>, wh_json:normalize_jobj({struct, Hdrs})}
 							,{<<"contents">>, Value}
 							,{<<"filename">>, FileName}
 						       ]}}
-					| FilesProp]).
+					| FilesProp]);
+get_streamed_body(Term, _, _) ->
+    ?LOG("Erro get_streamed_body: ~p", [Term]).
+
 
 %%--------------------------------------------------------------------
 %% @private

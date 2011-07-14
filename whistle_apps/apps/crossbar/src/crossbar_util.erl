@@ -18,7 +18,7 @@
 -export([response_missing_view/1]).
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
--export([binding_heartbeat/1]).
+-export([binding_heartbeat/1, binding_heartbeat/2]).
 
 -include("../include/crossbar.hrl").
 
@@ -193,19 +193,26 @@ response_db_fatal(Context) ->
 %% the crossbar_binding PID provided as long as the parent lives
 %% @end
 %%--------------------------------------------------------------------
--spec(binding_heartbeat/1 :: (BPid :: pid()) -> pid()).
+-spec binding_heartbeat/1 :: (BPid) -> pid() when
+      BPid :: pid().
 binding_heartbeat(BPid) ->
+    binding_heartbeat(BPid, 10000).
+
+-spec binding_heartbeat/2 :: (BPid, Timeout) -> pid() when
+      BPid :: pid(),
+      Timeout :: non_neg_integer() | infinity.
+binding_heartbeat(BPid, Timeout) ->
     PPid = self(),
     spawn(fun() ->
 		  Ref = erlang:monitor(process, PPid),
 		  {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
-		  _ = receive
-			  {'DOWN', Ref, process, _, normal} ->
-			      ok;
-			  {'DOWN', Ref, process, _, Reason} ->
-			  BPid ! {binding_error, Reason};
-			  _ -> ok
-		      after 10000 -> ok
-		      end,
+		  ok = receive
+			   {'DOWN', Ref, process, _, normal} ->
+			       ok;
+			   {'DOWN', Ref, process, _, Reason} ->
+			       BPid ! {binding_error, Reason};
+			   _ -> ok
+		       after Timeout -> ok
+		       end,
 		  timer:cancel(Tref)
 	  end).
