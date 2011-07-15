@@ -413,21 +413,17 @@ create_media_meta(Data, Context) ->
 		       end, [], ?METADATA_FIELDS),
     crossbar_doc:save(Context#cb_context{doc={struct, [{<<"pvt_type">>, <<"media">>} | Doc1]}}).
 
-update_media_binary(MediaID, Contents, Context, {struct, Options}=HeadersJObj) ->
+update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    CL = whistle_util:to_integer(wh_json:get_value(<<"content_length">>, HeadersJObj, binary:referenced_byte_size(Contents))),
-    Opts = [{content_type, CT}, {content_length, CL}],
+    Opts = [{headers, [{content_type, whistle_util:to_list(CT)}]}],
 
     ?LOG("Setting Content-Type to ~s", [CT]),
-    ?LOG("Setting Content-Length to ~b", [CL]),
 
     case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Opts) of
 	#cb_context{resp_status=success}=Context1 ->
 	    ?LOG("Saved attachement successfully"),
 	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
-	    Doc1 = lists:foldl(fun({K,V}, D0) ->
-				       wh_json:set_value(whistle_util:to_binary(K), whistle_util:to_binary(V), D0)
-			       end, Doc, Options),
+	    Doc1 = wh_json:set_value(<<"content_type">>, CT, Doc),
 	    crossbar_doc:save(Context1#cb_context{doc=Doc1});
 	C ->
 	    ?LOG("Failed to save attachment"),
