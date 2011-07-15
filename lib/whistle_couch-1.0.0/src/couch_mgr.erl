@@ -25,7 +25,7 @@
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3, revise_doc_from_file/3]).
 -export([revise_docs_from_folder/3, revise_views_from_folder/2, ensure_saved/2]).
 
--export([all_docs/1, all_design_docs/1, admin_all_docs/1, admin_all_design_docs/1]).
+-export([all_docs/1, all_design_docs/1, admin_all_docs/1]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3, delete_attachment/4]).
@@ -64,7 +64,7 @@
 %% Load a file into couch as a document (not an attachement)
 %% @end
 %%--------------------------------------------------------------------
--spec load_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, term()} when
+-spec load_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, atom()} when
       DbName :: binary(),
       App :: atom(),
       File :: list() | binary().
@@ -90,7 +90,7 @@ load_doc_from_file(DbName, App, File) ->
 %% a file
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, term()} when
+-spec update_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, atom()} when
       DbName :: binary(),
       App :: atom(),
       File :: list() | binary().
@@ -118,14 +118,17 @@ update_doc_from_file(DbName, App, File) ->
 %% contents of a file
 %% @end
 %%--------------------------------------------------------------------
--spec(revise_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+-spec revise_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      App :: atom(),
+      File :: list() | binary().
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
 	    ?LOG_SYS("failed to update doc: ~p", [_E]),
             ?MODULE:load_doc_from_file(DbName, App, File);
         {ok, _}=Resp ->
-	    ?LOG_SYS("revised"),
+	    ?LOG_SYS("revised ~s", [File]),
 	    Resp
     end.
 
@@ -136,7 +139,9 @@ revise_doc_from_file(DbName, App, File) ->
 %% into a given database
 %% @end
 %%--------------------------------------------------------------------
--spec(revise_views_from_folder/2 :: (DbName :: binary(), App :: atom()) -> ok).
+-spec revise_views_from_folder/2 :: (DbName, App) -> ok when
+      DbName :: binary(),
+      App :: atom().
 revise_views_from_folder(DbName, App) ->
     revise_docs_from_folder(DbName, App, "views").
 
@@ -147,32 +152,25 @@ revise_views_from_folder(DbName, App) ->
 %% priv/couchdb/ into a given database
 %% @end
 %%--------------------------------------------------------------------
--spec(revise_docs_from_folder/3 :: (DbName :: binary(), App :: atom(), Folder :: list()) -> ok).
+-spec revise_docs_from_folder/3 :: (DbName, App, Folder) -> ok when
+      DbName :: binary(),
+      App :: atom(),
+      Folder :: list().
 revise_docs_from_folder(DbName, App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
     do_revise_docs_from_folder(DbName, Files).
 
--spec(do_revise_docs_from_folder/2 :: (Db :: binary(), Views :: [string()]|[]) -> ok).
+-spec do_revise_docs_from_folder/2 :: (Db, Docs) -> ok when
+      Db :: binary(),
+      Docs :: [string(),...] | [].
 do_revise_docs_from_folder(_, []) ->
     ok;
 do_revise_docs_from_folder(DbName, [H|T]) ->
     {ok, Bin} = file:read_file(H),
-    case ?MODULE:save_doc(DbName, mochijson2:decode(Bin)) of
+    case ?MODULE:ensure_saved(DbName, mochijson2:decode(Bin)) of
         {ok, _} ->
             ?LOG_SYS("loaded view ~s into ~s", [H, DbName]),
             do_revise_docs_from_folder(DbName, T);
-        {error, conflict} ->
-            {struct, Prop} = mochijson2:decode(Bin),
-            DocId = props:get_value(<<"_id">>, Prop),
-            {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
-            case ?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]}) of
-                {ok, _} ->
-                    ?LOG_SYS("updated view ~s in ~s", [H, DbName]),
-                    do_revise_docs_from_folder(DbName, T);
-                {error, Reason} ->
-                    ?LOG_SYS("failed to update view ~s in ~s, ~w", [H, DbName, Reason]),
-                    do_revise_docs_from_folder(DbName, T)
-            end;
         {error, Reason} ->
             ?LOG_SYS("failed to load view ~s into ~s, ~w", [H, DbName, Reason]),
             do_revise_docs_from_folder(DbName, T)
@@ -184,12 +182,10 @@ do_revise_docs_from_folder(DbName, [H|T]) ->
 %% Detemine if a database exists
 %% @end
 %%--------------------------------------------------------------------
--spec(db_exists/1 :: (DbName :: binary()) -> boolean()).
+-spec db_exists/1 :: (DbName) -> boolean() when
+      DbName :: binary().
 db_exists(DbName) ->
-    case get_conn() of
-        {} -> false;
-        Conn -> couchbeam:db_exists(Conn, whistle_util:to_list(DbName))
-    end.
+    couch_util:db_exists(get_conn(), DbName).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -197,19 +193,13 @@ db_exists(DbName) ->
 %% Retrieve information regarding all databases
 %% @end
 %%--------------------------------------------------------------------
--spec(db_info/0 :: () -> tuple(ok, list(binary())) | tuple(error, atom())).
+-spec db_info/0 :: () -> {ok, [binary(),...] | []} | {error, atom()}.
 db_info() ->
-    case get_conn() of
-        {} -> {error, db_not_reachable};
-        Conn -> couch_util:db_info(Conn)
-    end.
+    couch_util:db_info(get_conn()).
 
--spec(admin_db_info/0 :: () -> tuple(ok, list(binary())) | tuple(error, atom())).
+-spec admin_db_info/0 :: () -> {ok, [binary(),...] | []} | {error, atom()}.
 admin_db_info() ->
-    case get_admin_conn() of
-        {} -> {error, db_not_reachable};
-        Conn -> couch_util:db_info(Conn)
-    end.
+    couch_util:db_info(get_admin_conn()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -233,9 +223,15 @@ admin_db_info(DbName) ->
 %% Retrieve information regarding a database design doc
 %% @end
 %%--------------------------------------------------------------------
+-spec design_info/2 :: (DbName, DesignName) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      DesignName :: binary().
 design_info(DbName, DesignName) ->
     couch_util:design_info(get_conn(), DbName, DesignName).
 
+-spec admin_design_info/2 :: (DbName, DesignName) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      DesignName :: binary().
 admin_design_info(DbName, DesignName) ->
     couch_util:design_info(get_admin_conn(), DbName, DesignName).
 
@@ -294,7 +290,7 @@ admin_db_view_cleanup(DbName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(db_replicate/1 :: (Prop :: tuple(struct, proplist()) | proplist()) -> tuple(ok, term()) | tuple(error, term())).
+-spec db_replicate/1 :: (Prop :: tuple(struct, proplist()) | proplist()) -> {ok, json_object()} | {error, atom()}.
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate({struct, Prop});
 db_replicate({struct, _}=MochiJson) ->
@@ -315,10 +311,7 @@ db_create(DbName) ->
       DbName :: binary(),
       Options :: [{q,integer()} | {n,integer()},...] | [].
 db_create(DbName, Options) ->
-    case get_conn() of
-        {} -> false;
-        Conn -> couch_util:db_create(DbName, Conn, Options)
-    end.
+    couch_util:db_create(get_conn(), DbName, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -326,19 +319,15 @@ db_create(DbName, Options) ->
 %% Compact a database
 %% @end
 %%--------------------------------------------------------------------
--spec(db_compact/1 :: (DbName :: binary()) -> boolean()).
+-spec db_compact/1 :: (DbName) -> boolean() when
+      DbName :: binary().
 db_compact(DbName) ->
-    case get_conn() of
-        {} -> false;
-        Conn -> couch_util:db_compact(DbName, Conn)
-    end.
+    couch_util:db_compact(get_conn(), DbName).
 
--spec(admin_db_compact/1 :: (DbName :: binary()) -> boolean()).
+-spec admin_db_compact/1 :: (DbName) -> boolean() when
+      DbName :: binary().
 admin_db_compact(DbName) ->
-    case get_admin_conn() of
-        {} -> false;
-        Conn -> couch_util:db_compact(DbName, Conn)
-    end.
+    couch_util:db_compact(get_admin_conn(), DbName).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -346,13 +335,10 @@ admin_db_compact(DbName) ->
 %% Delete a database
 %% @end
 %%--------------------------------------------------------------------
--spec(db_delete/1 :: (DbName :: binary()) -> boolean()).
+-spec db_delete/1 :: (DbName) -> boolean() when
+      DbName :: binary().
 db_delete(DbName) ->
-    case get_conn() of
-        {} -> false;
-        Conn ->
-	    couch_util:db_delete(DbName, Conn)
-    end.
+    couch_util:db_delete(get_conn(), DbName).
 
 %%%===================================================================
 %%% Document Functions
@@ -363,25 +349,32 @@ db_delete(DbName) ->
 %% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
--spec(open_doc/2 :: (DbName :: binary(), DocId :: binary()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
+-spec open_doc/2 :: (DbName, DocId) -> {ok, json_object()} | {error, not_found | db_not_reachable} when
+      DbName :: binary(),
+      DocId :: binary().
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec(open_doc/3 :: (DbName :: binary(), DocId :: binary(), Options :: proplist()) -> tuple(ok, json_object()) | tuple(error, not_found | db_not_reachable)).
-open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
-    open_doc(DbName, whistle_util:to_binary(DocId), Options);
+-spec open_doc/3 :: (DbName, DocId, Options) -> {ok, json_object()} | {error, not_found | db_not_reachable} when
+      DbName :: binary(),
+      DocId :: binary(),
+      Options :: proplist().
 open_doc(DbName, DocId, Options) ->
     couch_util:open_doc(get_conn(), DbName, DocId, Options).
 
+-spec all_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary().
+-spec admin_all_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary().
 all_docs(DbName) ->
     couch_util:all_docs(get_conn(), DbName).
 admin_all_docs(DbName) ->
     couch_util:all_docs(get_admin_conn(), DbName).
 
+-spec all_design_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary().
 all_design_docs(DbName) ->
     couch_util:all_design_docs(get_conn(), DbName).
-admin_all_design_docs(DbName) ->
-    couch_util:all_design_docs(get_admin_conn(), DbName).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -552,12 +545,13 @@ get_keys(JObj) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link/0 :: () -> tuple(ok, pid()) | ignore | tuple(error, term())).
+-spec start_link/0 :: () -> {ok, pid()} | ignore | {error, term()}.
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% set the host to connect to
--spec(set_host/1 :: (HostName :: string()) -> ok | tuple(error, term())).
+-spec set_host/1 :: (HostName) -> ok | {error, term()} when
+      HostName :: string().
 set_host(HostName) ->
     set_host(HostName, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT).
 

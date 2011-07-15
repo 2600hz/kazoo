@@ -13,6 +13,7 @@
 %% DB operations
 -export([db_compact/2, db_create/2, db_create/3, db_delete/2
 	 ,db_replicate/2, db_view_cleanup/2, db_info/1, db_info/2
+	 ,db_exists/2
 	]).
 
 %% Doc related
@@ -66,32 +67,32 @@ db_compact(#server{}=Conn, DbName) ->
     Db = get_db(Conn, DbName),
     do_db_compact(Db).
 
--spec db_create/2 :: (DbName, Conn) -> boolean() when
-      DbName :: binary(),
-      Conn :: #server{}.
-db_create(DbName, #server{}=Conn) ->
-    db_create(DbName, Conn, []).
-
--spec db_create/3 :: (DbName, Conn, Options) -> boolean() when
-      DbName :: binary(),
+-spec db_create/2 :: (Conn, DbName) -> boolean() when
       Conn :: #server{},
+      DbName :: binary().
+db_create(#server{}=Conn, DbName) ->
+    db_create(Conn, DbName, []).
+
+-spec db_create/3 :: (Conn, DbName, Options) -> boolean() when
+      Conn :: #server{},
+      DbName :: binary(),
       Options :: [{q,integer()} | {n,integer()},...] | [].
-db_create(DbName, #server{}=Conn, Options) ->
+db_create(#server{}=Conn, DbName, Options) ->
     case couchbeam:create_db(Conn, whistle_util:to_list(DbName), [], Options) of
 	{error, _} -> false;
 	{ok, _} -> true
     end.
 
--spec db_delete/2 :: (DbName, Conn) -> boolean() when
-      DbName :: binary(),
-      Conn :: #server{}.
-db_delete(DbName, #server{}=Conn) ->
+-spec db_delete/2 :: (Conn, DbName) -> boolean() when
+      Conn :: #server{},
+      DbName :: binary().
+db_delete(#server{}=Conn, DbName) ->
     case couchbeam:delete_db(Conn, whistle_util:to_list(DbName)) of
 	{error, _} -> false;
 	{ok, _} -> true
     end.
 
--spec db_replicate/2 :: (Conn, JSON) -> tuple(ok, term()) | tuple(error, term()) when
+-spec db_replicate/2 :: (Conn, JSON) -> tuple(ok, json_object()) | tuple(error, term()) when
       Conn :: #server{},
       JSON :: json_object().
 db_replicate(#server{}=Conn, JSON) ->
@@ -119,6 +120,14 @@ db_info(#server{}=Conn) ->
       DbName :: binary().
 db_info(#server{}=Conn, DbName) ->
     couchbeam:db_info(get_db(Conn, DbName)).
+
+-spec db_exists/2 :: (Conn, DbName) -> boolean() when
+      Conn :: #server{},
+      DbName :: binary().
+db_exists(#server{}=Conn, DbName) ->
+    couchbeam:db_exists(Conn, whistle_util:to_list(DbName)).
+
+%% Internal DB-related functions -----------------------------------------------
 
 -spec do_db_compact/1 :: (Db) -> boolean() when
       Db :: #db{}.
@@ -160,7 +169,7 @@ design_info(#server{}=Conn, DBName, Design) ->
     Db = get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
--spec all_design_docs/2 :: (Conn, DBName) -> {ok, [binary(),...] | []} | {error, atom()} when
+-spec all_design_docs/2 :: (Conn, DBName) -> {ok, json_objects()} | {error, atom()} when
       Conn :: #server{},
       DBName :: binary().
 all_design_docs(#server{}=Conn, DBName) ->

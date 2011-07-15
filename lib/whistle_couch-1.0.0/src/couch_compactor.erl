@@ -448,13 +448,13 @@ get_db_data(AC, DB, Cnt) ->
 	_ -> get_db_data(AC, DB, Cnt+1)
     end.	    
 
--spec get_ddocs/2 :: (Conn, DB) -> {ok, [binary(),...] | []} | {error, failed} when
+-spec get_ddocs/2 :: (Conn, DB) -> {ok, json_objects()} | {error, failed} when
       Conn :: #server{},
       DB :: binary().
 get_ddocs(Conn, DB) ->
     get_ddocs(Conn, DB, 0).
 
--spec get_ddocs/3 :: (Conn, DB, Cnt) -> {ok, [binary(),...] | []} | {error, failed} when
+-spec get_ddocs/3 :: (Conn, DB, Cnt) -> {ok, json_objects()} | {error, failed} when
       Conn :: #server{},
       DB :: binary(),
       Cnt :: non_neg_integer().
