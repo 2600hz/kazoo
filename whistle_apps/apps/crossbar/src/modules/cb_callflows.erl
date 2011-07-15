@@ -368,7 +368,7 @@ import_fixture(Fixture, #cb_context{db_name=DBName}=Context) ->
 			    JObj
 		    end,
 
-	    {ok, Realm} = accounts:get_realm_from_db(DBName),
+	    {ok, Realm} = whapps_util:get_realm_from_db(DBName),
 	    JObj2 = wh_json:set_value([<<"realms">>], [Realm], JObj1),
 	    ?LOG_SYS("Set realms to [~s]", [Realm]),
 
