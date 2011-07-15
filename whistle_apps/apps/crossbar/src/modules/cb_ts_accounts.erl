@@ -25,7 +25,9 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/ts_accounts.json">>).
--define(CB_LIST, {<<"ts_accounts">>, <<"crossbar_listing">>}).
+
+-define(CB_LIST, <<"ts_accounts/crossbar_listing">>).
+
 
 -define(TS_DB, <<"ts">>).
 
@@ -332,6 +334,11 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec is_valid_doc/1 :: (JObj :: json_object()) -> {boolean(), [binary(),...] | []}.
+is_valid_doc(JObj) ->
+    case wh_json:get_value(<<"account">>, JObj) of
+	undefined ->
+	    {false, [<<"account">>]};
+	_ ->
+	    {true, []}
+    end.

@@ -29,8 +29,7 @@
 -define(DEVICES_LIST, <<"devices/listing_by_id">>).
 -define(FIXTURE_LIST, [<<"611.device.json">>]). %% fixtures to load into each account DB
 
--define(CB_LIST, {<<"devices">>, <<"crossbar_listing">>}).
-
+-define(CB_LIST, <<"devices/crossbar_listing">>).
 
 -define(AGG_DB, <<"sip_auth">>).
 -define(AGG_FILTER, <<"devices/export_sip">>).
@@ -278,7 +277,8 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_device_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec load_device_summary/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 load_device_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -346,13 +346,17 @@ normalize_view_results(JObj, Acc) ->
 is_valid_doc(_JObj) ->
     {true, []}.
 
--spec(import_fixtures/2 :: (Fixtures :: list(binary()), DBName :: binary()) -> list(#cb_context{} | tuple(error, no_file))).
+-spec import_fixtures/2 :: (Fixtures, DBName) -> list(#cb_context{} | tuple(error, no_file)) when
+      Fixtures :: [<<_:120>>,...],
+      DBName :: binary().
 import_fixtures(Fixtures, DBName) ->
     ?LOG_SYS("Importing fixtures into ~s", [DBName]),
     Context = #cb_context{db_name=DBName},
     [ import_fixture(Fixture, Context) || Fixture <- Fixtures].
 
--spec(import_fixture/2 :: (Fixture :: binary(), Context :: #cb_context{}) -> #cb_context{} | tuple(error, no_file)).
+-spec import_fixture/2 :: (Fixture, Context) -> #cb_context{} | tuple(error, no_file) when
+      Fixture :: <<_:120>>,
+      Context :: #cb_context{}.
 import_fixture(Fixture, Context) ->
     Path = list_to_binary([code:priv_dir(crossbar), <<"/couchdb/fixtures/">>, Fixture]),
     ?LOG_SYS("Read from ~s", [Path]),

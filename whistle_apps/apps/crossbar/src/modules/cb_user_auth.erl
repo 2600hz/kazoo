@@ -301,8 +301,10 @@ authorize_user(Context, _, _, _, _) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec(create_token/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-create_token(_, #cb_context{doc=undefined}=Context) ->
+-spec create_token/2 :: (RD, Context) -> #cb_context{} when
+      RD :: #wm_reqdata{},
+      Context :: #cb_context{}.
+create_token(_, #cb_context{doc = ?EMPTY_JSON_OBJECT}=Context) ->
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
     AccountId = whapps_util:get_db_name(wh_json:get_value(<<"account_db">>, JObj), raw),

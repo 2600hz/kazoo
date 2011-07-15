@@ -54,7 +54,7 @@ handle_req(JObj) ->
 					     }}
 		| whistle_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
 					      ,wh_json:get_value(<<"Event-Category">>, JObj)
-					      ,<<"auth_resp">>
+					      ,<<"authn_resp">>
 					      ,?APP_NAME
 					      ,?APP_VERSION)],
 
@@ -106,17 +106,17 @@ lookup_user(Name, Realm) ->
 -spec(response/2 :: (AuthJObj :: json_object() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
 response(?EMPTY_JSON_OBJECT, Prop) ->
     Data = lists:umerge(specific_response(403), Prop),
-    whistle_api:auth_resp(Data);
+    whistle_api:authn_resp(Data);
 response(AuthJObj, Prop) ->
     Data = lists:umerge(specific_response(AuthJObj), Prop),
-    whistle_api:auth_resp(Data).
+    whistle_api:authn_resp(Data).
 
 -spec(specific_response/1 :: (AuthJObj :: json_object() | integer()) -> proplist()).
 specific_response({struct, _}=AuthJObj) ->
     Method = whistle_util:to_binary(string:to_lower(whistle_util:to_list(wh_json:get_value(<<"auth_method">>, AuthJObj)))),
     [{<<"Auth-Password">>, wh_json:get_value(<<"auth_password">>, AuthJObj)}
      ,{<<"Auth-Method">>, Method}
-     ,{<<"Event-Name">>, <<"auth_resp">>}
+     ,{<<"Event-Name">>, <<"authn_resp">>}
      ,{<<"Access-Group">>, wh_json:get_value(<<"Access-Group">>, AuthJObj, <<"ignore">>)}
      ,{<<"Tenant-ID">>, wh_json:get_value(<<"Tenant-ID">>, AuthJObj, <<"ignore">>)}
     ];

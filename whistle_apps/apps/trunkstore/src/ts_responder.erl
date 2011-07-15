@@ -196,9 +196,9 @@ get_msg_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
 -spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object()) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, JObj) ->
+process_req({<<"directory">>, <<"authn_req">>}, JObj) ->
     try
-    case whistle_api:auth_req_v(JObj) andalso ts_auth:handle_req(JObj) of
+    case whistle_api:authn_req_v(JObj) andalso ts_auth:handle_req(JObj) of
 	false ->
 	    ?LOG_END("Failed to validate authentication request API message");
 	{ok, JSON} ->
@@ -256,7 +256,7 @@ start_amqp() ->
 
 	%% Bind the queue to an exchange
 	_ = amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
-	_ = amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTH_REQ),
+	_ = amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTHN_REQ),
 
 	?LOG_SYS("Bound queues"),
 
