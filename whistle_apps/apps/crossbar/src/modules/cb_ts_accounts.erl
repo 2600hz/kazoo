@@ -144,6 +144,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_accounts">>, [
     spawn(fun() ->
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: THIS IS VERY WRONG! Ties a local crossbar to a LOCAL stepswitch instance... quick and
+                  %% dirty were the instructions for this module but someone PLEASE fix this later!
                   try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
 	  end),
     {noreply, State};
@@ -332,9 +334,9 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec is_valid_doc/1 :: (JObj :: json_object()) -> {boolean(), [binary(),...] | []}.
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"default">>, JObj) of
+    case wh_json:get_value(<<"account">>, JObj) of
 	undefined ->
-	    {false, [<<"default">>]};
+	    {false, [<<"account">>]};
 	_ ->
 	    {true, []}
     end.
