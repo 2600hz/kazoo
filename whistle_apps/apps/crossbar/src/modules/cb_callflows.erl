@@ -115,21 +115,24 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
