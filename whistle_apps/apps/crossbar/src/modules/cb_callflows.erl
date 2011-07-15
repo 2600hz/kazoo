@@ -116,6 +116,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, 
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
                   stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
@@ -124,6 +125,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, C
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
                   stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
@@ -132,12 +134,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
                   stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() -> import_fixtures(?FIXTURE_LIST, DBName) end),
+    spawn(fun() ->
+                  couch_mgr:revise_views_from_folder(DBName, callflow),
+                  import_fixtures(?FIXTURE_LIST, DBName)
+          end),
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
