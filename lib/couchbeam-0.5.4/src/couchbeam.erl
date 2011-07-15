@@ -658,7 +658,7 @@ delete_attachment(#db{server=Server, options=IbrowseOpts}=Db, DocOrDocId, Name, 
             case db_request(delete, Url, ["200"], IbrowseOpts) of
             {ok, _, _, RespBody} ->
                 {struct, [{<<"ok">>,true}|R]} = couchbeam_util:json_decode(RespBody),
-                {ok, {R}};
+                {ok, {struct, R}};
 
             Error ->
                 Error
