@@ -191,7 +191,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.media">>, [RD, Conte
 			  {Context1, Resp} = case create_media_meta(Context#cb_context.req_data, Context) of
 						 #cb_context{resp_status=success, resp_data=RespData, resp_headers=RHs}=Context2 ->
 						     DocID = wh_json:get_value(<<"id">>, RespData),
-						     {Context2#cb_context{resp_data=[], resp_headers=[{"Location", DocID} | RHs]}, true};
+						     {Context2#cb_context{resp_headers=[{"Location", DocID} | RHs]}, true};
 						 Context3 ->
 						     ?LOG_SYS("PUT: ERROR"),
 						     {Context3, false}
