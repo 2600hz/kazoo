@@ -222,6 +222,9 @@ get_report_data(#db_data{db_name=DBName, disk_size=DiskSize, data_size=DataSize,
 get_report_data(#design_data{db_name=DBName, design_name=Design, disk_size=DiskSize, data_size=DataSize, do_compaction=DoIt}) ->
     {design_data, DBName, Design, DiskSize, DataSize, DoIt}.
 
+-spec sort_report_data/2 :: (A, B) -> boolean() when
+      A :: #db_data{} | #design_data{},
+      B :: #db_data{} | #design_data{}.
 sort_report_data(#db_data{}, #design_data{}) ->
     true;
 sort_report_data(#design_data{}, #db_data{}) ->
@@ -468,10 +471,10 @@ get_ddocs(Conn, DB, Cnt) ->
       Data :: #db_data{} | #design_data{}.
 compact(#db_data{db_name=DBName, node=Node, admin_conn=AC, do_compaction=true}) ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
-    ?LOG_SYS("Compact DB ~s on ~s: ~p and VC: ~p", [DBName, Node, couch_util:db_compact(DBName, AC), couch_util:db_view_cleanup(DBName, AC)]);
+    ?LOG_SYS("Compact DB ~s on ~s: ~p and VC: ~p", [DBName, Node, couch_util:db_compact(AC, DBName), couch_util:db_view_cleanup(AC, DBName)]);
 compact(#design_data{shards=Shards, node=Node, design_name=Design, admin_conn=AC, do_compaction=true}) ->
     timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
-    [ ?LOG_SYS("Compact design ~s for ~s on ~s: ~p", [Design, DBName, Node, couch_util:design_compact(DBName, Design, AC)]) || DBName <- Shards ];
+    [ ?LOG_SYS("Compact design ~s for ~s on ~s: ~p", [Design, DBName, Node, couch_util:design_compact(AC, DBName, Design)]) || DBName <- Shards ];
 compact(_) -> ok.
 
 -spec find_shards/2 :: (DBName, DBs) -> [binary(),...] when

@@ -15,7 +15,7 @@
 -export([get_admin_port/0, get_admin_conn/0, get_admin_url/0, get_node_cookie/0, set_node_cookie/1]).
 
 %% System manipulation
--export([db_exists/1, db_info/0, db_info/1, db_create/1, db_compact/1, db_view_cleanup/1, db_delete/1, db_replicate/1]).
+-export([db_exists/1, db_info/0, db_info/1, db_create/1, db_create/2, db_compact/1, db_view_cleanup/1, db_delete/1, db_replicate/1]).
 -export([admin_db_info/0, admin_db_info/1, admin_db_compact/1, admin_db_view_cleanup/1]).
 
 -export([design_info/2, admin_design_info/2, design_compact/2, admin_design_compact/2]).
@@ -28,7 +28,7 @@
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1, admin_all_design_docs/1]).
 
 %% attachments
--export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3]).
+-export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3, delete_attachment/4]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -64,7 +64,10 @@
 %% Load a file into couch as a document (not an attachement)
 %% @end
 %%--------------------------------------------------------------------
--spec(load_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+-spec load_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, term()} when
+      DbName :: binary(),
+      App :: atom(),
+      File :: list() | binary().
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
     ?LOG_SYS("Read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
@@ -87,16 +90,18 @@ load_doc_from_file(DbName, App, File) ->
 %% a file
 %% @end
 %%--------------------------------------------------------------------
--spec(update_doc_from_file/3 :: (DbName :: binary(), App :: atom(), File :: list() | binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+-spec update_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, term()} when
+      DbName :: binary(),
+      App :: atom(),
+      File :: list() | binary().
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     ?LOG_SYS("Update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
-	{struct, Prop} = mochijson2:decode(Bin),
-	DocId = props:get_value(<<"_id">>, Prop),
-	{ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
-	?MODULE:save_doc(DbName, {struct, [{<<"_rev">>, Rev} | Prop]})
+	JObj = mochijson2:decode(Bin),
+	{ok, Rev} = ?MODULE:lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)),
+	?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
     catch
         _Type:{badmatch,{error,Reason}} ->
 	    ?LOG_SYS("bad match: ~p", [Reason]),
@@ -212,19 +217,15 @@ admin_db_info() ->
 %% Retrieve information regarding a database
 %% @end
 %%--------------------------------------------------------------------
--spec(db_info/1 :: (DbName :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec db_info/1 :: (DbName) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary().
 db_info(DbName) ->
-    case get_conn() of
-        {} -> {error, db_not_reachable};
-        Conn -> couchbeam:db_info(couch_util:open_db(DbName, Conn))
-    end.
+    couch_util:db_info(get_conn(), DbName).
 
--spec(admin_db_info/1 :: (DbName :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec admin_db_info/1 :: (DbName) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary().
 admin_db_info(DbName) ->
-    case get_admin_conn() of
-        {} -> {error, db_not_reachable};
-        Conn -> couchbeam:db_info(couch_util:open_db(DbName, Conn))
-    end.
+    couch_util:db_info(get_admin_conn(), DbName).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -233,44 +234,32 @@ admin_db_info(DbName) ->
 %% @end
 %%--------------------------------------------------------------------
 design_info(DbName, DesignName) ->
-    case get_conn() of
-	{error, db_not_reachable}=E -> E;
-	Conn -> couch_util:design_info(Conn, DbName, DesignName)
-    end.
+    couch_util:design_info(get_conn(), DbName, DesignName).
 
 admin_design_info(DbName, DesignName) ->
-    case get_admin_conn() of
-	{error, db_not_reachable}=E -> E;
-	Conn -> couch_util:design_info(Conn, DbName, DesignName)
-    end.
+    couch_util:design_info(get_admin_conn(), DbName, DesignName).
 
--spec(design_compact/2 :: (DbName :: binary(), Design :: binary()) -> boolean()).
+-spec design_compact/2 :: (DbName, Design) -> boolean() when
+      DbName :: binary(),
+      Design :: binary().
 design_compact(DbName, Design) ->
-    case get_conn() of
-        {} -> false;
-        Conn -> couch_util:design_compact(DbName, Design, Conn)
-    end.
+    couch_util:design_compact(get_conn(), DbName, Design).
 
--spec(admin_design_compact/2 :: (DbName :: binary(), Design :: binary()) -> boolean()).
+-spec admin_design_compact/2 :: (DbName, Design) -> boolean() when
+      DbName :: binary(),
+      Design :: binary().
 admin_design_compact(DbName, Design) ->
-    case get_admin_conn() of
-        {} -> false;
-        Conn -> couch_util:design_compact(DbName, Design, Conn)
-    end.
+    couch_util:design_compact(get_admin_conn(), DbName, Design).
 
--spec(db_view_cleanup/1 :: (DbName :: binary()) -> boolean()).
+-spec db_view_cleanup/1 :: (DbName) -> boolean() when
+      DbName :: binary().
 db_view_cleanup(DbName) ->
-    case get_conn() of
-        {} -> false;
-        Conn -> couch_util:db_view_cleanup(DbName, Conn)
-    end.
+    couch_util:db_view_cleanup(get_conn(), DbName).
 
--spec(admin_db_view_cleanup/1 :: (DbName :: binary()) -> boolean()).
+-spec admin_db_view_cleanup/1 :: (DbName) -> boolean() when
+      DbName :: binary().
 admin_db_view_cleanup(DbName) ->
-    case get_admin_conn() of
-	{} -> false;
-        Conn -> couch_util:db_view_cleanup(DbName, Conn)
-    end.
+    couch_util:db_view_cleanup(get_admin_conn(), DbName).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -317,11 +306,18 @@ db_replicate({struct, _}=MochiJson) ->
 %% Detemine if a database exists
 %% @end
 %%--------------------------------------------------------------------
--spec(db_create/1 :: (DbName :: binary()) -> boolean()).
+-spec db_create/1 :: (DbName) -> boolean() when
+      DbName :: binary().
 db_create(DbName) ->
+    db_create(DbName, []).
+
+-spec db_create/2 :: (DbName, Options) -> boolean() when
+      DbName :: binary(),
+      Options :: [{q,integer()} | {n,integer()},...] | [].
+db_create(DbName, Options) ->
     case get_conn() of
         {} -> false;
-        Conn -> couch_util:db_create(DbName, Conn)
+        Conn -> couch_util:db_create(DbName, Conn, Options)
     end.
 
 %%--------------------------------------------------------------------
@@ -375,25 +371,12 @@ open_doc(DbName, DocId) ->
 open_doc(DbName, DocId, Options) when not is_binary(DocId) ->
     open_doc(DbName, whistle_util:to_binary(DocId), Options);
 open_doc(DbName, DocId, Options) ->
-    case get_db(DbName) of
-        {error, _Error} -> {error, db_not_reachable};
-	Db -> couchbeam:open_doc(Db, DocId, Options)
-    end.
+    couch_util:open_doc(get_conn(), DbName, DocId, Options).
 
 all_docs(DbName) ->
-    get_all_docs(get_db(DbName)).
+    couch_util:all_docs(get_conn(), DbName).
 admin_all_docs(DbName) ->
-    get_all_docs(get_admin_db(DbName)).
-
-get_all_docs({error, _}) -> {error, db_not_reachable};
-get_all_docs(Db) ->
-    {ok, View} = couchbeam:all_docs(Db),
-    case couchbeam_view:fetch(View) of
-	{ok, {struct, Prop}} ->
-	    Rows = props:get_value(<<"rows">>, Prop, []),
-	    {ok, Rows};
-	{error, _Error}=E -> E
-    end.
+    couch_util:all_docs(get_admin_conn(), DbName).
 
 all_design_docs(DbName) ->
     couch_util:all_design_docs(get_conn(), DbName).
@@ -406,13 +389,11 @@ admin_all_design_docs(DbName) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec(lookup_doc_rev/2 :: (DbName :: binary() | string(), DocId :: binary()) -> tuple(error, term()) | tuple(ok, binary())).
+-spec lookup_doc_rev/2 :: (DbName, DocId) -> {error, atom()} | {ok, binary()} when
+      DbName :: binary(),
+      DocId :: binary().
 lookup_doc_rev(DbName, DocId) ->
-    case get_db(DbName) of
-	{error, _} -> {error, db_not_reachable};
-	Db ->
-	    couchbeam:lookup_doc_rev(Db, DocId)
-    end.
+    couch_util:lookup_doc_rev(get_conn(), DbName, DocId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -420,7 +401,9 @@ lookup_doc_rev(DbName, DocId) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec(save_doc/2 :: (DbName :: binary(), Doc :: proplist() | json_object() | json_objects()) -> tuple(ok, json_object()) | tuple(ok, json_objects()) | tuple(error, atom())).
+-spec save_doc/2 :: (DbName, Doc) -> {ok, json_object()} | {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Doc :: proplist() | json_object() | json_objects().
 save_doc(DbName, [{struct, [_|_]}=Doc]) ->
     save_doc(DbName, Doc, []);
 save_doc(DbName, [{struct, _}|_]=Docs) ->
@@ -432,42 +415,31 @@ save_doc(DbName, Doc) ->
 
 %% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
 %% any other error is returned
--spec(ensure_saved/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
--spec(ensure_saved/3 :: (DbName :: binary() | #db{}, Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
+-spec ensure_saved/2 :: (DbName, Doc) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      Doc :: json_object().
 ensure_saved(DbName, Doc) ->
-    ensure_saved(DbName, Doc, []).
-ensure_saved(#db{name=DbName}=Db, Doc, Opts) ->
-    case couchbeam:save_doc(Db, Doc, Opts) of
-	{ok, _}=Saved -> Saved;
-	{error, conflict} ->
-	    Id = wh_json:get_value(<<"_id">>, Doc, <<>>),
-	    {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, Id),
-	    ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
-	{error, _}=E -> E
-    end;
-ensure_saved(DbName, Doc, Opts) ->
-    case get_db(DbName) of
-	{error, _} -> {error, db_not_reachable};
-	Db -> ensure_saved(Db, Doc, Opts)
-    end.
+    couch_util:ensure_saved(get_conn(), DbName, Doc, []).
 
-
--spec(save_doc/3 :: (DbName :: binary(), Doc :: json_object(), Opts :: proplist()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec save_doc/3 :: (DbName, Doc, Opts) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      Doc :: json_object(),
+      Opts :: proplist().
 save_doc(DbName, {struct, _}=Doc, Opts) ->
-    case get_db(DbName) of
-	{error, _Error} -> {error, db_not_reachable};
-	Db -> couchbeam:save_doc(Db, Doc, Opts)
-    end.
+    couch_util:save_doc(get_conn(), DbName, Doc, Opts).
 
+-spec save_docs/2 :: (DbName, Docs) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Docs :: json_objects().
 save_docs(DbName, Docs) ->
     save_docs(DbName, Docs, []).
 
--spec(save_docs/3 :: (DbName :: binary(), Docs :: json_objects(), Opts :: proplist()) -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec save_docs/3 :: (DbName, Docs, Opts) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Docs :: json_objects(),
+      Opts :: proplist().
 save_docs(DbName, Docs, Opts) ->
-    case get_db(DbName) of
-	{error, _Error} -> {error, db_not_reachable};
-	Db -> couchbeam:save_docs(Db, Docs, Opts)
-    end.
+    couch_util:save_docs(get_conn(), DbName, Docs, Opts).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -475,16 +447,11 @@ save_docs(DbName, Docs, Opts) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_doc/2 :: (DbName :: binary(), Doc :: json_object()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec del_doc/2 :: (DbName, Doc) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      Doc :: json_object().
 del_doc(DbName, Doc) ->
-    case get_db(DbName) of
-        {error, _Error} -> {error, db_not_reachable};
-	Db ->
-	    case couchbeam:delete_doc(Db, Doc) of
-                {error, _Error}=E -> E;
-                {ok, Doc1} -> {ok, Doc1}
-            end
-    end.
+    couch_util:del_doc(get_conn(), DbName, Doc).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -492,51 +459,54 @@ del_doc(DbName, Doc) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec(del_docs/2 :: (DbName :: binary(), Docs :: json_objects()) -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec del_docs/2 :: (DbName, Docs) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Docs :: json_objects().
 del_docs(DbName, Docs) ->
-    case get_db(DbName) of
-        {error, _Error} -> {error, db_not_reachable};
-	Db ->
-	    couchbeam:delete_docs(Db, Docs)
-    end.
+    couch_util:del_docs(get_conn(), DbName, Docs).
 
 %%%===================================================================
 %%% Attachment Functions
 %%%===================================================================
--spec(fetch_attachment/3 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
+-spec fetch_attachment/3 :: (DbName, DocId, AName) -> {ok, binary()} | {error, atom()} when
+      DbName :: binary(),
+      DocId :: binary(),
+      AName :: binary().
 fetch_attachment(DbName, DocId, AName) ->
-    case get_db(DbName) of
-	{error, _} -> {error, db_not_reachable};
-	Db ->
-	    couchbeam:fetch_attachment(Db, DocId, AName)
-    end.
+    couch_util:fetch_attachment(get_conn(), DbName, DocId, AName).
+
+-spec put_attachment/4 :: (DbName, DocId, AName, Contents) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      DocId :: binary(),
+      AName :: binary(),
+      Contents :: binary().
+put_attachment(DbName, DocId, AName, Contents) ->
+    couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents).
 
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
--spec(put_attachment/4 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
-put_attachment(DbName, DocId, AName, Contents) ->
-    {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
-    put_attachment(DbName, DocId, AName, Contents, [{rev, Rev}]).
-
--spec(put_attachment/5 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary(), Contents :: binary(), Options :: proplist()) -> tuple(ok, binary()) | tuple(error, term())).
+-spec put_attachment/5 :: (DbName, DocId, AName, Contents, Options) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      DocId :: binary(),
+      AName :: binary(),
+      Contents :: binary(),
+      Options :: proplist().
 put_attachment(DbName, DocId, AName, Contents, Options) ->
-    case get_db(DbName) of
-	{error, _} -> {error, db_not_reachable};
-	Db ->
-	    couchbeam:put_attachment(Db, DocId, AName, Contents, Options)
-    end.
+    couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents, Options).
 
--spec(delete_attachment/3 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary()) -> tuple(ok, binary()) | tuple(error, term())).
+-spec delete_attachment/3 :: (DbName, DocId, AName) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      DocId :: binary(),
+      AName :: binary().
 delete_attachment(DbName, DocId, AName) ->
-    {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, DocId),
-    delete_attachment(DbName, DocId, AName, [{rev, Rev}]).
+    couch_util:delete_attachment(get_conn(), DbName, DocId, AName).
 
--spec(delete_attachment/4 :: (DbName :: binary(), DocId :: binary(), AttachmentName :: binary(), Options :: proplist()) -> tuple(ok, binary()) | tuple(error, term())).
+-spec delete_attachment/4 :: (DbName, DocId, AName, Options) -> {ok, json_object()} | {error, atom()} when
+      DbName :: binary(),
+      DocId :: binary(),
+      AName :: binary(),
+      Options :: proplist().
 delete_attachment(DbName, DocId, AName, Options) ->
-    case get_db(DbName) of
-	{error, _} -> {error, db_not_reachable};
-	Db ->
-	    couchbeam:delete_attachment(Db, DocId, AName, Options)
-    end.
+    couch_util:delete_attachment(get_conn(), DbName, DocId, AName, Options).
 
 %%%===================================================================
 %%% View Functions
@@ -548,34 +518,26 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec(get_all_results/2 :: (DbName :: binary(), DesignDoc :: binary()) ->
-				tuple(ok, json_objects()) | tuple(error, atom())).
+-spec get_all_results/2 :: (DbName, DesignDoc) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      DesignDoc :: binary().
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
--spec(get_results/3 :: (DbName :: binary(), DesignDoc :: binary(), ViewOptions :: proplist()) ->
-			    tuple(ok, json_objects()) | tuple(error, atom())).
+-spec get_results/3 :: (DbName, DesignDoc, ViewOptions) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      DesignDoc :: binary(),
+      ViewOptions :: proplist().
 get_results(DbName, DesignDoc, ViewOptions) ->
-    case get_db(DbName) of
-	{error, _Error} -> {error, db_not_reachable};
-	Db ->
-	    case couch_util:get_view(Db, DesignDoc, ViewOptions) of
-		{error, _Error}=E -> E;
-		View ->
-		    case couchbeam_view:fetch(View) of
-			{ok, {struct, Prop}} ->
-			    Rows = props:get_value(<<"rows">>, Prop, []),
-                            {ok, Rows};
-			{error, _Error}=E -> E
-		    end
-	    end
-    end.
+    couch_util:get_results(get_conn(), DbName, DesignDoc, ViewOptions).
 
--spec(get_result_keys/1 :: (JObjs :: json_objects()) -> list(binary()) | []).
+-spec get_result_keys/1 :: (JObjs) -> [binary(),...] | [] when
+      JObjs :: json_objects().
 get_result_keys(JObjs) ->
     lists:map(fun get_keys/1, JObjs).
 
--spec(get_keys/1 :: (JObj :: json_object()) -> binary()).
+-spec get_keys/1 :: (JObj) -> binary() when
+      JObj :: json_object().
 get_keys(JObj) ->
     wh_json:get_value(<<"key">>, JObj).
 
@@ -633,21 +595,12 @@ get_conn() ->
 get_admin_conn() ->
     gen_server:call(?SERVER, get_admin_conn).
 
-get_db(DbName) ->
-    Conn = gen_server:call(?SERVER, get_conn),
-    couch_util:open_db(DbName, Conn).
-
-get_admin_db(DbName) ->
-    Conn = gen_server:call(?SERVER, get_admin_conn),
-    couch_util:open_db(DbName, Conn).
-
 get_uuid() ->
-    Conn = gen_server:call(?SERVER, get_conn),
-    [UUID] = couchbeam:get_uuid(Conn),
+    [UUID] = couchbeam:get_uuid(get_conn()),
     UUID.
 
 get_uuids(Count) ->
-    Conn = gen_server:call(?SERVER, get_conn),
+    Conn = get_conn(),
     couchbeam:get_uuids(Conn, Count).
 
 -spec get_node_cookie/0 :: () -> atom().
@@ -805,14 +758,14 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
+handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH}=State) ->
     case dict:find(DBName, CH) of
 	{ok, {Srv, _}} ->
 	    ?LOG_SYS("Found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {noreply, State};
 	error ->
-	    {ok, Srv} = change_handler:start_link(couch_util:open_db(whistle_util:to_list(DBName), S), []),
+	    {ok, Srv} = change_handler:start_link(DBName, []),
 	    ?LOG_SYS("Started CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
