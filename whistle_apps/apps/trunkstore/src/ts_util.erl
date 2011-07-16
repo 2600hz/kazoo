@@ -73,8 +73,11 @@ filter_active_calls(CallID, ActiveCalls) ->
 		    (_) -> true end, ActiveCalls).
 
 -spec(get_media_handling/1 :: (Type :: binary() | undefined) -> binary()).
-get_media_handling(<<"process">>) -> <<"process">>;
-get_media_handling(_) -> <<"bypass">>.
+get_media_handling(L) ->
+    case simple_extract(L) of
+        <<"process">> -> <<"process">>;
+        _ -> <<"bypass">>
+    end.
 
 -spec(constrain_weight/1 :: (W :: binary() | integer()) -> integer()).
 constrain_weight(W) when not is_integer(W) ->
@@ -211,23 +214,28 @@ sip_headers([], []) ->
 sip_headers([], Acc) ->
     {struct, lists:reverse(Acc)}.
 
--spec failover/1 :: (L) -> undefined | json_object() when
-      L :: list(undefined | json_object() | binary()).
+-spec failover/1 :: (L) -> json_object() when
+      L :: [json_object() | binary(),...].
 %% cascade from DID to Srv to Acct
 failover(L) ->
     case simple_extract(L) of
 	B when is_binary(B) ->
-	    undefined;
-	Other -> Other
+	    ?EMPTY_JSON_OBJECT;
+	Other ->
+	    Other
     end.
 
 -spec progress_timeout/1 :: (L) -> undefined | json_object() | binary() when
-      L :: list(undefined | json_object() | binary()).
+      L :: [undefined | json_object() | binary(),...].
 progress_timeout(L) -> simple_extract(L).
 
 -spec bypass_media/1 :: (L) -> undefined | json_object() | binary() when
       L :: list(undefined | json_object() | binary()).
-bypass_media(L) -> simple_extract(L).
+bypass_media(L) ->
+    case simple_extract(L) of
+        <<"process">> -> <<"false">>;
+        _ -> <<"true">>
+    end.
 
 -spec delay/1 :: (L) -> undefined | json_object() | binary() when
       L :: list(undefined | json_object() | binary()).

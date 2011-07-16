@@ -21,11 +21,12 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/cdr.json">>).
--define(CB_LIST, {<<"cdr">>, <<"crossbar_listing">>}).
+-define(CB_LIST, <<"cdr/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -115,8 +116,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdr">>, Payload}
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.cdr">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
+		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -190,7 +190,7 @@ bind_to_crossbar() ->
 %% @private
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/cdr/' can only accept GET and PUT
+%% given Nouns.  IE: '/cdr/' can only accept GET
 %%
 %% Failure here returns 405
 %% @end
@@ -228,12 +228,12 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_cdr_summary(Context);
-validate([CDRId], #cb_context{req_verb = <<"get">>}=Context) ->
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_cdr_summary(Context, QueryString);
+validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_cdr(CDRId, Context);
-validate(_, Context) ->
+validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -252,9 +252,16 @@ normalize_view_results(JObj, Acc) ->
 %% Attempt to load list of CDR, each summarized.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_cdr_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-load_cdr_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+-spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
+      Context :: #cb_context{},
+      QueryParams :: proplist().
+load_cdr_summary(Context, []) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    case crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams) of
+	[] -> crossbar_util:response_faulty_request(Context);
+	DocIds -> crossbar_doc:load_view(?CB_LIST, [{<<"keys">>, DocIds}], Context, fun normalize_view_results/2)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -262,6 +269,8 @@ load_cdr_summary(Context) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_cdr/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_cdr/2 :: (CdrId, Context) -> #cb_context{} when
+      CdrId :: binary(),
+      Context :: #cb_context{}.
 load_cdr(CdrId, Context) ->
     crossbar_doc:load(CdrId, Context).

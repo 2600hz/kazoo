@@ -8,34 +8,34 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, auth_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, authn_resp_xml/1]).
 
 -include("ecallmgr.hrl").
 
-auth_resp_xml({struct, RespProp}) ->
-    auth_resp_xml(RespProp);
-auth_resp_xml(RespProp) ->
-    auth_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), RespProp).
+authn_resp_xml({struct, RespProp}) ->
+    authn_resp_xml(RespProp);
+authn_resp_xml(RespProp) ->
+    authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), RespProp).
 
-auth_resp_xml(<<"password">>, Prop) ->
+authn_resp_xml(<<"password">>, Prop) ->
     User = props:get_value(<<"Auth-User">>, Prop),
     Domain = props:get_value(<<"Auth-Domain">>, Prop),
     Pass = props:get_value(<<"Auth-Password">>, Prop),
     ChannelParams = get_channel_params(Prop),
     {ok, lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Domain, User, Pass, ChannelParams]))};
-auth_resp_xml(<<"a1-hash">>, Prop) ->
+authn_resp_xml(<<"a1-hash">>, Prop) ->
     User = props:get_value(<<"Auth-User">>, Prop),
     Domain = props:get_value(<<"Auth-Domain">>, Prop),
     Hash = props:get_value(<<"Auth-Password">>, Prop),
     ChannelParams = get_channel_params(Prop),
     {ok, lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams]))};
-auth_resp_xml(<<"ip">>, _Prop) ->
+authn_resp_xml(<<"ip">>, _Prop) ->
     {ok, ?EMPTYRESPONSE};
-auth_resp_xml(_, _) ->
+authn_resp_xml(_, _) ->
     {ok, ?EMPTYRESPONSE}.
 
-route_resp_xml({struct, RespProp}) ->
-    route_resp_xml(RespProp);
+route_resp_xml({struct, RespProp}=RespJObj) ->
+    route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespProp);
 route_resp_xml(RespProp) ->
     route_resp_xml(props:get_value(<<"Method">>, RespProp), props:get_value(<<"Routes">>, RespProp), RespProp).
 
@@ -69,19 +69,20 @@ route_resp_xml(<<"bridge">>, Routes, _Prop) ->
     case Extensions of
 	[] ->
 	    ?LOG("No endpoints to route to"),
-	    {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Errors]))};
+	    {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Errors]))};
 	_ ->
-	    Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [Extensions]),
+	    Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Extensions]),
 	    ?LOG("Bridge XML generated: ~s", [Xml]),
 	    {ok, lists:flatten(Xml)}
     end;
 route_resp_xml(<<"park">>, _Routes, _Prop) ->
-    ?LOG("Creating park XML: ~s", [?ROUTE_PARK_RESPONSE]),
-    {ok, ?ROUTE_PARK_RESPONSE};
+    Park = lists:flatten(io_lib:format(?ROUTE_PARK_RESPONSE, [?WHISTLE_CONTEXT])),
+    ?LOG("Creating park XML: ~s", [Park]),
+    {ok, Park};
 route_resp_xml(<<"error">>, _Routes, Prop) ->
     ErrCode = props:get_value(<<"Route-Error-Code">>, Prop),
     ErrMsg = list_to_binary([" ", props:get_value(<<"Route-Error-Message">>, Prop, <<"">>)]),
-    Xml = io_lib:format(?ROUTE_ERROR_RESPONSE, [ErrCode, ErrMsg]),
+    Xml = io_lib:format(?ROUTE_ERROR_RESPONSE, [?WHISTLE_CONTEXT, ErrCode, ErrMsg]),
     ?LOG("Creating error XML: ~s", [Xml]),
     {ok, lists:flatten(Xml)}.
 

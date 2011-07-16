@@ -21,8 +21,9 @@
 
 -import(cf_call_command, [
                            answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
-                          ,store/3, b_play_and_collect_digits/6, noop/1, flush/1
-                          ,wait_for_dtmf/1, wait_for_application_or_dtmf/2, audio_macro/2
+                          ,store/3, b_play_and_collect_digits/6, b_play_and_collect_digit/2
+                          ,noop/1, flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
+                          ,audio_macro/2, flush_dtmf/1
                          ]).
 
 -record(keys, {
@@ -31,10 +32,9 @@
           ,login = <<"*">>
 
            %% Record Review
-          ,listen = <<"1">>
-          ,save = <<"2">>
+          ,save = <<"1">>
+          ,listen = <<"2">>
           ,record = <<"3">>
-
 
           %% Main Menu
           ,hear_new = <<"1">>
@@ -49,9 +49,9 @@
           ,return_main = <<"0">>
 
           %% Post playbak
-          ,replay = <<"1">>
-          ,keep = <<"2">>
-          ,delete = <<"3">>
+          ,keep = <<"1">>
+          ,replay = <<"2">>
+          ,delete = <<"7">>
          }).
 
 -record(prompts, {
@@ -62,45 +62,36 @@
 
           ,record_instructions = <<"/system_media/vm-record_message">>
 
-          ,goodbye = <<"/system_media/vm-goodbye">>
-          ,received = <<"/system_media/vm-received">>
-          ,press = <<"/system_media/vm-press">>
-
-          ,to_listen = <<"/system_media/vm-listen_to_recording">>
-          ,to_save = <<"/system_media/vm-save_recording">>
-          ,to_rerecord = <<"/system_media/vm-rerecord">>
+          ,saved = <<"/system_media/vm-saved">>
+          ,deleted = <<"/system_media/vm-deleted">>
 
           ,enter_mailbox = <<"/system_media/vm-enter_id">>
           ,enter_password = <<"/system_media/vm-enter_pass">>
           ,invalid_login = <<"/system_media/vm-fail_auth">>
           ,abort_login = <<"/system_media/vm-abort">>
+          ,no_access = <<"/system_media/vm-no_access">>
+          ,goodbye = <<"/system_media/vm-goodbye">>
 
           ,setup_intro = <<"/system_media/vm-setup_intro">>
           ,setup_rec_greet = <<"/system_media/vm-setup_rec_greeting">>
           ,setup_complete = <<"/system_media/vm-setup_complete">>
 
+          ,review_recording = <<"/system_media/vm-review_recording">>
+          ,main_menu = <<"/system_media/vm-main_menu">>
+          ,message_menu = <<"/system_media/vm-message_menu">>
+          ,settings_menu = <<"/system_media/vm-settings_menu">>
+
+          ,message_number = <<"/system_media/vm-message_number">>
+          ,received = <<"/system_media/vm-received">>
+          ,no_messages = <<"/system_media/vm-no_messages">>
           ,you_have = <<"/system_media/vm-you_have">>
-          ,new = <<"/system_media/vm-new">>
-          ,messages = <<"/system_media/vm-messages">>
-          ,saved = <<"/system_media/vm-saved">>
-          ,to_hear_new = <<"/system_media/vm-listen_new">>
-          ,to_hear_saved = <<"/system_media/vm-listen_saved">>
-          ,to_configure = <<"/system_media/vm-advanced">>
-          ,to_exit = <<"/system_media/vm-to_exit">>
+          ,new_message = <<"/system_media/vm-new_message">>
+          ,new_messages = <<"/system_media/vm-new_messages">>
+          ,new_and = <<"/system_media/vm-new_and">>
+          ,saved_message = <<"/system_media/vm-saved_message">>
+          ,saved_messages = <<"/system_media/vm-saved_messages">>
 
-          ,to_change_pin = <<"/system_media/vm-change_password">>
-          ,to_rec_name = <<"/system_media/vm-record_name2">>
-          ,to_rec_unavailable = <<"/system_media/vm-to_record_greeting">>
-          ,to_return_main = <<"/system_media/vm-main_menu">>
-
-          ,to_replay = <<"/system_media/vm-listen_to_recording">>
-          ,to_keep = <<"/system_media/vm-save_recording">>
-          ,to_delete = <<"/system_media/vm-delete_recording">>
-
-          ,message_saved = <<"/system_media/vm-saved">>
-          ,message_deleted = <<"/system_media/vm-deleted">>
-
-          ,record_name = <<"/system_media/vm-record_name1">>
+          ,record_name = <<"/system_media/vm-record_name">>
           ,record_unavail_greeting = <<"/system_media/vm-record_greeting">>
 
           ,enter_new_pin = <<"/system_media/vm-enter_new_pin">>
@@ -142,10 +133,12 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             answer(Call),
+            _ = flush_dtmf(Call),
             _ = compose_voicemail(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         <<"check">> ->
             answer(Call),
+            _ = flush_dtmf(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         _ ->
@@ -176,11 +169,11 @@ check_mailbox(#mailbox{require_pin=false, owner_id=OwnerId}=Box, #cf_call{owner_
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
     main_menu(Box, Call);
-check_mailbox(#mailbox{prompts=Prompts, pin = <<>>}, Call, _) ->
+check_mailbox(#mailbox{prompts=Prompts, pin = <<>>, exists=true}, Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
     ?LOG("attempted to sign into a mailbox with no pin"),
-    b_play(Prompts#prompts.goodbye, Call);
+    b_play(Prompts#prompts.no_access, Call);
 check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
 		       ,pin=Pin}=Box, Call, Loop) ->
     try
@@ -192,7 +185,7 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
         _:R ->
             ?LOG("invalid mailbox login ~w", [R]),
             _ = b_play(InvalidLogin, Call),
-            check_mailbox(Box, Call, Loop+1)
+            check_mailbox(Box#mailbox{exists=false}, Call, Loop+1)
     end.
 
 %%--------------------------------------------------------------------
@@ -287,14 +280,14 @@ play_greeting(#mailbox{mailbox_id=Id, has_unavailable_greeting=true}, #cf_call{a
 %% @end
 %%--------------------------------------------------------------------
 -spec(record_voicemail/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, message_saved=Saved}}=Box, Call) ->
+record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, saved=Saved}}=Box, Call) ->
     tones(ToneSpec, Call),
     ?LOG("composing new voicemail"),
     case b_record(MediaName, Call) of
         {ok, _Msg} ->
             case review_recording(MediaName, Box, Call) of
                 {ok, record} ->
-                    record_voicemail(MediaName, Box, Call);
+                    record_voicemail(tmp_file(), Box, Call);
 		{ok, save} ->
 		    new_message(MediaName, Box, Call),
                     b_play(Saved, Call);
@@ -328,46 +321,23 @@ main_menu(#mailbox{prompts=#prompts{goodbye=Goodbye}}, Call, Loop) when Loop > 4
     %% is likely a abandonded channel, terminate
     ?LOG("entered main menu with too many invalid entries"),
     b_play(Goodbye, Call);
-main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMessages, saved=Saved, to_hear_new=ToHearNew
-				    ,press=Press, to_hear_saved=ToHearSaved, to_configure=ToConfigure, to_exit=ToExit}
+main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
 		   ,keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call, Loop) ->
     ?LOG("playing mailbox main menu"),
     Messages = get_messages(Box, Call),
-    audio_macro([
-                  {play, YouHave}
-                 ,{say,  whistle_util:to_binary(count_messages(Messages, ?FOLDER_NEW))}
-                 ,{play, New}
-                 ,{play, PromptMessages}
-
-                 ,{play, YouHave}
-                 ,{say,  whistle_util:to_binary(count_messages(Messages, ?FOLDER_SAVED))}
-                 ,{play, Saved}
-                 ,{play, PromptMessages}
-
-                 ,{play, ToHearNew}
-                 ,{play, Press}
-                 ,{say,  HearNew}
-
-                 ,{play, ToHearSaved}
-                 ,{play, Press}
-                 ,{say,  HearSaved}
-
-                 ,{play, ToConfigure}
-                 ,{play, Press}
-                 ,{say,  Configure}
-
-                 ,{play, ToExit}
-                 ,{play, Press}
-                 ,{say,  Exit}
-                ], Call),
-    DTMF = wait_for_dtmf(30000),
+    New = count_messages(Messages, ?FOLDER_NEW),
+    Saved = count_messages(Messages, ?FOLDER_SAVED),
+    audio_macro(message_count_prompts(New, Saved, Prompts) ++ [{play, MainMenu}], Call),
+    DTMF = wait_for_dtmf(20000),
     _ = flush(Call),
     case DTMF of
 	{ok, HearNew} ->
-	    play_messages(get_folder(Messages, ?FOLDER_NEW), Box, Call),
+            Folder = get_folder(Messages, ?FOLDER_NEW),
+	    play_messages(Folder, length(Folder), Box, Call),
 	    main_menu(Box, Call);
 	{ok, HearSaved} ->
-	    play_messages(get_folder(Messages, ?FOLDER_SAVED), Box, Call),
+            Folder = get_folder(Messages, ?FOLDER_SAVED),
+	    play_messages(Folder, length(Folder), Box, Call),
 	    main_menu(Box, Call);
 	{ok, Configure} ->
 	    config_menu(Box, Call);
@@ -385,59 +355,102 @@ main_menu(#mailbox{prompts=#prompts{you_have=YouHave, new=New, messages=PromptMe
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(play_messages/3 :: (Messages :: json_objects(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
-			      ,prompts=#prompts{received=Received, to_replay=ToReplay, press=Press, to_keep=ToKeep
-						,to_delete=ToDelete, to_return_main=ToReturnMain
-						,message_saved=MessageSaved, message_deleted=MessageDeleted}
+-spec(message_count_prompts/3 :: (New :: integer(), Old :: integer(), Prompts :: #prompts{}) -> proplist()).
+message_count_prompts(0, 0, #prompts{no_messages=NoMessages}) ->
+    [{play, NoMessages}];
+message_count_prompts(1, 0, #prompts{you_have=YouHave, new_message=NewMessage}) ->
+    [{play, YouHave}
+     ,{say, <<"1">>}
+     ,{play, NewMessage}
+    ];
+message_count_prompts(0, 1, #prompts{you_have=YouHave, saved_message=SavedMessage}) ->
+    [{play, YouHave}
+     ,{say, <<"1">>}
+     ,{play, SavedMessage}
+    ];
+message_count_prompts(1, 1, #prompts{you_have=YouHave, new_and=NewAnd, saved_message=SavedMessage}) ->
+    [{play, YouHave}
+     ,{say, <<"1">>}
+     ,{play, NewAnd}
+     ,{say, <<"1">>}
+     ,{play, SavedMessage}
+    ];
+message_count_prompts(New, 0, #prompts{you_have=YouHave, new_messages=NewMessages}) ->
+    [{play, YouHave}
+     ,{say, whistle_util:to_binary(New), <<"number">>}
+     ,{play, NewMessages}
+    ];
+message_count_prompts(New, 1, #prompts{you_have=YouHave, new_and=NewAnd, saved_message=SavedMessage}) ->
+    [{play, YouHave}
+     ,{say, whistle_util:to_binary(New), <<"number">>}
+     ,{play, NewAnd}
+     ,{say, <<"1">>}
+     ,{play, SavedMessage}
+    ];
+message_count_prompts(0, Saved, #prompts{you_have=YouHave, saved_messages=SavedMessages}) ->
+    [{play, YouHave}
+     ,{say, whistle_util:to_binary(Saved), <<"number">>}
+     ,{play, SavedMessages}
+    ];
+message_count_prompts(1, Saved, #prompts{you_have=YouHave, new_and=NewAnd, saved_messages=SavedMessages}) ->
+    [{play, YouHave}
+     ,{say, <<"1">>}
+     ,{play, NewAnd}
+     ,{say, whistle_util:to_binary(Saved), <<"number">>}
+     ,{play, SavedMessages}
+    ];
+message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, saved_messages=SavedMessages}) ->
+    [{play, YouHave}
+     ,{say, whistle_util:to_binary(New), <<"number">>}
+     ,{play, NewAnd}
+     ,{say, whistle_util:to_binary(Saved), <<"number">>}
+     ,{play, SavedMessages}
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(play_messages/4 :: (Messages :: json_objects(), Count :: integer(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
+			      ,prompts=#prompts{message_number=MsgNum, received=Received, message_menu=MessageMenu, saved=Saved, deleted=Deleted}
 			      ,keys=#keys{replay=Replay, keep=Keep, delete=Delete, return_main=ReturnMain}}=Box, Call) ->
     ?LOG("reviewing mailbox message"),
     Message = get_message(H, Box, Call),
-    audio_macro([
-                  {play, Received}
-                 ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+    audio_macro([{play, MsgNum}
+                 ,{say, whistle_util:to_binary(Count - length(Messages) + 1), <<"number">>}
+
                  ,{play, Message}
 
-                 ,{play, ToReplay}
-                 ,{play, Press}
-                 ,{say,  Replay}
+                 ,{play, Received}
+                 ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
 
-                 ,{play, ToKeep}
-                 ,{play, Press}
-                 ,{say,  Keep}
-
-                 ,{play, ToDelete}
-                 ,{play, Press}
-                 ,{say,  Delete}
-
-                 ,{play, ToReturnMain}
-                 ,{play, Press}
-                 ,{say,  ReturnMain}
+                 ,{play, MessageMenu}
                 ], Call),
     DTMF = wait_for_dtmf(30000),
     _ = flush(Call),
     case DTMF of
 	{ok, Keep} ->
-	    play(MessageSaved, Call),
+	    b_play(Saved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call),
-	    play_messages(T, Box, Call);
+	    play_messages(T, Count, Box, Call);
 	{ok, Delete} ->
-	    play(MessageDeleted, Call),
+	    b_play(Deleted, Call),
 	    set_folder(?FOLDER_DELETED, H, Box, Call),
-	    play_messages(T, Box, Call);
+	    play_messages(T, Count, Box, Call);
 	{ok, ReturnMain} ->
-	    play(MessageSaved, Call),
+	    b_play(Saved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call);
 	{ok, Replay} ->
-	    play_messages(Messages, Box, Call);
+	    play_messages(Messages, Count, Box, Call);
         {error, _} ->
             ok;
 	_ ->
-	    play(MessageSaved, Call),
-	    set_folder(?FOLDER_SAVED, H, Box, Call),
-	    play_messages(T, Box, Call)
+	    play_messages(Messages, Count, Box, Call)
     end;
-play_messages(_, Box, Call) ->
+play_messages(_, _, Box, Call) ->
     main_menu(Box, Call).
 
 %%--------------------------------------------------------------------
@@ -453,30 +466,10 @@ config_menu(Box, Call) ->
 
 config_menu(Box, Call, Loop) when Loop > 4 ->
     main_menu(Box, Call);
-config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press=Press, to_rec_name=ToRecName
-				     ,to_change_pin=ToChangePin, to_return_main=ToReturnMain}
-		     ,keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName, set_pin=SetPin, return_main=ReturnMain}}=Box, Call, Loop) ->
+config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName, set_pin=SetPin, return_main=ReturnMain}
+                     ,prompts=#prompts{settings_menu=SettingsMenu}}=Box, Call, Loop) ->
     ?LOG("playing mailbox configuration menu"),
-    audio_macro([
-                 {play, ToRecUnavailable}
-                 ,{play, Press}
-                 ,{say,  RecUnavailable}
-
-                 ,{play, ToRecName}
-                 ,{play, Press}
-                 ,{say,  RecName}
-
-                 ,{play, ToChangePin}
-                 ,{play, Press}
-                 ,{say,  SetPin}
-
-                 ,{play, ToReturnMain}
-                 ,{play, Press}
-                 ,{say,  ReturnMain}
-                ], Call),
-    DTMF = wait_for_dtmf(20000),
-    _ = flush(Call),
-    case DTMF of
+    case b_play_and_collect_digit(SettingsMenu, Call) of
 	{ok, RecUnavailable} ->
 	    record_unavailable_greeting(tmp_file(), Box, Call),
 	    config_menu(Box, Call);
@@ -504,7 +497,7 @@ config_menu(#mailbox{prompts=#prompts{to_rec_unavailable=ToRecUnavailable, press
 %%--------------------------------------------------------------------
 -spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting, tone_spec=ToneSpec
-                                                                 ,message_saved=Saved, message_deleted=Deleted}}=Box, Call) ->
+                                                                 ,saved=Saved, deleted=Deleted}}=Box, Call) ->
     ?LOG("recoding unavailable greeting"),
     audio_macro([
                   {play,  RecordUnavailGreeting}
@@ -513,7 +506,7 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
     {ok, _} = b_record(MediaName, Call),
     case review_recording(MediaName, Box, Call) of
 	{ok, record} ->
-	    record_unavailable_greeting(MediaName, Box, Call);
+	    record_unavailable_greeting(tmp_file(), Box, Call);
 	{ok, save} ->
 	    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call),
             b_play(Saved, Call);
@@ -547,7 +540,7 @@ setup_mailbox(#mailbox{prompts=#prompts{setup_intro=SetupIntro
 %%--------------------------------------------------------------------
 -spec(record_name/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> tuple(ok, json_object())).
 record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec
-                                                 ,message_saved=Saved, message_deleted=Deleted}}=Box, Call) ->
+                                                 ,saved=Saved, deleted=Deleted}}=Box, Call) ->
     ?LOG("recording name"),
     audio_macro([
                   {play,  RecordName}
@@ -556,7 +549,7 @@ record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_sp
     {ok, _} = b_record(MediaName, Call),
     case review_recording(MediaName, Box, Call) of
 	{ok, record} ->
-	    record_name(MediaName, Box, Call);
+	    record_name(tmp_file(), Box, Call);
 	{ok, save} ->
 	    store_recording(MediaName, ?NAME_RECORDING, Box, Call),
             b_play(Saved, Call);
@@ -659,7 +652,7 @@ save_metadata(NewMessage, Db, Id) ->
 %%--------------------------------------------------------------------
 -spec(get_mailbox_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #mailbox{}).
 get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
-    Id = wh_json:get_value(<<"id">>, Data),
+    Id = wh_json:get_value(<<"id">>, Data, <<"undefined">>),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             ?LOG("loaded voicemail box ~s", [Id]),
@@ -721,25 +714,10 @@ review_recording(MediaName, Box, Call) ->
 
 review_recording(_, _, _, Loop) when Loop > 4 ->
     {ok, no_selection};
-review_recording(MediaName, #mailbox{prompts=#prompts{press=Press, to_listen=ToListen, to_save=ToSave, to_rerecord=ToRerecord}
-				     ,keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call, Loop) ->
+review_recording(MediaName, #mailbox{keys=#keys{listen=Listen, save=Save, record=Record}
+				     ,prompts=#prompts{review_recording=ReviewRecording}}=Box, Call, Loop) ->
     ?LOG("playing review options"),
-    audio_macro([
-                  {play, Press}
-                 ,{say,  Listen}
-                 ,{play, ToListen}
-
-                 ,{play, Press}
-                 ,{say,  Save}
-                 ,{play, ToSave}
-
-                 ,{play, Press}
-                 ,{say,  Record}
-                 ,{play, ToRerecord}
-                ], Call),
-    DTMF = wait_for_dtmf(18000),
-    _ = flush(Call),
-    case DTMF of
+    case b_play_and_collect_digit(ReviewRecording, Call) of
         {ok, Listen} ->
             _ = b_play(MediaName, Call),
             review_recording(MediaName, Box, Call);

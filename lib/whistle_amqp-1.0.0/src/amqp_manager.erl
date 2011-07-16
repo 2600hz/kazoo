@@ -28,7 +28,7 @@
 -define(STARTUP_FILE, [code:lib_dir(whistle_amqp, priv), "/startup.config"]).
 
 -record(state, {
-	  host = "" :: string()
+	  host = "" :: string() | tuple(string(), integer())
 	 ,handler_pid = undefined :: undefined | pid()
          ,handler_ref = undefined :: undefined | reference()
          ,conn_params = #'amqp_params'{} :: #'amqp_params'{}
@@ -82,7 +82,7 @@ register_return_handler() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
--spec(init/1 :: (list()) -> tuple(ok, #state{}, 0)).
+-spec init/1 :: ([]) -> tuple(ok, #state{}, 0).
 init([]) ->
     %% Start a connection to the AMQP broker server
     ?LOG_SYS("starting amqp manager server"),
@@ -100,8 +100,8 @@ init([]) ->
 %% Description: Handling call messages
 %%
 %%--------------------------------------------------------------------
-handle_call({set_host, Host}, _, State) ->
-    ?LOG_SYS("changing amqp host from ~s to ~s, all channels going down", [State#state.host, Host]),
+handle_call({set_host, Host}, _, #state{host=OldHost}=State) ->
+    ?LOG_SYS("changing amqp host from ~s to ~s, all channels going down", [OldHost, Host]),
     stop_amqp_host(State),
     case start_amqp_host(Host, State) of
 	{ok, State1} -> {reply, ok, State1};
@@ -114,8 +114,8 @@ handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
 handle_call(_, _, #state{handler_pid = undefined}=State) ->
     {reply, {error, amqp_down}, State};
 
-handle_call(get_host, _, State) ->
-    {reply, State#state.host, State};
+handle_call(get_host, _, #state{host=Host}=State) ->
+    {reply, Host, State};
 
 handle_call({publish, BP, AM}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:publish(HPid, From, BP, AM) end),
@@ -155,6 +155,18 @@ handle_cast(_Req, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
+handle_info(timeout, #state{host={Host,Port}=Settings, handler_pid=undefined}=State) ->
+    ?LOG_SYS("attempting to connect to ~s on port ~b", [Host, Port]),
+    case start_amqp_host(Settings, State) of
+	{ok, State1} ->
+            ?LOG_SYS("connected to AMQP host"),
+            {noreply, State1};
+	{error, R} ->
+            ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
+            {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
+            {noreply, State}
+    end;
+
 handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
     ?LOG_SYS("attempting to connect to ~s", [Host]),
     case start_amqp_host(Host, State) of
@@ -165,6 +177,24 @@ handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
             ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
             {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
             {noreply, State}
+    end;
+
+handle_info({reconnect, T}, #state{host={Host,Port}=Settings}=State) ->
+    ?LOG_SYS("attempting to reconnect to ~s on port ~b", [Host, Port]),
+    case start_amqp_host(Settings, State) of
+	{ok, State1} ->
+            {noreply, State1};
+	{error, _} ->
+            case T * 2 of
+                Timeout when Timeout > ?MAX_TIMEOUT ->
+                    ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
+                    {ok, _} = timer:send_after(?MAX_TIMEOUT, {reconnect, ?MAX_TIMEOUT}),
+                    {noreply, State};
+                Timeout ->
+                    ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
+                    {ok, _} = timer:send_after(Timeout, {reconnect, Timeout}),
+                    {noreply, State}
+            end
     end;
 
 handle_info({reconnect, T}, #state{host=Host}=State) ->
@@ -234,10 +264,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
--spec(create_amqp_params/1 :: (Host :: string()) -> tuple(direct | network, #'amqp_params'{})).
+-spec create_amqp_params/1 :: (Host) -> tuple(direct | network, #'amqp_params'{}) when
+      Host :: string().
+-spec create_amqp_params/2 :: (Host, Port) -> tuple(direct | network, #'amqp_params'{}) when
+      Host :: string(),
+      Port :: integer().
 create_amqp_params(Host) ->
     create_amqp_params(Host, ?PROTOCOL_PORT).
--spec(create_amqp_params/2 :: (Host :: string(), Port :: integer()) -> tuple()).
 create_amqp_params(Host, Port) ->
     Node = list_to_atom([$r,$a,$b,$b,$i,$t,$@ | Host]),
     case net_adm:ping(Node) of
@@ -249,7 +282,8 @@ create_amqp_params(Host, Port) ->
 	    {network, #'amqp_params'{ port = Port, host = Host }}
     end.
 
--spec(get_new_connection/1 :: (tuple(Type :: direct | network, P :: #'amqp_params'{})) -> pid() | tuple(error, econnrefused)).
+-spec get_new_connection/1 :: (Params) -> pid() | tuple(error, econnrefused) when
+      Params :: tuple(Type :: direct | network, P :: #'amqp_params'{}).
 get_new_connection({Type, #'amqp_params'{host=_Host}=P}) ->
     case amqp_connection:start(Type, P) of
 	{ok, Connection} ->
@@ -268,10 +302,12 @@ stop_amqp_host(#state{handler_pid=undefined}) ->
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     erlang:demonitor(HRef, [flush]),
     _ = net_kernel:monitor_nodes(false),
-    amqp_host:stop(HPid).
+    ok = amqp_host:stop(HPid).
 
 start_amqp_host("localhost", State) ->
     start_amqp_host(net_adm:localhost(), State);
+start_amqp_host({Host,Port}, State) ->
+    start_amqp_host(Host, State, create_amqp_params(Host, Port));
 start_amqp_host(Host, State) ->
     start_amqp_host(Host, State, create_amqp_params(Host)).
 
@@ -282,10 +318,13 @@ start_amqp_host(Host, State, {ConnType, ConnParams} = ConnInfo) ->
 	Conn ->
 	    {ok, HPid} = amqp_host_sup:start_host(Host, Conn),
 	    Ref = erlang:monitor(process, HPid),
-	    {ok, State#state{handler_pid = HPid, handler_ref = Ref, conn_type = ConnType, conn_params = ConnParams, timeout=?START_TIMEOUT}}
+	    {ok, State#state{host=Host, handler_pid = HPid
+			     ,handler_ref = Ref, conn_type = ConnType
+			     ,conn_params = ConnParams, timeout=?START_TIMEOUT
+			    }}
     end.
 
--spec(get_config/0 :: () -> proplist()).
+-spec get_config/0 :: () -> proplist().
 get_config() ->
     case file:consult(?STARTUP_FILE) of
 	{ok, Prop} ->

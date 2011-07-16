@@ -183,13 +183,32 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
 %                  Pid ! {binding_result, true, [RD, Context1, Params]},
 %       %%  end),
 %    {noreply, State};
-%
-%handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | Params]}, State) ->
-%    spawn(fun() ->
-%                  Context1 = crossbar_doc:delete(Context),
-%                  Pid ! {binding_result, true, [RD, Context1, Params]}
-%         end),
-%    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
+    spawn(fun() ->
+                  %% dont use the account id in cb_context as it may not represent the db_name...
+                  DbName = whapps_util:get_db_name(AccountId, encoded),
+                  try
+                      %% Ensure the DB that we are about to delete is an account
+                      {ok, JObj} = couch_mgr:open_doc(DbName, AccountId),
+
+                      <<"account">> = wh_json:get_value(<<"pvt_type">>, JObj),
+		      ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
+
+                      #cb_context{resp_status=success} = crossbar_doc:delete(Context),
+		      ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]),
+
+                      case couch_mgr:db_delete(DbName) of
+                          true -> Pid ! {binding_result, true, [RD, Context, Params]};
+                          false -> Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]}
+                      end
+                  catch
+                      _:_E ->
+			  ?LOG_SYS("Exception while deleting account: ~p", [_E]),
+                          Pid ! {binding_result, true, [RD, crossbar_util:response_bad_identifier(AccountId, Context), Params]}
+                  end
+          end),
+    {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
@@ -208,7 +227,6 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -619,15 +637,19 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
--spec(load_account_db/2 :: (AccountId :: list(binary()) | json_object(), #cb_context{}) -> #cb_context{}).
-load_account_db(AccountId, Context)->
+-spec load_account_db/2 :: (AccountId, Context) -> #cb_context{} when
+      AccountId :: binary() | [binary(),...],
+      Context :: #cb_context{}.
+load_account_db([AccountId|_], Context) ->
+    load_account_db(AccountId, Context);
+load_account_db(AccountId, Context) when is_binary(AccountId) ->
     DbName = whapps_util:get_db_name(AccountId, encoded),
     ?LOG_SYS("Account determined that db name: ~s", [DbName]),
     case couch_mgr:db_exists(DbName) of
         false ->
             Context#cb_context{
-                 db_name = undefined
-                ,account_id = undefined
+                 db_name = <<>>
+                ,account_id = <<>>
             };
         true ->
             Context#cb_context{

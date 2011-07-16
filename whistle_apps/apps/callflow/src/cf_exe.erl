@@ -85,16 +85,25 @@ wait(Call, Flow, Pid) ->
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
        {continue, Key} ->
+           ?LOG("continuing to child ~s", [Key]),
            case wh_json:get_value([<<"children">>, Key], Flow) of
-               undefined ->
-                   ?LOG_END("child node doesn't exist"),
+               undefined when Key =:= <<"_">> ->
+                   ?LOG_END("wild card child node doesn't exist, we are lost.."),
                    cf_call_command:hangup(Call);
+               undefined ->
+                   ?LOG("requested child does not exist, trying wild card", [Key]),
+                   self() ! {continue},
+                   wait(Call, Flow, Pid);
                ?EMPTY_JSON_OBJECT ->
                    ?LOG_END("unexpected end of callflow"),
                    cf_call_command:hangup(Call);
                NewFlow ->
                    next(Call, NewFlow)
            end;
+       {get_branch_keys} ->
+           {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
+           Pid ! {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
+           wait(Call, Flow, Pid);
        {attempt} when not is_pid(Pid) ->
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);
@@ -105,6 +114,7 @@ wait(Call, Flow, Pid) ->
            self() ! {attempt, <<"_">>},
            wait(Call, Flow, Pid);
        {attempt, Key} ->
+           ?LOG("attempting child ~s", [Key]),
            case wh_json:get_value([<<"children">>, Key], Flow) of
                undefined ->
                    Pid ! {attempt_resp, {error, undefined}},
@@ -117,6 +127,7 @@ wait(Call, Flow, Pid) ->
                    next(Call, NewFlow)
            end;
        {branch, NewFlow} ->
+           ?LOG("callflow has been branched"),
            next(Call, NewFlow);
        {stop} ->
            ?LOG_END("execution has been stopped");

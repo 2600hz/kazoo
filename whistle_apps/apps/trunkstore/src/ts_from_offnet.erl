@@ -34,17 +34,27 @@ endpoint_data(State) ->
     true = whistle_api:bridge_req_endpoint_v(EP),
     ?LOG("Valid endpoint"),
 
+    MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
+                        undefined ->
+                            case whistle_util:is_false(wh_json:get_value(<<"Bypass-Media">>, EP)) of
+                                true -> <<"process">>; %% bypass media is false, process media
+                                false -> <<"bypass">>
+                            end;
+                        _ -> <<"process">>
+                    end,
+
     Command = [
 	       {<<"Application-Name">>, <<"bridge">>}
 	       ,{<<"Endpoints">>, [EP]}
 	       ,{<<"Timeout">>, <<"26">>}
+               ,{<<"Media">>, MediaHandling}
 	       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
 	       ,{<<"Call-ID">>, CallID}
 	       | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
     ?LOG("Endpoint loaded"),
 
-    State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, JObj, ?EMPTY_JSON_OBJECT)),
+    State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, EP, ?EMPTY_JSON_OBJECT)),
 
     send_park(State1, Command).
 

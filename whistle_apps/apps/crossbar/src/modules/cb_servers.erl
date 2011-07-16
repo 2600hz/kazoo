@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/servers.json">>).
--define(CB_LIST, {<<"servers">>, <<"crossbar_listing">>}).
+-define(CB_LIST, <<"servers/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -324,7 +324,8 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_server_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec load_server_summary/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 load_server_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 

@@ -42,11 +42,16 @@ start_link() ->
 register_local_media(MediaName, CallId) ->
     gen_server:call(?MODULE, {register_local_media, MediaName, CallId}).
 
--spec(lookup_media/2 :: (MediaName :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
+-spec lookup_media/2 :: (MediaName, CallId) -> tuple(ok, binary()) | tuple(error, not_local) when
+      MediaName :: binary(),
+      CallId :: binary().
 lookup_media(MediaName, CallId) ->
-    request_media(MediaName, CallId).
+    request_media(MediaName, new, CallId).
 
--spec(lookup_media/3 :: (MediaName :: binary(), Type :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
+-spec lookup_media/3 :: (MediaName , Type, CallId) -> tuple(ok, binary()) | tuple(error, not_local) when
+      MediaName :: binary(),
+      Type :: extant | new,
+      CallId :: binary().
 lookup_media(MediaName, Type, CallId) ->
     request_media(MediaName, Type, CallId).
 
@@ -219,11 +224,10 @@ generate_local_path(MediaName) ->
     M = whistle_util:to_binary(MediaName),
     <<?LOCAL_MEDIA_PATH, M/binary>>.
 
--spec(request_media/2 :: (MediaName :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
-request_media(MediaName, CallId) ->
-    request_media(MediaName, <<"new">>, CallId).
-
--spec(request_media/3 :: (MediaName :: binary(), Type :: binary(), CallID :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
+-spec request_media/3 :: (MediaName, Type, CallID) -> tuple(ok, binary()) | tuple(error, not_local) when
+      MediaName :: binary(),
+      Type :: extant | new,
+      CallID :: binary().
 request_media(MediaName, Type, CallID) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
         {ok, Path} ->
@@ -234,7 +238,7 @@ request_media(MediaName, Type, CallID) ->
             lookup_remote(MediaName, Type, CallID)
     end.
 
-lookup_remote(MediaName, <<"extant">>, CallID) ->
+lookup_remote(MediaName, extant, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"extant">>}
@@ -242,7 +246,7 @@ lookup_remote(MediaName, <<"extant">>, CallID) ->
                | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request);
-lookup_remote(MediaName, <<"new">>, CallID) ->
+lookup_remote(MediaName, new, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"new">>}

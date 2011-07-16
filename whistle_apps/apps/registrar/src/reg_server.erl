@@ -238,7 +238,7 @@ start_amqp() ->
 	Q = amqp_util:new_queue(?REG_QUEUE_NAME, [{exclusive, false}]),
 	amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
 	amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
-	amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTH_REQ),
+	amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
 	amqp_util:basic_consume(Q, [{exclusive, false}]),
         ?LOG_SYS("connected to AMQP"),
 	{ok, Q}
@@ -255,7 +255,7 @@ start_amqp() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
-process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{amqp_q=Queue}) ->
+process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue}) ->
     try
 	?LOG_START("received SIP authentication request"),
 
@@ -278,10 +278,10 @@ process_req({<<"directory">>, <<"auth_req">>}, JObj, #state{amqp_q=Queue}) ->
 						 }}
 		    | whistle_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
 						  ,wh_json:get_value(<<"Event-Category">>, JObj)
-						  ,<<"auth_resp">>
+						  ,<<"authn_resp">>
 						  ,?APP_NAME
 						  ,?APP_VERSION)],
-	{ok, Payload} = auth_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
+	{ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
 	RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
 	send_resp(Payload, RespQ)
     catch
@@ -469,13 +469,13 @@ lookup_auth_user(Name, Realm) ->
 %% determine if the user was known and send a reply if so
 %% @end
 %%-----------------------------------------------------------------------------
--spec(auth_response/2 :: (AuthInfo :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
-auth_response([], _) ->
+-spec(authn_response/2 :: (AuthInfo :: proplist() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+authn_response([], _) ->
     ?LOG_END("user is unknown");
-auth_response(AuthInfo, Prop) ->
+authn_response(AuthInfo, Prop) ->
     Data = lists:umerge(auth_specific_response(AuthInfo), Prop),
     ?LOG_END("sending SIP authentication reply, with credentials"),
-    whistle_api:auth_resp(Data).
+    whistle_api:authn_resp(Data).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -488,7 +488,7 @@ auth_specific_response(AuthInfo) ->
     Method = list_to_binary(string:to_lower(binary_to_list(wh_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
     [{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
      ,{<<"Auth-Method">>, Method}
-     ,{<<"Event-Name">>, <<"auth_resp">>}
+     ,{<<"Event-Name">>, <<"authn_resp">>}
      ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
      ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
     ].

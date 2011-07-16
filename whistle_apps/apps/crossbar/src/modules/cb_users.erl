@@ -25,8 +25,8 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/users.json">>).
--define(CB_LIST, {<<"users">>, <<"crossbar_listing">>}).
--define(GROUP_BY_USERNAME, {<<"users">>, <<"group_by_username">>}).
+-define(CB_LIST, <<"users/crossbar_listing">>).
+-define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
 
 %%%===================================================================
 %%% API

@@ -366,14 +366,20 @@ matches(_, _) -> false.
 %%--------------------------------------------------------------------
 -spec(map_bind_results/4 :: (Pids :: queue(), Payload :: term(), Results :: list(binding_result()), Route :: binary()) -> list(tuple(term() | timeout, term()))).
 map_bind_results(Pids, Payload, Results, Route) ->
-    lists:foldr(fun(Pid, Acc) ->
-		      Pid ! {binding_fired, self(), Route, Payload},
-                      case wait_for_map_binding() of
-                          {ok,  Resp, Pay1} -> [{Resp, Pay1} | Acc];
-                          timeout -> [{timeout, Payload} | Acc];
-			  {error, E} -> [{error, E, Pid}|Acc]
-                      end
-		end, Results, queue:to_list(Pids)).
+    S = self(),
+    [ receive {Pid, DS} -> DS end
+      || Pid <- [
+                 spawn(fun() ->
+                               P ! {binding_fired, self(), Route, Payload},
+                               case wait_for_map_binding() of
+                                   {ok,  Resp, Pay1} -> S ! {self(), {Resp, Pay1}};
+                                   timeout -> S ! {self(), {timeout, Payload}};
+                                   {error, E} -> S ! {self(), {error, E, P}}
+                               end
+                       end)
+                 || P <- queue:to_list(Pids)
+                ]
+    ] ++ Results.
 
 %%--------------------------------------------------------------------
 %% @private

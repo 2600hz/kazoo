@@ -3,39 +3,60 @@
 -export([init/1, content_types_provided/2, resource_exists/2]).
 -export([last_modified/2, generate_etag/2, content/2, encodings_provided/2]).
 
--record(context, {root, filepath, fileinfo}).
-
 -include_lib("webmachine/include/webmachine.hrl").
 -include_lib("kernel/include/file.hrl").
+-include("crossbar.hrl").
+
+-record(context, {
+	  root = "" :: string()
+	  ,filepath = "" :: string()
+	  ,fileinfo = #file_info{} :: #file_info{}
+	  ,data = <<>> :: binary()
+	 }).
 
 init(Opts) ->
-    Path = lists:concat([filename:dirname(filename:dirname(code:which(?MODULE))), props:get_value(root, Opts)]),
+    Path = [code:priv_dir(crossbar), props:get_value(root, Opts)],
+    ?LOG_SYS("Init filepath: ~s", [Path]),
     {ok, #context{root=Path}}.
 
 content_types_provided(RD, Context) ->
     Path = wrq:disp_path(RD),
+    ?LOG_SYS("Request Path: ~p", [Path]),
     Mime = webmachine_util:guess_mime(Path),
+    ?LOG_SYS("Mime: ~s", [Mime]),
     {[{Mime, content}], RD, Context}.
 
 resource_exists(RD, Context=#context{root=Root}) ->
     FP = filename:join([Root, wrq:disp_path(RD)]),
+    ?LOG_SYS("Disp_path: ~s", [wrq:disp_path(RD)]),
+    ?LOG_SYS("Requested file: ~s", [FP]),
     case filelib:is_regular(FP) of
 	true ->
+	    ?LOG_SYS("File exists"),
             {ok, FileInfo} = file:read_file_info(FP),
 	    {true, RD, Context#context{filepath=FP, fileinfo=FileInfo}};
 	_ ->
+	    ?LOG_SYS("File doesn't exist"),
 	    {false, RD, Context}
     end.
 
 generate_etag(RD, #context{filepath=FP}=Context) ->
     {ok, Data} = file:read_file(FP),
-    { mochihex:to_hex(crypto:md5(Data)), RD, Context }.
+    ETag = mochihex:to_hex(crypto:md5(Data)),
+    ?LOG_SYS("Etag: ~s", [ETag]),
+    { ETag, RD, Context#context{data=Data} }.
 
-last_modified(RD, Context) ->
-    {(Context#context.fileinfo)#file_info.mtime, RD, Context}.
+last_modified(RD, #context{fileinfo=FI}=Context) ->
+    {_D, _T}=LastMod = FI#file_info.mtime,
+    ?LOG_SYS("Last modified: ~p ~p", [_D,_T]),
+    {LastMod, RD, Context}.
 
-content(RD, Context=#context{filepath=FP}) ->
+content(RD, #context{filepath=FP, data = <<>>}=Context) ->
     {ok, Data} = file:read_file(FP),
+    ?LOG_SYS("Content loaded from disk"),
+    {Data, RD, Context};
+content(RD, #context{data=Data}=Context) ->
+    ?LOG_SYS("Content loaded"),
     {Data, RD, Context}.
 
 encodings_provided(RD, Context) ->

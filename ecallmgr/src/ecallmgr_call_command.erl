@@ -187,6 +187,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
             ok = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
             %% NOTE: at this time FS is not honoring call_timeout when set in the bridge string, arg...
             ok = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
+            ok = set_media_mode(Node, UUID, wh_json:get_value(<<"Media">>, JObj)),
             ok = set(Node, UUID, "failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"),
 	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
 				<<"simultaneous">> -> ",";
@@ -303,14 +304,9 @@ get_bridge_endpoint(JObj) ->
     end.
 
 -spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
--spec(media_path/3 :: (MediaName :: binary(), Type :: extant | continuous, UUID :: binary()) -> binary()).
+-spec(media_path/3 :: (MediaName :: binary(), Type :: extant | new, UUID :: binary()) -> binary()).
 media_path(MediaName, UUID) ->
-    case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
-        {error, _} ->
-            MediaName;
-        {ok, Url} ->
-            get_fs_playback(Url)
-    end.
+    media_path(MediaName, new, UUID).
 
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
@@ -322,7 +318,7 @@ media_path(MediaName, Type, UUID) ->
 
 -spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
 get_fs_playback(<<"http://", _/binary>>=Url) ->
-    RemoteAudioScript = get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
+    RemoteAudioScript = ecallmgr_util:get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
     <<"shell_stream://", (whistle_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
@@ -416,10 +412,10 @@ set_terminators(Node, UUID, Ts) ->
 
 -spec(set_ringback/3 :: (Node :: atom(), UUID :: binary(), RingBack :: undefined | binary()) -> ok | timeout | {error, string()}).
 set_ringback(Node, UUID, undefined) ->
-    RB = list_to_binary(["ringback=", get_setting(default_ringback, "%(2000,4000,440,480)")]),
+    RB = list_to_binary(["ringback=", ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)")]),
     ok = set(Node, UUID, RB);
 set_ringback(Node, UUID, RingBack) ->
-    RB = list_to_binary(["ringback=", media_path(RingBack, <<"extant">>, UUID)]),
+    RB = list_to_binary(["ringback=", media_path(RingBack, extant, UUID)]),
     ok = set(Node, UUID, RB),
     set(Node, UUID, "instant_ringback=true").
 
@@ -434,11 +430,21 @@ set_timeout(Node, UUID, Timeout) ->
             ok
     end.
 
+-spec(set_media_mode/3 :: (Node :: atom(), UUID :: binary(), MediaMode :: undefined | binary()) -> ok | media_mode | {error, string()}).
+set_media_mode(Node, UUID, <<"process">>) ->
+    set(Node, UUID, <<"bypass_media=false">>);
+set_media_mode(Node, UUID, <<"bypass">>) ->
+    set(Node, UUID, <<"bypass_media=true">>);
+%%set_media_mode(_Node, _UUID, <<"auto">>) ->
+%%    set(Node, UUID, <<"bypass_media=TODO">>);
+set_media_mode(_Node, _UUID, _) ->
+    ok.
+
 -spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
 
--spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
+-spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: binary()) -> ok | timeout | {error, string()}).
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", whistle_util:to_list(Arg)).
 
@@ -543,19 +549,3 @@ send_error_response(App, Msg, UUID, JObj) ->
             ],
     {ok, Payload} = whistle_api:error_resp(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
-
--spec(get_setting/2 :: (Setting :: term(), Default :: term()) -> term()).
-get_setting(Setting, Default) ->
-    case wh_cache:fetch({ecallmgr_setting, Setting}) of
-        {ok, Value} -> Value;
-        {error, _} ->
-            case file:consult(?SETTINGS_FILE) of
-                {ok, Settings} ->
-                    Value = props:get_value(Setting, Settings, Default),
-                    wh_cache:store({ecallmgr_setting, Setting}, Value),
-                    Value;
-                {error, _} ->
-                    wh_cache:store({ecallmgr_setting, Setting}, Default),
-                    Default
-            end
-    end.
