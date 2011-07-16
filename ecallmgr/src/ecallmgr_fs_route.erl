@@ -257,7 +257,7 @@ authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
 
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, DefProp),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, DefProp, ?EMPTY_JSON_OBJECT),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, CCVs).
 
 authorize(Node, FSID, CallID, RespJObj, undefined, CCVs) ->
@@ -312,11 +312,13 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}
 		   ,{<<"Control-Queue">>, CtlQ}
-                   ,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
+                   ,{<<"Custom-Channel-Vars">>, CCVs}
 		   | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
 	send_control_queue(SendTo, CtlProp)
     catch
-	_:_ -> {error, amqp_error}
+	_:Reason ->
+            ?LOG_END("error during control handoff to whapp, ~p", [Reason]),
+            {error, amqp_error}
     end.
 
 send_control_queue(SendTo, CtlProp) ->
@@ -325,5 +327,5 @@ send_control_queue(SendTo, CtlProp) ->
 	    ?LOG_END("sending route_win to ~s", [SendTo]),
 	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
 	{error, _Msg} ->
-	    ?LOG_END("sending route_win to ~s failed, ~p", [self(), SendTo, _Msg])
+	    ?LOG_END("sending route_win to ~s failed, ~p", [SendTo, _Msg])
     end.
