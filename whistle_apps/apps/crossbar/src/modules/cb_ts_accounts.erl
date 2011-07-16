@@ -217,7 +217,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['GET', 'POST', 'DELETE', 'HEAD']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -257,6 +257,8 @@ validate([TSAccountId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_ts_account(TSAccountId, Context);
 validate([TSAccountId], #cb_context{req_verb = <<"delete">>}=Context) ->
     read_ts_account(TSAccountId, Context);
+validate([TSAccountId], #cb_context{req_verb = <<"head">>}=Context) ->
+    check_ts_account(TSAccountId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -314,6 +316,27 @@ update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
 -spec(read_ts_account_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 read_ts_account_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to determine if the account exists in as light weight as
+%% possible, altho just getting here...
+%% @end
+%%--------------------------------------------------------------------
+-spec check_ts_account/2 :: (TSAccountId, Context) -> #cb_context{} when
+      TSAccountId :: binary(),
+      Context :: #cb_context{}.
+check_ts_account(TSAccountId, #cb_context{db_name=Db}=Context) ->
+    case couch_mgr:lookup_doc_rev(Db, TSAccountId) of
+        {ok, Rev} ->
+            Context#cb_context{resp_status=success
+                               ,resp_data=[]
+                               ,resp_etag=whistle_util:to_list(Rev)};
+        {error, _} ->
+            crossbar_util:response_bad_identifier(TSAccountId, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
