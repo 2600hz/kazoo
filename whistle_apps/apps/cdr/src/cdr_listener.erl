@@ -194,24 +194,67 @@ handle_cdr(JObj, _State) ->
         false -> ?ANONYMOUS_CDR_DB
     end,
 
-    Now = whistle_util:current_tstamp(),
-
     NormDoc = wh_json:normalize_jobj(JObj),
-    DocType = wh_json:set_value(<<"pvt_type">>, <<"cdr">>, NormDoc),
-    DocCreated = wh_json:set_value(<<"pvt_created">>, Now, DocType),
-    DocModified = wh_json:set_value(<<"pvt_modified">>, Now, DocCreated),
-    DocVersion = wh_json:set_value(<<"pvt_version">>, 1, DocModified),
+    DocOpts = [{type, cdr}, {crossbar_doc_vsn, 1}],
+    JObj1 = wh_doc:update_pvt_parameters(NormDoc, Db, DocOpts),
+    Id = <<"6a8d96fe-f849-4d65-b8fe-3d5ee3f696cb">>,
+    % Id = wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()),
+    NewDoc = wh_json:set_value(<<"_id">>, Id, JObj1),
 
-    DocId = wh_json:set_value(<<"_id">>, wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()), DocVersion),
+    case couch_mgr:save_doc(Db, NewDoc) of
+        {ok, _} ->
+            ?LOG("CDR for Call-ID:~p stored", [Id]),
+            it_worked;
+        {error, _} ->
+            ?LOG("___+++ Error, Cannot save Doc. Trying to find existing doc with ID ~p", [Id]),
+            case couch_mgr:open_doc(Db, Id) of
+                {ok, ExistingDoc} ->
+                    ?LOG("___+++ CDR Doc ~p Found! Figuring out if CDR is related to that CDR...", [wh_json:get_value(<<"_id">>, ExistingDoc)]),
+                    case (uri_strip_port(<<"to_uri">>, ExistingDoc) == uri_strip_port(<<"to_uri">>, NewDoc))
+                        orelse (uri_strip_port([<<"related_cdrs">>, 1, <<"to_uri">>], ExistingDoc) == uri_strip_port(<<"to_uri">> , NewDoc)) of
+                        true ->
+                            ?LOG("___+++ Destination URIs are equals, appending ..."),
+                            DocToSave = append_cdr_to_doc(ExistingDoc, NewDoc),
+                            couch_mgr:save_doc(Db, wh_doc:update_pvt_modified(DocToSave)),
+                            ?LOG("New CDR for Call-ID:~p appended", [Id]);
+                        false ->
+                            ?LOG("___+++ Destination URIs are not equals, ignoring that Doc"),
+                            ignore
+                    end;
+                {error, _} ->
+                    discard
+            end
+    end.
 
-    DocAccountDb = wh_json:set_value(<<"pvt_account_db">>, Db, DocId),
-
-    {ok, _} = couch_mgr:save_doc(Db, DocAccountDb),
-    ?LOG("CDR for Call-ID:~p stored", [wh_json:get_value(<<"call_id">>, DocAccountDb)]).
 
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
     case couch_mgr:load_doc_from_file(DB, cdr, <<"cdr.json">>) of
 	{ok, _} -> ok;
 	{error, _} -> couch_mgr:update_doc_from_file(DB, cdr, <<"cdr.json">>)
+    end.
+
+append_cdr_to_doc(ExistingDoc, NewDoc) ->
+    DocFinal = case wh_json:get_value(<<"related_cdrs">>, ExistingDoc) of
+                   undefined ->
+                       ?LOG("___+++ related_cdrs field doesnt exist, creating list of existing doc and new doc ..."),
+                       PublicFields = [{struct, wh_doc:jobj_to_list(wh_doc:public_fields(NewDoc))} | [{struct, wh_doc:jobj_to_list(wh_doc:public_fields(ExistingDoc))}]],
+                       JObj = wh_json:set_value(<<"related_cdrs">>, PublicFields, {struct, []}),
+
+                       ?LOG("___+++ Appending previously existing pvt fields ..."),
+                       PvtFields = wh_doc:jobj_to_list(wh_doc:private_fields(ExistingDoc)),
+                       lists:foldl(fun({Key, Val}, JObj1) -> wh_json:set_value(Key, Val, JObj1)  end, JObj, PvtFields);
+                   CdrList ->
+                       ?LOG("___+++ related_cdrs field exists, appending ..."),
+                       wh_json:set_value(<<"related_cdrs">>, lists:append(CdrList, [{struct, wh_doc:jobj_to_list(wh_doc:public_fields(NewDoc))}]), ExistingDoc)
+               end,
+    DocFinal.
+
+uri_strip_port(UriProp, Doc) ->
+    UriPort = wh_json:get_value(UriProp, Doc),
+    try
+        [Uri, _] = binary:split(UriPort, <<":">>),
+        Uri
+    catch
+        _:_ -> UriPort
     end.
