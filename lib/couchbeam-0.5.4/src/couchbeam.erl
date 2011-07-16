@@ -621,7 +621,7 @@ put_attachment(#db{server=Server, options=IbrowseOpts}=Db, DocId, Name, Body, Op
     case db_request(put, Url, ["201"], IbrowseOpts, FinalHeaders, Body) of
         {ok, _, _, RespBody} ->
             {struct, [{<<"ok">>, true}|R]} = couchbeam_util:json_decode(RespBody),
-            {ok, {R}};
+            {ok, {struct, R}};
         Error ->
             Error
     end.
@@ -658,7 +658,7 @@ delete_attachment(#db{server=Server, options=IbrowseOpts}=Db, DocOrDocId, Name, 
             case db_request(delete, Url, ["200"], IbrowseOpts) of
             {ok, _, _, RespBody} ->
                 {struct, [{<<"ok">>,true}|R]} = couchbeam_util:json_decode(RespBody),
-                {ok, {R}};
+                {ok, {struct, R}};
 
             Error ->
                 Error
