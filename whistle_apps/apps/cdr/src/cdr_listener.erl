@@ -213,13 +213,13 @@ handle_cdr(JObj, _State) ->
                     case (uri_strip_port(<<"to_uri">>, ExistingDoc) == uri_strip_port(<<"to_uri">>, NewDoc))
                         orelse (uri_strip_port([<<"related_cdrs">>, 1, <<"to_uri">>], ExistingDoc) == uri_strip_port(<<"to_uri">> , NewDoc)) of
                         true ->
-                            ?LOG("___+++ Destination URIs are equals, appending ..."),
+                            ?LOG("___+++ Destination URIs are equals, ignoring that Doc"),
+                            ignore;
+                        false ->
+                            ?LOG("___+++ Destination URIs are not  equals, appending ..."),
                             DocToSave = append_cdr_to_doc(ExistingDoc, NewDoc),
                             couch_mgr:save_doc(Db, wh_doc:update_pvt_modified(DocToSave)),
-                            ?LOG("New CDR for Call-ID:~p appended", [Id]);
-                        false ->
-                            ?LOG("___+++ Destination URIs are not equals, ignoring that Doc"),
-                            ignore
+                            ?LOG("New CDR for Call-ID:~p appended", [Id])
                     end;
                 {error, _} ->
                     discard
