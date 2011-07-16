@@ -27,3 +27,9 @@ vm-person: The person at extension
 vm-not_available: is not available.
 vm-no_messages: Mailbox is empty.
 vm-message_number: Message
+
+menu-no_prompt: The recording for this menu has not been created. If you know the pin number, dial it now to record the prompt.  Otherwise, please try your call again later. Thank you.
+menu-transferring_call: Transferring your call.
+menu-exit: I'm sorry, we have not been able to recognize your entries.
+menu-invalid_entry: Invalid entry.
+menu-returning: Transferring your call back to the menu.
