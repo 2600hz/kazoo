@@ -26,4 +26,4 @@ vm-not_available_no_voicemail: The person you are trying to reach is not availab
 vm-person: The person at extension
 vm-not_available: is not available.
 vm-no_messages: Mailbox is empty.
-vm-message_number: Message number
+vm-message_number: Message
