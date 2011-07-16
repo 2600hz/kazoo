@@ -1,21 +1,25 @@
 -module(logger).
 
--export([format_log/3, start/0, start/1, start/2]).
+-export([format_log/3, start_link/0, start_link/1, start_link/2]).
 
 -export([emerg/2, alert/2, crit/2, err/2, warning/2, notice/2, info/2, debug/2]).
 
--spec(start/0 :: () -> no_return()).
-start() ->
-    start(local0).
+-spec start_link/0 :: () -> {ok, pid()}.
+start_link() ->
+    start_link(local0).
 
--spec(start/1 :: (Facility :: atom()) -> no_return()).
-start(Facility) ->
-    start(Facility, [cons, perror, pid, odelay, ndelay]).
+-spec start_link/1 :: (Facility) -> {ok, pid()} when
+      Facility :: atom().
+start_link(Facility) ->
+    start_link(Facility, [cons, perror, pid, odelay, ndelay]).
 
--spec(start/2 :: (Facility :: atom(), Opts :: list(atom())) -> no_return()).
-start(Facility, Opts) ->
-    syslog:start(),
-    syslog:open(atom_to_list(node()), Opts, Facility).
+-spec start_link/2 :: (Facility, Opts) -> {ok, pid()} when
+      Facility :: atom(),
+      Opts :: [cons | perror | pid | odelay | ndelay,...].
+start_link(Facility, Opts) ->
+    Resp = syslog:start_linked(),
+    syslog:open(atom_to_list(node()), Opts, Facility),
+    Resp.
 
 -spec(emerg/2 :: (Format :: string(), Data :: list(term())) -> ok).
 -spec(alert/2 :: (Format :: string(), Data :: list(term())) -> ok).

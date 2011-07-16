@@ -25,7 +25,8 @@ start() ->
 start_deps() ->
     whistle_couch_deps:ensure(?MODULE),
     reloader:start(),
-    logger:start(),
+    logger:start_link(),
+
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(riak_err),
