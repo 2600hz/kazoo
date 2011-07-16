@@ -115,26 +115,35 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() -> import_fixtures(?FIXTURE_LIST, DBName) end),
+    spawn(fun() ->
+                  couch_mgr:revise_views_from_folder(DBName, callflow),
+                  import_fixtures(?FIXTURE_LIST, DBName)
+          end),
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -359,7 +368,7 @@ import_fixture(Fixture, #cb_context{db_name=DBName}=Context) ->
 			    JObj
 		    end,
 
-	    {ok, Realm} = accounts:get_realm_from_db(DBName),
+	    {ok, Realm} = whapps_util:get_realm_from_db(DBName),
 	    JObj2 = wh_json:set_value([<<"realms">>], [Realm], JObj1),
 	    ?LOG_SYS("Set realms to [~s]", [Realm]),
 

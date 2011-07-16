@@ -1,20 +1,17 @@
-%%%-------------------------------------------------------------------
+%%%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
-%%%
-%%% Handle client requests for ts_account documents
-%%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 8 Jul 2011 Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_ts_accounts).
+-module(cb_temporal_rules).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, create_ts_account/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -24,10 +21,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/ts_accounts.json">>).
--define(CB_LIST, <<"ts_accounts/crossbar_listing">>).
-
--define(TS_DB, <<"ts">>).
+-define(VIEW_FILE, <<"views/temporal_rules.json">>).
+-define(CB_LIST, {<<"temporal_rules">>, <<"crossbar_listing">>}).
 
 %%%===================================================================
 %%% API
@@ -76,8 +71,7 @@ init(_) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,52 +96,51 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.ts_accounts">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.temporal_rules">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.ts_accounts">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.temporal_rules">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_accounts">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.temporal_rules">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
 		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context#cb_context{db_name=?TS_DB}),
+		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_accounts">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.temporal_rules">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
+                  Context1 = crossbar_doc:save(Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.temporal_rules">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
+                  Context1 = crossbar_doc:save(Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_accounts">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.temporal_rules">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  #cb_context{doc=Doc} = Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  %% TODO: THIS IS VERY WRONG! Ties a local crossbar to a LOCAL stepswitch instance... quick and
-                  %% dirty were the instructions for this module but someone PLEASE fix this later!
-                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
+                  Context1 = crossbar_doc:delete(Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
+    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -156,7 +149,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:revise_doc_from_file(?TS_DB, crossbar, ?VIEW_FILE),
+    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -199,16 +192,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.ts_accounts">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.ts_accounts">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.ts_accounts">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.ts_accounts">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.temporal_rules">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.temporal_rules">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.temporal_rules">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.temporal_rules">>),
+    crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%% given Nouns.  IE: '/temporal_rule/' can only accept GET and PUT
 %%
 %% Failure here returns 405
 %% @end
@@ -217,7 +211,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE', 'HEAD']};
+    {true, ['GET', 'POST', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -248,63 +242,17 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    read_ts_account_summary(Context);
+    load_temporal_rule_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_ts_account(Context);
-validate([TSAccountId], #cb_context{req_verb = <<"get">>}=Context) ->
-    read_ts_account(TSAccountId, Context);
-validate([TSAccountId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_ts_account(TSAccountId, Context);
-validate([TSAccountId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read_ts_account(TSAccountId, Context);
-validate([TSAccountId], #cb_context{req_verb = <<"head">>}=Context) ->
-    check_ts_account(TSAccountId, Context);
+    create_temporal_rule(Context);
+validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_temporal_rule(DocId, Context);
+validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
+    update_temporal_rule(DocId, Context);
+validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
+    load_temporal_rule(DocId, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new ts_account document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec(create_ts_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_ts_account(#cb_context{req_data=JObj1}=Context) ->
-    case is_valid_doc(JObj1) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-            JObj2 = wh_json:set_value(<<"type">>, <<"sys_info">>, JObj1),
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"sip_service">>, JObj2)
-                               ,resp_status=success
-                              }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a ts_account document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec(read_ts_account/2 :: (TSAccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-read_ts_account(TSAccountId, Context) ->
-    crossbar_doc:load(TSAccountId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing ts_account document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec(update_ts_account/2 :: (TSAccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-            crossbar_doc:load_merge(TSAccountId, JObj, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,29 +261,52 @@ update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(read_ts_account_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-read_ts_account_summary(Context) ->
+-spec(load_temporal_rule_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+load_temporal_rule_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to determine if the account exists in as light weight as
-%% possible, altho just getting here...
+%% Create a new temporal_rule document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec check_ts_account/2 :: (TSAccountId, Context) -> #cb_context{} when
-      TSAccountId :: binary(),
-      Context :: #cb_context{}.
-check_ts_account(TSAccountId, #cb_context{db_name=Db}=Context) ->
-    case couch_mgr:lookup_doc_rev(Db, TSAccountId) of
-        {ok, Rev} ->
-            Context#cb_context{resp_status=success
-                               ,resp_data=[]
-                               ,resp_etag=whistle_util:to_list(Rev)};
-        {error, _} ->
-            crossbar_util:response_bad_identifier(TSAccountId, Context)
+-spec(create_temporal_rule/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+create_temporal_rule(#cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
+            Context#cb_context{
+                 doc=wh_json:set_value(<<"pvt_type">>, <<"temporal_rule">>, JObj)
+                ,resp_status=success
+            }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load a temporal_rule document from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_temporal_rule/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_temporal_rule(DocId, Context) ->
+    crossbar_doc:load(DocId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update an existing temporal_rule document with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec(update_temporal_rule/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_temporal_rule(DocId, #cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
+        %% {false, Fields} ->
+        %%     crossbar_util:response_invalid_data(Fields, Context);
+        {true, []} ->
+            crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -355,11 +326,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj :: json_object()) -> {boolean(), [binary(),...] | []}.
-is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"account">>, JObj) of
-	undefined ->
-	    {false, [<<"account">>]};
-	_ ->
-	    {true, []}
-    end.
+-spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
+is_valid_doc(_JObj) ->
+    {true, []}.
