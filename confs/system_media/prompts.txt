@@ -19,7 +19,7 @@ vm-new_messages: new messages
 vm-saved_message: saved message
 vm-saved_messages: saved messages
 vm-new_and: new and
-vm-received_on: Message received on
+vm-received: Received
 vm-message_menu: To save, press one. To replay, press two.  To delete, press seven. To return to the main menu, press zero.
 vm-mailbox_full: The voicemail box is full, please try your call again later.
 vm-not_available_no_voicemail: The person you are trying to reach is not available, and does not have voicemail.  Please try your call again later.
