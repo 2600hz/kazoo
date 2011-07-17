@@ -28,8 +28,7 @@ init([]) ->
      ,{
        {one_for_one, 5, 10}
        ,[
-	 ?CHILD(logger, worker)
-	 ,?CHILD(resource_mgr, worker) % handles resource requests / resource availability
+	 ?CHILD(resource_mgr, worker) % handles resource requests / resource availability
          ,?CHILD(ecallmgr_registrar, worker) % local cache for registrations
 	 ,?CHILD(ecallmgr_amqp_pool, worker) % pool of queues for sending msgs
 	 ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
@@ -44,4 +43,3 @@ init([]) ->
 	]
       }
     }.
-
