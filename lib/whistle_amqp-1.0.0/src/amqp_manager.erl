@@ -52,7 +52,6 @@ set_host(H) ->
 get_host() ->
     gen_server:call(?SERVER, get_host).
 
-
 publish(BP, AM) ->
     gen_server:call(?SERVER, {publish, BP, AM}).
 

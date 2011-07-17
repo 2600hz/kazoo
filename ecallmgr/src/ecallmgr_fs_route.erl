@@ -229,11 +229,22 @@ code_change(_OldVsn, State, _Extra) ->
 handle_route_req(Node, FSID, CallID, FSData) ->
     proc_lib:start_link(?MODULE, init_route_req, [self(), Node, FSID, CallID, FSData]).
 
+-spec init_route_req/5 :: (Parent, Node, FSID, CallID, FSData) -> no_return() when
+      Parent :: pid(),
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      FSData :: proplist().
 init_route_req(Parent, Node, FSID, CallID, FSData) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     put(callid, CallID),
     process_route_req(Node, FSID, CallID, FSData).
 
+-spec process_route_req/4 :: (Node, FSID, CallID, FSData) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      FSData :: proplist().
 process_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
 	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
@@ -251,15 +262,34 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	false -> route(Node, FSID, CallID, DefProp, undefined)
     end.
 
+-spec authorize_and_route/5 :: (Node, FSID, CallID, FSData, DefProp) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      FSData :: proplist(),
+      DefProp :: proplist().
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
     {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
     route(Node, FSID, CallID, DefProp, AuthZPid).
 
+-spec route/5 :: (Node, FSID, CallID, DefProp, AuthZPid) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      DefProp :: proplist(),
+      AuthZPid :: pid() | undefined.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
     RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, DefProp, ?EMPTY_JSON_OBJECT),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
 
+-spec authorize/6 :: (Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      RespJObj :: json_object(),
+      AuthZPid :: pid() | undefined,
+      RouteCCV :: json_object().
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
     true = whistle_api:route_resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
@@ -269,9 +299,14 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	    reply_forbidden(Node, FSID);
 	{true, CCV} ->
 	    true = whistle_api:route_resp_v(RespJObj),
-	    reply(Node, FSID, CallID, RespJObj, CCV ++ RouteCCV)
+	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
+
+	    reply(Node, FSID, CallID, RespJObj, RouteCCV1)
     end.
 
+-spec reply_forbidden/2 :: (Node, FSID) -> no_return() when
+      Node :: atom(),
+      FSID :: binary().
 reply_forbidden(Node, FSID) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
 						,{<<"Route-Error-Code">>, <<"403">>}
@@ -287,6 +322,12 @@ reply_forbidden(Node, FSID) ->
 	    ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
+-spec reply/5 :: (Node, FSID, CallID, RespJObj, CCVs) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      RespJObj :: json_object(),
+      CCVs :: json_object().
 reply(Node, FSID, CallID, RespJObj, CCVs) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
@@ -302,6 +343,11 @@ reply(Node, FSID, CallID, RespJObj, CCVs) ->
 	    ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
+-spec start_control_and_events/4 :: (Node, CallID, SendTo, CCVs) -> no_return() when
+      Node :: atom(),
+      CallID :: binary(),
+      SendTo :: binary(),
+      CCVs :: json_object().
 start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
 	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
