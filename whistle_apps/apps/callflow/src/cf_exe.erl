@@ -104,6 +104,10 @@ wait(Call, Flow, Pid) ->
            {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
            Pid ! {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
            wait(Call, Flow, Pid);
+       {get_branch_keys, all} ->
+           {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
+           Pid ! {branch_keys, proplists:get_keys(Children)},
+           wait(Call, Flow, Pid);
        {attempt} when not is_pid(Pid) ->
            self() ! {continue, <<"_">>},
            wait(Call, Flow, Pid);

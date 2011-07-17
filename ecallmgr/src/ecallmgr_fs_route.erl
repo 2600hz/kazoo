@@ -127,7 +127,7 @@ handle_info(timeout, #state{node=Node}=State) ->
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    ?LOG("Fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
+    ?LOG("fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
@@ -138,7 +138,7 @@ handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #sta
 	    erlang:monitor(process, LookupPid),
 
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-	    ?LOG_START(CallID, "Fetch request: FSID: ~p Lookup: ~p Req#: ~p", [FSID, LookupPid, LookupsReq]),
+	    ?LOG_START(CallID, "processing fetch request ~s (~b) in PID ~p", [FSID, LookupsReq, LookupPid]),
 	    {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
 				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
 	{_Other, _Context} ->
@@ -257,22 +257,19 @@ authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
 
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
-    authorize(Node, FSID, CallID, RespJObj, AuthZPid).
+    RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, DefProp, ?EMPTY_JSON_OBJECT),
+    authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
 
-authorize(Node, FSID, CallID, RespJObj, undefined) ->
+authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
     true = whistle_api:route_resp_v(RespJObj),
-    reply(Node, FSID, CallID, RespJObj);
-authorize(Node, FSID, CallID, RespJObj, AuthZPid) ->
+    reply(Node, FSID, CallID, RespJObj, RouteCCV);
+authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
     case ecallmgr_authz:is_authorized(AuthZPid) of
 	{false, _} ->
 	    reply_forbidden(Node, FSID);
 	{true, CCV} ->
 	    true = whistle_api:route_resp_v(RespJObj),
-
-	    RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, []),
-	    RespJObj1 = wh_json:set_value(<<"Custom-Channel-Vars">>, CCV ++ RouteCCV, RespJObj),
-
-	    reply(Node, FSID, CallID, RespJObj1)
+	    reply(Node, FSID, CallID, RespJObj, CCV ++ RouteCCV)
     end.
 
 reply_forbidden(Node, FSID) ->
@@ -283,28 +280,29 @@ reply_forbidden(Node, FSID) ->
     case freeswitch:fetch_reply(Node, FSID, XML) of
 	ok ->
 	    %% only start control if freeswitch recv'd reply
-	    ?LOG_END("route forbidden accepted");
+	    ?LOG_END("freeswitch accepted our route forbidden");
 	{error, Reason} ->
 	    ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
 	timeout ->
-	    ?LOG_END("received no reply from freeswitch, timeout", [])
+	    ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
-reply(Node, FSID, CallID, RespJObj) ->
+reply(Node, FSID, CallID, RespJObj, CCVs) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
 
     case freeswitch:fetch_reply(Node, FSID, XML) of
 	ok ->
 	    %% only start control if freeswitch recv'd reply
-	    start_control_and_events(Node, CallID, ServerQ);
+	    ?LOG("freeswitch accepted our route, starting control and events"),
+	    start_control_and_events(Node, CallID, ServerQ, CCVs);
 	{error, Reason} ->
-	    ?LOG("freeswitch rejected our route response, ~p", [Reason]);
+	    ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
 	timeout ->
-	    ?LOG("received no reply from freeswitch, timeout", [])
+	    ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
-start_control_and_events(Node, CallID, SendTo) ->
+start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
 	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
 	_ = amqp_util:bind_q_to_callctl(CtlQ),
@@ -314,17 +312,20 @@ start_control_and_events(Node, CallID, SendTo) ->
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}
 		   ,{<<"Control-Queue">>, CtlQ}
+                   ,{<<"Custom-Channel-Vars">>, CCVs}
 		   | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
 	send_control_queue(SendTo, CtlProp)
     catch
-	_:_ -> {error, amqp_error}
+	_:Reason ->
+            ?LOG_END("error during control handoff to whapp, ~p", [Reason]),
+            {error, amqp_error}
     end.
 
 send_control_queue(SendTo, CtlProp) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->
-	    ?LOG("sending route_win to ~s", [SendTo]),
+	    ?LOG_END("sending route_win to ~s", [SendTo]),
 	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
 	{error, _Msg} ->
-	    ?LOG("sending route_win to ~s failed, ~p", [self(), SendTo, _Msg])
+	    ?LOG_END("sending route_win to ~s failed, ~p", [SendTo, _Msg])
     end.
