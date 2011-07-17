@@ -127,7 +127,7 @@ handle_info(timeout, #state{node=Node}=State) ->
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    ?LOG("Fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
+    ?LOG("fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
