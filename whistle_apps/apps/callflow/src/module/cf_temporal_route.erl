@@ -33,9 +33,9 @@
                ,disable = <<"2">>
                ,reset = <<"3">>
               }).
--record(prompts, {marked_closed = <<"/system_media/temporal-marked_closed">>
-                  ,marked_opened = <<"/system_media/temporal-marked_opened">>
-                  ,marker_reset = <<"/system_media/temporal-reset_rules">>
+-record(prompts, {marked_disabled = <<"/system_media/temporal-marked_disabled">>
+                  ,marked_enabled = <<"/system_media/temporal-marked_enabled">>
+                  ,marker_reset = <<"/system_media/temporal-marker_reset">>
                   ,main_menu = <<"/system_media/temporal-menu">>
                  }).
 
@@ -252,8 +252,8 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=R
 %% @end
 %%--------------------------------------------------------------------
 -spec(disable_temporal_rules/3 :: (Temporal :: #temporal{}, Rules :: list(),  Call :: #cf_call{}) -> no_return()).
-disable_temporal_rules(#temporal{prompts=#prompts{marked_closed=Closed}}, [], Call) ->
-    _ = cf_call_command:b_play(Closed, Call);
+disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
+    _ = cf_call_command:b_play(Disabled, Call);
 disable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
@@ -314,8 +314,8 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(enable_temporal_rules/3 :: (Temporal :: #temporal{}, Rules :: list(), Call :: #cf_call{}) -> no_return()).
-enable_temporal_rules(#temporal{prompts=#prompts{marked_opened=Opened}}, [], Call) ->
-    _ = cf_call_command:b_play(Opened, Call);
+enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
+    _ = cf_call_command:b_play(Enabled, Call);
 enable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
