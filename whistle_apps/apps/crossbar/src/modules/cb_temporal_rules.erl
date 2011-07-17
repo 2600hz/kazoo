@@ -22,7 +22,7 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/temporal_rules.json">>).
--define(CB_LIST, {<<"temporal_rules">>, <<"crossbar_listing">>}).
+-define(CB_LIST, <<"temporal_rules/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
