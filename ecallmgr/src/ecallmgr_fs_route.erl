@@ -264,11 +264,15 @@ authorize(Node, FSID, CallID, RespJObj, undefined) ->
     reply(Node, FSID, CallID, RespJObj);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid) ->
     case ecallmgr_authz:is_authorized(AuthZPid) of
-	false ->
+	{false, _} ->
 	    reply_forbidden(Node, FSID);
-	true ->
+	{true, CCV} ->
 	    true = whistle_api:route_resp_v(RespJObj),
-	    reply(Node, FSID, CallID, RespJObj)
+
+	    RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, []),
+	    RespJObj1 = wh_json:set_value(<<"Custom-Channel-Vars">>, CCV ++ RouteCCV, RespJObj),
+
+	    reply(Node, FSID, CallID, RespJObj1)
     end.
 
 reply_forbidden(Node, FSID) ->

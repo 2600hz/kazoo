@@ -430,7 +430,10 @@ set_timeout(Node, UUID, Timeout) ->
             ok
     end.
 
--spec(set_media_mode/3 :: (Node :: atom(), UUID :: binary(), MediaMode :: undefined | binary()) -> ok | media_mode | {error, string()}).
+-spec set_media_mode/3 :: (Node, UUID, MediaMode) -> ok | timeout | {error, string()} when
+      Node :: atom(),
+      UUID :: binary(),
+      MediaMode :: undefined | binary().
 set_media_mode(Node, UUID, <<"process">>) ->
     set(Node, UUID, <<"bypass_media=false">>);
 set_media_mode(Node, UUID, <<"bypass">>) ->
