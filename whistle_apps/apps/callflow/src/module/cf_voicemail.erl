@@ -81,6 +81,7 @@
           ,message_menu = <<"/system_media/vm-message_menu">>
           ,settings_menu = <<"/system_media/vm-settings_menu">>
 
+          ,message_number = <<"/system_media/vm-message_number">>
           ,received = <<"/system_media/vm-received">>
           ,no_messages = <<"/system_media/vm-no_messages">>
           ,you_have = <<"/system_media/vm-you_have">>
@@ -168,7 +169,7 @@ check_mailbox(#mailbox{require_pin=false, owner_id=OwnerId}=Box, #cf_call{owner_
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
     main_menu(Box, Call);
-check_mailbox(#mailbox{prompts=Prompts, pin = <<>>}, Call, _) ->
+check_mailbox(#mailbox{prompts=Prompts, pin = <<>>, exists=true}, Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
     ?LOG("attempted to sign into a mailbox with no pin"),
@@ -184,7 +185,7 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
         _:R ->
             ?LOG("invalid mailbox login ~w", [R]),
             _ = b_play(InvalidLogin, Call),
-            check_mailbox(Box, Call, Loop+1)
+            check_mailbox(Box#mailbox{exists=false}, Call, Loop+1)
     end.
 
 %%--------------------------------------------------------------------
@@ -331,10 +332,12 @@ main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
     _ = flush(Call),
     case DTMF of
 	{ok, HearNew} ->
-	    play_messages(get_folder(Messages, ?FOLDER_NEW), Box, Call),
+            Folder = get_folder(Messages, ?FOLDER_NEW),
+	    play_messages(Folder, length(Folder), Box, Call),
 	    main_menu(Box, Call);
 	{ok, HearSaved} ->
-	    play_messages(get_folder(Messages, ?FOLDER_SAVED), Box, Call),
+            Folder = get_folder(Messages, ?FOLDER_SAVED),
+	    play_messages(Folder, length(Folder), Box, Call),
 	    main_menu(Box, Call);
 	{ok, Configure} ->
 	    config_menu(Box, Call);
@@ -410,17 +413,19 @@ message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, sav
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(play_messages/3 :: (Messages :: json_objects(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
-			      ,prompts=#prompts{received=Received, message_menu=MessageMenu, saved=Saved, deleted=Deleted}
+-spec(play_messages/4 :: (Messages :: json_objects(), Count :: integer(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
+			      ,prompts=#prompts{message_number=MsgNum, received=Received, message_menu=MessageMenu, saved=Saved, deleted=Deleted}
 			      ,keys=#keys{replay=Replay, keep=Keep, delete=Delete, return_main=ReturnMain}}=Box, Call) ->
     ?LOG("reviewing mailbox message"),
     Message = get_message(H, Box, Call),
-    audio_macro([
-                  {play, Received}
-                 ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+    audio_macro([{play, MsgNum}
+                 ,{say, whistle_util:to_binary(Count - length(Messages) + 1), <<"number">>}
 
                  ,{play, Message}
+
+                 ,{play, Received}
+                 ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
 
                  ,{play, MessageMenu}
                 ], Call),
@@ -430,22 +435,22 @@ play_messages([{struct, _}=H|T]=Messages, #mailbox{timezone=Timezone
 	{ok, Keep} ->
 	    b_play(Saved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call),
-	    play_messages(T, Box, Call);
+	    play_messages(T, Count, Box, Call);
 	{ok, Delete} ->
 	    b_play(Deleted, Call),
 	    set_folder(?FOLDER_DELETED, H, Box, Call),
-	    play_messages(T, Box, Call);
+	    play_messages(T, Count, Box, Call);
 	{ok, ReturnMain} ->
 	    b_play(Saved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call);
 	{ok, Replay} ->
-	    play_messages(Messages, Box, Call);
+	    play_messages(Messages, Count, Box, Call);
         {error, _} ->
             ok;
 	_ ->
-	    play_messages(Messages, Box, Call)
+	    play_messages(Messages, Count, Box, Call)
     end;
-play_messages(_, Box, Call) ->
+play_messages(_, _, Box, Call) ->
     main_menu(Box, Call).
 
 %%--------------------------------------------------------------------
@@ -647,7 +652,7 @@ save_metadata(NewMessage, Db, Id) ->
 %%--------------------------------------------------------------------
 -spec(get_mailbox_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #mailbox{}).
 get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
-    Id = wh_json:get_value(<<"id">>, Data),
+    Id = wh_json:get_value(<<"id">>, Data, <<"undefined">>),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             ?LOG("loaded voicemail box ~s", [Id]),

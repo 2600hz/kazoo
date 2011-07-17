@@ -14,7 +14,7 @@
 
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
--export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2]).
+-export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 -export([bind_q_to_monitor/2]).
@@ -414,7 +414,25 @@ bind_q_to_exchange(Queue, Routing, Exchange, NoWait) when is_binary(Queue), is_b
 %% Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
-unbind_q_from_callevt(Queue, Routing) ->
+-spec unbind_q_from_callevt/2 :: (Queue, CallID) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: media_req | binary().
+-spec unbind_q_from_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: media_req | binary(),
+      Type :: events | status_req | cdr | other.
+unbind_q_from_callevt(Queue, media_req) ->
+    unbind_q_from_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID) ->
+    unbind_q_from_callevt(Queue, CallID, events).
+
+unbind_q_from_callevt(Queue, CallID, events) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_EVENT/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID, status_req) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID, cdr) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_CDR/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, Routing, other) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
 unbind_q_from_callctl(Queue) ->
@@ -445,11 +463,14 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 %% @end
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
+-spec basic_consume/1 :: (Queue) -> ok when
+      Queue :: binary().
+-spec basic_consume/2 :: (Queue, Options) -> ok when
+      Queue :: binary(),
+      Options :: proplist().
 basic_consume(Queue) ->
     basic_consume(Queue, []).
 
-basic_consume(Queue, Options) when is_list(Queue) ->
-    basic_consume(list_to_binary(Queue), Options);
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
@@ -459,7 +480,9 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    amqp_manager:consume(BC).
+    {C, Resp} = amqp_manager:consume(BC),
+    link(C),
+    Resp.
 
 %%------------------------------------------------------------------------------
 %% @public

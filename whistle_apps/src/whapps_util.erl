@@ -140,17 +140,19 @@ replicate_from_account(_,_,_) -> {error, matching_dbs}.
 %% in the requested encoding
 %% @end
 %%--------------------------------------------------------------------
--spec(get_all_accounts/0 :: () -> list()).
--spec(get_all_accounts/1 :: (Encoding :: unencoded | encoded | raw) -> list()).
+-spec get_all_accounts/0 :: () -> [binary(),...] | [].
+-spec get_all_accounts/1 :: (Encoding) -> [binary(),...] | [] when
+      Encoding :: unencoded | encoded | raw.
 
 get_all_accounts() ->
     get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
     {ok, Databases} = couch_mgr:db_info(),
-    [get_db_name(Db, Encoding)
-     || Db <- Databases
-            ,fun(<<"account/", _/binary>>) -> true; (_) -> false end(Db)].
+    [get_db_name(Db, Encoding) || Db <- Databases
+				      ,fun(<<"account/", _/binary>>) -> true;
+					  (_) -> false end(Db)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public

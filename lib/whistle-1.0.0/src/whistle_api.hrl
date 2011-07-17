@@ -14,7 +14,7 @@
 
 -define(IS_JSON_OBJECT,
         fun({struct, L}) when is_list(L) ->
-                lists:all(fun({K, V}) when is_binary(K) andalso
+                lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
                                            (is_binary(V) orelse is_number(V)) -> true;
                              (_) -> false
                           end, L);
@@ -161,12 +161,12 @@
 
 %% Authorization Responses
 -define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
--define(OPTIONAL_AUTHZ_RESP_HEADERS, []).
+-define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
 			    ,{<<"Event-Name">>, <<"authz_resp">>}
 			    ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
 			   ]).
--define(AUTHZ_RESP_TYPES, []).
+-define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>

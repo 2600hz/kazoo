@@ -28,7 +28,7 @@
 	 }).
 -record(state, {
 	  listeners = [] :: list(#listener{})
-	  ,db = #db{}
+	  ,db = <<>> :: binary()
 	 }).
 
 %%%===================================================================
@@ -42,8 +42,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Db, Options) ->
-    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 5000} | Options], [Db]).
+start_link(DbName, Options) ->
+    gen_changes:start_link(?MODULE, DbName, [ {heartbeat, 5000} | Options], [DbName]).
 
 stop(Srv) ->
     gen_changes:stop(Srv).
@@ -72,8 +72,8 @@ rm_listener(Srv, Pid, Doc) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Db]) ->
-    {ok, #state{db=Db}}.
+init([DbName]) ->
+    {ok, #state{db=DbName}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,10 +175,10 @@ handle_change({struct, Change}, #state{listeners=Ls}=State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{listeners=Ls, db=Db}) ->
-    logger:format_log(error, "CH(~p): Going down, down, down for ~p(~p)~n", [self(), Db#db.name, _Reason]),
+terminate(_Reason, #state{listeners=Ls, db=DbName}) ->
+    logger:format_log(error, "CH(~p): Going down, down, down for ~p(~p)~n", [self(), DbName, _Reason]),
     lists:foreach(fun(#listener{pid=Pid, monitor_ref=Ref, doc=Doc}) ->
-			  Pid ! {change_handler_terminating, Db#db.name, Doc},
+			  Pid ! {change_handler_terminating, DbName, Doc},
 			  erlang:demonitor(Ref, [flush])
 		  end, Ls),
     ok.

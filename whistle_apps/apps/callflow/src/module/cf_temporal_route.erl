@@ -32,11 +32,11 @@
 -record(prompts, {
            route_enabled = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+enabled.">>
           ,route_disabled = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+have+been+disabled,all+calls+will+be+sent+to+the+default+route.">>
-          ,route_update_error = <<"shout://translate.google.com/translate_tts?tl=en&q=Unable+to+update+the+time+and+date+status+at+this+time.">>
+          ,route_reset = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+have+been+returned+to+normal+operation.">>
          }).
 
--record(rule, {
-           id = <<>> :: binary()
+-record(rule, {id = <<>> :: binary()
+          ,enabled = undefined :: undefined | binary()
           ,name = <<"no_name">> :: binary()
           ,cycle = <<>> :: cycle_type()
           ,interval = 1 :: non_neg_integer()
@@ -49,13 +49,9 @@
           ,wtime_stop = 86400 :: non_neg_integer()
          }).
 
--record(temporal, {
-           temporal_id = <<>> :: binary()
-          ,enabled = true :: boolean()
-          ,local_sec = 0 :: non_neg_integer()
+-record(temporal, {local_sec = 0 :: non_neg_integer()
           ,local_date = {2011, 1, 1} :: wh_date()
           ,local_time = {0, 0, 0} :: wh_time()
-          ,default = <<>> :: binary()
           ,routes = [] :: proplist()
           ,timezone = <<"America/Los_Angeles">> :: binary()
           ,prompts=#prompts{}
@@ -71,23 +67,31 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
-        <<"toggle">> ->
-            toggle_temporal_route(Temporal, Call),
-            CFPid ! {stop};
         <<"enable">> ->
-            enable_temporal_route(Temporal, Call),
+            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            enable_temporal_route(Rules, Call),
+            Prompts = Temporal#temporal.prompts,
+            _ = cf_call_command:b_play(Prompts#prompts.route_enabled, Call),
             CFPid ! {stop};
         <<"disable">> ->
-            disable_temporal_route(Temporal, Call),
+            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            disable_temporal_route(Rules, Call),
+            Prompts = Temporal#temporal.prompts,
+            _ = cf_call_command:b_play(Prompts#prompts.route_disabled, Call),
+            CFPid ! {stop};
+        <<"reset">> ->
+            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            reset_temporal_route(Rules, Call),
+            Prompts = Temporal#temporal.prompts,
+            _ = cf_call_command:b_play(Prompts#prompts.route_reset, Call),
             CFPid ! {stop};
         _ ->
             Rules = get_temporal_rules(Temporal, Call),
             case process_rules(Temporal, Rules, Call) of
-                {error, R} ->
-                    ?LOG("failed to find callflow ~w, nothing left to do", [R]),
-                    CFPid ! {stop};
-                Flow ->
-                    CFPid ! {branch, Flow}
+                default ->
+                    CFPid ! {continue};
+                ChildId ->
+                    CFPid ! {continue, ChildId}
             end
     end.
 
@@ -99,54 +103,32 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(process_rules/3 :: (Temporal :: #temporal{}, Rules :: [#rule{}], Call :: #cf_call{})
-                         -> {error, atom()} | json_object()).
-process_rules(#temporal{enabled=false, default=FlowId}, _, Call) ->
-    ?LOG("time based routes disabled"),
-    find_callflow(FlowId, Call);
-process_rules(#temporal{default=FlowId}, [], Call) ->
+                         -> default | binary()).
+process_rules(_, [], _) ->
     ?LOG("continuing with default callflow"),
-    find_callflow(FlowId, Call);
-process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}, routes=Routes}=T,
+    default;
+process_rules(Temporal, [#rule{enabled = <<"false">>, id=Id, name=Name}|H], Call) ->
+    ?LOG("time based rule ~s (~s) disabled", [Id, Name]),
+    process_rules(Temporal, H, Call);
+process_rules(_, [#rule{enabled = <<"true">>, id=Id, name=Name}|_], _) ->
+    ?LOG("time based rule ~s (~s) is forced active", [Id, Name]),
+    Id;
+process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T,
               [#rule{id=Id, name=Name, wtime_start=TStart, wtime_stop=TStop}=R|H]
               ,Call) ->
     ?LOG("processing temporal rule ~s (~s)", [Id, Name]),
     BaseDate = next_rule_date(R, {Y, M, D - 1}),
-    ?LOG("determined the occurrence date to be ~w", [BaseDate]),
     BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
     case {BastTime + TStart, BastTime + TStop} of
         {Start, _} when LSec < Start ->
-            ?LOG("rule applies in the future, moving to next rule"),
+            ?LOG("rule applies in the future ~w", [calendar:gregorian_seconds_to_datetime(Start)]),
             process_rules(T, H, Call);
         {_, End} when LSec > End ->
-            ?LOG("rule was valid today but has expired, moving to the next rule"),
+            ?LOG("rule was valid today but expired ~w", [calendar:gregorian_seconds_to_datetime(End)]),
             process_rules(T, H, Call);
-        {_, _} ->
-            ?LOG("within active time window for the rule"),
-            {_, FlowId} = lists:keyfind(Id, 1, Routes),
-            case find_callflow(FlowId, Call) of
-                {error, R} ->
-                    ?LOG("failed to load callflow ~w, moving to the next rule", [R]),
-                    process_rules(T, H, Call);
-                Flow -> Flow
-            end
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% attempts to retriev the 'flow' key off the document ID in the database
-%% that this call belongs to
-%% @end
-%%--------------------------------------------------------------------
--spec(find_callflow/2 :: (Id :: binary(), Call :: #cf_call{})
-                         -> {error, atom()} | json_object()).
-find_callflow(Id, #cf_call{account_db=Db}) ->
-    ?LOG("loading callflow ~s", [Id]),
-    case couch_mgr:open_doc(Db, Id) of
-        {ok, JObj}->
-            wh_json:get_value(<<"flow">>, JObj, {error, flow_not_found});
-        {error, _}=E ->
-            E
+        {_, End} ->
+            ?LOG("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
+            Id
     end.
 
 %%--------------------------------------------------------------------
@@ -164,24 +146,36 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                                                  ,{<<"include_docs">>, true}]) of
         {ok, JObj} ->
             Default=#rule{},
-            [#rule{
-                 id = wh_json:get_value(<<"id">>, R)
-                ,name = wh_json:get_value([<<"doc">>, <<"name">>], R, Default#rule.name)
-                ,cycle = wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
-                ,interval = whistle_util:to_integer(
+            [#rule{id =
+                       wh_json:get_value(<<"id">>, R)
+                   ,enabled =
+                       wh_json:get_binary_boolean([<<"doc">>, <<"enabled">>], R)
+                   ,name =
+                       wh_json:get_value([<<"doc">>, <<"name">>], R, Default#rule.name)
+                   ,cycle =
+                       wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
+                   ,interval =
+                       whistle_util:to_integer(
                               wh_json:get_value([<<"doc">>, <<"interval">>], R, Default#rule.interval))
-                ,days = wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
-                ,wdays = wh_json:get_value([<<"doc">>, <<"wdays">>], R, Default#rule.wdays)
-                ,ordinal = wh_json:get_value([<<"doc">>, <<"ordinal">>], R, Default#rule.ordinal)
-                ,month = wh_json:get_value([<<"doc">>, <<"month">>], R, Default#rule.month)
-                ,start_date = get_date(wh_json:get_value([<<"doc">>, <<"start_date">>], R, LSec))
-                ,wtime_start = whistle_util:to_integer(
+                   ,days =
+                       wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
+                   ,wdays =
+                       wh_json:get_value([<<"doc">>, <<"wdays">>], R, Default#rule.wdays)
+                   ,ordinal =
+                       wh_json:get_value([<<"doc">>, <<"ordinal">>], R, Default#rule.ordinal)
+                   ,month =
+                       wh_json:get_value([<<"doc">>, <<"month">>], R, Default#rule.month)
+                   ,start_date =
+                       get_date(wh_json:get_value([<<"doc">>, <<"start_date">>], R, LSec))
+                   ,wtime_start =
+                       whistle_util:to_integer(
                                  wh_json:get_value([<<"doc">>, <<"time_window_start">>], R, Default#rule.wtime_start))
-                ,wtime_stop = whistle_util:to_integer(
+                   ,wtime_stop =
+                       whistle_util:to_integer(
                                wh_json:get_value([<<"doc">>, <<"time_window_stop">>], R, Default#rule.wtime_stop))
                }
              || R <- JObj,
-                lists:keymember(wh_json:get_value(<<"id">>, R), 1, Routes)];
+                lists:member(wh_json:get_value(<<"id">>, R), Routes)];
         {error, _} ->
             []
     end.
@@ -192,27 +186,16 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
 %% Loads the temporal record with data from the db.
 %% @end
 %%--------------------------------------------------------------------
--spec(get_temporal_route/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #temporal{}).
-get_temporal_route(Data, #cf_call{account_db=Db}) ->
-    Id = wh_json:get_value(<<"id">>, Data),
-    case couch_mgr:open_doc(Db, Id) of
-        {ok, JObj} ->
-            ?LOG("loading temporal route ~s", [Id]),
-            Default=#temporal{},
-            {struct, Routes} = wh_json:get_value(<<"temporal_rules">>, JObj, ?EMPTY_JSON_OBJECT),
-            load_current_time(#temporal{
-                                  temporal_id = Id
-                                 ,enabled =
-                                     whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj, Default#temporal.enabled))
-                                 ,default = wh_json:get_value(<<"default_callflow_id">>, JObj, Default#temporal.default)
-                                 ,routes = Routes
-                                 ,timezone =
-                                     wh_json:get_value(<<"timezone">>, JObj, Default#temporal.timezone)
-                                });
-        {error, R} ->
-            ?LOG("failed to load temporal route ~s, ~w", [Id, R]),
-            load_current_time(#temporal{})
-    end.
+-spec(get_temporal_route/2 :: (JObj :: json_object(), Call :: #cf_call{}) -> #temporal{}).
+get_temporal_route(JObj, #cf_call{cf_pid=CFPid}) ->
+    ?LOG("loading temporal route"),
+    Default=#temporal{},
+    CFPid ! {get_branch_keys},
+    load_current_time(#temporal{routes =
+                                    receive {branch_keys, Keys} -> Keys after 1000 -> [] end
+                                ,timezone =
+                                    wh_json:get_value(<<"timezone">>, JObj, Default#temporal.timezone)
+                               }).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -231,15 +214,32 @@ get_date(Term) when is_integer(Term) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Determines the current status of the temporal route and executes the
-%% function to move it to the opposite.
+%% Retrieve and update the enabled key on the temporal route document.
+%% Also plays messages to the caller based on the results of that
+%% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec(toggle_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
-toggle_temporal_route(#temporal{enabled=true}=Temporal, Call)->
-    disable_temporal_route(Temporal, Call);
-toggle_temporal_route(#temporal{enabled=false}=Temporal, Call) ->
-    enable_temporal_route(Temporal, Call).
+-spec(disable_temporal_route/2 :: (Rules :: list(), Call :: #cf_call{}) -> no_return()).
+disable_temporal_route([], _) -> ok;
+disable_temporal_route([Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+    try
+        {ok, JObj} = couch_mgr:open_doc(Db, Id),
+        case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, false, JObj)) of
+            {ok, _} ->
+                ?LOG("set temporal rule ~s to disabled", [Id]),
+                disable_temporal_route(T, Call);
+            {error, conflict} ->
+                ?LOG("conflict during disable of temporal rule ~s, trying again", [Id]),
+                disable_temporal_route(Rules, Call);
+            {error, R1} ->
+                ?LOG("unable to update temporal rule ~s, ~p",[Id, R1]),
+                disable_temporal_route(T, Call)
+        end
+    catch
+        _:R2 ->
+            ?LOG("unable to update temporal route ~p",[R2]),
+            disable_temporal_route(T, Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -249,18 +249,26 @@ toggle_temporal_route(#temporal{enabled=false}=Temporal, Call) ->
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec(disable_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
-disable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->
-    ?LOG("disabling temporal route ~s", [Id]),
+-spec(reset_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
+reset_temporal_route([], _) -> ok;
+reset_temporal_route([Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, false, JObj)),
-        ?LOG("set temporal route status to disabled"),
-        _ = cf_call_command:b_play(Prompts#prompts.route_disabled, Call)
+        case couch_mgr:save_doc(Db, wh_json:delete_key(<<"enabled">>, JObj)) of
+            {ok, _} ->
+                ?LOG("reset temporal rule ~s", [Id]),
+                reset_temporal_route(T, Call);
+            {error, conflict} ->
+                ?LOG("conflict during reset of temporal rule ~s, trying again", [Id]),
+                reset_temporal_route(Rules, Call);
+            {error, R1} ->
+                ?LOG("unable to reset temporal rule ~s, ~p",[Id, R1]),
+                reset_temporal_route(T, Call)
+        end
     catch
-        _:R ->
-            ?LOG("unable to update temporal route ~w",[R]),
-            _ = cf_call_command:b_play(Prompts#prompts.route_update_error, Call)
+        _:R2 ->
+            ?LOG("unable to reset temporal rule ~s ~p",[Id, R2]),
+            reset_temporal_route(T, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -272,17 +280,25 @@ disable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{acco
 %% @end
 %%--------------------------------------------------------------------
 -spec(enable_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
-enable_temporal_route(#temporal{temporal_id=Id, prompts=Prompts}, #cf_call{account_db=Db}=Call) ->
-    ?LOG("enabling temporal route ~s", [Id]),
+enable_temporal_route([], _) -> ok;
+enable_temporal_route([Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, true, JObj)),
-        ?LOG("set temporal route status to enabled"),
-        _ = cf_call_command:b_play(Prompts#prompts.route_enabled, Call)
+        case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, true, JObj)) of
+            {ok, _} ->
+                ?LOG("set temporal rule ~s to enabled active", [Id]),
+                enable_temporal_route(T, Call);
+            {error, conflict} ->
+                ?LOG("conflict during enable of temporal rule ~s, trying again", [Id]),
+                enable_temporal_route(Rules, Call);
+            {error, R1} ->
+                ?LOG("unable to enable temporal rule ~s, ~p",[Id, R1]),
+                enable_temporal_route(T, Call)
+        end
     catch
-        _:R ->
-            ?LOG("unable to update temporal route ~w",[R]),
-            _ = cf_call_command:b_play(Prompts#prompts.route_update_error, Call)
+        _:R2 ->
+            ?LOG("unable to enable temporal rule ~s ~p",[Id, R2]),
+            enable_temporal_route(T, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -298,7 +314,7 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
                                 calendar:universal_time()
                                ,whistle_util:to_list(Timezone)
                               ),
-    ?LOG("local time for ~s is ~w on ~w", [Timezone, LocalTime, LocalDate]),
+    ?LOG("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})
                       ,local_date=LocalDate
                       ,local_time=LocalTime}.

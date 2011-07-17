@@ -18,6 +18,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %% ===================================================================
 %% API functions
@@ -49,7 +50,7 @@ upgrade() ->
 init([]) ->
     {ok, { {one_for_one, 2, 5}
 	   ,[
-	     ?CHILD(jonny5_ts_flat, worker)
-	     ,?CHILD(jonny5_ts_min, worker)
+	     ?CACHE(j5_cache)
+	     ,?CHILD(jonny5_ts, worker)
 	    ]
 	 } }.

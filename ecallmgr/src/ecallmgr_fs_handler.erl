@@ -261,7 +261,7 @@ code_change(_OldVsn, State, _Extra) ->
       Node :: atom(),
       Opts :: proplist().
 watch_node_for_restart(Node, Opts) ->
-    watch_node_for_restart(Node, Opts, 1000).
+    watch_node_for_restart(Node, Opts, 250).
 
 -spec watch_node_for_restart/3 :: (Node, Opts, Timeout) -> ok | tuple(error, no_connection) when
       Node :: atom(),

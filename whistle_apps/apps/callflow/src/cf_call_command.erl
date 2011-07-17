@@ -86,7 +86,7 @@ audio_macro([{tones, Tones}|T], Call, Queue) ->
 %%--------------------------------------------------------------------
 -spec(flush_dtmf/1 :: (Call :: #cf_call{}) -> cf_api_std_return()).
 flush_dtmf(Call) ->
-    b_play(<<"silence_stream://250">>, Call).
+    b_play(<<"silence_stream://50">>, Call).
 
 %%--------------------------------------------------------------------
 %% @public

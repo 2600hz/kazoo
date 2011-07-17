@@ -22,6 +22,7 @@
 			  ,'PUT'
 			  ,'DELETE'
                           ,'OPTIONS'
+                          ,'HEAD'
 			 ]).
 
 -record(session, {

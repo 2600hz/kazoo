@@ -2,11 +2,11 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Handles authorizing per-minute calls
+%%% Handle serializing account access for trunkstore accounts
 %%% @end
-%%% Created :  7 Jul 2011 by James Aimonetti <james@2600hz.org>
+%%% Created : 16 Jul 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(jonny5_ts_min).
+-module(jonny5_ts_acctmgr).
 
 -behaviour(gen_server).
 
