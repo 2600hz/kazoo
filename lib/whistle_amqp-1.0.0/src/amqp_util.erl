@@ -345,10 +345,14 @@ bind_q_to_callctl(Queue) ->
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
-%% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallId
--spec(bind_q_to_callevt/2 :: (Queue :: binary(), Routing :: media_req | binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_callevt/3 :: (Queue :: binary(), Routing :: media_req | binary(), Type :: events | status_req | cdr | other) ->
-				  #'basic.consume_ok'{} | tuple(error, term())).
+%% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallID
+-spec bind_q_to_callevt/2 :: (Queue, CallID) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: media_req | binary().
+-spec bind_q_to_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: binary(),
+      Type :: events | status_req | cdr | other.
 bind_q_to_callevt(Queue, media_req) ->
     bind_q_to_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallId) ->
@@ -419,7 +423,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, NoWait) when is_binary(Queue), is_b
       CallID :: media_req | binary().
 -spec unbind_q_from_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
       Queue :: binary(),
-      CallID :: media_req | binary(),
+      CallID :: binary(),
       Type :: events | status_req | cdr | other.
 unbind_q_from_callevt(Queue, media_req) ->
     unbind_q_from_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);

@@ -71,7 +71,7 @@ publish(Srv, From, BasicPub, AmqpMsg) ->
 %% and calling process can link. This means if a channel dies, the process
 %% will receive the exit signal and vice-versa.
 %% Should help get unused Channels to die
--spec consume/3 :: (Srv, From, Msg) -> ok | {pid(), ok} when
+-spec consume/3 :: (Srv, From, Msg) -> ok when
       Srv :: pid(),
       From :: tuple(pid(), reference()),
       Msg :: consume_records().
