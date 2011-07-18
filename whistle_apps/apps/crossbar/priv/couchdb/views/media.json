@@ -1,0 +1,15 @@
+{
+    "_id":"_design/media"
+    ,"language":"javascript"
+    ,"views": {
+        "crossbar_listing":{
+	    "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type}); }"
+        }
+	,"listing_by_name":{
+	    "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; emit(doc.name, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type}); }"
+ 	}
+    }
+    ,"filters": {
+        "export":"function(doc, req) { return ( doc.pvt_type == 'media' ); }"
+    }
+}
