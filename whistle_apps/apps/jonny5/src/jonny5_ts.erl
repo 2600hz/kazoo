@@ -127,7 +127,7 @@ handle_info({'DOWN', Ref, process, CPid, _Reason}, #state{cache=CPid, cache_ref=
     {noreply, State#state{cache=undefined}};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [State]),
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

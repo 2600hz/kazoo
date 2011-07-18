@@ -176,7 +176,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    gen_server:reply(From, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)),
+	    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
 	    {noreply, State}
     end;
 
