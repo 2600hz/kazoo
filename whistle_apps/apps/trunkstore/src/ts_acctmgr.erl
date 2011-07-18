@@ -197,14 +197,14 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
-				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)) end),
+				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)), build_view(WDB, AcctId) end),
 				  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
 				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
 				  AvailableCredit = wh_json:get_value(<<"credit">>, Funds, 0),
 				  case AvailableCredit > Amt of
 				      true ->
-					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
+					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)), build_view(WDB, AcctId) end),
 					  ?LOG(CallID, "Per-minute reserved for ~s", [AcctId]),
 					  gen_server:reply(From, {ok, per_min});
 				      false ->
@@ -215,7 +215,7 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 		  end
 	  end),
     {noreply, S};
-handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     spawn(fun() ->
 		  case trunk_type(RDB, AcctID, ACallID) of
 		      non_existant ->
@@ -228,9 +228,9 @@ handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, From, #state{
 		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
 		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
 		  end,
-		  gen_server:reply(From, ok)
+		  build_view(WDB, AcctID)
 	  end),
-    {noreply, S}.
+    {reply, ok, S}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -260,7 +260,8 @@ handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, 
 			  end;
 		      per_min -> release(per_min, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt)));
 		      flat_rate -> release(flat_rate, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate)))
-		  end
+		  end,
+		  build_view(WDB, AcctId)
 	  end),
     {noreply, S}.
 
@@ -304,7 +305,8 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
 					 ?LOG_SYS("Transfer account ~s from ~s to ~s", [Acct, RDB, WDB]),
 					 transfer_acct(Acct, RDB, WDB),
 					 ?LOG_SYS("Transfer active calls for ~s from ~s to ~s", [Acct, RDB, WDB]),
-					 transfer_active_calls(Acct, RDB, WDB)
+					 transfer_active_calls(Acct, RDB, WDB),
+					 build_view(WDB, Acct)
 				 end, get_accts(RDB)),
 		   %% once active accounts from yesterday are done, make sure all others are in too
 		   load_accounts_from_ts(WDB, Self)
@@ -352,6 +354,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+build_view(DB, AcctId) ->
+    case couch_mgr:get_results(DB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
+	{ok, _} -> ?LOG_SYS("Loaded account balance view and got something back for ~s", [AcctId]);
+	{error, _} -> ?LOG_SYS("Error loading account balance for ~s", [AcctId])
+    end.
 
 -spec(load_accounts_from_ts/2 :: (DB :: binary(), Srv :: pid()) -> ok).
 load_accounts_from_ts(DB, Srv) ->
@@ -563,7 +571,8 @@ load_account(AcctId, DB, Srv) ->
 		    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
 		    _ = couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
 		    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
-		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5)
+		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5),
+		    build_view(DB, AcctId) %% force the view to refresh
 	    end
     end.
 
