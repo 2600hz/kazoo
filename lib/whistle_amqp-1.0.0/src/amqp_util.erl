@@ -332,24 +332,28 @@ queue_delete(Queue, Prop) ->
 %% Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
 %%------------------------------------------------------------------------------
--spec(bind_q_to_targeted/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_targeted/1 :: (Queue) -> ok | {error, term()} when
+      Queue :: binary().
 bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
--spec(bind_q_to_callctl/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_callctl/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_callctl/1 :: (Queue) -> ok | {error, term()} when
+      Queue :: binary().
+-spec bind_q_to_callctl/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
 bind_q_to_callctl(Queue) ->
     bind_q_to_callctl(Queue, Queue).
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
 %% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallID
--spec bind_q_to_callevt/2 :: (Queue, CallID) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_callevt/2 :: (Queue, CallID) -> ok | {error, term()} when
       Queue :: binary(),
       CallID :: media_req | binary().
--spec bind_q_to_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_callevt/3 :: (Queue, CallID, Type) -> ok | {error, term()} when
       Queue :: binary(),
       CallID :: binary(),
       Type :: events | status_req | cdr | other.
@@ -367,26 +371,32 @@ bind_q_to_callevt(Queue, CallId, cdr) ->
 bind_q_to_callevt(Queue, Routing, other) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
--spec(bind_q_to_resource/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_resource/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_resource/1 :: (Queue) -> ok | {error, term()} when
+      Queue :: binary().
+-spec bind_q_to_resource/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
 bind_q_to_resource(Queue) ->
     bind_q_to_resource(Queue, <<"#">>).
 bind_q_to_resource(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
--spec(bind_q_to_callmgr/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_callmgr/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
--spec(bind_q_to_conference/2 :: (Queue :: binary(), Routing :: discovery | service | events) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_conference/3 :: (Queue :: binary(), Routing :: discovery | service | events, ConfId :: undefined | binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_conference/2 :: (Queue, ConfId) -> ok | {error, term()} when
+      Queue :: binary(),
+      ConfId :: discovery | service | binary().
+bind_q_to_conference(Queue, service) ->
+    bind_q_to_conference(Queue, <<"*">>);
 bind_q_to_conference(Queue, discovery) ->
     bind_q_to_conference(Queue, discovery, undefined);
-bind_q_to_conference(Queue, service) ->
-    bind_q_to_conference(Queue, service, <<"*">>);
 bind_q_to_conference(Queue, events) ->
     bind_q_to_conference(Queue, events, <<"*">>).
 
@@ -398,9 +408,16 @@ bind_q_to_conference(Queue, events, ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, false).
 
 %% generic binder
--spec(bind_q_to_exchange/3 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_exchange/4 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary(), NoWait :: boolean()) -> #'basic.consume_ok'{} | tuple(error, term())).
-bind_q_to_exchange(Queue, Routing, Exchange) ->
+-spec bind_q_to_exchange/3 :: (Queue, Routing, Exchange) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary(),
+      Exchange :: binary().
+-spec bind_q_to_exchange/4 :: (Queue, Routing, Exchange, NoWait) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary(),
+      Exchange :: binary(),
+      NoWait :: boolean().
+bind_q_to_exchange(Queue, Routing, Exchange) when is_binary(Queue), is_binary(Routing) ->
     bind_q_to_exchange(Queue, Routing, Exchange, true).
 bind_q_to_exchange(Queue, Routing, Exchange, NoWait) when is_binary(Queue), is_binary(Routing) ->
     QB = #'queue.bind'{
@@ -418,10 +435,10 @@ bind_q_to_exchange(Queue, Routing, Exchange, NoWait) when is_binary(Queue), is_b
 %% Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
--spec unbind_q_from_callevt/2 :: (Queue, CallID) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec unbind_q_from_callevt/2 :: (Queue, CallID) -> ok | {error, term()} when
       Queue :: binary(),
       CallID :: media_req | binary().
--spec unbind_q_from_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec unbind_q_from_callevt/3 :: (Queue, CallID, Type) -> ok | {error, term()} when
       Queue :: binary(),
       CallID :: binary(),
       Type :: events | status_req | cdr | other.
