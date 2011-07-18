@@ -182,8 +182,8 @@ get_channel_vars({<<"Surcharge">>, V}, Vars) ->
     [ list_to_binary([<<"surcharge=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->
     [ list_to_binary([<<"ignore_early_media=">>, whistle_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->
-    [ list_to_binary([<<"bypass_media=">>, whistle_util:to_list(V)]) | Vars];
+%%get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->
+%%    [ list_to_binary([<<"bypass_media_after_bridge=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->
     [ list_to_binary([<<"continue_on_fail=">>, whistle_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->
