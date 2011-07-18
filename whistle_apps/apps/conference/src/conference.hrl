@@ -27,14 +27,24 @@
                   ,undeaf = <<"shout://translate.google.com/translate_tts?tl=en&q=Audiable.">>
                  }).
 
--record(control, {mute = <<>>
-                  ,unmute = <<>>
-                  ,deaf = <<>>
-                  ,undeaf = <<>>
+-record(control, {mute = <<"1">>
+                  ,unmute = <<"2">>
+                  ,deaf = <<"3">>
+                  ,undeaf = <<"4">>
                   ,toggle_mute = <<"0">>
                   ,toggle_deaf = <<"*">>
                   ,hangup = <<"#">>
                  }).
+
+-record(participant, {call_id = undefined
+                      ,control_q = undefined
+                      ,bridge_id = undefined
+                      ,bridge_ctrl = undefined
+                      ,moderator = false
+                      ,muted = false
+                      ,deaf = false
+                      ,participant_id = 0
+                     }).
 
 -record(conf, {service = undefined
                ,amqp_q = undefined
@@ -52,9 +62,7 @@
                ,max_members = 0
                ,require_moderator = false
                ,wait_for_moderator = false
-               ,bridges = dict:new()
-               ,members = dict:new()
-               ,moderators = dict:new()
+               ,participants = dict:new()
                ,prompts = #prompts{}
                ,controls = #control{}
               }).
