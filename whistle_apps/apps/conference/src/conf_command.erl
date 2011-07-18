@@ -154,4 +154,10 @@ undeaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %%--------------------------------------------------------------------
 -spec(send_command/2 :: (Payload :: binary(), Conference :: #conf{}) -> ok).
 send_command(Payload, #conf{ctrl_q=CtrlQ}) ->
-    amqp_util:callctl_publish(CtrlQ, Payload).
+    %% TODO:
+    %% The use of mandatory flag is to cause a return notice if it failes. Temporary
+    %% because our command q is just a participant of the conference, and not reliable.
+    %% There for if we use a control q that has been torn down we need to re-try the request
+    %% on another participant's channel
+    amqp_util:callctl_publish(CtrlQ, Payload, <<"application/json">>, [{mandatory, true}]).
+%%    amqp_util:callctl_publish(CtrlQ, Payload, [{immediate, true}]).

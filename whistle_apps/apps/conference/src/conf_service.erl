@@ -308,12 +308,42 @@ handle_info({amqp_host_down, _}, Conf) ->
     timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, Conf#conf{amqp_q = <<>>}};
 
-%%handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
-handle_info({#'basic.deliver'{}, #amqp_msg{payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
+handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
     spawn(fun() ->
                   put(callid, ConfId),
                   JObj = mochijson2:decode(Payload),
                   _ = process_req(whapps_util:get_event_type(JObj), JObj, Conf)
+          end),
+    {noreply, Conf};
+
+%% TODO: Temporary, since we dont have a reliable control channel for the conference yet some commands may bounce back
+%%  since the callers control channel we were using has gone away.  When his happens take the control channel of the next
+%%  participant and replay the conference command.
+handle_info({#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}
+            ,#conf{conf_id=ConfId, participants=Participants, service=Srv, ctrl_q=OldCtrlQ}=Conf) ->
+    spawn(fun() ->
+                  try
+                      JObj = mochijson2:decode(Payload),
+                      {<<"conference">>, <<"command">>} = whapps_util:get_event_type(JObj),
+                      ConfId = wh_json:get_value(<<"Conference-ID">>, JObj),
+                      Candidates = dict:to_list(dict:filter(fun(_, #participant{control_q=Q}) when Q =:= OldCtrlQ -> false;
+                                                               (_, #participant{bridge_ctrl=Q}) when Q =:= OldCtrlQ -> false;
+                                                               (_, _) -> true
+                                                            end, Participants)),
+                      case lists:nth(random:uniform(length(Candidates)), Candidates) of
+                          %% participant that is connected locally
+                          {_, #participant{bridge_ctrl=undefined, control_q=CtrlQ}} ->
+                              ?LOG("reply a conference command on local participant control channel"),
+                              set_control_queue(Srv, CtrlQ),
+                              amqp_util:callctl_publish(CtrlQ, Payload, <<"application/json">>, [{mandatory, true}]);
+                          {_, #participant{bridge_ctrl=CtrlQ}} ->
+                              ?LOG("reply a conference command on participant bridge control channel"),
+                              set_control_queue(Srv, CtrlQ),
+                              amqp_util:callctl_publish(CtrlQ, Payload, <<"application/json">>, [{mandatory, true}])
+                      end
+                  catch
+                      _:_ -> ok
+                  end
           end),
     {noreply, Conf};
 
@@ -368,6 +398,7 @@ start_amqp(ConfId) ->
         amqp_util:bind_q_to_conference(Q, events, ConfId),
         amqp_util:bind_q_to_targeted(Q),
 	amqp_util:basic_consume(Q),
+        amqp_util:register_return_handler(),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
     catch
@@ -516,14 +547,12 @@ process_req({_, <<"route_win">>}, JObj, #conf{service=Srv, amqp_q=Q}=Conf) ->
     amqp_util:bind_q_to_callevt(Q, BridgeId),
 
     add_bridge(Srv, CallId, BridgeId, CtrlQ),
-    join_local_conference(BridgeId, {is_moderator(CallId, Conf), CtrlQ}, Conf);
+    join_local_conference(BridgeId, CtrlQ, Conf);
 
-process_req({<<"conference">>, <<"participants">>}, JObj, Conf) ->
-    io:format("~p~n", [JObj]),
-    ok;
+%% process_req({<<"conference">>, <<"participants">>}, JObj, Conf) ->
+%%    ok;
 
-process_req(_, T, _) ->
-    io:format("UNKNOWN MSG!!~n", []),
+process_req(_, _, _) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -547,7 +576,7 @@ join_local_conference(CallId, Conf) ->
 join_local_conference(_, error, _) ->
     ok;
 join_local_conference(CallId, CtrlQ, #conf{conf_id=ConfId, amqp_q=Q}) ->
-    ?LOG("attempting to have ~s join the conference locally", [CallId]),
+    ?LOG("attempting to have ~s join the conference locally via ~p", [CallId, CtrlQ]),
     Answer = [{<<"Application-Name">>, <<"answer">>}
               ,{<<"Call-ID">>, CallId}
               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -693,7 +722,7 @@ is_participant(CallId, Conf) ->
 find_ctrl_q(CallId, Conf) ->
     case find_participant(CallId, Conf) of
         error -> error;
-        #participant{moderator=Mod, control_q=CtrlQ} -> {Mod, CtrlQ}
+        #participant{control_q=CtrlQ} -> CtrlQ
     end.
 
 %%--------------------------------------------------------------------

@@ -3,7 +3,7 @@
 -include("amqp_util.hrl").
 
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
--export([callctl_exchange/0, callctl_publish/2, callctl_publish/3]).
+-export([callctl_exchange/0, callctl_publish/2, callctl_publish/3, callctl_publish/4]).
 -export([callevt_exchange/0, callevt_publish/1, callevt_publish/3]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2]).
 -export([originate_resource_publish/1, originate_resource_publish/2]).
@@ -69,10 +69,17 @@ callmgr_publish(Payload, ContentType, RoutingKey) ->
       CallID :: binary(),
       Payload :: iolist(),
       ContentType :: binary().
+-spec callctl_publish/4 :: (CallID, Payload, ContentType, Props) -> ok when
+      CallID :: binary(),
+      Payload :: iolist(),
+      ContentType :: binary(),
+      Props :: proplist().
 callctl_publish(CallID, Payload) ->
     callctl_publish(CallID, Payload, <<"application/json">>).
 callctl_publish(CallID, Payload, ContentType) ->
-    basic_publish(?EXCHANGE_CALLCTL, CallID, Payload, ContentType).
+    callctl_publish(CallID, Payload, ContentType, []).
+callctl_publish(CallID, Payload, ContentType, Props) ->
+    basic_publish(?EXCHANGE_CALLCTL, CallID, Payload, ContentType, Props).
 
 -spec callevt_publish/1 :: (Payload) -> ok when
       Payload :: iolist().
