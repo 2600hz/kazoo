@@ -29,7 +29,7 @@
 -define(AGG_DB, <<"callflows">>).
 -define(AGG_FILTER, <<"callflows/export">>).
 
--define(CB_LIST, {<<"callflows">>, <<"crossbar_listing">>}).
+-define(CB_LIST, <<"callflows/crossbar_listing">>).
 
 
 %%-----------------------------------------------------------------------------
@@ -115,26 +115,35 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]},
+                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
+                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() -> import_fixtures(?FIXTURE_LIST, DBName) end),
+    spawn(fun() ->
+                  couch_mgr:revise_views_from_folder(DBName, callflow),
+                  import_fixtures(?FIXTURE_LIST, DBName)
+          end),
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
@@ -257,7 +266,8 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_callflow_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec load_callflow_summary/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 load_callflow_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -325,13 +335,17 @@ normalize_view_results(JObj, Acc) ->
 is_valid_doc(_JObj) ->
     {true, []}.
 
--spec(import_fixtures/2 :: (Fixtures :: list(binary()), DBName :: binary()) -> list(#cb_context{} | tuple(error, no_file))).
+-spec import_fixtures/2 :: (Fixtures, DBName) -> [#cb_context{} | {error, no_file},...] when
+      Fixtures :: [binary(),...],
+      DBName :: binary().
 import_fixtures(Fixtures, DBName) ->
     ?LOG_SYS("Importing fixtures into ~s", [DBName]),
     Context = #cb_context{db_name=DBName},
     [ import_fixture(Fixture, Context) || Fixture <- Fixtures].
 
--spec(import_fixture/2 :: (Fixture :: binary(), Context :: #cb_context{}) -> #cb_context{} | tuple(error, no_file)).
+-spec import_fixture/2 :: (Fixture, Context) -> #cb_context{} | {error, no_file} when
+      Fixture :: <<_:136>>, %% binary(), but with one fixture, this is to quiet Dialyzer.
+      Context :: #cb_context{}.
 import_fixture(Fixture, #cb_context{db_name=DBName}=Context) ->
     Path = [code:priv_dir(crossbar), <<"/couchdb/fixtures/">>],
     ?LOG_SYS("Read from ~s", [[Path, Fixture]]),
@@ -354,7 +368,7 @@ import_fixture(Fixture, #cb_context{db_name=DBName}=Context) ->
 			    JObj
 		    end,
 
-	    {ok, Realm} = accounts:get_realm_from_db(DBName),
+	    {ok, Realm} = whapps_util:get_realm_from_db(DBName),
 	    JObj2 = wh_json:set_value([<<"realms">>], [Realm], JObj1),
 	    ?LOG_SYS("Set realms to [~s]", [Realm]),
 

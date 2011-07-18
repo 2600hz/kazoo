@@ -14,12 +14,13 @@
 
 -define(END_OF_REQUEST, <<"\r\n\r\n">>).
 
--spec(get_request/1 :: (S :: port()) -> void | binary()).
--spec(get_request/2 :: (S :: port(), L :: binary()) -> void | binary()).
-
+-spec get_request/1 :: (S) -> tcp_closed | timeout | binary() when
+      S :: port().
+-spec get_request/2 :: (S, L) -> tcp_closed | timeout | binary() when
+      S :: port(), L :: binary().
 get_request(S) -> get_request(S, <<>>).
 get_request(S, B) ->
-    ok = inet:setopts(S, [{active,once}, binary]),
+    ok = inet:setopts(S, [{active,once}, {mode, binary}]),
     receive
 	{tcp, S, Bin} ->
 	    B1 = <<B/binary, Bin/binary>>,
@@ -27,10 +28,10 @@ get_request(S, B) ->
 		nomatch -> get_request(S, B1);
 		_ -> [Request | _] = binary:split(B1, ?END_OF_REQUEST), Request
 	    end;
-	{tcp_closed, _Socket} ->
-	    void
+	{tcp_closed, S} ->
+	    tcp_closed
     after 10000 -> % slow client
-	    void
+	    timeout
     end.
 
 %% OffSet = first byte to play

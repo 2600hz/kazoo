@@ -19,10 +19,22 @@ vm-new_messages: new messages
 vm-saved_message: saved message
 vm-saved_messages: saved messages
 vm-new_and: new and
-vm-received_on: Message received on
+vm-received: Received
 vm-message_menu: To save, press one. To replay, press two.  To delete, press seven. To return to the main menu, press zero.
 vm-mailbox_full: The voicemail box is full, please try your call again later.
 vm-not_available_no_voicemail: The person you are trying to reach is not available, and does not have voicemail.  Please try your call again later.
 vm-person: The person at extension
 vm-not_available: is not available.
 vm-no_messages: Mailbox is empty.
+vm-message_number: Message
+
+menu-no_prompt: The recording for this menu has not been created. If you know the pin number, dial it now to record the prompt.  Otherwise, please try your call again later. Thank you.
+menu-transferring_call: Transferring your call.
+menu-exit: I'm sorry, we have not been able to recognize your entries.
+menu-invalid_entry: Invalid entry.
+menu-returning: Transferring your call back to the menu.
+
+temporal-marked_closed: Your office is now marked as closed. The system will continue routing calls as though the office is closed, until you manually resume normal operation.
+temporal-marked_opened: Your office is now marked as open. The system will continue routing calls as though the office is open, until you manually resume normal operation.
+temporal-reset_rules: Call routing returned to normal operation. Calls will be routed based on the schedule defined when your system was configured.
+temporal-menu: Time based call routing. To mark the office as open, press 1. To mark the office as closed, press 2. To resume normal operation, press 3.

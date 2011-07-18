@@ -32,7 +32,7 @@
           ,prefix = <<>>
           ,suffix = <<>>
           ,codecs = []
-          ,bypass_media = <<"false">>
+          ,bypass_media = undefined
           ,caller_id_type = undefined
           ,sip_headers = undefined
           ,progress_timeout = ?DEFAULT_PROGRESS_TIMEOUT
@@ -619,18 +619,20 @@ build_loopback_request(JObj, Number, Q) ->
 -spec(build_bridge_request/3 :: (JObj :: json_object(), Endpoints :: endpoints(), Q :: binary())
                                 -> proplist()).
 build_bridge_request(JObj, Endpoints, Q) ->
+    CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
+                             ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, build_endpoints(Endpoints, 0, [])}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
-               ,{<<"Bypass-Media">>, wh_json:get_value(<<"Bypass-Media">>, JObj)}
+               ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
-               ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
+               ,{<<"Custom-Channel-Vars">>, CCVs}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
@@ -749,7 +751,10 @@ wait_for_bridge(Timeout) ->
                 { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
                     {ok, JObj};
                 { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-                    {fail, JObj};
+		    case wh_json:get_value(<<"Application-Response">>, JObj) of
+			<<"SUCCESS">> -> {ok, JObj};
+			_ -> {fail, JObj}
+		    end;
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {hungup, JObj};
                 { _, _, <<"error">> } ->

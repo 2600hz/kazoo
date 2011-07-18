@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0, start_link/1, route_req/1, route_req/2, reg_query/1, reg_query/2, media_req/1, media_req/2]).
--export([auth_req/1, auth_req/2]).
+-export([authn_req/1, authn_req/2, authz_req/1, authz_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -53,12 +53,19 @@ start_link() ->
 start_link(WorkerCount) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [WorkerCount], []).
 
-auth_req(Prop) ->
-    auth_req(Prop, ?DEFAULT_TIMEOUT).
-auth_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun whistle_api:auth_req/1
-			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTH_REQ) end
+authn_req(Prop) ->
+    authn_req(Prop, ?DEFAULT_TIMEOUT).
+authn_req(Prop, Timeout) ->
+    gen_server:call(?SERVER, {request, Prop, fun whistle_api:authn_req/1
+			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTHN_REQ) end
 			      }, Timeout).
+
+authz_req(Prop) ->
+    authz_req(Prop, ?DEFAULT_TIMEOUT).
+authz_req(Prop, Timeout) ->
+    gen_server:call(?SERVER, {request, Prop, fun whistle_api:authz_req/1
+			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTHZ_REQ) end
+			     }, Timeout).
 
 route_req(Prop) ->
     route_req(Prop, ?DEFAULT_TIMEOUT).
@@ -80,7 +87,7 @@ media_req(Prop) ->
 
 media_req(Prop, Timeout) ->
     gen_server:call(?SERVER, {request, Prop, fun whistle_api:media_req/1
-			      ,fun(JSON) -> amqp_util:callevt_publish(JSON, media) end
+			      ,fun(JSON) -> amqp_util:callevt_publish(JSON) end
 			     }, Timeout).
 
 %%%===================================================================
@@ -153,9 +160,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{worker_count=WC, workers=Ws}=State) ->
-    ?LOG("checking worker totals"),
-    Count = case WC-queue:len(Ws) of X when X < 0 -> 0; Y -> Y end,
+handle_info(timeout, #state{worker_count=WC, workers=Ws, orig_worker_count=OWC}=State) ->
+    ?LOG("checking worker totals: WC: ~b Q len: ~b", [WC, queue:len(Ws)]),
+    QLen = queue:len(Ws),
+    Count = case WC-QLen of
+		X when X =< 0 andalso QLen =:= 0 -> OWC;
+		X when X < 0 -> 0;
+		X -> X
+	    end,
     ?LOG("adding ~b workers", [Count]),
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
     erlang:start_timer(?BACKOFF_PERIOD, self(), reduce_labor_force),
@@ -268,11 +280,13 @@ start_worker() ->
     spawn_link(fun() -> worker_init() end).
 
 worker_init() ->
+    put(callid, <<"0000000000">>),
     try
 	Q = amqp_util:new_targeted_queue(),
 	_ = amqp_util:bind_q_to_targeted(Q),
 	_ = amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),
+
 	worker_free(Q)
     catch
 	_:R ->
@@ -282,7 +296,6 @@ worker_init() ->
 
 -spec(worker_free/1 :: (Q :: binary()) -> no_return()).
 worker_free(Q) ->
-    put(callid, <<"0000000000">>),
     receive
 	{request, Prop, ApiFun, PubFun, {Pid, _}=From, Parent} ->
 	    Prop1 = [ {<<"Server-ID">>, Q} | lists:keydelete(<<"Server-ID">>, 1, Prop)],
@@ -329,7 +342,12 @@ worker_busy(Q, From, Ref, Parent) ->
     end,
     erlang:demonitor(Ref, [flush]),
     Parent ! {worker_free, self()},
+
+    put(callid, <<"0000000000">>),
     worker_free(Q).
 
 put_callid(Props) ->
-    _ = put(callid, props:get_value(<<"Call-ID">>, Props, props:get_value(<<"Msg-ID">>, Props, <<"0000000000">>))).
+    case props:get_value(<<"Call-ID">>, Props) of
+	undefined -> put(callid, props:get_value(<<"Msg-ID">>, Props, <<"0000000000">>));
+	CallID -> put(callid, CallID)
+    end.

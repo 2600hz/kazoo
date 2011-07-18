@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%%
+%%% One change handler with BigCouch, stream changes to interested PIDs
+%%% via Erlang messaging
 %%% @end
-%%% Created : 18 Mar 2011 by James Aimonetti <>
+%%% Created : 18 Mar 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(change_handler).
 
@@ -17,7 +18,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_change/2
 	 ,terminate/2, code_change/3]).
 
--include_lib("couchbeam/include/couchbeam.hrl").
+-include("wh_couch.hrl").
 
 -define(SERVER, ?MODULE). 
 
@@ -27,8 +28,8 @@
 	  ,doc = <<>> :: binary()
 	 }).
 -record(state, {
-	  listeners = [] :: list(#listener{})
-	  ,db = #db{}
+	  listeners = [] :: [#listener{},...]
+	  ,db = <<>> :: binary()
 	 }).
 
 %%%===================================================================
@@ -42,8 +43,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Db, Options) ->
-    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 5000} | Options], [Db]).
+start_link(#db{name=DbName}=Db, Options) ->
+    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 5000} | Options], [DbName]).
 
 stop(Srv) ->
     gen_changes:stop(Srv).
@@ -52,9 +53,11 @@ add_listener(Srv, Pid) ->
     add_listener(Srv, Pid, <<>>).
 
 add_listener(Srv, Pid, Doc) ->
+    ?LOG_SYS("Adding listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {add_listener, Pid, Doc}).
 
 rm_listener(Srv, Pid, Doc) ->
+    ?LOG_SYS("Removing listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {rm_listener, Pid, Doc}).
 
 %%%===================================================================
@@ -72,8 +75,9 @@ rm_listener(Srv, Pid, Doc) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Db]) ->
-    {ok, #state{db=Db}}.
+init([DbName]) ->
+    ?LOG_SYS("Starting change handler for ~s", [DbName]),
+    {ok, #state{db=DbName}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -90,8 +94,7 @@ init([Db]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -112,7 +115,7 @@ handle_cast({add_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
 	    {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}}
     end;
 handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
-    Ls1 = [ V || V <- Ls, rm_listener_(V, Doc, Pid)],
+    Ls1 = [ V || V <- Ls, keep_listener(V, Doc, Pid)],
     {noreply, State#state{listeners=Ls1}}.
 
 %%--------------------------------------------------------------------
@@ -126,11 +129,11 @@ handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
-    logger:format_log(info, "CH(~p): DOWN for ~p(~p)~n", [self(), Pid, Info]),
-    Ls1 = [ V || V <- Ls, rm_listener_(V, Pid)],
+    ?LOG_SYS("DOWN recv for ~p(~p)", [Pid, Info]),
+    Ls1 = [ V || V <- Ls, keep_listener(V, Pid)],
     {noreply, State#state{listeners=Ls1}};
 handle_info(_Info, State) ->
-    logger:format_log(info, "CH(~p): Unhandled info ~p~n", [self(), _Info]),
+    ?LOG_SYS("Unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -175,13 +178,12 @@ handle_change({struct, Change}, #state{listeners=Ls}=State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{listeners=Ls, db=Db}) ->
-    logger:format_log(error, "CH(~p): Going down, down, down for ~p(~p)~n", [self(), Db#db.name, _Reason]),
+terminate(_Reason, #state{listeners=Ls, db=DbName}) ->
+    ?LOG_SYS("Going down, down, down for ~p(~p)", [self(), DbName, _Reason]),
     lists:foreach(fun(#listener{pid=Pid, monitor_ref=Ref, doc=Doc}) ->
-			  Pid ! {change_handler_terminating, Db#db.name, Doc},
+			  Pid ! {change_handler_terminating, DbName, Doc},
 			  erlang:demonitor(Ref, [flush])
-		  end, Ls),
-    ok.
+		  end, Ls).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -197,12 +199,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-rm_listener_(#listener{pid=Pid, monitor_ref=Ref}, Pid) ->
+-spec keep_listener/2 :: (#listener{}, pid()) -> boolean().
+keep_listener(#listener{pid=Pid, monitor_ref=Ref}, Pid) ->
     erlang:demonitor(Ref, [flush]),
     false;
-rm_listener_(_, _) -> true.
+keep_listener(_, _) -> true.
 
-rm_listener_(#listener{pid=Pid, doc=Doc, monitor_ref=Ref}, Doc, Pid) ->
+-spec keep_listener/3 :: (#listener{}, binary(), pid()) -> boolean().
+keep_listener(#listener{pid=Pid, doc=Doc, monitor_ref=Ref}, Doc, Pid) ->
     erlang:demonitor(Ref, [flush]),
     false;
-rm_listener_(_, _, _) -> true.
+keep_listener(_, _, _) -> true.

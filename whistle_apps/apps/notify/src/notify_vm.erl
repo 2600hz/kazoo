@@ -105,17 +105,19 @@ handle_info(timeout, _) ->
     {noreply, ok};
 
 handle_info({_, #amqp_msg{props=#'P_basic'{content_type= <<"application/json">>}, payload=Payload}}, State) ->
-    logger:format_log(info, "NOTIFY_VM(~p): AMQP Recv ~s~n", [self(), Payload]),
+    ?LOG_SYS("Received JSON: ~s", [Payload]),
     spawn(fun() ->
 		  JObj = mochijson2:decode(Payload),
 		  true = validate(JObj),
+		  put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
+		  ?LOG("Validated: ~s", [Payload]),
 		  update_mwi(JObj),
 		  send_vm_to_email(JObj)
 	  end),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "NOTIFY_VM(~p): Unhandled ~p~n", [self(), _Info]),
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -169,9 +171,9 @@ send_vm_to_email(JObj) ->
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
     case {wh_json:get_value(<<"email">>, UserJObj), whistle_util:is_true(wh_json:get_value(<<"vm_to_email_enabled">>, UserJObj))} of
 	{undefined, _} ->
-	    logger:format_log(info, "NOTIFY_VM(~p): No email found for user ~p~n", [self(), wh_json:get_value(<<"username">>, UserJObj)]);
+	    ?LOG_END("No email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
 	{_Email, false} ->
-	    logger:format_log(info, "NOTIFY_VM(~p): Voicemail to email disabled for ~p~n", [self(), _Email]);
+	    ?LOG_END("Voicemail to email disabled for ~s", [_Email]);
 	{Email, true} ->
 	    {ok, AcctObj} = couch_mgr:open_doc(AcctDB, whapps_util:get_db_name(AcctDB, raw)),
 	    VMTemplate = case wh_json:get_value(<<"vm_to_email_template">>, AcctObj) of
@@ -179,10 +181,11 @@ send_vm_to_email(JObj) ->
 			     Tmpl ->
 				 try
 				     {ok, notify_vm_custom_tmpl} = erlydtl:compile(Tmpl, notify_vm_custom_tmpl),
+				     ?LOG("Compiled custom template"),
 				     notify_vm_custom_tmpl
 				 catch
 				     _:E ->
-					 logger:format_log(error, "NOTIFY_VM(~p): Error compiling template for Acct ~p: ~p~n", [AcctDB, E]),
+					 ?LOG("Error compiling template for Acct ~s: ~p", [AcctDB, E]),
 					 notify_vm_tmpl
 				 end
 			 end,
@@ -222,7 +225,7 @@ send_vm_to_email(To, Tmpl, JObj) ->
     Encoded = mimemail:encode(Email),
     SmartHost = smtp_util:guess_FQDN(),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
-			 ,fun(X) -> logger:format_log(info, "NOTIFY_VM: Sending email to ~p via ~p resulted in ~p~n", [To, SmartHost, X]) end).
+			 ,fun(X) -> ?LOG("Sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
 
 -spec(format_plaintext/2 :: (JObj :: json_object(), Tmpl :: atom()) -> tuple(ok, iolist())).
 format_plaintext(JObj, Tmpl) ->

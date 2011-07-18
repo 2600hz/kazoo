@@ -46,20 +46,28 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns ok or {error, some_error_atom_explaining_more}
--spec(add_fs_node/1 :: (Node :: atom()) -> ok | tuple(error, no_connection)).
--spec(add_fs_node/2 :: (Node :: atom(), Opts :: proplist()) -> ok | tuple(error, no_connection)).
+-spec add_fs_node/1 :: (Node) -> ok | tuple(error, no_connection) when
+      Node :: atom().
+-spec add_fs_node/2 :: (Node, Opts) -> ok | tuple(error, no_connection) when
+      Node :: atom(),
+      Opts :: proplist().
 add_fs_node(Node) -> add_fs_node(Node, []).
 add_fs_node(Node, Opts) ->
     gen_server:call(?MODULE, {add_fs_node, Node, Opts}, infinity).
 
 %% returns ok or {error, some_error_atom_explaining_more}
+-spec rm_fs_node/1 :: (Node) -> ok | tuple(error, no_node, Node) when
+      Node :: atom().
 rm_fs_node(Node) ->
     gen_server:call(?MODULE, {rm_fs_node, Node}, infinity).
 
 %% calls all handlers and gets diagnostic info from them
+-spec diagnostics/0 :: () -> proplist().
 diagnostics() ->
     gen_server:call(?MODULE, {diagnostics}, infinity).
 
+-spec is_node_up/1 :: (Node) -> boolean() when
+      Node :: atom().
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}, infinity).
 
@@ -70,11 +78,14 @@ is_node_up(Node) ->
 %% Returns - Proplist
 %%   {max_channels_available, 4}
 %%   {bias, 1}
--spec(request_resource/2 :: (Type :: binary(), Options :: proplist()) -> list(proplist())).
+-spec request_resource/2 :: (Type, Options) -> list(proplist()) when
+      Type :: binary(),
+      Options :: proplist().
 request_resource(Type, Options) ->
     gen_server:call(?MODULE, {request_resource, Type, Options}).
 
--spec(request_node/1 :: (Type :: binary()) -> tuple(ok, atom()) | tuple(error, binary())).
+-spec request_node/1 :: (Type) -> tuple(ok, atom()) | tuple(error, binary()) when
+      Type :: binary().
 request_node(Type) ->
     gen_server:call(?MODULE, {request_node, Type}).
 
@@ -206,8 +217,8 @@ handle_info(timeout, State) ->
     spawn(fun() ->
                   {ok, Startup} = file:consult(?STARTUP_FILE),
                   Nodes = props:get_value(fs_nodes, Startup, []),
-                  lists:foreach(fun(Node) ->
-                                        add_fs_node(whistle_util:to_atom(Node, true))
+                  lists:foreach(fun(Node) -> 
+                                        ?MODULE:add_fs_node(whistle_util:to_atom(Node, true))
                                 end, Nodes)
           end),
     {noreply, State};
@@ -246,11 +257,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(watch_node_for_restart/2 :: (Node :: atom(), Opts :: proplist()) -> ok | tuple(error, no_connection)).
+-spec watch_node_for_restart/2 :: (Node, Opts) -> ok | tuple(error, no_connection) when
+      Node :: atom(),
+      Opts :: proplist().
 watch_node_for_restart(Node, Opts) ->
-    watch_node_for_restart(Node, Opts, 1000).
+    watch_node_for_restart(Node, Opts, 250).
 
--spec(watch_node_for_restart/3 :: (Node :: atom(), Opts :: proplist(), Timeout :: integer()) -> ok | tuple(error, no_connection)).
+-spec watch_node_for_restart/3 :: (Node, Opts, Timeout) -> ok | tuple(error, no_connection) when
+      Node :: atom(),
+      Opts :: proplist(),
+      Timeout :: pos_integer().
 watch_node_for_restart(Node, Opts, Timeout) when Timeout > ?MAX_TIMEOUT_FOR_NODE_RESTART ->
     is_node_up(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART);
 watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
@@ -258,7 +274,10 @@ watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
 watch_node_for_restart(Node, Opts, Timeout) ->
     is_node_up(Node, Opts, Timeout * 2).
 
--spec(is_node_up/3 :: (Node :: atom(), Opts :: proplist(), Timeout :: integer()) -> ok | tuple(error, no_connection)).
+-spec is_node_up/3 :: (Node, Opts, Timeout) -> ok | tuple(error, no_connection) when
+      Node :: atom(),
+      Opts :: proplist(),
+      Timeout :: pos_integer().
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
 	pong ->
@@ -276,7 +295,8 @@ is_node_up(Node, Opts, Timeout) ->
 	    end
     end.
 
--spec(check_options/1 :: (Opts :: proplist()) -> proplist()).
+-spec check_options/1 :: (Opts) -> proplist() when
+      Opts :: proplist().
 check_options([]) ->
     [{bias, 1}, {max_channels, 100}];
 check_options(Opts) ->
@@ -290,7 +310,8 @@ check_options(Opts) ->
     end.
 
 %% query a pid for its diagnostics info
--spec(diagnostics_query/1 :: (Pid :: pid()) -> tuple(ok, proplist()) | tuple(error, atom(), term())).
+-spec diagnostics_query/1 :: (Pid) -> tuple(ok, proplist()) | tuple(error, atom(), term()) when
+      Pid :: pid().
 diagnostics_query(Pid) when is_pid(Pid) ->
     case erlang:is_process_alive(Pid) of
 	true ->
@@ -306,7 +327,10 @@ diagnostics_query(Pid) when is_pid(Pid) ->
 diagnostics_query(X) ->
     {error, handler_down, X}.
 
--spec(add_fs_node/3 :: (Node :: atom(), Options :: proplist(), State :: #state{}) -> tuple(ok, #state{}) | tuple(tuple(error, no_connection), #state{})).
+-spec add_fs_node/3 :: (Node, Options, State) -> tuple(ok, #state{}) | tuple(tuple(error, no_connection), #state{}) when
+      Node :: atom(),
+      Options :: proplist(),
+      State :: #state{}.
 add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
     case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
 	[] ->
@@ -344,7 +368,9 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 	    end
     end.
 
--spec(rm_fs_node/2 :: (Node :: atom(), State :: tuple()) -> {ok | tuple(error, no_node, atom()), tuple()}).
+-spec rm_fs_node/2 :: (Node, State) -> {ok | tuple(error, no_node, atom()), #state{}} when
+      Node :: atom(),
+      State :: #state{}.
 rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
     case lists:keyfind(Node, 2, Nodes) of
 	false ->
@@ -355,13 +381,17 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
--spec(close_node/1 :: (N :: #node_handler{}) -> list(ok | tuple(error, term()))).
+-spec close_node/1 :: (N) -> list(ok | tuple(error, 'not_found' | 'running' | 'simple_one_for_one')) when
+      N :: #node_handler{}.
 close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),
     ecallmgr_fs_sup:stop_handlers(Node).
 
--spec(process_resource_request/3 :: (Type :: binary(), Nodes :: list(#node_handler{}), Options :: proplist()) -> list(proplist()) | []).
-process_resource_request(<<"audio">>=Type, Nodes, Options) ->
+-spec process_resource_request/3 :: (Type, Nodes, Options) -> list(proplist()) | [] when
+      Type :: binary(),
+      Nodes :: list(#node_handler{}),
+      Options :: proplist().
+process_resource_request(<<"audio">> = Type, Nodes, Options) ->
     NodesResp = [begin
 		     {_,_,NHP} = ecallmgr_fs_sup:get_handler_pids(Node),
 		     NHP ! {resource_request, self(), Type, Options},

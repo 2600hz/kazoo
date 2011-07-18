@@ -13,6 +13,9 @@
 %% API
 -export([start_link/1, start_link/2, handle_route_req/4]).
 
+%% Internal API
+-export([init_route_req/5]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -82,8 +85,7 @@ init([Node]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,18 +127,18 @@ handle_info(timeout, #state{node=Node}=State) ->
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    ?LOG("Fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
+    ?LOG("fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
 handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
-	{<<"REQUEST_PARAMS">>, <<"context_2">>} ->
+	{<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
 	    {ok, LookupPid} = ecallmgr_fs_route_sup:start_req(Node, FSID, CallID, FSData),
 	    erlang:monitor(process, LookupPid),
 
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-	    ?LOG_START(CallID, "Fetch request: FSID: ~p Lookup: ~p Req#: ~p", [FSID, LookupPid, LookupsReq]),
+	    ?LOG_START(CallID, "processing fetch request ~s (~b) in PID ~p", [FSID, LookupsReq, LookupPid]),
 	    {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
 				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
 	{_Other, _Context} ->
@@ -223,40 +225,132 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(handle_route_req/4 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist()) -> no_return()).
+-spec(handle_route_req/4 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist()) -> tuple(ok, pid())).
 handle_route_req(Node, FSID, CallID, FSData) ->
+    proc_lib:start_link(?MODULE, init_route_req, [self(), Node, FSID, CallID, FSData]).
+
+-spec init_route_req/5 :: (Parent, Node, FSID, CallID, FSData) -> no_return() when
+      Parent :: pid(),
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      FSData :: proplist().
+init_route_req(Parent, Node, FSID, CallID, FSData) ->
+    proc_lib:init_ack(Parent, {ok, self()}),
     put(callid, CallID),
-    Pid = spawn_link(fun() ->
-                             put(callid, CallID),
-			     DefProp = [{<<"Msg-ID">>, FSID}
-					,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
-					,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
-					,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-					,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-					,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-					,{<<"Call-ID">>, CallID}
-					,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-					| whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+    process_route_req(Node, FSID, CallID, FSData).
 
-			     %% Server-ID will be over-written by the pool worker
-			     {ok, RespProp} = ecallmgr_amqp_pool:route_req(DefProp),
+-spec process_route_req/4 :: (Node, FSID, CallID, FSData) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      FSData :: proplist().
+process_route_req(Node, FSID, CallID, FSData) ->
+    DefProp = [{<<"Msg-ID">>, FSID}
+	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
+	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
+	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
+	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
+	       ,{<<"Call-ID">>, CallID}
+	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+    %% Server-ID will be over-written by the pool worker
 
-			     true = whistle_api:route_resp_v(RespProp),
+    case whistle_util:is_true(ecallmgr_util:get_setting(authz_enabled, true)) of
+	true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
+	false -> route(Node, FSID, CallID, DefProp, undefined)
+    end.
 
-			     {ok, Xml} = ecallmgr_fs_xml:route_resp_xml(RespProp),
-                             case freeswitch:fetch_reply(Node, FSID, Xml) of
-                                 ok ->
-                                     %% only start control if freeswitch recv'd reply
-                                     start_control_and_events(Node, CallID, props:get_value(<<"Server-ID">>, RespProp));
-                                 {error, Reason} ->
-                                     ?LOG("freeswitch rejected our route response, ~p", [Reason]);
-                                 timeout ->
-                                     ?LOG("received no reply from freeswitch, timeout", [])
-                             end
-		     end),
-    {ok, Pid}.
+-spec authorize_and_route/5 :: (Node, FSID, CallID, FSData, DefProp) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      FSData :: proplist(),
+      DefProp :: proplist().
+authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
+    ?LOG("Starting authorization request"),
+    {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
+    route(Node, FSID, CallID, DefProp, AuthZPid).
 
-start_control_and_events(Node, CallID, SendTo) ->
+-spec route/5 :: (Node, FSID, CallID, DefProp, AuthZPid) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      DefProp :: proplist(),
+      AuthZPid :: pid() | undefined.
+route(Node, FSID, CallID, DefProp, AuthZPid) ->
+    ?LOG("Starting route request"),
+    {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
+    RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, DefProp, ?EMPTY_JSON_OBJECT),
+    authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
+
+-spec authorize/6 :: (Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      RespJObj :: json_object(),
+      AuthZPid :: pid() | undefined,
+      RouteCCV :: json_object().
+authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
+    true = whistle_api:route_resp_v(RespJObj),
+    reply(Node, FSID, CallID, RespJObj, RouteCCV);
+authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
+    case ecallmgr_authz:is_authorized(AuthZPid) of
+	{false, _} ->
+	    reply_forbidden(Node, FSID);
+	{true, CCV} ->
+	    true = whistle_api:route_resp_v(RespJObj),
+	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
+
+	    reply(Node, FSID, CallID, RespJObj, RouteCCV1)
+    end.
+
+-spec reply_forbidden/2 :: (Node, FSID) -> no_return() when
+      Node :: atom(),
+      FSID :: binary().
+reply_forbidden(Node, FSID) ->
+    {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
+						,{<<"Route-Error-Code">>, <<"403">>}
+						,{<<"Route-Error-Message">>, <<"Forbidden">>}
+					       ]),
+    case freeswitch:fetch_reply(Node, FSID, XML) of
+	ok ->
+	    %% only start control if freeswitch recv'd reply
+	    ?LOG_END("freeswitch accepted our route forbidden");
+	{error, Reason} ->
+	    ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
+	timeout ->
+	    ?LOG_END("received no reply from freeswitch, timeout")
+    end.
+
+-spec reply/5 :: (Node, FSID, CallID, RespJObj, CCVs) -> no_return() when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      RespJObj :: json_object(),
+      CCVs :: json_object().
+reply(Node, FSID, CallID, RespJObj, CCVs) ->
+    {ok, XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
+    ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
+
+    case freeswitch:fetch_reply(Node, FSID, XML) of
+	ok ->
+	    %% only start control if freeswitch recv'd reply
+	    ?LOG("freeswitch accepted our route, starting control and events"),
+	    start_control_and_events(Node, CallID, ServerQ, CCVs);
+	{error, Reason} ->
+	    ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
+	timeout ->
+	    ?LOG_END("received no reply from freeswitch, timeout")
+    end.
+
+-spec start_control_and_events/4 :: (Node, CallID, SendTo, CCVs) -> no_return() when
+      Node :: atom(),
+      CallID :: binary(),
+      SendTo :: binary(),
+      CCVs :: json_object().
+start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
 	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
 	_ = amqp_util:bind_q_to_callctl(CtlQ),
@@ -266,17 +360,20 @@ start_control_and_events(Node, CallID, SendTo) ->
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}
 		   ,{<<"Control-Queue">>, CtlQ}
+                   ,{<<"Custom-Channel-Vars">>, CCVs}
 		   | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
 	send_control_queue(SendTo, CtlProp)
     catch
-	_:_ -> {error, amqp_error}
+	_:Reason ->
+            ?LOG_END("error during control handoff to whapp, ~p", [Reason]),
+            {error, amqp_error}
     end.
 
 send_control_queue(SendTo, CtlProp) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->
-	    ?LOG("sending route_win to ~s", [SendTo]),
+	    ?LOG_END("sending route_win to ~s", [SendTo]),
 	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
 	{error, _Msg} ->
-	    ?LOG("sending route_win to ~s failed, ~p", [self(), SendTo, _Msg])
+	    ?LOG_END("sending route_win to ~s failed, ~p", [SendTo, _Msg])
     end.

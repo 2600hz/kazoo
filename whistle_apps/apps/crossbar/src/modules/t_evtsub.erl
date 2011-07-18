@@ -22,7 +22,7 @@ start_full_test() ->
 
     MaxEvents = 5,
 
-    PutJSON = get_put_json(<<"directory.auth_req">>, MaxEvents),
+    PutJSON = get_put_json(<<"directory.authn_req">>, MaxEvents),
     DeleteJSON = get_delete_json(false),
 
     logger:format_log(info, "GET ~s~n", [UrlBase]),
@@ -40,16 +40,16 @@ start_full_test() ->
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", EmptyEvtSubResp),
 
 	logger:format_log(info, "PUT ~s ~s~n", [UrlEvtBase, PutJSON]),
-	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.auth_req">>]}]),
+	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.authn_req">>]}]),
 
 	logger:format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),
 	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, delete, DeleteJSON), "200", EmptyEvtSubResp),
 
 	logger:format_log(info, "PUT ~s ~s~n", [UrlEvtBase, PutJSON]),
-	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.auth_req">>]}]),
+	true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, put, PutJSON), "200", [{[<<"data">>, <<"streams">>], [<<"directory.authn_req">>]}]),
 
 	PublishNTimes = 25, % divisible by MaxEvents please
-	lists:foreach(fun(_) -> publish_auth_req() end, lists:seq(1, PublishNTimes)),
+	lists:foreach(fun(_) -> publish_authn_req() end, lists:seq(1, PublishNTimes)),
 
 	CmpFun = fun(V) ->
 			 logger:format_log(info, "Len == ~p~n", [length(V)]),
@@ -58,7 +58,7 @@ start_full_test() ->
 	
 	lists:foreach(fun(_) ->
 			      logger:format_log(info, "GET ~s~n", [UrlEvtBase]),
-			      true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", [{[<<"data">>, <<"events">>, <<"directory.auth_req">>]
+			      true = verify_resp(ibrowse:send_req(UrlEvtBase, Headers, get), "200", [{[<<"data">>, <<"events">>, <<"directory.authn_req">>]
 												      , CmpFun
 												     }])
 		      end, lists:seq(1, PublishNTimes div MaxEvents)),
@@ -100,10 +100,10 @@ get_put_json(Stream, MaxEvts) ->
 get_delete_json(Flush) ->
     mochijson2:encode({struct, [{<<"data">>, {struct, [{<<"flush">>, Flush}]}}]}).
 
-publish_auth_req() ->
+publish_authn_req() ->
     JSON = [123,[34,<<"Auth-Domain">>,34],58,[34,<<"auth_realm">>,34],44,[34,<<"Auth-User">>,34],58,[34,<<"auth_user">>,34],44,[34,<<"Orig-IP">>,34],58
 	    ,[34,<<"1.2.3.4">>,34],44,[34,<<"From">>,34],58,[34,<<"from@domain.com">>,34],44,[34,<<"To">>,34],58,[34,<<"to@domain.com">>,34]
 	    ,44,[34,<<"Msg-ID">>,34],58,[34,<<"id">>,34],44,[34,<<"App-Version">>,34],58,[34,<<"vsn">>,34],44,[34,<<"App-Name">>,34],58,[34,<<"app">>,34]
-	    ,44,[34,<<"Event-Name">>,34],58,[34,<<"auth_req">>,34],44,[34,<<"Event-Category">>,34],58,[34,<<"directory">>,34],44,[34,<<"Server-ID">>,34]
+	    ,44,[34,<<"Event-Name">>,34],58,[34,<<"authn_req">>,34],44,[34,<<"Event-Category">>,34],58,[34,<<"directory">>,34],44,[34,<<"Server-ID">>,34]
 	    ,58,[34,<<"srv">>,34],125],
     amqp_util:callmgr_publish(whapps_controller:get_amqp_host(), JSON, <<"application/json">>, <<"auth.req">>).

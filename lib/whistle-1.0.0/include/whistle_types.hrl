@@ -16,7 +16,7 @@
 -type json_objects() :: [json_object()].
 -type mochijson() :: json_object() | json_objects() | json_term() | [].
 
--type wh_year() :: non_neg_integer().
+-type wh_year() :: pos_integer().
 -type wh_month() :: 1..12.
 -type wh_day() :: 1..31.
 -type wh_hour() :: 0..23.

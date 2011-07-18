@@ -24,7 +24,8 @@ start() ->
 start_deps() ->
     whistle_apps_deps:ensure(),
     reloader:start(),
-    logger:start(),
+    logger:start_link(),
+
     ensure_started(sasl),
     ensure_started(crypto),
     ensure_started(ibrowse),

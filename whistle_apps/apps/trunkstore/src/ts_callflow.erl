@@ -153,14 +153,8 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 	    ?LOG("Bridge event received"),
 	    case wh_json:get_value(<<"Application-Response">>, JObj) of
 		<<"SUCCESS">> ->
-		    BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-		    ?LOG("Bridged to ~s successful", [BLeg]),
-		    ?LOG(BLeg, "Bridged from ~s successful", [ALeg]),
-
-		    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-		    amqp_util:basic_consume(Q),
-
-		    {bridged, State#state{bleg_callid=BLeg}};
+		    ?LOG("Bridge event successful, waiting for CHANNEL_BRIDGE"),
+		    ignore;
 		Cause ->
 		    ?LOG("Failed to bridge: ~s", [Cause]),
 		    {error, State}

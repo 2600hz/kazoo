@@ -9,10 +9,9 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
--export([eventstr_to_proplist/1]).
+-export([eventstr_to_proplist/1, get_setting/1, get_setting/2]).
 
 -import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
 
 -include("ecallmgr.hrl").
 
@@ -64,3 +63,25 @@ eventstr_to_proplist(EvtStr) ->
 	 [{V1,[]}] = mochiweb_util:parse_qs(V),
 	 {whistle_util:to_binary(K), whistle_util:to_binary(V1)}
      end || X <- string:tokens(whistle_util:to_list(EvtStr), "\n")].
+
+-spec get_setting/1 :: (Setting) -> term() when
+      Setting :: atom().
+-spec get_setting/2 :: (Setting, Default) -> term() when
+      Setting :: atom(),
+      Default :: term().
+get_setting(Setting) ->
+    get_setting(Setting, undefined).
+get_setting(Setting, Default) ->
+    case wh_cache:fetch({ecallmgr_setting, Setting}) of
+        {ok, Value} -> Value;
+        {error, _} ->
+            case file:consult(?SETTINGS_FILE) of
+                {ok, Settings} ->
+                    Value = props:get_value(Setting, Settings, Default),
+                    wh_cache:store({ecallmgr_setting, Setting}, Value),
+                    Value;
+                {error, _} ->
+                    wh_cache:store({ecallmgr_setting, Setting}, Default),
+                    Default
+            end
+    end.

@@ -4,7 +4,7 @@
 
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
 -export([callctl_exchange/0, callctl_publish/2, callctl_publish/3]).
--export([callevt_exchange/0, callevt_publish/2, callevt_publish/3]).
+-export([callevt_exchange/0, callevt_publish/1, callevt_publish/3]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2]).
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
@@ -14,7 +14,7 @@
 
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
--export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2]).
+-export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 -export([bind_q_to_monitor/2]).
@@ -41,85 +41,111 @@
 %% Publish AMQP messages
 %% @end
 %%------------------------------------------------------------------------------
--spec(targeted_publish/2 :: (Queue :: binary(), Payload :: binary()) -> ok).
--spec(targeted_publish/3 :: (Queue :: binary(), Payload :: binary(), ContentType :: binary()) -> ok).
+-spec targeted_publish/2 :: (Queue, Payload) -> ok when
+      Queue :: binary(),
+      Payload :: iolist().
+-spec targeted_publish/3 :: (Queue, Payload, ContentType) -> ok when
+      Queue :: binary(),
+      Payload :: iolist(),
+      ContentType :: binary().
 targeted_publish(Queue, Payload) ->
     targeted_publish(Queue, Payload, <<"application/json">>).
-
 targeted_publish(Queue, Payload, ContentType) ->
     basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType).
 
--spec(callmgr_publish/3 :: (Payload :: binary(), ContentType :: binary(), Queue :: binary()) -> ok).
+-spec callmgr_publish/3 :: (Payload, ContentType, RoutingKey) -> ok when
+      Payload :: iolist(),
+      ContentType :: binary(),
+      RoutingKey :: binary().
 %% TODO: The routing key on this function should be the first argument for consistency
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
 
--spec(callctl_publish/2 :: (Queue :: binary(), Payload :: binary()) -> ok).
--spec(callctl_publish/3 :: (Queue :: binary(), Payload :: binary(), ContentType :: binary()) -> ok).
-callctl_publish(CallId, Payload) ->
-    callctl_publish(CallId, Payload, <<"application/json">>).
+-spec callctl_publish/2 :: (CallID, Payload) -> ok when
+      CallID :: binary(),
+      Payload :: iolist().
+-spec callctl_publish/3 :: (CallID, Payload, ContentType) -> ok when
+      CallID :: binary(),
+      Payload :: iolist(),
+      ContentType :: binary().
+callctl_publish(CallID, Payload) ->
+    callctl_publish(CallID, Payload, <<"application/json">>).
+callctl_publish(CallID, Payload, ContentType) ->
+    basic_publish(?EXCHANGE_CALLCTL, CallID, Payload, ContentType).
 
-callctl_publish(CallId, Payload, ContentType) ->
-    basic_publish(?EXCHANGE_CALLCTL, CallId, Payload, ContentType).
+-spec callevt_publish/1 :: (Payload) -> ok when
+      Payload :: iolist().
+-spec callevt_publish/3 :: (CallID, Payload, Type) -> ok when
+      CallID :: binary(),
+      Payload :: iolist(),
+      Type :: event | status_req | cdr | binary().
+callevt_publish(Payload) ->
+    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, <<"application/json">>).
 
--spec(callevt_publish/2 :: (Payeue :: binary(), Quload :: media | binary()) -> ok).
--spec(callevt_publish/3 :: (CallId :: binary(), Payload :: binary(), Queue :: event | status_req | cdr | binary()) -> ok).
-%% TODO: James please fix callevt_public/2 the first argument is a payload sometimes and a queue name others...
-callevt_publish(Payload, media) ->
-    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, <<"application/json">>);
-callevt_publish(CallId, Payload) ->
-    callevt_publish(CallId, Payload, event).
-
-callevt_publish(CallId, Payload, event) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallId/binary>>, Payload, <<"application/json">>);
-callevt_publish(CallId, Payload, status_req) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallId/binary>>, Payload, <<"application/json">>);
-callevt_publish(CallId, Payload, cdr) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallId/binary>>, Payload, <<"application/json">>);
-callevt_publish(_CallId, Payload, RoutingKey) ->
+callevt_publish(CallID, Payload, event) ->
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, <<"application/json">>);
+callevt_publish(CallID, Payload, status_req) ->
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, <<"application/json">>);
+callevt_publish(CallID, Payload, cdr) ->
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallID/binary>>, Payload, <<"application/json">>);
+callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, <<"application/json">>).
 
--spec(resource_publish/1 :: (Payload :: binary()) -> ok).
--spec(resource_publish/2 :: (Payload :: binary(), ContentType :: binary()) -> ok).
+-spec resource_publish/1 :: (Payload) -> ok when
+      Payload :: iolist().
+-spec resource_publish/2 :: (Payload, ContentType) -> ok when
+      Payload :: iolist(),
+      ContentType :: binary().
 resource_publish(Payload) ->
     resource_publish(Payload, <<"application/json">>).
-
 resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, ?KEY_RESOURCE_REQ, Payload, ContentType).
 
--spec(originate_resource_publish/1 :: (Payload :: binary()) -> ok).
--spec(originate_resource_publish/2 :: (Payload :: binary(), ContentType :: binary()) -> ok).
+-spec originate_resource_publish/1 :: (Payload) -> ok when
+      Payload :: iolist().
+-spec originate_resource_publish/2 :: (Payload, ContentType) -> ok when
+      Payload :: iolist(),
+      ContentType :: binary().
 originate_resource_publish(Payload) ->
     originate_resource_publish(Payload, <<"application/json">>).
-
 originate_resource_publish(Payload, ContentType) ->
    basic_publish(?EXCHANGE_RESOURCE, ?KEY_ORGN_RESOURCE_REQ, Payload, ContentType).
 
--spec(offnet_resource_publish/1 :: (Payload :: binary()) -> ok).
--spec(offnet_resource_publish/2 :: (Payload :: binary(), ContentType :: binary()) -> ok).
+-spec offnet_resource_publish/1 :: (Payload) -> ok when
+      Payload :: iolist().
+-spec offnet_resource_publish/2 :: (Payload, ContentType) -> ok when
+      Payload :: iolist(),
+      ContentType :: binary().
 offnet_resource_publish(Payload) ->
     offnet_resource_publish(Payload, <<"application/json">>).
-
 offnet_resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, ?KEY_OFFNET_RESOURCE_REQ, Payload, ContentType).
 
 %% monitor
--spec(monitor_publish/3 :: (Payload :: binary(), ContentType :: binary(), Queue :: discovery | binary()) -> ok).
+-spec monitor_publish/3 :: (Payload, ContentType, RoutingKey) -> ok when
+      Payload :: iolist(),
+      ContentType :: binary(),
+      RoutingKey :: binary().
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
 %% conference
--spec(conference_publish/2 :: (Payload :: binary(), Queue :: discovery | binary()) -> ok).
--spec(conference_publish/3 :: (Payload :: binary(), Queue :: discovery | binary(), Options :: proplist()) -> ok).
+-spec conference_publish/2 :: (Payload, ConfID) -> ok when
+      Payload :: iolist(),
+      ConfID :: discovery | binary().
+-spec conference_publish/3 :: (Payload, ConfID, Options) -> ok when
+      Payload :: iolist(),
+      ConfID :: discovery | binary(),
+      Options :: proplist().
 conference_publish(Payload, discovery) ->
     basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, <<"application/json">>);
-conference_publish(Payload, ConfId) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, <<"application/json">>).
+conference_publish(Payload, ConfID) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfID/binary>>, Payload, <<"application/json">>).
 
 conference_publish(Payload, discovery, Options) ->
     basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, <<"application/json">>, Options);
-conference_publish(Payload, ConfId, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, <<"application/json">>, Options).
+conference_publish(Payload, ConfID, Options) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfID/binary>>, Payload, <<"application/json">>, Options).
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
@@ -156,37 +182,42 @@ basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payloa
 %% Create AMQP exchanges
 %% @end
 %%------------------------------------------------------------------------------
--spec(targeted_exchange/0 :: () -> ok).
+-spec targeted_exchange/0 :: () -> ok.
 targeted_exchange() ->
     new_exchange(?EXCHANGE_TARGETED, ?TYPE_TARGETED).
 
--spec(callctl_exchange/0 :: () -> ok).
+-spec callctl_exchange/0 :: () -> ok.
 callctl_exchange() ->
     new_exchange(?EXCHANGE_CALLCTL, ?TYPE_CALLCTL).
 
--spec(callevt_exchange/0 :: () -> ok).
+-spec callevt_exchange/0 :: () -> ok.
 callevt_exchange() ->
     new_exchange(?EXCHANGE_CALLEVT, ?TYPE_CALLEVT).
 
--spec(resource_exchange/0 :: () -> ok).
+-spec resource_exchange/0 :: () -> ok.
 resource_exchange() ->
     new_exchange(?EXCHANGE_RESOURCE, ?TYPE_RESOURCE).
 
--spec(callmgr_exchange/0 :: () -> ok).
+-spec callmgr_exchange/0 :: () -> ok.
 callmgr_exchange() ->
     new_exchange(?EXCHANGE_CALLMGR, ?TYPE_CALLMGR).
 
--spec(monitor_exchange/0 :: () -> ok).
+-spec monitor_exchange/0 :: () -> ok.
 monitor_exchange() ->
     new_exchange(?EXCHANGE_MONITOR, ?TYPE_MONITOR).
 
--spec(conference_exchange/0 :: () -> ok).
+-spec conference_exchange/0 :: () -> ok.
 conference_exchange() ->
     new_exchange(?EXCHANGE_CONFERENCE, ?TYPE_CONFERENCE).
 
 %% A generic Exchange maker
--spec(new_exchange/2 :: (Exchange :: binary(), Type :: binary()) -> ok).
--spec(new_exchange/3 :: (Exchange :: binary(), Type :: binary(), Options :: proplist()) -> ok).
+-spec new_exchange/2 :: (Exchange, Type) -> ok when
+      Exchange :: binary(),
+      Type :: binary().
+-spec new_exchange/3 :: (Exchange, Type, Options) -> ok when
+      Exchange :: binary(),
+      Type :: binary(),
+      Options :: proplist().
 new_exchange(Exchange, Type) ->
     new_exchange(Exchange, Type, []).
 new_exchange(Exchange, Type, _Options) ->
@@ -194,7 +225,7 @@ new_exchange(Exchange, Type, _Options) ->
       exchange = Exchange
       ,type = Type
      },
-    #'exchange.declare_ok'{} = amqp_manager:misc_req(ED).
+    amqp_manager:misc_req(ED).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -213,15 +244,15 @@ new_targeted_queue(Queue) ->
 -spec(new_callevt_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
 new_callevt_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
-new_callevt_queue(CallId) ->
-    new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", CallId])
+new_callevt_queue(CallID) ->
+    new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", CallID])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 -spec(new_callctl_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
 new_callctl_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
-new_callctl_queue(CallId) ->
-    new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", CallId])
+new_callctl_queue(CallID) ->
+    new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", CallID])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 -spec(new_resource_queue/0 :: () -> binary() | tuple(error, amqp_error)).
@@ -289,15 +320,15 @@ new_queue(Queue, Options) when is_binary(Queue) ->
 %% Delete AMQP queue
 %% @end
 %%------------------------------------------------------------------------------
-delete_callevt_queue(CallId) ->
-    delete_callevt_queue(CallId, []).
-delete_callevt_queue(CallId, Prop) ->
-    queue_delete(list_to_binary([?EXCHANGE_CALLEVT, ".", CallId]), Prop).
+delete_callevt_queue(CallID) ->
+    delete_callevt_queue(CallID, []).
+delete_callevt_queue(CallID, Prop) ->
+    queue_delete(list_to_binary([?EXCHANGE_CALLEVT, ".", CallID]), Prop).
 
-delete_callctl_queue(CallId) ->
-    delete_callctl_queue(CallId, []).
-delete_callctl_queue(CallId, Prop) ->
-    queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", CallId]), Prop).
+delete_callctl_queue(CallID) ->
+    delete_callctl_queue(CallID, []).
+delete_callctl_queue(CallID, Prop) ->
+    queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", CallID]), Prop).
 
 delete_callmgr_queue(Queue) ->
     queue_delete(Queue, []).
@@ -336,21 +367,25 @@ bind_q_to_callctl(Queue) ->
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
-%% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallId
--spec(bind_q_to_callevt/2 :: (Queue :: binary(), Routing :: media_req | binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_callevt/3 :: (Queue :: binary(), Routing :: media_req | binary(), Type :: events | status_req | cdr | other) ->
-				  #'basic.consume_ok'{} | tuple(error, term())).
+%% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallID
+-spec bind_q_to_callevt/2 :: (Queue, CallID) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: media_req | binary().
+-spec bind_q_to_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: binary(),
+      Type :: events | status_req | cdr | other.
 bind_q_to_callevt(Queue, media_req) ->
     bind_q_to_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
-bind_q_to_callevt(Queue, CallId) ->
-    bind_q_to_callevt(Queue, CallId, events).
+bind_q_to_callevt(Queue, CallID) ->
+    bind_q_to_callevt(Queue, CallID, events).
 
-bind_q_to_callevt(Queue, CallId, events) ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_EVENT/binary, CallId/binary>>, ?EXCHANGE_CALLEVT);
+bind_q_to_callevt(Queue, CallID, events) ->
+    bind_q_to_exchange(Queue, <<?KEY_CALL_EVENT/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallID, status_req) ->
     bind_q_to_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
-bind_q_to_callevt(Queue, CallId, cdr) ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_CDR/binary, CallId/binary>>, ?EXCHANGE_CALLEVT);
+bind_q_to_callevt(Queue, CallID, cdr) ->
+    bind_q_to_exchange(Queue, <<?KEY_CALL_CDR/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, Routing, other) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
@@ -394,7 +429,25 @@ bind_q_to_exchange(Queue, Routing, Exchange) when is_binary(Queue), is_binary(Ro
 %% Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
-unbind_q_from_callevt(Queue, Routing) ->
+-spec unbind_q_from_callevt/2 :: (Queue, CallID) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: media_req | binary().
+-spec unbind_q_from_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      CallID :: binary(),
+      Type :: events | status_req | cdr | other.
+unbind_q_from_callevt(Queue, media_req) ->
+    unbind_q_from_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID) ->
+    unbind_q_from_callevt(Queue, CallID, events).
+
+unbind_q_from_callevt(Queue, CallID, events) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_EVENT/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID, status_req) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID, cdr) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_CDR/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, Routing, other) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
 unbind_q_from_callctl(Queue) ->
@@ -425,11 +478,14 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 %% @end
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
+-spec basic_consume/1 :: (Queue) -> ok when
+      Queue :: binary().
+-spec basic_consume/2 :: (Queue, Options) -> ok when
+      Queue :: binary(),
+      Options :: proplist().
 basic_consume(Queue) ->
     basic_consume(Queue, []).
 
-basic_consume(Queue, Options) when is_list(Queue) ->
-    basic_consume(list_to_binary(Queue), Options);
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
@@ -439,7 +495,9 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    amqp_manager:consume(BC).
+    {C, Resp} = amqp_manager:consume(BC),
+    link(C),
+    Resp.
 
 %%------------------------------------------------------------------------------
 %% @public
