@@ -255,9 +255,9 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
 	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
-
     %% Server-ID will be over-written by the pool worker
-    case whistle_util:is_false(ecallmgr_util:get_setting(authz_enabled, true)) of
+
+    case whistle_util:is_true(ecallmgr_util:get_setting(authz_enabled, true)) of
 	true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
 	false -> route(Node, FSID, CallID, DefProp, undefined)
     end.
@@ -269,6 +269,7 @@ process_route_req(Node, FSID, CallID, FSData) ->
       FSData :: proplist(),
       DefProp :: proplist().
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
+    ?LOG("Starting authorization request"),
     {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
     route(Node, FSID, CallID, DefProp, AuthZPid).
 
@@ -279,6 +280,7 @@ authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
       DefProp :: proplist(),
       AuthZPid :: pid() | undefined.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
+    ?LOG("Starting route request"),
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
     RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, DefProp, ?EMPTY_JSON_OBJECT),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).

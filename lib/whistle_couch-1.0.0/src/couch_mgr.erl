@@ -752,15 +752,15 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH}=State) ->
+handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
     case dict:find(DBName, CH) of
 	{ok, {Srv, _}} ->
 	    ?LOG_SYS("Found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {noreply, State};
 	error ->
-	    {ok, Srv} = change_handler:start_link(DBName, []),
-	    ?LOG_SYS("Started CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+	    {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
+	    ?LOG_SYS("Started CH(~p): added listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}

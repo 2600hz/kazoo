@@ -12,7 +12,6 @@
 -export([eventstr_to_proplist/1, get_setting/1, get_setting/2]).
 
 -import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
 
 -include("ecallmgr.hrl").
 

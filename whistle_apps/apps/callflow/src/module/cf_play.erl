@@ -21,9 +21,15 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) ->
     put(callid, CallId),
-    Media = wh_json:get_value(<<"media">>, Data),
+    Media = case wh_json:get_value(<<"id">>, Data) of
+                <<"/system_media", _/binary>> = Path -> Path;
+                <<"system_media", _/binary>> = Path -> Path;
+                Path ->
+                    ?LOG("prepending media ID with /~s/", [AccountId]),
+                    <<$/, (whistle_util:to_binary(AccountId))/binary, $/, Path/binary>>
+            end,
     ?LOG("playing media ~s", [Media]),
     b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
     CFPid ! {continue}.

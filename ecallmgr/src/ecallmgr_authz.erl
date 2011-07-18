@@ -56,10 +56,18 @@ init_authorize(Parent, FSID, CallID, FSData) ->
     ?LOG_START("Authorize started"),
 
     ReqProp = request(FSID, CallID, FSData),
-    {ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp),
 
-    authorize_loop(whistle_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
-		   ,wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, [])).
+    {IsAuth, CCV} = try
+			{ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp, 2000),
+			{whistle_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
+			 ,wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, [])}
+		    catch
+			_:_ ->
+			    ?LOG("Authz request un-answered"),
+			    default()
+		    end,
+
+    authorize_loop(IsAuth, CCV).
 
 -spec authorize_loop/2 :: (IsAuth, CCV) -> no_return() when
       IsAuth :: boolean(),
