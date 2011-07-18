@@ -333,11 +333,11 @@ handle_info({#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type = <<"app
                       case lists:nth(random:uniform(length(Candidates)), Candidates) of
                           %% participant that is connected locally
                           {_, #participant{bridge_ctrl=undefined, control_q=CtrlQ}} ->
-                              ?LOG("reply a conference command on local participant control channel"),
+                              ?LOG("replay a conference command on local participant control channel"),
                               set_control_queue(Srv, CtrlQ),
                               amqp_util:callctl_publish(CtrlQ, Payload, <<"application/json">>, [{mandatory, true}]);
                           {_, #participant{bridge_ctrl=CtrlQ}} ->
-                              ?LOG("reply a conference command on participant bridge control channel"),
+                              ?LOG("replay a conference command on participant bridge control channel"),
                               set_control_queue(Srv, CtrlQ),
                               amqp_util:callctl_publish(CtrlQ, Payload, <<"application/json">>, [{mandatory, true}])
                       end

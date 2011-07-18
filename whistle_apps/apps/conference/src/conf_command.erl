@@ -21,8 +21,8 @@
 %% conference memebers
 %% @end
 %%--------------------------------------------------------------------
--spec(participants/1 :: (Conference :: #conf{}) -> ok).
-
+-spec participants/1 :: (Conference) -> ok when
+      Conference :: #conf{}.
 participants(#conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     Command = [
                 {<<"Application-Name">>, <<"participants">>}
@@ -40,8 +40,13 @@ participants(#conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% participants of a conference
 %% @end
 %%--------------------------------------------------------------------
--spec(play/2 :: (Media :: binary(), Conference :: #conf{}) -> ok).
--spec(play/3 :: (Media :: binary(), ParticipantId :: binary(), Conference :: #conf{}) -> ok).
+-spec play/2 :: (Media, Conference) -> ok when
+      Media :: binary(),
+      Conference :: #conf{}.
+-spec play/3 :: (Media, ParticipantId, Conference) -> ok when
+      Media :: binary(),
+      ParticipantId :: binary(),
+      Conference :: #conf{}.
 
 play(Media, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     Command = [
@@ -73,8 +78,9 @@ play(Media, ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(mute/2 :: (ParticipantID :: binary(), Conference :: #conf{}) -> ok).
-
+-spec mute/2 :: (ParticipantID, Conference) -> ok when
+      ParticipantID :: binary(),
+      Conference :: #conf{}.
 mute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     Command = [
                 {<<"Application-Name">>, <<"mute">>}
@@ -93,8 +99,9 @@ mute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(unmute/2 :: (ParticipantID :: binary(), Conference :: #conf{}) -> ok).
-
+-spec unmute/2 :: (ParticipantID, Conference) -> ok when
+      ParticipantID :: binary(),
+      Conference :: #conf{}.
 unmute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     Command = [
                 {<<"Application-Name">>, <<"unmute">>}
@@ -113,8 +120,9 @@ unmute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(deaf/2 :: (ParticipantID :: binary(), Conference :: #conf{}) -> ok).
-
+-spec deaf/2 :: (ParticipantID, Conference) -> ok when
+      ParticipantID :: binary(),
+      Conference :: #conf{}.
 deaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     Command = [
                 {<<"Application-Name">>, <<"deaf">>}
@@ -133,8 +141,9 @@ deaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
--spec(undeaf/2 :: (ParticipantID :: binary(), Conference :: #conf{}) -> ok).
-
+-spec undeaf/2 :: (ParticipantID, Conference) -> ok when
+      ParticipantID :: binary(),
+      Conference :: #conf{}.
 undeaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     Command = [
                 {<<"Application-Name">>, <<"undeaf">>}
@@ -152,7 +161,9 @@ undeaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec(send_command/2 :: (Payload :: binary(), Conference :: #conf{}) -> ok).
+-spec send_command/2 :: (Payload, Conference) -> ok when
+      Payload :: binary(),
+      Conference :: #conf{}.
 send_command(Payload, #conf{ctrl_q=CtrlQ}) ->
     %% TODO:
     %% The use of mandatory flag is to cause a return notice if it failes. Temporary

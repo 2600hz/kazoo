@@ -176,7 +176,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ensure the exhanges exist, build a queue, bind, and consume
 %% @end
 %%--------------------------------------------------------------------
--spec(start_amqp/0 :: () -> tuple(ok, binary())).
+-spec start_amqp/0 :: () -> tuple(ok, binary()).
 start_amqp() ->
     try
 	{'basic.qos_ok'} = amqp_util:basic_qos(1),
@@ -198,7 +198,10 @@ start_amqp() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
+-spec process_req/3 :: (MsgType, JObj, State) -> no_return() when
+      MsgType :: tuple(binary(), binary()),
+      JObj :: json_object(),
+      State :: #state{}.
 process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
     %% TODO: If I had more time this additional Q is possibly not necessary, or at least pooled...
     S1 = #search{conf_id = wh_json:get_value(<<"Conference-ID">>, JObj)
@@ -210,7 +213,7 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
                 },
 
     put(callid, CallId),
-    ?LOG_START("recieved discovery request for conference"),
+    ?LOG_START("received discovery request for conference"),
 
     %% Bind to call events for collecting conference numbers, pins, and playing prompts
     amqp_util:bind_q_to_callevt(Q, CallId),
@@ -248,6 +251,8 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
+-spec send_add_caller/1 :: (Search) -> no_return() when
+      Search :: #search{}.
 send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ctrl_q=CtrlQ, moderator=Moderator, amqp_q=Q}) ->
     ?LOG("attempting to handoff call control to conference service"),
 
@@ -297,6 +302,10 @@ send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ct
 %% if it isnt ours, then catch that and go back to waiting for a response.
 %% @end
 %%--------------------------------------------------------------------
+-spec wait_for_handoff/3 :: (AccountId, ConfId, Caller) -> tuple(error, atom()) | tuple(ok, added_caller) when
+      AccountId :: binary(),
+      ConfId :: binary(),
+      Caller :: proplist().
 wait_for_handoff(AccountId, ConfId, Caller) ->
     AddCallerPayload = whistle_util:to_binary(mochijson2:encode({struct, Caller})),
     receive
@@ -329,6 +338,8 @@ wait_for_handoff(AccountId, ConfId, Caller) ->
 %% service.
 %% @end
 %%--------------------------------------------------------------------
+-spec play_greeting/1 :: (Search) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Search :: #search{}.
 play_greeting(#search{prompts=Prompts}=Search) ->
     play(Prompts#prompts.greeting, Search).
 
@@ -349,6 +360,8 @@ play_greeting(#search{prompts=Prompts}=Search) ->
 %% moderator)
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_conference_id/1 :: (Search) -> tuple(error, to_many_attempts) | tuple(ok, #search{}) when
+      Search :: #search{}.
 validate_conference_id(#search{prompts=Prompts, loop_count=Loop}=Search) when Loop > 4 ->
     ?LOG_END("caller has failed to provide a valid conference number to many times"),
     play(Prompts#prompts.to_many_attempts, Search),
@@ -403,6 +416,8 @@ validate_conference_id(#search{conf_id=ConfId, account_id=AccountId, loop_count=
 %% Callers have three chances to enter a pin before we give up.
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_conference_pin/1 :: (Search) -> tuple(error, to_many_attempts) | tuple(ok, #search{}) when
+      Search :: #search{}.
 validate_conference_pin(#search{moderator = <<"true">>, pins={[], _}}=Search) ->
     %% moderator has no pins for entry
     {ok, Search};
@@ -460,6 +475,9 @@ validate_conference_pin(#search{pins={ModeratorPins, MemberPins}, prompts=Prompt
 %% unless that media is undefined (as in an account didnt want a greeting).
 %% @end
 %%--------------------------------------------------------------------
+-spec play/2 :: (Media, Search) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Media :: binary(),
+      Search :: #search{}.
 play(undefined, _) ->
     {ok, no_media};
 play(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
@@ -480,6 +498,9 @@ play(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
 %% for the conference for
 %% @end
 %%--------------------------------------------------------------------
+-spec play_and_collect_digits/2 :: (Media, Search) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Media :: binary(),
+      Search :: #search{}.
 play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
     Command = [{<<"Application-Name">>, <<"play_and_collect_digits">>}
                ,{<<"Minimum-Digits">>, <<"2">>}
@@ -503,6 +524,8 @@ play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) 
 %% Waits for a command to complete, error out, or the caller hangs up
 %% @end
 %%--------------------------------------------------------------------
+-spec wait_for_command/1 :: (Command) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Command :: binary().
 wait_for_command(Command) ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}} ->

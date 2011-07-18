@@ -35,9 +35,16 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
+-spec start_service/2 :: (ConfId, Conference) -> tuple(ok, pid()) | ignore | tuple(error, term()) when
+      ConfId :: binary(),
+      Conference :: json_object().
 start_service(ConfId, Conference) ->
     start_service(ConfId, Conference, undefined).
 
+-spec start_service/3 :: (ConfId, Conference, Caller) -> tuple(ok, pid()) | ignore | tuple(error, term()) when
+      ConfId :: binary(),
+      Conference :: json_object(),
+      Caller :: undefined | json_object().
 start_service(ConfId, Conference, Caller) ->
     supervisor:delete_child(conf_service_sup, ConfId),
     supervisor:start_child(?SERVER, ?CHILD(ConfId, conf_service, [Conference, Caller])).

@@ -10,20 +10,31 @@
 
 -behaviour(application).
 
-%% Application callbacks
 -export([start/2, stop/1]).
 
-%% ===================================================================
-%% Application callbacks
-%% ===================================================================
-
--spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
-start(_StartType, _StartArgs) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec start/2 :: (StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, term()) when
+      StartType :: term(),
+      StartArgs :: term().
+start(_, _) ->
     case conference:start_link() of
 	{ok, P} -> {ok, P};
 	{error, {already_started, P} } -> {ok, P};
 	{error, _}=E -> E
     end.
 
-stop(_State) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application stop behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec stop/1 :: (State) -> ok when
+      State :: term().
+stop(_) ->
     ok.
