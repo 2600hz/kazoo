@@ -203,7 +203,7 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
     ?LOG(CallID, "Recv CDR: ~s", [Payload]),
-    DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec, 1970),
+    DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec),
     ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
 
     [ToUser, _ToRealm] = binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>),
@@ -234,7 +234,7 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 	    ?LOG("Error with request: ~p", [_Resp])
     end.
 
-now_to_datetime(Secs, ExtraYears) ->
+now_to_datetime(Secs) ->
     {{YY,MM,DD},{Hour,Min,Sec}} = calendar:gregorian_seconds_to_datetime(Secs),
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
-				   [YY+ExtraYears, MM, DD, Hour, Min, Sec])).
+				   [YY, MM, DD, Hour, Min, Sec])).
