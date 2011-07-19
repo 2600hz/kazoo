@@ -1,0 +1,9 @@
+{application,jonny5,
+             [{description,"Jonny 5 - Short circuit accounts exceeding call volume"},
+              {vsn,"0.0.1"},
+              {modules,[j5_ts_acctmgr,jonny5,jonny5_app,jonny5_sup,jonny5_ts,
+                        jonny5_ts_acctmgr,jonny5_ts_sup]},
+              {registered,[]},
+              {applications,[kernel,stdlib,crypto]},
+              {mod,{jonny5_app,[]}},
+              {env,[]}]}.
