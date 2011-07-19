@@ -25,7 +25,7 @@
 -define(DEFAULT_SUPPORT_NUMBER, <<"(415) 886-7950">>).
 -define(DEFAULT_SUPPORT_EMAIL, <<"support@2600hz.org">>).
 
--record(state, {}).
+-record(state, {amqp_q :: binary()}).
 
 %%%===================================================================
 %%% API
@@ -57,6 +57,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ?LOG_SYS("starting new vm notify process"),
+    %% ensure the vm template can compile, otherwise crash the processes
+    {ok, notify_vm_tmpl} = erlydtl:compile(?DEFAULT_VM_TEMPLATE, notify_vm_tmpl),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -99,25 +102,50 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, _) ->
-    start_amqp(),
-    {ok, notify_vm_tmpl} = erlydtl:compile(?DEFAULT_VM_TEMPLATE, notify_vm_tmpl),
-    {noreply, ok};
+handle_info(timeout, #state{amqp_q = <<>>}=State) ->
+    try
+	{ok, Q} = start_amqp(),
+	{noreply, State#state{amqp_q=Q}}
+    catch
+	_:_ ->
+            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+	    {noreply, State}
+    end;
 
-handle_info({_, #amqp_msg{props=#'P_basic'{content_type= <<"application/json">>}, payload=Payload}}, State) ->
-    ?LOG_SYS("Received JSON: ~s", [Payload]),
+handle_info({amqp_reconnect, T}, State) ->
+    try
+	{ok, NewQ} = start_amqp(),
+	{noreply, State#state{amqp_q=NewQ}}
+    catch
+	_:_ ->
+            case T * 2 of
+                Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {noreply, State};
+                Timeout ->
+                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
+                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {noreply, State}
+            end
+    end;
+
+handle_info({amqp_host_down, _}, State) ->
+    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
+    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {noreply, State#state{amqp_q = <<>>}};
+
+handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, State) when
+      Props#'P_basic'.content_type == <<"application/json">> ->
     spawn(fun() ->
-		  JObj = mochijson2:decode(Payload),
-		  true = validate(JObj),
-		  put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
-		  ?LOG("Validated: ~s", [Payload]),
-		  update_mwi(JObj),
-		  send_vm_to_email(JObj)
-	  end),
+                  JObj = mochijson2:decode(Payload),
+                  whapps_util:put_callid(JObj),
+                  _ = process_req(whapps_util:get_event_type(JObj), JObj, State)
+          end),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -132,6 +160,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ?LOG_SYS("vm notify process ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -149,31 +178,46 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% ensure the exhanges exist, build a queue, bind, and consume
+%% @end
+%%--------------------------------------------------------------------
+-spec start_amqp/0 :: () -> tuple(ok, binary()).
 start_amqp() ->
-    Q = amqp_util:new_queue(),
-    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
-    amqp_util:basic_consume(Q).
+    try
+        Q = amqp_util:new_queue(),
+        amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
+        amqp_util:basic_consume(Q),
+        ?LOG_SYS("connected to AMQP"),
+        {ok, Q}
+    catch
+        _:R ->
+            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
+            {error, amqp_error}
+    end.
 
-validate(JObj) ->
-    validate(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
-
-validate(JObj, <<"new_voicemail">>) ->
-    cf_api:new_voicemail_v(JObj);
-validate(_, _) ->
-    false.
-
-update_mwi(_JObj) ->
-    not_implemented_yet.
-
-send_vm_to_email(JObj) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% process the AMQP requests
+%% @end
+%%--------------------------------------------------------------------
+-spec process_req/3 :: (MsgType, JObj, State) -> no_return() when
+      MsgType :: tuple(binary(), binary()),
+      JObj :: json_object(),
+      State :: #state{}.
+process_req({<<"conference">>, <<"new_voicemail">>}, JObj, _) ->
+    true = cf_api:new_voicemail_v(JObj),
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
-    case {wh_json:get_value(<<"email">>, UserJObj), whistle_util:is_true(wh_json:get_value(<<"vm_to_email_enabled">>, UserJObj))} of
+    case {wh_json:get_value(<<"email">>, UserJObj), wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)} of
 	{undefined, _} ->
-	    ?LOG_END("No email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
+	    ?LOG_END("no email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
 	{_Email, false} ->
-	    ?LOG_END("Voicemail to email disabled for ~s", [_Email]);
+	    ?LOG_END("voicemail to email disabled for ~s", [_Email]);
 	{Email, true} ->
 	    {ok, AcctObj} = couch_mgr:open_doc(AcctDB, whapps_util:get_db_name(AcctDB, raw)),
 	    VMTemplate = case wh_json:get_value(<<"vm_to_email_template">>, AcctObj) of
@@ -190,8 +234,23 @@ send_vm_to_email(JObj) ->
 				 end
 			 end,
 	    send_vm_to_email(Email, VMTemplate, JObj)
-    end.
+    end;
+process_req(_, _, _) ->
+    ok.
 
+update_mwi(_JObj) ->
+    not_implemented_yet.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% process the AMQP requests
+%% @end
+%%--------------------------------------------------------------------
+send_vm_to_email(To, Tmpl, JObj) -> no_return() when
+      To :: binary(),
+      Tmpl :: notify_vm_custom_tmpl | notify_vm_tmpl,
+      JObj :: json_object().
 send_vm_to_email(To, Tmpl, JObj) ->
     Subject = <<"New voicemail received">>,
     {ok, Body} = format_plaintext(JObj, Tmpl),
@@ -227,7 +286,15 @@ send_vm_to_email(To, Tmpl, JObj) ->
     gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
 			 ,fun(X) -> ?LOG("Sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
 
--spec(format_plaintext/2 :: (JObj :: json_object(), Tmpl :: atom()) -> tuple(ok, iolist())).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% create a the plain text vm to email component
+%% @end
+%%--------------------------------------------------------------------
+-spec format_plaintext/2 :: (JObj, Tmpl) -> tuple(ok, iolist()) when
+      JObj :: json_object(),
+      Tmpl :: notify_vm_custom_tmpl | notify_vm_tmpl.
 format_plaintext(JObj, Tmpl) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
@@ -241,7 +308,14 @@ format_plaintext(JObj, Tmpl) ->
 		 ,{support_number, ?DEFAULT_SUPPORT_NUMBER}
 		 ,{support_email, ?DEFAULT_SUPPORT_EMAIL}
 		]).
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% create a friendly format for DIDs
+%% @end
+%%--------------------------------------------------------------------
+-spec notify_vm_tmpl/1 :: (DID) -> binary() when
+      DID :: binary().
 pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
     <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
 pretty_print_did(<<"011", Rest/binary>>) ->
