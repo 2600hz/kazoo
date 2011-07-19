@@ -332,8 +332,8 @@ create_db_data(Node, Conn, AdminConn, DBName, Thresholds) ->
 	?LOG_SYS("Create db data for ~s" , [DBName]),
 	{ok, DBData} = get_db_data(AdminConn, DBName),
 
-	DiskSize = wh_json:get_value(<<"disk_size">>, DBData, -1),
-	DataSize = wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1),
+	DiskSize = whistle_util:to_integer(wh_json:get_value(<<"disk_size">>, DBData, -1)),
+	DataSize = whistle_util:to_integer(wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)),
 	CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 	{_MDS, Ratio} = orddict:fold(fun(K, V, Acc) -> filter_thresholds(K, V, Acc, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
