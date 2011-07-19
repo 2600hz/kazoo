@@ -560,7 +560,7 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    {C, Resp} = amqp_manager:consume(BC),
+    {_C, Resp} = amqp_manager:consume(BC),
     %% link(C),
     Resp.
 
