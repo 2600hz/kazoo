@@ -45,9 +45,9 @@
 -export([mwi_update/1]).
 
 % Conference Members
--export([conference_members_req/1, conference_members_resp/1, conference_play_req/1, conference_deaf_req/1,
+-export([conference_participants_req/1, conference_participants_resp/1, conference_play_req/1, conference_deaf_req/1,
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
-         conference_move_req/1
+         conference_move_req/1, conference_discovery_req/1
 	]).
 
 %% Validation functions
@@ -66,9 +66,9 @@
 
 -export([media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1]).
 
--export([conference_members_req_v/1, conference_members_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
+-export([conference_participants_req_v/1, conference_participants_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
-         ,conference_move_req_v/1, noop_req_v/1, fetch_req_v/1, mwi_update_v/1
+         ,conference_move_req_v/1, conference_discovery_req_v/1, noop_req_v/1, fetch_req_v/1, mwi_update_v/1
 	]).
 
 -export([route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1]).
@@ -1094,49 +1094,70 @@ conference_req_v(Prop) ->
     validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::members - Lists all members of a conference
-%%     or details about certain members - see wiki
+%% @doc Conference::discovery - Used to identify the conference ID
+%% if not provided, locate the conference focus, and return sip url
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(conference_members_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
-conference_members_req({struct, Prop}) ->
-    conference_members_req(Prop);
-conference_members_req(Prop) ->
-    case conference_members_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_MEMBERS_REQ_HEADERS, ?OPTIONAL_CONF_MEMBERS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_members_req"}
+-spec(conference_discovery_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+conference_discovery_req({struct, Prop}) ->
+    conference_discovery_req(Prop);
+conference_discovery_req(Prop) ->
+    case conference_discovery_req_v(Prop) of
+	true -> build_message(Prop, ?CONF_DISCOVERY_REQ_HEADERS, ?OPTIONAL_CONF_DISCOVERY_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for conference_discovery_req"}
     end.
 
--spec(conference_members_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
-conference_members_req_v({struct, Prop}) ->
-    conference_members_req_v(Prop);
-conference_members_req_v(Prop) ->
-    validate(Prop, ?CONF_MEMBERS_REQ_HEADERS, ?CONF_MEMBERS_REQ_VALUES, ?CONF_MEMBERS_REQ_TYPES).
+-spec(conference_discovery_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+conference_discovery_req_v({struct, Prop}) ->
+    conference_discovery_req_v(Prop);
+conference_discovery_req_v(Prop) ->
+    validate(Prop, ?CONF_DISCOVERY_REQ_HEADERS, ?CONF_DISCOVERY_REQ_VALUES, ?CONF_DISCOVERY_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::members - The response to members - see wiki
+%% @doc Conference::participants - Lists all participants of a conference
+%%     or details about certain participants - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(conference_members_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
-conference_members_resp({struct, Prop}) ->
-    conference_members_resp(Prop);
-conference_members_resp(Prop) ->
-    case conference_members_resp_v(Prop) of
-	true -> build_message(Prop, ?CONF_MEMBERS_RESP_HEADERS, ?OPTIONAL_CONF_MEMBERS_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for conference_members_resp"}
+-spec(conference_participants_req/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+conference_participants_req({struct, Prop}) ->
+    conference_participants_req(Prop);
+conference_participants_req(Prop) ->
+    case conference_participants_req_v(Prop) of
+	true -> build_message(Prop, ?CONF_PARTICIPANTS_REQ_HEADERS, ?OPTIONAL_CONF_PARTICIPANTS_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for conference_participants_req"}
     end.
 
--spec(conference_members_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
-conference_members_resp_v({struct, Prop}) ->
-    conference_members_resp_v(Prop);
-conference_members_resp_v(Prop) ->
-    validate(Prop, ?CONF_MEMBERS_RESP_HEADERS, ?CONF_MEMBERS_RESP_VALUES, ?CONF_MEMBERS_RESP_TYPES).
+-spec(conference_participants_req_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+conference_participants_req_v({struct, Prop}) ->
+    conference_participants_req_v(Prop);
+conference_participants_req_v(Prop) ->
+    validate(Prop, ?CONF_PARTICIPANTS_REQ_HEADERS, ?CONF_PARTICIPANTS_REQ_VALUES, ?CONF_PARTICIPANTS_REQ_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Conference::participants - The response to participants - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec(conference_participants_resp/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+conference_participants_resp({struct, Prop}) ->
+    conference_participants_resp(Prop);
+conference_participants_resp(Prop) ->
+    case conference_participants_resp_v(Prop) of
+	true -> build_message(Prop, ?CONF_PARTICIPANTS_RESP_HEADERS, ?OPTIONAL_CONF_PARTICIPANTS_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for conference_participants_resp"}
+    end.
+
+-spec(conference_participants_resp_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+conference_participants_resp_v({struct, Prop}) ->
+    conference_participants_resp_v(Prop);
+conference_participants_resp_v(Prop) ->
+    validate(Prop, ?CONF_PARTICIPANTS_RESP_HEADERS, ?CONF_PARTICIPANTS_RESP_VALUES, ?CONF_PARTICIPANTS_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference::play - Play audio to all or a single
-%%     conference member - see wiki
+%%     conference participant - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -1156,7 +1177,7 @@ conference_play_req_v(Prop) ->
     validate(Prop, ?CONF_PLAY_REQ_HEADERS, ?CONF_PLAY_REQ_VALUES, ?CONF_PLAY_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::deaf - Make a conference member deaf - see wiki
+%% @doc Conference::deaf - Make a conference participant deaf - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -1176,7 +1197,7 @@ conference_deaf_req_v(Prop) ->
     validate(Prop, ?CONF_DEAF_REQ_HEADERS, ?CONF_DEAF_REQ_VALUES, ?CONF_DEAF_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::undeaf - Allows a specific conference member to
+%% @doc Conference::undeaf - Allows a specific conference participant to
 %%     hear if they where marked deaf - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1197,7 +1218,7 @@ conference_undeaf_req_v(Prop) ->
     validate(Prop, ?CONF_UNDEAF_REQ_HEADERS, ?CONF_UNDEAF_REQ_VALUES, ?CONF_UNDEAF_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::mute - Mutes a specific member in a
+%% @doc Conference::mute - Mutes a specific participant in a
 %%     conference - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1218,7 +1239,7 @@ conference_mute_req_v(Prop) ->
     validate(Prop, ?CONF_MUTE_REQ_HEADERS, ?CONF_MUTE_REQ_VALUES, ?CONF_MUTE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::unmute - Unmutes a specific member in a
+%% @doc Conference::unmute - Unmutes a specific participant in a
 %%     conference - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1239,7 +1260,7 @@ conference_unmute_req_v(Prop) ->
     validate(Prop, ?CONF_UNMUTE_REQ_HEADERS, ?CONF_UNMUTE_REQ_VALUES, ?CONF_UNMUTE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::kick - Removes a member from a conference - see wiki
+%% @doc Conference::kick - Removes a participant from a conference - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -1259,7 +1280,7 @@ conference_kick_req_v(Prop) ->
     validate(Prop, ?CONF_KICK_REQ_HEADERS, ?CONF_KICK_REQ_VALUES, ?CONF_KICK_REQ_TYPES).
 
 %%--------------------------------------------------------------------
-%% @doc Conference::move - Transfers a member between to
+%% @doc Conference::move - Transfers a participant between to
 %%     conferences - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
