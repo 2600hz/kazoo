@@ -16,7 +16,11 @@
 -type fd() :: tuple().
 -type io_device() :: pid() | fd().
 
--spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), ControlPID :: pid()) -> ok | timeout | tuple(error, invalid_callid | failed)).
+-spec exec_cmd/4 :: (Node, UUID, JObj, ControlPID) -> ok | timeout | tuple(error, invalid_callid | failed) when
+      Node :: atom(),
+      UUID :: binary(),
+      JObj :: json_object(),
+      ControlPID :: pid().
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
@@ -40,15 +44,27 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 	    {error, invalid_callid}
     end.
 
-%% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec(get_fs_app/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), Application :: binary()) ->
-			   tuple(binary(), binary() | noop) | tuple(return, ok) | tuple(error, binary())
-                               | tuple(error, binary(), binary())).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% return the app name and data (as a binary string) to send to
+%% the FS ESL via mod_erlang_event
+%% @end
+%%--------------------------------------------------------------------
+-spec get_fs_app/4 :: (Node, UUID, JObj, Application) -> tuple(binary(), binary() | noop)
+                                                             | tuple(return, ok)
+                                                             | tuple(error, binary())
+                                                             | tuple(error, binary(), binary()) when
+      Node :: atom(),
+      UUID :: binary(),
+      JObj :: json_object(),
+      Application :: binary().
 get_fs_app(Node, UUID, JObj, <<"noop">>=App) ->
     spawn(fun() ->
                   send_noop_call_event(Node, UUID, JObj)
           end),
     {App, noop};
+
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case whistle_api:play_req_v(JObj) of
 	false -> {error, <<"playback">>, <<"play failed to execute as JObj did not validate">>};
@@ -57,8 +73,10 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
 	    ok = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"playback">>, F}
     end;
+
 get_fs_app(_Node, _UUID, _JObj, <<"hangup">>=App) ->
     {App, <<>>};
+
 get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case whistle_api:play_collect_digits_req_v(JObj) of
 	false -> {error, <<"play_and_get_digits">>, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
@@ -76,6 +94,7 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
 				   ,Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
 	    {<<"play_and_get_digits">>, Data}
     end;
+
 get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
     case whistle_api:record_req_v(JObj) of
 	false -> {error, <<"record failed to execute as JObj did not validate">>};
@@ -94,6 +113,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
 
 	    {App, RecArg}
     end;
+
 get_fs_app(_Node, UUID, JObj, <<"store">>) ->
     case whistle_api:store_req_v(JObj) of
 	false -> {error, <<"store failed to execute as JObj did not validate">>};
@@ -134,6 +154,7 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 		    end
 	    end
     end;
+
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case whistle_api:tones_req_v(JObj) of
 	false -> {error, <<"playback">>, <<"tones failed to execute as JObj did not validate">>};
@@ -157,17 +178,22 @@ get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
 	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
 	    {<<"playback">>, Arg}
     end;
+
 get_fs_app(_Node, _UUID, _JObj, <<"answer">>=App) ->
     {App, <<>>};
+
 get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
     {<<"pre_answer">>, <<>>};
+
 get_fs_app(_Node, _UUID, _JObj, <<"park">>=App) ->
     {App, <<>>};
+
 get_fs_app(_Node, _UUID, JObj, <<"sleep">>=App) ->
     case whistle_api:sleep_req_v(JObj) of
 	false -> {error, <<"sleep failed to execute as JObj did not validate">>};
 	true -> {App, whistle_util:to_binary(wh_json:get_value(<<"Time">>, JObj))}
     end;
+
 get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
     case whistle_api:say_req_v(JObj) of
 	false -> {error, <<"say failed to execute as JObj did not validate">>};
@@ -180,6 +206,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
 	    ?LOG("say command ~s", [Arg]),
 	    {App, Arg}
     end;
+
 get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
     case whistle_api:bridge_req_v(JObj) of
 	false -> {error, <<"bridge failed to execute as JObj did not validate">>};
@@ -210,6 +237,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
                     {App, BridgeCmd}
             end
     end;
+
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
     case whistle_api:tone_detect_req_v(JObj) of
 	false -> {error, <<"tone detect failed to execute as JObj did not validate">>};
@@ -235,6 +263,7 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
 	    {App, Data}
     end;
+
 get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
     case whistle_api:set_req_v(JObj) of
         false -> {error, <<"set failed to execute as JObj did not validate">>};
@@ -253,6 +282,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
                           end, CallVars),
             {App, noop}
     end;
+
 get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
     case whistle_api:respond_req_v(JObj) of
         false -> {error, <<"respond failed to execute as JObj did not validate">>};
@@ -261,11 +291,13 @@ get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
                          ," ", (wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
             {App, Response}
     end;
+
 get_fs_app(Node, UUID, JObj, <<"fetch">>=App) ->
     spawn(fun() ->
                   send_fetch_call_event(Node, UUID, JObj)
           end),
     {App, noop};
+
 get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
     case whistle_api:conference_req_v(JObj) of
 	false -> {error, <<"conference failed to execute as JObj did not validate">>};
@@ -273,15 +305,22 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
 	    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
 	    {App, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
     end;
+
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     ?LOG("unknown application ~s", [_App]),
     {error, <<"application unknown">>}.
 
-%%%===================================================================
-%%% Internal helper functions
-%%%===================================================================
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% send the SendMsg proplist to the freeswitch node
--spec(send_cmd/4 :: (Node :: atom(), UUID :: binary(), AppName :: binary() | string(), Args :: binary() | string()) -> ok | timeout | {error, string()}).
+%% @end
+%%--------------------------------------------------------------------
+-spec send_cmd/4 :: (Node, UUID, AppName, Args) -> ok | timeout | {error, string()} when
+      Node :: atom(),
+      UUID :: binary(),
+      AppName :: binary() | string(),
+      Args :: binary() | string().
 send_cmd(Node, UUID, AppName, Args) ->
     ?LOG("SendMsg: Node: ~p", [Node]),
     ?LOG("SendMsg: App: ~s", [AppName]),
@@ -292,9 +331,16 @@ send_cmd(Node, UUID, AppName, Args) ->
 				    ,{"execute-app-arg", whistle_util:to_list(Args)}
 				   ]).
 
-%% take an endpoint (/sofia/foo/bar), and optionally a caller id name and number
-%% and create the dial string ([origination_caller_id_name=Name,origination_caller_id_number=Num]Endpoint)
--spec(get_bridge_endpoint/1 :: (JObj :: json_object()) -> string()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% take an endpoint (/sofia/foo/bar), and optionally a caller id name/num
+%% and create the dial string ([origination_caller_id_name=Name
+%%                              ,origination_caller_id_number=Num]Endpoint)
+%% @end
+%%--------------------------------------------------------------------
+-spec get_bridge_endpoint/1 :: (JObj) -> string() when
+      JObj :: json_object().
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
 	{error, timeout} -> "";
@@ -303,8 +349,19 @@ get_bridge_endpoint(JObj) ->
 	    whistle_util:to_list(list_to_binary([CVs, EndPoint]))
     end.
 
--spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
--spec(media_path/3 :: (MediaName :: binary(), Type :: extant | new, UUID :: binary()) -> binary()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec media_path/2 :: (MediaName, UUID) -> binary() when
+      MediaName :: binary(),
+      UUID :: binary().
+-spec media_path/3 :: (MediaName, Type, UUID) -> binary() when
+      MediaName :: binary(),
+      Type :: extant | new,
+      UUID :: binary().
+
 media_path(MediaName, UUID) ->
     media_path(MediaName, new, UUID).
 
@@ -316,14 +373,28 @@ media_path(MediaName, Type, UUID) ->
             get_fs_playback(Url)
     end.
 
--spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_fs_playback/1 :: (Url) -> binary() when
+      Url :: binary().
 get_fs_playback(<<"http://", _/binary>>=Url) ->
     RemoteAudioScript = ecallmgr_util:get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
     <<"shell_stream://", (whistle_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
 
--spec(stream_over_amqp/3 :: (File :: binary(), JObj :: proplist(), Headers :: proplist()) -> no_return()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec stream_over_amqp/3 :: (File, JObj, Headers) -> no_return() when
+      File :: binary(),
+      JObj :: proplist(),
+      Headers :: proplist().
 stream_over_amqp(File, JObj, Headers) ->
     DestQ = case wh_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
 		undefined ->
@@ -335,8 +406,18 @@ stream_over_amqp(File, JObj, Headers) ->
 	    end,
     stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% get a chunk of the file and send it in an AMQP message to the DestQ
--spec(stream_over_amqp/5 :: (DestQ :: binary(), F :: fun(), State :: tuple(), Headers :: proplist(), Seq :: pos_integer()) -> no_return()).
+%% @end
+%%--------------------------------------------------------------------
+-spec stream_over_amqp/5 :: (DestQ, F, State, Headers, Seq) -> no_return() when
+      DestQ :: binary(),
+      F :: fun(),
+      State :: tuple(),
+      Headers :: proplist(),
+      Seq :: pos_integer().
 stream_over_amqp(DestQ, F, State, Headers, Seq) ->
     ?LOG("streaming via AMQP to ~s", [DestQ]),
     case F(State) of
@@ -357,7 +438,15 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 	    eof
     end.
 
--spec(stream_over_http/3 :: (File :: binary(), Verb :: binary(), JObj :: proplist()) -> no_return()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec stream_over_http/3 :: (File, Verb, JObj) -> no_return() when
+      File :: binary(),
+      Verb :: binary(),
+      JObj :: proplist().
 stream_over_http(File, Verb, JObj) ->
     Url = whistle_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     ?LOG("streaming via HTTP(~s) to ~s", [Verb, Url]),
@@ -368,6 +457,8 @@ stream_over_http(File, Verb, JObj) ->
     Body = {fun stream_file/1, {undefined, File}},
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
     case ibrowse:send_req(Url, Headers, Method, Body) of
+	{ok, "504", _, _} ->
+            stream_over_http(File, Verb, JObj);
 	{ok, StatusCode, RespHeaders, RespBody} ->
 	    case whistle_api:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>
 								       ,{struct, [{<<"Status-Code">>, StatusCode}
@@ -387,7 +478,13 @@ stream_over_http(File, Verb, JObj) ->
 	    ?LOG("ibrowse req id: ~p", [ReqId])
     end.
 
--spec(stream_file/1 :: ({undefined | io_device(), binary()}) -> {ok, list(), tuple()} | eof).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec stream_file/1 :: (File) -> {ok, list(), tuple()} | eof when
+      File :: tuple(undefined | io_device(), binary()).
 stream_file({undefined, File}) ->
     true = filelib:is_regular(File),
     {ok, Iod} = file:open(File, [read, raw]),
@@ -401,7 +498,15 @@ stream_file({Iod, _File}=State) ->
 	    eof
     end.
 
--spec(set_terminators/3 :: (Node :: atom(), UUID :: binary(), Terminators :: undefined | binary()) -> ok | timeout | {error, string()}).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_terminators/3 :: (Node, UUID, Terminators) -> ok | timeout | {error, string()} when
+      Node :: atom(),
+      UUID :: binary(),
+      Terminators :: undefined | binary().
 set_terminators(_Node, _UUID, undefined) ->
     ok;
 set_terminators(Node, UUID, <<>>) ->
@@ -410,7 +515,15 @@ set_terminators(Node, UUID, Ts) ->
     Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).
 
--spec(set_ringback/3 :: (Node :: atom(), UUID :: binary(), RingBack :: undefined | binary()) -> ok | timeout | {error, string()}).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_ringback/3 :: (Node, UUID, RingBack) -> ok | timeout | {error, string()} when
+      Node :: atom(),
+      UUID :: binary(),
+      RingBack :: undefined | binary().
 set_ringback(Node, UUID, undefined) ->
     RB = list_to_binary(["ringback=", ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)")]),
     ok = set(Node, UUID, RB);
@@ -419,7 +532,15 @@ set_ringback(Node, UUID, RingBack) ->
     ok = set(Node, UUID, RB),
     set(Node, UUID, "instant_ringback=true").
 
--spec(set_timeout/3 :: (Node :: atom(), UUID :: binary(), Timeout :: undefined | binary()) -> ok | timeout | {error, string()}).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_timeout/3 :: (Node, UUID, Timeout) -> ok | timeout | {error, string()} when
+      Node :: atom(),
+      UUID :: binary(),
+      Timeout :: undefined | binary().
 set_timeout(_Node, _UUID, undefined) ->
     ok;
 set_timeout(Node, UUID, Timeout) ->
@@ -430,6 +551,11 @@ set_timeout(Node, UUID, Timeout) ->
             ok
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec set_media_mode/3 :: (Node, UUID, MediaMode) -> ok | timeout | {error, string()} when
       Node :: atom(),
       UUID :: binary(),
@@ -443,16 +569,38 @@ set_media_mode(Node, UUID, <<"bypass">>) ->
 set_media_mode(_Node, _UUID, _) ->
     ok.
 
--spec(set/3 :: (Node :: atom(), UUID :: binary(), Arg :: string() | binary()) -> ok | timeout | {error, string()}).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set/3 :: (Node, UUID, Arg) -> ok | timeout | {error, string()} when
+      Node :: atom(),
+      UUID :: binary(),
+      Arg :: string() | binary().
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", whistle_util:to_list(Arg)).
 
--spec(export/3 :: (Node :: atom(), UUID :: binary(), Arg :: binary()) -> ok | timeout | {error, string()}).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec export/3 :: (Node, UUID, Arg) -> ok | timeout | {error, string()} when
+      Node :: atom(),
+      UUID :: binary(),
+      Arg :: binary().
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", whistle_util:to_list(Arg)).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% builds a FS specific flag string for the conference command
--spec(get_conference_flags/1 :: (JObj :: json_object()) -> binary()).
+%% @end
+%%--------------------------------------------------------------------
+-spec get_conference_flags/1 :: (JObj) -> binary() when
+      JObj :: json_object().
 get_conference_flags(JObj) ->
     Flags = [
              <<Flag/binary, Delim/binary>>
@@ -466,7 +614,15 @@ get_conference_flags(JObj) ->
             <<"+flags{", (erlang:binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
     end.
 
--spec(send_fetch_call_event/3 :: (Node :: binary(), UUID :: binary(), JObj :: json_object()) -> no_return()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_fetch_call_event/3 :: (Node, UUID, JObj) -> no_return() when
+      Node :: binary(),
+      UUID :: binary(),
+      JObj :: json_object().
 send_fetch_call_event(Node, UUID, JObj) ->
     try
         Prop = case whistle_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
@@ -507,7 +663,15 @@ send_fetch_call_event(Node, UUID, JObj) ->
             amqp_util:callevt_publish(UUID, P2, event)
     end.
 
--spec(send_noop_call_event/3 :: (Node :: binary(), UUID :: binary(), JObj :: json_object()) -> no_return()).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_noop_call_event/3 :: (Node, UUID, JObj) -> no_return() when
+      Node :: binary(),
+      UUID :: binary(),
+      JObj :: json_object().
 send_noop_call_event(Node, UUID, JObj) ->
     try
         {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(UUID)),
@@ -540,7 +704,16 @@ send_noop_call_event(Node, UUID, JObj) ->
             amqp_util:callevt_publish(UUID, P2, event)
     end.
 
--spec(send_error_response/4 :: (App :: binary(), Msg :: binary(), UUID :: binary(), JObj :: json_object()) -> ok).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_error_response/4 :: (App, Msg, UUID, JObj) -> ok when
+      App :: binary(),
+      Msg :: binary(),
+      UUID :: binary(),
+      JObj :: json_object().
 send_error_response(App, Msg, UUID, JObj) ->
     ?LOG("error getting FS app for ~s: ~p", [App, Msg]),
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
