@@ -29,33 +29,38 @@
 %%                 | <<"friday">> | <<"saturday">> | <<"sunday">>.
 -type cycle_type() :: binary(). %%<<"date">> | <<"daily">> | <<"weekly">> | <<"monthly">> | <<"yearly">>.
 
--record(prompts, {
-           route_enabled = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+enabled.">>
-          ,route_disabled = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+have+been+disabled,all+calls+will+be+sent+to+the+default+route.">>
-          ,route_reset = <<"shout://translate.google.com/translate_tts?tl=en&q=Time+and+date+routes+have+been+returned+to+normal+operation.">>
-         }).
+-record(keys, {enable = <<"1">>
+               ,disable = <<"2">>
+               ,reset = <<"3">>
+              }).
+-record(prompts, {marked_disabled = <<"/system_media/temporal-marked_disabled">>
+                  ,marked_enabled = <<"/system_media/temporal-marked_enabled">>
+                  ,marker_reset = <<"/system_media/temporal-marker_reset">>
+                  ,main_menu = <<"/system_media/temporal-menu">>
+                 }).
 
 -record(rule, {id = <<>> :: binary()
-          ,enabled = undefined :: undefined | binary()
-          ,name = <<"no_name">> :: binary()
-          ,cycle = <<>> :: cycle_type()
-          ,interval = 1 :: non_neg_integer()
-          ,days = [] :: [wh_day()]
-          ,wdays = [] :: [wday()]
-          ,ordinal = <<"first">> :: ordinal()
-          ,month = 1 :: wh_month()
-          ,start_date = {2011, 1, 1} :: wh_date()
-          ,wtime_start = 0 :: non_neg_integer()
-          ,wtime_stop = 86400 :: non_neg_integer()
-         }).
+               ,enabled = undefined :: undefined | binary()
+               ,name = <<"no_name">> :: binary()
+               ,cycle = <<>> :: cycle_type()
+               ,interval = 1 :: non_neg_integer()
+               ,days = [] :: [wh_day()]
+               ,wdays = [] :: [wday()]
+               ,ordinal = <<"first">> :: ordinal()
+               ,month = 1 :: wh_month()
+               ,start_date = {2011, 1, 1} :: wh_date()
+               ,wtime_start = 0 :: non_neg_integer()
+               ,wtime_stop = 86400 :: non_neg_integer()
+              }).
 
 -record(temporal, {local_sec = 0 :: non_neg_integer()
-          ,local_date = {2011, 1, 1} :: wh_date()
-          ,local_time = {0, 0, 0} :: wh_time()
-          ,routes = [] :: proplist()
-          ,timezone = <<"America/Los_Angeles">> :: binary()
-          ,prompts=#prompts{}
-         }).
+                   ,local_date = {2011, 1, 1} :: wh_date()
+                   ,local_time = {0, 0, 0} :: wh_time()
+                   ,routes = [] :: proplist()
+                   ,timezone = <<"America/Los_Angeles">> :: binary()
+                   ,prompts=#prompts{}
+                   ,keys=#keys{}
+                  }).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -67,23 +72,25 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
-        <<"enable">> ->
+        <<"menu">> ->
+            ?LOG("temporal rules main menu"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
-            enable_temporal_route(Rules, Call),
-            Prompts = Temporal#temporal.prompts,
-            _ = cf_call_command:b_play(Prompts#prompts.route_enabled, Call),
+            temporal_route_menu(Temporal, Rules, Call),
+            CFPid ! {stop};
+        <<"enable">> ->
+            ?LOG("force temporal rules to enable"),
+            Rules = wh_json:get_value(<<"rules">>, Data, []),
+            enable_temporal_rules(Temporal, Rules, Call),
             CFPid ! {stop};
         <<"disable">> ->
+            ?LOG("force temporal rules to disable"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
-            disable_temporal_route(Rules, Call),
-            Prompts = Temporal#temporal.prompts,
-            _ = cf_call_command:b_play(Prompts#prompts.route_disabled, Call),
+            disable_temporal_rules(Temporal, Rules, Call),
             CFPid ! {stop};
         <<"reset">> ->
+            ?LOG("resume normal temporal rule operation"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
-            reset_temporal_route(Rules, Call),
-            Prompts = Temporal#temporal.prompts,
-            _ = cf_call_command:b_play(Prompts#prompts.route_reset, Call),
+            reset_temporal_rules(Temporal, Rules, Call),
             CFPid ! {stop};
         _ ->
             Rules = get_temporal_rules(Temporal, Call),
@@ -211,94 +218,122 @@ get_date(Term) when is_binary(Term) ->
 get_date(Term) when is_integer(Term) ->
    get_date(calendar:gregorian_seconds_to_datetime(Term)).
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Retrieve and update the enabled key on the temporal route document.
+%% Present the caller with the option to enable, disable, or reset
+%% the provided temporal rules.
+%% @end
+%%--------------------------------------------------------------------
+-spec(temporal_route_menu/3 :: (Temporal :: #temporal{}, Rules :: list(),  Call :: #cf_call{}) -> no_return()).
+temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=Reset}
+                              ,prompts=Prompts}=Temporal, Rules, Call) ->
+    _ = cf_call_command:flush_dtmf(Call),
+    case cf_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
+        {ok, Enable} ->
+            enable_temporal_rules(Temporal, Rules, Call);
+        {ok, Disable} ->
+            disable_temporal_rules(Temporal, Rules, Call);
+        {ok, Reset} ->
+            reset_temporal_rules(Temporal, Rules, Call);
+        {error, _} ->
+            ok;
+        _ ->
+            temporal_route_menu(Temporal, Rules, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec(disable_temporal_route/2 :: (Rules :: list(), Call :: #cf_call{}) -> no_return()).
-disable_temporal_route([], _) -> ok;
-disable_temporal_route([Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+-spec(disable_temporal_rules/3 :: (Temporal :: #temporal{}, Rules :: list(),  Call :: #cf_call{}) -> no_return()).
+disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
+    _ = cf_call_command:b_play(Disabled, Call);
+disable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
         case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, false, JObj)) of
             {ok, _} ->
                 ?LOG("set temporal rule ~s to disabled", [Id]),
-                disable_temporal_route(T, Call);
+                disable_temporal_rules(Temporal, T, Call);
             {error, conflict} ->
                 ?LOG("conflict during disable of temporal rule ~s, trying again", [Id]),
-                disable_temporal_route(Rules, Call);
+                disable_temporal_rules(Temporal, Rules, Call);
             {error, R1} ->
                 ?LOG("unable to update temporal rule ~s, ~p",[Id, R1]),
-                disable_temporal_route(T, Call)
+                disable_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
-            ?LOG("unable to update temporal route ~p",[R2]),
-            disable_temporal_route(T, Call)
+            ?LOG("unable to update temporal rules ~p",[R2]),
+            disable_temporal_rules(Temporal, T, Call)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Retrieve and update the enabled key on the temporal route document.
+%% Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec(reset_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
-reset_temporal_route([], _) -> ok;
-reset_temporal_route([Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+-spec(reset_temporal_rules/3 :: (Temporal :: #temporal{}, Rules :: list(), Call :: #cf_call{}) -> no_return()).
+reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
+    _ = cf_call_command:b_play(Reset, Call);
+reset_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
         case couch_mgr:save_doc(Db, wh_json:delete_key(<<"enabled">>, JObj)) of
             {ok, _} ->
                 ?LOG("reset temporal rule ~s", [Id]),
-                reset_temporal_route(T, Call);
+                reset_temporal_rules(Temporal, T, Call);
             {error, conflict} ->
                 ?LOG("conflict during reset of temporal rule ~s, trying again", [Id]),
-                reset_temporal_route(Rules, Call);
+                reset_temporal_rules(Temporal, Rules, Call);
             {error, R1} ->
                 ?LOG("unable to reset temporal rule ~s, ~p",[Id, R1]),
-                reset_temporal_route(T, Call)
+                reset_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
             ?LOG("unable to reset temporal rule ~s ~p",[Id, R2]),
-            reset_temporal_route(T, Call)
+            reset_temporal_rules(Temporal, T, Call)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Retrieve and update the enabled key on the temporal route document.
+%% Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
 %%--------------------------------------------------------------------
--spec(enable_temporal_route/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> no_return()).
-enable_temporal_route([], _) -> ok;
-enable_temporal_route([Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+-spec(enable_temporal_rules/3 :: (Temporal :: #temporal{}, Rules :: list(), Call :: #cf_call{}) -> no_return()).
+enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
+    _ = cf_call_command:b_play(Enabled, Call);
+enable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
     try
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
         case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, true, JObj)) of
             {ok, _} ->
                 ?LOG("set temporal rule ~s to enabled active", [Id]),
-                enable_temporal_route(T, Call);
+                enable_temporal_rules(Temporal, T, Call);
             {error, conflict} ->
                 ?LOG("conflict during enable of temporal rule ~s, trying again", [Id]),
-                enable_temporal_route(Rules, Call);
+                enable_temporal_rules(Temporal, Rules, Call);
             {error, R1} ->
                 ?LOG("unable to enable temporal rule ~s, ~p",[Id, R1]),
-                enable_temporal_route(T, Call)
+                enable_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
             ?LOG("unable to enable temporal rule ~s ~p",[Id, R2]),
-            enable_temporal_route(T, Call)
+            enable_temporal_rules(Temporal, T, Call)
     end.
 
 %%--------------------------------------------------------------------

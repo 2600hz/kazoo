@@ -33,3 +33,8 @@ menu-transferring_call: Transferring your call.
 menu-exit: I'm sorry, we have not been able to recognize your entries.
 menu-invalid_entry: Invalid entry.
 menu-returning: Transferring your call back to the menu.
+
+temporal-marked_closed: Your office is now marked as closed. The system will continue routing calls as though the office is closed, until you manually resume normal operation.
+temporal-marked_opened: Your office is now marked as open. The system will continue routing calls as though the office is open, until you manually resume normal operation.
+temporal-reset_rules: Call routing returned to normal operation. Calls will be routed based on the schedule defined when your system was configured.
+temporal-menu: Time based call routing. To mark the office as open, press 1. To mark the office as closed, press 2. To resume normal operation, press 3.
