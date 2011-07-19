@@ -561,7 +561,7 @@ basic_consume(Queue, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
      },
     {C, Resp} = amqp_manager:consume(BC),
-    %% link(C),
+    link(C),
     Resp.
 
 %%------------------------------------------------------------------------------
