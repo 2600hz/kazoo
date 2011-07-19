@@ -2,8 +2,5 @@
 */log/error_log*
 */error_log
 .eunit
-ecallmgr/priv/startup.config
-whistle_apps/priv/startup.config
-whistle_apps/apps/*/ebin/*.beam
-whistle_apps/apps/*/ebin/*.app
-whistle_apps/apps/*/log/*
+whistle_apps/log/*
+ecallmgr/log/*
