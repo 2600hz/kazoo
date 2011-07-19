@@ -23,8 +23,7 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {amqp_q :: binary()
-               }).
+-record(state, {amqp_q :: binary()}).
 
 %%%===================================================================
 %%% API
@@ -146,6 +145,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, S
       Props#'P_basic'.content_type == <<"application/json">> ->
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
+		  put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"000000000000">>)),
                   _ = process_req(get_event_type(JObj), JObj, State)
           end),
     {noreply, State};
@@ -256,6 +256,8 @@ process_req({<<"notify">>, <<"mwi">>}, JObj, _) ->
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             ?LOG("sending MWI update to ~s (~p)", [Node, Resp])
     end.
+process_req(_, _, _) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
