@@ -461,21 +461,20 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
 
     try
 	true = whistle_api:call_status_req_v(JObj),
-	?LOG("Call Status request received"),
+	?LOG_START("call status request received"),
 
 	{Status, ErrMsg} = case IsNodeUp of
 			       true -> query_call(Node, CallID);
 			       false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
 			   end,
+        ?LOG_END("call status of ~s is ~s", [CallID, Status]),
 
 	RespJObj = [{<<"Call-ID">>, CallID}
 		    ,{<<"Status">>, Status}
+		    ,{<<"Node">>, Node}
 		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
-	{ok, JSON} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
-	SrvID = wh_json:get_value(<<"Server-ID">>, JObj),
-	?LOG("Status response: ~s", [JSON]),
-
-	amqp_util:targeted_publish(SrvID, JSON)
+	{ok, Payload} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
+	amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
     catch
 	E:R ->
 	    ?LOG("Call Status exception: ~s:~w", [E, R]),
