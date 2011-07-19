@@ -1,9 +1,6 @@
 *~
 */log/error_log*
-*/mnesia
 */error_log
 .eunit
-lib/rabbitmq-server/log/*.log*
-lib/rabbitmq-server/mnesia/*
-whistle_apps/apps/*/log/*
-whistle_apps/priv/mnesia/*.*
+whistle_apps/log/*
+ecallmgr/log/*
