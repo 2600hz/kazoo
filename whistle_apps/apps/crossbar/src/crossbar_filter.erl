@@ -37,7 +37,7 @@ filter_on_query_string(DbName, View, QueryParams) ->
       Props :: proplist().
 filter_doc(Doc, Props) ->
     Result = [true || {Key, Val} <- Props, filter_prop(Doc, Key, Val)],
-    lists:all(fun(Term) -> Term end, Result).
+    (Result =/= [] andalso lists:all(fun(Term) -> Term end, Result)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -50,7 +50,7 @@ filter_doc(Doc, Props) ->
       Key :: binary(),
       Val :: term().
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
-    wh_json:get_value(Key, Doc) =:= Val;
+    wh_json:get_value(Key, Doc) == Val;
 filter_prop(Doc, <<"created_from">>, Val) ->
     whistle_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= whistle_util:to_integer(Val);
 filter_prop(Doc, <<"created_to">>, Val) ->
