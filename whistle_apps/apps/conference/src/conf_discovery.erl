@@ -25,6 +25,8 @@
 -include("conference.hrl").
 
 -define(SERVER, ?MODULE).
+
+-define(VIEW_FILE, <<"views/conference.json">>).
 -define(LIST_BY_NUMBER, {<<"conference">>, <<"listing_by_number">>}).
 
 -record(state, {amqp_q = <<>> :: binary()}).
@@ -67,6 +69,7 @@ start_link() ->
 %------------------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new conference discovery process"),
+    spawn(fun() -> whapps_util:revise_whapp_views_in_accounts(conference) end),
     {ok, #state{}, 0}.
 
 %------------------------------------------------------------------------------
@@ -173,7 +176,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ensure the exhanges exist, build a queue, bind, and consume
 %% @end
 %%--------------------------------------------------------------------
--spec(start_amqp/0 :: () -> tuple(ok, binary())).
+-spec start_amqp/0 :: () -> tuple(ok, binary()).
 start_amqp() ->
     try
 	{'basic.qos_ok'} = amqp_util:basic_qos(1),
@@ -195,23 +198,33 @@ start_amqp() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
+-spec process_req/3 :: (MsgType, JObj, State) -> no_return() when
+      MsgType :: tuple(binary(), binary()),
+      JObj :: json_object(),
+      State :: #state{}.
 process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
     %% TODO: If I had more time this additional Q is possibly not necessary, or at least pooled...
     S1 = #search{conf_id = wh_json:get_value(<<"Conference-ID">>, JObj)
                  ,account_id = wh_json:get_value(<<"Account-ID">>, JObj)
                  ,amqp_q = Q = amqp_util:new_queue()
                  ,call_id = CallId = wh_json:get_value(<<"Call-ID">>, JObj)
-                 ,ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
+                 ,ctrl_q = CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj)
                  ,moderator = wh_json:get_value(<<"Moderator">>, JObj, <<"false">>)
                 },
 
     put(callid, CallId),
-    ?LOG_START("recieved discovery request for conference"),
+    ?LOG_START("received discovery request for conference"),
 
     %% Bind to call events for collecting conference numbers, pins, and playing prompts
     amqp_util:bind_q_to_callevt(Q, CallId),
     amqp_util:basic_consume(Q),
+
+    Command = [{<<"Application-Name">>, <<"answer">>}
+               ,{<<"Call-ID">>, CallId}
+               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = whistle_api:answer_req(Command),
+    amqp_util:callctl_publish(CtrlQ, Payload),
 
     {ok, _} = play_greeting(S1),
 
@@ -238,6 +251,8 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
+-spec send_add_caller/1 :: (Search) -> no_return() when
+      Search :: #search{}.
 send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ctrl_q=CtrlQ, moderator=Moderator, amqp_q=Q}) ->
     ?LOG("attempting to handoff call control to conference service"),
 
@@ -287,6 +302,10 @@ send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ct
 %% if it isnt ours, then catch that and go back to waiting for a response.
 %% @end
 %%--------------------------------------------------------------------
+-spec wait_for_handoff/3 :: (AccountId, ConfId, Caller) -> tuple(error, atom()) | tuple(ok, added_caller) when
+      AccountId :: binary(),
+      ConfId :: binary(),
+      Caller :: proplist().
 wait_for_handoff(AccountId, ConfId, Caller) ->
     AddCallerPayload = whistle_util:to_binary(mochijson2:encode({struct, Caller})),
     receive
@@ -319,6 +338,8 @@ wait_for_handoff(AccountId, ConfId, Caller) ->
 %% service.
 %% @end
 %%--------------------------------------------------------------------
+-spec play_greeting/1 :: (Search) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Search :: #search{}.
 play_greeting(#search{prompts=Prompts}=Search) ->
     play(Prompts#prompts.greeting, Search).
 
@@ -339,6 +360,8 @@ play_greeting(#search{prompts=Prompts}=Search) ->
 %% moderator)
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_conference_id/1 :: (Search) -> tuple(error, to_many_attempts) | tuple(ok, #search{}) when
+      Search :: #search{}.
 validate_conference_id(#search{prompts=Prompts, loop_count=Loop}=Search) when Loop > 4 ->
     ?LOG_END("caller has failed to provide a valid conference number to many times"),
     play(Prompts#prompts.to_many_attempts, Search),
@@ -350,29 +373,36 @@ validate_conference_id(#search{conf_id=undefined, prompts=Prompts, account_id=Ac
     case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, [{<<"key">>, ConfNum}]) of
         {ok, [JObj]} ->
             ConfId = wh_json:get_value(<<"id">>, JObj),
-            Mod = case wh_json:is_true([<<"value">>, <<"moderator">>], JObj, false) of
-                      true ->
-                          ?LOG("identified conference number ~s as a moderator for conference ~s", [ConfNum, ConfId]),
-                          <<"true">>;
-                      false ->
-                          ?LOG("identified conference number ~s as a member for conference ~s", [ConfNum, ConfId]),
-                          <<"false">>
+            Mod = case wh_json:get_value([<<"value">>, <<"moderator">>], JObj, <<"unknown">>) of
+                      <<"unknown">> ->
+                          ?LOG("identified conference number ~s as conference ~s, dont know participant type yet", [ConfNum, ConfId]),
+                          <<"unknown">>;
+                      Moderator ->
+                          ?LOG("identified conference number ~s as conference ~s", [ConfNum, ConfId]),
+                          whistle_util:to_binary(whistle_util:is_true(Moderator))
                   end,
             {ok, Search#search{conf_id=ConfId
                                ,moderator=Mod
-                               ,pins=wh_json:get_value([<<"value">>, <<"pins">>], JObj, [])
+                               ,pins={wh_json:get_value([<<"value">>, <<"pins">>, <<"moderator">>], JObj, [])
+                                      ,wh_json:get_value([<<"value">>, <<"pins">>, <<"member">>], JObj, [])
+                                     }
                               }
             };
         _ ->
+            ?LOG("could not find conference number ~s", [ConfNum]),
             play(Prompts#prompts.incorrect_id, Search),
             validate_conference_id(Search#search{conf_id=undefined, loop_count=Loop + 1})
     end;
 validate_conference_id(#search{conf_id=ConfId, account_id=AccountId, loop_count=Loop}=Search) ->
     Db = whapps_util:get_db_name(AccountId, encoded),
     case couch_mgr:open_doc(Db, ConfId) of
-        {ok, _} ->
+        {ok, JObj} ->
             ?LOG("validated provided conference id, ~s", [ConfId]),
-            {ok, Search};
+            {ok, Search#search{moderator = <<"unknown">>
+                               ,pins={wh_json:get_value([<<"moderator">>, <<"pins">>], JObj, [])
+                                      ,wh_json:get_value([<<"member">>, <<"pins">>], JObj, [])
+                                     }
+                              }};
         {error, _} ->
             ?LOG("provided with invalid conference id ~s, degrading to request", [ConfId]),
             validate_conference_id(Search#search{conf_id=undefined, loop_count=Loop + 1})
@@ -386,18 +416,54 @@ validate_conference_id(#search{conf_id=ConfId, account_id=AccountId, loop_count=
 %% Callers have three chances to enter a pin before we give up.
 %% @end
 %%--------------------------------------------------------------------
-validate_conference_pin(#search{pins=[]}=Search) ->
+-spec validate_conference_pin/1 :: (Search) -> tuple(error, to_many_attempts) | tuple(ok, #search{}) when
+      Search :: #search{}.
+validate_conference_pin(#search{moderator = <<"true">>, pins={[], _}}=Search) ->
+    %% moderator has no pins for entry
+    {ok, Search};
+validate_conference_pin(#search{moderator = <<"false">>, pins={_, []}}=Search) ->
+    %% member has no pins for entry
     {ok, Search};
 validate_conference_pin(#search{prompts=Prompts, loop_count=Loop}=Search) when Loop > 4 ->
     ?LOG_END("caller has failed to provide the correct pin to many times"),
     play(Prompts#prompts.to_many_attempts, Search),
     {error, to_many_attempts};
-validate_conference_pin(#search{prompts=Prompts, pins=Pins, loop_count=Loop}=Search) ->
+validate_conference_pin(#search{moderator = <<"true">>, pins={Pins, _}, prompts=Prompts, loop_count=Loop}=Search) ->
+    ?LOG("requesting conference moderator pin from caller"),
+    {ok, Pin} = play_and_collect_digits(Prompts#prompts.request_pin, Search),
+    case lists:member(Pin, Pins) of
+        true ->
+            ?LOG("caller entered a valid moderator pin"),
+            {ok, Search};
+        false ->
+            ?LOG("caller entered an invalid pin"),
+            play(Prompts#prompts.incorrect_pin, Search),
+            validate_conference_pin(Search#search{loop_count=Loop + 1})
+    end;
+validate_conference_pin(#search{moderator = <<"false">>, pins={_, Pins}, prompts=Prompts, loop_count=Loop}=Search) ->
+    ?LOG("requesting conference member pin from caller"),
+    {ok, Pin} = play_and_collect_digits(Prompts#prompts.request_pin, Search),
+    case lists:member(Pin, Pins) of
+        true ->
+            ?LOG("caller entered a valid member pin"),
+            {ok, Search};
+        false ->
+            ?LOG("caller entered an invalid pin"),
+            play(Prompts#prompts.incorrect_pin, Search),
+            validate_conference_pin(Search#search{loop_count=Loop + 1})
+    end;
+validate_conference_pin(#search{pins={ModeratorPins, MemberPins}, prompts=Prompts, loop_count=Loop}=Search) ->
     ?LOG("requesting conference pin from caller"),
     {ok, Pin} = play_and_collect_digits(Prompts#prompts.request_pin, Search),
-    case [P || P <- Pins, whistle_util:to_binary(P) =:= Pin] of
-        [_] -> {ok, Search};
-        [] ->
+    case {lists:member(Pin, ModeratorPins), lists:member(Pin, MemberPins)} of
+        {true, _} ->
+            ?LOG("caller entered a pin belonging to a moderator"),
+            {ok, Search#search{moderator = <<"true">>}};
+        {_, true} ->
+            ?LOG("caller entered a pin belonging to a member"),
+            {ok, Search#search{moderator = <<"false">>}};
+        {false, false} ->
+            ?LOG("caller entered an invalid pin"),
             play(Prompts#prompts.incorrect_pin, Search),
             validate_conference_pin(Search#search{loop_count=Loop + 1})
     end.
@@ -409,6 +475,9 @@ validate_conference_pin(#search{prompts=Prompts, pins=Pins, loop_count=Loop}=Sea
 %% unless that media is undefined (as in an account didnt want a greeting).
 %% @end
 %%--------------------------------------------------------------------
+-spec play/2 :: (Media, Search) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Media :: binary(),
+      Search :: #search{}.
 play(undefined, _) ->
     {ok, no_media};
 play(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
@@ -429,6 +498,9 @@ play(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
 %% for the conference for
 %% @end
 %%--------------------------------------------------------------------
+-spec play_and_collect_digits/2 :: (Media, Search) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Media :: binary(),
+      Search :: #search{}.
 play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
     Command = [{<<"Application-Name">>, <<"play_and_collect_digits">>}
                ,{<<"Minimum-Digits">>, <<"2">>}
@@ -452,6 +524,8 @@ play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) 
 %% Waits for a command to complete, error out, or the caller hangs up
 %% @end
 %%--------------------------------------------------------------------
+-spec wait_for_command/1 :: (Command) -> tuple(error, atom()) | tuple(ok, binary()) when
+      Command :: binary().
 wait_for_command(Command) ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}} ->

@@ -79,8 +79,7 @@
 %% Authentication Requests
 -define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
 			       , <<"Auth-User">>, <<"Auth-Domain">>]).
-
--define(OPTIONAL_AUTHN_REQ_HEADERS, []).
+-define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			  ,{<<"Event-Name">>, <<"authn_req">>}
 			 ]).
