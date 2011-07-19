@@ -796,19 +796,17 @@
                          ]).
 -define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
 
-%% MWI request
--define(MWI_REQ_HEADERS, [<<"Messages-Waiting">>, <<"Message-Account-User">>, <<"Message-Account-Realm">>]).
--define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-New">>, <<"Messages-Saved">>, <<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).
--define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
+%% Notify MWI request
+-define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
+-define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).
+-define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notify">>}
 			 ,{<<"Event-Name">>, <<"mwi">>}
-			 ]).
+                        ]).
 -define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
 			,{<<"Messages-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
 			,{<<"Messages-Urgent">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
 			,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
-			,{<<"Messages-Waiting">>, fun(I) -> whistle_util:is_true(I) xor whistle_util:is_false(I) end}
 		       ]).
-
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
 -define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).

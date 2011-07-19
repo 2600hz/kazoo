@@ -23,7 +23,7 @@
 -define(KEY_REG_SUCCESS, <<"registration.success">>).
 -define(KEY_REG_QUERY, <<"registration.query">>).
 
--define(KEY_MWI_UPDATE, <<"mwi.update">>).
+-define(KEY_SIP_NOTIFY, <<"sip.notify">>).
 
 -define(KEY_CONF_DISCOVERY_REQ, <<"conference.discovery">>).
 -define(KEY_CONF_SERVICE_REQ, <<"conference.service.">>).
