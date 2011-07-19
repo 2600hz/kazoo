@@ -136,6 +136,7 @@ handle_info(timeout, State) ->
     {noreply, State#state{is_amqp_up=true}};
 
 handle_info({_, #amqp_msg{payload=Payload}}, #state{wsdl_model=WsdlModel,dth_cdr_url=URL}=State) ->
+    ?LOG_SYS("Recv AMQP payload: ~s", [Payload]),
     spawn(fun() -> handle_amqp_msg(URL, Payload, WsdlModel) end),
     {noreply, State};
 
@@ -205,9 +206,17 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
     DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec, 1970),
     ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
 
+    [ToUser, _ToRealm] = binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>),
+    [FromUser, _FromRealm] = binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>),
+
+    ToE164 = whistle_util:to_e164(ToUser),
+    FromE164 = whistle_util:to_e164(FromUser),
+
+    ?LOG(CallID, "CDR from ~s to ~s", [FromE164, ToE164]),
+
     XML = iolist_to_binary(io_lib:format(?DTH_SUBMITCALLRECORD
-					 ,[wh_json:get_value(<<"Caller-ID-Number">>, JObj)
-					   ,wh_json:get_value(<<"Callee-ID-Number">>, JObj)
+					 ,[FromE164
+					   ,ToE164
 					   ,DateTime
 					   ,whistle_util:to_binary(BillingSec)
 					   ,CallID
