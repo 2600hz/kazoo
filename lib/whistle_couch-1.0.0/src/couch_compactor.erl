@@ -372,8 +372,8 @@ get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
 			case get_design_data(Conn, DBName, DesignID) of
 			    {error, failed} -> Acc;
 			    {ok, DDocData} ->
-				DataSize = wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1),
-				DiskSize = wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1),
+				DataSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
+				DiskSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
 				CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 				{_MDS, Ratio} = orddict:fold(fun(K, V, AccT) -> filter_thresholds(K, V, AccT, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
