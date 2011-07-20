@@ -190,8 +190,9 @@ compact_nodes(Thresholds) ->
 				  get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds)
 			      catch
 				  E:R ->
+				      ST = erlang:get_stacktrace(),
 				      ?LOG_SYS("Error getting node data for ~s: ~p:~p", [wh_json:get_value(<<"id">>, Node), E, R]),
-				      ?LOG("stacktrace: ~p", [erlang:get_stacktrace()]),
+				      [?LOG("stacktrace: ~p", [ST1]) || ST1 <- ST],
 				      []
 			      end
 			  end
