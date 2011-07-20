@@ -209,18 +209,14 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 
     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-    MicroTimestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp() * 1000000)),
+    Timestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp())),
     BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
     ?LOG(CallID, "Recv CDR: ~s", [Payload]),
-    DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec),
-    ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
+    DateTime = now_to_datetime(Timestamp - BillingSec),
 
-    [ToUser, _ToRealm] = binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>),
-    [FromUser, _FromRealm] = binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>),
-
-    ToE164 = whistle_util:to_e164(ToUser),
-    FromE164 = whistle_util:to_e164(FromUser),
+    ToE164 = whistle_util:to_e164(get_to_user(JObj)),
+    FromE164 = whistle_util:to_e164(get_from_user(JObj)),
 
     ?LOG(CallID, "CDR from ~s to ~s", [FromE164, ToE164]),
 
@@ -232,6 +228,9 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 					   ,CallID
 					   ,?DTH_CALL_TYPE_OTHER
 					  ])),
+
+    ?LOG(CallID, "XML sent: ~s", [XML]),
+
     Headers = [{"Content-Type", "text/xml; charset=utf-8"}
 	       ,{"Content-Length", binary:referenced_byte_size(XML)}
 	       ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
@@ -246,5 +245,31 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 
 now_to_datetime(Secs) ->
     {{YY,MM,DD},{Hour,Min,Sec}} = calendar:gregorian_seconds_to_datetime(Secs),
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
 				   [YY, MM, DD, Hour, Min, Sec])).
+
+-spec get_to_user/1 :: (json_object()) -> binary().
+get_to_user(JObj) ->
+    case wh_json:get_value(<<"To-Uri">>, JObj) of
+	undefined ->
+	    case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
+		undefined -> <<"+00000000000">>;
+		To -> To
+	    end;
+	ToUri ->
+	    [To, _ToRealm] = binary:split(ToUri, <<"@">>),
+	    To
+    end.
+
+-spec get_from_user/1 :: (json_object()) -> binary().
+get_from_user(JObj) ->
+    case wh_json:get_value(<<"From-Uri">>, JObj) of
+	undefined ->
+	    case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
+		undefined -> <<"+00000000000">>;
+		From -> From
+	    end;
+	FromUri ->
+	    [From, _FromRealm] = binary:split(FromUri, <<"@">>),
+	    From
+    end.
