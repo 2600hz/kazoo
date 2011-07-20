@@ -185,20 +185,19 @@ compact_nodes(Thresholds) ->
 	{ok, []} ->
 	    ?LOG_SYS("No Nodes to compact");
 	{ok, Nodes} ->
-	    NodesData = [ begin
-			      try
-				  get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds)
-			      catch
-				  E:R ->
-				      ST = erlang:get_stacktrace(),
-				      ?LOG_SYS("Error getting node data for ~s: ~p:~p", [wh_json:get_value(<<"id">>, Node), E, R]),
-				      [?LOG("stacktrace: ~p", [ST1]) || ST1 <- ST],
-				      []
-			      end
-			  end
-			  || Node <- Nodes ],
-	    put(callid, undefined),
-	    [ spawn(fun() -> [ compact(D) || D <- NodeData ] end) || NodeData <- NodesData ];
+	    [ begin
+		  try
+		      Data = get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds),
+		      [compact(D) || D <- Data]
+		  catch
+		      E:R ->
+			  ST = erlang:get_stacktrace(),
+			  ?LOG_SYS("Error getting node data for ~s: ~p:~p", [wh_json:get_value(<<"id">>, Node), E, R]),
+			  _ = [?LOG("stacktrace: ~p", [ST1]) || ST1 <- ST],
+			  []
+		  end
+	      end
+	      || Node <- Nodes ];
 	{error, _E} ->
 	    ?LOG_SYS("Failed to lookup nodes: ~p", [_E])
     end.
@@ -325,8 +324,9 @@ get_dbs_and_designs(Node, Conn, AdminConn, Thresholds) ->
 		get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
 	    catch
 		E:R ->
+		    ST = erlang:get_stacktrace(),
 		    ?LOG_SYS("error getting design docs: ~p:~p", [E, R]),
-		    [?LOG("stacktrace: ~p", [ST1]) || ST1 <- erlang:get_stacktrace()],
+		    _ = [?LOG("stacktrace: ~p", [ST1]) || ST1 <- ST],
 		    DBs
 	    end
     end.
