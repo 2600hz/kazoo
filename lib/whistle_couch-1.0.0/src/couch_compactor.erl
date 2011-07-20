@@ -321,7 +321,14 @@ get_dbs_and_designs(Node, Conn, AdminConn, Thresholds) ->
 	[] -> ?LOG_SYS("No DB Data loaded for ~s", [Node]), [];
 	DBs ->
 	    ?LOG_SYS("Got DB data for ~b DBs", [length(DBs)]),
-	    get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
+	    try
+		get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
+	    catch
+		E:R ->
+		    ?LOG_SYS("error getting design docs: ~p:~p", [E, R]),
+		    [?LOG("stacktrace: ~p", [ST1]) || ST1 <- erlang:get_stacktrace()],
+		    DBs
+	    end
     end.
 
 -spec get_dbs/4 :: (Node, Conn, AdminConn, Thresholds) -> [#db_data{} | {db_error, binary()},...] | [] when
