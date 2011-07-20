@@ -470,10 +470,10 @@ get_ddocs(Conn, DB, Cnt) ->
 -spec compact/1 :: (Data) -> ok when
       Data :: #db_data{} | #design_data{}.
 compact(#db_data{db_name=DBName, node=Node, admin_conn=AC, do_compaction=true}) ->
-    timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
+    timer:sleep(random:uniform(5)*1000), %sleep between 1 and 5 seconds
     ?LOG_SYS("Compact DB ~s on ~s: ~p and VC: ~p", [DBName, Node, couch_util:db_compact(AC, DBName), couch_util:db_view_cleanup(AC, DBName)]);
 compact(#design_data{shards=Shards, node=Node, design_name=Design, admin_conn=AC, do_compaction=true}) ->
-    timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
+    timer:sleep(random:uniform(5)*1000), %sleep between 1 and 5 seconds
     [ ?LOG_SYS("Compact design ~s for ~s on ~s: ~p", [Design, DBName, Node, couch_util:design_compact(AC, DBName, Design)]) || DBName <- Shards ];
 compact(_) -> ok.
 
