@@ -271,6 +271,7 @@ get_node_data(NodeBin, Thresholds) ->
       Pass :: string(),
       AdminPort :: non_neg_integer().
 get_conns(Host, Port, User, Pass, AdminPort) ->
+    ?LOG_SYS("get_conns: H: ~s P: ~b U: ~s P: ~s AP: ~b", [Host, Port, User, Pass, AdminPort]),
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)}.
 
