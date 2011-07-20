@@ -385,7 +385,6 @@ get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
 
 				{_MDS, Ratio} = orddict:fold(fun(K, V, AccT) -> filter_thresholds(K, V, AccT, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
 
-				?LOG_SYS("Data for ~s: Dataset: ~b Disksize: ~b", [DBName, DataSize, DiskSize]),
 				?LOG_SYS("Using MDS: ~b with ratio ~b", [_MDS, Ratio]),
 				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
 
