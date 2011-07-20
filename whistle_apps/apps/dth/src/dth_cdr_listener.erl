@@ -68,6 +68,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    process_flag(trap_exit, true),
     {ok, Configs} = file:consult([code:priv_dir(dth), "/startup.config"]),
     URL = props:get_value(dth_cdr_url, Configs),
     
@@ -137,12 +138,16 @@ handle_info(timeout, State) ->
 
 handle_info({_, #amqp_msg{payload=Payload}}, #state{wsdl_model=WsdlModel,dth_cdr_url=URL}=State) ->
     ?LOG_SYS("Recv AMQP payload: ~s", [Payload]),
-    spawn(fun() -> handle_amqp_msg(URL, Payload, WsdlModel) end),
+    spawn_link(fun() -> handle_amqp_msg(URL, Payload, WsdlModel) end),
     {noreply, State};
 
 handle_info({amqp_host_down, _H}, State) ->
     ?LOG_SYS("Amqp host went down: ~s", [_H]),
     {noreply, State#state{is_amqp_up=false}, 0};
+
+handle_info({'EXIT', From, Reason}, State) ->
+    ?LOG_SYS("EXIT recv for ~p: ~p", [From, Reason]),
+    {noreply, State};
 
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
@@ -197,12 +202,15 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
     JObj = mochijson2:decode(Payload),
 
     true = whistle_api:call_cdr_v(JObj),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    CallDirection = wh_json:get_value(<<"Call-Direction">>),
+    ?LOG_SYS(CallID, "Valid call cdr", []),
+    ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
 
-    <<"outbound">> = wh_json:get_value(<<"Call-Direction">>), %% b-leg only, though not the greatest way of determining this
+    <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
     MicroTimestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp() * 1000000)),
     BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
     ?LOG(CallID, "Recv CDR: ~s", [Payload]),
     DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec),
