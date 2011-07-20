@@ -203,7 +203,7 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 
     true = whistle_api:call_cdr_v(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    CallDirection = wh_json:get_value(<<"Call-Direction">>),
+    CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
     ?LOG_SYS(CallID, "Valid call cdr", []),
     ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
 
