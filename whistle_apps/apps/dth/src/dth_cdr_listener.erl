@@ -198,6 +198,8 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 
     true = whistle_api:call_cdr_v(JObj),
 
+    <<"outbound">> = wh_json:get_value(<<"Call-Direction">>), %% b-leg only, though not the greatest way of determining this
+
     MicroTimestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp() * 1000000)),
     BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
