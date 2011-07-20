@@ -337,11 +337,15 @@ create_db_data(Node, Conn, AdminConn, DBName, Thresholds) ->
 	CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 	{_MDS, Ratio} = orddict:fold(fun(K, V, Acc) -> filter_thresholds(K, V, Acc, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
-	DoCompaction = ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning),
 
 	?LOG_SYS("Data for ~s: Dataset: ~b Disksize: ~b", [DBName, DataSize, DiskSize]),
 	?LOG_SYS("Using MDS: ~b with ratio ~b", [_MDS, Ratio]),
 	?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
+
+	DoCompaction = try ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning)
+		       catch _:_ -> ?LOG_SYS("Err determining whether to compact"), true
+		       end,
+
 	?LOG_SYS("Do Compaction: ~s", [DoCompaction]),
 
 	#db_data{db_name=DBName
@@ -376,13 +380,20 @@ get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
 				DiskSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
 				CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
+				?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, DBName, DataSize, DiskSize]),
+				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
+
 				{_MDS, Ratio} = orddict:fold(fun(K, V, AccT) -> filter_thresholds(K, V, AccT, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
 
-				DoCompaction = ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning),
-
-				?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, DBName, DataSize, DiskSize]),
+				?LOG_SYS("Data for ~s: Dataset: ~b Disksize: ~b", [DBName, DataSize, DiskSize]),
 				?LOG_SYS("Using MDS: ~b with ratio ~b", [_MDS, Ratio]),
 				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
+
+				DoCompaction = try ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning)
+					       catch _:_ -> ?LOG_SYS("Err determining whether to compact"), true
+					       end,
+
+				?LOG_SYS("Do Compaction: ~s", [DoCompaction]),
 
 				Shards = find_shards(DBName, DBData),
 
