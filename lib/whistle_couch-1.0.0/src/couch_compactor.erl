@@ -204,7 +204,10 @@ get_db_report(From, Thresholds) ->
 	    NodesData = [ begin
 			      NodeId = wh_json:get_value(<<"id">>, Node),
 			      Data = get_node_data(NodeId, Thresholds),
-			      {NodeId, [ get_report_data(D) || D <- lists:usort(fun sort_report_data/2, Data) ]}
+			      ?LOG_SYS("Got ~b entries for node ~s", [length(Data), NodeId]),
+			      try {NodeId, [ get_report_data(D) || D <- lists:usort(fun sort_report_data/2, Data) ]}
+			      catch E:R -> ?LOG_SYS("Error: ~p:~p", [E, R]), ?LOG("Stacktrace: ~p", [erlang:get_stacktrace()]), {NodeId, []}
+			      end
 			  end
 			  || Node <- Nodes ],
 	    gen_server:reply(From, NodesData);
@@ -303,8 +306,10 @@ get_ports(_Node, pang) ->
       Thresholds :: thresholds().
 get_dbs_and_designs(Node, Conn, AdminConn, Thresholds) ->
     case get_dbs(Node, Conn, AdminConn, Thresholds) of
-	[] -> [];
-	DBs -> get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
+	[] -> ?LOG_SYS("No DB Data loaded for ~s", [Node]), [];
+	DBs ->
+	    ?LOG_SYS("Got DB data for ~b DBs", [length(DBs)]),
+	    get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
     end.
 
 -spec get_dbs/4 :: (Node, Conn, AdminConn, Thresholds) -> [#db_data{} | {db_error, binary()},...] | [] when
@@ -374,7 +379,8 @@ get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
 
     lists:foldr(fun({DBName, DesignID}, Acc) ->
 			case get_design_data(Conn, DBName, DesignID) of
-			    {error, failed} -> Acc;
+			    {error, failed} ->
+				?LOG_SYS("Failed to get design data for ~s / ~s", [DBName, DesignID]), Acc;
 			    {ok, DDocData} ->
 				DataSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
 				DiskSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
@@ -431,7 +437,8 @@ get_design_data(Conn, DB, Design) ->
       DB :: binary(),
       Design :: binary(),
       Cnt :: non_neg_integer().
-get_design_data(_C, _DB, _Design, Cnt) when Cnt > 10 ->
+get_design_data(C, _DB, _Design, Cnt) when Cnt > 10 ->
+    ?LOG_SYS("Failed to find design data for ~s / ~s on ~s after 10 tries", [_DB, _Design, couchbeam:server_url(C)]),
     {error, failed};
 get_design_data(Conn, DB, Design, Cnt) ->
     case couch_util:design_info(Conn, DB, Design) of
@@ -449,8 +456,8 @@ get_db_data(AdminConn, DB) ->
       AdminConn :: #server{},
       DB :: binary(),
       Cnt :: non_neg_integer().
-get_db_data(_AC, _DB, Cnt) when Cnt > 10 ->
-    ?LOG_SYS("Failed to find data for db ~s", [_DB]),
+get_db_data(AC, _DB, Cnt) when Cnt > 10 ->
+    ?LOG_SYS("Failed to find data for db ~s on ~s after 10 tries", [_DB, couchbeam:server_url(AC)]),
     {error, failed};
 get_db_data(AC, DB, Cnt) ->
     case couch_util:db_info(AC, DB) of
@@ -468,8 +475,8 @@ get_ddocs(Conn, DB) ->
       Conn :: #server{},
       DB :: binary(),
       Cnt :: non_neg_integer().
-get_ddocs(_C, _DB, Cnt) when Cnt > 10 ->
-    ?LOG_SYS("Failed to get design docs for ~s", [_DB]),
+get_ddocs(C, _DB, Cnt) when Cnt > 10 ->
+    ?LOG_SYS("Failed to find design docs for db ~s on ~s after 10 tries", [_DB, couchbeam:server_url(C)]),
     {error, failed};
 get_ddocs(Conn, DB, Cnt) ->
     case couch_util:all_design_docs(Conn, DB) of
