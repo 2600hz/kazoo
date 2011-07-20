@@ -28,7 +28,7 @@
 	  ,doc = <<>> :: binary()
 	 }).
 -record(state, {
-	  listeners = [] :: [#listener{},...]
+	  listeners = [] :: [#listener{},...] | []
 	  ,db = <<>> :: binary()
 	 }).
 

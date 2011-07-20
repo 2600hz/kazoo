@@ -185,7 +185,17 @@ compact_nodes(Thresholds) ->
 	{ok, []} ->
 	    ?LOG_SYS("No Nodes to compact");
 	{ok, Nodes} ->
-	    NodesData = [ get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds) || Node <- Nodes ],
+	    NodesData = [ begin
+			      try
+				  get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds)
+			      catch
+				  E:R ->
+				      ?LOG_SYS("Error getting node data for ~s: ~p:~p", [Node, E, R]),
+				      ?LOG("stacktrace: ~p", [erlang:get_stacktrace()]),
+				      []
+			      end
+			  end
+			  || Node <- Nodes ],
 	    put(callid, undefined),
 	    [ spawn(fun() -> [ compact(D) || D <- NodeData ] end) || NodeData <- NodesData ];
 	{error, _E} ->
