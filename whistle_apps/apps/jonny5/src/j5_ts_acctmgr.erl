@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, authz_trunk/3]).
+-export([start_link/1, authz_trunk/3, known_calls/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -43,6 +43,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(AcctID) ->
+    ?LOG_SYS("starting with acct ~s", [AcctID]),
     gen_server:start_link(?MODULE, [AcctID], []).
 
 -spec authz_trunk/3 :: (Pid, JObj, CallDir) -> {boolean(), proplist()} when
@@ -51,6 +52,9 @@ start_link(AcctID) ->
       CallDir :: inbound | outbound.
 authz_trunk(Pid, JObj, CallDir) ->
     gen_server:call(Pid, {authz, JObj, CallDir}).
+
+known_calls(Pid) ->
+    gen_server:call(Pid, known_calls).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,14 +73,21 @@ authz_trunk(Pid, JObj, CallDir) ->
 %%--------------------------------------------------------------------
 init([AcctID]) ->
     CPid = whereis(j5_cache),
+    ?LOG_SYS("CPid: ~p", [CPid]),
     Ref = erlang:monitor(process, CPid),
+    ?LOG_SYS("Ref for CPid: ~p", [Ref]),
     wh_cache:store_local(CPid, {j5_authz, AcctID}, self(), 24 * 3600), %% 1 day
+    ?LOG_SYS("Stored acct in cache with ~p as the value", [self()]),
 
     Q = amqp_util:new_queue(),
+    ?LOG_SYS("Will listen for call events/cdrs on ~s", [Q]),
 
     case get_trunks_available(AcctID) of
-	{error, not_found} -> {stop, no_account};
+	{error, not_found} ->
+	    ?LOG_SYS("No account found for ~s", [AcctID]),
+	    {stop, no_account};
 	TrunksAvail ->
+	    ?LOG_SYS("Init for ~s complete", [AcctID]),
 	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
 			,cache=CPid, cache_ref=Ref
 			,trunks_available = TrunksAvail
@@ -98,6 +109,8 @@ init([AcctID]) ->
 %% @end
 %%--------------------------------------------------------------------
 
+handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
+    {reply, dict:to_list(Dict), State};
 %% pull from inbound, then trunks, then prepay
 handle_call({authz, JObj, inbound}, _From, #state{my_q=Q, trunks_available={Two, In, Pre}, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -163,7 +176,8 @@ handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, trunks_available={Tw
 	    unmonitor_call(Q, CallID),
 	    {noreply, State#state{trunks_available={Two+1, In, Pre}, trunks_in_use=Dict2}};
 	ignore ->
-	    ?LOG_END(CallID, "Ignoring event", [])
+	    ?LOG_END(CallID, "Ignoring event", []),
+	    {noreply, State}
     end;
 
 handle_info(_Info, State) ->
@@ -213,6 +227,7 @@ get_trunks_available(AcctID) ->
 	    InboundTrunks = whistle_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, Acct, 0)),
 	    Prepay = whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0)),
 	    %% Balance = ?DOLLARS_TO_UNITS(),
+	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
 	    {Trunks, InboundTrunks, Prepay}
     end.
 
@@ -230,11 +245,14 @@ try_twoway(CallID, #state{my_q=Q, trunks_available={Two, In, Pre}, trunks_in_use
 monitor_call(Q, CallID) ->
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+    ?LOG(CallID, "Monitoring with ~s", [Q]),
     amqp_util:basic_consume(Q).
 
 unmonitor_call(Q, CallID) ->
-    amqp_util:unbind_q_from_callevt(Q, CallID),
-    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+    R1 = amqp_util:unbind_q_from_callevt(Q, CallID),
+    R2 = amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+    ?LOG(CallID, "Un-monitoring: ~p", [R1]),
+    ?LOG(CallID, "Un-monitoring: ~p", [R2]),
     amqp_util:basic_consume(Q).
 
 -spec process_call_event/3 :: (CallID, JObj, Dict) -> ignore | {release, twoway | inbound, dict()} when
@@ -264,11 +282,17 @@ process_call_event(CallID, JObj, Dict) ->
 	    ?LOG(CallID, "Execution failed", []),
 	    release_trunk(CallID, Dict);
 
+	{_, <<"CHANNEL_HANGUP_COMPLETE">>, <<"call_event">>} ->
+	    ?LOG(CallID, "Channel hungup complete", []),
+	    release_trunk(CallID, Dict);
+
 	{ _, <<"cdr">>, <<"call_detail">> } ->
 	    ?LOG(CallID, "CDR received", []),
 	    release_trunk(CallID, Dict);
 
-	_ -> ignore
+	_E ->
+	    ?LOG("Unhandled call event: ~p", [_E]),
+	    ignore
     end.
 
 -spec release_trunk/2 :: (CallID, Dict) -> ignore | {release, twoway | inbound, dict()} when

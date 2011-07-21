@@ -209,17 +209,32 @@ direct_to_authz(JObj, AcctID, CPid, CallDir) ->
 	    end;
 	{error, not_found} ->
 	    ?LOG_SYS("No AuthZ proc for account ~s, starting", [AcctID]),
-	    {ok, AcctPID} = jonny5_ts_sup:start_proc([AcctID]),
+	    try
+	    {ok, AcctPID} = jonny5_ts_sup:start_proc(AcctID),
 	    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
+	    catch
+		E:R ->
+		    ST = erlang:get_stacktrace(),
+		    ?LOG_SYS("Error: ~p: ~p", [E, R]),
+		    [ ?LOG_SYS("Stacktrace: ~p", [ST1]) || ST1 <- ST]
+	    end
     end.
 
 send_resp(_JObj, undefined) ->
     ?LOG_END("No response for authz");
-send_resp(JObj0, {AuthzResp, CCV}) ->
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj0),
-    JObj1 = wh_json:set_value(<<"Is-Authorized">>, AuthzResp, JObj0),
-    JObj2 = wh_json:set_value(<<"Custom-Channel-Vars">>, CCV, JObj1),
+send_resp(JObj, {AuthzResp, CCV}) ->
+    ?LOG_SYS("AuthzResp: ~s", [AuthzResp]),
+    ?LOG_SYS("CCVs: ~p", [CCV]),
 
-    {ok, JSON} = whistle_api:authz_resp(JObj2),
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+
+    Prop = [{<<"Is-Authorized">>, whistle_util:to_binary(AuthzResp)}
+	     ,{<<"Custom-Channel-Vars">>, {struct, CCV}}
+	     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+	     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+	     | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"authz_resp">>, ?APP_NAME, ?APP_VSN)
+	    ],
+
+    {ok, JSON} = whistle_api:authz_resp(Prop),
     ?LOG_END("Sending authz resp: ~s", [JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).

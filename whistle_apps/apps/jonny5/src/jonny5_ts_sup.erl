@@ -32,10 +32,10 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec start_proc/1 :: (Args) -> {ok, pid()} when
-      Args :: [binary(),...].
-start_proc(Args) ->
-    supervisor:start_child(?SERVER, Args).
+-spec start_proc/1 :: (AcctID) -> {ok, pid()} when
+      AcctID :: binary().
+start_proc(AcctID) ->
+    supervisor:start_child(?SERVER, [AcctID]).
 
 %%%===================================================================
 %%% Supervisor callbacks
