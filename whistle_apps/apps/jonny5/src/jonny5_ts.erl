@@ -64,6 +64,9 @@ init([]) ->
     Q = start_amqp(),
     CPid = whereis(j5_cache),
     Ref = erlang:monitor(process, CPid),
+
+    spawn(fun() -> preload_accounts() end),
+
     {ok, #state{is_amqp_up=is_binary(Q), cache=CPid, cache_ref=Ref}}.
 
 %%--------------------------------------------------------------------
@@ -184,42 +187,38 @@ handle_authz(JObj, CPid) ->
 		    {AcctID, undefined} when is_binary(AcctID) ->
 			%% Coming from carrier (off-net)
 			?LOG("Authorize inbound call"),
-			direct_to_authz(JObj, AcctID, CPid, inbound);
+
+			j5_ts_acctmgr:authz_trunk(AcctID, JObj, inbound, CPid);
 		    {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
 			%% Coming from PBX (on-net); authed by Registrar or ts_auth
 			?LOG("Authorize outbound call"),
-			direct_to_authz(JObj, AcctID, CPid, outbound);
+			j5_ts_acctmgr:authz_trunk(AcctID, JObj, outbound, CPid);
 		    {_AcctID, _AuthID} ->
 			?LOG("Error in authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
 			undefined
 		end,
     send_resp(JObj, AuthZResp).
 
-direct_to_authz(JObj, AcctID, CPid, CallDir) ->
-    case wh_cache:fetch_local(CPid, {j5_authz, AcctID}) of
-	{ok, AcctPID} ->
-	    case erlang:is_process_alive(AcctPID) of
-		true ->
-		    ?LOG_SYS("Account(~s) AuthZ proc ~p found", [AcctID, AcctPID]),
-		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir);
-		false ->
-		    ?LOG_SYS("Account(~s) AuthZ proc ~p not alive", [AcctID, AcctPID]),
-		    {ok, AcctPID} = jonny5_ts_sup:start_proc([AcctID]),
-		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
-	    end;
-	{error, not_found} ->
-	    ?LOG_SYS("No AuthZ proc for account ~s, starting", [AcctID]),
-	    {ok, AcctPID} = jonny5_ts_sup:start_proc([AcctID]),
-	    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
-    end.
-
 send_resp(_JObj, undefined) ->
     ?LOG_END("No response for authz");
-send_resp(JObj0, {AuthzResp, CCV}) ->
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj0),
-    JObj1 = wh_json:set_value(<<"Is-Authorized">>, AuthzResp, JObj0),
-    JObj2 = wh_json:set_value(<<"Custom-Channel-Vars">>, CCV, JObj1),
+send_resp(JObj, {AuthzResp, CCV}) ->
+    ?LOG_SYS("AuthzResp: ~s", [AuthzResp]),
+    ?LOG_SYS("CCVs: ~p", [CCV]),
 
-    {ok, JSON} = whistle_api:authz_resp(JObj2),
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+
+    Prop = [{<<"Is-Authorized">>, whistle_util:to_binary(AuthzResp)}
+	     ,{<<"Custom-Channel-Vars">>, {struct, CCV}}
+	     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+	     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+	     | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"authz_resp">>, ?APP_NAME, ?APP_VSN)
+	    ],
+
+    {ok, JSON} = whistle_api:authz_resp(Prop),
     ?LOG_END("Sending authz resp: ~s", [JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
+
+preload_accounts() ->
+    {ok, Accts} = couch_mgr:get_results(<<"ts">>, <<"accounts/list">>, []),
+    ?LOG_SYS("Preloading ~b accounts", [length(Accts)]),
+    [ jonny5_ts_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts].

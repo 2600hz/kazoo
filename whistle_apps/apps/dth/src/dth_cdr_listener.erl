@@ -68,6 +68,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    process_flag(trap_exit, true),
     {ok, Configs} = file:consult([code:priv_dir(dth), "/startup.config"]),
     URL = props:get_value(dth_cdr_url, Configs),
     
@@ -137,12 +138,16 @@ handle_info(timeout, State) ->
 
 handle_info({_, #amqp_msg{payload=Payload}}, #state{wsdl_model=WsdlModel,dth_cdr_url=URL}=State) ->
     ?LOG_SYS("Recv AMQP payload: ~s", [Payload]),
-    spawn(fun() -> handle_amqp_msg(URL, Payload, WsdlModel) end),
+    spawn_link(fun() -> handle_amqp_msg(URL, Payload, WsdlModel) end),
     {noreply, State};
 
 handle_info({amqp_host_down, _H}, State) ->
     ?LOG_SYS("Amqp host went down: ~s", [_H]),
     {noreply, State#state{is_amqp_up=false}, 0};
+
+handle_info({'EXIT', From, Reason}, State) ->
+    ?LOG_SYS("EXIT recv for ~p: ~p", [From, Reason]),
+    {noreply, State};
 
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
@@ -197,20 +202,21 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
     JObj = mochijson2:decode(Payload),
 
     true = whistle_api:call_cdr_v(JObj),
-
-    MicroTimestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp() * 1000000)),
-    BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
+    ?LOG_SYS(CallID, "Valid call cdr", []),
+    ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
+
+    <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
+
+    Timestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp())),
+    BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
     ?LOG(CallID, "Recv CDR: ~s", [Payload]),
-    DateTime = now_to_datetime( (MicroTimestamp div 1000000) - BillingSec, 1970),
-    ?LOG(CallID, "DateTime: ~w ~s", [DateTime, DateTime]),
+    DateTime = now_to_datetime(Timestamp - BillingSec),
 
-    [ToUser, _ToRealm] = binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>),
-    [FromUser, _FromRealm] = binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>),
-
-    ToE164 = whistle_util:to_e164(ToUser),
-    FromE164 = whistle_util:to_e164(FromUser),
+    ToE164 = whistle_util:to_e164(get_to_user(JObj)),
+    FromE164 = whistle_util:to_e164(get_from_user(JObj)),
 
     ?LOG(CallID, "CDR from ~s to ~s", [FromE164, ToE164]),
 
@@ -222,6 +228,9 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 					   ,CallID
 					   ,?DTH_CALL_TYPE_OTHER
 					  ])),
+
+    ?LOG(CallID, "XML sent: ~s", [XML]),
+
     Headers = [{"Content-Type", "text/xml; charset=utf-8"}
 	       ,{"Content-Length", binary:referenced_byte_size(XML)}
 	       ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
@@ -234,7 +243,33 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 	    ?LOG("Error with request: ~p", [_Resp])
     end.
 
-now_to_datetime(Secs, ExtraYears) ->
+now_to_datetime(Secs) ->
     {{YY,MM,DD},{Hour,Min,Sec}} = calendar:gregorian_seconds_to_datetime(Secs),
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
-				   [YY+ExtraYears, MM, DD, Hour, Min, Sec])).
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
+				   [YY, MM, DD, Hour, Min, Sec])).
+
+-spec get_to_user/1 :: (json_object()) -> binary().
+get_to_user(JObj) ->
+    case wh_json:get_value(<<"To-Uri">>, JObj) of
+	undefined ->
+	    case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
+		undefined -> <<"+00000000000">>;
+		To -> To
+	    end;
+	ToUri ->
+	    [To, _ToRealm] = binary:split(ToUri, <<"@">>),
+	    To
+    end.
+
+-spec get_from_user/1 :: (json_object()) -> binary().
+get_from_user(JObj) ->
+    case wh_json:get_value(<<"From-Uri">>, JObj) of
+	undefined ->
+	    case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
+		undefined -> <<"+00000000000">>;
+		From -> From
+	    end;
+	FromUri ->
+	    [From, _FromRealm] = binary:split(FromUri, <<"@">>),
+	    From
+    end.
