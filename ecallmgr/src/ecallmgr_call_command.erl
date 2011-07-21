@@ -114,7 +114,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
 	    {App, RecArg}
     end;
 
-get_fs_app(_Node, UUID, JObj, <<"store">>) ->
+get_fs_app(Node, UUID, JObj, <<"store">>) ->
     case whistle_api:store_req_v(JObj) of
 	false -> {error, <<"store failed to execute as JObj did not validate">>};
 	true ->
@@ -132,17 +132,17 @@ get_fs_app(_Node, UUID, JObj, <<"store">>) ->
 				       ,{<<"Application-Name">>, <<"store">>}
 				      ],
 			    ?LOG("stream ~s via AMQP", [MediaName]),
-			    stream_over_amqp(Media, JObj, Headers),
+			    stream_over_amqp(Node, UUID, Media, JObj, Headers),
 			    {<<"store">>, noop};
 			<<"put">>=Verb ->
 			    %% stream file over HTTP PUT
 			    ?LOG("stream ~s via HTTP PUT", [MediaName]),
-			    stream_over_http(Media, Verb, JObj),
+			    stream_over_http(Node, UUID, Media, Verb, JObj),
 			    {<<"store">>, noop};
 			<<"post">>=Verb ->
 			    %% stream file over HTTP POST
 			    ?LOG("stream ~s via HTTP POST", [MediaName]),
-			    stream_over_http(Media, Verb, JObj),
+			    stream_over_http(Node, UUID, Media, Verb, JObj),
 			    {<<"store">>, noop};
 			false ->
 			    ?LOG("file ~s has gone missing!", [Media]),
@@ -391,11 +391,13 @@ get_fs_playback(Url) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_amqp/3 :: (File, JObj, Headers) -> no_return() when
+-spec stream_over_amqp/5 :: (Node, UUID, File, JObj, Headers) -> no_return() when
+      Node :: binary(),
+      UUID :: binary(),
       File :: binary(),
       JObj :: proplist(),
       Headers :: proplist().
-stream_over_amqp(File, JObj, Headers) ->
+stream_over_amqp(Node, UUID, File, JObj, Headers) ->
     DestQ = case wh_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
 		undefined ->
 		    wh_json:get_value(<<"Server-ID">>, JObj);
@@ -404,7 +406,8 @@ stream_over_amqp(File, JObj, Headers) ->
 		Q ->
 		    Q
 	    end,
-    stream_over_amqp(DestQ, fun stream_file/1, {undefined, File}, Headers, 1).
+    amqp_stream(DestQ, fun stream_file/1, {undefined, File}, Headers, 1),
+    send_store_call_event(Node, UUID, <<"complete">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -412,13 +415,13 @@ stream_over_amqp(File, JObj, Headers) ->
 %% get a chunk of the file and send it in an AMQP message to the DestQ
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_amqp/5 :: (DestQ, F, State, Headers, Seq) -> no_return() when
+-spec amqp_stream/5 :: (DestQ, F, State, Headers, Seq) -> no_return() when
       DestQ :: binary(),
       F :: fun(),
       State :: tuple(),
       Headers :: proplist(),
       Seq :: pos_integer().
-stream_over_amqp(DestQ, F, State, Headers, Seq) ->
+amqp_stream(DestQ, F, State, Headers, Seq) ->
     ?LOG("streaming via AMQP to ~s", [DestQ]),
     case F(State) of
 	{ok, Data, State1} ->
@@ -428,7 +431,7 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 		   | Headers],
 	    {ok, JSON} = whistle_api:store_amqp_resp(Msg),
 	    amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
-	    stream_over_amqp(DestQ, F, State1, Headers, Seq+1);
+	    amqp_stream(DestQ, F, State1, Headers, Seq+1);
 	eof ->
 	    Msg = [{<<"Media-Content">>, <<"eof">>}
 		   ,{<<"Media-Sequence-ID">>, Seq}
@@ -443,11 +446,13 @@ stream_over_amqp(DestQ, F, State, Headers, Seq) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http/3 :: (File, Verb, JObj) -> no_return() when
+-spec stream_over_http/5 :: (Node, UUID, File, Verb, JObj) -> no_return() when
+      Node :: binary(),
+      UUID :: binary(),
       File :: binary(),
       Verb :: binary(),
       JObj :: proplist().
-stream_over_http(File, Verb, JObj) ->
+stream_over_http(Node, UUID, File, Verb, JObj) ->
     Url = whistle_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     ?LOG("streaming via HTTP(~s) to ~s", [Verb, Url]),
     {struct, AddHeaders} = wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT),
@@ -458,14 +463,14 @@ stream_over_http(File, Verb, JObj) ->
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
     case ibrowse:send_req(Url, Headers, Method, Body) of
 	{ok, "504", _, _} ->
-            stream_over_http(File, Verb, JObj);
+            stream_over_http(Node, UUID, File, Verb, JObj);
 	{ok, StatusCode, RespHeaders, RespBody} ->
-	    case whistle_api:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>
-								       ,{struct, [{<<"Status-Code">>, StatusCode}
-										  ,{<<"Headers">>, {struct, [ {whistle_util:to_binary(K), whistle_util:to_binary(V)} || {K,V} <- RespHeaders ]}}
-										  ,{<<"Body">>, whistle_util:to_binary(RespBody)}
-										 ]}
-								   ,JObj)) of
+            MediaTransResults = {struct, [{<<"Status-Code">>, StatusCode}
+                                          ,{<<"Headers">>, {struct, [ {whistle_util:to_binary(K), whistle_util:to_binary(V)} || {K,V} <- RespHeaders ]}}
+                                          ,{<<"Body">>, whistle_util:to_binary(RespBody)}
+                                         ]},
+            send_store_call_event(Node, UUID, MediaTransResults),
+	    case whistle_api:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>, MediaTransResults, JObj)) of
 		{ok, Payload} ->
 		    ?LOG("ibrowse OKed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
 		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
@@ -725,3 +730,48 @@ send_error_response(App, Msg, UUID, JObj) ->
             ],
     {ok, Payload} = whistle_api:error_resp(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_store_call_event/3 :: (Node, UUID, MediaTransResults) -> ok when
+      Node :: binary(),
+      UUID :: binary(),
+      MediaTransResults :: json_object().
+send_store_call_event(Node, UUID, MediaTransResults) ->
+    try
+        {ok, Dump} = freeswitch:api(Node, uuid_dump, whistle_util:to_list(UUID)),
+        Prop = ecallmgr_util:eventstr_to_proplist(Dump),
+        EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                    ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
+                    ,{<<"Call-ID">>, UUID}
+                    ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
+                    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
+                    ,{<<"Application-Name">>, <<"store">>}
+                    ,{<<"Application-Response">>, MediaTransResults}
+                    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                   ],
+        EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
+                       [] -> EvtProp1;
+                       CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+                   end,
+        {ok, P1} = whistle_api:call_event(EvtProp2),
+        amqp_util:callevt_publish(UUID, P1, event)
+    catch
+        _:_ ->
+            Timestamp = whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(calendar:now_to_datetime(now()))),
+            EvtProp3 = [{<<"Msg-ID">>, <<>>}
+                        ,{<<"Timestamp">>, Timestamp}
+                        ,{<<"Call-ID">>, UUID}
+                        ,{<<"Call-Direction">>, <<>>}
+                        ,{<<"Channel-Call-State">>, <<"HANGUP">>}
+                        ,{<<"Application-Name">>, <<"store">>}
+                        ,{<<"Application-Response">>, MediaTransResults}
+                        | whistle_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                       ],
+            {ok, P3} = whistle_api:call_event(EvtProp3),
+            amqp_util:callevt_publish(UUID, P3, event)
+    end.
