@@ -238,7 +238,7 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 
-		    gen_server:reply(From, amqp_channel:cast(C, QueueUnbind#'queue.unbind'{ticket=T})),
+		    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
 		    ?LOG_SYS("Failed to start channel: closing"),
@@ -249,7 +249,7 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
-	    gen_server:reply(From, amqp_channel:cast(C, QueueUnbind#'queue.unbind'{ticket=T})),
+	    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
 	    {noreply, State}
     end;
 
