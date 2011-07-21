@@ -64,6 +64,9 @@ init([]) ->
     Q = start_amqp(),
     CPid = whereis(j5_cache),
     Ref = erlang:monitor(process, CPid),
+
+    spawn(fun() -> preload_accounts() end),
+
     {ok, #state{is_amqp_up=is_binary(Q), cache=CPid, cache_ref=Ref}}.
 
 %%--------------------------------------------------------------------
@@ -184,41 +187,17 @@ handle_authz(JObj, CPid) ->
 		    {AcctID, undefined} when is_binary(AcctID) ->
 			%% Coming from carrier (off-net)
 			?LOG("Authorize inbound call"),
-			direct_to_authz(JObj, AcctID, CPid, inbound);
+
+			j5_ts_acctmgr:authz_trunk(AcctID, JObj, inbound, CPid);
 		    {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
 			%% Coming from PBX (on-net); authed by Registrar or ts_auth
 			?LOG("Authorize outbound call"),
-			direct_to_authz(JObj, AcctID, CPid, outbound);
+			j5_ts_acctmgr:authz_trunk(AcctID, JObj, outbound, CPid);
 		    {_AcctID, _AuthID} ->
 			?LOG("Error in authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
 			undefined
 		end,
     send_resp(JObj, AuthZResp).
-
-direct_to_authz(JObj, AcctID, CPid, CallDir) ->
-    case wh_cache:fetch_local(CPid, {j5_authz, AcctID}) of
-	{ok, AcctPID} ->
-	    case erlang:is_process_alive(AcctPID) of
-		true ->
-		    ?LOG_SYS("Account(~s) AuthZ proc ~p found", [AcctID, AcctPID]),
-		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir);
-		false ->
-		    ?LOG_SYS("Account(~s) AuthZ proc ~p not alive", [AcctID, AcctPID]),
-		    {ok, AcctPID} = jonny5_ts_sup:start_proc([AcctID]),
-		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
-	    end;
-	{error, not_found} ->
-	    ?LOG_SYS("No AuthZ proc for account ~s, starting", [AcctID]),
-	    try
-	    {ok, AcctPID} = jonny5_ts_sup:start_proc(AcctID),
-	    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
-	    catch
-		E:R ->
-		    ST = erlang:get_stacktrace(),
-		    ?LOG_SYS("Error: ~p: ~p", [E, R]),
-		    [ ?LOG_SYS("Stacktrace: ~p", [ST1]) || ST1 <- ST]
-	    end
-    end.
 
 send_resp(_JObj, undefined) ->
     ?LOG_END("No response for authz");
@@ -238,3 +217,8 @@ send_resp(JObj, {AuthzResp, CCV}) ->
     {ok, JSON} = whistle_api:authz_resp(Prop),
     ?LOG_END("Sending authz resp: ~s", [JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
+
+preload_accounts() ->
+    {ok, Accts} = couch_mgr:get_results(<<"ts">>, <<"accounts/list">>, []),
+    ?LOG_SYS("Preloading ~b accounts", [length(Accts)]),
+    [ js_ts_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts].

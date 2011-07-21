@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, authz_trunk/3, known_calls/1]).
+-export([start_link/1, authz_trunk/3, authz_trunk/4, known_calls/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,7 +27,12 @@
 	 ,cache = undefined :: undefined | pid()
          ,cache_ref = make_ref() :: reference()
 	 ,acct_id = <<>> :: binary()
-         ,trunks_available = {0,0,0.0} :: {non_neg_integer(), non_neg_integer(), float()} %% {TwoWay, Inbound, Prepay}
+         ,acct_rev = <<>> :: binary()
+	 ,max_two_way = 0 :: non_neg_integer()
+         ,max_inbound = 0 :: non_neg_integer()
+	 ,two_way = 0 :: non_neg_integer()
+         ,inbound = 0 :: non_neg_integer()
+         ,prepay = 0.0 :: float()
          ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
 	 }).
 
@@ -50,11 +55,47 @@ start_link(AcctID) ->
       Pid :: pid(),
       JObj :: json_object(),
       CallDir :: inbound | outbound.
-authz_trunk(Pid, JObj, CallDir) ->
+authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
     gen_server:call(Pid, {authz, JObj, CallDir}).
 
-known_calls(Pid) ->
-    gen_server:call(Pid, known_calls).
+-spec authz_trunk/4 :: (AcctID, JObj, CallDir, CPid) -> {boolean(), proplist()} when
+      AcctID :: binary(),
+      JObj :: json_object(),
+      CallDir :: inbound | outbound,
+      CPid :: pid().
+authz_trunk(AcctID, JObj, CallDir, CPid) ->
+    case wh_cache:fetch_local(CPid, {j5_authz, AcctID}) of
+	{ok, AcctPID} ->
+	    case erlang:is_process_alive(AcctPID) of
+		true ->
+		    ?LOG_SYS("Account(~s) AuthZ proc ~p found", [AcctID, AcctPID]),
+		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir);
+		false ->
+		    ?LOG_SYS("Account(~s) AuthZ proc ~p not alive", [AcctID, AcctPID]),
+		    {ok, AcctPID} = jonny5_ts_sup:start_proc(AcctID),
+		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
+	    end;
+	{error, not_found} ->
+	    ?LOG_SYS("No AuthZ proc for account ~s, starting", [AcctID]),
+	    try
+		{ok, AcctPID} = jonny5_ts_sup:start_proc(AcctID),
+		j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
+	    catch
+		E:R ->
+		    ST = erlang:get_stacktrace(),
+		    ?LOG_SYS("Error: ~p: ~p", [E, R]),
+		    _ = [ ?LOG_SYS("Stacktrace: ~p", [ST1]) || ST1 <- ST],
+		    {false, []}
+	    end
+    end.
+
+known_calls(Pid) when is_pid(Pid) ->
+    gen_server:call(Pid, known_calls);
+known_calls(AcctID) when is_binary(AcctID) ->
+    case wh_cache:fetch_local(whereis(j5_cache), {j5_authz, AcctID}) of
+	{error, _}=E -> E;
+	{ok, AcctPid} -> known_calls(AcctPid)
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -86,11 +127,16 @@ init([AcctID]) ->
 	{error, not_found} ->
 	    ?LOG_SYS("No account found for ~s", [AcctID]),
 	    {stop, no_account};
-	TrunksAvail ->
+	{TwoWay, Inbound, Prepay} ->
 	    ?LOG_SYS("Init for ~s complete", [AcctID]),
+	    couch_mgr:add_change_handler(<<"ts">>, AcctID),
+
+	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
+
 	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
 			,cache=CPid, cache_ref=Ref
-			,trunks_available = TrunksAvail
+			,two_way=TwoWay, inbound=Inbound
+			,prepay=Prepay, acct_rev=Rev, acct_id=AcctID
 		       }}
     end.
 
@@ -111,23 +157,24 @@ init([AcctID]) ->
 
 handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
     {reply, dict:to_list(Dict), State};
-%% pull from inbound, then trunks, then prepay
-handle_call({authz, JObj, inbound}, _From, #state{my_q=Q, trunks_available={Two, In, Pre}, trunks_in_use=Dict}=State) ->
+
+%% pull from inbound, then two_way, then prepay
+handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START(CallID, "Authorizing call...", []),
 
-    case In > 0 of
-	true ->
-	    monitor_call(Q, CallID),
-	    ?LOG_END(CallID, "Inbound call authorized using an inbound trunk", []),
-	    {reply
-	     ,{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
-	     , State#state{trunks_available={Two, In-1, Pre}, trunks_in_use=dict:store(CallID, inbound, Dict)}
-	    };
-	false ->
-	    case try_twoway(CallID, State) of
-		{{true, _}=Resp, State1} -> ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []), {reply, Resp, State1};
-		{{false, _}=Resp, State2} -> ?LOG_END(CallID, "Inbound call NOT authorized with flat rate trunks", []), {reply, Resp, State2} %% add per-minute check here?
+    case try_inbound(CallID, State) of
+	{{true, _}=Resp, State1} ->
+	    ?LOG_END(CallID, "Inbound call authorized with inbound trunk", []),
+	    {reply, Resp, State1};
+	{{false, _}, State2} ->
+	    case try_twoway(CallID, State2) of
+		{{true, _}=Resp, State3} ->
+		    ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []),
+		    {reply, Resp, State3};
+		{{false, _}=Resp, State4} ->
+		    ?LOG_END(CallID, "Inbound call NOT authorized with flat rate trunks", []),
+		    {reply, Resp, State4} %% add per-minute check here?
 	    end
     end;
 
@@ -161,7 +208,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, trunks_available={Two, In, Pre}, trunks_in_use=Dict}=State) ->
+handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound=In, prepay=Pre, trunks_in_use=Dict}=State) ->
     JObj = mochijson2:decode(Payload),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG(CallID, "Recv JSON payload: ~s", [Payload]),
@@ -170,15 +217,33 @@ handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, trunks_available={Tw
 	{release, inbound, Dict1} ->
 	    ?LOG_END(CallID, "Releasing inbound trunk", []),
 	    unmonitor_call(Q, CallID),
-	    {noreply, State#state{trunks_available={Two, In+1, Pre}, trunks_in_use=Dict1}};
+	    {noreply, State#state{two_way=Two, inbound=In+1, prepay=Pre, trunks_in_use=Dict1}};
 	{release, twoway, Dict2} ->
 	    ?LOG_END(CallID, "Releasing two-way trunk", []),
 	    unmonitor_call(Q, CallID),
-	    {noreply, State#state{trunks_available={Two+1, In, Pre}, trunks_in_use=Dict2}};
+	    {noreply, State#state{two_way=Two+1, inbound=In, prepay=Pre, trunks_in_use=Dict2}};
 	ignore ->
 	    ?LOG_END(CallID, "Ignoring event", []),
 	    {noreply, State}
     end;
+
+handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID}=State) ->
+    ?LOG_SYS("change to account ~s to be processed", [AcctID]),
+    State1 = lists:foldl(fun(Prop, State0) ->
+				 case props:get_value(<<"rev">>, Prop) of
+				     undefined -> State0;
+				     Rev -> State0;
+				     _NewRev ->
+					 ?LOG_SYS("Updating account ~s from ~s to ~s", [AcctID, Rev, _NewRev]),
+					 {Two, In, _} = get_trunks_available(AcctID),
+					 State0#state{max_two_way=Two, max_inbound=In}
+				 end
+			 end, State, Changes),
+    {noreply, State1};
+
+handle_info({document_deleted, DocID}, State) ->
+    ?LOG_SYS("account ~s deleted, going down", [DocID]),
+    {stop, normal, State};
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
@@ -234,26 +299,41 @@ get_trunks_available(AcctID) ->
 -spec try_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
       CallID :: binary(),
       State :: #state{}.
-try_twoway(_, #state{trunks_available={0, In, Pre}}=State) ->
-    {{false, []}, State#state{trunks_available={0, In, Pre}}};
-try_twoway(CallID, #state{my_q=Q, trunks_available={Two, In, Pre}, trunks_in_use=Dict}=State) ->
+try_twoway(_, #state{two_way=T}=State) when T < 1 ->
+    {{false, []}, State#state{two_way=0}};
+try_twoway(CallID, #state{my_q=Q, two_way=Two, trunks_in_use=Dict}=State) ->
     monitor_call(Q, CallID),
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
-     ,State#state{trunks_available={Two-1, In, Pre}, trunks_in_use=dict:store(CallID, twoway, Dict)}
+     ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, twoway, Dict)}
     }.
 
+-spec try_inbound/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
+      CallID :: binary(),
+      State :: #state{}.
+try_inbound(_, #state{inbound=I}=State) when I < 1 ->
+    {{false, []}, State#state{inbound=0}};
+try_inbound(CallID, #state{my_q=Q, inbound=In, trunks_in_use=Dict}=State) ->
+    monitor_call(Q, CallID),
+    {{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
+     ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, inbound, Dict)}
+    }.
+
+-spec monitor_call/2 :: (Q, CallID) -> ok when
+      Q :: binary(),
+      CallID :: binary().
 monitor_call(Q, CallID) ->
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
     ?LOG(CallID, "Monitoring with ~s", [Q]),
     amqp_util:basic_consume(Q).
 
+-spec unmonitor_call/2 :: (Q, CallID) -> ok when
+      Q :: binary(),
+      CallID :: binary().
 unmonitor_call(Q, CallID) ->
-    R1 = amqp_util:unbind_q_from_callevt(Q, CallID),
-    R2 = amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
-    ?LOG(CallID, "Un-monitoring: ~p", [R1]),
-    ?LOG(CallID, "Un-monitoring: ~p", [R2]),
-    amqp_util:basic_consume(Q).
+    amqp_util:unbind_q_from_callevt(Q, CallID),
+    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+    ?LOG(CallID, "Un-monitoring", []).
 
 -spec process_call_event/3 :: (CallID, JObj, Dict) -> ignore | {release, twoway | inbound, dict()} when
       CallID :: binary(),
