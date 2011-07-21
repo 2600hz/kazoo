@@ -136,6 +136,7 @@ init([AcctID]) ->
 	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
 			,cache=CPid, cache_ref=Ref
 			,two_way=TwoWay, inbound=Inbound
+			,max_two_way=TwoWay, max_inbound=Inbound
 			,prepay=Prepay, acct_rev=Rev, acct_id=AcctID
 		       }}
     end.
@@ -208,7 +209,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound=In, prepay=Pre, trunks_in_use=Dict}=State) ->
+handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound=In, trunks_in_use=Dict
+						    ,max_inbound=MaxIn, max_two_way=MaxTwo
+						   }=State) ->
     JObj = mochijson2:decode(Payload),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG(CallID, "Recv JSON payload: ~s", [Payload]),
@@ -217,11 +220,13 @@ handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound
 	{release, inbound, Dict1} ->
 	    ?LOG_END(CallID, "Releasing inbound trunk", []),
 	    unmonitor_call(Q, CallID),
-	    {noreply, State#state{two_way=Two, inbound=In+1, prepay=Pre, trunks_in_use=Dict1}};
+	    NewIn = case (In+1) of I when I > MaxIn -> MaxIn; I -> I end,
+	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}};
 	{release, twoway, Dict2} ->
 	    ?LOG_END(CallID, "Releasing two-way trunk", []),
 	    unmonitor_call(Q, CallID),
-	    {noreply, State#state{two_way=Two+1, inbound=In, prepay=Pre, trunks_in_use=Dict2}};
+	    NewTwo = case (Two+1) of T when T > MaxTwo -> MaxTwo; T -> T end,
+	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}};
 	ignore ->
 	    ?LOG_END(CallID, "Ignoring event", []),
 	    {noreply, State}

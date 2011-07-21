@@ -221,4 +221,4 @@ send_resp(JObj, {AuthzResp, CCV}) ->
 preload_accounts() ->
     {ok, Accts} = couch_mgr:get_results(<<"ts">>, <<"accounts/list">>, []),
     ?LOG_SYS("Preloading ~b accounts", [length(Accts)]),
-    [ js_ts_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts].
+    [ jonny5_ts_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts].
