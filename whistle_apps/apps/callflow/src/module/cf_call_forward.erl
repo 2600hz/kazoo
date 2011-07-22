@@ -90,7 +90,7 @@ cf_menu(#callfwd{prompts=#prompts{main_menu=MainMenu, to_enable_cf=ToEnableCF, t
                                  ,{say,  ChangeNum}
                                 ], Call),
     {ok, Digit} = cf_call_command:wait_for_dtmf(30000),
-    _ = cf_call_command:flush(Call),
+    _ = cf_call_command:b_flush(Call),
     case Digit of
 	Toggle ->
             CF1 = cf_toggle(CF, Call),

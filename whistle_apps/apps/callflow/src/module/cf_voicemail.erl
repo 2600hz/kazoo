@@ -22,7 +22,7 @@
 -import(cf_call_command, [
                            answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
-                          ,noop/1, flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
+                          ,noop/1, b_flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
                           ,audio_macro/2, flush_dtmf/1
                          ]).
 
@@ -249,7 +249,7 @@ compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipIns
         {ok, _} ->
             record_voicemail(tmp_file(), Box, Call);
         {dtmf, Digit} ->
-            _ = flush(Call),
+            _ = b_flush(Call),
             case Digit of
                 Login ->
                     check_mailbox(Box, Call);

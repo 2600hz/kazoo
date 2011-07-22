@@ -36,13 +36,15 @@
 -export([b_say/2, b_say/3, b_say/4, b_say/5]).
 -export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
 -export([b_noop/1]).
+-export([b_flush/1]).
 
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_application/1, wait_for_application/2, wait_for_application/3, wait_for_application/4]).
 -export([wait_for_bridge/1, wait_for_unbridge/0]).
 -export([wait_for_dtmf/1]).
--export([wait_for_application_or_dtmf/2]).
+-export([wait_for_noop/1]).
 -export([wait_for_hangup/0]).
+-export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3, collect_digits/4, collect_digits/5, collect_digits/6]).
 -export([send_callctrl/2]).
 
@@ -67,9 +69,9 @@ audio_macro(Prompts, Call) ->
     audio_macro(Prompts, Call, []).
 
 audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
-    UUID = couch_mgr:get_uuid(),
+    NoopId = couch_mgr:get_uuid(),
     Prompts = [{struct, [{<<"Application-Name">>, <<"noop">>}
-                         ,{<<"Msg-ID">>, UUID}
+                         ,{<<"Msg-ID">>, NoopId}
                          ,{<<"Call-ID">>, CallId}]}
                 | Queue],
     Command = [{<<"Application-Name">>, <<"queue">>}
@@ -79,7 +81,7 @@ audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
               ],
     {ok, Payload} = whistle_api:queue_req(Command),
     send_callctrl(Payload, Call),
-    UUID;
+    NoopId;
 audio_macro([{play, MediaName}|T], Call, Queue) ->
     audio_macro(T, Call, [{struct, play_command(MediaName, ?ANY_DIGIT, Call)}|Queue]);
 audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->
@@ -103,7 +105,7 @@ audio_macro([{tones, Tones}|T], Call, Queue) ->
 -spec flush_dtmf/1 :: (Call) -> cf_api_std_return() when
       Call :: #cf_call{}.
 flush_dtmf(Call) ->
-    b_play(<<"silence_stream://50">>, Call).
+    play(<<"silence_stream://50">>, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -639,10 +641,10 @@ b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, Med
     b_play(MediaInvalid, Terminators, Call),
     {ok, <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, #cf_call{call_id=CallId, amqp_q=Q}=Call) ->
-    UUID = couch_mgr:get_uuid(),
+    NoopId = couch_mgr:get_uuid(),
     Commands = [{struct, [{<<"Application-Name">>, <<"noop">>}
                           ,{<<"Call-ID">>, CallId}
-                          ,{<<"Msg-ID">>, UUID}
+                          ,{<<"Msg-ID">>, NoopId}
                           | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)]}
                 ,{struct, [{<<"Application-Name">>, <<"play">>}
                            ,{<<"Media-Name">>, Media}
@@ -657,7 +659,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
               ],
     {ok, Payload} = whistle_api:queue_req(Command),
     send_callctrl(Payload, Call),
-    case collect_digits(MaxDigits, Timeout, <<"2000">>, UUID, Call) of
+    case collect_digits(MaxDigits, Timeout, <<"2000">>, NoopId, Call) of
         {ok, Digits} ->
             MinSize = whistle_util:to_integer(MinDigits),
             case re:run(Digits, Regex) of
@@ -837,19 +839,18 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
       Call :: #cf_call{}.
 
 noop(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
-    UUID = couch_mgr:get_uuid(),
+    NoopId = couch_mgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
-               ,{<<"Msg-ID">>, UUID}
+               ,{<<"Msg-ID">>, NoopId}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Payload} = whistle_api:noop_req(Command),
     send_callctrl(Payload, Call),
-    UUID.
+    NoopId.
 
 b_noop(Call) ->
-    noop(Call),
-    wait_for_message(<<"noop">>).
+    wait_for_noop(noop(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -858,18 +859,25 @@ b_noop(Call) ->
 %% queue
 %% @end
 %%--------------------------------------------------------------------
--spec flush/1 :: (Call) -> cf_api_std_return() when
+-spec flush/1 :: (Call) -> binary() when
+      Call :: #cf_call{}.
+-spec b_flush/1 :: (Call) -> cf_api_std_return() when
       Call :: #cf_call{}.
 
 flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
+    NoopId = couch_mgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
+               ,{<<"Msg-ID">>, NoopId}
                ,{<<"Insert-At">>, <<"flush">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Payload} = whistle_api:noop_req(Command),
     send_callctrl(Payload, Call),
-    wait_for_message(<<"noop">>).
+    NoopId.
+
+b_flush(Call) ->
+    wait_for_noop(flush(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -942,7 +950,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
                     ?LOG("channel was unbridged while collecting digits"),
-                    {ok, channel_unbridge};
+                    {error, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
                     ?LOG("channel was hungup while collecting digits"),
                     {error, channel_hungup};
@@ -968,21 +976,20 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T)
                     end;
                 { <<"call_event">>, <<"DTMF">>, _ } ->
+                    %% remove any queued prompts, and start collecting digits
+                    flush(Call),
                     %% DTMF received, collect and start interdigit timeout
                     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
                     case lists:member(Digit, Terminators) of
                         true ->
                             ?LOG("collected digits ('~s') from caller, terminated with ~s", [Digits, Digit]),
-                            flush(Call), %% these must be done AFTER digit collection, please dont move
                             {ok, Digits};
                         false ->
                             case <<Digits/binary, Digit/binary>> of
                                 D when size(D) < MaxDigits ->
-                                    flush(Call), %% these must be done AFTER digit collection, please dont move
                                     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, D, Interdigit);
                                 D ->
                                     ?LOG("collected maximum digits ('~s') from caller", [D]),
-                                    flush(Call), %% these must be done AFTER digit collection, please dont move
                                     {ok, D}
                             end
                     end;
@@ -1042,7 +1049,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
                     ?LOG("channel was unbridged while waiting for ~s", [Application]),
-                    {ok, channel_unbridge};
+                    {error, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
                     ?LOG("channel was hungup while waiting for ~s", [Application]),
                     {error, channel_hungup};
@@ -1137,7 +1144,7 @@ wait_for_dtmf(Timeout) ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
                     ?LOG("channel was unbridged while waiting for DTMF"),
-                    {ok, channel_unbridge};
+                    {error, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     ?LOG("channel was hungup while waiting for DTMF"),
                     {error, channel_hungup};
@@ -1179,7 +1186,7 @@ wait_for_bridge(Timeout) ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
                     ?LOG("channel was unbridged while waiting for bridge"),
-                    {ok, channel_unbridge};
+                    {error, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
                     ?LOG("channel was hungup while waiting for bridge"),
                     {error, channel_hungup};
@@ -1214,46 +1221,23 @@ wait_for_bridge(Timeout) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Waits for and determines the status of the bridge command
+%% Wait for a noop or a specific noop to occur
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_application_or_dtmf/2 :: (Application, Timeout) -> cf_api_std_return() | tuple(dtmf, binary()) when
-      Application :: binary(),
-      Timeout :: integer().
-wait_for_application_or_dtmf(Application, Timeout) ->
-    Start = erlang:now(),
-    receive
-        {amqp_msg, {struct, _}=JObj} ->
-            case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
-                    ?LOG("channel was unbridged while waiting for ~s or DTMF", [Application]),
-                    {ok, channel_unbridge};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    ?LOG("channel was hungup while waiting for ~s or DTMF", [Application]),
-                    {error, channel_hungup};
-                { <<"error">>, _, _ } ->
-                    ?LOG("channel execution error while waiting ~s or DTMF", [Application]),
-                    {error, execution_failure};
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} ->
-                    {ok, JObj};
-                { <<"call_event">>, <<"DTMF">>, _ } ->
-                    {dtmf, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
-                _ when Timeout =:= infinity ->
-                    wait_for_application_or_dtmf(Application, Timeout);
+-spec wait_for_noop/1 :: (NoopId) -> cf_api_std_return() when
+      NoopId :: undefined | binary().
+wait_for_noop(NoopId) ->
+    case wait_for_message(<<"noop">>) of
+        {ok, JObj}=OK ->
+            case wh_json:get_value(<<"Application-Response">>, JObj) of
+                NoopId when is_binary(NoopId), NoopId =/= <<>> ->
+                    OK;
+                _ when is_binary(NoopId), NoopId =/= <<>> ->
+                    wait_for_noop(NoopId);
                 _ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
+                    OK
             end;
-        _ when Timeout =:= infinity ->
-            wait_for_application_or_dtmf(Application, Timeout);
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
-    after
-        Timeout ->
-            {error, timeout}
+        Else -> Else
     end.
 
 %%--------------------------------------------------------------------
@@ -1300,6 +1284,51 @@ wait_for_hangup() ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             wait_for_hangup()
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Waits for and determines the status of the bridge command
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_application_or_dtmf/2 :: (Application, Timeout) -> cf_api_std_return() | tuple(dtmf, binary()) when
+      Application :: binary(),
+      Timeout :: integer().
+wait_for_application_or_dtmf(Application, Timeout) ->
+    Start = erlang:now(),
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
+                    ?LOG("channel was unbridged while waiting for ~s or DTMF", [Application]),
+                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    ?LOG("channel was hungup while waiting for ~s or DTMF", [Application]),
+                    {error, channel_hungup};
+                { <<"error">>, _, _ } ->
+                    ?LOG("channel execution error while waiting ~s or DTMF", [Application]),
+                    {error, execution_failure};
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} ->
+                    {ok, JObj};
+                { <<"call_event">>, <<"DTMF">>, _ } ->
+                    {dtmf, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
+                _ when Timeout =:= infinity ->
+                    wait_for_application_or_dtmf(Application, Timeout);
+                _ ->
+		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
+            end;
+        _ when Timeout =:= infinity ->
+            wait_for_application_or_dtmf(Application, Timeout);
+        _ ->
+            %% dont let the mailbox grow unbounded if
+            %%   this process hangs around...
+            DiffMicro = timer:now_diff(erlang:now(), Start),
+            wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
+    after
+        Timeout ->
+            {error, timeout}
     end.
 
 %%--------------------------------------------------------------------
