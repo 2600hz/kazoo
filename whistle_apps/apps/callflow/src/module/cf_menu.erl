@@ -270,7 +270,7 @@ record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
                     store_recording(MediaName, ?MEDIA_PROMPT, Menu, Call),
                     Menu#menu{has_prompt_media=true};
                 {ok, no_selection} ->
-                    ?LOG("abandoning record greeting"),
+                    ?LOG("abandoning recorded greeting"),
                     _ = b_play(Prompts#prompts.message_deleted, Call),
                     Menu
             end;
