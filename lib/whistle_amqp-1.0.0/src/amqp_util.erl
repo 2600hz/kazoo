@@ -314,7 +314,7 @@ new_monitor_queue(Queue) ->
 new_conference_queue(discovery) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_conference_queue(ConfId) ->
-    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, [{exclusive, true}, {auto_delete, true}, {nowait, false}]).
 
 new_conference_queue(discovery, Options) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, Options);
@@ -445,10 +445,10 @@ bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
 
--spec bind_q_to_conference/2 :: (Queue, Routing) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_conference/2 :: (Queue, Routing) -> ok | tuple(error, term()) when
       Queue :: binary(),
       Routing :: discovery | service | events.
--spec bind_q_to_conference/3 :: (Queue, Routing, ConfId) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_conference/3 :: (Queue, Routing, ConfId) -> ok | tuple(error, term()) when
       Queue :: binary(),
       Routing :: discovery | service | events,
       ConfId :: undefined | binary().
@@ -467,11 +467,11 @@ bind_q_to_conference(Queue, service, ConfId) ->
 bind_q_to_conference(Queue, events, ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]).
 
--spec bind_q_to_exchange/3 :: (Queue, Routing, Exchange) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_exchange/3 :: (Queue, Routing, Exchange) -> ok | tuple(error, term()) when
       Queue :: binary(),
       Routing :: binary(),
       Exchange :: binary().
--spec bind_q_to_exchange/4 :: (Queue, Routing, Exchange, Options) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_exchange/4 :: (Queue, Routing, Exchange, Options) -> ok | tuple(error, term()) when
       Queue :: binary(),
       Routing :: binary(),
       Exchange :: binary(),

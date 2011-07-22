@@ -29,5 +29,20 @@
 -type wh_datetime() :: tuple(wh_date(), wh_time()).
 -type wh_iso_week() :: tuple(wh_year(), wh_weeknum()).
 
+%% Recreate the non-exported types defined in the erlang supervisor source
+-type sup_child_spec() :: supervisor:child_spec().
+-type sup_child_specs() :: [sup_child_spec()] | [].
+-type sup_start_flags() :: tuple(supervisor:strategy(), integer(), integer()).
+-type sup_init_ret() :: tuple('ok', tuple(sup_start_flags(), sup_child_specs())).
+-type sup_child_id() :: pid() | 'undefined'.
+-type sup_startchild_err() :: already_present | tuple(already_started, sup_child_id()) | term().
+-type sup_startchild_ret() :: tuple(ok, sup_child_id()) | tuple(ok, sup_child_id(), term())
+                            | tuple(error, sup_startchild_err()).
+
+
+%% Recreate the non-exported types defined in the erlang gen_server source
+-type startlink_err() :: tuple(already_started, pid()) | shutdown | term().
+-type startlink_ret() :: tuple(ok, pid()) | ignore | tuple(error, startlink_err()).
+
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.
