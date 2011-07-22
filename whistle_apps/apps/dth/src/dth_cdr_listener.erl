@@ -219,11 +219,7 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
     ToE164 = whistle_util:to_e164(get_to_user(JObj)),
     FromE164 = whistle_util:to_e164(get_from_user(JObj)),
 
-    AccountID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-Id">>], JObj),
-    AccountCode = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
-		      <<"off-net">> -> << (binary:part(AccountID, {erlang:byte_size(AccountID), -17}))/binary, "-IN">>;
-		      _ -> binary:part(AccountID, {erlang:byte_size(AccountID), -17})
-		  end,
+    AccountCode = get_account_code(JObj),
 
     ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
 
@@ -280,4 +276,14 @@ get_from_user(JObj) ->
 	FromUri ->
 	    [From, _FromRealm] = binary:split(FromUri, <<"@">>),
 	    From
+    end.
+
+get_account_code(JObj) ->
+    AccountID = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
+		    AID when erlang:byte_size(AID) < 18 -> AID;
+		    AID -> binary:part(AID, {erlang:byte_size(AID), -17})
+		end,
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
+	<<"off-net">> -> << AccountID/binary, "-IN">>;
+	_ -> AccountID
     end.
