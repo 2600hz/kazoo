@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 16 Jul 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(jonny5_ts_sup).
+-module(jonny5_acct_sup).
 
 -behaviour(supervisor).
 
@@ -65,8 +65,8 @@ init([]) ->
     Shutdown = 2000,
     Type = worker,
 
-    AChild = {j5_ts_acctmgr, {j5_ts_acctmgr, start_link, []},
-	      Restart, Shutdown, Type, [j5_ts_acctmgr]},
+    AChild = {j5_acctmgr, {j5_acctmgr, start_link, []},
+	      Restart, Shutdown, Type, [j5_acctmgr]},
 
     {ok, {SupFlags, [AChild]}}.
 

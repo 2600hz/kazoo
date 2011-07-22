@@ -2,11 +2,11 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Handles authorizing flat-rate and per-minute calls for TS clients
+%%% Handles authorizing flat-rate and per-minute calls for Crossbar accounts
 %%% @end
 %%% Created :  7 Jul 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(jonny5_ts).
+-module(jonny5_acct).
 
 -behaviour(gen_server).
 
@@ -188,11 +188,11 @@ handle_authz(JObj, CPid) ->
 			%% Coming from carrier (off-net)
 			?LOG("Authorize inbound call"),
 
-			j5_ts_acctmgr:authz_trunk(AcctID, JObj, inbound, CPid);
+			j5_acctmgr:authz_trunk(AcctID, JObj, inbound, CPid);
 		    {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
-			%% Coming from PBX (on-net); authed by Registrar or ts_auth
+			%% Coming from PBX (on-net); authed by Registrar
 			?LOG("Authorize outbound call"),
-			j5_ts_acctmgr:authz_trunk(AcctID, JObj, outbound, CPid);
+			j5_acctmgr:authz_trunk(AcctID, JObj, outbound, CPid);
 		    {_AcctID, _AuthID} ->
 			?LOG("Error in authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
 			undefined
@@ -219,6 +219,6 @@ send_resp(JObj, {AuthzResp, CCV}) ->
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
 
 preload_accounts() ->
-    {ok, Accts} = couch_mgr:get_results(<<"ts">>, <<"accounts/list">>, []),
+    {ok, Accts} = couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_id">>, []),
     ?LOG_SYS("Preloading ~b accounts", [length(Accts)]),
-    [ jonny5_ts_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts].
+    [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts].

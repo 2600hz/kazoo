@@ -304,7 +304,9 @@ stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     ok = amqp_host:stop(HPid).
 
 start_amqp_host("localhost", State) ->
-    start_amqp_host(net_adm:localhost(), State);
+    [_, Host] = string:tokens(whistle_util:to_list(node()), "@"),
+    ?LOG_SYS("Instead of localhost, use ~s", [Host]),
+    start_amqp_host(Host, State);
 start_amqp_host({Host,Port}, State) ->
     start_amqp_host(Host, State, create_amqp_params(Host, Port));
 start_amqp_host(Host, State) ->

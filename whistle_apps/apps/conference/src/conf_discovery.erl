@@ -133,9 +133,11 @@ handle_info({amqp_host_down, _}, State) ->
     timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
+handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, State) when
+      Props#'P_basic'.content_type == <<"application/json">> ->
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
+                  whapps_util:put_callid(JObj),
                   _ = process_req(whapps_util:get_event_type(JObj), JObj, State)
           end),
     {noreply, State};
