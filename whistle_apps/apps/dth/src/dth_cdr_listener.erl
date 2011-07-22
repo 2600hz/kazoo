@@ -20,11 +20,12 @@
 -include("dth.hrl").
 
 -define(DTH_SUBMITCALLRECORD, <<"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
-<s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><SubmitCallRecord xmlns=\"http://tempuri.org/\"><oCallRecord><OriginatingNumber>~s</OriginatingNumber><DestinationNumber>~s</DestinationNumber><StartTime>~s</StartTime><Duration>~s</Duration><UniqueID>~s</UniqueID><BilledDuration>0</BilledDuration><CallCost>0</CallCost><CallTotal>0</CallTotal><Direction>0</Direction><WholesaleRate>0</WholesaleRate><WholesaleCost>0</WholesaleCost><RetailRate>0</RetailRate><CallTax>0</CallTax><IsIncluded>0</IsIncluded><BilledTier>0</BilledTier><PrintIndicator>0</PrintIndicator><EndTime>0001-01-01T00:00:00</EndTime><CallType>~s</CallType></oCallRecord></SubmitCallRecord></s:Body></s:Envelope>">>).
+<s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><SubmitCallRecord xmlns=\"http://tempuri.org/\"><oCallRecord><AccountCode>~s</AccountCode><OriginatingNumber>~s</OriginatingNumber><DestinationNumber>~s</DestinationNumber><StartTime>~s</StartTime><Duration>~s</Duration><UniqueID>~s</UniqueID><BilledDuration>0</BilledDuration><CallCost>0</CallCost><CallTotal>0</CallTotal><Direction>0</Direction><WholesaleRate>0</WholesaleRate><WholesaleCost>0</WholesaleCost><RetailRate>0</RetailRate><CallTax>0</CallTax><IsIncluded>0</IsIncluded><BilledTier>0</BilledTier><PrintIndicator>0</PrintIndicator><EndTime>0001-01-01T00:00:00</EndTime><CallType>~s</CallType></oCallRecord></SubmitCallRecord></s:Body></s:Envelope>">>).
+%% AccountCode: ab/12/345asdfhlj (17 chars) (add -IN if originated off-net)
 %% OriginatingNumber: 2223334444
 %% DestinationNumber: 2223334444
-%% StartTime: 2010-05-24T01:55:00
-%% Duration: 100
+%% StartTime: 2010-05-24T01:55:00Z
+%% Duration: 100 (in seconds)
 %% UniqueID: callid
 %% CallType: Interstate
 
@@ -218,10 +219,13 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
     ToE164 = whistle_util:to_e164(get_to_user(JObj)),
     FromE164 = whistle_util:to_e164(get_from_user(JObj)),
 
-    ?LOG(CallID, "CDR from ~s to ~s", [FromE164, ToE164]),
+    AccountCode = get_account_code(JObj),
+
+    ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
 
     XML = iolist_to_binary(io_lib:format(?DTH_SUBMITCALLRECORD
-					 ,[FromE164
+					 ,[AccountCode
+					   ,FromE164
 					   ,ToE164
 					   ,DateTime
 					   ,whistle_util:to_binary(BillingSec)
@@ -272,4 +276,15 @@ get_from_user(JObj) ->
 	FromUri ->
 	    [From, _FromRealm] = binary:split(FromUri, <<"@">>),
 	    From
+    end.
+
+-spec get_account_code/1 :: (json_object()) -> binary().
+get_account_code(JObj) ->
+    AccountID = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
+		    AID when erlang:byte_size(AID) < 18 -> AID;
+		    AID -> binary:part(AID, {erlang:byte_size(AID), -17})
+		end,
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
+	<<"off-net">> -> << AccountID/binary, "-IN">>;
+	_ -> AccountID
     end.
