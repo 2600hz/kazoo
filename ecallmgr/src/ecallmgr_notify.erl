@@ -11,19 +11,19 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, start/0]).
 -export([send_mwi/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "Messages-Waiting: ~s~nVoice-Message: ~b/~b (~b/~b)~nMessage-Account: ~s~n").
 
 -include("ecallmgr.hrl").
 
--record(state, {amqp_q :: binary()}).
+-record(state, {amqp_q  = <<>> :: binary()}).
 
 %%%===================================================================
 %%% API
@@ -39,11 +39,14 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+start() ->
+    gen_server:start({local, ?SERVER}, ?MODULE, [], []).
+
 send_mwi(User, Realm, New, Old) ->
-    JObj ={struct, [{<<"Notify-User">>, User}
-                    ,{<<"Notify-Realm">>, Realm}
-                    ,{<<"Messages-New">>, New}
-                    ,{<<"Messages-Saved">>, Old}
+    JObj = {struct, [{<<"Notify-User">>, whistle_util:to_binary(User)}
+                    ,{<<"Notify-Realm">>, whistle_util:to_binary(Realm)}
+                    ,{<<"Messages-New">>, whistle_util:to_binary(New)}
+                    ,{<<"Messages-Saved">>, whistle_util:to_binary(Old)}
                     | whistle_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
                    ]},
     process_req({<<"notify">>, <<"mwi">>}, JObj, #state{}).
@@ -109,21 +112,21 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
-	{ok, Q} = start_amqp(),
-	{noreply, State#state{amqp_q=Q}}
+        {ok, Q} = start_amqp(),
+        {noreply, State#state{amqp_q=Q}}
     catch
-	_:_ ->
+        _:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-	    {noreply, State}
+            {noreply, State}
     end;
 
 handle_info({amqp_reconnect, T}, State) ->
     try
-	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ}}
+        {ok, NewQ} = start_amqp(),
+        {noreply, State#state{amqp_q=NewQ}}
     catch
-	_:_ ->
+        _:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
@@ -145,7 +148,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, S
       Props#'P_basic'.content_type == <<"application/json">> ->
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-		  put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"000000000000">>)),
+                  put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"000000000000">>)),
                   _ = process_req(get_event_type(JObj), JObj, State)
           end),
     {noreply, State};
@@ -192,14 +195,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec start_amqp/0 :: () -> tuple(error, amqp_error) | tuple(ok, binary()).
 start_amqp() ->
     try
-	true = is_binary(Q = amqp_util:new_queue()),
-	{'basic.qos_ok'} = amqp_util:basic_qos(1),
-	_ = amqp_util:bind_q_to_callmgr(Q, ?KEY_SIP_NOTIFY),
-	_ = amqp_util:basic_consume(Q),
+        true = is_binary(Q = amqp_util:new_queue()),
+        {'basic.qos_ok'} = amqp_util:basic_qos(1),
+        _ = amqp_util:bind_q_to_callmgr(Q, ?KEY_SIP_NOTIFY),
+        _ = amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),
-	{ok, Q}
+        {ok, Q}
     catch
-	_:R ->
+        _:R ->
             ?LOG_SYS("failed to connect to AMQP ~p", [R]),
             {error, amqp_error}
     end.
@@ -233,7 +236,7 @@ process_req({<<"notify">>, <<"mwi">>}, JObj, _) ->
     Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
     case get_endpoint(User, Realm) of
         {error, timeout} ->
-            ?LOG_END("timed out looking up contact for ~s@~s", [User, Realm]);
+            ?LOG_END("mwi timed out looking up contact for ~s@~s", [User, Realm]);
         Endpoint ->
             NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
             Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end,
@@ -243,7 +246,7 @@ process_req({<<"notify">>, <<"mwi">>}, JObj, _) ->
                                              ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
                                              ,<<User/binary, "@", Realm/binary>>
                                             ]),
-            ?LOG("created MWI notify body ~s", [Body]),
+            ?LOG("created mwi notify body ~s", [Body]),
             Headers = [{"profile", "sipinterface_1"}
                        ,{"to-uri", Endpoint}
                        ,{"from-uri", "sip:2600hz@2600hz.com"}
@@ -255,7 +258,7 @@ process_req({<<"notify">>, <<"mwi">>}, JObj, _) ->
             {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             ?LOG("sending MWI update to ~s (~p)", [Node, Resp])
-    end.
+    end;
 process_req(_, _, _) ->
     ok.
 
@@ -272,9 +275,9 @@ process_req(_, _, _) ->
       Realm :: binary().
 get_endpoint(User, Realm) ->
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
-	[{<<"Contact">>, Contact}] ->
-	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
+        [{<<"Contact">>, Contact}] ->
+            RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
             whistle_util:to_list(<<"sip:", (RURI)/binary>>);
-	{error, timeout}=E ->
-	    E
+        {error, timeout}=E ->
+            E
     end.

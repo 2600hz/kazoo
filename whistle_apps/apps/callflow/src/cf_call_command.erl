@@ -457,9 +457,7 @@ b_store(MediaName, Transfer, Method, Call) ->
     b_store(MediaName, Transfer, Method, [?EMPTY_JSON_OBJECT], Call).
 b_store(MediaName, Transfer, Method, Headers, Call) ->
     store(MediaName, Transfer, Method, Headers, Call),
-    R = wait_for_application(<<"store">>),
-    io:format("MESSAGE STORED! ~p", [R]),
-    R.
+    wait_for_application(<<"store">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -959,8 +957,9 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                             %% unless we have already started collecting digits when the noop came in
                             T = case Digits of <<>> -> Timeout; _ -> After end,
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T);
-                        _ when is_binary(NoopId), NoopId =/= <<>> ->
+                        _NID when is_binary(NoopId), NoopId =/= <<>> ->
                             %% if we were given the NoopId of the noop and this is not it, then keep waiting
+                            ?LOG("ignoring playback noop ~s, waiting for ~s", [_NID, NoopId]),
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                         _ ->
                             %% if we are not given the NoopId of the noop then just use the first to start the timer
@@ -974,14 +973,16 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                     case lists:member(Digit, Terminators) of
                         true ->
                             ?LOG("collected digits ('~s') from caller, terminated with ~s", [Digits, Digit]),
+                            flush(Call), %% these must be done AFTER digit collection, please dont move
                             {ok, Digits};
                         false ->
                             case <<Digits/binary, Digit/binary>> of
                                 D when size(D) < MaxDigits ->
+                                    flush(Call), %% these must be done AFTER digit collection, please dont move
                                     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, D, Interdigit);
                                 D ->
-                                    io:format("collected maxium digits, ~p~n", [D]),
                                     ?LOG("collected maximum digits ('~s') from caller", [D]),
+                                    flush(Call), %% these must be done AFTER digit collection, please dont move
                                     {ok, D}
                             end
                     end;
@@ -1000,7 +1001,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - (DiffMicro div 1000))
     after
         After ->
-            io:format("collect digits timeout~n", []),
+            ?LOG("collect digits timeout"),
             {ok, Digits}
     end.
 
@@ -1099,7 +1100,6 @@ wait_for_application(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            io:format("GOT: ~p~n", [get_event_type(JObj)]),
             case get_event_type(JObj) of
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while waiting for ~s", [Application]),

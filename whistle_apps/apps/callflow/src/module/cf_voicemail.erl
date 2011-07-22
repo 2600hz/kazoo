@@ -344,8 +344,10 @@ main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
 	{ok, Configure} ->
 	    config_menu(Box, Call);
 	{ok, Exit} ->
+            update_mwi(New, Saved, Box, Call),
 	    ok;
 	{error, _} ->
+            update_mwi(New, Saved, Box, Call),
 	    ok;
 	_ ->
 	    main_menu(Box, Call, Loop + 1)
@@ -664,7 +666,8 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call
 				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     ?LOG("new voicemail message ~s whistle API broadcast", [MediaName]),
-    amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW).
+    amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW),
+    update_mwi(Box, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -894,8 +897,14 @@ update_folder(Folder, Attachment, #mailbox{mailbox_id=Id}=Mailbox, #cf_call{acco
             Messages = [ update_folder1(Message, Folder, Attachment, wh_json:get_value(<<"attachment">>, Message))
 			 || Message <- wh_json:get_value(<<"messages">>, JObj, []) ],
             case couch_mgr:save_doc(Db, wh_json:set_value(<<"messages">>, Messages, JObj)) of
-                {error, conflict} -> update_folder(Folder, Attachment, Mailbox, Call);
-                {ok, _}=OK -> OK;
+                {error, conflict} ->
+                    update_folder(Folder, Attachment, Mailbox, Call);
+                {ok, _}=OK ->
+                    UpdatedMsgs = wh_json:get_value(<<"messages">>, JObj, []),
+                    New = count_messages(UpdatedMsgs, ?FOLDER_NEW),
+                    Saved = count_messages(UpdatedMsgs, ?FOLDER_SAVED),
+                    update_mwi(New, Saved, Mailbox, Call),
+                    OK;
                 {error, R}=E ->
                     ?LOG("error while updating folder ~s ~s", [Folder, R]),
                     E
@@ -943,3 +952,49 @@ get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(whistle_util:to_integer(Epoch)),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, whistle_util:to_list(Timezone)),
     whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Sends SIP notify to all devices owned by the same owner as the
+%% mailbox with new message counts.
+%% @end
+%%--------------------------------------------------------------------
+-spec update_mwi/2 :: (Box, Call) -> no_return() when
+      Box :: #mailbox{},
+      Call :: #cf_call{}.
+-spec update_mwi/4 :: (New, Saved, Box, Call) -> no_return() when
+      New :: integer(),
+      Saved :: integer(),
+      Box :: #mailbox{},
+      Call :: #cf_call{}.
+
+update_mwi(Box, Call) ->
+    Messages = get_messages(Box, Call),
+    New = count_messages(Messages, ?FOLDER_NEW),
+    Saved = count_messages(Messages, ?FOLDER_SAVED),
+    update_mwi(New, Saved, Box, Call).
+
+update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_db=Db}) ->
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned_devices">>, [{<<"key">>, OwnerId}]) of
+        {ok, []} ->
+            ?LOG("mwi update found no devices owned by ~s", [OwnerId]),
+            ok;
+        {ok, Devices} ->
+            lists:map(fun(Device) ->
+                              User = wh_json:get_value([<<"value">>, <<"sip_username">>], Device),
+                              Realm = wh_json:get_value([<<"value">>, <<"sip_realm">>], Device),
+                              Command = {struct, [{<<"Notify-User">>, User}
+                                                  ,{<<"Notify-Realm">>, Realm}
+                                                  ,{<<"Messages-New">>, whistle_util:to_binary(New)}
+                                                  ,{<<"Messages-Saved">>, whistle_util:to_binary(Saved)}
+                                                  | whistle_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+                                                 ]},
+                              ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
+                              {ok, Payload} = whistle_api:mwi_update(Command),
+                              amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_SIP_NOTIFY)
+                      end, Devices);
+        Error ->
+            ?LOG("mwi update found ~s in ~s lookup error ~p", [OwnerId, Db, Error]),
+            ok
+    end.
