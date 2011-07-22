@@ -3,22 +3,23 @@
 -include("amqp_util.hrl").
 
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
--export([callctl_exchange/0, callctl_publish/2, callctl_publish/3]).
+-export([callctl_exchange/0, callctl_publish/2, callctl_publish/3, callctl_publish/4]).
 -export([callevt_exchange/0, callevt_publish/1, callevt_publish/3]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2]).
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
 -export([monitor_exchange/0, monitor_publish/3]).
--export([conference_exchange/0, conference_publish/2, conference_publish/3]).
+-export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
 
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
--export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2]).
+-export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 -export([bind_q_to_monitor/2]).
--export([bind_q_to_conference/2]).
+-export([bind_q_to_conference/2, bind_q_to_conference/3]).
+-export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
 
 -export([new_targeted_queue/0, new_targeted_queue/1]).
 -export([new_callctl_queue/1, delete_callctl_queue/1]).
@@ -68,10 +69,17 @@ callmgr_publish(Payload, ContentType, RoutingKey) ->
       CallID :: binary(),
       Payload :: iolist(),
       ContentType :: binary().
+-spec callctl_publish/4 :: (CallID, Payload, ContentType, Props) -> ok when
+      CallID :: binary(),
+      Payload :: iolist(),
+      ContentType :: binary(),
+      Props :: proplist().
 callctl_publish(CallID, Payload) ->
     callctl_publish(CallID, Payload, <<"application/json">>).
 callctl_publish(CallID, Payload, ContentType) ->
-    basic_publish(?EXCHANGE_CALLCTL, CallID, Payload, ContentType).
+    callctl_publish(CallID, Payload, ContentType, []).
+callctl_publish(CallID, Payload, ContentType, Props) ->
+    basic_publish(?EXCHANGE_CALLCTL, CallID, Payload, ContentType, Props).
 
 -spec callevt_publish/1 :: (Payload) -> ok when
       Payload :: iolist().
@@ -129,29 +137,54 @@ offnet_resource_publish(Payload, ContentType) ->
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
-%% conference
--spec conference_publish/2 :: (Payload, ConfID) -> ok when
+-spec conference_publish/2 :: (Payload, Queue) -> ok when
       Payload :: iolist(),
-      ConfID :: discovery | binary().
--spec conference_publish/3 :: (Payload, ConfID, Options) -> ok when
+      Queue :: discovery | events | service.
+-spec conference_publish/3 :: (Payload, Queue, ConfId) -> ok when
       Payload :: iolist(),
-      ConfID :: discovery | binary(),
+      Queue :: events | service,
+      ConfId :: binary().
+-spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> ok when
+      Payload :: iolist(),
+      Queue :: discovery | events | service,
+      ConfId :: undefined | binary(),
       Options :: proplist().
 conference_publish(Payload, discovery) ->
-    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, <<"application/json">>);
-conference_publish(Payload, ConfID) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfID/binary>>, Payload, <<"application/json">>).
+    conference_publish(Payload, discovery, undefined, []);
+conference_publish(Payload, events) ->
+    conference_publish(Payload, events, <<"*">>);
+conference_publish(Payload, service) ->
+    conference_publish(Payload, service, <<"*">>).
 
-conference_publish(Payload, discovery, Options) ->
+conference_publish(Payload, events, ConfId) ->
+    conference_publish(Payload, events, ConfId, []);
+conference_publish(Payload, service, ConfId) ->
+    conference_publish(Payload, events, ConfId, []).
+
+conference_publish(Payload, discovery, _, Options) ->
     basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, <<"application/json">>, Options);
-conference_publish(Payload, ConfID, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfID/binary>>, Payload, <<"application/json">>, Options).
+conference_publish(Payload, events, ConfId, Options) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, Payload, <<"application/json">>, Options);
+conference_publish(Payload, service, ConfId, Options) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, <<"application/json">>, Options).
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
--spec(basic_publish/3 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist()) -> ok).
--spec(basic_publish/4 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist(), ContentType :: binary()) -> ok).
--spec(basic_publish/5 :: (Exchange :: binary(), Queue :: binary(), Payload :: iolist()|binary(), ContentType :: binary(), Prop :: proplist()) -> ok).
+-spec basic_publish/3 :: (Exchange, Queue, Payload) -> ok when
+      Exchange :: binary(),
+      Queue :: binary(),
+      Payload :: iolist().
+-spec basic_publish/4 :: (Exchange, Queue, Payload, ContentType) -> ok when
+      Exchange :: binary(),
+      Queue :: binary(),
+      Payload :: iolist(),
+      ContentType :: binary().
+-spec basic_publish/5 :: (Exchange, Queue, Payload, ContentType, Prop) -> ok when
+      Exchange :: binary(),
+      Queue :: binary(),
+      Payload :: iolist() | binary(),
+      ContentType :: binary(),
+      Prop :: proplist().
 basic_publish(Exchange, Queue, Payload) ->
     basic_publish(Exchange, Queue, Payload, <<"application/json">>).
 basic_publish(Exchange, Queue, Payload, ContentType) ->
@@ -281,13 +314,12 @@ new_monitor_queue(Queue) ->
 new_conference_queue(discovery) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_conference_queue(ConfId) ->
-    new_queue(list_to_binary([?KEY_CONF_SERVICE_REQ, ConfId])
-	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 new_conference_queue(discovery, Options) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, Options);
 new_conference_queue(ConfId, Options) ->
-    new_queue(list_to_binary([?KEY_CONF_SERVICE_REQ, ConfId]), Options).
+    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Options).
 
 %% Declare a queue and returns the queue Name
 -spec(new_queue/0 :: () -> binary() | tuple(error, amqp_error)).
@@ -354,26 +386,30 @@ queue_delete(Queue, Prop) ->
 %% Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
 %%------------------------------------------------------------------------------
--spec(bind_q_to_targeted/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_targeted/1 :: (Queue) -> ok | {error, term()} when
+      Queue :: binary().
 bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
--spec(bind_q_to_callctl/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_callctl/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_callctl/1 :: (Queue) -> ok | {error, term()} when
+      Queue :: binary().
+-spec bind_q_to_callctl/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
 bind_q_to_callctl(Queue) ->
     bind_q_to_callctl(Queue, Queue).
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
 %% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallID
--spec bind_q_to_callevt/2 :: (Queue, CallID) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_callevt/2 :: (Queue, CallID) -> ok | {error, term()} when
       Queue :: binary(),
       CallID :: media_req | binary().
--spec bind_q_to_callevt/3 :: (Queue, CallID, Type) -> #'basic.consume_ok'{} | tuple(error, term()) when
+-spec bind_q_to_callevt/3 :: (Queue, CallID, Type) -> ok | {error, term()} when
       Queue :: binary(),
-      CallID :: media_req | binary(),
+      CallID :: binary(),
       Type :: events | status_req | cdr | other.
 bind_q_to_callevt(Queue, media_req) ->
     bind_q_to_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
@@ -389,36 +425,65 @@ bind_q_to_callevt(Queue, CallID, cdr) ->
 bind_q_to_callevt(Queue, Routing, other) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
--spec(bind_q_to_resource/1 :: (Queue :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
--spec(bind_q_to_resource/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_resource/1 :: (Queue) -> ok | {error, term()} when
+      Queue :: binary().
+-spec bind_q_to_resource/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
 bind_q_to_resource(Queue) ->
     bind_q_to_resource(Queue, <<"#">>).
 bind_q_to_resource(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
--spec(bind_q_to_callmgr/2 :: (Queue :: binary(), Routing :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
+-spec bind_q_to_callmgr/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
--spec(bind_q_to_conference/2 :: (Queue :: binary(), Routing :: discovery | service | binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
-bind_q_to_conference(Queue, service) ->
-    bind_q_to_conference(Queue, <<"*">>);
-bind_q_to_conference(Queue, discovery) ->
-    bind_q_to_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE);
-bind_q_to_conference(Queue, ConfId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
-%% generic binder
--spec(bind_q_to_exchange/3 :: (Queue :: binary(), Routing :: binary(), Exchange :: binary()) -> #'basic.consume_ok'{} | tuple(error, term())).
-bind_q_to_exchange(Queue, Routing, Exchange) when is_binary(Queue), is_binary(Routing) ->
+-spec bind_q_to_conference/2 :: (Queue, Routing) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      Routing :: discovery | service | events.
+-spec bind_q_to_conference/3 :: (Queue, Routing, ConfId) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      Routing :: discovery | service | events,
+      ConfId :: undefined | binary().
+
+bind_q_to_conference(Queue, discovery) ->
+    bind_q_to_conference(Queue, discovery, undefined);
+bind_q_to_conference(Queue, service) ->
+    bind_q_to_conference(Queue, service, <<"*">>);
+bind_q_to_conference(Queue, events) ->
+    bind_q_to_conference(Queue, events, <<"*">>).
+
+bind_q_to_conference(Queue, discovery, _) ->
+    bind_q_to_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE, [{nowait, false}]);
+bind_q_to_conference(Queue, service, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]);
+bind_q_to_conference(Queue, events, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]).
+
+-spec bind_q_to_exchange/3 :: (Queue, Routing, Exchange) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      Routing :: binary(),
+      Exchange :: binary().
+-spec bind_q_to_exchange/4 :: (Queue, Routing, Exchange, Options) -> #'basic.consume_ok'{} | tuple(error, term()) when
+      Queue :: binary(),
+      Routing :: binary(),
+      Exchange :: binary(),
+      Options :: proplist().
+bind_q_to_exchange(Queue, Routing, Exchange) ->
+    bind_q_to_exchange(Queue, Routing, Exchange, []).
+bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     QB = #'queue.bind'{
       queue = Queue %% what queue does the binding attach to?
       ,exchange = Exchange %% what exchange does the binding attach to?
       ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
-      ,nowait = true
+      ,nowait = props:get_value(nowait, Options, true)
       ,arguments = []
      },
     amqp_manager:consume(QB).
@@ -429,7 +494,25 @@ bind_q_to_exchange(Queue, Routing, Exchange) when is_binary(Queue), is_binary(Ro
 %% Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
-unbind_q_from_callevt(Queue, Routing) ->
+-spec unbind_q_from_callevt/2 :: (Queue, CallID) -> ok | {error, term()} when
+      Queue :: binary(),
+      CallID :: media_req | binary().
+-spec unbind_q_from_callevt/3 :: (Queue, CallID, Type) -> ok | {error, term()} when
+      Queue :: binary(),
+      CallID :: binary(),
+      Type :: events | status_req | cdr | other.
+unbind_q_from_callevt(Queue, media_req) ->
+    unbind_q_from_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID) ->
+    unbind_q_from_callevt(Queue, CallID, events).
+
+unbind_q_from_callevt(Queue, CallID, events) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_EVENT/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID, status_req) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, CallID, cdr) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_CDR/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+unbind_q_from_callevt(Queue, Routing, other) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
 unbind_q_from_callctl(Queue) ->
@@ -460,11 +543,14 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 %% @end
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
+-spec basic_consume/1 :: (Queue) -> ok when
+      Queue :: binary().
+-spec basic_consume/2 :: (Queue, Options) -> ok when
+      Queue :: binary(),
+      Options :: proplist().
 basic_consume(Queue) ->
     basic_consume(Queue, []).
 
-basic_consume(Queue, Options) when is_list(Queue) ->
-    basic_consume(list_to_binary(Queue), Options);
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
@@ -474,7 +560,9 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    amqp_manager:consume(BC).
+    {_C, Resp} = amqp_manager:consume(BC),
+    %% link(C),
+    Resp.
 
 %%------------------------------------------------------------------------------
 %% @public

@@ -31,22 +31,32 @@ start_link() ->
     preload_whapps(),
     ignore.
 
--spec(start_app/1 :: (App :: atom()) -> ok | exists).
+-spec start_app/1 :: (App) -> ok | error | exists when
+      App :: atom().
 start_app(App) when is_atom(App) ->
     ?LOG_SYS("attempting to start whapp ~s", [App]),
     case lists:keyfind(App, 1, supervisor:which_children(whapps_sup)) of
 	{App, _, _, _} -> exists;
 	false ->
-	    {ok, _} = whapps_sup:start_app(App),
-	    ok
+	    try
+		{ok, _} = whapps_sup:start_app(App),
+		ok
+	    catch
+		E:R ->
+		    ?LOG_SYS("Failed to load ~s", [App]),
+		    ?LOG_SYS("~p: ~p", [E, R]),
+		    error
+	    end
     end.
 
--spec(stop_app/1 :: (App :: atom()) -> 'ok' | tuple('error', 'running' | 'not_found' | 'simple_one_for_one')).
+-spec stop_app/1 :: (App) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'} when
+      App :: atom().
 stop_app(App) when is_atom(App) ->
     ?LOG_SYS("attempting to stop whapp ~s", [App]),
     whapps_sup:stop_app(App).
 
--spec(restart_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
+-spec restart_app/1 :: (App) -> {ok, pid() | undefined} | {ok, pid() | undefined, term()} | {error, term()} when
+      App :: atom().
 restart_app(App) when is_atom(App) ->
     whapps_sup:restart_app(App).
 
@@ -61,7 +71,7 @@ set_couch_host(H) ->
 set_couch_host(H, U, P) ->
     couch_mgr:set_host(whistle_util:to_list(H), whistle_util:to_list(U), whistle_util:to_list(P)).
 
--spec(running_apps/0 :: () -> list(atom()) | []).
+-spec running_apps/0 :: () -> [atom(),...] | [].
 running_apps() ->
     [ App || {App, _, _, _} <- supervisor:which_children(whapps_sup) ].
 

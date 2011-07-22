@@ -8,7 +8,7 @@
 %%%-----------------------------------------------------------------------------
 -module(couch_util).
 
--export([get_new_connection/4]).
+-export([get_new_connection/4, get_db/2]).
 
 %% DB operations
 -export([db_compact/2, db_create/2, db_create/3, db_delete/2

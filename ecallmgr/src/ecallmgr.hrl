@@ -20,7 +20,7 @@
 		    }).
 
 -define(DEFAULT_DOMAIN, <<"trunks.2600hz.org">>).
--define(MAX_TIMEOUT_FOR_NODE_RESTART, 300000). % 5 minutes
+-define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
 -define(POST_HANGUP_COMMANDS, [<<"store">>]). %% list of dialplan Application-Names that can execute after a call has hung up
 
 -define(APP_NAME, <<"ecallmgr">>).

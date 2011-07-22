@@ -31,6 +31,7 @@
 	  ,doc = <<>> :: binary()
 	  ,attachment = <<>> :: binary()
           ,media_name = <<>> :: binary()
+          ,content_type = undefined :: undefined | binary()
 	  ,send_to = [] :: list(binary()) | []
 	  ,stream_type = single :: single | continuous
           ,media_loop = undefined :: undefined | pid()
@@ -70,7 +71,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([Media, To, Type, Port, CallID]) ->
     put(callid, CallID),
-    {MediaName, Db, Doc, Attachment} = Media,
+    {MediaName, Db, Doc, Attachment, ContentType} = Media,
     ?LOG_START("starting a ~s stream server to provide ~s", [Type, MediaName]),
     case inet:getstat(Port) of
 	{ok, _} ->
@@ -80,6 +81,7 @@ init([Media, To, Type, Port, CallID]) ->
 	       ,doc=Doc
 	       ,attachment=Attachment
 	       ,media_name=MediaName
+               ,content_type=ContentType
 	       ,lsocket=Port
 	       ,send_to=[To]
 	       ,stream_type=Type
@@ -130,7 +132,7 @@ handle_cast(stop, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName
+handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName, content_type=CType
 			    ,lsocket=LSocket, send_to=SendTo, stream_type=StreamType}=S) ->
     try
 	{ok, PortNo} = inet:port(LSocket),
@@ -142,9 +144,15 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 			false -> ?CHUNKSIZE
 		    end,
 
+        ContentType = case filename:extension(Attachment) of
+                          <<$., Ext/binary>> ->
+                              Ext;
+                           _ -> CType
+                      end,
+
 	CallID = get(callid),
-	{Resp, Header, CT, StreamUrl} = case filename:extension(Attachment) of
-					    <<".mp3">> ->
+	{Resp, Header, CT, StreamUrl} = case ContentType of
+					    <<"mp3">> ->
 						Self = self(),
 						spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
 						Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
@@ -155,7 +163,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 						  ,?CONTENT_TYPE_MP3
 						  ,Url
 						};
-					    <<".wav">> ->
+					    <<"wav">> ->
 						Self = self(),
 						spawn(fun() -> put(callid, CallID), start_stream_acceptor(Self, LSocket) end),
 						{
@@ -197,11 +205,11 @@ handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaF
     CallID = get(callid),
     ?LOG("starting a new process to satisfy send media request"),
     MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
-    gen_tcp:controlling_process(Socket, MediaLoop),
+    ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
     {noreply, S#state{media_loop = MediaLoop}};
 handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
-    gen_tcp:controlling_process(Socket, MediaLoop),
+    ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
     {noreply, S};
 
@@ -267,14 +275,14 @@ start_shout_acceptor(Parent, LSock) ->
 	{ok, S} ->
 	    CallID = get(callid),
 	    spawn(fun() -> put(callid, CallID), start_shout_acceptor(Parent, LSock) end),
-            
+
 	    case wh_shout:get_request(S) of
 		void ->
                     ?LOG_END("recieved invalid client request"),
 		    gen_tcp:close(S);
 	        _ ->
                     ?LOG_END("new client connected"),
-		    gen_tcp:controlling_process(S, Parent),
+		    ok = gen_tcp:controlling_process(S, Parent),
 		    Parent ! {send_media, S}
 	    end;
 	_ -> ok
@@ -293,7 +301,7 @@ start_stream_acceptor(Parent, LSock) ->
 
 	    _Req = wh_shout:get_request(S),
 
-	    gen_tcp:controlling_process(S, Parent),
+	    ok = gen_tcp:controlling_process(S, Parent),
 	    Parent ! {send_media, S};
 	_ -> ok
     end.
@@ -306,7 +314,7 @@ play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=M
     receive
 	{add_socket, S} ->
 	    ?LOG("started stream"),
-	    gen_tcp:send(S, [ShoutResponse]),
+	    ok = gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
 	    ?LOG_END("stream shutdown")
@@ -317,7 +325,7 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
 	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
-	    gen_tcp:send(S, [ShoutResponse]),
+	    ok = gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
 	    ?LOG_END("stream shutdown")

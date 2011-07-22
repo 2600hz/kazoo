@@ -18,14 +18,11 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE). 
--define(CLEANUP_RATE, 1000).
--define(NEW_REF, erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok)).
 
 -include("ecallmgr.hrl").
 
 -record(state, {
-	  cached_registrations = dict:new() :: dict() % { {Realm, User}, Fields }
-	  ,timer_ref = undefined :: undefined | reference()
+	  is_amqp_up = true :: boolean()
 	 }).
 
 %%%===================================================================
@@ -42,7 +39,10 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec(lookup/3 :: (Realm :: binary(), User :: binary(), Fields :: list(binary())) -> proplist() | tuple(error, timeout)).
+-spec lookup/3 :: (Realm, User, Fields) -> proplist() | {error, timeout} when
+      Realm :: binary(),
+      User :: binary(),
+      Fields :: [binary(),...].
 lookup(Realm, User, Fields) ->
     gen_server:call(?SERVER, {lookup, Realm, User, Fields}).
 
@@ -62,8 +62,8 @@ lookup(Realm, User, Fields) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Ref = ?NEW_REF,
-    {ok, #state{timer_ref=Ref, cached_registrations=dict:new()}}.
+    Q = start_amqp(),
+    {ok, #state{is_amqp_up=is_binary(Q)}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -80,7 +80,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({lookup, Realm, User, Fields}, From, State) ->
-    spawn(fun() -> gen_server:reply(From, lookup_reg(Realm, User, Fields, State)) end),
+    spawn(fun() -> gen_server:reply(From, lookup_reg(Realm, User, Fields)) end),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -106,18 +106,38 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({timeout, Ref, _}, #state{cached_registrations=Regs, timer_ref=Ref}=State) ->
-    NewRef = ?NEW_REF, % clean out every 60 seconds
-    {noreply, State#state{cached_registrations=remove_regs(Regs), timer_ref=NewRef}};
 
-handle_info({cache_registrations, Realm, User, RegFields}, #state{cached_registrations=Regs}=State) ->
-    Regs1 = dict:store({Realm, User}
-		       ,[ {<<"Reg-Server-Timestamp">>, whistle_util:current_tstamp()}
-			 | lists:keydelete(<<"Reg-Server-Timestamp">>, 1, RegFields)]
-		       ,Regs),
-    {noreply, State#state{cached_registrations=Regs1}};
+handle_info({cache_registrations, Realm, User, RegFields}, State) ->
+    ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
+    wh_cache:store({ecall_registrar, Realm, User}, RegFields
+		   ,whistle_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
+		  ),
+    {noreply, State};
+
+handle_info({_, #amqp_msg{payload=Payload}}, State) ->
+    spawn(fun() ->
+		  JObj = mochijson2:decode(Payload),
+		  User = wh_json:get_value(<<"Username">>, JObj),
+		  Realm = wh_json:get_value(<<"Realm">>, JObj),
+		  ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
+		  wh_cache:erase({ecall_registrar, Realm, User})
+	  end),
+
+    {noreply, State};
+
+handle_info(timeout, #state{is_amqp_up=false}=State) ->
+    ?LOG_SYS("AMQP is down, trying"),
+    {noreply, State#state{is_amqp_up=is_binary(start_amqp())}, 1000};
+handle_info(timeout, #state{is_amqp_up=true}=State) ->
+    ?LOG_SYS("AMQP is up, back to good"),
+    {noreply, State};
+
+handle_info({amqp_host_down, _H}, State) ->
+    ?LOG_SYS("AMQP Host ~s down", [_H]),
+    {noreply, State#state{is_amqp_up=false}, 0};
 
 handle_info(_Info, State) ->
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -149,16 +169,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 %% Returns a proplist with the keys corresponding to the elements of Fields
--spec(lookup_reg/4 :: (Realm :: binary(), User :: binary(), Fields :: list(binary()), State :: #state{}) -> proplist() | tuple(error, timeout)).
-lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
+-spec lookup_reg/3 :: (Realm, User, Fields) -> proplist() | {error, timeout} when
+      Realm :: binary(),
+      User :: binary(),
+      Fields :: [binary(),...].
+lookup_reg(Realm, User, Fields) ->
+    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
     FilterFun = fun({K, _}=V, Acc) ->
 			case lists:member(K, Fields) of
 			    true -> [V | Acc];
 			    false -> Acc
 			end
 		end,
-    case dict:find({Realm, User}, CRegs) of
-	error ->
+    case wh_cache:fetch({ecall_registrar, Realm, User}) of
+	{error, not_found} ->
+	    ?LOG_SYS("Valid cached registration not found, querying whapps"),
 	    RegProp = [{<<"Username">>, User}
 		       ,{<<"Realm">>, Realm}
 		       ,{<<"Fields">>, []}
@@ -171,22 +196,34 @@ lookup_reg(Realm, User, Fields, #state{cached_registrations=CRegs}) ->
 			{struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
 			?SERVER ! {cache_registrations, Realm, User, RegFields},
 
+			?LOG_SYS("Received registration information"),
 			lists:foldr(FilterFun, [], RegFields);
 		    timeout ->
+			?LOG_SYS("Looking up registration timed out"),
 			{error, timeout}
 		end
 	    catch
-		_:_ -> {error, timeout}
+		_:_ ->
+		    ?LOG_SYS("Looking up registration threw exception"),
+		    {error, timeout}
 	    end;
 	{ok, RegFields} ->
+	    ?LOG_SYS("Found cached registration information"),
 	    lists:foldr(FilterFun, [], RegFields)
     end.
 
--spec(remove_regs/1 :: (Regs :: dict()) -> dict()).
-remove_regs(Regs) ->
-    TStamp = whistle_util:current_tstamp(),
-    dict:filter(fun(_, RegData) ->
-			RegTstamp = whistle_util:to_integer(props:get_value(<<"Reg-Server-Timestamp">>, RegData)) +
-			    whistle_util:to_integer(props:get_value(<<"Expires">>, RegData)),
-			RegTstamp > TStamp
-		end, Regs).
+-spec start_amqp/0 :: () -> binary() | {error, amqp_host_down}.
+start_amqp() ->
+    case amqp_util:is_host_available() of
+	true ->
+	    try
+		Q = amqp_util:new_queue(),
+		ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
+		ok = amqp_util:basic_consume(Q),
+		Q
+	    catch
+		_:_ -> {error, amqp_host_down}
+	    end;
+	false ->
+	    {error, amqp_host_down}
+    end.

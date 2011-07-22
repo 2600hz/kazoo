@@ -24,11 +24,11 @@
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
--define(VIEW_FILE, <<"views/media_doc.json">>).
+-define(VIEW_FILE, <<"views/media.json">>).
 
 -define(MEDIA_MIME_TYPES, ["audio/x-wav", "audio/mpeg", "application/octet-stream"]).
 
--define(METADATA_FIELDS, [<<"display_name">>, <<"description">>, <<"media_type">>
+-define(METADATA_FIELDS, [<<"name">>, <<"description">>, <<"media_type">>
 			      ,<<"status">>, <<"content_size">>, <<"size">>
 			      ,<<"content_type">>, <<"content_length">>
 			      ,<<"streamable">>, <<"format">>, <<"sample">>
@@ -222,7 +222,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"account.created">>, _}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
-    whapps_util:replicate_from_accounts(<<"media_files">>, <<"media_doc/export">>),
+    whapps_util:replicate_from_accounts(<<"media_files">>, <<"media/export">>),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -356,11 +356,11 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     lookup_media(Context);
 
 validate([], #cb_context{req_verb = <<"put">>, req_data=Data}=Context) ->
-    Name = wh_json:get_value(<<"display_name">>, Data),
+    Name = wh_json:get_value(<<"name">>, Data),
 
     case Name =/= undefined andalso lookup_media_by_name(Name, Context) of
 	false ->
-	    crossbar_util:response_invalid_data([<<"display_name">>], Context);
+	    crossbar_util:response_invalid_data([<<"name">>], Context);
 	#cb_context{resp_status=success, doc=[{struct, _}=Doc|_], resp_headers=RHs}=Context1 ->
 	    DocID = wh_json:get_value(<<"id">>, Doc),
 	    Context1#cb_context{resp_headers=[{"Location", DocID} | RHs]};
@@ -372,11 +372,11 @@ validate([MediaID], #cb_context{req_verb = <<"get">>}=Context) ->
     get_media_doc(MediaID, Context);
 
 validate([MediaID], #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
-    case wh_json:get_value(<<"display_name">>, Data) =/= undefined of
+    case wh_json:get_value(<<"name">>, Data) =/= undefined of
 	true ->
 	    crossbar_doc:load_merge(MediaID, Data, Context);
 	false ->
-	    crossbar_util:response_invalid_data([<<"display_name">>], Context)
+	    crossbar_util:response_invalid_data([<<"name">>], Context)
     end;
 
 validate([MediaID], #cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) ->
@@ -433,7 +433,7 @@ update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
 %% GET /media
 -spec(lookup_media/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 lookup_media(Context) ->
-    case crossbar_doc:load_view(<<"media_doc/listing_by_name">>, [], Context) of
+    case crossbar_doc:load_view(<<"media/crossbar_listing">>, [], Context) of
 	#cb_context{resp_status=success, doc=Doc}=Context1 ->
 	    Resp = [ wh_json:get_value(<<"value">>, ViewObj) || ViewObj <- Doc ],
 	    crossbar_util:response(Resp, Context1);
@@ -449,15 +449,15 @@ get_media_doc(MediaID, Context) ->
 get_media_binary(MediaID, Context) ->
     crossbar_doc:load_attachment(MediaID, attachment_name(MediaID), Context).
 
-%% check for existence of media by display_name
+%% check for existence of media by name
 -spec(lookup_media_by_name/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 lookup_media_by_name(MediaName, Context) ->
-    crossbar_doc:load_view(<<"media_doc/listing_by_name">>, [{<<"key">>, MediaName}], Context).
+    crossbar_doc:load_view(<<"media/listing_by_name">>, [{<<"key">>, MediaName}], Context).
 
-%% check for existence of media by display_name
+%% check for existence of media by id
 -spec(lookup_media_by_id/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 lookup_media_by_id(MediaID, Context) ->
-    crossbar_doc:load_view(<<"media_doc/listing_by_id">>, [{<<"key">>, MediaID}], Context).
+    crossbar_doc:load_view(<<"media/crossbar_listing">>, [{<<"key">>, MediaID}], Context).
 
 delete_media(Context) ->
     crossbar_doc:delete(Context).

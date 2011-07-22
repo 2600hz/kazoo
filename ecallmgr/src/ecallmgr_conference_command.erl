@@ -24,8 +24,8 @@ exec_cmd(Node, CallId, JObj, _) ->
             Err;
         Args ->
             case api(Node, <<"conference">>, <<ConfName/binary, " ", Args/binary>>) of
-                {ok, Reply} when AppName =:= <<"members">> ->
-                    spawn(fun() -> members_response(Reply, ConfName, CallId, wh_json:get_value(<<"Server-ID">>, JObj)) end), ok;
+                {ok, Reply} when AppName =:= <<"participants">> ->
+                    spawn(fun() -> participants_response(Reply, ConfName, CallId, wh_json:get_value(<<"Server-ID">>, JObj)) end), ok;
                 {ok, _} -> ok;
 		timeout -> timeout;
                 {error, _} -> {error, bad_reply}
@@ -38,10 +38,10 @@ exec_cmd(Node, CallId, JObj, _) ->
                            binary() | tuple(error, string())).
 get_fs_app(_Node, ConfName, _JObj, _Application) when not is_binary(ConfName) ->
     {error, "invalid conference id"};
-get_fs_app(_Node, _ConfName, JObj, <<"members">>) ->
-    case whistle_api:conference_members_req_v(JObj) of
+get_fs_app(_Node, _ConfName, JObj, <<"participants">>) ->
+    case whistle_api:conference_participants_req_v(JObj) of
 	false ->
-            {error, "conference members failed to execute as JObj did not validate."};
+            {error, "conference participants failed to execute as JObj did not validate."};
 	true ->
             <<"list">>
     end;
@@ -51,9 +51,9 @@ get_fs_app(_Node, ConfName, JObj, <<"play">>) ->
             {error, "conference play failed to execute as JObj did not validate."};
 	true ->
             Media = <<$', (media_path(wh_json:get_value(<<"Media-Name">>, JObj), ConfName))/binary, $'>>,
-            case wh_json:get_value(<<"Member-ID">>, JObj) of
-                MemberId when is_binary(MemberId) ->
-                    <<"play ", Media/binary, " ", MemberId/binary>>;
+            case wh_json:get_value(<<"Participant-ID">>, JObj) of
+                ParticipantId when is_binary(ParticipantId) ->
+                    <<"play ", Media/binary, " ", ParticipantId/binary>>;
                 _ ->
                     <<"play ", Media/binary>>
             end
@@ -63,42 +63,42 @@ get_fs_app(_Node, _ConfName, JObj, <<"deaf">>) ->
 	false ->
             {error, "conference deaf failed to execute as JObj did not validate."};
 	true ->
-            <<"deaf ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"deaf ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"undeaf">>) ->
     case whistle_api:conference_undeaf_req_v(JObj) of
 	false ->
             {error, "conference undeaf failed to execute as JObj did not validate."};
 	true ->
-            <<"undeaf ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"undeaf ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"mute">>) ->
     case whistle_api:conference_mute_req_v(JObj) of
 	false ->
             {error, "conference mute failed to execute as JObj did not validate."};
 	true ->
-            <<"mute ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"mute ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"unmute">>) ->
     case whistle_api:conference_unmute_req_v(JObj) of
 	false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
 	true ->
-            <<"unmute ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"unmute ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"kick">>) ->
     case whistle_api:conference_kick_req_v(JObj) of
 	false ->
             {error, "conference kick failed to execute as JObj did not validate."};
 	true ->
-            <<"kick ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"kick ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"move">>) ->
     case whistle_api:conference_move_req_v(JObj) of
 	false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
 	true ->
-            <<"transfer ", (wh_json:get_value(<<"Member-ID">>, JObj))/binary>>
+            <<"transfer ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     format_log(error, "CONFERENCE_COMMAND(~p): Unknown App ~p:~n~p~n", [self(), _App, _JObj]),
@@ -137,37 +137,30 @@ get_fs_playback(Url) when byte_size(Url) >= 4 ->
 get_fs_playback(Url) ->
     Url.
 
--spec(members_response/4 :: (Members :: binary(), ConfName :: binary(), CallId :: binary(), ServerId :: binary()) -> no_return()).
-members_response(Members, ConfName, CallId, ServerId) ->
-    format_log(info, "parse ~p", [Members]),
-    MemberList = try
-                     parse_members(Members)
-                 catch
-                     _:_ ->
-                         []
-                 end,
+-spec(participants_response/4 :: (Participants :: binary(), ConfName :: binary(), CallId :: binary(), ServerId :: binary()) -> no_return()).
+participants_response(Participants, ConfName, CallId, ServerId) ->
+    ParticipantList = try parse_participants(Participants) catch _:_ -> [] end,
     Response = [
-              {<<"Application-Name">>, <<"members">>}
-             ,{<<"Members">>, MemberList}
-             ,{<<"Conference-ID">>, ConfName}
-             ,{<<"Call-ID">>, CallId}
-             | whistle_api:default_headers("", <<"conference">>, <<"response">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    format_log(info, "MEMBERS RESPONSE: ~p", [Response]),
-    {ok, Payload} = whistle_api:conference_members_resp(Response),
-    amqp_util:targeted_publish(ServerId, Payload, <<"application/json">>).
+                {<<"Application-Name">>, <<"participants">>}
+                ,{<<"Participants">>, ParticipantList}
+                ,{<<"Conference-ID">>, ConfName}
+                ,{<<"Call-ID">>, CallId}
+                | whistle_api:default_headers(ServerId, <<"conference">>, <<"participants">>, ?APP_NAME, ?APP_VERSION)
+               ],
+    {ok, Payload} = whistle_api:conference_participants_resp(Response),
+    amqp_util:conference_publish(Payload, events, ConfName).
 
-parse_members(Members) ->
-    CSV = whistle_util:to_list(Members),
+parse_participants(Participants) ->
+    CSV = whistle_util:to_list(Participants),
     lists:foldr(fun(Line, Acc) ->
-                        [{struct, parse_member(Line)}|Acc]
+                        [{struct, parse_participant(Line)}|Acc]
                 end, [], string:tokens(CSV, "\n")).
 
-parse_member(Line) ->
+parse_participant(Line) ->
     [Id, _, CallId, CidName, CidNum, Status, VolIn, _, VolOut, Energy] =
         string:tokens(Line, ";"),
     [
-      {<<"Member-ID">>, whistle_util:to_binary(Id)}
+      {<<"Participant-ID">>, whistle_util:to_binary(Id)}
      ,{<<"Call-ID">>, whistle_util:to_binary(CallId)}
      ,{<<"CID-Name">>, whistle_util:to_binary(CidName)}
      ,{<<"CID-Number">>, whistle_util:to_binary(CidNum)}

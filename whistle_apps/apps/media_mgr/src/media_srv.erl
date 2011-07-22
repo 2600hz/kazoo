@@ -129,7 +129,7 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    Ps2 = updated_reserved_ports(Ps, PortRange),
 	    {noreply, S#state{amqp_q = <<>>, ports=Ps2}}
     end;
@@ -139,22 +139,22 @@ handle_info({amqp_reconnect, T}, State) ->
 	{ok, NewQ} = start_amqp(),
 	{noreply, State#state{amqp_q=NewQ}}
     catch
-	_:_ -> 
+	_:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=PortRange, streams=Streams}=State) ->
@@ -240,7 +240,7 @@ start_amqp() ->
         ?LOG_SYS("connected to AMQP"),
 	{ok, Q}
     catch
-	_:R -> 
+	_:R ->
             ?LOG_SYS("failed to connect to AMQP ~p", [R]),
             {error, amqp_error}
     end.
@@ -267,16 +267,16 @@ send_error_resp(JObj, _ErrCode, ErrMsg) ->
 handle_req(JObj, Port, Streams) ->
     true = whistle_api:media_req_v(JObj),
     case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
-        not_found ->            
+        not_found ->
             send_error_resp(JObj, <<"not_found">>, <<>>);
         no_data ->
             send_error_resp(JObj, <<"no_data">>, <<>>);
-        {Db, Doc, Attachment, _MetaData} ->
+        {Db, Doc, Attachment, _MetaData, CType} ->
 	    case wh_json:get_value(<<"Stream-Type">>, JObj, <<"new">>) of
 		<<"new">> ->
-		    start_stream(JObj, Db, Doc, Attachment, Port);
+		    start_stream(JObj, Db, Doc, Attachment, CType, Port);
 		<<"extant">> ->
-		    join_stream(JObj, Db, Doc, Attachment, Port, Streams)
+		    join_stream(JObj, Db, Doc, Attachment, CType, Port, Streams)
 	    end
     end.
 
@@ -291,51 +291,82 @@ find_attachment([Db, Doc]) ->
 find_attachment([<<>>, Db, Doc, Attachment]) ->
     find_attachment([Db, Doc, Attachment]);
 find_attachment([Db, Doc, first]) ->
-    case couch_mgr:open_doc(Db, Doc) of
+    DbName = case couch_mgr:db_exists(Db) of
+                 true -> Db;
+                 false -> whapps_util:get_db_name(Db, encoded)
+             end,
+    case couch_mgr:open_doc(DbName, Doc) of
 	{ok, JObj} ->
 	    case is_streamable(JObj)
 		andalso wh_json:get_value(<<"_attachments">>, JObj, false) of
 		false ->
 		    no_data;
 		{struct, [{Attachment, MetaData} | _]} ->
-                    {whistle_util:to_binary(Db), Doc, Attachment, MetaData}
+                    {DbName, Doc, Attachment, MetaData, get_content_type(JObj, MetaData)}
             end;
         _->
             not_found
     end;
 find_attachment([Db, Doc, Attachment]) ->
-    case couch_mgr:open_doc(Db, Doc) of
+    DbName = case couch_mgr:db_exists(Db) of
+                 true -> Db;
+                 false -> whapps_util:get_db_name(Db, encoded)
+             end,
+    case couch_mgr:open_doc(DbName, Doc) of
         {ok, JObj} ->
 	    case is_streamable(JObj)
                 andalso wh_json:get_value([<<"_attachments">>, Attachment], JObj, false) of
 		false ->
 		    no_data;
 		MetaData ->
-                    {Db, Doc, Attachment, MetaData}
+                    {DbName, Doc, Attachment, MetaData, get_content_type(JObj, MetaData)}
             end;
         _ ->
             not_found
+    end.
+
+-spec get_content_type/2 :: (JObj, MetaData) -> undefined | binary() when
+      JObj :: json_object(),
+      MetaData :: json_object().
+get_content_type(JObj, MetaData) ->
+    case wh_json:get_value(<<"content_type">>, MetaData, wh_json:get_value(<<"content_type">>, JObj)) of
+        <<"audio/mp3">> -> <<"mp3">>; %% Jon's computer uses this, is this legit?
+        <<"audio/mpeg">> -> <<"mp3">>;
+        <<"audio/x-wav">> -> <<"wav">>;
+        <<"audio/wav">> -> <<"wav">>;
+        _ -> undefined
     end.
 
 -spec(is_streamable/1 :: (JObj :: json_object()) -> boolean()).
 is_streamable(JObj) ->
     whistle_util:is_true(wh_json:get_value(<<"streamable">>, JObj, true)).
 
--spec(start_stream/5 :: (JObj :: json_object(), Db :: binary(), Doc :: binary()
-                         ,Attachment :: binary(), Port :: port()) -> no_return()).
-start_stream(JObj, Db, Doc, Attachment, Port) ->
+-spec start_stream/6 :: (JObj, Db, Doc, Attachment, CType, Port) -> no_return() when
+      JObj :: json_object(),
+      Db :: binary(),
+      Doc :: binary(),
+      Attachment :: binary(),
+      CType :: undefined | binary(),
+      Port :: port().
+start_stream(JObj, Db, Doc, Attachment, CType, Port) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     To = wh_json:get_value(<<"Server-ID">>, JObj),
-    Media = {MediaName, Db, Doc, Attachment},
+    Media = {MediaName, Db, Doc, Attachment, CType},
     ?LOG_END("request for ~s is starting in new stream server", [MediaName]),
     {ok, _} = media_shout_sup:start_shout(Media, To, single, Port, get(callid)).
 
--spec(join_stream/6 :: (JObj :: json_object(), Db :: binary(), Doc :: binary()
-			,Attachment :: binary(), Port :: port(), Streams :: list()) -> no_return()).
-join_stream(JObj, Db, Doc, Attachment, Port, Streams) ->
+-spec join_stream/7 :: (JObj, Db, Doc, Attachment, CType, Port, Streams) -> no_return() when
+      JObj :: json_object(),
+      Db :: binary(),
+      Doc :: binary(),
+      Attachment :: binary(),
+      CType :: undefined | binary(),
+      Port :: port(),
+      Streams :: list().
+join_stream(JObj, Db, Doc, Attachment, CType, Port, Streams) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     To = wh_json:get_value(<<"Server-ID">>, JObj),
-    Media = {MediaName, Db, Doc, Attachment},
+    Media = {MediaName, Db, Doc, Attachment, CType},
 
     case lists:keyfind(MediaName, 1, Streams) of
 	{_, ShoutSrv, _} ->
