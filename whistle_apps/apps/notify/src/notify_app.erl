@@ -10,6 +10,8 @@
 
 -behaviour(application).
 
+-include_lib("whistle/include/whistle_types.hrl").
+
 %% Application callbacks
 -export([start/2, stop/1]).
 
@@ -19,7 +21,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start/2 :: (StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, term()) when
+-spec start/2 :: (StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, startlink_err()) when
       StartType :: term(),
       StartArgs :: term().
 start(_StartType, _StartArgs) ->

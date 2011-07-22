@@ -10,6 +10,8 @@
 
 -behaviour(supervisor).
 
+-include_lib("whistle/include/whistle_types.hrl").
+
 %% API
 -export([start_link/0]).
 
@@ -30,7 +32,7 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> tuple(ok, Pid) | ignore | tuple(error, term()).
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -47,10 +49,8 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> tuple(ok, {SupFlags, [ChildSpec]})
-                        | tuple(error, Reason)
-                        | ignore when
-      Args :: term().
+-spec init(Args) -> sup_init_ret() when
+      Args :: [].
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 3,

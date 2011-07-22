@@ -109,7 +109,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
 
@@ -122,18 +122,18 @@ handle_info({amqp_reconnect, T}, State) ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, State) when
@@ -238,16 +238,13 @@ process_req({<<"conference">>, <<"new_voicemail">>}, JObj, _) ->
 process_req(_, _, _) ->
     ok.
 
-update_mwi(_JObj) ->
-    not_implemented_yet.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
-send_vm_to_email(To, Tmpl, JObj) -> no_return() when
+-spec send_vm_to_email/3 :: (To, Tmpl, JObj) -> no_return() when
       To :: binary(),
       Tmpl :: notify_vm_custom_tmpl | notify_vm_tmpl,
       JObj :: json_object().
@@ -314,7 +311,7 @@ format_plaintext(JObj, Tmpl) ->
 %% create a friendly format for DIDs
 %% @end
 %%--------------------------------------------------------------------
--spec notify_vm_tmpl/1 :: (DID) -> binary() when
+-spec pretty_print_did/1 :: (DID) -> binary() when
       DID :: binary().
 pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
     <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;

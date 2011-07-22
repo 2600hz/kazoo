@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start/0]).
+-export([start_link/0]).
 -export([send_mwi/4]).
 
 %% gen_server callbacks
@@ -32,21 +32,22 @@
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-start() ->
-    gen_server:start({local, ?SERVER}, ?MODULE, [], []).
-
-send_mwi(User, Realm, New, Old) ->
+-spec send_mwi/4 :: (User, Realm, New, Saved) -> no_return() when
+      User :: string() | binary(),
+      Realm :: string() | binary(),
+      New :: integer() | binary(),
+      Saved :: integer() | binary().
+send_mwi(User, Realm, New, Saved) ->
     JObj = {struct, [{<<"Notify-User">>, whistle_util:to_binary(User)}
                     ,{<<"Notify-Realm">>, whistle_util:to_binary(Realm)}
                     ,{<<"Messages-New">>, whistle_util:to_binary(New)}
-                    ,{<<"Messages-Saved">>, whistle_util:to_binary(Old)}
+                    ,{<<"Messages-Saved">>, whistle_util:to_binary(Saved)}
                     | whistle_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
                    ]},
     process_req({<<"notify">>, <<"mwi">>}, JObj, #state{}).
@@ -59,14 +60,9 @@ send_mwi(User, Realm, New, Old) ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init(_) ->
+init([]) ->
     ?LOG_SYS("starting new ecallmgr notify process"),
     {ok, #state{}, 0}.
 
@@ -117,7 +113,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     catch
         _:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
             {noreply, State}
     end;
 
@@ -130,18 +126,18 @@ handle_info({amqp_reconnect, T}, State) ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, State) when

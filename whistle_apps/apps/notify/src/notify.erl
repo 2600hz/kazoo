@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(notify).
 
+-include_lib("whistle/include/whistle_types.hrl").
+
 -author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0]).
 
@@ -17,7 +19,7 @@
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> {ok, pid()}.
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     start_deps(),
     notify_sup:start_link().

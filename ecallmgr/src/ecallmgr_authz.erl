@@ -32,7 +32,7 @@ default() ->
 authorize(FSID, CallID, FSData) ->
     proc_lib:start_link(?MODULE, init_authorize, [self(), FSID, CallID, FSData]).
 
--spec is_authorized/1 :: (Pid) -> {boolean(), proplist()} when
+-spec is_authorized/1 :: (Pid) -> {boolean(), json_object()} when
       Pid :: pid() | undefined.
 is_authorized(Pid) when is_pid(Pid) ->
     Ref = make_ref(),
@@ -71,7 +71,7 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 
 -spec authorize_loop/2 :: (IsAuth, CCV) -> no_return() when
       IsAuth :: boolean(),
-      CCV :: proplist().
+      CCV :: json_object().
 authorize_loop(IsAuth, CCV) ->
     ?LOG("Is Authorized: ~s", [IsAuth]),
     receive
