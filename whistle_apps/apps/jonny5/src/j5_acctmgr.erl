@@ -2,11 +2,11 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Handle serializing account access for trunkstore accounts
+%%% Handle serializing account access for crossbar accounts
 %%% @end
 %%% Created : 16 Jul 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(j5_ts_acctmgr).
+-module(j5_acctmgr).
 
 -behaviour(gen_server).
 
@@ -69,17 +69,17 @@ authz_trunk(AcctID, JObj, CallDir, CPid) ->
 	    case erlang:is_process_alive(AcctPID) of
 		true ->
 		    ?LOG_SYS("Account(~s) AuthZ proc ~p found", [AcctID, AcctPID]),
-		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir);
+		    j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir);
 		false ->
 		    ?LOG_SYS("Account(~s) AuthZ proc ~p not alive", [AcctID, AcctPID]),
-		    {ok, AcctPID} = jonny5_ts_sup:start_proc(AcctID),
-		    j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
+		    {ok, AcctPID} = jonny5_acct_sup:start_proc(AcctID),
+		    j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
 	    end;
 	{error, not_found} ->
 	    ?LOG_SYS("No AuthZ proc for account ~s, starting", [AcctID]),
 	    try
-		{ok, AcctPID} = jonny5_ts_sup:start_proc(AcctID),
-		j5_ts_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
+		{ok, AcctPID} = jonny5_acct_sup:start_proc(AcctID),
+		j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
 	    catch
 		E:R ->
 		    ST = erlang:get_stacktrace(),
@@ -285,17 +285,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec get_trunks_available/1 :: (AcctID) -> {error, not_found} | {non_neg_integer(), non_neg_integer(), float()} when
       AcctID :: binary().
 get_trunks_available(AcctID) ->
-    case couch_mgr:open_doc(<<"ts">>, AcctID) of
-	{error, not_found}=E ->
-	    ?LOG_SYS("No account found in ts: ~s", [AcctID]),
+    case couch_mgr:open_doc(whapps_util:get_db_name(AcctID), AcctID) of
+	{error, _E}=E ->
+	    ?LOG_SYS("Error looking up ~s: ~p", [AcctID, _E]),
 	    E;
 	{ok, JObj} ->
-	    Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
-	    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
-
-	    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
-	    InboundTrunks = whistle_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, Acct, 0)),
-	    Prepay = whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0)),
+	    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
+	    InboundTrunks = whistle_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
+	    Prepay = whistle_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
 	    %% Balance = ?DOLLARS_TO_UNITS(),
 	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
 	    {Trunks, InboundTrunks, Prepay}

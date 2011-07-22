@@ -205,11 +205,11 @@ handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaF
     CallID = get(callid),
     ?LOG("starting a new process to satisfy send media request"),
     MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
-    gen_tcp:controlling_process(Socket, MediaLoop),
+    ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
     {noreply, S#state{media_loop = MediaLoop}};
 handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
-    gen_tcp:controlling_process(Socket, MediaLoop),
+    ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
     {noreply, S};
 
@@ -282,7 +282,7 @@ start_shout_acceptor(Parent, LSock) ->
 		    gen_tcp:close(S);
 	        _ ->
                     ?LOG_END("new client connected"),
-		    gen_tcp:controlling_process(S, Parent),
+		    ok = gen_tcp:controlling_process(S, Parent),
 		    Parent ! {send_media, S}
 	    end;
 	_ -> ok
@@ -301,7 +301,7 @@ start_stream_acceptor(Parent, LSock) ->
 
 	    _Req = wh_shout:get_request(S),
 
-	    gen_tcp:controlling_process(S, Parent),
+	    ok = gen_tcp:controlling_process(S, Parent),
 	    Parent ! {send_media, S};
 	_ -> ok
     end.
@@ -314,7 +314,7 @@ play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=M
     receive
 	{add_socket, S} ->
 	    ?LOG("started stream"),
-	    gen_tcp:send(S, [ShoutResponse]),
+	    ok = gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
 	    ?LOG_END("stream shutdown")
@@ -325,7 +325,7 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
 	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
-	    gen_tcp:send(S, [ShoutResponse]),
+	    ok = gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
 	    ?LOG_END("stream shutdown")

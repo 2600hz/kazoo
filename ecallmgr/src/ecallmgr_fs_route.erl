@@ -282,7 +282,7 @@ authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
     ?LOG("Starting route request"),
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
-    RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, DefProp, ?EMPTY_JSON_OBJECT),
+    RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, ?EMPTY_JSON_OBJECT),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
 
 -spec authorize/6 :: (Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) -> no_return() when
@@ -293,14 +293,19 @@ route(Node, FSID, CallID, DefProp, AuthZPid) ->
       AuthZPid :: pid() | undefined,
       RouteCCV :: json_object().
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
+    ?LOG("No authz available, validating route_resp"),
     true = whistle_api:route_resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
+    ?LOG("Checking authz_resp"),
     case ecallmgr_authz:is_authorized(AuthZPid) of
 	{false, _} ->
+	    ?LOG("Authz is false"),
 	    reply_forbidden(Node, FSID);
-	{true, CCV} ->
+	{true, {struct, CCV}} ->
+	    ?LOG("Authz is true"),
 	    true = whistle_api:route_resp_v(RespJObj),
+	    ?LOG("Valid route resp"),
 	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
 	    reply(Node, FSID, CallID, RespJObj, RouteCCV1)

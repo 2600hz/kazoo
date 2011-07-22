@@ -33,8 +33,7 @@ start_deps() ->
 %% @spec stop() -> ok
 %% @doc Stop the basicapp server.
 stop() ->
-    application:stop(media_mgr),
-    ok.
+    application:stop(media_mgr).
 
 ensure_started(App) ->
     case application:start(App) of
