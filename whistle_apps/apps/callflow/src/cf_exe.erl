@@ -135,9 +135,10 @@ wait(Call, Flow, Pid) ->
            next(Call, NewFlow);
        {stop} ->
            ?LOG_END("execution has been stopped");
-       {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
-           Msg = mochijson2:decode(Payload),
-           is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
+       {_, #amqp_msg{props = Props, payload = Payload}} when
+             Props#'P_basic'.content_type == <<"application/json">> ->
+           JObj = mochijson2:decode(Payload),
+           is_pid(Pid) andalso Pid ! {amqp_msg, JObj},
            wait(Call, Flow, Pid);
        _Msg ->
            %% dont let the mailbox grow unbounded if

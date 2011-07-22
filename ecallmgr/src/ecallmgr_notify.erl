@@ -1,31 +1,29 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2011, VoIP, INC
 %%% @doc
-%%% Handle updating devices and emails about voicemails
+%%% Notify-type requests, like MWI updates, received and processed here
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% Created :  18 Jul 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_vm).
+-module(ecallmgr_notify).
 
 -behaviour(gen_server).
 
 %% API
 -export([start_link/0]).
+-export([send_mwi/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
-
--include("notify.hrl").
--include_lib("callflow/include/cf_amqp.hrl").
+         terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_VM_TEMPLATE, <<"New Voicemail Message\n\nCaller ID: {{caller_id_number}}\nCaller Name: {{caller_id_name}}\n\nCalled To: {{to_user}}   (Originally dialed number)\nCalled On: {{date_called|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{support_number}} or email {{support_email}}">>).
--define(DEFAULT_SUPPORT_NUMBER, <<"(415) 886-7950">>).
--define(DEFAULT_SUPPORT_EMAIL, <<"support@2600hz.org">>).
+-define(MWI_BODY, "Messages-Waiting: ~s~nVoice-Message: ~b/~b (~b/~b)~nMessage-Account: ~s~n").
 
--record(state, {amqp_q :: binary()}).
+-include("ecallmgr.hrl").
+
+-record(state, {amqp_q  = <<>> :: binary()}).
 
 %%%===================================================================
 %%% API
@@ -34,12 +32,25 @@
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+-spec send_mwi/4 :: (User, Realm, New, Saved) -> no_return() when
+      User :: string() | binary(),
+      Realm :: string() | binary(),
+      New :: integer() | binary(),
+      Saved :: integer() | binary().
+send_mwi(User, Realm, New, Saved) ->
+    JObj = {struct, [{<<"Notify-User">>, whistle_util:to_binary(User)}
+                    ,{<<"Notify-Realm">>, whistle_util:to_binary(Realm)}
+                    ,{<<"Messages-New">>, whistle_util:to_binary(New)}
+                    ,{<<"Messages-Saved">>, whistle_util:to_binary(Saved)}
+                    | whistle_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+                   ]},
+    process_req({<<"notify">>, <<"mwi">>}, JObj, #state{}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -49,17 +60,10 @@ start_link() ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new vm notify process"),
-    %% ensure the vm template can compile, otherwise crash the processes
-    {ok, notify_vm_tmpl} = erlydtl:compile(?DEFAULT_VM_TEMPLATE, notify_vm_tmpl),
+    ?LOG_SYS("starting new ecallmgr notify process"),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -104,21 +108,21 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
-	{ok, Q} = start_amqp(),
-	{noreply, State#state{amqp_q=Q}}
+        {ok, Q} = start_amqp(),
+        {noreply, State#state{amqp_q=Q}}
     catch
-	_:_ ->
+        _:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-	    {noreply, State}
+            {noreply, State}
     end;
 
 handle_info({amqp_reconnect, T}, State) ->
     try
-	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ}}
+        {ok, NewQ} = start_amqp(),
+        {noreply, State#state{amqp_q=NewQ}}
     catch
-	_:_ ->
+        _:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
@@ -140,8 +144,8 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, S
       Props#'P_basic'.content_type == <<"application/json">> ->
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-                  whapps_util:put_callid(JObj),
-                  _ = process_req(whapps_util:get_event_type(JObj), JObj, State)
+                  put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"000000000000">>)),
+                  _ = process_req(get_event_type(JObj), JObj, State)
           end),
     {noreply, State};
 
@@ -160,7 +164,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("vm notify process ~p termination", [_Reason]),
+    ?LOG_SYS("ecallmgr notify ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -184,12 +188,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% ensure the exhanges exist, build a queue, bind, and consume
 %% @end
 %%--------------------------------------------------------------------
--spec start_amqp/0 :: () -> tuple(ok, binary()).
+-spec start_amqp/0 :: () -> tuple(error, amqp_error) | tuple(ok, binary()).
 start_amqp() ->
     try
-        Q = amqp_util:new_queue(),
-        amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
-        amqp_util:basic_consume(Q),
+        true = is_binary(Q = amqp_util:new_queue()),
+        {'basic.qos_ok'} = amqp_util:basic_qos(1),
+        _ = amqp_util:bind_q_to_callmgr(Q, ?KEY_SIP_NOTIFY),
+        _ = amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
     catch
@@ -201,39 +206,54 @@ start_amqp() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% Convience function for seperating the event category and name
+%% @end
+%%--------------------------------------------------------------------
+-spec get_event_type/1 :: (JObj) -> tuple(binary(), binary()) when
+      JObj :: json_object().
+get_event_type(JObj) ->
+    {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Produces the low level whistle_api request to retrieve a list of
+%% conference memebers
 %% @end
 %%--------------------------------------------------------------------
 -spec process_req/3 :: (MsgType, JObj, State) -> no_return() when
       MsgType :: tuple(binary(), binary()),
       JObj :: json_object(),
       State :: #state{}.
-process_req({<<"conference">>, <<"new_voicemail">>}, JObj, _) ->
-    true = cf_api:new_voicemail_v(JObj),
-    AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
-    {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
-    {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
-    case {wh_json:get_value(<<"email">>, UserJObj), wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)} of
-	{undefined, _} ->
-	    ?LOG_END("no email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
-	{_Email, false} ->
-	    ?LOG_END("voicemail to email disabled for ~s", [_Email]);
-	{Email, true} ->
-	    {ok, AcctObj} = couch_mgr:open_doc(AcctDB, whapps_util:get_db_name(AcctDB, raw)),
-	    VMTemplate = case wh_json:get_value(<<"vm_to_email_template">>, AcctObj) of
-			     undefined -> notify_vm_tmpl;
-			     Tmpl ->
-				 try
-				     {ok, notify_vm_custom_tmpl} = erlydtl:compile(Tmpl, notify_vm_custom_tmpl),
-				     ?LOG("Compiled custom template"),
-				     notify_vm_custom_tmpl
-				 catch
-				     _:E ->
-					 ?LOG("Error compiling template for Acct ~s: ~p", [AcctDB, E]),
-					 notify_vm_tmpl
-				 end
-			 end,
-	    send_vm_to_email(Email, VMTemplate, JObj)
+process_req({<<"notify">>, <<"mwi">>}, JObj, _) ->
+    ?LOG_START("received notify mwi request"),
+    true = whistle_api:mwi_update_v(JObj),
+    User = wh_json:get_value(<<"Notify-User">>, JObj),
+    Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
+    case get_endpoint(User, Realm) of
+        {error, timeout} ->
+            ?LOG_END("mwi timed out looking up contact for ~s@~s", [User, Realm]);
+        Endpoint ->
+            NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
+            Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end,
+                                             NewMessages
+                                             ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
+                                             ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
+                                             ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
+                                             ,<<User/binary, "@", Realm/binary>>
+                                            ]),
+            ?LOG("created mwi notify body ~s", [Body]),
+            Headers = [{"profile", "sipinterface_1"}
+                       ,{"to-uri", Endpoint}
+                       ,{"from-uri", "sip:2600hz@2600hz.com"}
+                       ,{"event-str", "message-summary"}
+                       ,{"content-type", "application/simple-message-summary"}
+                       ,{"content-length", whistle_util:to_list(length(Body))}
+                       ,{"body", lists:flatten(Body)}
+                      ],
+            {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
+            Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
+            ?LOG("sending MWI update to ~s (~p)", [Node, Resp])
     end;
 process_req(_, _, _) ->
     ok.
@@ -241,81 +261,19 @@ process_req(_, _, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%% Request the current registration contact string for the user/realm
+%% replacing everything before the first '@' with:
+%% 'sip:{User}'
 %% @end
 %%--------------------------------------------------------------------
--spec send_vm_to_email/3 :: (To, Tmpl, JObj) -> no_return() when
-      To :: binary(),
-      Tmpl :: notify_vm_custom_tmpl | notify_vm_tmpl,
-      JObj :: json_object().
-send_vm_to_email(To, Tmpl, JObj) ->
-    Subject = <<"New voicemail received">>,
-    {ok, Body} = format_plaintext(JObj, Tmpl),
-
-    DB = wh_json:get_value(<<"Account-DB">>, JObj),
-    Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
-    AttachmentId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
-
-    From = <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>,
-
-    {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
-
-    Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
-		 ,[ %% Headers
-		    {<<"From">>, From},
-		    {<<"To">>, To},
-		    {<<"Subject">>, Subject}
-		  ]
-	     ,[] %% Parameters
-	     ,[ %% Body
-		{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(Body)} %% Content Type, Subtype, Headers, Parameters, Body
-		,{<<"audio">>, <<"mpeg">>
-		      ,[
-			{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
-			,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
-		       ]
-		  ,[], AttachmentBin
-		 }
-	      ]
-	    },
-    Encoded = mimemail:encode(Email),
-    SmartHost = smtp_util:guess_FQDN(),
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
-			 ,fun(X) -> ?LOG("Sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create a the plain text vm to email component
-%% @end
-%%--------------------------------------------------------------------
--spec format_plaintext/2 :: (JObj, Tmpl) -> tuple(ok, iolist()) when
-      JObj :: json_object(),
-      Tmpl :: notify_vm_custom_tmpl | notify_vm_tmpl.
-format_plaintext(JObj, Tmpl) ->
-    CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
-    CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    ToE164 = whistle_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
-    DateCalled = whistle_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
-
-    Tmpl:render([{caller_id_number, pretty_print_did(CIDNum)}
-		 ,{caller_id_name, CIDName}
-		 ,{to_user, pretty_print_did(ToE164)}
-		 ,{date_called, calendar:gregorian_seconds_to_datetime(DateCalled)}
-		 ,{support_number, ?DEFAULT_SUPPORT_NUMBER}
-		 ,{support_email, ?DEFAULT_SUPPORT_EMAIL}
-		]).
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create a friendly format for DIDs
-%% @end
-%%--------------------------------------------------------------------
--spec pretty_print_did/1 :: (DID) -> binary() when
-      DID :: binary().
-pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
-    <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
-pretty_print_did(<<"011", Rest/binary>>) ->
-    pretty_print_did(wh_util:to_e164(Rest));
-pretty_print_did(Other) ->
-    Other.
+-spec get_endpoint/2 :: (User, Realm) -> tuple(error, timeout) | string() when
+      User :: binary(),
+      Realm :: binary().
+get_endpoint(User, Realm) ->
+    case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
+        [{<<"Contact">>, Contact}] ->
+            RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
+            whistle_util:to_list(<<"sip:", (RURI)/binary>>);
+        {error, timeout}=E ->
+            E
+    end.

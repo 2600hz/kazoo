@@ -258,10 +258,8 @@ normalize_view_results(JObj, Acc) ->
 load_cdr_summary(Context, []) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    case crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams) of
-	[] -> crossbar_util:response_faulty_request(Context);
-	DocIds -> crossbar_doc:load_view(?CB_LIST, [{<<"keys">>, DocIds}], Context, fun normalize_view_results/2)
-    end.
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Context#cb_context{resp_data=Result, resp_status=success}.
 
 %%--------------------------------------------------------------------
 %% @private

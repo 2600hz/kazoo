@@ -21,7 +21,7 @@
 
 -import(cf_call_command, [
                            answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
-                          ,store/3, b_play_and_collect_digits/6, b_play_and_collect_digit/2
+                          ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
                           ,noop/1, flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
                           ,audio_macro/2, flush_dtmf/1
                          ]).
@@ -165,9 +165,11 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts, prompts=#prompts{abo
 check_mailbox(#mailbox{exists=false}=Box, Call, Loop) ->
     %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
     find_mailbox(Box, Call, Loop);
-check_mailbox(#mailbox{require_pin=false, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call, _) ->
+check_mailbox(#mailbox{require_pin=false, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call, _) when
+      is_binary(OwnerId), OwnerId =/= <<>> ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
+    ?LOG("caller is the owner of this mailbox, and requires no pin"),
     main_menu(Box, Call);
 check_mailbox(#mailbox{prompts=Prompts, pin = <<>>, exists=true}, Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
@@ -179,7 +181,7 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
     try
         %% Request the pin number from the caller but crash if it doesnt match the mailbox
         ?LOG("requesting pin number to check mailbox"),
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, <<"8000">>, Call),
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call),
         main_menu(Box, Call)
     catch
         _:R ->
@@ -199,7 +201,7 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
 find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=EnterPwd, invalid_login=Invalid}}=Box
              ,#cf_call{account_db=Db}=Call, Loop) ->
     ?LOG("requesting mailbox number to check"),
-    {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, <<"8000">>, Call),
+    {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, Call),
     BoxNum = try whistle_util:to_integer(Mailbox) catch _:_ -> 0 end,
 
     %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
@@ -212,7 +214,7 @@ find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=En
             %% we dont want to alert the caller that the mailbox number doesnt match or people could use
             %% that to determine the mailboxs on this system then try brute force to guess the pwd.
             ?LOG("invalid mailbox ~s, faking user out...", [Mailbox]),
-            b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPwd, <<"1">>, <<"8000">>, Call),
+            b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPwd, <<"1">>, Call),
             _ = b_play(Invalid, Call),
             check_mailbox(Box, Call, Loop + 1)
     end.
@@ -224,9 +226,10 @@ find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=En
 %% @end
 %%--------------------------------------------------------------------
 -spec(compose_voicemail/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
-compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call)
-  when is_binary(OwnerId), OwnerId =/= <<>> ->
-    ?LOG("caller is the owner of this mailbox, overriding action as check (instead of compose)"),
+compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call) when
+      is_binary(OwnerId), OwnerId =/= <<>> ->
+    ?LOG("caller is the owner of this mailbox"),
+    ?LOG("overriding action as check (instead of compose)"),
     check_mailbox(Box, Call);
 compose_voicemail(#mailbox{exists=false, prompts=#prompts{no_mailbox=NoMailbox}}, Call) ->
     ?LOG("attempted to compose voicemail for missing mailbox"),
@@ -241,7 +244,8 @@ compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipIns
 
     noop(Call),
 
-    case wait_for_application_or_dtmf(<<"noop">>, 25000) of
+    %% timeout after 5 min for saftey, so this process cant hang around forever
+    case wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {ok, _} ->
             record_voicemail(tmp_file(), Box, Call);
         {dtmf, Digit} ->
@@ -296,7 +300,7 @@ record_voicemail(MediaName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, saved=
                     b_play(Saved, Call)
             end;
         {error, channel_hungup} ->
-            _ = cf_call_command:wait_for_message(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, false),
+            _ = cf_call_command:wait_for_application(<<"record">>, <<"RECORD_STOP">>),
             new_message(MediaName, Box, Call);
 	{error, execution_failure} ->
             ?LOG("media server exploded"),
@@ -327,10 +331,8 @@ main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
     Messages = get_messages(Box, Call),
     New = count_messages(Messages, ?FOLDER_NEW),
     Saved = count_messages(Messages, ?FOLDER_SAVED),
-    audio_macro(message_count_prompts(New, Saved, Prompts) ++ [{play, MainMenu}], Call),
-    DTMF = wait_for_dtmf(20000),
-    _ = flush(Call),
-    case DTMF of
+    NoopId = audio_macro(message_count_prompts(New, Saved, Prompts) ++ [{play, MainMenu}], Call),
+    case cf_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
 	{ok, HearNew} ->
             Folder = get_folder(Messages, ?FOLDER_NEW),
 	    play_messages(Folder, length(Folder), Box, Call),
@@ -342,8 +344,10 @@ main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
 	{ok, Configure} ->
 	    config_menu(Box, Call);
 	{ok, Exit} ->
+            update_mwi(New, Saved, Box, Call),
 	    ok;
 	{error, _} ->
+            update_mwi(New, Saved, Box, Call),
 	    ok;
 	_ ->
 	    main_menu(Box, Call, Loop + 1)
@@ -410,48 +414,84 @@ message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, sav
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Plays back a message then the menu, and continues to loop over the
+%% menu utill
 %% @end
 %%--------------------------------------------------------------------
--spec(play_messages/4 :: (Messages :: json_objects(), Count :: integer(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+-spec play_messages/4 :: (Messages, Count, Box, Call) -> no_return() when
+      Messages :: json_objects(),
+      Count :: integer(),
+      Box :: #mailbox{},
+      Call :: #cf_call{}.
 play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
-			      ,prompts=#prompts{message_number=MsgNum, received=Received, message_menu=MessageMenu, saved=Saved, deleted=Deleted}
-			      ,keys=#keys{replay=Replay, keep=Keep, delete=Delete, return_main=ReturnMain}}=Box, Call) ->
+                                                          ,prompts=#prompts{message_number=MsgNum,
+                                                                            received=Received,
+                                                                            message_menu=MessageMenu,
+                                                                            saved=Saved, deleted=Deleted}}=Box, Call) ->
     ?LOG("reviewing mailbox message"),
     Message = get_message(H, Box, Call),
-    audio_macro([{play, MsgNum}
-                 ,{say, whistle_util:to_binary(Count - length(Messages) + 1), <<"number">>}
-
-                 ,{play, Message}
-
-                 ,{play, Received}
-                 ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
-
-                 ,{play, MessageMenu}
-                ], Call),
-    DTMF = wait_for_dtmf(30000),
-    _ = flush(Call),
-    case DTMF of
-	{ok, Keep} ->
+    Prompt = [{play, MsgNum}
+              ,{say, whistle_util:to_binary(Count - length(Messages) + 1), <<"number">>}
+              ,{play, Message}
+              ,{play, Received}
+              ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+              ,{play, MessageMenu}
+             ],
+    case message_menu(Prompt, Box, Call) of
+	{ok, keep} ->
 	    b_play(Saved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call),
 	    play_messages(T, Count, Box, Call);
-	{ok, Delete} ->
+	{ok, delete} ->
 	    b_play(Deleted, Call),
 	    set_folder(?FOLDER_DELETED, H, Box, Call),
 	    play_messages(T, Count, Box, Call);
-	{ok, ReturnMain} ->
+	{ok, return} ->
 	    b_play(Saved, Call),
 	    set_folder(?FOLDER_SAVED, H, Box, Call);
-	{ok, Replay} ->
+	{ok, replay} ->
 	    play_messages(Messages, Count, Box, Call);
         {error, _} ->
-            ok;
-	_ ->
-	    play_messages(Messages, Count, Box, Call)
+            ok
     end;
 play_messages(_, _, Box, Call) ->
     main_menu(Box, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Loops over the message menu after the first play back util the
+%% user provides a valid option
+%% @end
+%%--------------------------------------------------------------------
+-spec message_menu/2 :: (Box, Call) -> tuple(error, atom()) | tuple(ok, atom()) when
+      Box :: #mailbox{},
+      Call :: #cf_call{}.
+-spec message_menu/3 :: (Prompt, Box, Call) -> tuple(error, atom()) | tuple(ok, atom()) when
+      Prompt :: proplist(),
+      Box :: #mailbox{},
+      Call :: #cf_call{}.
+
+message_menu(#mailbox{prompts=#prompts{message_menu=MessageMenu}}=Box, Call) ->
+    message_menu([{play, MessageMenu}], Box, Call).
+
+message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
+                                         delete=Delete, return_main=ReturnMain}}=Box, Call) ->
+    NoopId = audio_macro(Prompt, Call),
+    case cf_call_command:collect_digits(1, 5000, 2000, NoopId, Call)of
+	{ok, Keep} ->
+            {ok, keep};
+	{ok, Delete} ->
+            {ok, delete};
+	{ok, ReturnMain} ->
+            {ok, return};
+	{ok, Replay} ->
+            {ok, replay};
+        {error, _}=E ->
+            E;
+	_ ->
+	    message_menu(Box, Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -570,8 +610,8 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
 		    ,mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
     ?LOG("requesting new mailbox pin number"),
     try
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, <<"8000">>, Call),
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, <<"8000">>, Call),
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, Call),
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, Call),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         {ok, JObj} = couch_mgr:open_doc(Db, Id),
         {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pin">>, Pin, JObj)),
@@ -593,8 +633,11 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call
                                                              ,from=From, from_user=FromU, from_realm=FromR
                                                              ,to=To, to_user=ToU, to_realm=ToR
 							     ,cid_name=CIDName, cid_number=CIDNumber}=Call) ->
-    {ok, _StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
-    ?LOG("stored voicemail message ~s", [MediaName]),
+    {ok, StoreJObj} = store_recording(MediaName, Box, Call), %% store was successful
+
+    Status = wh_json:get_value([<<"Application-Response">>, <<"Status-Code">>], StoreJObj),
+    Loc = wh_json:get_value([<<"Application-Response">>, <<"Headers">>, <<"Location">>], StoreJObj),
+    ?LOG("stored voicemail message (~s) ~s", [Status, Loc]),
 
     Tstamp = new_timestamp(),
     NewMessage={struct, [
@@ -623,7 +666,8 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call
 				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     ?LOG("new voicemail message ~s whistle API broadcast", [MediaName]),
-    amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW).
+    amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW),
+    update_mwi(Box, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -743,8 +787,7 @@ store_recording(MediaName, Box, Call) ->
     store_recording(MediaName, MediaName, Box, Call).
 store_recording(MediaName, DestName, Box, Call) ->
     ?LOG("storing media ~s", [DestName]),
-    store(MediaName, get_attachment_path(DestName, Box, Call), Call),
-    cf_call_command:wait_for_store(Call).
+    b_store(MediaName, get_attachment_path(DestName, Box, Call), Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -854,8 +897,14 @@ update_folder(Folder, Attachment, #mailbox{mailbox_id=Id}=Mailbox, #cf_call{acco
             Messages = [ update_folder1(Message, Folder, Attachment, wh_json:get_value(<<"attachment">>, Message))
 			 || Message <- wh_json:get_value(<<"messages">>, JObj, []) ],
             case couch_mgr:save_doc(Db, wh_json:set_value(<<"messages">>, Messages, JObj)) of
-                {error, conflict} -> update_folder(Folder, Attachment, Mailbox, Call);
-                {ok, _}=OK -> OK;
+                {error, conflict} ->
+                    update_folder(Folder, Attachment, Mailbox, Call);
+                {ok, _}=OK ->
+                    UpdatedMsgs = wh_json:get_value(<<"messages">>, JObj, []),
+                    New = count_messages(UpdatedMsgs, ?FOLDER_NEW),
+                    Saved = count_messages(UpdatedMsgs, ?FOLDER_SAVED),
+                    update_mwi(New, Saved, Mailbox, Call),
+                    OK;
                 {error, R}=E ->
                     ?LOG("error while updating folder ~s ~s", [Folder, R]),
                     E
@@ -903,3 +952,49 @@ get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(whistle_util:to_integer(Epoch)),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, whistle_util:to_list(Timezone)),
     whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Sends SIP notify to all devices owned by the same owner as the
+%% mailbox with new message counts.
+%% @end
+%%--------------------------------------------------------------------
+-spec update_mwi/2 :: (Box, Call) -> no_return() when
+      Box :: #mailbox{},
+      Call :: #cf_call{}.
+-spec update_mwi/4 :: (New, Saved, Box, Call) -> no_return() when
+      New :: integer(),
+      Saved :: integer(),
+      Box :: #mailbox{},
+      Call :: #cf_call{}.
+
+update_mwi(Box, Call) ->
+    Messages = get_messages(Box, Call),
+    New = count_messages(Messages, ?FOLDER_NEW),
+    Saved = count_messages(Messages, ?FOLDER_SAVED),
+    update_mwi(New, Saved, Box, Call).
+
+update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_db=Db}) ->
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned_devices">>, [{<<"key">>, OwnerId}]) of
+        {ok, []} ->
+            ?LOG("mwi update found no devices owned by ~s", [OwnerId]),
+            ok;
+        {ok, Devices} ->
+            lists:map(fun(Device) ->
+                              User = wh_json:get_value([<<"value">>, <<"sip_username">>], Device),
+                              Realm = wh_json:get_value([<<"value">>, <<"sip_realm">>], Device),
+                              Command = {struct, [{<<"Notify-User">>, User}
+                                                  ,{<<"Notify-Realm">>, Realm}
+                                                  ,{<<"Messages-New">>, whistle_util:to_binary(New)}
+                                                  ,{<<"Messages-Saved">>, whistle_util:to_binary(Saved)}
+                                                  | whistle_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+                                                 ]},
+                              ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
+                              {ok, Payload} = whistle_api:mwi_update(Command),
+                              amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_SIP_NOTIFY)
+                      end, Devices);
+        Error ->
+            ?LOG("mwi update found ~s in ~s lookup error ~p", [OwnerId, Db, Error]),
+            ok
+    end.
