@@ -3,4 +3,5 @@
 */error_log
 .eunit
 whistle_apps/log/*
+whistle_apps/apps/*/log/*
 ecallmgr/log/*

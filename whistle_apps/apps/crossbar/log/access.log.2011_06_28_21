@@ -1,7 +1,0 @@
-127.0.0.1 - - [28/Jun/2011:14:04:21 -0700] "PUT /v1/accounts HTTP/1.1" 201 132 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [28/Jun/2011:14:10:03 -0700] "PUT /v1/accounts HTTP/1.1" 201 132 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [28/Jun/2011:14:11:22 -0700] "PUT /v1/accounts HTTP/1.1" 201 132 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [28/Jun/2011:14:33:21 -0700] "PUT /v1/accounts HTTP/1.1" 201 134 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [28/Jun/2011:14:35:17 -0700] "PUT /v1/accounts HTTP/1.1" 201 134 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [28/Jun/2011:14:37:00 -0700] "PUT /v1/accounts HTTP/1.1" 201 134 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [28/Jun/2011:14:57:18 -0700] "PUT /v1/accounts HTTP/1.1" 201 134 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
