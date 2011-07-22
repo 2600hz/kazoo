@@ -21,6 +21,7 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -124,7 +125,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payl
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                 crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
+                Context1 = validate(Params, RD, Context),
                 Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
@@ -256,18 +257,18 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_device_summary(Context, QueryString);
+validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
-validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([DocId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_device(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
+validate([DocId], _, #cb_context{req_verb = <<"post">>}=Context) ->
     update_device(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
+validate([DocId], _, #cb_context{req_verb = <<"delete">>}=Context) ->
     load_device(DocId, Context);
-validate(_, Context) ->
+validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -277,11 +278,14 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary/1 :: (Context) -> #cb_context{} when
+-spec load_device_summary/2 :: (Context, QueryParams) -> #cb_context{} when
+      QueryParams :: list(),
       Context :: #cb_context{}.
-load_device_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
+load_device_summary(Context, []) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Context#cb_context{resp_data=Result, resp_status=success}.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
