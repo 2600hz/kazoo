@@ -278,6 +278,7 @@ get_from_user(JObj) ->
 	    From
     end.
 
+-spec get_account_code/1 :: (json_object()) -> binary().
 get_account_code(JObj) ->
     AccountID = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
 		    AID when erlang:byte_size(AID) < 18 -> AID;
