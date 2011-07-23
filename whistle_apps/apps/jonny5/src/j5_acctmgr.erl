@@ -468,6 +468,7 @@ update_limits(#state{acct_type=ts, acct_id=AcctID}=State) ->
 	    State#state{two_way=Two, inbound=In, prepay=Pre}
     end;
 update_limits(#state{acct_type=account, acct_id=AcctID}=State) ->
+    %% Make a call to DTH to update prepay?
     case get_trunks_available(AcctID, account) of
 	{Two, In, _, _} -> State#state{max_two_way=Two, max_inbound=In};
 	_ -> State
