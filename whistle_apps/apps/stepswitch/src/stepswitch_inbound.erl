@@ -265,8 +265,14 @@ inbound_handler(Number, JObj) ->
 %%--------------------------------------------------------------------
 -spec(get_dest_number/1 :: (JObj :: json_object()) -> binary()).
 get_dest_number(JObj) ->
-    [ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-    whistle_util:to_e164(ToUser).
+    User = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+               [<<"nouser">>, _] ->
+                   [ReqUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+                   ReqUser;
+               [ToUser, _] ->
+                   ToUser
+           end,
+    whistle_util:to_e164(User).
 
 %%--------------------------------------------------------------------
 %% @private

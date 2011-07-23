@@ -453,6 +453,7 @@ bind_q_to_monitor(Queue, Routing) ->
       Routing :: discovery | service | events,
       ConfId :: undefined | binary().
 
+
 bind_q_to_conference(Queue, discovery) ->
     bind_q_to_conference(Queue, discovery, undefined);
 bind_q_to_conference(Queue, service) ->
@@ -486,7 +487,10 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       ,nowait = props:get_value(nowait, Options, true)
       ,arguments = []
      },
-    amqp_manager:consume(QB).
+    case amqp_manager:consume(QB) of
+        {'queue.bind_ok'} -> ok;
+        Else -> Else
+    end.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -560,9 +564,13 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    {_C, Resp} = amqp_manager:consume(BC),
-    %% link(C),
-    Resp.
+    case amqp_manager:consume(BC) of
+        {_Pid, {'basic.consume_ok', _}} ->
+            %% link(C),
+            ok;
+        {_, Error} -> Error;
+        Else -> Else
+    end.
 
 %%------------------------------------------------------------------------------
 %% @public
