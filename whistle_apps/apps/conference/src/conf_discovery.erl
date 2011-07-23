@@ -106,7 +106,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
 
@@ -119,18 +119,18 @@ handle_info({amqp_reconnect, T}, State) ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, State) when
@@ -316,7 +316,7 @@ wait_for_handoff(AccountId, ConfId, Caller) ->
             %% TODO: If I had more time this doc should come from validate_conference_id...
             {ok, Conference} =
                 couch_mgr:open_doc(whapps_util:get_db_name(AccountId, encoded), ConfId),
-            {ok, _} = conf_service_sup:start_service(ConfId, Conference, Caller),
+            {ok, _} = conf_service_sup:start_service(ConfId, Conference, {struct, Caller}),
             wait_for_handoff(AccountId, ConfId, Caller);
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}} ->
             JObj = mochijson2:decode(Payload),
@@ -366,7 +366,7 @@ play_greeting(#search{prompts=Prompts}=Search) ->
       Search :: #search{}.
 validate_conference_id(#search{prompts=Prompts, loop_count=Loop}=Search) when Loop > 4 ->
     ?LOG_END("caller has failed to provide a valid conference number to many times"),
-    play(Prompts#prompts.to_many_attempts, Search),
+    {ok, _} =  play(Prompts#prompts.to_many_attempts, Search),
     {error, to_many_attempts};
 validate_conference_id(#search{conf_id=undefined, prompts=Prompts, account_id=AccountId, loop_count=Loop}=Search) ->
     ?LOG("requesting conference number from caller"),
@@ -392,7 +392,7 @@ validate_conference_id(#search{conf_id=undefined, prompts=Prompts, account_id=Ac
             };
         _ ->
             ?LOG("could not find conference number ~s", [ConfNum]),
-            play(Prompts#prompts.incorrect_id, Search),
+            {ok, _} = play(Prompts#prompts.incorrect_id, Search),
             validate_conference_id(Search#search{conf_id=undefined, loop_count=Loop + 1})
     end;
 validate_conference_id(#search{conf_id=ConfId, account_id=AccountId, loop_count=Loop}=Search) ->
@@ -428,7 +428,7 @@ validate_conference_pin(#search{moderator = <<"false">>, pins={_, []}}=Search) -
     {ok, Search};
 validate_conference_pin(#search{prompts=Prompts, loop_count=Loop}=Search) when Loop > 4 ->
     ?LOG_END("caller has failed to provide the correct pin to many times"),
-    play(Prompts#prompts.to_many_attempts, Search),
+    {ok, _} = play(Prompts#prompts.to_many_attempts, Search),
     {error, to_many_attempts};
 validate_conference_pin(#search{moderator = <<"true">>, pins={Pins, _}, prompts=Prompts, loop_count=Loop}=Search) ->
     ?LOG("requesting conference moderator pin from caller"),
@@ -439,7 +439,7 @@ validate_conference_pin(#search{moderator = <<"true">>, pins={Pins, _}, prompts=
             {ok, Search};
         false ->
             ?LOG("caller entered an invalid pin"),
-            play(Prompts#prompts.incorrect_pin, Search),
+            {ok, _} = play(Prompts#prompts.incorrect_pin, Search),
             validate_conference_pin(Search#search{loop_count=Loop + 1})
     end;
 validate_conference_pin(#search{moderator = <<"false">>, pins={_, Pins}, prompts=Prompts, loop_count=Loop}=Search) ->
@@ -451,7 +451,7 @@ validate_conference_pin(#search{moderator = <<"false">>, pins={_, Pins}, prompts
             {ok, Search};
         false ->
             ?LOG("caller entered an invalid pin"),
-            play(Prompts#prompts.incorrect_pin, Search),
+            {ok, _} = play(Prompts#prompts.incorrect_pin, Search),
             validate_conference_pin(Search#search{loop_count=Loop + 1})
     end;
 validate_conference_pin(#search{pins={ModeratorPins, MemberPins}, prompts=Prompts, loop_count=Loop}=Search) ->
@@ -466,7 +466,7 @@ validate_conference_pin(#search{pins={ModeratorPins, MemberPins}, prompts=Prompt
             {ok, Search#search{moderator = <<"false">>}};
         {false, false} ->
             ?LOG("caller entered an invalid pin"),
-            play(Prompts#prompts.incorrect_pin, Search),
+            {ok, _} = play(Prompts#prompts.incorrect_pin, Search),
             validate_conference_pin(Search#search{loop_count=Loop + 1})
     end.
 
@@ -511,7 +511,7 @@ play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) 
                ,{<<"Timeout">>, <<"15000">>}
                ,{<<"Media-Name">>, Media}
                ,{<<"Media-Tries">>, <<"1">>}
-               ,{<<"Failed-Media-Name">>, <<"silence_stream://250">>}
+               ,{<<"Failed-Media-Name">>, <<"silence_stream://50">>}
                ,{<<"Digits-Regex">>, <<"\\d+">>}
                ,{<<"Call-ID">>, CallId}
                | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -532,12 +532,17 @@ wait_for_command(Command) ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}} ->
             JObj = mochijson2:decode(Payload),
-            case { wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
-                { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+            case { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Application-Name">>, JObj) } of
+                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
+                    ?LOG("channel was unbridged while waiting for ~s", [Command]),
+                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    ?LOG("channel was hungup while waiting for ~s", [Command]),
                     {error, channel_hungup};
-                { _, _, <<"error">> } ->
+                { <<"error">>, _, _ } ->
+                    ?LOG("channel execution error while waiting for ~s", [Command]),
                     {error, execution_failure};
-                { Command, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Command } ->
                     {ok, wh_json:get_value(<<"Application-Response">>, JObj, <<>>)};
 		_ ->
                     wait_for_command(Command)

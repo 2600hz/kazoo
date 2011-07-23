@@ -207,7 +207,7 @@
 						 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
 						 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
 						 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
-						 ,<<"SIP-Headers">>
+						 ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
 					   ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
 				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
@@ -218,11 +218,13 @@
 				  ,{<<"To-User">>, fun is_binary/1}
 				  ,{<<"To-Realm">>, fun is_binary/1}
 				  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                                  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 				]).
 
 %% Route Responses
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
--define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
+-define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>,
+                                      <<"Route-Error-Code">>, <<"Route-Error-Message">>]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
 			    ,{<<"Event-Name">>, <<"route_resp">>}
 			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
@@ -232,6 +234,7 @@
 			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
 					      (_) -> false
 					   end}
+                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
 			  ]).
 
 %% Route Winner
