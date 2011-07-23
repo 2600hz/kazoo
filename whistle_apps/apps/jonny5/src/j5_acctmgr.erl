@@ -19,7 +19,8 @@
 
 -include("jonny5.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
+-define(UPDATE_LIMITS_TIMEOUT, 300000). %% 5 minutes
 
 -record(state, {
 	  my_q = undefined :: binary() | undefined
@@ -28,12 +29,14 @@
          ,cache_ref = make_ref() :: reference()
 	 ,acct_id = <<>> :: binary()
          ,acct_rev = <<>> :: binary()
+	 ,acct_type = account :: account | ts
 	 ,max_two_way = 0 :: non_neg_integer()
          ,max_inbound = 0 :: non_neg_integer()
 	 ,two_way = 0 :: non_neg_integer()
          ,inbound = 0 :: non_neg_integer()
          ,prepay = 0.0 :: float()
          ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
+	 ,tref = undefined :: undefined | reference()
 	 }).
 
 %%%===================================================================
@@ -47,6 +50,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/1 :: (AcctID) -> {ok, pid()} | ignore | {error, term()} when
+      AcctID :: binary().
 start_link(AcctID) ->
     ?LOG_SYS("starting with acct ~s", [AcctID]),
     gen_server:start_link(?MODULE, [AcctID], []).
@@ -123,21 +128,23 @@ init([AcctID]) ->
     Q = amqp_util:new_queue(),
     ?LOG_SYS("Will listen for call events/cdrs on ~s", [Q]),
 
-    case get_trunks_available(AcctID) of
+    TRef = erlang:start_timer(?UPDATE_LIMITS_TIMEOUT, self(), update_limits),
+
+    case get_trunks_available(AcctID, account) of
 	{error, not_found} ->
 	    ?LOG_SYS("No account found for ~s", [AcctID]),
 	    {stop, no_account};
-	{TwoWay, Inbound, Prepay} ->
+	{TwoWay, Inbound, _, Type} ->
 	    ?LOG_SYS("Init for ~s complete", [AcctID]),
 	    couch_mgr:add_change_handler(<<"ts">>, AcctID),
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
 	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
-			,cache=CPid, cache_ref=Ref
+			,cache=CPid, cache_ref=Ref, tref=TRef
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
-			,prepay=Prepay, acct_rev=Rev, acct_id=AcctID
+			,acct_rev=Rev, acct_id=AcctID, acct_type=Type
 		       }}
     end.
 
@@ -164,27 +171,20 @@ handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START(CallID, "Authorizing call...", []),
 
-    case try_inbound(CallID, State) of
-	{{true, _}=Resp, State1} ->
-	    ?LOG_END(CallID, "Inbound call authorized with inbound trunk", []),
-	    {reply, Resp, State1};
-	{{false, _}, State2} ->
-	    case try_twoway(CallID, State2) of
-		{{true, _}=Resp, State3} ->
-		    ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []),
-		    {reply, Resp, State3};
-		{{false, _}=Resp, State4} ->
-		    ?LOG_END(CallID, "Inbound call NOT authorized with flat rate trunks", []),
-		    {reply, Resp, State4} %% add per-minute check here?
-	    end
-    end;
+    {Resp, State1} = case is_us48(JObj) of
+			 true -> try_inbound_then_twoway(CallID, State);
+			 false -> try_prepay(CallID, State)
+		     end,
+    {reply, Resp, State1};
 
 handle_call({authz, JObj, outbound}, _From, State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    case try_twoway(CallID, State) of
-	{{true, _}=Resp, State1} -> ?LOG_END(CallID, "Outbound call authorized using a two-way trunk", []), {reply, Resp, State1};
-	{{false, _}=Resp, State2} -> ?LOG_END(CallID, "Outbound call NOT authorized using flat rate trunks", []), {reply, Resp, State2} %% add per-minute check here?
-    end.
+    [ToDID, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+    {Resp, State1} = case is_us48(whistle_util:to_e164(ToDID)) of
+			 true -> try_twoway(CallID, State);
+			 false -> try_prepay(CallID, State)
+		     end,
+    {reply, Resp, State1}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -232,7 +232,11 @@ handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound
 	    {noreply, State}
     end;
 
-handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID}=State) ->
+handle_info({timeout, TRef, _}, #state{tref=TRef}=State) ->
+    ?LOG_SYS("Updating limits"),
+    {noreply, update_limits(State)};
+
+handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
     State1 = lists:foldl(fun(Prop, State0) ->
 				 case props:get_value(<<"rev">>, Prop) of
@@ -240,7 +244,7 @@ handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=Ac
 				     Rev -> State0;
 				     _NewRev ->
 					 ?LOG_SYS("Updating account ~s from ~s to ~s", [AcctID, Rev, _NewRev]),
-					 {Two, In, _} = get_trunks_available(AcctID),
+					 {Two, In, _, _} = get_trunks_available(AcctID, AcctType),
 					 State0#state{max_two_way=Two, max_inbound=In}
 				 end
 			 end, State, Changes),
@@ -282,28 +286,66 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_trunks_available/1 :: (AcctID) -> {error, not_found} | {non_neg_integer(), non_neg_integer(), float()} when
-      AcctID :: binary().
-get_trunks_available(AcctID) ->
+
+-spec get_trunks_available/2 :: (AcctID, Type) -> {error, not_found} | {non_neg_integer(), non_neg_integer(), float(), account | ts} when
+      AcctID :: binary(),
+      Type :: account | ts.
+get_trunks_available(AcctID, account) ->
     case couch_mgr:open_doc(whapps_util:get_db_name(AcctID), AcctID) of
-	{error, _E}=E ->
-	    ?LOG_SYS("Error looking up ~s: ~p", [AcctID, _E]),
-	    E;
+	{error, not_found} ->
+	    ?LOG_SYS("Account ~s not found, trying ts", [AcctID]),
+	    get_trunks_available(AcctID, ts);
 	{ok, JObj} ->
 	    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
 	    InboundTrunks = whistle_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
 	    Prepay = whistle_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
 	    %% Balance = ?DOLLARS_TO_UNITS(),
 	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
-	    {Trunks, InboundTrunks, Prepay}
+	    {Trunks, InboundTrunks, Prepay, account}
+    end;
+get_trunks_available(AcctID, ts) ->
+    case couch_mgr:open_doc(<<"ts">>, AcctID) of
+	{error, not_found}=E ->
+	    ?LOG_SYS("No account found in ts: ~s", [AcctID]),
+	    E;
+	{ok, JObj} ->
+	    Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
+	    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
+
+	    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
+	    InboundTrunks = whistle_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, Acct, 0)),
+	    Prepay = whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0)),
+	    %% Balance = ?DOLLARS_TO_UNITS(),
+	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
+	    {Trunks, InboundTrunks, Prepay, ts}
+    end.
+
+-spec try_inbound_then_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
+      CallID :: binary(),
+      State :: #state{}.
+try_inbound_then_twoway(CallID, State) ->
+    case try_inbound(CallID, State) of
+	{{true, _}, _}=Resp ->
+	    ?LOG_END(CallID, "Inbound call authorized with inbound trunk", []),
+	    Resp;
+	{{false, _}, State2} ->
+	    case try_twoway(CallID, State2) of
+		{{true, _}, _}=Resp ->
+		    ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []),
+		    Resp;
+		{{false, _}, State3} ->
+		    try_prepay(CallID, State3)
+	    end
     end.
 
 -spec try_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
       CallID :: binary(),
       State :: #state{}.
-try_twoway(_, #state{two_way=T}=State) when T < 1 ->
+try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
+    ?LOG_SYS(_CallID, "Failed to authz a two-way trunk", []),
     {{false, []}, State#state{two_way=0}};
 try_twoway(CallID, #state{my_q=Q, two_way=Two, trunks_in_use=Dict}=State) ->
+    ?LOG_SYS(CallID, "Authz a two-way trunk", []),
     monitor_call(Q, CallID),
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
      ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, twoway, Dict)}
@@ -312,12 +354,27 @@ try_twoway(CallID, #state{my_q=Q, two_way=Two, trunks_in_use=Dict}=State) ->
 -spec try_inbound/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
       CallID :: binary(),
       State :: #state{}.
-try_inbound(_, #state{inbound=I}=State) when I < 1 ->
+try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
+    ?LOG_SYS(_CallID, "Failed to authz an inbound_only trunk", []),
     {{false, []}, State#state{inbound=0}};
 try_inbound(CallID, #state{my_q=Q, inbound=In, trunks_in_use=Dict}=State) ->
+    ?LOG_SYS(CallID, "Authz an inbound_only trunk", []),
     monitor_call(Q, CallID),
     {{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
      ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, inbound, Dict)}
+    }.
+
+-spec try_prepay/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
+      CallID :: binary(),
+      State :: #state{}.
+try_prepay(_CallID, #state{prepay=Pre}=State) when Pre =< 0.0 ->
+    ?LOG_SYS(_CallID, "Failed to authz a per_min trunk", []),
+    {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
+try_prepay(CallID, #state{my_q=Q, prepay=_Pre, trunks_in_use=Dict}=State) ->
+    ?LOG_SYS(CallID, "Authz a per_min trunk with $~p prepay", [_Pre]),
+    monitor_call(Q, CallID),
+    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
+     ,State#state{trunks_in_use=dict:store(CallID, per_min, Dict)}
     }.
 
 -spec monitor_call/2 :: (Q, CallID) -> ok when
@@ -388,3 +445,35 @@ release_trunk(CallID, Dict) ->
 	{ok, TrunkType} ->
 	    {release, TrunkType, dict:erase(CallID, Dict)}
     end.
+
+%% Match +1XXXYYYZZZZ as US-48; all others are not
+is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
+is_us48(_) -> false.
+
+-spec update_limits/1 :: (State) -> #state{} when
+      State :: #state{}.
+update_limits(#state{acct_type=ts, acct_id=AcctID}=State) ->
+    RDB = todays_db(),
+    case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctID}, {<<"group">>, true}]) of
+	{error, not_found} ->
+	    ?LOG_SYS("View accounts/balance not found in DB ~s", [RDB]),
+	    State;
+	{ok, []} ->
+	    ?LOG_SYS("No view results for ~s", [AcctID]),
+	    State;
+	{ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
+	    Two = wh_json:get_value(<<"trunks">>, Funds, 0),
+	    In = wh_json:get_value(<<"inbound_trunks">>, Funds, 0),
+	    Pre = wh_json:get_value(<<"credit">>, Funds, 0.0),
+	    State#state{two_way=Two, inbound=In, prepay=Pre}
+    end;
+update_limits(#state{acct_type=account, acct_id=AcctID}=State) ->
+    case get_trunks_available(AcctID, account) of
+	{Two, In, _, _} -> State#state{max_two_way=Two, max_inbound=In};
+	_ -> State
+    end.
+
+-spec todays_db/0 :: () -> binary().
+todays_db() ->
+    {{Y,M,D}, _} = calendar:universal_time(),
+    whistle_util:to_binary(io_lib:format("ts_usage%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
