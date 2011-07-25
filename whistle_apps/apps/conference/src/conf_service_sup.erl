@@ -1,11 +1,11 @@
-%%%============================================================================
+%%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011 VoIP Inc
 %%% @doc
 %%% Supervisor for running conference service processes
 %%% @end
 %%% Created : 28 Jun 2011 by Karl Anderson <karl@2600hz.org>
-%%%============================================================================
+%%%-------------------------------------------------------------------
 -module(conf_service_sup).
 
 -behaviour(supervisor).

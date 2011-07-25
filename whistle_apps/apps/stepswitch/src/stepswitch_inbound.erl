@@ -195,7 +195,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ensure the exhanges exist, build a queue, bind, and consume
 %% @end
 %%--------------------------------------------------------------------
--spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
+-spec start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error).
 start_amqp() ->
     try
         _ = amqp_util:callmgr_exchange(),
@@ -216,7 +216,9 @@ start_amqp() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object()) -> no_return()).
+-spec process_req/2 :: (MsgType, JObj) -> no_return() when
+      MsgType :: tuple(binary(), binary()),
+      JObj :: json_object().
 process_req({<<"dialplan">>, <<"route_req">>}, JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     case wh_json:get_value(<<"Account-ID">>, CCVs) of
@@ -242,7 +244,8 @@ process_req({_, _}, _) ->
 %% handle a request inbound from offnet
 %% @end
 %%--------------------------------------------------------------------
--spec(inbound_handler/1 :: (JObj :: json_object()) -> no_return()).
+-spec inbound_handler/1 :: (JObj) -> no_return() when
+      JObj :: json_object().
 inbound_handler(JObj) ->
     Number = get_dest_number(JObj),
     inbound_handler(Number, JObj).
@@ -263,7 +266,8 @@ inbound_handler(Number, JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec(get_dest_number/1 :: (JObj :: json_object()) -> binary()).
+-spec get_dest_number/1 :: (JObj) -> binary() when
+      JObj :: json_object().
 get_dest_number(JObj) ->
     User = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
                [<<"nouser">>, _] ->
@@ -280,7 +284,8 @@ get_dest_number(JObj) ->
 %% lookup the account ID by number
 %% @end
 %%--------------------------------------------------------------------
--spec(lookup_account_by_number/1 :: (Number :: binary()) -> tuple(ok, binary(), boolean())|tuple(error, atom())).
+-spec lookup_account_by_number/1 :: (Number) -> tuple(ok, binary(), boolean())|tuple(error, atom()) when
+      Number :: binary().
 lookup_account_by_number(Number) ->
     ?LOG("lookup account for ~s", [Number]),
     case wh_cache:fetch({stepswitch_number, Number}) of
@@ -314,7 +319,10 @@ lookup_account_by_number(Number) ->
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec(custom_channel_vars/3 :: (AccountId :: binary(), AuthId :: binary(), JObj :: json_object()) -> json_object()).
+-spec custom_channel_vars/3 :: (AccountId, AuthId, JObj) -> json_object() when
+      AccountId :: undefined | binary(),
+      AuthId :: undefined | binary(),
+      JObj :: json_object().
 custom_channel_vars(AccountId, AuthId, JObj) ->
     {struct, CCVs} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
     Vars = [{<<"Account-ID">>, AccountId}
@@ -333,7 +341,8 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec(relay_route_req/1 :: (JObj :: json_object()) -> no_return()).
+-spec relay_route_req/1 :: (JObj) -> no_return() when
+      JObj :: json_object().
 relay_route_req(JObj) ->
     {ok, Payload} = whistle_api:route_req(JObj),
     amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_ROUTE_REQ),
