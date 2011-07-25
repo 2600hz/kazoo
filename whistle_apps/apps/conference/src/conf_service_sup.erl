@@ -49,7 +49,7 @@ start_service(ConfId, Conference) ->
       Conference :: json_object(),
       Caller :: undefined | json_object().
 start_service(ConfId, Conference, Caller) ->
-    supervisor:delete_child(conf_service_sup, ConfId),
+    _ = supervisor:delete_child(conf_service_sup, ConfId),
     supervisor:start_child(?SERVER, ?CHILD(ConfId, conf_service, [Conference, Caller])).
 
 %%%===================================================================
