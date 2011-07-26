@@ -280,6 +280,7 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
                        {<<"account_id">>, AccountId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                      ,{<<"method">>, whistle_util:to_binary(?MODULE)}
                       ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
                       ,{<<"user_agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
                       ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}

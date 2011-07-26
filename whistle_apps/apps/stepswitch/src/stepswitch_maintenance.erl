@@ -31,8 +31,9 @@
 %% exist
 %% @end
 %%--------------------------------------------------------------------
--spec(reconcile/0 :: () -> done).
--spec(reconcile/1 :: (Account :: string()|all) -> done).
+-spec reconcile/0 :: () -> done.
+-spec reconcile/1 :: (Account) -> done when
+      Account :: string() | binary() | all.
 
 reconcile() ->
     reconcile(all).
@@ -59,7 +60,7 @@ reconcile(AccountId) ->
 %% Run validity checks on the routes currently in the db
 %% @end
 %%--------------------------------------------------------------------
--spec(validate_routes/0 :: () -> done).
+-spec validate_routes/0 :: () -> done.
 validate_routes() ->
     find_duplicate_numbers(),
 %%    find_missing_accounts(),
@@ -71,7 +72,8 @@ validate_routes() ->
 %% Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
--spec(lookup_number/1 :: (Number :: string()) -> tuple(ok, binary())|tuple(error, atom())).
+-spec lookup_number/1 :: (Number) -> tuple(ok, binary()) | tuple(error, atom()) when
+      Number :: string().
 lookup_number(Number) ->
     gen_server:call(stepswitch_inbound, {lookup_number, Number}).
 
@@ -82,7 +84,7 @@ lookup_number(Number) ->
 %% refresh the cache.
 %% @end
 %%--------------------------------------------------------------------
--spec(reload_resources/0 :: () -> ok).
+-spec reload_resources/0 :: () -> ok.
 reload_resources() ->
     gen_server:call(stepswitch_outbound, {reload_resrcs}).
 
@@ -94,8 +96,11 @@ reload_resources() ->
 %% {Resource ID, Delay (in seconds), SIP URI}
 %% @end
 %%--------------------------------------------------------------------
--spec(process_number/1 :: (Number :: string()) -> list()|tuple(error, atom())).
--spec(process_number/2 :: (Number :: string(), Flags :: list()) -> list()|tuple(error, atom())).
+-spec process_number/1 :: (Number) -> list()|tuple(error, atom()) when
+      Number :: string().
+-spec process_number/2 :: (Number, Flags) -> list()|tuple(error, atom()) when
+      Number :: string(),
+      Flags :: list().
 
 process_number(Number) ->
     gen_server:call(stepswitch_outbound, {process_number, Number}).
@@ -110,7 +115,7 @@ process_number(Number, Flags) ->
 %% with the numbers assigned in the account
 %% @end
 %%--------------------------------------------------------------------
--spec(reconcile_accounts/0 :: () -> ok).
+-spec reconcile_accounts/0 :: () -> ok.
 reconcile_accounts() ->
     [begin
          Numbers = get_callflow_account_numbers(AccountId),
@@ -127,7 +132,8 @@ reconcile_accounts() ->
 %% external (TODO: currently just uses US rules).
 %% @end
 %%--------------------------------------------------------------------
--spec(get_callflow_account_numbers/1 :: (AccountId :: binary()) -> json_object()).
+-spec get_callflow_account_numbers/1 :: (AccountId) -> json_object() when
+      AccountId :: binary().
 get_callflow_account_numbers(AccountId) ->
     case couch_mgr:get_all_results(AccountId, ?CALLFLOW_VIEW) of
         {ok, Numbers} ->
@@ -149,7 +155,7 @@ get_callflow_account_numbers(AccountId) ->
 %% account db structure)
 %% @end
 %%--------------------------------------------------------------------
--spec(reconcile_trunkstore/0 :: () -> ok|tuple(error, atom())).
+-spec reconcile_trunkstore/0 :: () -> ok | tuple(error, atom()).
 reconcile_trunkstore() ->
     case couch_mgr:all_docs(?TS_DB) of
         {ok, JObj} ->
@@ -171,7 +177,8 @@ reconcile_trunkstore() ->
 %% it is a 'info_' document (IE: trunkstore account)
 %% @end
 %%--------------------------------------------------------------------
--spec(is_trunkstore_account/1 :: (JObj :: json_object()) -> boolean()).
+-spec is_trunkstore_account/1 :: (JObj) -> boolean() when
+      JObj :: json_object().
 is_trunkstore_account(JObj) ->
     wh_json:get_value(<<"type">>, JObj) =:= <<"sys_info">>.
 
@@ -182,7 +189,8 @@ is_trunkstore_account(JObj) ->
 %% containing all numbers assigned to it
 %% @end
 %%--------------------------------------------------------------------
--spec(get_trunkstore_account_numbers/1 :: (Account :: binary()) -> json_object()).
+-spec get_trunkstore_account_numbers/1 :: (Account) -> json_object() when
+      Account :: binary().
 get_trunkstore_account_numbers(Account) ->
     case couch_mgr:open_doc(?TS_DB, Account) of
         {ok, JObj} ->
@@ -209,8 +217,11 @@ get_trunkstore_account_numbers(Account) ->
 %% provided numbers
 %% @end
 %%--------------------------------------------------------------------
--spec(reconcile_account_route/2 :: (AccountId :: binary(), Numbers :: json_object())
-                                   -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
+-spec reconcile_account_route/2 :: (AccountId, Numbers) -> tuple(ok, json_object() | json_objects())
+                                                               | tuple(error, atom()) when
+      AccountId :: binary(),
+      Numbers :: json_object().
+
 reconcile_account_route(AccountId, ?EMPTY_JSON_OBJECT) ->
     case couch_mgr:lookup_doc_rev(?ROUTES_DB, AccountId) of
         {ok, Rev} ->
@@ -245,7 +256,7 @@ reconcile_account_route(AccountId, Numbers) ->
 %% account.
 %% @end
 %%--------------------------------------------------------------------
--spec(find_duplicate_numbers/0 :: () -> ok|tuple(error, atom())).
+-spec find_duplicate_numbers/0 :: () -> ok|tuple(error, atom()).
 find_duplicate_numbers() ->
     case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTE_DUPS, [{<<"group">>, <<"true">>}]) of
         {ok, Routes} ->

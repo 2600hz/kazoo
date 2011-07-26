@@ -26,15 +26,7 @@
 
 -define(TOKEN_DB, <<"token_auth">>).
 
--define(VIEW_FILE, <<"views/user_auth.json">>).
--define(MD5_LIST, <<"user_auth/creds_by_md5">>).
--define(SHA1_LIST, <<"user_auth/creds_by_sha">>).
-
--define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
--define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
-
--define(AGG_DB, <<"user_auth">>).
--define(AGG_FILTER, <<"users/export">>).
+-record(state, {realm = "http://apps002-dev-ord.2600hz.com:8000/v1"}).
 
 %%%===================================================================
 %%% API
@@ -66,7 +58,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, ok, 0}.
+    ssl:start(),
+    {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,19 +102,23 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"openid_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"openid_auth">>,[]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"openid_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"openid_auth">>,[]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"openid_auth">>,[<<"return">>]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"openid_auth">>,[<<"return">>]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}]}=Context}}, State) ->
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
@@ -146,37 +143,70 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.openid_auth">>, [RD, Co
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD, Context | []=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD, Context | []=Params]}
+            ,#state{realm=Realm}=State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
-                  case gen_server:call(openid_auth_srv, {prepare, "005e7b40", "http://google.com/accounts/o8/id"}) of
+
+                  %% Placeholder until we can support other providers
+                  {Provider, ProviderUrl} = get_provider(RD, Context),
+
+                  %% we cant just put the UUID on the url, that would defeat the purpose
+                  CacheKey = whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(16))),
+                  Seed = whistle_util:to_hex(crypto:rand_bytes(32)),
+                  wh_cache:store(CacheKey, {Seed, Provider}, 60),
+
+                  case gen_server:call(openid_auth_srv, {prepare, Seed, ProviderUrl}) of
                       {ok, AuthReq} ->
-                          io:format("AuthReq ~p~n", [AuthReq]),
-                          URL = openid:authentication_url(AuthReq, "http://apps002-dev-ord.2600hz.com:8000/v1/openid_auth/return", "http://apps002-dev-ord.2600hz.com:8000/v1"),
-                          io:format("Go to: ~p~n", [URL]),
-                          C1 = Context#cb_context{resp_headers=[{"Location", whistle_util:to_list(URL)}], resp_error_code=302, resp_status=error},
-                          RD1 = wrq:set_resp_header("Location",  whistle_util:to_list(URL), RD),
-                          Pid ! {binding_result, true, [wrq:do_redirect(true, RD1), C1, Params]};
+                          Return = lists:flatten([Realm, "/openid_auth/checkauth/", whistle_util:to_list(CacheKey)]),
+                          Location = whistle_util:to_list(openid:authentication_url(AuthReq, Return, Realm)),
+                          ?LOG("redirecting client to ~s as openid auth ~s", [Location, Seed]),
+                          Context1 = Context#cb_context{resp_headers=[{"Location", Location}]
+                                                        ,resp_error_code=302
+                                                        ,resp_status=error},
+                          RD1 = wrq:set_resp_header("Location", Location, RD),
+                          Pid ! {binding_result, true, [wrq:do_redirect(true, RD1), Context1, Params]};
                       {error, Error} ->
-                          io:format("Error ~p~n", [Error]),
-                          Pid ! {binding_result, true, [RD, Context, Params]};
-                      Else ->
-                          io:format("Else ~p~n", [Else]),
-                          Pid ! {binding_result, true, [RD, Context, Params]}
+                          ?LOG("openid auth srv prepare: ~p", [Error]),
+                          E = whistle_util:to_binary(Error),
+                          Pid ! {binding_result, true, [RD, crossbar_util:response(fatal, E, Context), Params]}
                   end
 	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD, Context | [<<"return">>]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD, Context | [<<"checkauth">>, CacheKey]=Params]}
+            ,#state{realm=Realm}=State) ->
     spawn(fun() ->
                   crossbar_util:binding_heartbeat(Pid),
-                  case gen_server:call(openid_auth_srv, {verify, "005e7b40", "http://apps002-dev-ord.2600hz.com:8000/v1/openid_auth/return", wrq:req_qs(RD)}) of
-                      {ok, ID} ->
-                          io:format("return ~p~n", [ID]);
+
+                  %% get the UUID that we stored when we started this
+                  %% NOTE: this restricts the return_to to the same machine the redirected the user (cache is local)
+                  {ok, {Seed, Provider}} = wh_cache:fetch(CacheKey),
+
+                  QS = wrq:req_qs(RD),
+                  Return = lists:flatten([Realm, "/openid_auth/checkauth/", whistle_util:to_list(CacheKey)]),
+                  case gen_server:call(openid_auth_srv, {verify, Seed, Return, QS}) of
+                      {ok, IdentityUrl} ->
+                          Identity = get_identity(IdentityUrl, Provider, QS),
+                          case find_account(Identity, Provider) of
+                              {ok, AccountId} ->
+                                  ?LOG("determined that ~s id ~s is associated with account ~s", [Provider, Identity, AccountId]),
+                                  Context1 = create_token(IdentityUrl, AccountId, RD, Context),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]};
+                              {error, _} ->
+                                  io:format("Attributes ~p~n", [extract_attributes(QS)]),
+                                  Context1 = Context#cb_context{resp_data=extract_attributes(QS)
+                                                                ,resp_status=error
+                                                                ,resp_error_code=400
+                                                                ,resp_error_msg = <<"not registered">>
+                                                               },
+                                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                          end;
                       {error, Error} ->
-                          io:format("error ~p~n", [Error])
-                  end,
-                  Pid ! {binding_result, true, [RD, Context, Params]}
+                          ?LOG("openid auth srv verify error: ~p", [Error]),
+                          E = whistle_util:to_binary(Error),
+                          Pid ! {binding_result, true, [RD, crossbar_util:response(error, E, 400, Context), Params]}
+                  end
 	 end),
     {noreply, State};
 
@@ -185,8 +215,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, State) ->
+    {ok, _} = openid_srv:start_link(openid_auth_srv),
     bind_to_crossbar(),
-    io:format("started openid_srv ~p~n", [openid_srv:start_link(openid_auth_srv)]),
     {noreply, State};
 
 handle_info(_, State) ->
@@ -241,7 +271,7 @@ bind_to_crossbar() ->
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
     {true, ['GET']};
-allowed_methods([<<"return">>]) ->
+allowed_methods([<<"checkauth">>, _]) ->
     {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
@@ -257,7 +287,7 @@ allowed_methods(_) ->
 -spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
 resource_exists([]) ->
     {true, []};
-resource_exists([<<"return">>]) ->
+resource_exists([<<"checkauth">>, _]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -274,7 +304,86 @@ resource_exists(_) ->
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], Context) ->
     Context#cb_context{resp_status=success};
-validate([<<"return">>], Context) ->
+validate([<<"checkauth">>, _], Context) ->
     Context#cb_context{resp_status=success};
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
+
+get_provider(_RD, _Context) ->
+    {<<"google">>, "http://google.com/accounts/o8/id"}.
+
+get_identity(IdentityUrl, <<"google">>, _QS) ->
+    {_, _, _, IdentityQS, _} = mochiweb_util:urlsplit(IdentityUrl),
+    whistle_util:to_binary(props:get_value("id", mochiweb_util:parse_qs(IdentityQS))).
+
+find_account(Identifier, Provider) ->
+    case couch_mgr:get_results(<<"accounts">>, {<<"accounts">>, <<"listing_by_openid">>}, [{<<"key">>, [Identifier, Provider]}]) of
+        {ok, []} ->
+            {error, not_registered};
+        {ok, [JObj]} ->
+            {ok, wh_json:get_value([<<"value">>, <<"account_id">>], JObj)};
+         {error, R}=E ->
+            ?LOG("failed to find account for ~s from ~s, ~p", [Identifier, Provider, R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to create a token and save it to the token db
+%% @end
+%%--------------------------------------------------------------------
+-spec create_token/4 :: (IdentityUrl, AccountId, RD, Context) -> #cb_context{} when
+      IdentityUrl :: binary(),
+      AccountId :: binary(),
+      RD :: #wm_reqdata{},
+      Context :: #cb_context{}.
+create_token(IdentityUrl, AccountId, RD, Context) ->
+    Token = {struct, [
+                       {<<"account_id">>, AccountId}
+                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                      ,{<<"method">>, whistle_util:to_binary(?MODULE)}
+                      ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
+                      ,{<<"user_agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                      ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
+                      ,{<<"accept_charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                      ,{<<"accept_endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                      ,{<<"accept_language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                      ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                      ,{<<"keep_alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                      ,{<<"openid_identity_url">>, whistle_util:to_binary(IdentityUrl)}
+                     ]},
+    case couch_mgr:save_doc(?TOKEN_DB, Token) of
+        {ok, Doc} ->
+            AuthToken = wh_json:get_value(<<"_id">>, Doc),
+            crossbar_util:response(
+              {struct, [{<<"account_id">>, AccountId}]}
+              ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
+        {error, _} ->
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+    end.
+
+
+extract_attributes(QS) ->
+    Attributes = [{"http://axschema.org/contact/email", <<"email">>}
+                  ,{"http://axschema.org/namePerson/first", <<"first_name">>}
+                  ,{"http://axschema.org/namePerson/last", <<"last_name">>}
+                  ,{"http://axschema.org/pref/language", <<"lang">>}
+                  ,{"http://axschema.org/contact/country/home", <<"country">>}
+                 ],
+    extract_attributes(Attributes, QS, QS, []).
+
+extract_attributes(_, _, [], Props) ->
+    {struct, Props};
+extract_attributes(Attributes, QS, [{K, V}|T], Acc) ->
+    case props:get_value(V, Attributes) of
+        undefined ->
+            extract_attributes(Attributes, QS, T, Acc);
+        NormalizedName ->
+            %% heavy handed approach to namespace, should only operate in "http://openid.net/srv/ax/1.0"
+            %% ...getting it done fast
+            VKey = re:replace(K, "\\.type\\.", ".value.", [{return, list}]),
+            Value = whistle_util:to_binary(props:get_value(VKey, QS, <<>>)),
+            extract_attributes(Attributes, QS, T, [{NormalizedName, Value}|Acc])
+    end.
