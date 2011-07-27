@@ -121,6 +121,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.clicktocall">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -135,6 +136,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = crossbar_doc:save(Context),
      		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -143,6 +145,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -150,6 +153,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.clicktocall">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -159,16 +163,16 @@ handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
     Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>,  {RD, #cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>, req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, Payload}, State) ->
-    Pid ! {binding_result, false,Payload},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, Payload}, State) ->
-    Pid ! {binding_result, true, Payload},
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>, req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
+    Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _B, Payload}, State) ->

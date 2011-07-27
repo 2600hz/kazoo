@@ -58,6 +58,7 @@
 	  ,resp_data = [] :: mochijson()
 	  ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
 	  ,start = erlang:now() :: tuple(integer(), integer(), integer())
+          ,req_id = "000000000000"
 	 }).
 
 -ifdef(PROFILE).

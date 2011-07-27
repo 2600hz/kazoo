@@ -120,6 +120,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.ts_accounts">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context#cb_context{db_name=?TS_DB}),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -128,6 +129,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_accounts">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
@@ -136,6 +138,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_accounts">>, [RD
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
@@ -144,6 +147,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: THIS IS VERY WRONG! Ties a local crossbar to a LOCAL stepswitch instance... quick and

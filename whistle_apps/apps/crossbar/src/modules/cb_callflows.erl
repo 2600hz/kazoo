@@ -106,14 +106,16 @@ handle_info ({binding_fired, Pid, <<"v1_resource.resource_exists.callflows">>, P
 
 handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
@@ -123,6 +125,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
@@ -132,6 +135,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, C
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375

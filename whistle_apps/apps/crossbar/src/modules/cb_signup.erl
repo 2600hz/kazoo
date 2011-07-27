@@ -354,8 +354,7 @@ create_activation_request(#cb_context{req_data=JObj}=Context) ->
 		false ->
 		    crossbar_util:response_invalid_data([<<"realm">>], Context);
 		#cb_context{resp_status=success, doc=Account}=Context1 ->
-		    Context1#cb_context{doc={struct, [
-						      {<<"pvt_user">>, User}
+		    Context1#cb_context{doc={struct, [{<<"pvt_user">>, User}
 						      ,{<<"pvt_account">>, Account}
 						      ,{<<"has_expired">>, false }
 						      ,{<<"pvt_activation_key">>, create_activation_key()}

@@ -787,7 +787,7 @@ add_caller(Srv, JObj) ->
 %% and the request loops back it will be processed normally.
 %% @end
 %%--------------------------------------------------------------------
--spec find_conference_route/2 :: (CallId, Q) -> no_return() when
+-spec find_conference_route/2 :: (CallId, Q) -> ok when
       CallId :: binary(),
       Q :: binary().
 find_conference_route(CallId, Q) ->
@@ -804,7 +804,7 @@ find_conference_route(CallId, Q) ->
 %% appropriate action to connect them to the conferece.
 %% @end
 %%--------------------------------------------------------------------
--spec request_call_status/2 :: (CallId, Q) -> no_return() when
+-spec request_call_status/2 :: (CallId, Q) -> ok when
       CallId :: binary(),
       Q :: binary().
 request_call_status(CallId, Q) ->
@@ -822,7 +822,7 @@ request_call_status(CallId, Q) ->
 %% this conference
 %% @end
 %%--------------------------------------------------------------------
--spec added_participant_event/2 :: (CallId, Conf) -> no_return() when
+-spec added_participant_event/2 :: (CallId, Conf) -> ok when
       CallId :: binary(),
       Conf :: #conf{}.
 added_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
