@@ -2,7 +2,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010-2011 VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% Created : 14 Dec 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -19,6 +19,7 @@
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
 -export([binding_heartbeat/1, binding_heartbeat/2]).
+-export([put_reqid/1]).
 
 -include("../include/crossbar.hrl").
 
@@ -216,3 +217,6 @@ binding_heartbeat(BPid, Timeout) ->
 		       end,
 		  timer:cancel(Tref)
 	  end).
+
+put_reqid(#cb_context{req_id=ReqId}) ->
+    put(callid, ReqId).

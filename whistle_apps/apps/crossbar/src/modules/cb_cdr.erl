@@ -116,6 +116,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdr">>, Payload}
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.cdr">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),

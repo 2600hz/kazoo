@@ -122,14 +122,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.servers">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
 	    spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 			  Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>, <<"text/plain">>}
 									,{<<"Content-Length">>
 									      ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
@@ -144,6 +146,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
                   %% and we will not execute unless we are able to update the document (using the doc
                   %% as a mutex basicly).  However, if a server achieves the 'lock' and dies nothing
                   %% cleans it up at the moment.
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = execute_deploy_cmd(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -152,6 +155,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -159,6 +163,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -166,6 +171,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),

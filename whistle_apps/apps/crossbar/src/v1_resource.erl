@@ -39,7 +39,8 @@ init(Opts) ->
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     ?TIMER_TICK("v1.allowed_methods begin"),
-    put(callid, couch_mgr:get_uuid()),
+    ReqId = couch_mgr:get_uuid(),
+    put(callid, ReqId),
     ?LOG_START("recieved new request ~s", [wrq:disp_path(RD)]),
     ?LOG("host: ~s", [wrq:get_req_header("Host", RD)]),
     ?LOG("content type: ~s", [wrq:get_req_header("Content-Type", RD)]),
@@ -50,17 +51,17 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     %% Body = wrq:req_body(RD),
     #cb_context{req_json=ReqJSON}=Context1 = case wrq:get_req_header("Content-Type", RD) of
 		   "multipart/form-data" ++ _ ->
-		       extract_files_and_params(RD, Context);
+		       extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
 		   "application/x-www-form-urlencoded" ++ _ ->
-		       extract_files_and_params(RD, Context);
+		       extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
 		   "application/json" ++ _ ->
-		       Context#cb_context{req_json=get_json_body(RD)};
+		       Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
 		   "application/x-json" ++ _ ->
-		       Context#cb_context{req_json=get_json_body(RD)};
+		       Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
 		   %% _ when Body =:= undefined; Body =:= <<>> ->
                    %%     Context#cb_context{req_json=?EMPTY_JSON_OBJECT};
 		   _ ->
-		       extract_file(RD, Context#cb_context{req_json=?EMPTY_JSON_OBJECT})
+		       extract_file(RD, Context#cb_context{req_json=?EMPTY_JSON_OBJECT, req_id=ReqId})
 	       end,
 
     Verb = get_http_verb(RD, ReqJSON),
@@ -229,14 +230,15 @@ finish_request(RD, #cb_context{start=T1, session=undefined}=Context) ->
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
     ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
-    {true, RD1, Context1};
+    {true, set_req_header(RD1, Context1), Context1};
 finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
     ?LOG_END("fulfilled in ~p ms, finish session", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
-    {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}.
+    {true, crossbar_session:finish_session(S, set_req_header(RD1, Context1))
+     ,Context1#cb_context{session=undefined}}.
 
 %%%===================================================================
 %%% Content Acceptors
@@ -315,6 +317,15 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
             Params1 = [ whistle_util:to_binary(P) || P <- Params ],
             parse_path_tokens(List2, Loaded, [{Mod, Params1} | Events])
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Addes the request id as a custom header on all responses
+%% @end
+%%--------------------------------------------------------------------
+set_req_header(RD, #cb_context{req_id=ReqId}) ->
+    wrq:set_resp_header("X-Request-ID", whistle_util:to_list(ReqId), RD).
 
 %%--------------------------------------------------------------------
 %% @private

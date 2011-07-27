@@ -97,7 +97,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
@@ -140,6 +142,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec bind_to_crossbar/0 :: () -> no_return().
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.authorize">>).
