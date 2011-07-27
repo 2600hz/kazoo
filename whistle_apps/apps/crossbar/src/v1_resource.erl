@@ -120,11 +120,11 @@ forbidden(RD, Context) ->
     ?TIMER_TICK("v1.forbidden start"),
     case is_authentic(RD, Context) of
         {true, RD1, Context1} ->
-            ?LOG("the request has been authorized"),
+            ?LOG("the request has been authenticated"),
             case is_permitted(RD1, Context1) of
                 {true, RD2, Context2} ->
 		    ?TIMER_TICK("v1.forbidden false end"),
-                    ?LOG("the request has been permitted"),
+                    ?LOG("the request has been authorized"),
                     {false, RD2, Context2};
                 false ->
 		    ?TIMER_TICK("v1.forbidden true end"),
