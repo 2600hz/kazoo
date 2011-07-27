@@ -19,51 +19,35 @@ do_validate() ->
     {ok, Bin1} = file:read_file("/opt/whistle/data.json"),
     Data = mochijson2:decode(Bin1),
     {ok, Schema} = couch_mgr:open_doc("crossbar%2Fschema", <<"devices">>),
-    io:format("------~p", [wh_json:get_value(<<"schema">>, Schema)]),
-    validate(Data, wh_json:get_value(<<"schema">>, Schema)).
-
+    R = validate(wh_json:get_value(<<"data">>, Data), wh_json:get_value([<<"schema">>], Schema)),
+    io:format("~n___+++ result is ~p", [R]).
 
 validate(Instance, {struct, Definitions}) ->
-    lists:foldl(fun({Definition, Attributes}, Acc) ->
-                        Result = case Definition of
-				     <<"minimum">> ->
-					 case wh_json:get_value([<<"exclusiveMinimum">>], Definitions, false) of
-					     true ->
-						 validate_instance(Instance, <<"exclusiveMinimum">>, Attributes);
-					     _ ->
-						 validate_instance(Instance, <<"minimum">>, Attributes)
-					 end;
-				     <<"maximum">> ->
-					 case wh_json:get_value([<<"exclusiveMaximum">>], Definitions, false) of
-					     true ->
-						 validate_instance(Instance, <<"exclusiveMaximum">>, Attributes);
-					     _ ->
-						 validate_instance(Instance, <<"maximum">>, Attributes)
-					 end;
-				     <<"exclusiveMinimum">> ->
-					 Acc;
-				     <<"exclusiveMaximum">> ->
-					 Acc;
-				     <<"_id">> ->
-					 Acc;
-				     <<"_rev">> ->
-					 Acc;
-				     SubDefinition={struct, _} ->
-					io:format("mooo~p ", [SubDefinition]),
-					 validate(Instance, SubDefinition);
-				     _ ->
-					 io:format("-- ~p->~p~n", [Definition, Attributes]),
-					 validate_instance(Instance, Definition, Attributes)
-				 end,
-                        case Result of
-                            false ->
-                                format_log(info, "validate_instance(~p, ~p, ~p) result ~p~n", [Instance, Definition, Attributes, Result]);
-                            _ ->
-                                ok
-                        end,
-                        Acc and Result
-                end, true, Definitions).
+    validate(Instance, {struct, Definitions}, []).
 
+validate(Instance, {struct, Definitions}, ValidationMessages) ->
+    lists:foldl(fun({Definition, Attributes}, Acc) ->
+			io:format("~n___+++ Instance :: ~p~n ___+++ Definition :: ~p~n ___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
+			case Definition of
+			    <<"_id">> ->
+				Acc;
+			    <<"_rev">> ->
+				Acc;
+			    _ ->
+				List = [validate_instance(Instance, Definition, Attributes) | Acc],
+				io:format("LOG ~p",[List]),
+				List
+			end
+                end, ValidationMessages, Definitions).
+
+-define(TRACE, true).
+trace_validate(Instance, Type, Attribute) ->
+    case ?TRACE of
+	true ->
+	    io:format("~n___+++ Validating Instance :: ~p, Type :: ~p, Attribute :: ~p~n", [Instance, Type, Attribute]);
+	false ->
+	    nothing
+    end.
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.7
@@ -71,10 +55,9 @@ validate(Instance, {struct, Definitions}) ->
 %%            value, and not be undefined.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(undefined, <<"required">>, Attribute) ->
-    not is_boolean_true(Attribute);
-validate_instance(_, <<"required">>, _) ->
-    true;
+validate_instance(Instance, <<"required">>, Attribute) ->
+    trace_validate(Instance, <<"required">>, Attribute),
+    not is_boolean_true(Attribute) orelse throw({validation_error, <<Attribute, " is required for ", Instance, " but not found">>});
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -82,7 +65,8 @@ validate_instance(_, <<"required">>, _) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(undefined, _, _) ->
-    true;
+    trace_validate(undefined, none, none),
+    throw({validation_error, <<"Instance is undefined">>});
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -92,48 +76,75 @@ validate_instance(undefined, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"type">>, [{struct, _}=Schema]) ->
+    trace_validate(Instance, <<"type">>, struct),
     validate(Instance, Schema);
 validate_instance(Instance, <<"type">>, [{struct, _}=Schema|T]) ->
+    trace_validate(Instance, <<"type">>, struct_list),
     validate(Instance, Schema) orelse validate_instance(Instance, <<"type">>, T);
 validate_instance(Instance, <<"type">>, [H|T]) ->
+    trace_validate(Instance, <<"type">>, list),
     case validate_instance(Instance, <<"type">>, H) of
-        false when T =:= [] ->
-            false;
-        false ->
-            validate_instance(Instance, <<"type">>, T);
-        true ->
-            true
+        false when T =:= [] -> throw({validation_error, <<Instance, " type ", H, " is invalid">>});
+        false               -> validate_instance(Instance, <<"type">>, T);
+        true                -> true
     end;
 validate_instance(Instance, <<"type">>, <<"null">>) ->
+    trace_validate(Instance, <<"type">>, <<"null">>),
     case Instance of
         <<"null">> -> true;
-        null -> true;
-        _ -> false
+        null       -> true;
+        _          -> throw({validation_error, <<Instance, " must be of type null">>})
     end;
 validate_instance(Instance, <<"type">>, <<"string">>) ->
+    trace_validate(Instance, <<"type">>, <<"string">>),
     case Instance of
         Str when is_atom(Str); is_binary(Str) ->
-            not validate_instance(Str, <<"type">>, <<"null">>)
-                andalso not validate_instance(Str, <<"type">>, <<"boolean">>);
-        _ -> false
+            case not validate_instance(Str, <<"type">>, <<"null">>)
+                andalso not validate_instance(Str, <<"type">>, <<"boolean">>) of
+		true  -> true;
+		false -> throw({validation_error, <<Str, " must be of type string">>})
+	    end;
+        _ -> throw({validation_error, <<Instance, " must be of type string">>})
     end;
 validate_instance(Instance, <<"type">>, <<"number">>) ->
-    is_number(Instance);
+    trace_validate(Instance, <<"type">>, <<"number">>),
+    case is_number(Instance) of
+	false -> throw({validation_error, <<Instance, "must be of type number">>});
+	true  -> true
+    end;
 validate_instance(Instance, <<"type">>, <<"integer">>) ->
-    is_integer(Instance);
+    trace_validate(Instance, <<"required">>, <<"integer">>),
+    case is_integer(Instance) of
+	false -> throw({validation_error, <<Instance, " must be of type integer">>});
+	true  -> true
+    end;
 validate_instance(Instance, <<"type">>, <<"boolean">>) ->
+    trace_validate(Instance, <<"type">>, <<"boolean">>),
     case Instance of
-        true -> true;
-        <<"true">> -> true;
-        false -> true;
-        <<"false">> -> true;
-        _ -> false
+        true         -> true;
+        <<"true">>   -> true;
+        false        -> true;
+        <<"false">>  -> true;
+        _            -> throw({validation_error, <<Instance, " must be of type boolean">>})
     end;
 validate_instance(Instance, <<"type">>, <<"array">>) ->
-    is_list(Instance);
+    trace_validate(Instance, <<"type">>, <<"array">>),
+    case is_list(Instance) of
+	true  -> true;
+	false -> throw({validation_error, <<Instance, "must be of type array">>})
+    end;
 validate_instance(Instance, <<"type">>, <<"object">>) ->
-    try {struct, _} = Instance, true catch _:_ -> false end;
+    trace_validate(Instance, <<"type">>, <<"object">>),
+    try
+	{struct, _} = Instance,
+	true
+    catch
+	_:_ ->
+	    Encoded = mochijson2:encode(Instance),
+	    throw({validation_error,<<Encoded, " must be an Instance">>})
+    end;
 validate_instance(_, <<"type">>, _) ->
+    trace_validate(none, <<"type">>, none),
     true;
 
 %%--------------------------------------------------------------------
@@ -145,10 +156,12 @@ validate_instance(_, <<"type">>, _) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
-    not validate_instance(Instance, <<"type">>, <<"object">>)
-        orelse lists:foldr(fun({Name, Schema}, Acc) ->
-                                   Acc and validate(wh_json:get_value([Name], Instance), Schema)
-                           end, true, Attribute);
+    trace_validate(Instance, <<"properties">>, Attribute),
+    not validate_instance(Instance, <<"type">>, <<"object">>) orelse
+	lists:foldr(fun({Name, Schema}, Acc) ->
+			    {Ret, _} = validate(wh_json:get_value(Name, Instance), Schema),
+			    Acc and Ret
+		    end, true, Attribute);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -164,7 +177,7 @@ validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
 %% Implementation of draft-zyp-json-schema-03 section 5.4
 %% additionalProperties - This attribute defines a schema for all
 %%                        properties that are not explicitly defined in
-%%                        an object type definition.
+%%                        an object type definition
 %% @end
 %%--------------------------------------------------------------------
 
@@ -176,10 +189,11 @@ validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
-    not validate_instance(Instance, <<"type">>, <<"array">>)
-        orelse lists:foldr(fun(Item, Acc) ->
-                                   Acc and validate(Item, Schema)
-                           end, true, Instance);
+    trace_validate(Instance, <<"items">>, none),
+    not validate_instance(Instance, <<"type">>, <<"array">>) orelse
+	lists:foldr(fun(Item, Acc) ->
+			    Acc and validate(Item, Schema)
+		    end, true, Instance);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -208,8 +222,11 @@ validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"minimum">>, Attribute)->
-    not validate_instance(Instance, <<"type">>, <<"number">>)
-        orelse Instance >= Attribute;
+    case not validate_instance(Instance, <<"type">>, <<"number">>)
+	orelse Instance >= Attribute of
+	true -> true;
+	false -> throw({validation_error, <<Instance, " must be an integer to have a minimum">>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -219,9 +236,12 @@ validate_instance(Instance, <<"minimum">>, Attribute)->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"maximum">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, <<"number">>)
-        orelse Instance =< Attribute;
-
+    trace_validate(Instance, <<"maximum">>, Attribute),
+    case not validate_instance(Instance, <<"type">>, <<"number">>)
+        orelse Instance =< Attribute of
+	true -> true;
+	false -> throw({validation_error, <<Instance, " must be an integer to have a maximum">>})
+    end;
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.11
@@ -231,8 +251,10 @@ validate_instance(Instance, <<"maximum">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"exclusiveMinimum">>, Instance) when is_number(Instance) ->
-    false;
+    trace_validate(Instance, <<"exclusiveMinimum">>, Instance),
+    throw({validation_error, <<"error in exclusiveMinimum">>});
 validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
+    trace_validate(Instance, <<"exclusiveMinimum">>, Attribute),
     validate_instance(Instance, <<"minimum">>, Attribute);
 
 %%--------------------------------------------------------------------
@@ -244,8 +266,10 @@ validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"exclusiveMaximum">>, Instance) when is_number(Instance) ->
-    false;
+    trace_validate(Instance, <<"exclusiveMaximum">>,Instance),
+    throw({validation_error, <<"error in exclusiveMaximun">>});
 validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
+    trace_validate(Instance, <<"exclusiveMaximum">>, Attribute),
     validate_instance(Instance, <<"maximum">>, Attribute);
 
 %%--------------------------------------------------------------------
@@ -256,8 +280,12 @@ validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"minItems">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, <<"array">>)
-        orelse length(Instance) >= Attribute;
+    trace_validate(Instance, <<"minItems">>, Attribute),
+    case not validate_instance(Instance, <<"type">>, <<"array">>)
+        orelse length(Instance) >= Attribute of
+	true -> true;
+	false -> throw({validation_error, <<Instance, " must be an array to have minItems, or there are less items than minItems">>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -267,8 +295,12 @@ validate_instance(Instance, <<"minItems">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"maxItems">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, <<"array">>)
-        orelse length(Instance) =< Attribute;
+    trace_validate(Instance, <<"maxItems">>, Attribute),
+    case not validate_instance(Instance, <<"type">>, <<"array">>)
+        orelse length(Instance) =< Attribute of
+	true -> {true, <<>>};
+	false -> throw({validation_error, <<Instance, " must be an array to have maxItems, or there are more items than maxItems">>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -278,8 +310,12 @@ validate_instance(Instance, <<"maxItems">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"uniqueItems">>, _) ->
-    not validate_instance(Instance, <<"type">>, <<"array">>)
-        orelse length(Instance) =:= length(lists:usort(Instance));
+    trace_validate(Instance, <<"uniqueItems">>, none),
+    case not validate_instance(Instance, <<"type">>, <<"array">>)
+        orelse length(Instance) =:= length(lists:usort(Instance)) of
+	true -> true;
+	false -> throw({validation_error, <<Instance, " items must be unique">>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -289,12 +325,6 @@ validate_instance(Instance, <<"uniqueItems">>, _) ->
 %%           in order to be valid.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"pattern">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, <<"string">>)
-        orelse case re:compile(to_list(Attribute)) of
-                   {ok, RE} -> re:run(to_list(Instance), RE) =/= nomatch;
-                   _ -> false
-               end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -304,9 +334,12 @@ validate_instance(Instance, <<"pattern">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"minLength">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, <<"string">>)
-        orelse length(to_list(Instance)) >= Attribute;
-
+    trace_validate(Instance, <<"minLength">>, Attribute),
+    case not validate_instance(Instance, <<"type">>, <<"string">>)
+        orelse length(to_list(Instance)) >= Attribute of
+	true -> true;
+	false -> throw({validation_error, <<Instance, " is too short, min. ", Attribute>>})
+    end;
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.18
@@ -315,8 +348,12 @@ validate_instance(Instance, <<"minLength">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"maxLength">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, <<"string">>)
-        orelse length(to_list(Instance)) =< Attribute;
+    trace_validate(Instance, <<"maxLength">>, Attribute),
+    case not validate_instance(Instance, <<"type">>, <<"string">>)
+        orelse length(to_list(Instance)) =< Attribute of
+	true -> true;
+	false -> throw({false, <<Instance, " is too long, max. ", Attribute>>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -326,7 +363,11 @@ validate_instance(Instance, <<"maxLength">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"enum">>, Attribute) ->
-    lists:member(Instance, Attribute);
+    trace_validate(Instance, <<"enum">>, Attribute),
+    case lists:member(Instance, Attribute) of
+	true -> true;
+	false -> throw({false, <<Instance, " must be member of the array">>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -368,12 +409,19 @@ validate_instance(Instance, <<"enum">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, <<"number">>)
+    trace_validate(Instance, <<"divisibleBy">>, Attribute),
+    case not validate_instance(Instance, <<"type">>, <<"number">>)
         orelse case {Instance, Attribute} of
-                   {_, 0} -> false;
+                   {_, 0} -> throw({validation_error, <<"Division by 0 not allowed">>});
                    {0, _} -> true;
-                   {I, A} -> trunc(I/A) == I/A
-               end;
+                   {I, A} -> case trunc(I/A) == I/A of
+				 true -> true;
+				 false -> throw({validation_error, <<"Not divisible ">>})
+			     end
+	       end of
+	true -> true;
+	false -> throw({validation_error, <<Instance, " must be divisible by", Attribute>>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -385,7 +433,11 @@ validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"disallow">>, Attribute) ->
-    not validate_instance(Instance, <<"type">>, Attribute);
+    trace_validate(Instance, <<"disallow">>, Attribute),
+    case not validate_instance(Instance, <<"type">>, Attribute) of
+	true -> true;
+	false -> throw({validation_error, <<Instance, " type is not allowed">>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -403,6 +455,7 @@ validate_instance(Instance, <<"disallow">>, Attribute) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(_, <<"id">>, _) ->
+    trace_validate(none, <<"id">>, none),
     true;
 
 %%--------------------------------------------------------------------
@@ -421,6 +474,7 @@ validate_instance(_, <<"id">>, _) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(_, <<"\$schema">>, _) ->
+    trace_validate(none, <<"schema">>, none),
     true;
 
 %%--------------------------------------------------------------------
@@ -428,7 +482,9 @@ validate_instance(_, <<"\$schema">>, _) ->
 %% End of validate_instance
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(_,_,_) -> false.
+validate_instance(_,_,_) ->
+    trace_validate(none, none, none),
+    throw({validatation_error, <<"This instance is not valid">>}).
 
 %%--------------------------------------------------------------------
 %% @private
