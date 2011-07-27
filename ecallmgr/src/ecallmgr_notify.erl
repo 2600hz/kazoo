@@ -192,7 +192,7 @@ code_change(_OldVsn, State, _Extra) ->
 start_amqp() ->
     try
         true = is_binary(Q = amqp_util:new_queue()),
-        {'basic.qos_ok'} = amqp_util:basic_qos(1),
+        #'basic.qos_ok'{} = amqp_util:basic_qos(1),
         _ = amqp_util:bind_q_to_callmgr(Q, ?KEY_SIP_NOTIFY),
         _ = amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),

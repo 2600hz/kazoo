@@ -111,7 +111,7 @@ handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
     {reply, erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid), State};
 
 handle_call(_, _, #state{handler_pid = undefined}=State) ->
-    {reply, {error, amqp_down}, State};
+    {reply, {error, amqp_down}, State, 0};
 
 handle_call(get_host, _, #state{host=Host}=State) ->
     {reply, Host, State};
@@ -236,6 +236,7 @@ handle_info({nodeup, RabbitNode}, #state{host=Host, conn_params=#'amqp_params'{n
     end;
 
 handle_info(_Info, State) ->
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
