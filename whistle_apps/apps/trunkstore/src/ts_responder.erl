@@ -112,6 +112,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+%% receive resource requests from Apps
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    {_Pid, _Ref} = spawn_monitor(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
+    {noreply, State, hibernate};
+
+handle_info({'DOWN', _, process, _Pid, _Reason}, State) ->
+    ?LOG_SYS("handle_req for ~p down: ~p", [_Pid, _Reason]),
+    {noreply, State, hibernate};
+
 handle_info(timeout, #state{is_amqp_up=false}=S) ->
     ?LOG_SYS("starting amqp"),
     {ok, CQ} = start_amqp(),
@@ -138,13 +148,8 @@ handle_info(Req, #state{is_amqp_up=false}=S) ->
 	    {noreply, S}
     end;
 
-%% receive resource requests from Apps
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
-    {noreply, State};
-
 handle_info(#'basic.consume_ok'{}, S) ->
-    {noreply, S};
+    {noreply, S, hibernate};
 
 %% catch all so we don't lose state
 handle_info(_Unhandled, State) ->
@@ -216,29 +221,43 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj) ->
     end;
 
 process_req({<<"dialplan">>,<<"route_req">>}, ApiJObj) ->
-    try
-        true = whistle_api:route_req_v(ApiJObj),
-        CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
-        case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj), wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)} of
-            {AcctID, undefined} when is_binary(AcctID) ->
-                %% Coming from carrier (off-net)
-                ?LOG_START(CallID, "Offnet call starting", []),
-                ts_offnet_sup:start_handler(<<"offnet-", CallID/binary>>, ApiJObj);
-            {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
-                %% Coming from PBX (on-net); authed by Registrar or ts_auth
-                ?LOG_START(CallID, "Onnet call starting", []),
-                ts_onnet_sup:start_handler(<<"onnet-", CallID/binary>>, ApiJObj);
-            {_AcctID, _AuthID} ->
-                ?LOG("Error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID])
-        end
-    catch
-	A:{error,B} ->
-	    ?LOG_END("Route request exception: ~p:~p", [A, B]),
-	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()])
+    true = whistle_api:route_req_v(ApiJObj),
+    CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
+    case { wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj)
+	   ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)
+	 } of
+	{AcctID, undefined} when is_binary(AcctID) ->
+	    handle_offnet(CallID, ApiJObj);
+	{AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
+	    handle_onnet(CallID, ApiJObj);
+	{_AcctID, _AuthID} ->
+	    ?LOG("Error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID])
     end;
 
 process_req(_MsgType, _Prop) ->
     ?LOG_END("Unhandled request of type ~p", [_MsgType]).
+
+handle_offnet(CallID, ApiJObj) ->
+    try
+	%% Coming from carrier (off-net)
+	?LOG_START(CallID, "Offnet call starting", []),
+	ts_offnet_sup:start_handler(CallID, ApiJObj)
+    catch
+	_:_E ->
+	    ?LOG_SYS(CallID, "Error processing offnet req: ~p", [_E])
+    end,
+    ts_offnet_sup:stop_handler(CallID).
+
+handle_onnet(CallID, ApiJObj) ->
+    try
+	%% Coming from client (on-net)
+	?LOG_START(CallID, "Onnet call starting", []),
+	ts_onnet_sup:start_handler(CallID, ApiJObj)
+    catch
+	_:_E ->
+	    ?LOG_SYS(CallID, "Error processing onnet req: ~p", [_E])
+    end,
+    ts_onnet_sup:stop_handler(CallID).
 
 -spec(send_resp/2 :: (JSON :: iolist(), RespQ :: binary()) -> ok).
 send_resp(JSON, RespQ) ->

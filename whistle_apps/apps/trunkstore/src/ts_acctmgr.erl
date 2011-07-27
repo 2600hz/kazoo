@@ -17,7 +17,7 @@
 %% Data Access API
 -export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
 	 ,has_flatrates/1 %% has_flatrates(AcctId) - check if account has a free flatrate trunk
-	 ,reserve_trunk/4 %% reserve_trunk(AcctId, CallID, Amount, FlatRateEnabled) - only reserve if avail_credit > Amt (0 if unspecified)
+	 ,reserve_trunk/4 %% reserve_trunk(AcctId, CallID, Amount, FRE) - only reserve if avail_credit > Amt (0 if unspecified)
 	 ,release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
 	 ,copy_reserve_trunk/4 %% when a failover trunk gets the b-leg callid resolved, copy its reserve doc to the b-leg callid
 	]).
@@ -81,8 +81,12 @@ has_flatrates(Acct) ->
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
 %% if the Amt is more than available credit, return error
--spec(reserve_trunk/4 :: (Acct :: binary(), CallID :: binary(), Amt :: float() | integer(), FRE :: boolean()) ->
-			      tuple(ok, flat_rate | per_min) | tuple(error, no_account | no_callid | entry_exists | no_funds | not_found | no_results)).
+%% is this a flat-rate-enabled trunk request? authz will determine which kind to actually bill as
+-spec reserve_trunk/4 :: (Acct, CallID, Amt, FRE) -> {ok, flat_rate | per_min} | {error, no_account | no_callid | entry_exists | no_funds | not_found | no_results} when
+      Acct :: binary(),
+      CallID :: binary(),
+      Amt :: float() | integer(),
+      FRE :: boolean().
 reserve_trunk(<<>>, _, _, _) ->
     ?LOG("no_account at entry to reserve_trunk/4"),
     {error, no_account};
@@ -163,55 +167,18 @@ handle_call({has_flatrates, AcctId}, From, #state{current_read_db=RDB}=S) ->
     spawn(fun() -> gen_server:reply(From, has_flatrates(RDB, AcctId)) end),
     {noreply, S};
 
-handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    Self = self(),
-    ?LOG(CallID, "Trying to reserve a per-minute trunk for ~s for ~p", [AcctId, Amt]),
-
-    spawn(fun() ->
-		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
-		  case has_credit(RDB, AcctId, Amt) of
-		      true ->
-			  ?LOG(CallID, "Reserved a per-minute trunk for ~s for ~p", [AcctId, Amt]),
-			  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)) end),
-			  gen_server:reply(From, {ok, per_min});
-		      false ->
-			  ?LOG(CallID, "Failed to reserve a per-minute trunk for ~s", [AcctId]),
-			  gen_server:reply(From, {error, no_funds})
-		  end
-	  end),
-    {noreply, S};
-
-handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    Self = self(),
+handle_call({reserve_trunk, AcctId, [CallID, Amt, FRE]}, From, #state{current_write_db=WDB}=S) ->
     ?LOG(CallID, "Try to reserve a trunk for ~s (against $~p if needed)", [AcctId, Amt]),
     spawn(fun() ->
-		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
-
-		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
-		      {error, not_found}=E ->
-			  ?LOG(CallID, "View accounts/balance not found in DB ~s", [RDB]),
-			  gen_server:reply(From, E);
-		      {ok, []} ->
-			  ?LOG(CallID, "No view results for ~s, no_results", [AcctId]),
-			  gen_server:reply(From, {error, no_results});
-		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
-			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
-			      true ->
-				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)), build_view(WDB, AcctId) end),
-				  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
-				  gen_server:reply(From, {ok, flat_rate});
-			      false ->
-				  AvailableCredit = wh_json:get_value(<<"credit">>, Funds, 0),
-				  case AvailableCredit > Amt of
-				      true ->
-					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)), build_view(WDB, AcctId) end),
-					  ?LOG(CallID, "Per-minute reserved for ~s", [AcctId]),
-					  gen_server:reply(From, {ok, per_min});
-				      false ->
-					  ?LOG(CallID, "Insufficient credit (~p) for this call for ~s", [AvailableCredit, AcctId]),
-					  gen_server:reply(From, {error, no_funds})
-				  end
-			  end
+		  case whistle_util:is_true(FRE) of
+		      true ->
+			  _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)),
+			  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
+			  gen_server:reply(From, {ok, flat_rate});
+		      false ->
+			  _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)),
+			  ?LOG(CallID, "Per-minute reserved for ~s", [AcctId]),
+			  gen_server:reply(From, {ok, per_min})
 		  end
 	  end),
     {noreply, S};
@@ -242,34 +209,19 @@ handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, _From, #state
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({release_trunk, AcctId, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
-    Self = self(),
+handle_cast({release_trunk, AcctId, [CallID,Amt,Type]}, #state{current_write_db=WDB}=S) ->
     spawn(fun() ->
                   put(callid, CallID),
 		  ?LOG("Release trunk for ~s: $~p", [AcctId, Amt]),
-
-		  load_account(AcctId, WDB, Self),
-
-		  case trunk_type(RDB, AcctId, CallID) of
-		      non_existant ->
-                          ?LOG("Trunk for ~s not found in ~s, trying ~s", [AcctId, RDB, WDB]),
-			  case trunk_type(WDB, AcctId, CallID) of
-			      non_existant -> ?LOG(CallID, "Failed to find trunk to release for ~s", [AcctId]);
-			      per_min -> release(per_min, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt)));
-			      flat_rate -> release(flat_rate, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate)))
-			  end;
-		      per_min -> release(per_min, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, per_min, Amt)));
-		      flat_rate -> release(flat_rate, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, flat_rate)))
-		  end,
-		  build_view(WDB, AcctId)
+		  release_result(Type, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, Type, Amt)))
 	  end),
     {noreply, S}.
 
-release(per_min, {ok, _}) ->
+release_result(per_min, {ok, _}) ->
     ?LOG("Released per minute trunk");
-release(flat_rate, {ok, _}) ->
+release_result(flat_rate, {ok, _}) ->
     ?LOG("Released flat rate trunk");
-release(_, {error, _E}) ->
+release_result(_, {error, _E}) ->
     ?LOG("Failed to release trunk: ~p", [_E]).
 
 %%--------------------------------------------------------------------
@@ -430,6 +382,8 @@ release_doc(AcctId, CallID, flat_rate) ->
 			      ,{<<"doc_type">>, <<"release">>}
 			     ]).
 
+release_doc(AcctId, CallID, flat_rate, _) ->
+    release_doc(AcctId, CallID, flat_rate);
 release_doc(AcctId, CallID, per_min, Amt) ->
     debit_doc(AcctId, [{<<"_id">>, release_doc_id(CallID, AcctId)}
 		       ,{<<"call_id">>, CallID}

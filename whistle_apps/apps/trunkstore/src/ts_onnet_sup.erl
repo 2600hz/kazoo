@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_handler/2]).
+-export([start_link/0, start_handler/2, stop_handler/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -34,8 +34,12 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_handler(ID, RouteReqJObj) ->
-    supervisor:start_child(?SERVER, ?CHILD(ID, RouteReqJObj)).
+start_handler(CallID, RouteReqJObj) ->
+    supervisor:start_child(?SERVER, ?CHILD(<<"onnet-", CallID/binary>>, RouteReqJObj)).
+
+stop_handler(CallID) ->
+    ok = supervisor:terminate_child(?SERVER, <<"onnet-", CallID/binary>>),
+    supervisor:delete_child(?SERVER, <<"onnet-", CallID/binary>>).
 
 %%%===================================================================
 %%% Supervisor callbacks
