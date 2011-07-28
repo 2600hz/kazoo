@@ -19,46 +19,26 @@ do_validate() ->
     {ok, Bin1} = file:read_file("/opt/whistle/data.json"),
     Data = mochijson2:decode(Bin1),
     {ok, Schema} = couch_mgr:open_doc("crossbar%2Fschema", <<"devices">>),
-    try
-	R = validate(wh_json:get_value(<<"data">>, Data), Schema),
-	io:format("~n___+++ result is ~p", [R])
-    catch
-	throw:Error  ->
-	    io:format("validation error ~p", [Error]),
-	    false;
-	A:B ->
-	    io:format(" ! unknown exception ~p > -~p~n", [A, B]),
-	    false
-    end.
+    R = validate(wh_json:get_value(<<"data">>, Data), Schema),
+    io:format("~n___+++ result is ~p", [lists:flatten(R)]).
 
 validate(Instance, {struct, Definitions}) ->
-    lists:map(fun({Definition, Attributes}) ->
-		      io:format("~n___+++ Instance :: ~p~n___+++ Definition :: ~p~n___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
-		      case Definition of
-			  <<"_id">>  -> true;
-			  <<"_rev">> -> true;
-			  _          -> validate_instance(Instance, Definition, Attributes)
-		      end
-	      end, Definitions).
+    validate(Instance, {struct, Definitions}, []).
 
-do_validate(Instance, {struct, Definitions}) ->
-    try
-	lists:map(fun({Definition, Attributes}) ->
-			  io:format("~n___+++ Instance :: ~p~n___+++ Definition :: ~p~n___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
-			  case Definition of
-			      <<"_id">>  -> true;
-			      <<"_rev">> -> true;
-			      _          -> validate_instance(Instance, Definition, Attributes)
-			  end
-		    end, Definitions)
-    catch
-	throw:Error  ->
-	    io:format("validation error ~p", [Error]),
-	    false;
-	A:B ->
-	    io:format(" ! unknown exception ~p > -~p~n", [A, B]),
-	    false
-    end.
+validate(Instance, {struct, Definitions}, Messages) ->
+    lists:foldl(fun({Definition, Attributes}, Acc) ->
+						%io:format("~n___+++ Instance :: ~p~n___+++ Definition :: ~p~n___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
+			Validation = case Definition of
+			    <<"_id">>  -> true;
+			    <<"_rev">> -> true;
+			    _          -> validate_instance(Instance, Definition, Attributes)
+			end,
+			case Validation of
+			    true                   -> Acc;
+			    {validation_error, _}  -> [Validation | Acc];
+			    _  -> [Validation | Acc]
+			end
+		end, Messages, Definitions).
 
 -define(TRACE, true).
 trace_validate(Instance, Type, Attribute) ->
@@ -79,7 +59,8 @@ validate_instance(Instance, <<"required">>, Attribute) ->
     trace_validate(Instance, <<"required">>, Attribute),
     case is_boolean_true(Attribute) of
 	true -> true;
-	false -> throw({validation_error, <<"Attribute required  but not found">>})
+	false -> validation_error(Instance, <<"Attribute required but not found">>);
+	_ -> io:format("ERROR HERE")
     end;
 
 %%--------------------------------------------------------------------
@@ -89,7 +70,7 @@ validate_instance(Instance, <<"required">>, Attribute) ->
 %%--------------------------------------------------------------------
 validate_instance(undefined, _, _) ->
     trace_validate(undefined, none, none),
-    throw({validation_error, <<"Instance is undefined">>});
+    validation_error(none, <<"Instance is undefined">>);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -107,7 +88,7 @@ validate_instance(Instance, <<"type">>, [{struct, _}=Schema|T]) ->
 validate_instance(Instance, <<"type">>, [H|T]) ->
     trace_validate(Instance, <<"type">>, list),
     case validate_instance(Instance, <<"type">>, H) of
-        false when T =:= [] -> throw({validation_error, <<Instance, " type ", H, " is invalid">>});
+        false when T =:= [] -> validation_error(Instance, <<" type ", H, " is invalid">>);
         false               -> validate_instance(Instance, <<"type">>, T);
         true                -> true
     end;
@@ -126,9 +107,10 @@ validate_instance(Instance, <<"type">>, <<"string">>) ->
 	    %% then those functions will throw, and by elimination the only
 	    %% remaining type that it could be is a string.  So catch any throws
 	    %% and validate that the return is NOT true (ie Str is that type)
-            case (catch validate_instance(Str, <<"type">>, <<"null">>)) =/= true
-                andalso (catch validate_instance(Str, <<"type">>, <<"boolean">>)) =/= true
-	    of
+            %case (catch validate_instance(Str, <<"type">>, <<"null">>)) =/= true
+            %    andalso (catch validate_instance(Str, <<"type">>, <<"boolean">>)) =/= true
+	    case validate_instance(Str, <<"type">>, <<"null">>) =/= true
+                andalso validate_instance(Str, <<"type">>, <<"boolean">>) =/= true of
 		true  ->
 		    true;
 		false ->
@@ -145,7 +127,7 @@ validate_instance(Instance, <<"type">>, <<"number">>) ->
 validate_instance(Instance, <<"type">>, <<"integer">>) ->
     trace_validate(Instance, <<"type">>, <<"integer">>),
     case is_integer(Instance) of
-	false -> throw({validation_error, <<Instance, " must be of type integer">>});
+	false -> validation_error(Instance, <<"must be of type integer">>);
 	true  -> true
     end;
 validate_instance(Instance, <<"type">>, <<"boolean">>) ->
@@ -155,13 +137,13 @@ validate_instance(Instance, <<"type">>, <<"boolean">>) ->
         <<"true">>   -> true;
         false        -> true;
         <<"false">>  -> true;
-        _            -> throw({validation_error, <<Instance, " must be of type boolean">>})
+        _            -> validation_error(Instance, <<"must be of type boolean">>)
     end;
 validate_instance(Instance, <<"type">>, <<"array">>) ->
     trace_validate(Instance, <<"type">>, <<"array">>),
     case is_list(Instance) of
 	true  -> true;
-	false -> throw({validation_error, <<Instance, "must be of type array">>})
+	false -> validation_error(Instance, <<"must be of type array">>)
     end;
 validate_instance(Instance, <<"type">>, <<"object">>) ->
     trace_validate(Instance, <<"type">>, <<"object">>),
@@ -170,8 +152,7 @@ validate_instance(Instance, <<"type">>, <<"object">>) ->
 	true
     catch
 	_:_ ->
-	    Encoded = mochijson2:encode(Instance),
-	    throw({validation_error,<<Encoded, " must be an Instance">>})
+	    validation_error(Instance, <<"must be an Instance">>)
     end;
 validate_instance(_, <<"type">>, _) ->
     trace_validate(none, <<"type">>, none),
@@ -269,7 +250,7 @@ validate_instance(Instance, <<"maximum">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"number">>)
         orelse Instance =< Attribute of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " must be an integer to have a maximum">>})
+	false -> validation_error(Instance, <<"must be an integer to have a maximum">>)
     end;
 %%--------------------------------------------------------------------
 %% @doc
@@ -281,7 +262,7 @@ validate_instance(Instance, <<"maximum">>, Attribute) ->
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"exclusiveMinimum">>, Instance) when is_number(Instance) ->
     trace_validate(Instance, <<"exclusiveMinimum">>, Instance),
-    throw({validation_error, <<"error in exclusiveMinimum">>});
+    validation_error(Instance, <<"error in exclusiveMinimum">>);
 validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
     trace_validate(Instance, <<"exclusiveMinimum">>, Attribute),
     validate_instance(Instance, <<"minimum">>, Attribute);
@@ -296,7 +277,7 @@ validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"exclusiveMaximum">>, Instance) when is_number(Instance) ->
     trace_validate(Instance, <<"exclusiveMaximum">>,Instance),
-    throw({validation_error, <<"error in exclusiveMaximun">>});
+    validation_error(Instance, <<"error in exclusiveMaximun">>);
 validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
     trace_validate(Instance, <<"exclusiveMaximum">>, Attribute),
     validate_instance(Instance, <<"maximum">>, Attribute);
@@ -313,7 +294,7 @@ validate_instance(Instance, <<"minItems">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"array">>)
         orelse length(Instance) >= Attribute of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " must be an array to have minItems, or there are less items than minItems">>})
+	false -> validation_error(Instance, <<"must be an array to have minItems, or there are less items than minItems">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -327,8 +308,8 @@ validate_instance(Instance, <<"maxItems">>, Attribute) ->
     trace_validate(Instance, <<"maxItems">>, Attribute),
     case not validate_instance(Instance, <<"type">>, <<"array">>)
         orelse length(Instance) =< Attribute of
-	true -> {true, <<>>};
-	false -> throw({validation_error, <<Instance, " must be an array to have maxItems, or there are more items than maxItems">>})
+	true -> true;
+	false -> validation_error(Instance, <<"must be an array to have maxItems, or there are more items than maxItems">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -343,7 +324,7 @@ validate_instance(Instance, <<"uniqueItems">>, _) ->
     case not validate_instance(Instance, <<"type">>, <<"array">>)
         orelse length(Instance) =:= length(lists:usort(Instance)) of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " items must be unique">>})
+	false -> validation_error(Instance, <<"items must be unique">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -367,7 +348,7 @@ validate_instance(Instance, <<"minLength">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"string">>)
         orelse length(to_list(Instance)) >= Attribute of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " is too short, min. ", Attribute>>})
+	false -> validation_error(Instance, <<"is too short, min.">>, Attribute)
     end;
 %%--------------------------------------------------------------------
 %% @doc
@@ -381,7 +362,7 @@ validate_instance(Instance, <<"maxLength">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"string">>)
         orelse length(to_list(Instance)) =< Attribute of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " is too long, max. ", Attribute>>})
+	false -> validation_error(Instance, <<"is too long, max.">>, Attribute)
     end;
 
 %%--------------------------------------------------------------------
@@ -395,7 +376,7 @@ validate_instance(Instance, <<"enum">>, Attribute) ->
     trace_validate(Instance, <<"enum">>, Attribute),
     case lists:member(Instance, Attribute) of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " must be member of the array">>})
+	false -> validation_error(Instance, <<"must be member of the array">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -444,15 +425,15 @@ validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
     trace_validate(Instance, <<"divisibleBy">>, Attribute),
     case not validate_instance(Instance, <<"type">>, <<"number">>)
         orelse case {Instance, Attribute} of
-                   {_, 0} -> throw({validation_error, <<"Division by 0 not allowed">>});
+                   {_, 0} -> validation_error(error, <<"Division by 0 not allowed">>);
                    {0, _} -> true;
                    {I, A} -> case trunc(I/A) == I/A of
 				 true -> true;
-				 false -> throw({validation_error, <<"Not divisible ">>})
+				 false -> validation_error(error, <<"Not divisible ">>)
 			     end
 	       end of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " must be divisible by", Attribute>>})
+	false -> validation_error(Instance, <<"must be divisible by">>, Attribute)
     end;
 
 %%--------------------------------------------------------------------
@@ -468,7 +449,7 @@ validate_instance(Instance, <<"disallow">>, Attribute) ->
     trace_validate(Instance, <<"disallow">>, Attribute),
     case not validate_instance(Instance, <<"type">>, Attribute) of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " type is not allowed">>})
+	false -> validation_error(Instance, <<"type is not allowed">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -516,7 +497,7 @@ validate_instance(_, <<"\$schema">>, _) ->
 %%--------------------------------------------------------------------
 validate_instance(_,_,_) ->
     trace_validate(none, none, none),
-    throw({validatation_error, <<"This instance is not valid">>}).
+    validation_error(error, <<"This instance is not valid">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -554,12 +535,15 @@ to_list(X) when is_list(X) ->
     X.
 
 
-validation_error({struct, _}=Instance, Msg) ->
-    throw({validation_error, <<"json is invalid">>});
+validation_error({struct, _}, _) ->
+    {validation_error, <<"json is invalid">>};
 validation_error(Instance, Msg) ->
-    throw({validation_error, <<(whistle_util:to_binary(Instance))/binary,
-			     " ", (whistle_util:to_binary(Msg))/binary>>}).
-
+    {validation_error, <<(whistle_util:to_binary(Instance))/binary,
+			     " ", (whistle_util:to_binary(Msg))/binary>>}.
+validation_error(Instance, Msg, Attribute) ->
+    {validation_error, <<(whistle_util:to_binary(Instance))/binary,
+			     " ", (whistle_util:to_binary(Msg))/binary,
+                             " ", (whistle_util:to_binary(Attribute))/binary>>}.
 %% EUNIT TESTING
 -ifdef(TEST).
 
@@ -873,13 +857,13 @@ disallow_complex_union_test() ->
 validate_test(Succeed, Fail, Schema) ->
     S = mochijson2:decode(binary:list_to_bin(Schema)),
     lists:foreach(fun(Elem) ->
-%%                          ?debugFmt("validate(~p, ~p) =:= true~n", [Elem, S]),
+			  %% ?debugFmt("validate(~p, ~p) =:= true~n", [Elem, S]),
                           io:format("~p~n", [Elem]),
 			  ?assertEqual(true, validate(Elem, S))
 		  end, Succeed),
-   lists:foreach(fun(Elem) ->
-%%                          ?debugFmt("validate(~p, ~p) =:= false~n", [Elem, S]),
-                          io:format("~p~n", [Elem]),
-			  ?assertEqual(false, validate(Elem, S))
-		  end, Fail).
+    lists:foreach(fun(Elem) ->
+			 %% ?debugFmt("validate(~p, ~p) =:= false~n", [Elem, S]),
+			 io:format("~p~n", [Elem]),
+			 ?assertEqual(false, validate(Elem, S))
+		 end, Fail).
 -endif.
