@@ -1,5 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
+%%% @author Edouard Swiac <edouard@2600hx.com>
+%%%
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
 %%%
@@ -19,15 +21,21 @@ do_validate() ->
     {ok, Bin1} = file:read_file("/opt/whistle/data.json"),
     Data = mochijson2:decode(Bin1),
     {ok, Schema} = couch_mgr:open_doc("crossbar%2Fschema", <<"devices">>),
-    R = validate(wh_json:get_value(<<"data">>, Data), Schema),
-    io:format("~n___+++ result is ~p", [lists:flatten(R)]).
+    Validation = lists:flatten(validate(wh_json:get_value(<<"data">>, Data), Schema)),
+    case Validation of
+	[] ->
+	    {ok, []};
+	[_|_]  ->
+	    {error, Validation};
+	_ ->
+	    {error, [{internal_error, <<"Something wrong happened on our side">>}]}
+    end.
 
 validate(Instance, {struct, Definitions}) ->
     validate(Instance, {struct, Definitions}, []).
 
 validate(Instance, {struct, Definitions}, Messages) ->
     lists:foldl(fun({Definition, Attributes}, Acc) ->
-						%io:format("~n___+++ Instance :: ~p~n___+++ Definition :: ~p~n___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
 			Validation = case Definition of
 			    <<"_id">>  -> true;
 			    <<"_rev">> -> true;
@@ -40,7 +48,7 @@ validate(Instance, {struct, Definitions}, Messages) ->
 			end
 		end, Messages, Definitions).
 
--define(TRACE, true).
+-define(TRACE, false).
 trace_validate(Instance, Type, Attribute) ->
     case ?TRACE of
 	true ->
