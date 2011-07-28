@@ -229,7 +229,6 @@ get_date(Term) when is_integer(Term) ->
 -spec(temporal_route_menu/3 :: (Temporal :: #temporal{}, Rules :: list(),  Call :: #cf_call{}) -> no_return()).
 temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=Reset}
                               ,prompts=Prompts}=Temporal, Rules, Call) ->
-    _ = cf_call_command:flush_dtmf(Call),
     case cf_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
         {ok, Enable} ->
             enable_temporal_rules(Temporal, Rules, Call);

@@ -51,9 +51,7 @@ init([]) ->
     {ok, { {one_for_one, 2, 5}
 	   ,[
 	     ?CACHE(j5_cache)
-	     ,?CHILD(jonny5_sup, supervisor)
-	     ,?CHILD(jonny5_ts_sup, supervisor)
+	     ,?CHILD(jonny5_acct_sup, supervisor)
 	     ,?CHILD(jonny5_acct, worker)
-	     ,?CHILD(jonny5_ts, worker)
 	    ]
 	 } }.

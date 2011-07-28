@@ -114,6 +114,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.registrations">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -128,6 +129,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.registrations">>, [R
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  {Context1, Resp} = case Context#cb_context.resp_status =:= success of
 					 true -> {crossbar_doc:save(Context), true};
@@ -139,6 +141,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.registrations">>, [
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
@@ -146,6 +149,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.registrations">>, [R
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),

@@ -132,6 +132,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   %% Do all of our prep-work out of the agg db
                   %% later we will switch to save to the client db
@@ -142,6 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_c
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = load_account_db(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
@@ -149,6 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Conte
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId, <<"parent">>]=Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}) of
                       #cb_context{resp_status=success}=Context1 ->
@@ -161,6 +164,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}),
 		  whapps_util:replicate_from_account(whapps_util:get_db_name(AccountId, unencoded), ?AGG_DB, ?AGG_FILTER),
@@ -170,6 +174,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = create_new_account_db(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -186,6 +191,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   %% dont use the account id in cb_context as it may not represent the db_name...
                   DbName = whapps_util:get_db_name(AccountId, encoded),
                   try
@@ -667,21 +673,22 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 %%--------------------------------------------------------------------
 -spec(create_new_account_db/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_new_account_db(#cb_context{doc=Doc}=Context) ->
-    DbName = whapps_util:get_db_name(couch_mgr:get_uuid(), encoded),
-    case couch_mgr:db_create(DbName) of
+    DbName = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
+    Db = whapps_util:get_db_name(DbName, encoded),
+    case couch_mgr:db_create(Db) of
         false ->
 	    ?LOG_SYS("Failed to create database: ~s", [DbName]),
             crossbar_util:response_db_fatal(Context);
         true ->
-	    ?LOG_SYS("Created DB for account id ~s", [whapps_util:get_db_name(DbName, raw)]),
-            JObj = wh_json:set_value(<<"_id">>, whapps_util:get_db_name(DbName, raw), Doc),
-            case crossbar_doc:save(Context#cb_context{db_name=DbName, doc=JObj}) of
+	    ?LOG_SYS("Created DB for account id ~s", [DbName]),
+            JObj = wh_json:set_value(<<"_id">>, DbName, Doc),
+            case crossbar_doc:save(Context#cb_context{db_name=Db, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
                     spawn(fun() ->
-                                  couch_mgr:load_doc_from_file(DbName, crossbar, ?VIEW_FILE),
-                                  Responses = crossbar_bindings:map(<<"account.created">>, DbName),
-                                  _ = [couch_mgr:load_doc_from_file(DbName, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
-                                  whapps_util:replicate_from_account(whapps_util:get_db_name(DbName, unencoded), ?AGG_DB, ?AGG_FILTER)
+                                  couch_mgr:load_doc_from_file(Db, crossbar, ?VIEW_FILE),
+                                  Responses = crossbar_bindings:map(<<"account.created">>, Db),
+                                  _ = [couch_mgr:load_doc_from_file(Db, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
+                                  whapps_util:replicate_from_account(whapps_util:get_db_name(Db, unencoded), ?AGG_DB, ?AGG_FILTER)
                              end),
                     Context1;
                 Else ->

@@ -399,7 +399,7 @@ handle_info(timeout, {Host, Conn}) ->
     case start_channel(Conn) of
 	{Channel, _, Ticket} = PubChan ->
 	    load_exchanges(Channel, Ticket),
-            %% amqp_channel:register_return_handler(Channel, self()),
+            amqp_channel:register_return_handler(Channel, self()),
 	    {noreply, #state{
 	       connection = {Conn, Ref}
 	       ,publish_channel = PubChan
