@@ -92,6 +92,7 @@ request(FSID, CallID, FSData) ->
      ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
      ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
      ,{<<"Call-ID">>, CallID}
      ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
      | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].
