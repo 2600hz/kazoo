@@ -44,7 +44,7 @@ validate(Instance, {struct, Definitions}, Messages) ->
 			case Validation of
 			    true                   -> Acc;
 			    {validation_error, _}  -> [Validation | Acc];
-			    _  -> [Validation | Acc]
+			    _                      -> [Validation | Acc]
 			end
 		end, Messages, Definitions).
 
@@ -67,8 +67,7 @@ validate_instance(Instance, <<"required">>, Attribute) ->
     trace_validate(Instance, <<"required">>, Attribute),
     case is_boolean_true(Attribute) of
 	true -> true;
-	false -> validation_error(Instance, <<"Attribute required but not found">>);
-	_ -> io:format("ERROR HERE")
+	false -> validation_error(Instance, <<"required but not found">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -78,7 +77,7 @@ validate_instance(Instance, <<"required">>, Attribute) ->
 %%--------------------------------------------------------------------
 validate_instance(undefined, _, _) ->
     trace_validate(undefined, none, none),
-    validation_error(none, <<"Instance is undefined">>);
+    validation_error(instance_undefined, <<"The instance is undefined">>);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -96,7 +95,7 @@ validate_instance(Instance, <<"type">>, [{struct, _}=Schema|T]) ->
 validate_instance(Instance, <<"type">>, [H|T]) ->
     trace_validate(Instance, <<"type">>, list),
     case validate_instance(Instance, <<"type">>, H) of
-        false when T =:= [] -> validation_error(Instance, <<" type ", H, " is invalid">>);
+        false when T =:= [] -> validation_error(Instance, <<"type ", H, " is invalid">>);
         false               -> validate_instance(Instance, <<"type">>, T);
         true                -> true
     end;
@@ -111,12 +110,6 @@ validate_instance(Instance, <<"type">>, <<"string">>) ->
     trace_validate(Instance, <<"type">>, <<"string">>),
     case Instance of
         Str when is_atom(Str); is_binary(Str) ->
-	    %% if the validate instance of Str is not of type null or boolean
-	    %% then those functions will throw, and by elimination the only
-	    %% remaining type that it could be is a string.  So catch any throws
-	    %% and validate that the return is NOT true (ie Str is that type)
-            %case (catch validate_instance(Str, <<"type">>, <<"null">>)) =/= true
-            %    andalso (catch validate_instance(Str, <<"type">>, <<"boolean">>)) =/= true
 	    case validate_instance(Str, <<"type">>, <<"null">>) =/= true
                 andalso validate_instance(Str, <<"type">>, <<"boolean">>) =/= true of
 		true  ->
@@ -160,7 +153,7 @@ validate_instance(Instance, <<"type">>, <<"object">>) ->
 	true
     catch
 	_:_ ->
-	    validation_error(Instance, <<"must be an Instance">>)
+	    validation_error(Instance, <<"must be an object">>)
     end;
 validate_instance(_, <<"type">>, _) ->
     trace_validate(none, <<"type">>, none),
@@ -243,7 +236,7 @@ validate_instance(Instance, <<"minimum">>, Attribute)->
     case (catch validate_instance(Instance, <<"type">>, <<"number">>)) =/= true
 	orelse Instance >= Attribute of
 	true -> true;
-	false -> validation_error(Instance, <<"must be an integer to have a minimum">>)
+	false -> validation_error(Instance, <<"must be an integer and/or must have a minimum of ">>, Attribute)
     end;
 
 %%--------------------------------------------------------------------
@@ -258,7 +251,7 @@ validate_instance(Instance, <<"maximum">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"number">>)
         orelse Instance =< Attribute of
 	true -> true;
-	false -> validation_error(Instance, <<"must be an integer to have a maximum">>)
+	false -> validation_error(Instance, <<"must be an integer and/or must have a maximum of">>, Attribute)
     end;
 %%--------------------------------------------------------------------
 %% @doc
@@ -273,7 +266,7 @@ validate_instance(Instance, <<"exclusiveMinimum">>, Instance) when is_number(Ins
     validation_error(Instance, <<"error in exclusiveMinimum">>);
 validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
     trace_validate(Instance, <<"exclusiveMinimum">>, Attribute),
-    validate_instance(Instance, <<"minimum">>, Attribute);
+    validate_instance(Instance, <<"must be an integer and/or must have an exclusive minimum of">>, Attribute);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -288,7 +281,7 @@ validate_instance(Instance, <<"exclusiveMaximum">>, Instance) when is_number(Ins
     validation_error(Instance, <<"error in exclusiveMaximun">>);
 validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
     trace_validate(Instance, <<"exclusiveMaximum">>, Attribute),
-    validate_instance(Instance, <<"maximum">>, Attribute);
+    validate_instance(Instance, <<"must be an integer and/or must have an exclusive maximum of">>, Attribute);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -302,7 +295,7 @@ validate_instance(Instance, <<"minItems">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"array">>)
         orelse length(Instance) >= Attribute of
 	true -> true;
-	false -> validation_error(Instance, <<"must be an array to have minItems, or there are less items than minItems">>)
+	false -> validation_error(Instance, <<"must be an array to have minItems and/or there are less items than minItems in array">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -317,7 +310,7 @@ validate_instance(Instance, <<"maxItems">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"array">>)
         orelse length(Instance) =< Attribute of
 	true -> true;
-	false -> validation_error(Instance, <<"must be an array to have maxItems, or there are more items than maxItems">>)
+	false -> validation_error(Instance, <<"must be an array to have maxItems and/or there are more items than maxItems in array">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -332,7 +325,7 @@ validate_instance(Instance, <<"uniqueItems">>, _) ->
     case not validate_instance(Instance, <<"type">>, <<"array">>)
         orelse length(Instance) =:= length(lists:usort(Instance)) of
 	true -> true;
-	false -> validation_error(Instance, <<"items must be unique">>)
+	false -> validation_error(Instance, <<"items in array must be unique">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -356,7 +349,7 @@ validate_instance(Instance, <<"minLength">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"string">>)
         orelse length(to_list(Instance)) >= Attribute of
 	true -> true;
-	false -> validation_error(Instance, <<"is too short, min.">>, Attribute)
+	false -> validation_error(Instance, <<"is too short, min. characters allowed:">>, Attribute)
     end;
 %%--------------------------------------------------------------------
 %% @doc
@@ -370,7 +363,7 @@ validate_instance(Instance, <<"maxLength">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"string">>)
         orelse length(to_list(Instance)) =< Attribute of
 	true -> true;
-	false -> validation_error(Instance, <<"is too long, max.">>, Attribute)
+	false -> validation_error(Instance, <<"is too long, max. characters allowed:">>, Attribute)
     end;
 
 %%--------------------------------------------------------------------
@@ -433,11 +426,11 @@ validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
     trace_validate(Instance, <<"divisibleBy">>, Attribute),
     case not validate_instance(Instance, <<"type">>, <<"number">>)
         orelse case {Instance, Attribute} of
-                   {_, 0} -> validation_error(error, <<"Division by 0 not allowed">>);
+                   {_, 0} -> validation_error(division_0, <<"Division by 0">>);
                    {0, _} -> true;
                    {I, A} -> case trunc(I/A) == I/A of
 				 true -> true;
-				 false -> validation_error(error, <<"Not divisible ">>)
+				 false -> validation_error(error, <<"Not divisible">>)
 			     end
 	       end of
 	true -> true;
@@ -457,7 +450,7 @@ validate_instance(Instance, <<"disallow">>, Attribute) ->
     trace_validate(Instance, <<"disallow">>, Attribute),
     case not validate_instance(Instance, <<"type">>, Attribute) of
 	true -> true;
-	false -> validation_error(Instance, <<"type is not allowed">>)
+	false -> validation_error(Instance, <<"this type is not allowed">>)
     end;
 
 %%--------------------------------------------------------------------
