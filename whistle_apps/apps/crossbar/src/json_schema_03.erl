@@ -5,23 +5,32 @@
 %%% @copyright (C) 2011, Karl Anderson
 %%% @doc
 %%%
+%%% Implementation of JSON Schema spec
+%%% http://tools.ietf.org/html/draft-zyp-json-schema-03
+%%%
 %%% @end
 %%% Created : 18 Feb 2011 by Karl Anderson <karl@2600hz.org>
+%%% 28 July 2011 - remove dust & refresh code, json schema still v0.3
 %%%-------------------------------------------------------------------
 -module(json_schema_03).
 
--export([do_validate/0]).
+-export([do_validate/2]).
 
 -include("crossbar.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -import(logger, [format_log/3]).
 
-do_validate() ->
-    {ok, Bin1} = file:read_file("/opt/whistle/data.json"),
+%% for testing purpose with particular JSON data from file
+do_validate(File, SchemaName) when is_list(File)->
+    {ok, Bin1} = file:read_file(File),
     Data = mochijson2:decode(Bin1),
-    {ok, Schema} = couch_mgr:open_doc("crossbar%2Fschema", <<"devices">>),
-    Validation = lists:flatten(validate(wh_json:get_value(<<"data">>, Data), Schema)),
+    do_validate(wh_json:get_value(<<"data">>, Data), SchemaName);
+
+%% for real world usage
+do_validate(Data, SchemaName)  ->
+    {ok, Schema} = couch_mgr:open_doc("crossbar%2Fschema", whistle_util:to_binary(SchemaName)),
+    Validation = lists:flatten(validate(Data, Schema)),
     case Validation of
 	[] ->
 	    {ok, []};
