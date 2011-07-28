@@ -23,28 +23,21 @@ do_validate() ->
     io:format("~n___+++ result is ~p", [R]).
 
 validate(Instance, {struct, Definitions}) ->
-    validate(Instance, {struct, Definitions}, []).
-
-validate(Instance, {struct, Definitions}, ValidationMessages) ->
-    lists:foldl(fun({Definition, Attributes}, Acc) ->
-			io:format("~n___+++ Instance :: ~p~n ___+++ Definition :: ~p~n ___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
-			case Definition of
-			    <<"_id">> ->
-				Acc;
-			    <<"_rev">> ->
-				Acc;
-			    _ ->
-				List = [validate_instance(Instance, Definition, Attributes) | Acc],
-				io:format("LOG ~p",[List]),
-				List
-			end
-                end, ValidationMessages, Definitions).
+    try
+	lists:map(fun({Definition, Attributes}) ->
+			  io:format("~n___+++ Instance :: ~p~n___+++ Definition :: ~p~n___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
+			  validate_instance(Instance, Definition, Attributes)
+		    end, Definitions)
+    catch
+	throw:Error  -> io:format("validation error ~p", [Error])
+	%A:B -> io:format(" ! unknown exception ~p > -~p~n", [A, B])
+    end.
 
 -define(TRACE, true).
 trace_validate(Instance, Type, Attribute) ->
     case ?TRACE of
 	true ->
-	    io:format("~n___+++ Validating Instance :: ~p, Type :: ~p, Attribute :: ~p~n", [Instance, Type, Attribute]);
+	    io:format("~n_+ Validating Instance :: ~p, ~n_+ Type :: ~p, ~n_+ Attribute :: ~p~n", [Instance, Type, Attribute]);
 	false ->
 	    nothing
     end.
@@ -57,7 +50,10 @@ trace_validate(Instance, Type, Attribute) ->
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"required">>, Attribute) ->
     trace_validate(Instance, <<"required">>, Attribute),
-    not is_boolean_true(Attribute) orelse throw({validation_error, <<Attribute, " is required for ", Instance, " but not found">>});
+    case is_boolean_true(Attribute) of
+	true -> true;
+	false -> throw({validation_error, <<"Attribute required  but not found">>})
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -93,14 +89,14 @@ validate_instance(Instance, <<"type">>, <<"null">>) ->
     case Instance of
         <<"null">> -> true;
         null       -> true;
-        _          -> throw({validation_error, <<Instance, " must be of type null">>})
+        _          -> throw({validation_error, <<Instance, " must be null">>})
     end;
 validate_instance(Instance, <<"type">>, <<"string">>) ->
     trace_validate(Instance, <<"type">>, <<"string">>),
     case Instance of
         Str when is_atom(Str); is_binary(Str) ->
-            case not validate_instance(Str, <<"type">>, <<"null">>)
-                andalso not validate_instance(Str, <<"type">>, <<"boolean">>) of
+            case (catch(not validate_instance(Str, <<"type">>, <<"null">>))) /= true
+                andalso (catch(not validate_instance(Str, <<"type">>, <<"boolean">>))) /= true of
 		true  -> true;
 		false -> throw({validation_error, <<Str, " must be of type string">>})
 	    end;
@@ -113,7 +109,7 @@ validate_instance(Instance, <<"type">>, <<"number">>) ->
 	true  -> true
     end;
 validate_instance(Instance, <<"type">>, <<"integer">>) ->
-    trace_validate(Instance, <<"required">>, <<"integer">>),
+    trace_validate(Instance, <<"type">>, <<"integer">>),
     case is_integer(Instance) of
 	false -> throw({validation_error, <<Instance, " must be of type integer">>});
 	true  -> true
@@ -158,10 +154,9 @@ validate_instance(_, <<"type">>, _) ->
 validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
     trace_validate(Instance, <<"properties">>, Attribute),
     not validate_instance(Instance, <<"type">>, <<"object">>) orelse
-	lists:foldr(fun({Name, Schema}, Acc) ->
-			    {Ret, _} = validate(wh_json:get_value(Name, Instance), Schema),
-			    Acc and Ret
-		    end, true, Attribute);
+	lists:map(fun({Name, Schema}) ->
+			    validate(wh_json:get_value(Name, Instance), Schema)
+		    end, Attribute);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -384,6 +379,9 @@ validate_instance(Instance, <<"enum">>, Attribute) ->
 %%         description of the instance property.
 %% @end
 %%--------------------------------------------------------------------
+validate_instance(_, <<"description">>, _) ->
+    trace_validate(none, <<"description">>, none),
+    true;
 
 %%--------------------------------------------------------------------
 %% @doc
