@@ -21,16 +21,18 @@
 
 -import(logger, [format_log/3]).
 
+-define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschema">>).
+
 %% for testing purpose with particular JSON data from file
 do_validate(File, SchemaName) when is_list(File)->
     {ok, Bin1} = file:read_file(File),
     Data = mochijson2:decode(Bin1),
     do_validate(wh_json:get_value(<<"data">>, Data), SchemaName);
 
-%% for real world usage
+%% for crossbar usage
 do_validate(Data, SchemaName)  ->
-    {ok, Schema} = couch_mgr:open_doc("crossbar%2Fschema", whistle_util:to_binary(SchemaName)),
-    Validation = lists:flatten(validate(Data, Schema)),
+    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, whistle_util:to_binary(SchemaName)),
+    Validation = validate(Data, Schema),
     case Validation of
 	[] ->
 	    {ok, []};
@@ -44,18 +46,18 @@ validate(Instance, {struct, Definitions}) ->
     validate(Instance, {struct, Definitions}, []).
 
 validate(Instance, {struct, Definitions}, Messages) ->
-    lists:foldl(fun({Definition, Attributes}, Acc) ->
-			Validation = case Definition of
-			    <<"_id">>  -> true;
-			    <<"_rev">> -> true;
-			    _          -> validate_instance(Instance, Definition, Attributes)
-			end,
-			case Validation of
-			    true                   -> Acc;
-			    {validation_error, _}  -> [Validation | Acc];
-			    _                      -> [Validation | Acc]
-			end
-		end, Messages, Definitions).
+    L = lists:foldl(fun({Definition, Attributes}, Acc) ->
+			    Validation = case Definition of
+					     <<"_id">>  -> true;
+					     <<"_rev">> -> true;
+					     _          -> validate_instance(Instance, Definition, Attributes)
+					 end,
+			    case Validation of
+				true                   -> [{ok, []} | Acc];
+				_                      -> [Validation | Acc] % {validation_error, _}
+			    end
+		    end, Messages, Definitions),
+    lists:flatten(L). % flatten because of the recursive nature of validate
 
 -define(TRACE, false).
 trace_validate(Instance, Type, Attribute) ->
@@ -580,6 +582,7 @@ validation_error(Instance, Msg, Attribute) ->
 %%     string Value MUST be a string
 type_string_test() ->
     Schema = "{ \"type\": \"string\" }",
+    %Schema = {<<"type">>, <<"string">>},
     Succeed = [?STR1, ?STR2],
     Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
     validate_test(Succeed, Fail, Schema).
@@ -867,13 +870,15 @@ disallow_complex_union_test() ->
 validate_test(Succeed, Fail, Schema) ->
     S = mochijson2:decode(binary:list_to_bin(Schema)),
     lists:foreach(fun(Elem) ->
-			  %% ?debugFmt("validate(~p, ~p) =:= true~n", [Elem, S]),
-                          io:format("~p~n", [Elem]),
-			  ?assertEqual(true, validate(Elem, S))
+			  Validation = validate(Elem, S),
+			  Result = lists:all(fun({T, _}) -> T == ok end, Validation),
+			  ?debugFmt("Testing success of ~p => ~p~n", [Validation, Result]),
+			  ?assertEqual(true, Result)
 		  end, Succeed),
     lists:foreach(fun(Elem) ->
-			 %% ?debugFmt("validate(~p, ~p) =:= false~n", [Elem, S]),
-			 io:format("~p~n", [Elem]),
-			 ?assertEqual(false, validate(Elem, S))
-		 end, Fail).
+			  Validation = validate(Elem, S),
+			  Result = lists:any(fun({T, _}) -> T == validation_error end, Validation),
+			  ?debugFmt("Testing failure of ~p => ~p~n", [Validation, Result]),
+			  ?assertEqual(true, Result)
+		  end, Fail).
 -endif.
