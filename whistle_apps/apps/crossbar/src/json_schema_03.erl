@@ -22,29 +22,24 @@
 -import(logger, [format_log/3]).
 
 -define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschema">>).
+-define(TRACE, false). %% trace through the validation steps
 
 %% for testing purpose with particular JSON data from file
+-spec(do_validate/2 :: (File :: string() | json_object(), SchemaName :: atom()) -> list()).
 do_validate(File, SchemaName) when is_list(File)->
     {ok, Bin1} = file:read_file(File),
     Data = mochijson2:decode(Bin1),
     do_validate(wh_json:get_value(<<"data">>, Data), SchemaName);
-
 %% for crossbar usage
 do_validate(Data, SchemaName)  ->
     {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, whistle_util:to_binary(SchemaName)),
-    Validation = validate(Data, Schema),
-    case Validation of
-	[] ->
-	    {ok, []};
-	[_|_]  ->
-	    {error, Validation};
-	_ ->
-	    {error, [{internal_error, <<"Something wrong happened on our side">>}]}
-    end.
+    Validation = validate(Data, Schema).
 
+-spec(validate/2 :: (Instance :: term(), json_object()) -> list()).
 validate(Instance, {struct, Definitions}) ->
     validate(Instance, {struct, Definitions}, []).
 
+-spec(validate/3 :: (Instance :: term(), json_object(), Messages :: list()) -> list()).
 validate(Instance, {struct, Definitions}, Messages) ->
     L = lists:foldl(fun({Definition, Attributes}, Acc) ->
 			    Validation = case Definition of
@@ -57,9 +52,10 @@ validate(Instance, {struct, Definitions}, Messages) ->
 				_                      -> [Validation | Acc] % {validation_error, _}
 			    end
 		    end, Messages, Definitions),
-    lists:flatten(L). % flatten because of the recursive nature of validate
+    lists:flatten(L). % flattening because of the recursive nature of validate
 
--define(TRACE, false).
+
+-spec(trace_validate/3 :: (term(), term(), term()) -> atom()).
 trace_validate(Instance, Type, Attribute) ->
     case ?TRACE of
 	true ->
@@ -74,6 +70,7 @@ trace_validate(Instance, Type, Attribute) ->
 %%            value, and not be undefined.
 %% @end
 %%--------------------------------------------------------------------
+-spec(validate_instance/3 :: (Instance :: term(), binary(), term()) -> boolean() | tuple()).
 validate_instance(Instance, <<"required">>, Attribute) ->
     trace_validate(Instance, <<"required">>, Attribute),
     case is_boolean_true(Attribute) of
@@ -547,11 +544,14 @@ to_list(X) when is_list(X) ->
     X.
 
 
+-spec(validation_error/2 :: (term(), binary()) -> tuple(atom(), binary())).
 validation_error({struct, _}, _) ->
     {validation_error, <<"json is invalid">>};
 validation_error(Instance, Msg) ->
     {validation_error, <<(whistle_util:to_binary(Instance))/binary,
 			     " ", (whistle_util:to_binary(Msg))/binary>>}.
+
+-spec(validation_error/3 :: (term(), binary(), term()) -> tuple(atom(), binary())).
 validation_error(Instance, Msg, Attribute) ->
     {validation_error, <<(whistle_util:to_binary(Instance))/binary,
 			     " ", (whistle_util:to_binary(Msg))/binary,
