@@ -183,11 +183,12 @@ handle_authz(JObj, CPid) ->
 
     ?LOG("Authorize ~s can make the call to ~s", [wh_json:get_value(<<"From">>, JObj), wh_json:get_value(<<"To">>, JObj)]),
 
-    AuthZResp = case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj), wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj)} of
+    AuthZResp = case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
+		      ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj)
+		     } of
 		    {AcctID, undefined} when is_binary(AcctID) ->
 			%% Coming from carrier (off-net)
 			?LOG("Authorize inbound call"),
-
 			j5_acctmgr:authz_trunk(AcctID, JObj, inbound, CPid);
 		    {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
 			%% Coming from PBX (on-net); authed by Registrar
