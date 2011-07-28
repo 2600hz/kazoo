@@ -19,18 +19,45 @@ do_validate() ->
     {ok, Bin1} = file:read_file("/opt/whistle/data.json"),
     Data = mochijson2:decode(Bin1),
     {ok, Schema} = couch_mgr:open_doc("crossbar%2Fschema", <<"devices">>),
-    R = validate(wh_json:get_value(<<"data">>, Data), wh_json:get_value([<<"schema">>], Schema)),
-    io:format("~n___+++ result is ~p", [R]).
+    try
+	R = validate(wh_json:get_value(<<"data">>, Data), Schema),
+	io:format("~n___+++ result is ~p", [R])
+    catch
+	throw:Error  ->
+	    io:format("validation error ~p", [Error]),
+	    false;
+	A:B ->
+	    io:format(" ! unknown exception ~p > -~p~n", [A, B]),
+	    false
+    end.
 
 validate(Instance, {struct, Definitions}) ->
+    lists:map(fun({Definition, Attributes}) ->
+		      io:format("~n___+++ Instance :: ~p~n___+++ Definition :: ~p~n___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
+		      case Definition of
+			  <<"_id">>  -> true;
+			  <<"_rev">> -> true;
+			  _          -> validate_instance(Instance, Definition, Attributes)
+		      end
+	      end, Definitions).
+
+do_validate(Instance, {struct, Definitions}) ->
     try
 	lists:map(fun({Definition, Attributes}) ->
 			  io:format("~n___+++ Instance :: ~p~n___+++ Definition :: ~p~n___+++ Attribute ~p~n", [Instance, Definition, Attributes]),
-			  validate_instance(Instance, Definition, Attributes)
+			  case Definition of
+			      <<"_id">>  -> true;
+			      <<"_rev">> -> true;
+			      _          -> validate_instance(Instance, Definition, Attributes)
+			  end
 		    end, Definitions)
     catch
-	throw:Error  -> io:format("validation error ~p", [Error])
-	%A:B -> io:format(" ! unknown exception ~p > -~p~n", [A, B])
+	throw:Error  ->
+	    io:format("validation error ~p", [Error]),
+	    false;
+	A:B ->
+	    io:format(" ! unknown exception ~p > -~p~n", [A, B]),
+	    false
     end.
 
 -define(TRACE, true).
@@ -89,23 +116,30 @@ validate_instance(Instance, <<"type">>, <<"null">>) ->
     case Instance of
         <<"null">> -> true;
         null       -> true;
-        _          -> throw({validation_error, <<Instance, " must be null">>})
+        _          -> validation_error(Instance, <<"must be null">>)
     end;
 validate_instance(Instance, <<"type">>, <<"string">>) ->
     trace_validate(Instance, <<"type">>, <<"string">>),
     case Instance of
         Str when is_atom(Str); is_binary(Str) ->
-            case (catch(not validate_instance(Str, <<"type">>, <<"null">>))) /= true
-                andalso (catch(not validate_instance(Str, <<"type">>, <<"boolean">>))) /= true of
-		true  -> true;
-		false -> throw({validation_error, <<Str, " must be of type string">>})
+	    %% if the validate instance of Str is not of type null or boolean
+	    %% then those functions will throw, and by elimination the only
+	    %% remaining type that it could be is a string.  So catch any throws
+	    %% and validate that the return is NOT true (ie Str is that type)
+            case (catch validate_instance(Str, <<"type">>, <<"null">>)) =/= true
+                andalso (catch validate_instance(Str, <<"type">>, <<"boolean">>)) =/= true
+	    of
+		true  ->
+		    true;
+		false ->
+		    validation_error(Instance, <<"must be of type string">>)
 	    end;
-        _ -> throw({validation_error, <<Instance, " must be of type string">>})
+        _ -> validation_error(Instance, <<"must be of type string">>)
     end;
 validate_instance(Instance, <<"type">>, <<"number">>) ->
     trace_validate(Instance, <<"type">>, <<"number">>),
     case is_number(Instance) of
-	false -> throw({validation_error, <<Instance, "must be of type number">>});
+	false -> validation_error(Instance, <<"must be of type number">>);
 	true  -> true
     end;
 validate_instance(Instance, <<"type">>, <<"integer">>) ->
@@ -217,10 +251,10 @@ validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"minimum">>, Attribute)->
-    case not validate_instance(Instance, <<"type">>, <<"number">>)
+    case (catch validate_instance(Instance, <<"type">>, <<"number">>)) =/= true
 	orelse Instance >= Attribute of
 	true -> true;
-	false -> throw({validation_error, <<Instance, " must be an integer to have a minimum">>})
+	false -> validation_error(Instance, <<"must be an integer to have a minimum">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -347,7 +381,7 @@ validate_instance(Instance, <<"maxLength">>, Attribute) ->
     case not validate_instance(Instance, <<"type">>, <<"string">>)
         orelse length(to_list(Instance)) =< Attribute of
 	true -> true;
-	false -> throw({false, <<Instance, " is too long, max. ", Attribute>>})
+	false -> throw({validation_error, <<Instance, " is too long, max. ", Attribute>>})
     end;
 
 %%--------------------------------------------------------------------
@@ -361,7 +395,7 @@ validate_instance(Instance, <<"enum">>, Attribute) ->
     trace_validate(Instance, <<"enum">>, Attribute),
     case lists:member(Instance, Attribute) of
 	true -> true;
-	false -> throw({false, <<Instance, " must be member of the array">>})
+	false -> throw({validation_error, <<Instance, " must be member of the array">>})
     end;
 
 %%--------------------------------------------------------------------
@@ -518,6 +552,13 @@ to_list(X) when is_atom(X) ->
     atom_to_list(X);
 to_list(X) when is_list(X) ->
     X.
+
+
+validation_error({struct, _}=Instance, Msg) ->
+    throw({validation_error, <<"json is invalid">>});
+validation_error(Instance, Msg) ->
+    throw({validation_error, <<(whistle_util:to_binary(Instance))/binary,
+			     " ", (whistle_util:to_binary(Msg))/binary>>}).
 
 %% EUNIT TESTING
 -ifdef(TEST).
