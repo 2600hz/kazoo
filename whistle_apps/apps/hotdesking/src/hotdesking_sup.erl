@@ -10,48 +10,53 @@
 
 -behaviour(supervisor).
 
+-include_lib("whistle/include/whistle_types.hrl").
+
 %% API
--export([start_link/0, upgrade/0]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the supervisor
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-%% @spec upgrade() -> ok
-%% @doc Add processes if necessary.
-upgrade() ->
-    {ok, {_, Specs}} = init([]),
-
-    Old = sets:from_list([Name || {Name, _, _, _} <- supervisor:which_children(?MODULE)]),
-    New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
-    Kill = sets:subtract(Old, New),
-
-    lists:foreach(fun (Id) ->
-			  _ = supervisor:terminate_child(?MODULE, Id),
-			  supervisor:delete_child(?MODULE, Id)
-		  end, sets:to_list(Kill)),
-    lists:foreach(fun(Spec) -> supervisor:start_child(?MODULE, Spec) end, Specs),
-    ok.
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% this function is called by the new process to find out about
+%% restart strategy, maximum restart frequency and child
+%% specifications.
+%% @end
+%%--------------------------------------------------------------------
+-spec init(Args) -> sup_init_ret() when
+      Args :: [].
 init([]) ->
-    {ok, { {one_for_one, 2, 5}
-	   ,[
-	     ?CACHE(hotdesking_cache)
-	     %,?CHILD(jonny5_acct_sup, supervisor)
-	     %,?CHILD(jonny5_acct, worker)
-	    ]
-	 } }.
+    RestartStrategy = one_for_one,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
+
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+
+    {ok, {SupFlags, Children}}.
