@@ -1,0 +1,14 @@
+{application, hotdesking,
+ [
+  {description, "Hot Desking - retrieve all your configuration and data from any device"}
+  ,{vsn, "0.0.1"}
+  ,{modules, []}
+  ,{registered, []}
+  ,{applications, [
+		   kernel
+		   ,stdlib
+		   ,crypto
+		  ]}
+  ,{mod, { hotdesking_app, []} }
+  ,{env, []}
+ ]}.
