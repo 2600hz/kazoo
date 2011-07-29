@@ -2,8 +2,13 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% User auth module
+%%% Account API auth module
 %%%
+%%% This is a non-standard module:
+%%% * it authenticates and authorizes itself
+%%% * it has a completely unique role
+%%% * it operates without an account id (or account db)
+%%% * it authorizes an account level cred
 %%%
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>

@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_json).
 
+-export([to_proplist/1, to_proplist/2]).
 -export([get_binary_boolean/2, get_binary_boolean/3]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
@@ -23,6 +24,33 @@
 -export([prune/2, no_prune/2]).
 
 -include_lib("whistle/include/whistle_types.hrl").
+
+-spec to_proplist/1 :: (JObj) -> proplist() when
+      JObj :: json_object().
+-spec to_proplist/2 :: (Key, JObj) -> proplist() when
+      Key :: term(),
+      JObj :: json_object().
+
+%% Convert an array (possibly of json objects)
+to_proplist(Objects) when is_list(Objects)->
+    [to_proplist(O) || O <- Objects];
+%% Convert a json object
+to_proplist({struct, Props}) ->
+    [to_proplist(P) || P <- Props];
+%% Convert a nested array (possibly of json objects)
+to_proplist({Key, Value}) when is_list(Value)->
+    {Key, [to_proplist(V) || V <- Value]};
+%% Convert a nested json object
+to_proplist({Key, Value={struct, _}}) ->
+    {Key, to_proplist(Value)};
+%% everything else (individual array
+%% elements or key/value pairs)
+to_proplist(Prop) ->
+    Prop.
+
+%% convert everything starting at a specific key
+to_proplist(Key, JObj) ->
+    to_proplist(get_value(Key, JObj, ?EMPTY_JSON_OBJECT)).
 
 -spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
 get_binary_value(Key, JObj) ->
@@ -320,6 +348,23 @@ normalizer({_,_}=DataTuple) ->
 				      ,{<<"d2k2">>, 3.14}
 				     ]
 			    }).
+
+
+-define(P1, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]).
+-define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?P1}]).
+-define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?P1, ?P2]}]).
+-define(P4, [?P1, ?P2, ?P3]).
+-define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, "d1v1"}]}]).
+-define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
+
+-spec to_proplist_test/0 :: () -> no_return().
+to_proplist_test() ->
+    ?assertEqual(?P1, to_proplist(?D1)),
+    ?assertEqual(?P2, to_proplist(?D2)),
+    ?assertEqual(?P3, to_proplist(?D3)),
+    ?assertEqual(?P4, to_proplist(?D4)),
+    ?assertEqual(?P6, to_proplist(?D6)),
+    ?assertEqual(?P7, to_proplist(?D7)).
 
 -spec(delete_key_test/0 :: () -> no_return()).
 delete_key_test() ->
