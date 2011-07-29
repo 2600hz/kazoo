@@ -3,8 +3,8 @@
 %%% @author Edouard Swiac <edouard@2600hx.com>
 %%%
 %%% @copyright (C) 2011, Karl Anderson
-%%% @doc
-%%%
+%%% @doc 
+%%% 
 %%% Implementation of JSON Schema spec
 %%% http://tools.ietf.org/html/draft-zyp-json-schema-03
 %%%
