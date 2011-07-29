@@ -12,7 +12,7 @@
 %%% Created : 18 Feb 2011 by Karl Anderson <karl@2600hz.org>
 %%% 28 July 2011 - remove dust & refresh code, json schema still v0.3
 %%%-------------------------------------------------------------------
--module(json_schema_03).
+-module(json_schema).
 
 -export([do_validate/2]).
 
@@ -33,7 +33,11 @@ do_validate(File, SchemaName) when is_list(File)->
 %% for crossbar usage
 do_validate(Data, SchemaName)  ->
     {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, whistle_util:to_binary(SchemaName)),
-    Validation = validate(Data, Schema).
+    Errors = [X || {T, _}=X <- validate(Data, Schema), T == validation_error],
+    case Errors of
+	[] -> ok;
+	_ -> Errors
+    end.
 
 -spec(validate/2 :: (Instance :: term(), json_object()) -> list()).
 validate(Instance, {struct, Definitions}) ->
@@ -70,7 +74,7 @@ trace_validate(Instance, Type, Attribute) ->
 %%            value, and not be undefined.
 %% @end
 %%--------------------------------------------------------------------
--spec(validate_instance/3 :: (Instance :: term(), binary(), term()) -> boolean() | tuple()).
+-spec(validate_instance/3 :: (Instance :: term(), binary(), term()) -> true | tuple(validation_error, binary())).
 validate_instance(Instance, <<"required">>, Attribute) ->
     trace_validate(Instance, <<"required">>, Attribute),
     case is_boolean_true(Attribute) of
@@ -544,14 +548,14 @@ to_list(X) when is_list(X) ->
     X.
 
 
--spec(validation_error/2 :: (term(), binary()) -> tuple(atom(), binary())).
+-spec(validation_error/2 :: (term(), binary()) -> tuple(validation_error, binary())).
 validation_error({struct, _}, _) ->
     {validation_error, <<"json is invalid">>};
 validation_error(Instance, Msg) ->
     {validation_error, <<(whistle_util:to_binary(Instance))/binary,
 			     " ", (whistle_util:to_binary(Msg))/binary>>}.
 
--spec(validation_error/3 :: (term(), binary(), term()) -> tuple(atom(), binary())).
+-spec(validation_error/3 :: (term(), binary(), term()) -> tuple(validation_error, binary())).
 validation_error(Instance, Msg, Attribute) ->
     {validation_error, <<(whistle_util:to_binary(Instance))/binary,
 			     " ", (whistle_util:to_binary(Msg))/binary,
