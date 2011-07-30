@@ -21,7 +21,7 @@
 -spec default/0 :: () -> {boolean(), []}.
 default() ->
     case ecallmgr_util:get_setting(authz_default, deny) of
-	allow -> {true, []};
+	{ok, allow} -> {true, []};
 	_ -> {false, []}
     end.
 

@@ -169,7 +169,7 @@ get_channel_vars({<<"Codecs">>, []}, Vars) ->
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     Codecs = [ binary_to_list(C) || C <- Cs ],
     CodecStr = string:join(Codecs, ","),
-    [ list_to_binary(["absolute_codec_string='", CodecStr, "'"]) | Vars];
+    [ list_to_binary(["codec_string='", CodecStr, "'"]) | Vars];
 get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"progress_timeout=">>, V]) | Vars];
 get_channel_vars({<<"Rate">>, V}, Vars) ->

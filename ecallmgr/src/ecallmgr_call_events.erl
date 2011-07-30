@@ -47,7 +47,10 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link/3 :: (Node :: atom(), UUID :: binary(), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
+-spec start_link/3 :: (Node, UUID, CtlPid) -> {ok, pid()} when
+      Node :: atom(),
+      UUID :: binary(),
+      CtlPid :: pid() | undefined.
 start_link(Node, UUID, CtlPid) ->
     gen_server:start_link(?MODULE, [Node, UUID, CtlPid], []).
 
