@@ -5,6 +5,6 @@
               {applications,[kernel,stdlib]},
               {mod,{stepswitch_app,[]}},
               {env,[]},
-              {modules,[stepswitch,stepswitch_app,stepswitch_deps,
-                        stepswitch_inbound,stepswitch_maintenance,
-                        stepswitch_outbound,stepswitch_sup]}]}.
+              {modules,[stepswitch,stepswitch_app,stepswitch_inbound,
+                        stepswitch_maintenance,stepswitch_outbound,
+                        stepswitch_sup]}]}.

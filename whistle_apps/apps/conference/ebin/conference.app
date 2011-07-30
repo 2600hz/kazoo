@@ -5,6 +5,6 @@
               {applications,[kernel,stdlib]},
               {mod,{conference_app,[]}},
               {env,[]},
-              {modules,[conf_amqp,conf_command,conf_discovery,conf_responder,
-                        conf_service,conf_service_sup,conference,
-                        conference_app,conference_sup]}]}.
+              {modules,[conf_command,conf_discovery,conf_service,
+                        conf_service_sup,conference,conference_app,
+                        conference_sup]}]}.

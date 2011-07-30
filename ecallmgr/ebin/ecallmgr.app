@@ -12,7 +12,7 @@
                         ecallmgr_fs_auth_sup,ecallmgr_fs_command,
                         ecallmgr_fs_handler,ecallmgr_fs_node,
                         ecallmgr_fs_route,ecallmgr_fs_route_sup,
-                        ecallmgr_fs_sup,ecallmgr_fs_xml,ecallmgr_maintenance,
+                        ecallmgr_fs_sup,ecallmgr_fs_xml,
                         ecallmgr_media_registry,ecallmgr_notify,
                         ecallmgr_registrar,ecallmgr_shout,ecallmgr_shout_sup,
                         ecallmgr_sup,ecallmgr_util,freeswitch,resource_mgr,
