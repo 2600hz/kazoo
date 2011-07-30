@@ -22,6 +22,7 @@
 
 %% API
 -export([start_link/0]).
+-export([reload/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -36,11 +37,22 @@
 
 -define(VIEW_FILE, <<"views/signup.json">>).
 -define(VIEW_ACTIVATION_KEYS, <<"signups/listing_by_key">>).
--define(VIEW_ACTIVATION_REALM, <<"signups/group_by_realm">>).
--define(VIEW_ACTIVATION_NOT_EXPIRED, <<"signups/has_not_expired">>).
+-define(VIEW_ACTIVATION_REALM, <<"signups/listing_by_realm">>).
+-define(VIEW_ACTIVATION_CREATED, <<"signups/listing_by_created">>).
 
--define(CLEANUP_INTERVAL, 1000 * 3600 * 24). % once a day (in milliseconds)
 -define(SIGNUP_LIFESPAN, 3600*24*7). % a week (in seconds)
+
+-define(SIGNUP_CONF, [code:lib_dir(crossbar, priv), "/signup/signup.conf"]).
+
+-record(state, {cleanup_interval = 1000 * 3600 * 24 :: integer() %% once a day (in ms)
+                ,signup_lifespan = 3600 * 24 * 7 :: integer() %% one week (in seconds)
+                ,register_cmd = undefined :: undefined | atom()
+                ,activation_email_plain = undefined
+                ,activation_email_html = undefined
+                ,activation_email_from = undefined
+                ,activation_email_subject = undefined
+                ,cleanup_timer
+               }).
 
 %%%===================================================================
 %%% API
@@ -55,6 +67,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+reload() ->
+    gen_server:cast(?SERVER, {reload}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -72,7 +87,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, ok, 0}.
+    {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,6 +117,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({reload}, State) ->
+    {noreply, State, 0};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -115,19 +133,27 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"signup">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[]}], req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"signup">>,[_]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[_]}], req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"signup">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[]}], req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"signup">>,[_]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[_]}], req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
@@ -147,6 +173,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.signup">>, Paylo
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context#cb_context{db_name=?SIGNUP_DB}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -155,27 +182,34 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-
-                  Event1 = <<"v1_resource.execute.put.accounts">>,
-                  Payload1 = [RD, Context#cb_context{doc=wh_json:get_value(<<"account">>, JObj)}, [[]]],
-                  [_, #cb_context{resp_status=success}=Context1 | _] = crossbar_bindings:fold(Event1, Payload1),
-
-                  Event2 = <<"v1_resource.execute.put.users">>,
-                  Payload2 = [RD, Context1#cb_context{doc=wh_json:get_value(<<"user">>, JObj)}, [[]]],
-                  crossbar_bindings:fold(Event2, Payload2),
-
-                  _ = crossbar_doc:delete(Context),
-
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  case activate_signup(JObj) of
+                      {ok, Account, User} ->
+                          crossbar_doc:delete(Context),
+                          Context1 = Context#cb_context{resp_status=success
+                                                       ,resp_data={struct, [{<<"account">>, Account}
+                                                                            ,{<<"user">>, User}]}},
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
+                      _Else ->
+                          Context1 = crossbar_util:response_db_fatal(Context),
+                          Pid ! {binding_result, true, [RD, Context1, Params]}
+                  end
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  Context1 = crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  confirmation_email(RD, Context1)
+                  crossbar_util:put_reqid(Context),
+                  case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
+                      #cb_context{resp_status=success}=Context1 ->
+                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]}, Params]},
+                          send_activation_email(RD, Context1, State),
+                          exec_register_command(RD, Context1, State);
+                      _ ->
+                          Context1 = crossbar_util:response_db_fatal(Context),
+                          Pid ! {binding_result, true, [RD, Context1, Params]}
+                  end
 	  end),
     {noreply, State};
 
@@ -184,12 +218,11 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(cleanup, State) ->
-    logger:format_log(info, ">>> CLEANING", []),
-    cleanup_signups(),
-    logger:format_log(info, ">>> DONE", [] ),
+    cleanup_signups(State),
     {noreply, State};
 
-handle_info(timeout, State) ->
+handle_info(timeout, #state{cleanup_timer=CurTRef}) ->
+    timer:cancel(CurTRef),
     bind_to_crossbar(),
     couch_mgr:db_create(?SIGNUP_DB),
     case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
@@ -197,8 +230,31 @@ handle_info(timeout, State) ->
             couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
         {ok, _} -> ok
     end,
-    timer:send_interval(?CLEANUP_INTERVAL, cleanup),
-    {noreply, State};
+    State = case file:consult(?SIGNUP_CONF) of
+                {ok, Terms} ->
+                    ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
+                    Defaults = #state{},
+                    #state{cleanup_interval =
+                               props:get_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
+                           ,signup_lifespan =
+                               props:get_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
+                           ,register_cmd =
+                               compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
+                           ,activation_email_plain =
+                               compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
+                           ,activation_email_html =
+                               compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
+                           ,activation_email_from =
+                               compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
+                           ,activation_email_subject =
+                               compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
+                          };
+                {error, _} ->
+                    ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
+                    #state{}
+            end,
+    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
+    {noreply, State#state{cleanup_timer=TRef}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -238,7 +294,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
@@ -256,7 +312,8 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (Paths) -> tuple(boolean(), http_methods()) when
+      Paths :: list().
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods([_]) ->
@@ -272,7 +329,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (Paths) -> tuple(boolean(), []) when
+      Paths :: list().
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -289,9 +347,11 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (Params, Context) -> #cb_context{} when
+      Params :: list(),
+      Context :: #cb_context{}.
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    signup_new_account(Context);
+    validate_new_signup(Context);
 validate([ActivationKey], #cb_context{req_verb = <<"get">>}=Context) ->
     check_activation_key(ActivationKey, Context);
 validate(_, Context) ->
@@ -303,14 +363,79 @@ validate(_, Context) ->
 %% Create a new signup document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(signup_new_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-signup_new_account(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, _} ->
-            create_activation_request(Context)
+-spec validate_new_signup/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+validate_new_signup(#cb_context{req_data=JObj}=Context) ->
+    {AccountErrors, Account} = validate_account(wh_json:get_value(<<"account">>, JObj), Context),
+    {UserErrors, User} = validate_user(wh_json:get_value(<<"user">>, JObj), Context),
+    case {AccountErrors, UserErrors} of
+        {[], []} ->
+            Context#cb_context{doc={struct, [{<<"pvt_user">>, User}
+                                             ,{<<"pvt_account">>, Account}
+                                             ,{<<"pvt_activation_key">>, create_activation_key()}
+                                            ]}
+                               ,resp_status=success};
+        _Else ->
+            crossbar_util:response_invalid_data({struct, [{<<"account">>, AccountErrors}
+                                                          ,{<<"user">>, UserErrors}]}, Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determines if the account realm is unique and if the account is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_account/2 :: (Account, Context) -> tuple(list(), undefined | json_object()) when
+      Account :: undefined | json_object(),
+      Context :: #cb_context{}.
+validate_account(undefined, _) ->
+    ?LOG("signup did not contain an account definition"),
+    {[<<"account">>], undefined};
+validate_account(Account, Context) ->
+    case is_unique_realm(wh_json:get_value(<<"realm">>, Account))
+        andalso cb_accounts:create_account(Context#cb_context{req_data=Account}) of
+        false ->
+            {[<<"duplicate realm">>], undefined};
+        #cb_context{resp_status=success, doc=Acct} ->
+            ?LOG("signup account is valid"),
+            {[], Acct};
+        #cb_context{resp_data=Errors} ->
+            ?LOG("signup account definition is not valid"),
+            {Errors, undefined}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determines if the user object is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_user/2 :: (User, Context) -> tuple(list(), undefined | json_object()) when
+      User :: undefined | json_object(),
+      Context :: #cb_context{}.
+validate_user(undefined, _) ->
+    ?LOG("signup did not contain an user definition"),
+    {[<<"user">>], undefined};
+validate_user(User, Context) ->
+    case cb_users:create_user(Context#cb_context{req_data=User}) of
+        #cb_context{resp_status=success, doc=Usr} ->
+            ?LOG("signup user is valid"),
+            {[], Usr};
+        #cb_context{resp_data=Errors} ->
+            ?LOG("signup user definition is not valid"),
+            {Errors, undefined}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% generates a random activation key
+%% @end
+%%--------------------------------------------------------------------
+-spec create_activation_key/0 :: () -> binary().
+create_activation_key() ->
+     whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -318,140 +443,320 @@ signup_new_account(#cb_context{req_data=JObj}=Context) ->
 %% Load a signup document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(check_activation_key/2 :: (ActivationKey :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec check_activation_key/2 :: (ActivationKey, Context) -> #cb_context{} when
+      ActivationKey :: binary(),
+      Context :: #cb_context{}.
 check_activation_key(ActivationKey, Context) ->
-    case crossbar_doc:load_view(?VIEW_ACTIVATION_KEYS, [{<<"key">>, ActivationKey}], Context#cb_context{db_name=?SIGNUP_DB}) of
-        #cb_context{resp_status=success, doc=[JObj|_]} ->
-            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
-        #cb_context{resp_status=success, doc=JObj} when JObj =/= [] ->
-            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
+    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{<<"key">>, ActivationKey}
+                                                                   ,{<<"include_docs">>, true}]) of
+        {ok, []} ->
+            ?LOG("activation key not found"),
+            crossbar_util:response(error, <<"invalid activation key">>, 403, Context);
+        {ok, [JObj|_]} ->
+            ?LOG("activation key is valid"),
+            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"doc">>, JObj)};
         _ ->
+            ?LOG("db error while looking up activation key"),
             crossbar_util:response(error, <<"invalid activation key">>, 403, Context)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
+%% Activate signup document by creating an account and user
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
-is_valid_doc(JObj) ->
-    {(wh_json:get_value(<<"pvt_user">>, JObj) =/= undefined), [<<"">>]}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(create_activation_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_activation_request(#cb_context{req_data=JObj}=Context) ->
-    case users:create_user(Context#cb_context{req_data=wh_json:get_value(<<"user">>, JObj, ?EMPTY_JSON_OBJECT)}) of
-	#cb_context{resp_status=success, doc=User} ->
-	    AcctObj = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
-	    case is_unique_realm(Context, wh_json:get_value(<<"realm">>, AcctObj)) andalso accounts:create_account(Context#cb_context{req_data=AcctObj}) of
-		false ->
-		    crossbar_util:response_invalid_data([<<"realm">>], Context);
-		#cb_context{resp_status=success, doc=Account}=Context1 ->
-		    Context1#cb_context{doc={struct, [
-						      {<<"pvt_user">>, User}
-						      ,{<<"pvt_account">>, Account}
-						      ,{<<"has_expired">>, false }
-						      ,{<<"pvt_activation_key">>, create_activation_key()}
-						     ]}};
-		Context1 -> Context1
-	    end;
-	Context1 -> Context1
+-spec activate_signup/1 :: (JObj) -> boolean() when
+      JObj :: json_object().
+activate_signup(JObj) ->
+    case activate_account(wh_json:get_value(<<"pvt_account">>, JObj)) of
+        {ok, Account} ->
+            activate_user(Account, wh_json:get_value(<<"pvt_user">>, JObj));
+        {error, _}=E ->
+            E
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec(create_activation_key/0 :: () -> binary()).
-create_activation_key() ->
-     whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))).
+-spec activate_account/1 :: (Account) -> tuple(ok, binary()) | tuple(error, atom()) when
+      Account :: undefined | json_object().
+activate_account(undefined) ->
+    {error, account_undefined};
+activate_account(Account) ->
+    Event = <<"v1_resource.execute.put.accounts">>,
+    Payload = [undefined, #cb_context{doc=Account}, [[]]],
+    case crossbar_bindings:fold(Event, Payload) of
+        [_, #cb_context{resp_status=success, resp_data=JObj} | _] ->
+            AccountId = wh_json:get_value(<<"id">>, JObj),
+            ?LOG("created new account ~s", [AccountId]),
+            {ok, JObj};
+        _ ->
+            ?LOG("could not create a new account"),
+            {error, creation_failed}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If a remote host authenticates the shared token it will return
+%% an account and user, ensure the user exists locally (creating if not)
+%% @end
+%%--------------------------------------------------------------------
+-spec activate_user/2 :: (Account, User) -> tuple(ok, binary(), binary())
+                                                  | tuple(error, atom()) when
+      Account :: json_object(),
+      User :: undefined | json_object().
+activate_user(_, undefined) ->
+    {error, user_undefined};
+activate_user(Account, User) ->
+    AccountId = wh_json:get_value(<<"id">>, Account),
+    Db = whapps_util:get_db_name(AccountId, encoded),
+    Event = <<"v1_resource.execute.put.users">>,
+    Payload = [undefined, #cb_context{doc=User, db_name=Db}, [[]]],
+    case crossbar_bindings:fold(Event, Payload) of
+        [_, #cb_context{resp_status=success, resp_data=JObj} | _] ->
+            UserId = wh_json:get_value(<<"id">>, JObj),
+            ?LOG("created new user ~s in account ~s", [UserId, AccountId]),
+            {ok, Account, JObj};
+        _ ->
+            ?LOG("could not create a new user in account ~s", [AccountId]),
+            {error, creation_failed}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% if the system has a register command defined in priv/signup/signup.conf
+%% then exectute it now.
+%% @end
+%%--------------------------------------------------------------------
+-spec exec_register_command/3 :: (RD, Context, State) -> no_return() when
+      RD :: #wm_reqdata{},
+      Context :: #cb_context{},
+      State :: #state{}.
+exec_register_command(_, _, #state{register_cmd=undefined}) ->
+    ok;
+exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
+    Props = template_props(RD, Context),
+    {ok, Cmd} = CmdTmpl:render(Props),
+    ?LOG("executing register command ~s", [Cmd]),
+    os:cmd(binary_to_list(iolist_to_binary(Cmd))).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(confirmation_email/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> no_return()).
-confirmation_email(RD, #cb_context{doc=JObj}) ->
+-spec send_activation_email/3 :: (RD, Context, State) -> no_return() when
+      RD :: #wm_reqdata{},
+      Context :: #cb_context{},
+      State :: #state{}.
+send_activation_email(RD, #cb_context{doc=JObj}=Context, #state{activation_email_subject=SubjectTmpl
+                                                                ,activation_email_from=FromTmpl}=State) ->
+    Props = template_props(RD, Context),
+    To = wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
+    Subject = case SubjectTmpl:render(Props) of
+                  {ok, S} -> S;
+                  _ -> <<"Confirm your account activation">>
+              end,
+    From = case FromTmpl:render(Props) of
+               {ok, F} -> F;
+               _ ->
+                   <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>
+           end,
+    Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
+		 ,[ %% Headers
+		    {<<"From">>, From},
+		    {<<"To">>, To},
+		    {<<"Subject">>, Subject}
+		  ]
+	     ,[] %% Parameters
+             ,create_body(State, Props, [])
+	    },
+    Encoded = mimemail:encode(Email),
+    SmartHost = smtp_util:guess_FQDN(),
+    ?LOG("sending activation email to ~s", [To]),
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
+			 ,fun(X) -> ?LOG("sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% create a multipart body from the HTML and plain text templates
+%% if they have been provided
+%% @end
+%%--------------------------------------------------------------------
+-spec create_body/3 :: (State, Props, Body) -> list() when
+      State :: #state{},
+      Props :: proplist(),
+      Body :: list().
+create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= undefined ->
+    case Tmpl:render(Props) of
+        {ok, Content} ->
+            Part = {<<"text">>, <<"html">>
+                    ,[{<<"Content-Type">>, <<"text/html">>}]
+                    ,[]
+                    ,iolist_to_binary(Content)},
+             create_body(State#state{activation_email_html=undefined}, Props, [Part|Body]);
+        _ ->
+             create_body(State#state{activation_email_html=undefined}, Props, Body)
+    end;
+create_body(#state{activation_email_plain=Tmpl}=State, Props, Body) when Tmpl =/= undefined ->
+    case Tmpl:render(Props) of
+        {ok, Content} ->
+            Part = {<<"text">>, <<"plain">>
+                    ,[{<<"Content-Type">>, <<"text/plain">>}]
+                    ,[]
+                    ,iolist_to_binary(Content)},
+             create_body(State#state{activation_email_plain=undefined}, Props, [Part|Body]);
+        _ ->
+             create_body(State#state{activation_email_plain=undefined}, Props, Body)
+    end;
+create_body(_, _, Body) ->
+    Body.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% create a proplist to provide to the templates during render
+%% @end
+%%--------------------------------------------------------------------
+-spec template_props/2 :: (RD, Context) -> proplist() when
+      RD :: #wm_reqdata{},
+      Context :: #cb_context{}.
+template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     Port = case wrq:port(RD) of
 	       80 -> "";
 	       P -> [":", whistle_util:to_list(P)]
 	   end,
-    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
-    send_confirmation_email(
-       wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj)
-      ,wh_json:get_value([<<"pvt_user">>, <<"first_name">>], JObj)
-      ,wh_json:get_value([<<"pvt_user">>, <<"last_name">>], JObj)
-      ,<<(whistle_util:to_binary(Host))/binary>>
-      ,wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)
-     ).
+    ApiHost = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
+    %% remove the redundant request data
+    Req1 = wh_json:delete_key(<<"account">>, Data),
+    Req2 = wh_json:delete_key(<<"user">>, Req1),
+    %% create props to expose to the template
+    [{<<"account">>, wh_json:to_proplist(<<"pvt_account">>, JObj)}
+     ,{<<"user">>, wh_json:to_proplist(<<"pvt_user">>, JObj)}
+     ,{<<"request">>, wh_json:to_proplist(Req2)}
+     ,{<<"api_url">>, [{<<"host">>, whistle_util:to_binary(ApiHost)}
+                       ,{<<"path">>, <<"v1/signup/">>}]}
+     ,{<<"host">>, whistle_util:to_binary(net_adm:localhost())}
+     ,{<<"activation_key">>, wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% determines if the given account realm is unique amoung the existing
+%% accounts and completed signups
 %% @end
 %%--------------------------------------------------------------------
--spec(send_confirmation_email/5 :: (Email :: binary(), First :: binary(), Last :: binary()
-                                    ,BaseURL :: binary(), Key :: binary()) -> no_return()).
-send_confirmation_email(Email, First, Last, BaseURL, Key) ->
-    Cmd = whistle_util:to_list(<<(whistle_util:to_binary(code:priv_dir(crossbar)))/binary
-                                 ,"/confirmation_email.sh"
-                                 ,$ , $", Email/binary, $"
-                                 ,$ , $", First/binary, $"
-                                 ,$ , $", Last/binary, $"
-                                 ,$ , $", BaseURL/binary, $"
-                                 ," \"v1/signup/\""
-                                 ,$ , $", Key/binary, $"
-                               >>),
-    os:cmd(Cmd).
-
-is_unique_realm(_, undefined) -> false;
-is_unique_realm(Context, Realm) ->
-    V = case crossbar_doc:load_view(?VIEW_ACTIVATION_REALM, [{<<"key">>, Realm}
-							     ,{<<"reduce">>, <<"true">>}
-							    ]
-				    ,Context#cb_context{db_name=?SIGNUP_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
-	    #cb_context{resp_status=success, doc=[]} -> []
-	end,
-    is_unique_realm1(Realm, V).
-
-is_unique_realm1(undefined, [_]) -> false;
-is_unique_realm1(undefined, []) -> false;
-is_unique_realm1(_, []) -> true;
-is_unique_realm1(Realm, [Realm]) -> true;
-is_unique_realm1(_, _) -> false.
-
-
-cleanup_signups() ->
-    logger:format_log(info, "---- Cleaning old registrations ...", []),
-    {ok, Docs} = couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_NOT_EXPIRED, [{<<"include_docs">>, true}]),
-    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    Fun = fun(Doc) -> check_for_expiration(wh_json:get_value(<<"doc">>, Doc), Now) end,
-    lists:foreach(Fun, Docs),
-
-    logger:format_log(info, "----- Registrations cleaned", []).
-
-check_for_expiration(Doc, Now) ->
-    logger:format_log(info, "---- Checking for registrations for ID:~p", [wh_json:get_value([<<"pvt_user">>, <<"email">>], Doc)]),
-
-    NewDoc = wh_json:set_value( <<"pvt_has_expired">>, is_expired( wh_json:get_value( <<"pvt_created">>, Doc ), Now ), Doc ),
-    case couch_mgr:save_doc(?SIGNUP_DB, NewDoc) of
-	{error, conflict} ->
-	    check_for_expiration(couch_mgr:load_doc(?SIGNUP_DB, wh_json:get_value(<<"_id">>, NewDoc)), Now);
-	{ok, _} ->
-	    ok;
-	{_,_} ->
-	    error
+-spec is_unique_realm/1 :: (Realm) -> boolean() when
+      Realm :: undefined | binary().
+is_unique_realm(undefined) ->
+    false;
+is_unique_realm(<<>>) ->
+    false;
+is_unique_realm(Realm) ->
+    case whapps_util:get_account_by_realm(Realm) of
+        {ok, _} ->
+            false;
+        {error, _} ->
+            case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_REALM, [{<<"key">>, Realm}]) of
+                {ok, []} ->
+                    true;
+                _Else ->
+                    false
+            end
     end.
 
-is_expired(Timestamp, Now) ->
-    Timestamp < (Now + ?SIGNUP_LIFESPAN).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Periodically runs and cleans expired signups.  The delete function
+%% will wait up to 5 minutes randomly, as an experiment to distribute
+%% the db load.
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_signups/1 :: (State) -> no_return() when
+      State :: #state{}.
+cleanup_signups(#state{signup_lifespan=Lifespan}) ->
+    ?LOG_SYS("cleaning up signups"),
+    Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
+    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{<<"startkey">>, 0}
+                                                                      ,{<<"endkey">>, Expiration}
+                                                                      ,{<<"include_docs">>, true}]) of
+        {ok, Expired} ->
+            [spawn(fun() ->
+                           timer:sleep(random:uniform(500) * 1000),
+                           delete_signup(wh_json:get_value(<<"doc">>, JObj))
+                   end)
+             || JObj <- Expired];
+        _Else ->
+            ok
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% The helper function spanwed by cleanup_signups to mark a signup
+%% as expired.
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_signup/1 :: (JObj) -> no_return() when
+      JObj :: undefined | json_object().
+delete_signup(undefined) ->
+    ok;
+delete_signup(JObj) ->
+    ?LOG_SYS("removing expired signup ~s", [wh_json:get_value(<<"_id">>, JObj)]),
+    crossbar_doc:delete(#cb_context{doc=JObj, db_name=?SIGNUP_DB}).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Compiles a template string or path, correcting relative paths
+%% to the priv directory of this module
+%% @end
+%%--------------------------------------------------------------------
+-spec compile_template/2 :: (Template, Name) -> undefined | atom() when
+      Template :: undefined | string() | binary(),
+      Name :: atom().
+compile_template(undefined, _) ->
+    undefined;
+compile_template(Template, Name) when not is_binary(Template) ->
+    Path = case string:substr(Template, 1, 1) of
+               "/" ->
+                   Template;
+               _ ->
+                   BasePath = code:lib_dir(crossbar, priv),
+                   lists:concat([BasePath, "/signup/", Template])
+           end,
+    ?LOG("sourcing template from file at ~s", [Path]),
+    do_compile_template(Path, Name);
+compile_template(Template, Name) ->
+    do_compile_template(Template, Name).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Compiles template string or path, normalizing the return
+%% @end
+%%--------------------------------------------------------------------
+-spec do_compile_template/2 :: (Template, Name) -> undefined | atom() when
+      Template :: string() | binary(),
+      Name :: atom().
+do_compile_template(Template, Name) ->
+    case erlydtl:compile(Template, Name) of
+        {ok, Name} ->
+            ?LOG("compiled ~s template", [Name]),
+            Name;
+        ok ->
+            ?LOG("compiled ~s template file", [Name]),
+            Name;
+        _E ->
+            ?LOG("could not compile ~s template, ignoring", [Name]),
+            undefined
+    end.

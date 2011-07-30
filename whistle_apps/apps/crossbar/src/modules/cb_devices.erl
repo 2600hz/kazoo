@@ -124,14 +124,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, RD, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, RD, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
 		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
@@ -140,6 +142,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
 		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
@@ -148,6 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),

@@ -1,11 +1,11 @@
-%%%============================================================================
+%%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011 VoIP Inc
 %%% @doc
 %%% Supervisor for running conference service processes
 %%% @end
 %%% Created : 28 Jun 2011 by Karl Anderson <karl@2600hz.org>
-%%%============================================================================
+%%%-------------------------------------------------------------------
 -module(conf_service_sup).
 
 -behaviour(supervisor).
@@ -49,7 +49,7 @@ start_service(ConfId, Conference) ->
       Conference :: json_object(),
       Caller :: undefined | json_object().
 start_service(ConfId, Conference, Caller) ->
-    supervisor:delete_child(conf_service_sup, ConfId),
+    _ = supervisor:delete_child(conf_service_sup, ConfId),
     supervisor:start_child(?SERVER, ?CHILD(ConfId, conf_service, [Conference, Caller])).
 
 %%%===================================================================
