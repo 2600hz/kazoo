@@ -551,7 +551,7 @@ exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
       RD :: #wm_reqdata{},
       Context :: #cb_context{},
       State :: #state{}.
-send_activation_email(RD, #cb_context{doc=JObj}=Context, #state{activation_email_subject=SubjectTmpl
+send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
                                                                 ,activation_email_from=FromTmpl}=State) ->
     Props = template_props(RD, Context),
     To = wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
@@ -577,7 +577,7 @@ send_activation_email(RD, #cb_context{doc=JObj}=Context, #state{activation_email
     SmartHost = smtp_util:guess_FQDN(),
     ?LOG("sending activation email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
-			 ,fun(X) -> ?LOG("sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
+			 ,fun(X) -> ?LOG(ReqId, "sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
