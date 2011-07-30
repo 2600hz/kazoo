@@ -10,8 +10,6 @@
 %%% * it authenticates and authorizes itself
 %%% * it has a completely unique role
 %%% * it operates without an account id (or account db)
-%%% * it breaks the REST API (prefoming a GET on the confirmation link
-%%%           has significant side-effects)
 %%%
 %%% @end
 %%% Created : 22 Apr 2011 by Karl Anderson <karl@2600hz.org>
@@ -40,12 +38,10 @@
 -define(VIEW_ACTIVATION_REALM, <<"signups/listing_by_realm">>).
 -define(VIEW_ACTIVATION_CREATED, <<"signups/listing_by_created">>).
 
--define(SIGNUP_LIFESPAN, 3600*24*7). % a week (in seconds)
-
 -define(SIGNUP_CONF, [code:lib_dir(crossbar, priv), "/signup/signup.conf"]).
 
--record(state, {cleanup_interval = 1000 * 3600 * 24 :: integer() %% once a day (in ms)
-                ,signup_lifespan = 3600 * 24 * 7 :: integer() %% one week (in seconds)
+-record(state, {cleanup_interval = 18000 :: integer() %% once every 5 hours (in seconds)
+                ,signup_lifespan = 86400 :: integer() %% 24 hours (in seconds)
                 ,register_cmd = undefined :: undefined | atom()
                 ,activation_email_plain = undefined
                 ,activation_email_html = undefined
@@ -180,13 +176,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case activate_signup(JObj) of
                       {ok, Account, User} ->
-                          crossbar_doc:delete(Context),
+                          delete_signup(JObj),
                           Context1 = Context#cb_context{resp_status=success
                                                        ,resp_data={struct, [{<<"account">>, Account}
                                                                             ,{<<"user">>, User}]}},
@@ -317,7 +313,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods([_]) ->
-    {true, ['GET']};
+    {true, ['POST']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -352,7 +348,7 @@ resource_exists(_) ->
       Context :: #cb_context{}.
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     validate_new_signup(Context);
-validate([ActivationKey], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([ActivationKey], #cb_context{req_verb = <<"post">>}=Context) ->
     check_activation_key(ActivationKey, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -555,7 +551,7 @@ exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
       RD :: #wm_reqdata{},
       Context :: #cb_context{},
       State :: #state{}.
-send_activation_email(RD, #cb_context{doc=JObj}=Context, #state{activation_email_subject=SubjectTmpl
+send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
                                                                 ,activation_email_from=FromTmpl}=State) ->
     Props = template_props(RD, Context),
     To = wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
@@ -581,7 +577,7 @@ send_activation_email(RD, #cb_context{doc=JObj}=Context, #state{activation_email
     SmartHost = smtp_util:guess_FQDN(),
     ?LOG("sending activation email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
-			 ,fun(X) -> ?LOG("sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
+			 ,fun(X) -> ?LOG(ReqId, "sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
