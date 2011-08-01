@@ -24,7 +24,6 @@
 
 -record(state, {
 	   amqp_q = <<>> :: binary()
-	  ,cleanup_ref = undefined :: undefined | reference()
 	  ,cache = undefined :: undefined | pid()
 	 }).
 
@@ -131,13 +130,8 @@ handle_info(timeout, #state{cache=undefined}=State) ->
     case whereis(reg_cache) of
         Pid when is_pid(Pid) ->
             _ = prime_cache(Pid),
-
-            ?LOG_SYS("starting cleanup timer for ~p msec", [?CLEANUP_RATE]),
-            Ref = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok),
-
             erlang:monitor(process, Pid),
-
-            {noreply, State#state{cache=Pid, cleanup_ref=Ref}, 0};
+            {noreply, State#state{cache=Pid}, 0};
         _ ->
             ?LOG_SYS("could not locate cache, trying again in 1000 msec"),
             {noreply, State, 1000}
@@ -176,17 +170,6 @@ handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
     {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
-
-handle_info({timeout, Ref, _}, #state{cleanup_ref=Ref, cache=Cache}=S) ->
-    spawn(fun() -> cleanup_registrations(Cache) end),
-    NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok),
-    {noreply, S#state{cleanup_ref=NewRef}};
-
-handle_info({timeout, Ref1, _}, #state{cleanup_ref=Ref}=S) ->
-    ?LOG_SYS("bad cleanup timer ref ~p, expected ~p", [Ref1, Ref]),
-    _ = erlang:cancel_timer(Ref),
-    NewRef = erlang:start_timer(?CLEANUP_RATE, ?SERVER, ok),
-    {noreply, S#state{cleanup_ref=NewRef}};
 
 handle_info({'basic.consume_ok', _}, S) ->
     {noreply, S};
@@ -263,14 +246,14 @@ start_amqp() ->
       MsgType :: {binary(), binary()},
       JObj :: json_object(),
       State :: #state{}.
-process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue}) ->
+process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache=Cache}) ->
     ?LOG_START("received SIP authentication request"),
 
     AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
     AuthR = wh_json:get_value(<<"Auth-Domain">>, JObj),
 
     %% crashes if not found, no return necessary
-    {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR),
+    {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, Cache),
 
     AccountId = whapps_util:get_db_name(wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj), raw),
     AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj, <<>>),
@@ -286,7 +269,7 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue}) ->
 		| whistle_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
 					      ,wh_json:get_value(<<"Event-Category">>, JObj)
 					      ,<<"authn_resp">>
-						  ,?APP_NAME
+					      ,?APP_NAME
 					      ,?APP_VERSION)],
     {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
@@ -316,25 +299,26 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 
 	    ?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
 
-	    wh_cache:store_local(Cache, Id, Expires, Expires),
+	    wh_cache:store_local(Cache, Id, JObj, Expires),
 	    {ok, _} = store_reg(JObj, Id, Contact1),
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
-	    case couch_mgr:lookup_doc_rev(<<"registrations">>, Id) of
-		{ok, _} ->
-		    wh_cache:store_local(Cache, Id, Expires, Expires),
-		    ?LOG_END("contact hash ~s requires no update", [Id]);
-		{error, _} ->
-		    ?LOG("contact hash missing in db"),
-		    wh_cache:store_local(Cache, Id, Expires, Expires),
+	    ?LOG_END("not verifying with DB, assuming cached JSON is valid")
+	    %% case couch_mgr:lookup_doc_rev(<<"registrations">>, Id) of
+	    %% 	{ok, _} ->
+	    %% 	    wh_cache:store_local(Cache, Id, JObj, Expires),
+	    %% 	    ?LOG_END("contact hash ~s requires no update", [Id]);
+	    %% 	{error, _} ->
+	    %% 	    ?LOG("contact hash missing in db"),
+	    %% 	    wh_cache:store_local(Cache, Id, JObj, Expires),
 
-		    remove_old_regs(User, Realm, Cache),
-		    ?LOG("flushed users registrations, to be safe"),
+	    %% 	    remove_old_regs(User, Realm, Cache),
+	    %% 	    ?LOG("flushed users registrations, to be safe"),
 
-		    {ok, _} = store_reg(JObj, Id, Contact1),
-		    ?LOG_END("added contact hash ~s to db", [Id])
-	    end
+	    %% 	    {ok, _} = store_reg(JObj, Id, Contact1),
+	    %% 	    ?LOG_END("added contact hash ~s to db", [Id])
+	    %% end
     end;
 
 process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{amqp_q=Queue}) ->
@@ -422,40 +406,30 @@ remove_old_regs(User, Realm, Cache) ->
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% remove expired registration document from the cache and db if it still
-%% exists in either.  IE: get all documents with one or more tstamps < Now
-%% @end
-%%-----------------------------------------------------------------------------
-cleanup_registrations(Cache) ->
-    ?LOG_SYS("cleaning up expired registrations"),
-    Now = whistle_util:current_tstamp(),
-    Expired = wh_cache:filter_local(Cache, fun(_, V) -> V < Now end),
-    lists:foreach(fun({K,_}) ->
-			  {ok, Rev} = couch_mgr:lookup_doc_rev(?REG_DB, K),
-			  {ok, _} = couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, K}, {<<"_rev">>, Rev}]}),
-			  wh_cache:erase(Cache, K)
-		  end, Expired).
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user/2 :: (Name, Realm) -> {ok, json_object()} | {error, no_user_found} when
+-spec lookup_auth_user/3 :: (Name, Realm, Cache) -> {ok, json_object()} | {error, no_user_found} when
       Name :: binary(),
-      Realm :: binary().
-lookup_auth_user(Name, Realm) ->
+      Realm :: binary(),
+      Cache :: pid().
+lookup_auth_user(Name, Realm, Cache) ->
     ?LOG("looking up ~s@~s", [Name, Realm]),
-    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
-	{error, R} ->
-            ?LOG_END("failed to look up SIP credentials ~p", [R]),
-	    {error, no_user_found};
-	{ok, []} ->
-            ?LOG("~s@~s not found", [Name, Realm]),
-            {error, no_user_found};
-	{ok, [User|_]} ->
-	    {ok, User}
+    CacheKey = {?MODULE, Realm, Name},
+    case wh_cache:fetch_local(Cache, CacheKey) of
+	{error, not_found} ->
+	    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
+		{error, R} ->
+		    ?LOG_END("failed to look up SIP credentials ~p", [R]),
+		    {error, no_user_found};
+		{ok, []} ->
+		    ?LOG("~s@~s not found", [Name, Realm]),
+		    {error, no_user_found};
+		{ok, [User|_]} ->
+		    wh_cache:store_local(Cache, CacheKey, User),
+		    {ok, User}
+	    end;
+	{ok, _}=OK -> OK
     end.
 
 %%-----------------------------------------------------------------------------
