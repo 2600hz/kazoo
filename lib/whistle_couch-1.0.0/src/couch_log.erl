@@ -16,6 +16,8 @@
 
 -export([req_by_date/2, req_by_http/2, req_by_uri/2, req_by_statuscode/2]).
 
+-export([req_by_uri/3, req_by_uri/4]).
+
 -export([discard_until/2, discard_until/3]).
 
 -include_lib("wh_couch.hrl").
@@ -23,7 +25,7 @@
 -define(MAX_PARSED_LOG_LINES, 100000).
 
 -record(log_line, {
-	  date = <<>> :: binary()
+	  date = {{0,0,0},{0,0,0}} :: wh_datetime()
 	 ,log_level = <<>> :: binary()
          ,couch_pid = <<>> :: binary()
          ,req_id = <<>> :: binary()
@@ -36,13 +38,14 @@
          ,time_elapsed = 0 :: integer() %% milliseconds
 	 ,method = <<>> :: binary()
          ,req_id = <<>> :: binary()
+         ,date = {{0,0,0},{0,0,0}} :: wh_datetime()
 	 }).
 
 -record(log_data, {
 	  io_device = undefined :: undefined | file:io_device()
          ,filename = <<>> :: binary()
 	 ,by_date = orddict:new() :: orddict:orddict()
-	 ,by_http = dict:new() :: dict()
+	 ,by_http = dict:new() :: dict() %% URI, #log_line_http{}
          ,by_uri = dict:new() :: dict()
          ,by_statuscode = dict:new() :: dict()
          ,by_errors = dict:new() :: dict()
@@ -130,6 +133,13 @@ req_by_uri(#log_data{by_uri=ByUri}, asc) ->
     lists:keysort(2, dict:fold(fun count_entries/3, [], ByUri));
 req_by_uri(#log_data{by_uri=ByUri}, desc) ->
     lists:reverse(lists:keysort(2, dict:fold(fun count_entries/3, [], ByUri))).
+
+req_by_uri(LogData, {_,_}=Start, {_,_}=Finish) ->
+    req_by_uri(LogData, raw, Start, Finish).
+
+req_by_uri(#log_data{by_uri=ByUri}, Sort, Start, Finish) when Start =< Finish ->
+    ByUri1 = dict:filter(fun(_, [#log_line_http{date=DateStamp}|_]) -> DateStamp >= Start andalso DateStamp =< Finish end, ByUri),
+    req_by_uri(#log_data{by_uri=ByUri1}, Sort).
 
 req_by_statuscode(LD) ->
     req_by_statuscode(LD, raw).
@@ -223,13 +233,15 @@ analyze_data(#log_data{by_date = ByDate}=LogData, LineData, Filter) ->
 				 ,couch_pid=CouchPid
 				 ,req_id=ReqID
 				}],
-	    {true, analyze_req_data(LogData#log_data{by_date=orddict:append_list(DateStamp, LogLine, ByDate)}, ReqData)}
+	    {true, analyze_req_data(LogData#log_data{by_date=orddict:append_list(DateStamp, LogLine, ByDate)}, ReqData, ReqID, DateStamp)}
     end.
 
--spec analyze_req_data/2 :: (LogData, ReqData) -> #log_data{} when
+-spec analyze_req_data/4 :: (LogData, ReqData, ReqID, DateStamp) -> #log_data{} when
       LogData :: #log_data{},
-      ReqData :: binary().
-analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData) ->
+      ReqData :: binary(),
+      ReqID :: binary(),
+      DateStamp :: wh_datetime().
+analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) ->
     case binary:split(ReqData, <<" ">>, [global]) of
 	[_, <<"-">>, <<"-">>, Verb, Uri, SC] ->
 	    #log_data{by_http=ByHttp, by_uri=ByUri, by_statuscode=ByStatus} = LogData,
@@ -247,6 +259,8 @@ analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData) ->
 	      ,qs = mochiweb_util:parse_qs(QS)
 	      ,status_code = StatusCode
 	      ,method = HttpVerb
+	      ,date = DateStamp
+	      ,req_id = ReqID
 	     }],
 
 	    LogData#log_data{by_http=dict:append_list(HttpVerb, HTTP, ByHttp)
