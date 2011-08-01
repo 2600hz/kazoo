@@ -238,7 +238,7 @@ handle_cdr(Payload) ->
 %% Creation of the anonymous_cdr DB if it doesn't exists
 %% @end
 %%--------------------------------------------------------------------
--spec create_anonymous_db/1 :: (DB) -> no_return() when
+-spec create_anonymous_cdr_db/1 :: (DB) -> no_return() when
       DB :: binary().
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
@@ -256,7 +256,7 @@ create_anonymous_cdr_db(DB) ->
 %%--------------------------------------------------------------------
 -spec append_cdr_to_doc/2 :: (ExistingDoc, NewDoc) -> json_object() when
       ExistingDoc :: json_object(),
-      NewDoc :: json_doc().
+      NewDoc :: json_object().
 append_cdr_to_doc(ExistingDoc, NewDoc) ->
     DocFinal = case wh_json:get_value(<<"related_cdrs">>, ExistingDoc) of
                    undefined ->
