@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, lookup/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -40,6 +40,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+lookup(Realm, Username) ->
+    gen_server:call(?SERVER, {lookup, Realm, Username}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -88,8 +91,9 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call({lookup, Realm, Username}, From, #state{cache=Cache}=State) ->
+    spawn(fun() -> gen_server:reply(From, lookup_registration(Realm, Username, Cache)) end),
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -137,7 +141,7 @@ handle_info(timeout, #state{cache=undefined}=State) ->
             {noreply, State, 1000}
     end;
 
-handle_info(timeout, #state{amqp_q = <<>>}=State) ->
+handle_info(timeout, #state{amqp_q = Q}=State) when not is_binary(Q) orelse Q =:= <<>> ->
     try
         {ok, Q} = start_amqp(),
         {noreply, State#state{amqp_q=Q}}
@@ -285,12 +289,13 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
 
     Id = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Contact1))),
+    CacheKey = {?MODULE, Id},
     Expires = whistle_util:current_tstamp() + whistle_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
 
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
 
-    case wh_cache:fetch_local(Cache, Id) of
+    case wh_cache:fetch_local(Cache, CacheKey) of
 	{error, not_found} ->
 	    ?LOG("contact for ~s@~s not in cache", [Username, Realm]),
 
@@ -299,66 +304,86 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 
 	    ?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
 
-	    wh_cache:store_local(Cache, Id, JObj, Expires),
+	    wh_cache:store_local(Cache, CacheKey, JObj, Expires),
+	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
+
 	    {ok, _} = store_reg(JObj, Id, Contact1),
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
 	    ?LOG_END("not verifying with DB, assuming cached JSON is valid")
+	    %% wh_cache:store_local(Cache, CacheKey, JObj, Expires),
+	    %% wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
 	    %% case couch_mgr:lookup_doc_rev(<<"registrations">>, Id) of
 	    %% 	{ok, _} ->
-	    %% 	    wh_cache:store_local(Cache, Id, JObj, Expires),
 	    %% 	    ?LOG_END("contact hash ~s requires no update", [Id]);
 	    %% 	{error, _} ->
 	    %% 	    ?LOG("contact hash missing in db"),
-	    %% 	    wh_cache:store_local(Cache, Id, JObj, Expires),
 
 	    %% 	    remove_old_regs(User, Realm, Cache),
 	    %% 	    ?LOG("flushed users registrations, to be safe"),
 
-	    %% 	    {ok, _} = store_reg(JObj, Id, Contact1),
+	    %% 	    {ok, _} = store_reg(JObj, CacheKey, Contact1),
 	    %% 	    ?LOG_END("added contact hash ~s to db", [Id])
 	    %% end
     end;
 
-process_req({<<"directory">>, <<"reg_query">>}, JObj, #state{amqp_q=Queue}) ->
+process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, cache=Cache}) ->
     ?LOG_START("received registration query"),
-    true = whistle_api:reg_query_v(JObj),
+    true = whistle_api:reg_query_v(ApiJObj),
 
-    Domain = wh_json:get_value(<<"Realm">>, JObj),
-    User = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
+    Username = wh_json:get_value(<<"Username">>, ApiJObj),
 
-    case couch_mgr:get_results("registrations", <<"registrations/newest">>
-				   ,[{<<"startkey">>, [Domain, User,?EMPTY_JSON_OBJECT]}, {<<"endkey">>, [Domain, User, 0]}, {<<"descending">>, true}]) of
-	{ok, []} ->
-	    ?LOG_END("contact for ~s@~s not found", [User, Domain]);
-	{ok, [ViewRes | _]} ->
-	    DocId = wh_json:get_value(<<"id">>, ViewRes),
+    {ok, RegJObj} = lookup_registration(Realm, Username, Cache),
 
-	    {ok, RegJObj} = couch_mgr:open_doc(?REG_DB, DocId),
+    RespFields = case wh_json:get_value(<<"Fields">>, ApiJObj) of
+		     [] ->
+			 wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, RegJObj));
+		     Fields ->
+			 {struct, lists:foldl(fun(F, Acc) ->
+						      [ {F, wh_json:get_value(F, RegJObj)} | Acc]
+					      end, [], Fields)}
+		 end,
 
-	    RespFields = case wh_json:get_value(<<"Fields">>, JObj) of
-			     [] ->
-				 {struct, RegDoc} = RegJObj,
-				 lists:keydelete(<<"_rev">>, 1, lists:keydelete(<<"_id">>, 1, RegDoc));
-			     Fields ->
-				 lists:foldl(fun(F, Acc) ->
-						     [ {F, wh_json:get_value(F, RegJObj)} | Acc]
-					     end, [], Fields)
-			 end,
+    {ok, Payload} = whistle_api:reg_query_resp([ {<<"Fields">>, RespFields}
+						 | whistle_api:default_headers(Queue
+									       ,<<"directory">>
+									       ,<<"reg_query_resp">>
+									       ,?APP_NAME
+									       ,?APP_VERSION)
+					       ]),
 
-	    {ok, Payload} = whistle_api:reg_query_resp([ {<<"Fields">>, {struct, RespFields}}
-							 | whistle_api:default_headers(Queue
-										       ,<<"directory">>
-											   ,<<"reg_query_resp">>
-											   ,?APP_NAME
-										       ,?APP_VERSION)
-						       ]),
+    ?LOG_END("found contact for ~s@~s in registration", [Username, Realm]),
 
-	    ?LOG_END("found contact for ~s@~s in registration ~s", [User, Domain, DocId]),
+    RespServer = wh_json:get_value(<<"Server-ID">>, ApiJObj),
+    amqp_util:targeted_publish(RespServer, Payload, <<"application/json">>).
 
-	    RespServer = wh_json:get_value(<<"Server-ID">>, JObj),
-	    amqp_util:targeted_publish(RespServer, Payload, <<"application/json">>)
+-spec lookup_registration/3 :: (Realm, Username, Cache) -> {ok, json_object()} | {error, not_found} when
+      Realm :: binary(),
+      Username :: binary(),
+      Cache :: pid().
+lookup_registration(Realm, Username, Cache) ->
+    case wh_cache:fetch_local(Cache, {?MODULE, registration, Realm, Username}) of
+	{ok, CacheKey} ->
+	    {ok, CachedJObj} = wh_cache:fetch_local(Cache, CacheKey),
+	    ?LOG_SYS("Found cached registration"),
+	    CachedJObj;
+	{error, not_found} ->
+	    case couch_mgr:get_results("registrations"
+				       ,<<"registrations/newest">>
+				       ,[{<<"startkey">>, [Realm, Username,?EMPTY_JSON_OBJECT]}
+					 ,{<<"endkey">>, [Realm, Username, 0]}
+					 ,{<<"descending">>, true}
+					]) of
+		{ok, []} ->
+		    ?LOG_END("contact for ~s@~s not found", [Username, Realm]),
+		    {error, not_found};
+		{ok, [ViewRes | _]} ->
+		    DocId = wh_json:get_value(<<"id">>, ViewRes),
+		    ?LOG_SYS("Found registration in DB: ~s", [DocId]),
+		    couch_mgr:open_doc(?REG_DB, DocId)
+	    end
     end.
 
 %%-----------------------------------------------------------------------------
