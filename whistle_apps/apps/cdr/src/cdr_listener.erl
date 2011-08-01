@@ -22,8 +22,7 @@
 
 -define(SERVER, ?MODULE).
 -record(state, {
-            self :: pid()
-	   ,amqp_q = <<>> :: binary()
+	  amqp_q = <<>> :: binary()
          }).
 %%%===================================================================
 %%% API
@@ -56,7 +55,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting CDR listener"),
-    {ok, #state{self=self()}, 0}.
+    {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,9 +134,7 @@ handle_info({amqp_host_down, _}, State) ->
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
-    %% spawn(fun() -> handle_cdr(Props#'P_basic'.content_type, Payload) end),
-    JObj = mochijson2:decode(Payload),
-    _ = handle_cdr(JObj, State),
+    spawn(fun() -> handle_cdr(Payload) end),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -186,11 +183,12 @@ start_amqp() ->
             {error, amqp_error}
     end.
 
-handle_cdr(JObj, _State) ->
-    _AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
+handle_cdr(Payload) ->
+    JObj = mochijson2:decode(Payload),
+    AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
 
-    Db = case couch_mgr:db_exists(_AccountDb) of
-        true -> _AccountDb;
+    Db = case couch_mgr:db_exists(AccountDb) of
+        true -> AccountDb;
         false -> ?ANONYMOUS_CDR_DB
     end,
 
