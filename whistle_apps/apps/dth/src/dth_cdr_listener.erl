@@ -85,7 +85,8 @@ init([]) ->
             ok = detergent:write_hrl(WSDLFile, WSDLHrlFile, ?PREFIX)
     end,
 
-    {ok, #state{wsdl_model=detergent:initModel(WSDLFile, ?PREFIX), dth_cdr_url=URL}, 0}.
+    %% {ok, #state{wsdl_model=detergent:initModel(WSDLFile, ?PREFIX), dth_cdr_url=URL}, 0}.
+    {ok, #state{dth_cdr_url=URL}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
