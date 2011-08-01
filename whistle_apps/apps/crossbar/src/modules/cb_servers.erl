@@ -118,6 +118,24 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]},
+                                              {<<"accounts">>,[_]}]
+                                   ,req_verb = <<"post">>
+                                   ,req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]},
+                                              {<<"accounts">>,[_]}]
+                                   ,req_verb = <<"post">>
+                                   ,req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authenticate request", []),
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.servers">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
@@ -245,6 +263,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
+    bind_to_crossbar(),
     {ok, State}.
 
 %%%===================================================================
@@ -259,6 +278,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.servers">>),
