@@ -21,9 +21,7 @@
 -include("cdr.hrl").
 
 -define(SERVER, ?MODULE).
--record(state, {
-	  amqp_q = <<>> :: binary()
-         }).
+-record(state, {amqp_q = <<>> :: binary()}).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -169,6 +167,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec start_amqp/0 :: () -> tuple(ok, binary()).
 start_amqp() ->
     try
         _ = amqp_util:callevt_exchange(),
@@ -183,6 +182,14 @@ start_amqp() ->
             {error, amqp_error}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% process th payload of an AMQPrequests
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_cdr/1 :: (Payload) -> no_return() when
+      Payload :: binary().
 handle_cdr(Payload) ->
     JObj = mochijson2:decode(Payload),
     AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
@@ -225,7 +232,14 @@ handle_cdr(Payload) ->
             end
     end.
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creation of the anonymous_cdr DB if it doesn't exists
+%% @end
+%%--------------------------------------------------------------------
+-spec create_anonymous_db/1 :: (DB) -> no_return() when
+      DB :: binary().
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
     case couch_mgr:load_doc_from_file(DB, cdr, <<"cdr.json">>) of
@@ -233,6 +247,16 @@ create_anonymous_cdr_db(DB) ->
 	{error, _} -> couch_mgr:update_doc_from_file(DB, cdr, <<"cdr.json">>)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Append the CDR to the list of CDR of the doc, or create that
+%% list from the existing CDR
+%% @end
+%%--------------------------------------------------------------------
+-spec append_cdr_to_doc/2 :: (ExistingDoc, NewDoc) -> json_object() when
+      ExistingDoc :: json_object(),
+      NewDoc :: json_doc().
 append_cdr_to_doc(ExistingDoc, NewDoc) ->
     DocFinal = case wh_json:get_value(<<"related_cdrs">>, ExistingDoc) of
                    undefined ->
