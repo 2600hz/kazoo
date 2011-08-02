@@ -197,14 +197,14 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
 			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
-				  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)), build_view(WDB, AcctId) end),
+				  spawn(fun() -> _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)), build_view(WDB, AcctId) end),
 				  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
 				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
 				  AvailableCredit = wh_json:get_value(<<"credit">>, Funds, 0),
 				  case AvailableCredit > Amt of
 				      true ->
-					  spawn(fun() -> couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)), build_view(WDB, AcctId) end),
+					  spawn(fun() -> _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)), build_view(WDB, AcctId) end),
 					  ?LOG(CallID, "Per-minute reserved for ~s", [AcctId]),
 					  gen_server:reply(From, {ok, per_min});
 				      false ->
@@ -303,9 +303,9 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
     Self = self(),
     spawn(fun() -> lists:foreach(fun(Acct) ->
 					 ?LOG_SYS("Transfer account ~s from ~s to ~s", [Acct, RDB, WDB]),
-					 transfer_acct(Acct, RDB, WDB),
+					 _ = transfer_acct(Acct, RDB, WDB),
 					 ?LOG_SYS("Transfer active calls for ~s from ~s to ~s", [Acct, RDB, WDB]),
-					 transfer_active_calls(Acct, RDB, WDB),
+					 _ = transfer_active_calls(Acct, RDB, WDB),
 					 build_view(WDB, Acct)
 				 end, get_accts(RDB)),
 		   %% once active accounts from yesterday are done, make sure all others are in too
@@ -474,7 +474,8 @@ debit_doc(AcctId, Extra) ->
      | Extra
     ].
 
--spec(get_accts/1 :: (DB :: binary()) -> list(binary()) | []).
+-spec get_accts/1 :: (DB) -> [binary(),...] | [] when
+      DB :: binary().
 get_accts(DB) ->
     case couch_mgr:get_results(DB, <<"accounts/listing">>, [{<<"group">>, true}]) of
 	{ok, []} -> [];
@@ -482,22 +483,31 @@ get_accts(DB) ->
 	_ -> []
     end.
 
--spec(transfer_acct/3 :: (AcctId :: binary(), RDB :: binary(), WDB :: binary()) -> pid()).
+-spec transfer_acct/3 :: (AcctId, RDB, WDB) -> pid() | undefined when
+      AcctId :: binary(),
+      RDB :: binary(),
+      WDB :: binary().
 transfer_acct(AcctId, RDB, WDB) ->
     %% read account balance, from RDB
     Bal = credit_available(RDB, AcctId),
-    {ok, {struct, Acct}} = couch_mgr:open_doc(RDB, AcctId),
-    Acct1 = [ {<<"amount">>, Bal} | lists:keydelete(<<"amount">>, 1, Acct)],
+    case couch_mgr:open_doc(RDB, AcctId) of
+	{error, not_found} -> undefined;
+	{ok, Acct} ->
+	    Acct1 = wh_json:set_value(<<"amount">>, Bal, Acct),
 
-    ?LOG_SYS("Transfer account ~s: Balance ~p from ~s to ~s", [AcctId, ?UNITS_TO_DOLLARS(Bal), RDB, WDB]),
+	    ?LOG_SYS("Transfer account ~s: Balance ~p from ~s to ~s", [AcctId, ?UNITS_TO_DOLLARS(Bal), RDB, WDB]),
 
-    %% create credit entry in WDB for balance/trunks
-    {ok, _} = couch_mgr:save_doc(WDB, {struct, lists:keydelete(<<"_rev">>, 1, Acct1)}),
+	    %% create credit entry in WDB for balance/trunks
+	    _ = couch_mgr:save_doc(WDB, wh_json:delete_key(<<"_rev">>, Acct1)),
 
-    %% update info_* doc with account balance
-    spawn(fun() -> update_account(AcctId, Bal) end).
+	    %% update info_* doc with account balance
+	    spawn(fun() -> update_account(AcctId, Bal) end)
+    end.
 
--spec(transfer_active_calls/3 :: (AcctId :: binary(), RDB :: binary(), WDB :: binary()) -> no_return()).
+-spec transfer_active_calls/3 :: (AcctId, RDB, WDB) -> no_return() when
+      AcctId :: binary(),
+      RDB :: binary(),
+      WDB :: binary().
 transfer_active_calls(AcctId, RDB, WDB) ->
     case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, true]}, {<<"group_level">>, <<"2">>}]) of
 	{ok, []} -> ?LOG_SYS("No active calls for ~s in ~s", [AcctId, RDB]);
@@ -514,11 +524,15 @@ transfer_active_calls(AcctId, RDB, WDB) ->
 						end
 					end);
 			     (_) -> ok
-			  end, Calls)
+			  end, Calls);
+	{error, _} -> ok
     end.
 
 %% When TS updates an account, find the diff and create the appropriate entry (debit or credit).
--spec(update_from_couch/3 :: (AcctId :: binary(), WDB :: binary(), RDB :: binary()) -> no_return()).
+-spec update_from_couch/3 :: (AcctId, WDB, RDB) -> no_return() when
+      AcctId :: binary(),
+      WDB :: binary(),
+      RDB :: binary().
 update_from_couch(AcctId, WDB, RDB) ->
     {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
 
@@ -547,15 +561,13 @@ update_from_couch(AcctId, WDB, RDB) ->
 	C -> couch_mgr:save_doc(WDB, credit_doc(AcctId, C0 + C, 0, []))
     end.
 
--spec(update_account/2 :: (AcctId :: binary(), Bal :: pos_integer()) -> tuple(ok, json_object() | json_objects()) | tuple(error, atom())).
+-spec update_account/2 :: (AcctId, Bal) -> {ok, json_object() | json_objects()} | {error, atom()} when
+      AcctId :: binary(),
+      Bal :: pos_integer().
 update_account(AcctId, Bal) ->
-    {ok, {struct, Doc}} = couch_mgr:open_doc(?TS_DB, AcctId),
-    {struct, Acct} = props:get_value(<<"account">>, Doc, ?EMPTY_JSON_OBJECT),
-    {struct, Credits} = props:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
-    Credits1 = [ {<<"prepay">>, ?UNITS_TO_DOLLARS(Bal)} | lists:keydelete(<<"prepay">>, 1, Credits)],
-    Acct1 = [ {<<"credits">>, {struct, Credits1}} | lists:keydelete(<<"credits">>, 1, Acct)],
-    Doc1 = [ {<<"account">>, {struct, Acct1}} | lists:keydelete(<<"account">>, 1, Doc)],
-    couch_mgr:save_doc(?TS_DB, Doc1).
+    {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
+    JObj1 = wh_json:set_value([<<"account">>, <<"credits">>, <<"prepay">>], ?UNITS_TO_DOLLARS(Bal), JObj),
+    couch_mgr:save_doc(?TS_DB, JObj1).
 
 -spec(load_account/3 :: (AcctId :: binary(), DB :: binary(), Srv :: pid()) -> ok).
 load_account(AcctId, DB, Srv) ->
@@ -565,10 +577,9 @@ load_account(AcctId, DB, Srv) ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
 		{error, not_found} -> ok;
 		{ok, JObj} ->
-		    Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
-		    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
-		    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0))),
-		    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
+		    Balance = ?DOLLARS_TO_UNITS(wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], JObj, 0.0)),
+		    Trunks = whistle_util:to_integer(wh_json:get_value([<<"account">>, <<"trunks">>], JObj, 0)),
+
 		    _ = couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
 		    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
 		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5),
