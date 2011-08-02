@@ -55,10 +55,10 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec audio_macro/2 :: (Prompts, Call) -> ok when
+-spec audio_macro/2 :: (Prompts, Call) -> binary() when
       Prompts :: proplist(),
       Call :: #cf_call{}.
--spec audio_macro/3 :: (Prompts, Call, Queue) -> ok when
+-spec audio_macro/3 :: (Prompts, Call, Queue) -> binary() when
       Prompts :: proplist(),
       Call :: #cf_call{},
       Queue :: json_objects().
@@ -102,7 +102,7 @@ audio_macro([{tones, Tones}|T], Call, Queue) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec flush_dtmf/1 :: (Call) -> cf_api_std_return() when
+-spec flush_dtmf/1 :: (Call) -> ok when
       Call :: #cf_call{}.
 flush_dtmf(Call) ->
     play(<<"silence_stream://50">>, Call).
@@ -309,10 +309,10 @@ b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call
       Terminators :: list(binary()),
       Call :: #cf_call{}.
 
--spec b_play/2 :: (Media, Call) -> ok when
+-spec b_play/2 :: (Media, Call) -> cf_api_std_return() when
       Media :: binary(),
       Call :: #cf_call{}.
--spec b_play/3 :: (Media, Terminators, Call) -> ok when
+-spec b_play/3 :: (Media, Terminators, Call) -> cf_api_std_return() when
       Media :: binary(),
       Terminators :: list(binary()),
       Call :: #cf_call{}.
@@ -335,7 +335,7 @@ b_play(Media, Terminators, Call) ->
     play(Media, Terminators, Call),
     wait_for_message(<<"play">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity).
 
--spec play_command/3 :: (Media, Terminators, Call) -> ok when
+-spec play_command/3 :: (Media, Terminators, Call) -> proplist() when
       Media :: binary(),
       Terminators :: list(binary()),
       Call :: #cf_call{}.
@@ -496,28 +496,28 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
 %% caller, and collect a number of DTMF events.
 %% @end
 %%--------------------------------------------------------------------
--spec play_and_collect_digit/2 :: (Media, Call) -> cf_api_error() | tuple(ok, binary()) when
+-spec play_and_collect_digit/2 :: (Media, Call) -> ok when
       Media :: binary(),
       Call :: #cf_call{}.
--spec play_and_collect_digits/4 :: (MinDigits, MaxDigits, Media, Call) -> cf_api_error() | tuple(ok, binary()) when
+-spec play_and_collect_digits/4 :: (MinDigits, MaxDigits, Media, Call) -> ok when
       MinDigits :: binary(),
       MaxDigits :: binary(),
       Media :: binary(),
       Call :: #cf_call{}.
--spec play_and_collect_digits/5 :: (MinDigits, MaxDigits, Media, Tries, Call) -> cf_api_error() | tuple(ok, binary()) when
+-spec play_and_collect_digits/5 :: (MinDigits, MaxDigits, Media, Tries, Call) -> ok when
       MinDigits :: binary(),
       MaxDigits :: binary(),
       Media :: binary(),
       Tries :: binary(),
       Call :: #cf_call{}.
--spec play_and_collect_digits/6 :: (MinDigits, MaxDigits, Media, Tries, Timeout, Call) -> cf_api_error() | tuple(ok, binary()) when
+-spec play_and_collect_digits/6 :: (MinDigits, MaxDigits, Media, Tries, Timeout, Call) -> ok when
       MinDigits :: binary(),
       MaxDigits :: binary(),
       Media :: binary(),
       Tries :: binary(),
       Timeout :: binary(),
       Call :: #cf_call{}.
--spec play_and_collect_digits/7 :: (MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) -> cf_api_error() | tuple(ok, binary()) when
+-spec play_and_collect_digits/7 :: (MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) -> ok when
       MinDigits :: binary(),
       MaxDigits :: binary(),
       Media :: binary(),
@@ -525,7 +525,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
       Timeout :: binary(),
       MediaInvalid :: undefined | binary(),
       Call :: #cf_call{}.
--spec play_and_collect_digits/8 :: (MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Call) -> cf_api_error() | tuple(ok, binary()) when
+-spec play_and_collect_digits/8 :: (MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Call) -> ok when
       MinDigits :: binary(),
       MaxDigits :: binary(),
       Media :: binary(),
@@ -534,7 +534,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
       MediaInvalid :: undefined | binary(),
       Regex :: binary(),
       Call :: #cf_call{}.
--spec play_and_collect_digits/9 :: (MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) -> cf_api_error() | tuple(ok, binary()) when
+-spec play_and_collect_digits/9 :: (MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) -> ok when
       MinDigits :: binary(),
       MaxDigits :: binary(),
       Media :: binary(),
@@ -670,7 +670,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
                     b_play_and_collect_digits(MinDigits, MaxDigits, Media, RemainingTries
                                               ,Timeout, MediaInvalid, Regex, Terminators, Call)
             end;
-        Else -> Else
+        {error, _}=Else -> Else
     end.
 
 %%--------------------------------------------------------------------
@@ -761,19 +761,19 @@ b_say(Say, Type, Method, Language, Call) ->
 %% with a conference, with optional entry flags
 %% @end
 %%--------------------------------------------------------------------
--spec conference/2 :: (ConfId, Call) -> cf_api_std_return() when
+-spec conference/2 :: (ConfId, Call) -> ok when
       ConfId :: binary(),
       Call :: #cf_call{}.
--spec conference/3 :: (ConfId, Mute, Call) -> cf_api_std_return() when
+-spec conference/3 :: (ConfId, Mute, Call) -> ok when
       ConfId :: binary(),
       Mute :: binary(),
       Call :: #cf_call{}.
--spec conference/4 :: (ConfId, Mute, Deaf, Call) -> cf_api_std_return() when
+-spec conference/4 :: (ConfId, Mute, Deaf, Call) -> ok when
       ConfId :: binary(),
       Mute :: binary(),
       Deaf :: binary(),
       Call :: #cf_call{}.
--spec conference/5 :: (ConfId, Mute, Deaf, Moderator, Call) -> cf_api_std_return() when
+-spec conference/5 :: (ConfId, Mute, Deaf, Moderator, Call) -> ok when
       ConfId :: binary(),
       Mute :: binary(),
       Deaf :: binary(),
@@ -899,30 +899,30 @@ b_flush(Call) ->
 %% execution untill the call is terminated.
 %% @end
 %%--------------------------------------------------------------------
--spec collect_digits/2 :: (MaxDigits, Call) -> cf_api_std_return() when
+-spec collect_digits/2 :: (MaxDigits, Call) -> cf_api_error() | tuple(ok, binary()) when
       MaxDigits :: integer() | binary(),
       Call :: #cf_call{}.
--spec collect_digits/3 :: (MaxDigits, Timeout, Call) -> cf_api_std_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/4 :: (MaxDigits, Timeout, Interdigit, Call) -> cf_api_std_return() when
+-spec collect_digits/3 :: (MaxDigits, Timeout, Call) -> cf_api_error() | tuple(ok, binary()) when
       MaxDigits :: integer() | binary(),
       Timeout :: integer() | binary(),
-      Interdigit :: integer() | binary(),
       Call :: #cf_call{}.
--spec collect_digits/5 :: (MaxDigits, Timeout, Interdigit, NoopId, Call) -> cf_api_std_return() when
+-spec collect_digits/4 :: (MaxDigits, Timeout, Interdigit, Call) -> cf_api_error() | tuple(ok, binary()) when
       MaxDigits :: integer() | binary(),
       Timeout :: integer() | binary(),
       Interdigit :: integer() | binary(),
-      NoopId :: binary(),
       Call :: #cf_call{}.
--spec collect_digits/6 :: (MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) -> cf_api_std_return() when
+-spec collect_digits/5 :: (MaxDigits, Timeout, Interdigit, NoopId, Call) -> cf_api_error() | tuple(ok, binary()) when
       MaxDigits :: integer() | binary(),
       Timeout :: integer() | binary(),
       Interdigit :: integer() | binary(),
-      NoopId :: binary(),
-      Terminators :: integer(),
+      NoopId :: undefined | binary(),
+      Call :: #cf_call{}.
+-spec collect_digits/6 :: (MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) -> cf_api_error() | tuple(ok, binary()) when
+      MaxDigits :: integer() | binary(),
+      Timeout :: integer() | binary(),
+      Interdigit :: integer() | binary(),
+      NoopId :: undefined | binary(),
+      Terminators :: list(),
       Call :: #cf_call{}.
 
 collect_digits(MaxDigits, Call) ->
@@ -1136,7 +1136,7 @@ wait_for_application(Application, Event, Type, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_dtmf/1 :: (Timeout) -> tuple(error, channel_hungup | execution_failure) | tuple(ok, binary()) when
-      Timeout :: integer().
+      Timeout :: infinity | integer().
 wait_for_dtmf(Timeout) ->
     Start = erlang:now(),
     receive
@@ -1178,7 +1178,7 @@ wait_for_dtmf(Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_bridge/1 :: (Timeout) -> cf_api_bridge_return() when
-      Timeout :: integer().
+      Timeout :: infinity | integer().
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -1246,15 +1246,15 @@ wait_for_noop(NoopId) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_unbridge/0 :: () -> tuple(ok, channel_hungup | channel_unbridge).
+-spec wait_for_unbridge/0 :: () -> tuple(ok, json_object()).
 wait_for_unbridge() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
-                    {ok, channel_unbridge};
+                    {ok, JObj};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-                    {ok, channel_hungup};
+                    {ok, JObj};
                 _ ->
                     wait_for_unbridge()
             end;
@@ -1294,7 +1294,7 @@ wait_for_hangup() ->
 %%--------------------------------------------------------------------
 -spec wait_for_application_or_dtmf/2 :: (Application, Timeout) -> cf_api_std_return() | tuple(dtmf, binary()) when
       Application :: binary(),
-      Timeout :: integer().
+      Timeout :: infinity | integer().
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive

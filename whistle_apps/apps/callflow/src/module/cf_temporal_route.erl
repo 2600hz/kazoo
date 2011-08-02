@@ -109,8 +109,10 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% returns the first valid callflow, or the default.
 %% @end
 %%--------------------------------------------------------------------
--spec(process_rules/3 :: (Temporal :: #temporal{}, Rules :: [#rule{}], Call :: #cf_call{})
-                         -> default | binary()).
+-spec process_rules/3 :: (Temporal, Rules, Call) -> default | binary() when
+      Temporal :: #temporal{},
+      Rules :: list(),
+      Call :: #cf_call{}.
 process_rules(_, [], _) ->
     ?LOG("continuing with default callflow"),
     default;
@@ -145,7 +147,7 @@ process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T,
 %% the future as well as pertain to this temporal route mapping.
 %% @end
 %%--------------------------------------------------------------------
--spec(get_temporal_rules/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> json_objects()).
+-spec(get_temporal_rules/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> list()).
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                    ,#cf_call{account_db=Db}) ->
     case couch_mgr:get_results(Db, ?FIND_RULES, [{<<"startkey">>, null}
