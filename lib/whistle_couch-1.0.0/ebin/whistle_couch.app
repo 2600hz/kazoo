@@ -3,7 +3,7 @@
               {id,"14f7c3cd-06f0-40a8-b750-2fda4cb06ea7"},
               {vsn,"0.5.0"},
               {modules,[change_handler,change_mgr_sup,couch_compactor,
-                        couch_mgr,couch_util,wh_doc,whistle_couch,
+                        couch_log,couch_mgr,couch_util,wh_doc,whistle_couch,
                         whistle_couch_app,whistle_couch_deps,
                         whistle_couch_sup]},
               {registered,[couch_mgr]},
