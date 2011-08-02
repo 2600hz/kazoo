@@ -21,10 +21,7 @@
 -include("cdr.hrl").
 
 -define(SERVER, ?MODULE).
--record(state, {
-            self :: pid()
-	   ,amqp_q = <<>> :: binary()
-         }).
+-record(state, {amqp_q = <<>> :: binary()}).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -56,7 +53,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting CDR listener"),
-    {ok, #state{self=self()}, 0}.
+    {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,9 +132,7 @@ handle_info({amqp_host_down, _}, State) ->
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
-    %% spawn(fun() -> handle_cdr(Props#'P_basic'.content_type, Payload) end),
-    JObj = mochijson2:decode(Payload),
-    _ = handle_cdr(JObj, State),
+    spawn(fun() -> handle_cdr(Payload) end),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -172,6 +167,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec start_amqp/0 :: () -> tuple(ok, binary()).
 start_amqp() ->
     try
         _ = amqp_util:callevt_exchange(),
@@ -186,11 +182,20 @@ start_amqp() ->
             {error, amqp_error}
     end.
 
-handle_cdr(JObj, _State) ->
-    _AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% process th payload of an AMQPrequests
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_cdr/1 :: (Payload) -> no_return() when
+      Payload :: binary().
+handle_cdr(Payload) ->
+    JObj = mochijson2:decode(Payload),
+    AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
 
-    Db = case couch_mgr:db_exists(_AccountDb) of
-        true -> _AccountDb;
+    Db = case couch_mgr:db_exists(AccountDb) of
+        true -> AccountDb;
         false -> ?ANONYMOUS_CDR_DB
     end,
 
@@ -227,7 +232,14 @@ handle_cdr(JObj, _State) ->
             end
     end.
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creation of the anonymous_cdr DB if it doesn't exists
+%% @end
+%%--------------------------------------------------------------------
+-spec create_anonymous_cdr_db/1 :: (DB) -> no_return() when
+      DB :: binary().
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
     case couch_mgr:load_doc_from_file(DB, cdr, <<"cdr.json">>) of
@@ -235,6 +247,16 @@ create_anonymous_cdr_db(DB) ->
 	{error, _} -> couch_mgr:update_doc_from_file(DB, cdr, <<"cdr.json">>)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Append the CDR to the list of CDR of the doc, or create that
+%% list from the existing CDR
+%% @end
+%%--------------------------------------------------------------------
+-spec append_cdr_to_doc/2 :: (ExistingDoc, NewDoc) -> json_object() when
+      ExistingDoc :: json_object(),
+      NewDoc :: json_object().
 append_cdr_to_doc(ExistingDoc, NewDoc) ->
     DocFinal = case wh_json:get_value(<<"related_cdrs">>, ExistingDoc) of
                    undefined ->
