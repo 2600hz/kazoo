@@ -38,9 +38,13 @@
 
 -spec(start_link/2 :: (Path :: binary(), Type :: srv | recv) -> tuple(ok, pid())).
 start_link(Path, recv) ->
-    proc_lib:start_link(?MODULE, init_recv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]);
+    proc_lib:start_link(?MODULE, init_recv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]
+			,infinity, [{fullsweep_after, 0}]
+		       );
 start_link(Path, srv) ->
-    proc_lib:start_link(?MODULE, init_srv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]).
+    proc_lib:start_link(?MODULE, init_srv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]
+			,infinity, [{fullsweep_after, 0}]
+		       ).
 
 -spec(get_recv_url/1 :: (Srv :: pid()) -> binary() | timeout).
 get_recv_url(Srv) ->

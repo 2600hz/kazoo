@@ -179,8 +179,13 @@ handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
 
 handle_call({authz, JObj, outbound}, _From, State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    [ToDID, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-    {Resp, State1} = case is_us48(whistle_util:to_e164(ToDID)) of
+    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+		[<<"nouser">>, _] ->
+		    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
+		    whistle_util:to_e164(RUser);
+		[ToUser, _] -> whistle_util:to_e164(ToUser)
+	    end,
+    {Resp, State1} = case is_us48(ToDID) of
 			 true -> try_twoway(CallID, State);
 			 false -> try_prepay(CallID, State)
 		     end,
