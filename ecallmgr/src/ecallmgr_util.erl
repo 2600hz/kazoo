@@ -11,17 +11,15 @@
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
 -export([eventstr_to_proplist/1, get_setting/1, get_setting/2]).
 
--import(props, [get_value/2, get_value/3]).
-
 -include("ecallmgr.hrl").
 
 %% retrieves the sip address for the 'to' field
 -spec get_sip_to/1 :: (Prop) -> binary() when
       Prop :: proplist().
 get_sip_to(Prop) ->
-    list_to_binary([get_value(<<"sip_to_user">>, Prop, get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
+    list_to_binary([props:get_value(<<"sip_to_user">>, Prop, props:get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
 		    , "@"
-		    , get_value(<<"sip_to_host">>, Prop, get_value(<<"variable_sip_to_host">>, Prop, "nodomain"))
+		    , props:get_value(<<"sip_to_host">>, Prop, props:get_value(<<"variable_sip_to_host">>, Prop, "nodomain"))
 		   ]).
 
 %% retrieves the sip address for the 'from' field
@@ -29,9 +27,9 @@ get_sip_to(Prop) ->
       Prop :: proplist().
 get_sip_from(Prop) ->
     list_to_binary([
-		    get_value(<<"sip_from_user">>, Prop, get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
+		    props:get_value(<<"sip_from_user">>, Prop, props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
 		    ,"@"
-		    , get_value(<<"sip_from_host">>, Prop, get_value(<<"variable_sip_from_host">>, Prop, "nodomain"))
+		    , props:get_value(<<"sip_from_host">>, Prop, props:get_value(<<"variable_sip_from_host">>, Prop, "nodomain"))
 		   ]).
 
 %% retrieves the sip address for the 'request' field
@@ -39,16 +37,16 @@ get_sip_from(Prop) ->
       Prop :: proplist().
 get_sip_request(Prop) ->
     list_to_binary([
-		    get_value(<<"Caller-Destination-Number">>, Prop, get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
+		    props:get_value(<<"Caller-Destination-Number">>, Prop, props:get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
 		    ,"@"
-                    ,get_value(<<"variable_sip_req_host">>, Prop
-                               ,get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, "nodomain"))
+                    ,props:get_value(<<"variable_sip_req_host">>, Prop
+                               ,props:get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, "nodomain"))
 		   ]).
 
 -spec get_orig_ip/1 :: (Prop) -> binary() when
       Prop :: proplist().
 get_orig_ip(Prop) ->
-    get_value(<<"X-AUTH-IP">>, Prop, get_value(<<"ip">>, Prop)).
+    props:get_value(<<"X-AUTH-IP">>, Prop, props:get_value(<<"ip">>, Prop)).
 
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars/1 :: (Prop) -> proplist() when

@@ -16,7 +16,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_responder/0]).
+-export([start_link/0, start_responder/0, transfer_auth/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -44,7 +44,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    spawn(fun() -> [ ts_responder_sup:start_handler() || _ <- [1,2,3] ] end),
+    spawn(fun() ->
+		  _ = transfer_auth(),
+		  [ ts_responder_sup:start_handler() || _ <- [1,2,3] ]
+	  end),
     ignore.
 
 start_responder() ->
@@ -112,6 +115,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+%% receive resource requests from Apps
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    {_Pid, _Ref} = spawn_monitor(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
+    {noreply, State, hibernate};
+
+handle_info({'DOWN', _, process, _Pid, _Reason}, State) ->
+    ?LOG_SYS("handle_req for ~p down: ~p", [_Pid, _Reason]),
+    {noreply, State, hibernate};
+
 handle_info(timeout, #state{is_amqp_up=false}=S) ->
     ?LOG_SYS("starting amqp"),
     {ok, CQ} = start_amqp(),
@@ -138,13 +151,8 @@ handle_info(Req, #state{is_amqp_up=false}=S) ->
 	    {noreply, S}
     end;
 
-%% receive resource requests from Apps
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
-    {noreply, State};
-
 handle_info(#'basic.consume_ok'{}, S) ->
-    {noreply, S};
+    {noreply, S, hibernate};
 
 %% catch all so we don't lose state
 handle_info(_Unhandled, State) ->
@@ -191,30 +199,14 @@ handle_req(<<"application/json">>, Payload) ->
 handle_req(_ContentType, _Payload) ->
     ?LOG_SYS("Received payload with unknown content type: ~p -> ~s", [_ContentType, _Payload]).
 
--spec(get_msg_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary())).
+-spec get_msg_type/1 :: (JObj) -> {binary(), binary()} when
+      JObj :: json_object().
 get_msg_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
--spec(process_req/2 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object()) -> no_return()).
-process_req({<<"directory">>, <<"authn_req">>}, JObj) ->
-    try
-    case whistle_api:authn_req_v(JObj) andalso ts_auth:handle_req(JObj) of
-	false ->
-	    ?LOG_END("Failed to validate authentication request API message");
-	{ok, JSON} ->
-	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-	    ?LOG("Authentication response to ~s: ~s", [RespQ, JSON]),
-	    send_resp(JSON, RespQ),
-	    ?LOG_END("Finished authentication request");
-	{error, _Msg} ->
-	    ?LOG_END("Authentication request error: ~p", [_Msg])
-    end
-    catch
-	A:{error,B} ->
-	    ?LOG_END("Authentication request exception: ~s:~w", [A, B]),
-	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()])
-    end;
-
+-spec process_req/2 :: (MsgType, ApiJObj) -> no_return() when
+      MsgType :: {binary(), binary()},
+      ApiJObj :: json_object().
 process_req({<<"dialplan">>,<<"route_req">>}, ApiJObj) ->
     try
         true = whistle_api:route_req_v(ApiJObj),
@@ -235,19 +227,11 @@ process_req({<<"dialplan">>,<<"route_req">>}, ApiJObj) ->
 	A:{error,B} ->
 	    ?LOG_END("Route request exception: ~p:~p", [A, B]),
 	    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()])
-    end;
+    end.
 
-process_req(_MsgType, _Prop) ->
-    ?LOG_END("Unhandled request of type ~p", [_MsgType]).
-
--spec(send_resp/2 :: (JSON :: iolist(), RespQ :: binary()) -> ok).
-send_resp(JSON, RespQ) ->
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
-
--spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
+-spec start_amqp/0 :: () -> {ok, binary()} | {error, amqp_error}.
 start_amqp() ->
     ReqQueue = amqp_util:new_queue(?ROUTE_QUEUE_NAME, [{exclusive, false}]),
-    ReqQueue1 = amqp_util:new_queue(?AUTH_QUEUE_NAME, [{exclusive, false}]),
 
     try
 	amqp_util:basic_qos(1), %% control egress of messages from the queue, only send one at time (load balances)
@@ -256,13 +240,11 @@ start_amqp() ->
 
 	%% Bind the queue to an exchange
 	_ = amqp_util:bind_q_to_callmgr(ReqQueue, ?KEY_ROUTE_REQ),
-	_ = amqp_util:bind_q_to_callmgr(ReqQueue1, ?KEY_AUTHN_REQ),
 
-	?LOG_SYS("Bound queues"),
+	?LOG_SYS("Bound queue"),
 
 	%% Register a consumer to listen to the queue
 	amqp_util:basic_consume(ReqQueue, [{exclusive, false}]),
-	amqp_util:basic_consume(ReqQueue1, [{exclusive, false}]),
 
 	?LOG_SYS("Consuming"),
 
@@ -272,3 +254,30 @@ start_amqp() ->
 	    ?LOG_SYS("Error starting AMQP: ~p: ~p", [_A, _B]),
 	    {error, amqp_error}
     end.
+
+-spec transfer_auth/0 :: () -> ok.
+transfer_auth() ->
+    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, []) of
+	{ok, AuthJObjs} ->
+	    ?LOG_SYS("Importing ~b accounts into sip_auth", [length(AuthJObjs)]),
+	    _ = [ transfer_auth(AuthJObj) || AuthJObj <- AuthJObjs],
+	    ok;
+	_E ->
+	    ok
+    end.
+
+-spec transfer_auth/1 :: (AuthJObj) -> no_return() when
+      AuthJObj :: json_object().
+transfer_auth(AuthJObj) ->
+    ID = wh_json:get_value(<<"id">>, AuthJObj),
+    AuthData = wh_json:get_value(<<"value">>, AuthJObj),
+
+    SipAuthDoc = {struct, [{<<"_id">>, ID}
+			   ,{<<"sip">>, {struct, [
+						  {<<"realm">>, wh_json:get_value(<<"auth_realm">>, AuthData, <<"">>)}
+						  ,{<<"method">>, wh_json:get_value(<<"auth_method">>, AuthData, <<"">>)}
+						  ,{<<"username">>, wh_json:get_value(<<"auth_user">>, AuthData, <<"">>)}
+						  ,{<<"password">>, wh_json:get_value(<<"auth_password">>, AuthData, <<"">>)}
+					]}
+			    }]},
+    couch_mgr:ensure_saved(<<"sip_auth">>, SipAuthDoc).

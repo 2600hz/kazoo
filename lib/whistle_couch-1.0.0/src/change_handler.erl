@@ -165,7 +165,7 @@ handle_change({struct, Change}, #state{listeners=Ls}=State) ->
 				   (_) -> ok
 				end, Ls)
 	  end),
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private

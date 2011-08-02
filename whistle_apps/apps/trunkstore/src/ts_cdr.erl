@@ -58,7 +58,10 @@ store_cdr({struct, CDRProp}=CDRJObj, #route_flags{routes_generated=RGs, directio
 	     | CDRProp],
     couch_mgr:save_doc(DB, TScdr).
 
--spec(find_route_used/3 :: (Direction :: binary(), ToUri :: binary(), Routes :: json_object() | json_objects()) -> json_object()).
+-spec find_route_used/3 :: (Direction, ToUri, Routes) -> json_object() when
+      Direction :: binary(),
+      ToUri :: binary(),
+      Routes :: json_object() | json_objects().
 find_route_used(Dir, To, {struct,_}=Route) ->
     find_route_used(Dir, To, [Route]);
 find_route_used(<<"outbound">>, ToUri, Routes) ->
@@ -83,13 +86,15 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 		end, ?EMPTY_JSON_OBJECT, Routes);
 find_route_used(<<"inbound">>, _, _) -> ?EMPTY_JSON_OBJECT.
 
--spec(fetch_cdr/2 :: (CallID :: binary(), DB :: binary()) -> {error, not_found} | {ok, json_object()}).
+-spec fetch_cdr/2 :: (CallID, DB) -> {error, not_found} | {ok, json_object()} when
+      CallID :: binary(),
+      DB :: binary().
 fetch_cdr(CallID, DB) ->
     case couch_mgr:open_doc(DB, CallID) of
 	{error, _} ->
 	    {error, not_found};
 	{ok, ?EMPTY_JSON_OBJECT} ->
 	    {error, not_found};
-	{ok, Doc} ->
-	    {ok, Doc}
+	{ok, _}=Resp ->
+	    Resp
     end.
