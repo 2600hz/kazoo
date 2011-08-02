@@ -181,7 +181,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
 	MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
 
-	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
+	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}, hibernate}
     catch A:B ->
 	    ?LOG("exception thrown ~p:~p", [A, B]),
 	    ?LOG("stacktrace ~p", [erlang:get_stacktrace()]),
@@ -195,7 +195,7 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=Med
 		  {ok, ShoutSrv} = media_shout_sup:start_shout(Media, ListenerQ, continuous, media_srv:next_port(), CallID),
 		  media_srv:add_stream(MediaName, ShoutSrv)
 	  end),
-    {noreply, S};
+    {noreply, S, hibernate};
 
 handle_info({add_listener, ListenerQ}, #state{media_file=#media_file{stream_url=StreamUrl}, media_name=MediaName, send_to=SendTo}=S) ->
     send_media_resp(MediaName, StreamUrl, ListenerQ),
@@ -207,7 +207,7 @@ handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaF
     MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
     ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
-    {noreply, S#state{media_loop = MediaLoop}};
+    {noreply, S#state{media_loop = MediaLoop}, hibernate};
 handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
     ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
@@ -221,7 +221,7 @@ handle_info({'EXIT', From, Reason}, #state{media_loop=MediaLoop, media_file=Medi
     CallID = get(callid),
     MediaLoop1 = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
     ?LOG("media stream process ~p unexpectly died ~s, restarting", [From, Reason]),
-    {noreply, S#state{media_loop = MediaLoop1}};
+    {noreply, S#state{media_loop = MediaLoop1}, hibernate};
 
 handle_info(_Info, State) ->
     {noreply, State}.

@@ -180,7 +180,7 @@ handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=Po
 
     false = queue:is_empty(Ps2),
 
-    {noreply, State#state{ports=Ps2}};
+    {noreply, State#state{ports=Ps2}, hibernate};
 
 handle_info({'DOWN', Ref, process, ShoutSrv, Info}, #state{streams=Ss}=S) ->
     case lists:keyfind(ShoutSrv, 2, Ss) of

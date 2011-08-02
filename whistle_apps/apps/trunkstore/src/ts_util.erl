@@ -19,6 +19,8 @@
 -export([get_rate_factors/1, get_call_duration/1, lookup_user_flags/2, lookup_did/1]).
 -export([invite_format/2]).
 
+-export([is_flat_rate_eligible/1, load_flat_rate_regexes/0]).
+
 %% Cascading settings
 -export([sip_headers/1, failover/1, progress_timeout/1, bypass_media/1, delay/1
 	 ,ignore_early_media/1, ep_timeout/1]).
@@ -196,9 +198,9 @@ invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 
 -spec sip_headers/1 :: (L) -> undefined | json_object() when
-      L :: list(undefined | json_object()).
+      L :: [undefined | json_object(),...] | [].
 -spec sip_headers/2 :: (L, Acc) -> undefined | json_object() when
-      L :: list(undefined | json_object()),
+      L :: [undefined | json_object(),...] | [],
       Acc :: proplist().
 sip_headers(L) ->
     sip_headers(L, []).
@@ -264,3 +266,33 @@ simple_extract([_ | T]) ->
     simple_extract(T);
 simple_extract([]) ->
     undefined.
+
+-spec is_flat_rate_eligible/1 :: (E164) -> boolean() when
+      E164 :: binary().
+is_flat_rate_eligible(E164) ->
+    {White, Black} = case wh_cache:fetch({?MODULE, flat_rate_regexes}) of
+			 {error, not_found} ->
+			     load_flat_rate_regexes();
+			 {ok, Regexes} -> Regexes
+		     end,
+    case lists:any(fun(Regex) -> re:run(E164, Regex) =/= nomatch end, Black) of
+	true -> false; %% if a black list regex matches
+	false ->
+	    %% If any white-list regex matches
+	    lists:any(fun(Regex) -> re:run(E164, Regex) =/= nomatch end, White)
+    end.
+
+-spec load_flat_rate_regexes/0 :: () -> {[re:mp(),...] | [], [re:mp(),...] | []}.
+load_flat_rate_regexes() ->
+    case file:consult([code:priv_dir(trunkstore), "/flat_rate_regex.config"]) of
+	{error, _Reason} ->
+	    ?LOG_SYS("Failed to load config file: ~p", [_Reason]),
+	    wh_cache:store({?MODULE, flat_rate_regexes}, {[], []}),
+	    {[], []};
+	{ok, Config} ->
+	    BW = { [ begin {ok, MP} = re:compile(R), MP end || R <- props:get_value(blacklist, Config, [])]
+		  ,[ begin {ok, MP} = re:compile(R), MP end || R <- props:get_value(whitelist, Config, [])]
+		 },
+	    wh_cache:store({?MODULE, flat_rate_regexes}, BW),
+	    BW
+    end.

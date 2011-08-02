@@ -115,6 +115,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+%% receive resource requests from Apps
+handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
+    {_Pid, _Ref} = spawn_monitor(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
+    {noreply, State, hibernate};
+
+handle_info({'DOWN', _, process, _Pid, _Reason}, State) ->
+    ?LOG_SYS("handle_req for ~p down: ~p", [_Pid, _Reason]),
+    {noreply, State, hibernate};
+
 handle_info(timeout, #state{is_amqp_up=false}=S) ->
     ?LOG_SYS("starting amqp"),
     {ok, CQ} = start_amqp(),
@@ -141,13 +151,8 @@ handle_info(Req, #state{is_amqp_up=false}=S) ->
 	    {noreply, S}
     end;
 
-%% receive resource requests from Apps
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) ->
-    spawn(fun() -> handle_req(Props#'P_basic'.content_type, Payload) end),
-    {noreply, State};
-
 handle_info(#'basic.consume_ok'{}, S) ->
-    {noreply, S};
+    {noreply, S, hibernate};
 
 %% catch all so we don't lose state
 handle_info(_Unhandled, State) ->

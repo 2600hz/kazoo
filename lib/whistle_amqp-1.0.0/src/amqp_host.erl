@@ -169,8 +169,6 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} -> % channel, channel ref, ticket
 		    FromRef = erlang:monitor(process, FromPid),
-
-		    ?LOG_SYS("Consuming on channel ~p", [C]),
 		    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
@@ -193,7 +191,6 @@ handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
 		    gen_server:reply(From, amqp_channel:cast(C, BasicCancel, FromPid)),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
@@ -215,7 +212,6 @@ handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{conn
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
 		    gen_server:reply(From, amqp_channel:call(C, QueueBind#'queue.bind'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
@@ -237,11 +233,9 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
 		    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
-		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
 		{error, _}=E ->
@@ -259,11 +253,9 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-		    Call = amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T}),
-		    gen_server:reply(From, Call),
+		    gen_server:reply(From, amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
-		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
 		{error, _}=E ->
@@ -282,11 +274,9 @@ handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
 		    gen_server:reply(From, amqp_channel:cast(C, QueueDelete#'queue.delete'{ticket=T})),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
-		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
 		{error, _}=E ->
@@ -304,11 +294,9 @@ handle_cast({consume, {FromPid, _}=From, #'basic.qos'{}=BasicQos}, #state{connec
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
 		    gen_server:reply(From, amqp_channel:call(C, BasicQos)),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
-		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
 		{error, _}=E ->
@@ -326,11 +314,9 @@ handle_cast({consume, {FromPid, _}=From, #'basic.ack'{}=BasicAck}, #state{connec
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
 		    gen_server:reply(From, amqp_channel:cast(C, BasicAck)),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
-		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
 		{error, _}=E ->
@@ -348,11 +334,9 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
-
 		    gen_server:reply(From, amqp_channel:cast(C, BasicNack)),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
 		closing ->
-		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
 		{error, _}=E ->
@@ -432,6 +416,7 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict
     {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)})};
 
 handle_info(_Info, State) ->
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -522,53 +507,7 @@ remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref,_}}=State) ->
 
 remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
     State#state{consumers =
-
-		    dict:fold(
-		      %% Channel died
-		      fun(FromPid, {C,Ref1,_,FromRef}, AccDict) when Ref =:= Ref1 ->
-			      ?LOG_SYS("reference was for channel ~p for ~p, restarting", [C, FromPid]),
-
-			      erlang:demonitor(Ref1, [flush]),
-			      erlang:is_process_alive(C) andalso amqp_channel:close(C),
-
-			      case start_channel(Conn, FromPid) of
-				  {CNew, RefNew, TNew} ->
-				      ?LOG_SYS("New channel started for ~p", [FromPid]),
-				      dict:store(FromPid, {CNew, RefNew, TNew, FromRef}, AccDict);
-				  {error, no_connection} ->
-				      ?LOG_SYS("No connection available"),
-				      FromPid ! {amqp_lost_channel, no_connection},
-				      dict:erase(FromPid, AccDict);
-				  closing ->
-				      ?LOG_SYS("Closing, no connection"),
-				      FromPid ! {amqp_lost_channel, no_connection},
-				      dict:erase(FromPid, AccDict)
-			      end;
-
-			 %% Consumer died
-			 (FromPid, {C,CRef,_,FromRef}, AccDict) when Ref =:= FromRef ->
-			      ?LOG_SYS("reference was for consumer ~p, removing channel ~p", [FromPid, C]),
-			      erlang:demonitor(CRef, [flush]),
-			      erlang:demonitor(FromRef, [flush]),
-			      erlang:is_process_alive(C) andalso amqp_channel:close(C),
-			      dict:erase(FromPid, AccDict);
-
-			 %% Generic channel cleanup when FromPid isn't alive
-			 (FromPid, {C,CRef,_,FromRef}, AccDict) ->
-			      case erlang:is_process_alive(FromPid) of
-				  true -> AccDict;
-				  false ->
-				      ?LOG_SYS("reference was a consumer ~p that shutdown, removing channel ~p", [FromPid, C]),
-				      erlang:demonitor(FromRef, [flush]),
-				      erlang:demonitor(CRef, [flush]),
-				      erlang:is_process_alive(C) andalso amqp_channel:close(C),
-				      dict:erase(FromPid, AccDict)
-			      end;
-
-			 %% Simple catchall
-			 (_, _, AccDict) ->
-			      AccDict
-		      end, Cs, Cs)
+		    dict:fold(fun(K, V, Acc) -> clean_consumers(K, V, Acc, Ref, Conn) end, Cs, Cs)
 	       }.
 
 -spec notify_consumers/2 :: (Msg, Dict) -> ok when
@@ -576,3 +515,54 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
       Dict :: dict().
 notify_consumers(Msg, Dict) ->
     lists:foreach(fun({Pid,_}) -> Pid ! Msg end, dict:to_list(Dict)).
+
+%% Channel died
+-spec clean_consumers/5 :: (FromPid, Value, Acc, Ref, Conn) -> dict() when
+      FromPid :: pid(),
+      Value :: {pid(), reference(), integer(), reference()},
+      Acc :: dict(),
+      Ref :: reference(),
+      Conn :: pid().
+clean_consumers(FromPid, {C,Ref1,_,FromRef}, AccDict, Ref, Conn) when Ref =:= Ref1 ->
+    ?LOG_SYS("reference was for channel ~p for ~p, restarting", [C, FromPid]),
+
+    erlang:demonitor(Ref1, [flush]),
+    erlang:is_process_alive(C) andalso amqp_channel:close(C),
+
+    case start_channel(Conn, FromPid) of
+	{CNew, RefNew, TNew} ->
+	    ?LOG_SYS("New channel started for ~p", [FromPid]),
+	    dict:store(FromPid, {CNew, RefNew, TNew, FromRef}, AccDict);
+	{error, no_connection} ->
+	    ?LOG_SYS("No connection available"),
+	    FromPid ! {amqp_lost_channel, no_connection},
+	    dict:erase(FromPid, AccDict);
+	closing ->
+	    ?LOG_SYS("Closing, no connection"),
+	    FromPid ! {amqp_lost_channel, no_connection},
+	    dict:erase(FromPid, AccDict)
+    end;
+
+%% Consumer died
+clean_consumers(FromPid, {C,CRef,_,FromRef}, AccDict, Ref, _) when Ref =:= FromRef ->
+    ?LOG_SYS("reference was for consumer ~p, removing channel ~p", [FromPid, C]),
+    erlang:demonitor(CRef, [flush]),
+    erlang:demonitor(FromRef, [flush]),
+    erlang:is_process_alive(C) andalso amqp_channel:close(C),
+    dict:erase(FromPid, AccDict);
+
+%% Generic channel cleanup when FromPid isn't alive
+clean_consumers(FromPid, {C,CRef,_,FromRef}, AccDict, _, _) ->
+    case erlang:is_process_alive(FromPid) of
+	true -> AccDict;
+	false ->
+	    ?LOG_SYS("reference was a consumer ~p that shutdown, removing channel ~p", [FromPid, C]),
+	    erlang:demonitor(FromRef, [flush]),
+	    erlang:demonitor(CRef, [flush]),
+	    erlang:is_process_alive(C) andalso amqp_channel:close(C),
+	    dict:erase(FromPid, AccDict)
+    end;
+
+%% Simple catchall
+clean_consumers(_, _, AccDict,_,_) ->
+    AccDict.

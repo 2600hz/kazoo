@@ -301,7 +301,13 @@ create_callflow(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(load_callflow/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_callflow(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+    case crossbar_doc:load(DocId, Context) of
+        #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
+            Meta = get_metadata(wh_json:get_value(<<"flow">>, Doc), Db, ?EMPTY_JSON_OBJECT),
+            Context1#cb_context{resp_data=wh_json:set_value(<<"metadata">>, Meta, Data)};
+        Else ->
+            Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -338,6 +344,89 @@ normalize_view_results(JObj, Acc) ->
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, [])). %% tuple(boolean(), json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% collect addional informat about the objects referenced in the flow
+%% @end
+%%--------------------------------------------------------------------
+-spec get_metadata/3 :: (Flow, Db, JObj) -> json_object() when
+      Flow :: undefined | json_object(),
+      Db :: binary(),
+      JObj :: json_object().
+get_metadata(undefined, db, JObj) ->
+    JObj;
+get_metadata(Flow, Db, JObj) ->
+    JObj1 = case wh_json:get_value([<<"data">>, <<"id">>], Flow) of
+                undefined ->
+                    %% this node has no id, dont change the metadata
+                    JObj;
+                Id ->
+                    %% node has an id, try to update the metadata
+                    create_metadata(Db, Id, JObj)
+            end,
+    case wh_json:get_value(<<"children">>, Flow) of
+        ?EMPTY_JSON_OBJECT ->
+            %% no children, this branch is done
+            JObj1;
+        {struct, Children} ->
+            %% iterate through each child, collecting metadata on the
+            %% branch name (things like temporal routes)
+            lists:foldr(fun({K, Child}, J) ->
+                                get_metadata(Child, Db
+                                             ,create_metadata(Db, K, J))
+                        end, JObj1, Children);
+        _ ->
+            %% somebody didnt read  the docs on callflows...
+            JObj1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given the metadata json object, an ID and a db find the document
+%% and add the fields to the metadata.  However, skip if the ID already
+%% exists in metadata.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_metadata/3 :: (Db, Id, JObj) -> json_object() when
+      Db :: binary(),
+      Id :: binary(),
+      JObj :: json_object().
+create_metadata(Db, Id, JObj) ->
+    case wh_json:get_value(Id, JObj) =:= undefined
+        andalso couch_mgr:open_doc(Db, Id) of
+        false  ->
+            %% the id already exists in the metadata
+            JObj;
+        {ok, Doc} ->
+            %% the id was found in the db
+            wh_json:set_value(Id, create_metadata(Doc), JObj);
+        _ ->
+            %% eh, whatevs
+            JObj
+    end.
+
+-spec create_metadata/1 :: (Doc) -> json_object() when
+      Doc :: json_object().
+create_metadata(Doc) ->
+    %% simple funciton for setting the same key in one json object
+    %% with the value of that key in another, unless it doesnt exist
+    Metadata = fun(K, D, J) ->
+                     case wh_json:get_value(K, D) of
+                         undefined -> J;
+                         V -> wh_json:set_value(K, V, J)
+                     end
+             end,
+    %% list of keys to extract from documents and set on the metadata
+    Funs = [fun(D, J) -> Metadata(<<"name">>, D, J) end,
+            fun(D, J) -> Metadata(<<"numbers">>, D, J) end,
+            fun(D, J) -> Metadata(<<"pvt_type">>, D, J) end],
+    %% do it
+    lists:foldl(fun(Fun, JObj) ->
+                         Fun(Doc, JObj)
+                end, ?EMPTY_JSON_OBJECT, Funs).
 
 -spec import_fixtures/2 :: (Fixtures, DBName) -> [#cb_context{} | {error, no_file},...] when
       Fixtures :: [binary(),...],

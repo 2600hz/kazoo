@@ -145,7 +145,7 @@
 -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 			   ]).
--define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
+-define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Request">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
 			   ,{<<"Event-Name">>, <<"authz_req">>}
 			  ]).
