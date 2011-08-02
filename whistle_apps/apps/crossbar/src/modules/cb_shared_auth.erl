@@ -121,13 +121,17 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}], req_id=ReqId}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}]
+                                   ,req_verb = <<"put">>
+                                   ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}], req_verb = <<"put">>, req_id=ReqId}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}]
+                                   ,req_verb = <<"put">>
+                                   ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
