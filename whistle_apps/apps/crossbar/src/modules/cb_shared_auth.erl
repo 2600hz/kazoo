@@ -10,7 +10,10 @@
 %%% Used to propagate accounts amongst independent services.
 %%%
 %%% This is a non-standard module:
-%%% * This module is both an authenticator and processor
+%%% * it authenticates and authorizes itself
+%%% * it has a completely unique role
+%%% * it operates without an account id (or account db)
+%%% * it 'proxies' crossbar auth requests to an external URL
 %%%
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
@@ -21,6 +24,7 @@
 
 %% API
 -export([start_link/0]).
+-export([reload/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -33,9 +37,9 @@
 
 -define(TOKEN_DB, <<"token_auth">>).
 
--define(CROSSBAR_CONF, [code:lib_dir(crossbar, priv), "/crossbar.conf"]).
+-define(SHARED_AUTH_CONF, [code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.conf"]).
 
--record(state, {xbar_url="http://apps001-demo-ord.2600hz.com:8000/v1"}).
+-record(state, {xbar_url=undefined :: undefined | string()}).
 
 %%%===================================================================
 %%% API
@@ -50,6 +54,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+reload() ->
+    gen_server:cast(?SERVER, {reload}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -97,6 +104,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({reload}, _) ->
+    {noreply, #state{}, 0};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -111,13 +121,17 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}], req_id=ReqId}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}]
+                                   ,req_verb = <<"put">>
+                                   ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}], req_verb = <<"put">>, req_id=ReqId}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}]
+                                   ,req_verb = <<"put">>
+                                   ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
@@ -158,9 +172,17 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(timeout, State) ->
+handle_info(timeout, CurState) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
+    State = case file:consult(?SHARED_AUTH_CONF) of
+                {ok, Terms} ->
+                    ?LOG_SYS("loaded config from ~s", [?SHARED_AUTH_CONF]),
+                    #state{xbar_url=props:get_value(authoritative_crossbar, Terms, CurState#state.xbar_url)};
+                {error, _} ->
+                    ?LOG_SYS("could not read config from ~s", [?SHARED_AUTH_CONF]),
+                    #state{}
+            end,
     {noreply, State};
 
 handle_info(_, State) ->

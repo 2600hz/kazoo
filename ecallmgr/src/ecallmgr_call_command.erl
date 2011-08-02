@@ -381,7 +381,7 @@ media_path(MediaName, Type, UUID) ->
 -spec get_fs_playback/1 :: (Url) -> binary() when
       Url :: binary().
 get_fs_playback(<<"http://", _/binary>>=Url) ->
-    RemoteAudioScript = ecallmgr_util:get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
+    {ok, RemoteAudioScript} = ecallmgr_util:get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
     <<"shell_stream://", (whistle_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
@@ -530,7 +530,8 @@ set_terminators(Node, UUID, Ts) ->
       UUID :: binary(),
       RingBack :: undefined | binary().
 set_ringback(Node, UUID, undefined) ->
-    RB = list_to_binary(["ringback=", ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)")]),
+    {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
+    RB = list_to_binary(["ringback=", RBSetting]),
     ok = set(Node, UUID, RB);
 set_ringback(Node, UUID, RingBack) ->
     RB = list_to_binary(["ringback=", media_path(RingBack, extant, UUID)]),

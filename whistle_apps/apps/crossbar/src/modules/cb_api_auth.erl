@@ -2,8 +2,13 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% User auth module
+%%% Account API auth module
 %%%
+%%% This is a non-standard module:
+%%% * it authenticates and authorizes itself
+%%% * it has a completely unique role
+%%% * it operates without an account id (or account db)
+%%% * it authorizes an account level cred
 %%%
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
@@ -104,13 +109,15 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}], req_id=ReqId}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]
+                                   ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}], req_id=ReqId}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]
+                                   ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};

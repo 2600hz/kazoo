@@ -80,11 +80,15 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
                     {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}};
                 false ->
 		    ?TIMER_TICK("v1.allowed_methods end Meth1"),
-                    {Methods1 , RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
+                    {Methods1
+                     ,add_cors_headers(RD, Context1)
+                     ,Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
             end;
         [] ->
 	    ?TIMER_TICK("v1.allowed_methods end Meths"),
-            {Methods, RD, Context1#cb_context{req_verb=Verb}}
+            {Methods
+             ,add_cors_headers(RD, Context1)
+             ,Context1#cb_context{req_verb=Verb}}
     end.
 
 -spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
@@ -149,7 +153,7 @@ resource_exists(RD, Context) ->
             case succeeded(Context1) of
                 true ->
 		    ?LOG("requested resource validated, executing"),
-                    execute_request(add_cors_headers(RD1, Context1), Context1);
+                    execute_request(RD1, Context1);
                 false ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
@@ -791,6 +795,7 @@ is_cors_request(RD) ->
 add_cors_headers(RD, Context) ->
     case is_cors_request(RD) of
         true ->
+            ?LOG("determined that this request requires CORS headers"),
             wrq:set_resp_headers(get_cors_headers(Context), RD);
         false ->
             RD

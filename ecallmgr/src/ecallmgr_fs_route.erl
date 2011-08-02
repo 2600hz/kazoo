@@ -110,6 +110,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-type handle_info_return() :: {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {stop, term(), #state{}}.
+
+-spec handle_info/2 :: (timeout, #state{}) -> handle_info_return();
+		       ({nodedown, atom()}, #state{}) -> {noreply, #state{}};
+                       ({is_node_up, non_neg_integer()}, #state{}) -> handle_info_return();
+		       ({fetch, atom(), _, _, _, binary(), proplist()}, #state{}) ->
+			       {noreply, #state{}};
+		       (shutdown, #state{}) -> {stop, term(), #state{}};
+		       ({'diagnostics', pid()}, #state{}) -> {noreply, #state{}};
+		       ({'DOWN', reference(), process, pid(), term()}, #state{}) -> {noreply, #state{}};
+		       ({'EXIT', pid(), term()}, #state{}) -> {noreply, #state{}}.
 handle_info(timeout, #state{node=Node}=State) ->
     Type = {bind, dialplan},
     erlang:monitor_node(Node, true),
@@ -240,7 +251,7 @@ init_route_req(Parent, Node, FSID, CallID, FSData) ->
     put(callid, CallID),
     process_route_req(Node, FSID, CallID, FSData).
 
--spec process_route_req/4 :: (Node, FSID, CallID, FSData) -> no_return() when
+-spec process_route_req/4 :: (Node, FSID, CallID, FSData) -> ok when
       Node :: atom(),
       FSID :: binary(),
       CallID :: binary(),
@@ -257,12 +268,13 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
 
-    case whistle_util:is_true(ecallmgr_util:get_setting(authz_enabled, true)) of
+    {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
+    case whistle_util:is_true(AuthZEnabled) of
 	true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
 	false -> route(Node, FSID, CallID, DefProp, undefined)
     end.
 
--spec authorize_and_route/5 :: (Node, FSID, CallID, FSData, DefProp) -> no_return() when
+-spec authorize_and_route/5 :: (Node, FSID, CallID, FSData, DefProp) -> ok when
       Node :: atom(),
       FSID :: binary(),
       CallID :: binary(),
@@ -273,7 +285,7 @@ authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
     {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
     route(Node, FSID, CallID, DefProp, AuthZPid).
 
--spec route/5 :: (Node, FSID, CallID, DefProp, AuthZPid) -> no_return() when
+-spec route/5 :: (Node, FSID, CallID, DefProp, AuthZPid) -> ok when
       Node :: atom(),
       FSID :: binary(),
       CallID :: binary(),
@@ -285,7 +297,7 @@ route(Node, FSID, CallID, DefProp, AuthZPid) ->
     RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, ?EMPTY_JSON_OBJECT),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
 
--spec authorize/6 :: (Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) -> no_return() when
+-spec authorize/6 :: (Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) -> ok when
       Node :: atom(),
       FSID :: binary(),
       CallID :: binary(),
@@ -311,25 +323,25 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	    reply(Node, FSID, CallID, RespJObj, RouteCCV1)
     end.
 
--spec reply_forbidden/2 :: (Node, FSID) -> no_return() when
+-spec reply_forbidden/2 :: (Node, FSID) -> ok when
       Node :: atom(),
       FSID :: binary().
 reply_forbidden(Node, FSID) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
-						,{<<"Route-Error-Code">>, <<"403">>}
-						,{<<"Route-Error-Message">>, <<"Forbidden">>}
+						,{<<"Route-Error-Code">>, <<"486">>}
+						,{<<"Route-Error-Message">>, <<"No more channels">>}
 					       ]),
     case freeswitch:fetch_reply(Node, FSID, XML) of
 	ok ->
 	    %% only start control if freeswitch recv'd reply
-	    ?LOG_END("freeswitch accepted our route forbidden");
+	    ?LOG_END("freeswitch accepted our route unauthz");
 	{error, Reason} ->
-	    ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
+	    ?LOG_END("freeswitch rejected our route unauthz, ~p", [Reason]);
 	timeout ->
 	    ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
--spec reply/5 :: (Node, FSID, CallID, RespJObj, CCVs) -> no_return() when
+-spec reply/5 :: (Node, FSID, CallID, RespJObj, CCVs) -> ok when
       Node :: atom(),
       FSID :: binary(),
       CallID :: binary(),
@@ -350,7 +362,7 @@ reply(Node, FSID, CallID, RespJObj, CCVs) ->
 	    ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
--spec start_control_and_events/4 :: (Node, CallID, SendTo, CCVs) -> no_return() when
+-spec start_control_and_events/4 :: (Node, CallID, SendTo, CCVs) -> ok when
       Node :: atom(),
       CallID :: binary(),
       SendTo :: binary(),
@@ -374,6 +386,9 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
             {error, amqp_error}
     end.
 
+-spec send_control_queue/2 :: (SendTo, CtlProp) -> ok when
+      SendTo :: binary(),
+      CtlProp :: proplist().
 send_control_queue(SendTo, CtlProp) ->
     case whistle_api:route_win(CtlProp) of
 	{ok, JSON} ->

@@ -16,7 +16,8 @@
 -include("ecallmgr.hrl").
 
 %% retrieves the sip address for the 'to' field
--spec(get_sip_to/1 :: (Prop :: proplist()) -> binary()).
+-spec get_sip_to/1 :: (Prop) -> binary() when
+      Prop :: proplist().
 get_sip_to(Prop) ->
     list_to_binary([get_value(<<"sip_to_user">>, Prop, get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
 		    , "@"
@@ -24,7 +25,8 @@ get_sip_to(Prop) ->
 		   ]).
 
 %% retrieves the sip address for the 'from' field
--spec(get_sip_from/1 :: (Prop :: proplist()) -> binary()).
+-spec get_sip_from/1 :: (Prop) -> binary() when
+      Prop :: proplist().
 get_sip_from(Prop) ->
     list_to_binary([
 		    get_value(<<"sip_from_user">>, Prop, get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
@@ -33,7 +35,8 @@ get_sip_from(Prop) ->
 		   ]).
 
 %% retrieves the sip address for the 'request' field
--spec(get_sip_request/1 :: (Prop :: proplist()) -> binary()).
+-spec get_sip_request/1 :: (Prop) -> binary() when
+      Prop :: proplist().
 get_sip_request(Prop) ->
     list_to_binary([
 		    get_value(<<"Caller-Destination-Number">>, Prop, get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
@@ -42,12 +45,14 @@ get_sip_request(Prop) ->
                                ,get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, "nodomain"))
 		   ]).
 
--spec(get_orig_ip/1 :: (Prop :: proplist()) -> binary()).
+-spec get_orig_ip/1 :: (Prop) -> binary() when
+      Prop :: proplist().
 get_orig_ip(Prop) ->
     get_value(<<"X-AUTH-IP">>, Prop, get_value(<<"ip">>, Prop)).
 
 %% Extract custom channel variables to include in the event
--spec(custom_channel_vars/1 :: (Prop :: proplist()) -> proplist()).
+-spec custom_channel_vars/1 :: (Prop) -> proplist() when
+      Prop :: proplist().
 custom_channel_vars(Prop) ->
     lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
 		   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
@@ -56,7 +61,8 @@ custom_channel_vars(Prop) ->
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec(eventstr_to_proplist/1 :: (EvtStr :: string()) -> proplist()).
+-spec eventstr_to_proplist/1 :: (EvtStr) -> proplist() when
+      EvtStr :: string().
 eventstr_to_proplist(EvtStr) ->
     [begin
 	 [K, V] = string:tokens(X, ": "),
@@ -64,24 +70,24 @@ eventstr_to_proplist(EvtStr) ->
 	 {whistle_util:to_binary(K), whistle_util:to_binary(V1)}
      end || X <- string:tokens(whistle_util:to_list(EvtStr), "\n")].
 
--spec get_setting/1 :: (Setting) -> term() when
+-spec get_setting/1 :: (Setting) -> {ok, term()} when
       Setting :: atom().
--spec get_setting/2 :: (Setting, Default) -> term() when
+-spec get_setting/2 :: (Setting, Default) -> {ok, term()} when
       Setting :: atom(),
       Default :: term().
 get_setting(Setting) ->
     get_setting(Setting, undefined).
 get_setting(Setting, Default) ->
     case wh_cache:fetch({ecallmgr_setting, Setting}) of
-        {ok, Value} -> Value;
+        {ok, _}=Success -> Success;
         {error, _} ->
             case file:consult(?SETTINGS_FILE) of
                 {ok, Settings} ->
                     Value = props:get_value(Setting, Settings, Default),
                     wh_cache:store({ecallmgr_setting, Setting}, Value),
-                    Value;
+                    {ok, Value};
                 {error, _} ->
                     wh_cache:store({ecallmgr_setting, Setting}, Default),
-                    Default
+                    {ok, Default}
             end
     end.
