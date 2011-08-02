@@ -72,7 +72,8 @@ filter_active_calls(CallID, ActiveCalls) ->
 		    (CallID1) when CallID =:= CallID1 -> false;
 		    (_) -> true end, ActiveCalls).
 
--spec(get_media_handling/1 :: (Type :: binary() | undefined) -> binary()).
+-spec get_media_handling/1 :: (L) -> binary() when
+      L :: [undefined | json_object() | binary(),...].
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
@@ -229,8 +230,8 @@ failover(L) ->
       L :: [undefined | json_object() | binary(),...].
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media/1 :: (L) -> undefined | json_object() | binary() when
-      L :: list(undefined | json_object() | binary()).
+-spec bypass_media/1 :: (L) -> binary() when
+      L :: [undefined | json_object() | binary(),...].
 bypass_media(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"false">>;
@@ -238,19 +239,19 @@ bypass_media(L) ->
     end.
 
 -spec delay/1 :: (L) -> undefined | json_object() | binary() when
-      L :: list(undefined | json_object() | binary()).
+      L :: [undefined | json_object() | binary(),...].
 delay(L) -> simple_extract(L).
 
 -spec ignore_early_media/1 :: (L) -> undefined | json_object() | binary() when
-      L :: list(undefined | json_object() | binary()).
+      L :: [undefined | json_object() | binary(),...].
 ignore_early_media(L) -> simple_extract(L).
 
 -spec ep_timeout/1 :: (L) -> undefined | json_object() | binary() when
-      L :: list(undefined | json_object() | binary()).
+      L :: [undefined | json_object() | binary(),...].
 ep_timeout(L) -> simple_extract(L).
 
 -spec simple_extract/1 :: (L) -> undefined | json_object() | binary() when
-      L :: list(undefined | json_object() | binary()).
+      L :: [undefined | json_object() | binary(),...].
 simple_extract([undefined|T]) ->
     simple_extract(T);
 simple_extract([?EMPTY_JSON_OBJECT | T]) ->
