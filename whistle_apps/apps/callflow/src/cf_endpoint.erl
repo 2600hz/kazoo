@@ -25,8 +25,13 @@
 %% devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec(build/2 :: (Id :: binary(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).
--spec(build/3 :: (Id :: binary(), Properties :: undefined | json_object(), Call :: #cf_call{}) -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec build/2 :: (EndpointId, Call) -> tuple(ok, json_objects()) | tuple(error, atom()) when
+      EndpointId :: binary(),
+      Call :: #cf_call{}.
+-spec build/3 :: (EndpointId, Properties, Call) -> tuple(ok, json_objects()) | tuple(error, atom()) when
+      EndpointId :: binary(),
+      Properties :: undefined | json_object(),
+      Call :: #cf_call{}.
 
 build(EndpointId, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
@@ -49,8 +54,10 @@ build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
 %% Collects all the appropriate endpoints to reach this endpoint ID
 %% @end
 %%--------------------------------------------------------------------
--spec(get_endpoints/3 :: (EndpointId :: binary(), Properties :: json_object(),  Call :: #cf_call{})
-                         -> tuple(ok, json_objects()) | tuple(error, atom())).
+-spec get_endpoints/3 :: (EndpointId, Properties, Call) -> tuple(ok, json_objects()) | tuple(error, atom()) when
+      EndpointId :: binary(),
+      Properties :: json_object(),
+      Call :: #cf_call{}.
 get_endpoints(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, EndpointId) of
         {ok, Endpoint} ->
@@ -73,8 +80,10 @@ get_endpoints(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec(create_endpoint/3 :: (Endpoint :: json_object(), Properties :: json_object(), Call :: #cf_call{})
-                           -> json_object()).
+-spec create_endpoint/3 :: (Endpoint, Properties, Call) -> json_object() when
+      Endpoint :: json_object(),
+      Properties :: undefined | json_object(),
+      Call :: #cf_call{}.
 create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=Inception}=Call) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
@@ -128,8 +137,11 @@ create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=I
 %% the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec(create_call_fwd_endpoint/4 :: (Endpoint :: json_object(), CallFwd :: json_object(), Properties :: json_object(), Call :: #cf_call{})
-                                    -> json_object()).
+-spec create_call_fwd_endpoint/4 :: (Endpoint, CallFwd, Properties, Call) -> json_object() when
+      Endpoint :: json_object(),
+      CallFwd :: json_object(),
+      Properties :: json_object(),
+      Call :: #cf_call{}.
 create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=ReqUser, inception=Inception
                                                                  ,authorizing_id=AuthId, owner_id=AuthOwnerId
                                                                  ,cid_number=CIDNum, cid_name=CIDName}=Call) ->
@@ -195,8 +207,9 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=Re
 %% merging the 'ringtones' (alert-info) with any custom sip headers
 %% @end
 %%--------------------------------------------------------------------
--spec(merge_sip_headers/2 :: (AlertInfo :: undefined | json_object(), CustomHeaders :: undefined | json_object())
-                             -> undefined | json_object()).
+-spec merge_sip_headers/2 :: (AlertInfo, CustomHeaders) -> undefined | json_object() when
+      AlertInfo :: undefined | json_object(),
+      CustomHeaders :: undefined | json_object().
 merge_sip_headers(undefined, undefined) ->
     undefined;
 merge_sip_headers(AlertInfo, undefined) ->

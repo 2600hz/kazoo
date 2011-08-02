@@ -20,7 +20,8 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec(new_voicemail/1 :: (Prop :: proplist() | json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec new_voicemail/1 :: (Prop) -> tuple(ok, iolist()) | tuple(error, string()) when
+      Prop :: proplist() | json_object().
 new_voicemail({struct, Prop}) ->
     new_voicemail(Prop);
 new_voicemail(Prop) ->
@@ -29,14 +30,9 @@ new_voicemail(Prop) ->
 	false -> {error, "Proplist failed validation for new_voicemail"}
     end.
 
--spec(new_voicemail_v/1 :: (Prop :: proplist() | json_object()) -> boolean()).
+-spec new_voicemail_v/1 :: (Prop) -> boolean() when
+      Prop :: proplist() | json_object().
 new_voicemail_v({struct, Prop}) ->
     new_voicemail_v(Prop);
 new_voicemail_v(Prop) ->
     whistle_api:validate(Prop, ?NEW_VOICEMAIL_HEADERS, ?NEW_VOICEMAIL_VALUES, ?NEW_VOICEMAIL_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Basic Header - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------

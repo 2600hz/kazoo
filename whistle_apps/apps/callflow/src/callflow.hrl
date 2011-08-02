@@ -5,7 +5,7 @@
 -include_lib("cf_amqp.hrl").
 
 -type cf_exe_response() :: tuple(stop) | tuple (continue) | tuple(continue, integer()) | tuple(heartbeat).
--type cf_api_error() :: tuple(error, channel_hungup | execution_failure | timeout).
+-type cf_api_error() :: tuple(error, channel_hungup | channel_unbridge | execution_failure | timeout).
 -type cf_api_std_return() :: cf_api_error() | tuple(ok, json_object()).
 -type cf_api_bridge_return() :: cf_api_error() | tuple(ok, json_object()) | tuple(fail, json_object()).
 -type cf_api_binary() :: binary() | undefined.
@@ -18,7 +18,7 @@
 -define(LIST_BY_NUMBER, {<<"callflow">>, <<"listing_by_number">>}).
 -define(NO_MATCH_CF, <<"no_match">>).
 
--define(DEFAULT_TIMEOUT, 20).
+-define(DEFAULT_TIMEOUT, <<"20">>).
 -define(ANY_DIGIT, [
                      <<"1">>, <<"2">>, <<"3">>
                     ,<<"4">>, <<"5">>, <<"6">>

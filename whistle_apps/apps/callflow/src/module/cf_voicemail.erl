@@ -19,8 +19,7 @@
 -define(UNAVAILABLE_GREETING, <<"unavailable_greeting.mp3">>).
 -define(NAME_RECORDING, <<"name_recording.mp3">>).
 
--import(cf_call_command, [
-                           answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
+-import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
                           ,noop/1, b_flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
                           ,audio_macro/2, flush_dtmf/1
@@ -269,8 +268,7 @@ compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipIns
 -spec(play_greeting/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
 play_greeting(#mailbox{prompts=#prompts{person_at_exten=PersonAtExten, not_available=NotAvailable}
 		       ,has_unavailable_greeting=false, mailbox_number=Mailbox}, Call) ->
-    audio_macro([
-                  {play, PersonAtExten}
+    audio_macro([{play, PersonAtExten}
                  ,{say,  Mailbox}
                  ,{play, NotAvailable}
                 ], Call);
@@ -342,7 +340,8 @@ main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
 	    play_messages(Folder, length(Folder), Box, Call),
 	    main_menu(Box, Call);
 	{ok, Configure} ->
-	    config_menu(Box, Call);
+	    config_menu(Box, Call),
+	    main_menu(Box, Call);
 	{ok, Exit} ->
             update_mwi(New, Saved, Box, Call),
 	    ok;
@@ -418,9 +417,9 @@ message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, sav
 %% menu utill
 %% @end
 %%--------------------------------------------------------------------
--spec play_messages/4 :: (Messages, Count, Box, Call) -> no_return() when
+-spec play_messages/4 :: (Messages, Count, Box, Call) -> ok when
       Messages :: json_objects(),
-      Count :: integer(),
+      Count :: non_neg_integer(),
       Box :: #mailbox{},
       Call :: #cf_call{}.
 play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
@@ -448,14 +447,15 @@ play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
 	    play_messages(T, Count, Box, Call);
 	{ok, return} ->
 	    b_play(Saved, Call),
-	    set_folder(?FOLDER_SAVED, H, Box, Call);
+	    set_folder(?FOLDER_SAVED, H, Box, Call),
+            ok;
 	{ok, replay} ->
 	    play_messages(Messages, Count, Box, Call);
         {error, _} ->
             ok
     end;
-play_messages(_, _, Box, Call) ->
-    main_menu(Box, Call).
+play_messages(_, _, _, _) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -499,13 +499,13 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(config_menu/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
--spec(config_menu/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> no_return()).
+-spec(config_menu/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
+-spec(config_menu/3 :: (Box :: #mailbox{}, Call :: #cf_call{}, Loop :: non_neg_integer()) -> ok).
 config_menu(Box, Call) ->
     config_menu(Box, Call, 1).
 
-config_menu(Box, Call, Loop) when Loop > 4 ->
-    main_menu(Box, Call);
+config_menu(_, _, Loop) when Loop > 4 ->
+    ok;
 config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName, set_pin=SetPin, return_main=ReturnMain}
                      ,prompts=#prompts{settings_menu=SettingsMenu}}=Box, Call, Loop) ->
     ?LOG("playing mailbox configuration menu"),
@@ -520,7 +520,7 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName
 	    change_pin(Box, Call),
 	    config_menu(Box, Call);
 	{ok, ReturnMain} ->
-	    main_menu(Box, Call);
+            ok;
 	%% Bulk delete -> delete all voicemails
 	%% Reset -> delete all voicemails, greetings, name, and reset pin
         {error, _} ->
@@ -535,12 +535,11 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+-spec(record_unavailable_greeting/3 :: (MediaName :: binary(), Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
 record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting, tone_spec=ToneSpec
                                                                  ,saved=Saved, deleted=Deleted}}=Box, Call) ->
     ?LOG("recoding unavailable greeting"),
-    audio_macro([
-                  {play,  RecordUnavailGreeting}
+    audio_macro([{play,  RecordUnavailGreeting}
                  ,{tones, ToneSpec}
                 ], Call),
     {ok, _} = b_record(MediaName, Call),
@@ -549,7 +548,8 @@ record_unavailable_greeting(MediaName, #mailbox{prompts=#prompts{record_unavail_
 	    record_unavailable_greeting(tmp_file(), Box, Call);
 	{ok, save} ->
 	    store_recording(MediaName, ?UNAVAILABLE_GREETING, Box, Call),
-            b_play(Saved, Call);
+            b_play(Saved, Call),
+            ok;
         {ok, no_selection} ->
             b_play(Deleted, Call),
             ok
@@ -582,8 +582,7 @@ setup_mailbox(#mailbox{prompts=#prompts{setup_intro=SetupIntro
 record_name(MediaName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec
                                                  ,saved=Saved, deleted=Deleted}}=Box, Call) ->
     ?LOG("recording name"),
-    audio_macro([
-                  {play,  RecordName}
+    audio_macro([{play,  RecordName}
                  ,{tones, ToneSpec}
                 ], Call),
     {ok, _} = b_record(MediaName, Call),
@@ -640,8 +639,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call
     ?LOG("stored voicemail message (~s) ~s", [Status, Loc]),
 
     Tstamp = new_timestamp(),
-    NewMessage={struct, [
-                          {<<"timestamp">>, Tstamp}
+    NewMessage={struct, [{<<"timestamp">>, Tstamp}
                          ,{<<"from">>, From}
                          ,{<<"to">>, To}
                          ,{<<"caller_id_number">>, CIDNumber}
@@ -674,7 +672,7 @@ new_message(MediaName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(save_metadata/3 :: (NewMessage :: json_object(), Db :: binary(), Id :: binary()) -> no_return()).
+-spec(save_metadata/3 :: (NewMessage :: json_object(), Db :: binary(), Id :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 save_metadata(NewMessage, Db, Id) ->
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     NewMessages=[NewMessage | wh_json:get_value([<<"messages">>], JObj, [])],
@@ -737,12 +735,12 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(mark_mailbox_setup/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> no_return()).
+-spec(mark_mailbox_setup/2 :: (Box :: #mailbox{}, Call :: #cf_call{}) -> ok).
 mark_mailbox_setup(#mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db}=Call) ->
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     case couch_mgr:save_doc(Db, wh_json:set_value(<<"is_setup">>, true, JObj)) of
-        {ok, _} -> ok;
-        {error, conflict} -> mark_mailbox_setup(Box, Call)
+        {error, conflict} -> mark_mailbox_setup(Box, Call);
+        _ -> ok
     end.
 
 %%--------------------------------------------------------------------
@@ -960,10 +958,10 @@ get_unix_epoch(Epoch, Timezone) ->
 %% mailbox with new message counts.
 %% @end
 %%--------------------------------------------------------------------
--spec update_mwi/2 :: (Box, Call) -> no_return() when
+-spec update_mwi/2 :: (Box, Call) -> ok when
       Box :: #mailbox{},
       Call :: #cf_call{}.
--spec update_mwi/4 :: (New, Saved, Box, Call) -> no_return() when
+-spec update_mwi/4 :: (New, Saved, Box, Call) -> ok when
       New :: integer(),
       Saved :: integer(),
       Box :: #mailbox{},
@@ -993,7 +991,8 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_db=Db}) ->
                               ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
                               {ok, Payload} = whistle_api:mwi_update(Command),
                               amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_SIP_NOTIFY)
-                      end, Devices);
+                      end, Devices),
+            ok;
         Error ->
             ?LOG("mwi update found ~s in ~s lookup error ~p", [OwnerId, Db, Error]),
             ok

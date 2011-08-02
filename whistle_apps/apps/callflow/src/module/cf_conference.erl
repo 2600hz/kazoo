@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop | continue)).
+-spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop)).
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ, account_id=AccountId, amqp_q=AmqpQ}) ->
     put(callid, CallId),
     Command = [{<<"Account-ID">>, AccountId}
