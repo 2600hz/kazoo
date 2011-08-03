@@ -136,12 +136,10 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             answer(Call),
-            _ = flush_dtmf(Call),
             _ = compose_voicemail(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         <<"check">> ->
             answer(Call),
-            _ = flush_dtmf(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
             CFPid ! {stop};
         _ ->
@@ -547,10 +545,10 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec config_menu/2 :: (Box, Call) -> ok when
+-spec config_menu/2 :: (Box, Call) -> #mailbox{} when
       Box :: #mailbox{},
       Call :: #cf_call{}.
--spec config_menu/3 :: (Box, Call, Loop) -> ok when
+-spec config_menu/3 :: (Box, Call, Loop) -> #mailbox{} when
       Box :: #mailbox{},
       Call :: #cf_call{},
       Loop :: non_neg_integer().
@@ -620,7 +618,7 @@ record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unav
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_name/3 :: (RecordingName, Box, Call) -> tuple(ok, json_object()) when
+-spec record_name/3 :: (RecordingName, Box, Call) -> #mailbox{} when
       RecordingName :: binary(),
       Box :: #mailbox{},
       Call :: #cf_call{}.
@@ -960,8 +958,8 @@ get_message(Message, #cf_call{account_db=Db}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec count_messages/2 :: (Message, Folder) -> integer() when
-      Message :: json_object(),
+-spec count_messages/2 :: (Messages, Folder) -> integer() when
+      Messages :: json_objects(),
       Folder :: binary().
 count_messages(Messages, Folder) ->
     lists:foldr(fun(Message, Count) ->
