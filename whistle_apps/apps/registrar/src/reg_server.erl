@@ -275,6 +275,7 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
 					      ,<<"authn_resp">>
 					      ,?APP_NAME
 					      ,?APP_VERSION)],
+
     {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     send_resp(Payload, RespQ);
@@ -366,16 +367,15 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
 lookup_registration(Realm, Username, Cache) ->
     case wh_cache:fetch_local(Cache, {?MODULE, registration, Realm, Username}) of
 	{ok, CacheKey} ->
-	    {ok, CachedJObj} = wh_cache:fetch_local(Cache, CacheKey),
 	    ?LOG_SYS("Found cached registration"),
-	    CachedJObj;
+	    wh_cache:fetch_local(Cache, CacheKey);
 	{error, not_found} ->
 	    case couch_mgr:get_results("registrations"
 				       ,<<"registrations/newest">>
-				       ,[{<<"startkey">>, [Realm, Username,?EMPTY_JSON_OBJECT]}
-					 ,{<<"endkey">>, [Realm, Username, 0]}
-					 ,{<<"descending">>, true}
-					]) of
+					   ,[{<<"startkey">>, [Realm, Username,?EMPTY_JSON_OBJECT]}
+					     ,{<<"endkey">>, [Realm, Username, 0]}
+					     ,{<<"descending">>, true}
+					    ]) of
 		{ok, []} ->
 		    ?LOG_END("contact for ~s@~s not found", [Username, Realm]),
 		    {error, not_found};
