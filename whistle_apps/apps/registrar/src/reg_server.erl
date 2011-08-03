@@ -440,10 +440,13 @@ lookup_auth_user(Name, Realm, Cache) ->
 		    ?LOG("~s@~s not found", [Name, Realm]),
 		    {error, no_user_found};
 		{ok, [User|_]} ->
+		    ?LOG("Storing ~s@~s in cache", [Name, Realm]),
 		    wh_cache:store_local(Cache, CacheKey, User),
 		    {ok, User}
 	    end;
-	{ok, _}=OK -> OK
+	{ok, _}=OK ->
+	    ?LOG("Pulling auth user from cache"),
+	    OK
     end.
 
 %%-----------------------------------------------------------------------------
