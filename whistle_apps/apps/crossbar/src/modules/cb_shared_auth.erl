@@ -122,7 +122,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{req_nouns=[{<<"shared_auth">>,[]}]
-                                   ,req_verb = <<"put">>
+                                   ,req_verb = <<"get">>
                                    ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
