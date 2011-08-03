@@ -102,12 +102,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"accounts">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"accounts">>,[]}], req_verb=Verb}=Context}}, State) ->
     %% Only sys-admins can do this?
-    Pid ! {binding_result, false, {RD, Context}},
+    Pid ! {binding_result, Verb =:= <<"put">>, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns}=Context}}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   case props:get_value(<<"accounts">>, Nouns) of
