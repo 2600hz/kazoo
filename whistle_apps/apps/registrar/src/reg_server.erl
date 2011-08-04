@@ -294,6 +294,8 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
     AfterUnquoted = whistle_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
 
+    JObj1 = wh_json:set_value(<<"Contact">>, Contact1, JObj),
+
     Id = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Contact1))),
     CacheKey = {?MODULE, Id},
     Expires = whistle_util:current_tstamp() + whistle_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
@@ -310,15 +312,16 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 
 	    ?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
 
-	    wh_cache:store_local(Cache, CacheKey, JObj, Expires),
+	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
 	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
 
 	    {ok, _} = store_reg(JObj, Id, Contact1),
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
-	    wh_cache:store_local(Cache, CacheKey, JObj, Expires),
+	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
 	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
+
 	    ?LOG_END("not verifying with DB, assuming cached JSON is valid")
     end;
 
