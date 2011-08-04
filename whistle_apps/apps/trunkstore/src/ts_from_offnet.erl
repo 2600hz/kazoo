@@ -202,8 +202,7 @@ try_failover_e164(State, ToDID) ->
 	       ,{<<"Account-ID">>, AcctID}
 	       ,{<<"Control-Queue">>, CtlQ}
 	       ,{<<"Application-Name">>, <<"bridge">>}
-	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Account-ID">>, AcctID}
-						      ,{<<"Inception">>, <<"off-net">>}
+	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Inception">>, <<"off-net">>}
 						      | RateData]}}
 	       ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
 	       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
