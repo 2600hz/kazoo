@@ -243,6 +243,21 @@ handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, _From, #state
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({release_trunk, AcctID, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
+    spawn(fun() ->
+		  case trunk_type(RDB, AcctID, CallID) of
+		      non_existant ->
+			  case trunk_type(WDB, AcctID, CallID) of
+			      non_existant -> ?LOG(CallID, "Trunk not found for release for ~s", []);
+			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
+			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
+			  end;
+		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
+		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
+		  end,
+		  build_view(WDB, AcctID)
+	  end),
+    {noreply, S};
 handle_cast({release_trunk, AcctId, [CallID,Amt,Type]}, #state{current_write_db=WDB}=S) ->
     spawn(fun() ->
                   put(callid, CallID),

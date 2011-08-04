@@ -259,22 +259,28 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
     %% crashes if not found, no return necessary
     {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, Cache),
 
-    AccountId = whapps_util:get_db_name(wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj), raw),
-    AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj, <<>>),
+    AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj),
+    AccountId = case wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj) of
+		    undefined -> undefined;
+		    AcctId -> whapps_util:get_db_name(AcctId, raw)
+		end,
+
+    CCVs = [CCV || CCV <- [{<<"Username">>, AuthU}
+			   ,{<<"Realm">>, AuthR}
+			   ,{<<"Account-ID">>, AccountId}
+			   ,{<<"Inception">>, <<"on-net">>}
+			   ,{<<"Authorizing-ID">>, AuthId}
+			  ],
+		   CCV =/= undefined],
 
     Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-		,{<<"Custom-Channel-Vars">>, {struct, [{<<"Username">>, AuthU}
-						       ,{<<"Realm">>, AuthR}
-						       ,{<<"Account-ID">>, AccountId}
-						       ,{<<"Inception">>, <<"on-net">>}
-						       ,{<<"Authorizing-ID">>, AuthId}
-						      ]
-					     }}
+		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
 		| whistle_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
 					      ,wh_json:get_value(<<"Event-Category">>, JObj)
 					      ,<<"authn_resp">>
 					      ,?APP_NAME
 					      ,?APP_VERSION)],
+
     {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     send_resp(Payload, RespQ);
@@ -311,21 +317,9 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
+	    wh_cache:store_local(Cache, CacheKey, JObj, Expires),
+	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
 	    ?LOG_END("not verifying with DB, assuming cached JSON is valid")
-	    %% wh_cache:store_local(Cache, CacheKey, JObj, Expires),
-	    %% wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
-	    %% case couch_mgr:lookup_doc_rev(<<"registrations">>, Id) of
-	    %% 	{ok, _} ->
-	    %% 	    ?LOG_END("contact hash ~s requires no update", [Id]);
-	    %% 	{error, _} ->
-	    %% 	    ?LOG("contact hash missing in db"),
-
-	    %% 	    remove_old_regs(User, Realm, Cache),
-	    %% 	    ?LOG("flushed users registrations, to be safe"),
-
-	    %% 	    {ok, _} = store_reg(JObj, CacheKey, Contact1),
-	    %% 	    ?LOG_END("added contact hash ~s to db", [Id])
-	    %% end
     end;
 
 process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, cache=Cache}) ->
@@ -366,16 +360,15 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
 lookup_registration(Realm, Username, Cache) ->
     case wh_cache:fetch_local(Cache, {?MODULE, registration, Realm, Username}) of
 	{ok, CacheKey} ->
-	    {ok, CachedJObj} = wh_cache:fetch_local(Cache, CacheKey),
 	    ?LOG_SYS("Found cached registration"),
-	    CachedJObj;
+	    wh_cache:fetch_local(Cache, CacheKey);
 	{error, not_found} ->
 	    case couch_mgr:get_results("registrations"
 				       ,<<"registrations/newest">>
-				       ,[{<<"startkey">>, [Realm, Username,?EMPTY_JSON_OBJECT]}
-					 ,{<<"endkey">>, [Realm, Username, 0]}
-					 ,{<<"descending">>, true}
-					]) of
+					   ,[{<<"startkey">>, [Realm, Username,?EMPTY_JSON_OBJECT]}
+					     ,{<<"endkey">>, [Realm, Username, 0]}
+					     ,{<<"descending">>, true}
+					    ]) of
 		{ok, []} ->
 		    ?LOG_END("contact for ~s@~s not found", [Username, Realm]),
 		    {error, not_found};
@@ -451,10 +444,13 @@ lookup_auth_user(Name, Realm, Cache) ->
 		    ?LOG("~s@~s not found", [Name, Realm]),
 		    {error, no_user_found};
 		{ok, [User|_]} ->
+		    ?LOG("Storing ~s@~s in cache", [Name, Realm]),
 		    wh_cache:store_local(Cache, CacheKey, User),
 		    {ok, User}
 	    end;
-	{ok, _}=OK -> OK
+	{ok, _}=OK ->
+	    ?LOG("Pulling auth user from cache"),
+	    OK
     end.
 
 %%-----------------------------------------------------------------------------

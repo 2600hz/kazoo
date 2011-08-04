@@ -29,5 +29,5 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDb, cf_pid=CFPid}) ->
             CFPid ! {branch, Flow};
         {error, R} ->
             ?LOG("could not branch to callflow ~s, ~p", [Id, R]),
-            {continue}
+            CFPid ! {continue}
     end.
