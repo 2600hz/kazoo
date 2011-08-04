@@ -475,15 +475,20 @@ get_media_binary(MediaId, #cb_context{db_name=Db}=Context) ->
 %% @doc
 %% DELETE the message (set folder prop to deleted)
 %% @end
-%%--------------------------------------------------------------------\
+%%--------------------------------------------------------------------
 -spec(delete_message/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-delete_message(DocId, MediaId, Context) ->
+delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     Messages = wh_json:get_value(<<"messages">>, Doc),
 
     case get_message_index(MediaId, Messages) of
 	Index when Index > 0 ->
 	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, Doc),
+
+	    %% let's not forget the associated private_media doc
+	    {ok, D} = couch_mgr:open_doc(Db, MediaId),
+	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
+
 	    Context1#cb_context{doc=Doc1};
 	0 ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
