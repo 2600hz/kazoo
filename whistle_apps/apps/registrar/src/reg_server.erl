@@ -315,7 +315,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
 	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
 
-	    {ok, _} = store_reg(JObj, Id, Contact1),
+	    {ok, _} = store_reg(JObj1, Id, Contact1),
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
