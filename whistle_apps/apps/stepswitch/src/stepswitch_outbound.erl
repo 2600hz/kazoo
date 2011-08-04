@@ -675,7 +675,8 @@ build_endpoint(Number, Gateway, Delay) ->
             ,{<<"Route">>, get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Number">>, whistle_util:to_binary(Number)}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
-            ,{<<"Endpoint-Delay">>, whistle_util:to_binary(Delay)}
+            %% TODO: Do not enable this feature until WHISTLE-408 is completed
+            %%,{<<"Endpoint-Delay">>, whistle_util:to_binary(Delay)}
             ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
             ,{<<"Endpoint-Progress-Timeout">>, whistle_util:to_binary(Gateway#gateway.progress_timeout)}
             ,{<<"Codecs">>, Gateway#gateway.codecs}
