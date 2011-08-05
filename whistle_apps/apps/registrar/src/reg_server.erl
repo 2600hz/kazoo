@@ -21,6 +21,9 @@
 
 -define(SERVER, ?MODULE).
 -define(REG_QUEUE_NAME, <<"registrar.queue">>).
+-define(CACHE_REG_KEY(Id), {?MODULE, registration, Id}).
+-define(CACHE_USER_TO_REG_KEY(Realm, User), {?MODULE, registration, Realm, User}).
+-define(CACHE_USER_KEY(Realm, User), {?MODULE, user, Realm, User}).
 
 -record(state, {
 	   amqp_q = <<>> :: binary()
@@ -297,7 +300,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
     JObj1 = wh_json:set_value(<<"Contact">>, Contact1, JObj),
 
     Id = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Contact1))),
-    CacheKey = {?MODULE, Id},
+    CacheKey = ?CACHE_REG_KEY(Id),
     Expires = whistle_util:current_tstamp() + whistle_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
 
     Username = wh_json:get_value(<<"Username">>, JObj),
@@ -313,14 +316,14 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 	    ?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
 
 	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
-	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
+	    wh_cache:store_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username), CacheKey),
 
 	    {ok, _} = store_reg(JObj1, Id, Contact1),
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
 	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
-	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
+	    wh_cache:store_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username), CacheKey),
 
 	    ?LOG_END("not verifying with DB, assuming cached JSON is valid")
     end;
@@ -361,7 +364,7 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
       Username :: binary(),
       Cache :: pid().
 lookup_registration(Realm, Username, Cache) ->
-    case wh_cache:fetch_local(Cache, {?MODULE, registration, Realm, Username}) of
+    case wh_cache:fetch_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username)) of
 	{ok, CacheKey} ->
 	    ?LOG_SYS("Found cached registration"),
 	    wh_cache:fetch_local(Cache, CacheKey);
@@ -388,13 +391,13 @@ lookup_registration(Realm, Username, Cache) ->
 %% store a sucessful registration in the database
 %% @end
 %%-----------------------------------------------------------------------------
--spec store_reg/3 :: (JObj, Id, Contact) -> {ok, json_object() | json_objects()} when
+-spec store_reg/3 :: (JObj, Id, Contact) -> {ok, json_object()} when
       JObj :: json_object(),
       Id :: binary(),
       Contact :: binary().
 store_reg(JObj, Id, Contact) ->
     RegDoc = wh_json:set_value(<<"_id">>, Id, wh_json:set_value(<<"Contact">>, Contact, JObj)),
-    couch_mgr:ensure_saved(?REG_DB, RegDoc).
+    {ok, {struct, _}} = couch_mgr:ensure_saved(?REG_DB, RegDoc).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -436,7 +439,7 @@ remove_old_regs(User, Realm, Cache) ->
       Cache :: pid().
 lookup_auth_user(Name, Realm, Cache) ->
     ?LOG("looking up ~s@~s", [Name, Realm]),
-    CacheKey = {?MODULE, Realm, Name},
+    CacheKey = ?CACHE_USER_KEY(Realm, Name),
     case wh_cache:fetch_local(Cache, CacheKey) of
 	{error, not_found} ->
 	    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
@@ -508,7 +511,11 @@ send_resp(Payload, RespQ) ->
       Pid :: pid().
 prime_cache(Pid) when is_pid(Pid) ->
     ?LOG_SYS("priming registrar cache"),
-    {ok, Docs} = couch_mgr:all_docs(?REG_DB),
-    Expires = whistle_util:current_tstamp() + 3600,
-    _ = [ wh_cache:store_local(Pid, wh_json:get_value(<<"id">>, View), Expires) || View <- Docs ],
+    {ok, Docs} = couch_mgr:get_results(?REG_DB, <<"_all_docs">>, [{include_docs, true}]),
+    _ = [ prime_cache(Pid, View) || View <- Docs ],
     ok.
+
+prime_cache(Pid, ViewResult) ->
+    JObj = wh_json:get_value(<<"value">>, ViewResult),
+    Expires = whistle_util:current_tstamp() + wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
+    wh_cache:store_local(Pid, ?CACHE_REG_KEY(wh_json:get_value(<<"id">>, ViewResult)), JObj, Expires).
