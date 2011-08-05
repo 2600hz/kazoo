@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
@@ -193,7 +194,7 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
     catch
         _:R ->
             ?LOG("invalid mailbox login ~w", [R]),
-            _ = b_play(InvalidLogin, Call),
+            {ok, _} = b_play(InvalidLogin, Call),
             check_mailbox(Box#mailbox{exists=false}, Call, Loop+1)
     end.
 
@@ -670,7 +671,7 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
     catch
         _:_ ->
             ?LOG("new pin was invalid, trying again"),
-            b_play(BadPin, Call),
+            {ok, _} = b_play(BadPin, Call),
             change_pin(Box, Call)
     end.
 
