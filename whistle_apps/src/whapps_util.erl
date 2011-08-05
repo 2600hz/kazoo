@@ -129,7 +129,10 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) when AccountDb =/= Target
                     ],
     couch_mgr:db_create(TargetDb),
     ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(AccountDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
-    couch_mgr:db_replicate(BaseReplicate);
+    case couch_mgr:db_replicate(BaseReplicate) of
+	{ok, _}=OK -> ?LOG_SYS("replication succeeded"), OK;
+	{error, E}=Err -> ?LOG_SYS("replication failed with ~p", [E]), Err
+    end;
 replicate_from_account(_,_,_) -> {error, matching_dbs}.
 
 

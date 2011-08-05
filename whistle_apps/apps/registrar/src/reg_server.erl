@@ -23,7 +23,7 @@
 -define(REG_QUEUE_NAME, <<"registrar.queue">>).
 -define(CACHE_REG_KEY(Id), {?MODULE, registration, Id}).
 -define(CACHE_USER_TO_REG_KEY(Realm, User), {?MODULE, registration, Realm, User}).
--define(CACHE_USER_KEY(Realm, User), {?MODULE, user, Realm, User}).
+-define(CACHE_USER_KEY(Realm, User), {?MODULE, sip_credentials, Realm, User}).
 
 -record(state, {
 	   amqp_q = <<>> :: binary()
@@ -335,6 +335,7 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
     Username = wh_json:get_value(<<"Username">>, ApiJObj),
 
+    %% only send data if a registration is found
     {ok, RegJObj} = lookup_registration(Realm, Username, Cache),
 
     RespFields = case wh_json:get_value(<<"Fields">>, ApiJObj) of
@@ -364,26 +365,8 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
       Username :: binary(),
       Cache :: pid().
 lookup_registration(Realm, Username, Cache) ->
-    case wh_cache:fetch_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username)) of
-	{ok, CacheKey} ->
-	    ?LOG_SYS("Found cached registration"),
-	    wh_cache:fetch_local(Cache, CacheKey);
-	{error, not_found} ->
-	    case couch_mgr:get_results("registrations"
-				       ,<<"registrations/newest">>
-					   ,[{<<"startkey">>, [Realm, Username,?EMPTY_JSON_OBJECT]}
-					     ,{<<"endkey">>, [Realm, Username, 0]}
-					     ,{<<"descending">>, true}
-					    ]) of
-		{ok, []} ->
-		    ?LOG_END("contact for ~s@~s not found", [Username, Realm]),
-		    {error, not_found};
-		{ok, [ViewRes | _]} ->
-		    DocId = wh_json:get_value(<<"id">>, ViewRes),
-		    ?LOG_SYS("Found registration in DB: ~s", [DocId]),
-		    couch_mgr:open_doc(?REG_DB, DocId)
-	    end
-    end.
+    {ok, CacheKey} = wh_cache:fetch_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username)),
+    wh_cache:fetch_local(Cache, CacheKey).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -412,11 +395,16 @@ store_reg(JObj, Id, Contact) ->
 remove_old_regs(User, Realm, Cache) ->
     case couch_mgr:get_results(<<"registrations">>, <<"registrations/newest">>,
 			       [{<<"startkey">>, [Realm, User, 0]}, {<<"endkey">>, [Realm, User, ?EMPTY_JSON_OBJECT]}]) of
+	{ok, [OldDoc]} ->
+	    ID = wh_json:get_value(<<"id">>, OldDoc),
+	    wh_cache:erase_local(Cache, ?CACHE_REG_KEY(ID)),
+	    {ok, Rev} = couch_mgr:lookup_doc_rev(?REG_DB, ID),
+	    couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]});
 	{ok, OldDocs} ->
 	    spawn(fun() ->
 			  DelDocs = [ begin
 					  ID = wh_json:get_value(<<"id">>, Doc),
-					  wh_cache:erase_local(Cache, ID),
+					  wh_cache:erase_local(Cache, ?CACHE_REG_KEY(ID)),
 					  case couch_mgr:lookup_doc_rev(<<"registrations">>, ID) of
 					      {ok, Rev} -> {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]};
 					      _ -> ?EMPTY_JSON_OBJECT
