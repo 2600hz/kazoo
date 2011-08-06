@@ -19,16 +19,16 @@ authn_resp_xml(RespProp) ->
 
 authn_resp_xml(<<"password">>, Prop) ->
     User = props:get_value(<<"Auth-User">>, Prop),
-    Domain = props:get_value(<<"Auth-Domain">>, Prop),
+    Realm = props:get_value(<<"Auth-Realm">>, Prop),
     Pass = props:get_value(<<"Auth-Password">>, Prop),
     ChannelParams = get_channel_params(Prop),
-    {ok, lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Domain, User, Pass, ChannelParams]))};
+    {ok, lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Realm, User, Pass, ChannelParams]))};
 authn_resp_xml(<<"a1-hash">>, Prop) ->
     User = props:get_value(<<"Auth-User">>, Prop),
-    Domain = props:get_value(<<"Auth-Domain">>, Prop),
+    Realm = props:get_value(<<"Auth-Realm">>, Prop),
     Hash = props:get_value(<<"Auth-Password">>, Prop),
     ChannelParams = get_channel_params(Prop),
-    {ok, lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Domain, User, Hash, ChannelParams]))};
+    {ok, lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Realm, User, Hash, ChannelParams]))};
 authn_resp_xml(<<"ip">>, _Prop) ->
     {ok, ?EMPTYRESPONSE};
 authn_resp_xml(_, _) ->

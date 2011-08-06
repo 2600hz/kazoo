@@ -25,7 +25,7 @@
       JObj :: json_object().
 handle_req(JObj) ->
     AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
-    AuthR0 = wh_json:get_value(<<"Auth-Domain">>, JObj),
+    AuthR0 = wh_json:get_value(<<"Auth-Realm">>, JObj),
 
     %% if we're authing, it's an outbound call; no auth means carrier authed by ACL, hence inbound
     %% until we introduce IP-based auth

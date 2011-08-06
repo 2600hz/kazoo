@@ -895,7 +895,7 @@ send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q) ->
                 ,{<<"Auth-Password">>, AuthPwd}
                 ,{<<"Auth-Method">>, <<"password">>}
                 ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Username">>, AuthUser}
-                                                       ,{<<"Realm">>, wh_json:get_value(<<"Auth-Domain">>, JObj)}
+                                                       ,{<<"Realm">>, wh_json:get_value(<<"Auth-Realm">>, JObj)}
                                                        ,{<<"Authorizing-ID">>, ConfId}
                                                        ,{<<"Conference-ID">>, ConfId}]}}
                 | whistle_api:default_headers(Q, <<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
