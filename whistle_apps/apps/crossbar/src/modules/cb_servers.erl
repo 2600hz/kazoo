@@ -653,9 +653,14 @@ write_role(Account, Server, JObj, #state{role_path_tmpl=PathTmpl}) ->
       ServerId :: binary().
 mark_deploy_running(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
-    Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"running">>, Obj) end,
-            fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end],
-    couch_mgr:save_doc(Db, lists:foldl(fun(Fun, Obj) -> Fun(Obj) end, JObj, Funs)).
+    case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
+        <<"running">> ->
+            {error, already_running};
+        _ ->
+            Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"running">>, Obj) end,
+                    fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end],
+            couch_mgr:save_doc(Db, lists:foldl(fun(Fun, Obj) -> Fun(Obj) end, JObj, Funs))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
