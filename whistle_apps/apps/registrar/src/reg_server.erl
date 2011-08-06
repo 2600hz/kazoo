@@ -257,7 +257,7 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
     ?LOG_START("received SIP authentication request"),
 
     AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
-    AuthR = wh_json:get_value(<<"Auth-Domain">>, JObj),
+    AuthR = wh_json:get_value(<<"Auth-Realm">>, JObj),
 
     %% crashes if not found, no return necessary
     {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, Cache),
