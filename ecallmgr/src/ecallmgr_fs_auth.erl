@@ -19,14 +19,13 @@
 
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
--define(VSN, <<"0.5.0">>).
 
 -include("ecallmgr.hrl").
 
 -record(state, {
 	  node = undefined :: atom()
           ,stats = #handler_stats{} :: #handler_stats{}
-          ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
+          ,lookups = [] :: [{pid(), binary(), {integer(), integer(), integer()}},...] | []
 	 }).
 
 %%%===================================================================
@@ -222,32 +221,38 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec lookup_user/3 :: (Node, ID, Data) -> {ok, pid()} when
+      Node :: atom(),
+      ID :: binary(),
+      Data :: proplist().
 lookup_user(Node, ID, Data) ->
     Pid = spawn_link(fun() ->
                              put(callid, ID),
 
 			     %% build req for rabbit
+			     AuthRealm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
+			     AuthUser = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
+
 			     AuthReq = [{<<"Msg-ID">>, ID}
 					,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
 					,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
 					,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
                                         ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
-					,{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
-					,{<<"Auth-Domain">>, props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Domain">>, Data))}
-					| whistle_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, <<"ecallmgr.auth">>, ?VSN)],
+					,{<<"Auth-User">>, AuthUser}
+					,{<<"Auth-Realm">>, AuthRealm}
+					| whistle_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, ?APP_NAME, ?APP_VERSION)],
 
-			     ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [props:get_value(<<"Auth-User">>, AuthReq)
-                                                                                      ,props:get_value(<<"Auth-Domain">>, AuthReq)
-                                                                                      ,props:get_value(<<"Method">>, AuthReq)
-                                                                                     ]),
+			     ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
+
                              try
-                                 {ok, {struct, AuthResp}} = ecallmgr_amqp_pool:authn_req(AuthReq),
+                                 {ok, AuthResp} = ecallmgr_amqp_pool:authn_req(AuthReq),
 
                                  true = whistle_api:authn_resp_v(AuthResp),
                                  ?LOG(ID, "received authn_resp", []),
-                                 {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml([{<<"Auth-User">>, props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data))}
-                                                                            ,{<<"Auth-Domain">>, props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Domain">>, Data))}
-                                                                            | AuthResp]),
+                                 {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
+					       wh_json:set_value(<<"Auth-Realm">>, AuthRealm
+								 ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
+					      ),
                                  ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
                                  freeswitch:fetch_reply(Node, ID, Xml)
                              catch
