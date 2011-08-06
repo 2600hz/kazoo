@@ -78,7 +78,7 @@
 
 %% Authentication Requests
 -define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
-			       , <<"Auth-User">>, <<"Auth-Domain">>]).
+			       , <<"Auth-User">>, <<"Auth-Realm">>]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			  ,{<<"Event-Name">>, <<"authn_req">>}
@@ -88,7 +88,7 @@
 			 ,{<<"From">>, fun is_binary/1}
 			 ,{<<"Orig-IP">>, fun is_binary/1}
 			 ,{<<"Auth-User">>, fun is_binary/1}
-			 ,{<<"Auth-Domain">>, fun is_binary/1}
+			 ,{<<"Auth-Realm">>, fun is_binary/1}
 			]).
 
 %% Authentication Responses
