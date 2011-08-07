@@ -145,7 +145,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_accounts">>, [RD
                   crossbar_util:put_reqid(Context),
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
@@ -156,6 +157,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>
                   AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"undefined">>),
                   Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, AccountId, Doc)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
+                  timer:sleep(1000),
                   try stepswitch_maintenance:reconcile(AccountId, true) catch _:_ -> ok end
 	  end),
     {noreply, State};
@@ -167,7 +169,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_accounts">>, [
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: THIS IS VERY WRONG! Ties a local crossbar to a LOCAL stepswitch instance... quick and
                   %% dirty were the instructions for this module but someone PLEASE fix this later!
-                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end
 	  end),
     {noreply, State};
 

@@ -11,7 +11,7 @@
 -include("stepswitch.hrl").
 
 %% API
--export([reconcile/0, reconcile/1, lookup_number/1, validate_routes/0]).
+-export([reconcile/0, reconcile/1, reconcile/2, lookup_number/1, validate_routes/0]).
 -export([reload_resources/0, process_number/1, process_number/2]).
 
 %% These are temporary until the viewing of numbers in an account can
@@ -34,26 +34,41 @@
 -spec reconcile/0 :: () -> done.
 -spec reconcile/1 :: (Account) -> done when
       Account :: string() | binary() | all.
+-spec reconcile/2 :: (Account, Flag) -> done when
+      Account :: string() | binary() | all,
+      Flag :: boolean().
 
 reconcile() ->
     reconcile(all).
 
 reconcile(all) ->
-    reconcile_accounts(),
-    reconcile_trunkstore(),
-    done;
+    reconcile(all, undefined);
 reconcile(AccountId) when not is_binary(AccountId) ->
     reconcile(whistle_util:to_binary(AccountId));
 reconcile(AccountId) ->
+    case couch_mgr:lookup_doc_rev(?TS_DB, AccountId) of
+        {ok, _} ->
+            reconcile(AccountId, true);
+        {error, _} ->
+            reconcile(AccountId, false)
+    end.
+
+reconcile(all, _) ->
+    reconcile_accounts(),
+    reconcile_trunkstore(),
+    done;
+reconcile(AccountId, TSAccount) when not is_binary(AccountId) ->
+    reconcile(whistle_util:to_binary(AccountId), TSAccount);
+reconcile(AccountId, true) ->
+    Numbers = get_trunkstore_account_numbers(AccountId),
+    reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
+    done;
+reconcile(AccountId, false) ->
     Db = whapps_util:get_db_name(AccountId, encoded),
-    Numbers = case couch_mgr:db_exists(Db) of
-                  true ->
-                      get_callflow_account_numbers(Db);
-                  false ->
-                      get_trunkstore_account_numbers(AccountId)
-              end,
+    Numbers = get_callflow_account_numbers(Db),
     reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
     done.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

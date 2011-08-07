@@ -119,7 +119,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, 
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
@@ -129,7 +130,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, C
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
@@ -139,7 +141,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
