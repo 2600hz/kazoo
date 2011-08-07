@@ -102,6 +102,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns, req_verb=Verb, req_id=ReqId}=Context}}, State) ->
+    AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"0000000000">>),
+    case props:get_value(<<"ts_accounts">>, Nouns) of
+        [] when Verb =:= <<"put">> ->
+            ?LOG(ReqId, "authorizing request to create a new trunkstore doc", []),
+            Pid ! {binding_result, true, {RD, Context}};
+        [AccountId] ->
+            ?LOG(ReqId, "authorizing request to trunkstore doc ~s", [AccountId]),
+            Pid ! {binding_result, true, {RD, Context}};
+        _ ->
+            Pid ! {binding_result, false, {RD, Context}}
+    end,
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.ts_accounts">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
@@ -134,12 +149,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_accounts">>, [RD
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>
+                 ,[RD, #cb_context{auth_doc=AuthDoc, doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
+                  AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"undefined">>),
+                  Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, AccountId, Doc)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
-                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc)) catch _:_ -> ok end
+                  try stepswitch_maintenance:reconcile(AccountId, true) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
@@ -203,6 +220,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.ts_accounts">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.ts_accounts">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.ts_accounts">>),
