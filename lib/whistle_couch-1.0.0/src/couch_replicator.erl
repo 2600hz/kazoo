@@ -44,35 +44,14 @@ repl_db(Source, Target, DB) ->
 		,{<<"target">>, couch_util:db_url(Target, DB)}
 	       ],
 
-    case repl_data(ReplData, 3) of
-	ok -> ok;
-	{error, _} ->
-	    ?LOG_SYS("Tried thrice, spawning and moving on"),
-	    spawn(fun() -> put(callid, DB), repl_data(ReplData, infinity) end)
-    end.
-
-repl_data(_ReplData, 0) -> {error, out_of_tries};
-repl_data(ReplData, infinity) ->
-    case repl_data(ReplData) of
-	ok -> ok;
-	{error, failed} -> repl_data(ReplData, infinity)
-    end;
-repl_data(ReplData, Attempts) ->
-    case repl_data(ReplData) of
-	ok -> ?LOG_SYS("Replicated"), ok;
-	{error, failed} -> ?LOG_SYS("Retrying replication of after 500 error code"), repl_data(ReplData, Attempts-1)
-    end.
-
-repl_data(ReplData) ->
     try
 	%% using couch_mgr here because Source and Target are port-forwarded localhost ports
 	%% so they can't resolve each other; however, since couch_mgr is talking to my local
 	%% bigcouch, it can get Source and Target talking...
-	%% case couch_util:db_replicate(Source, ReplData) of % if Source and Target can talk directly
 
 	?LOG_SYS("Replication beginning"),
-
-	case couch_mgr:db_replicate(ReplData) of
+	case couch_util:db_replicate(Source, ReplData) of % if Source and Target can talk directly
+	    %%case couch_mgr:db_replicate(ReplData) of
 	    {ok, _} -> ok;
 	    {error, {500, _}} ->
 		{error, failed}
@@ -84,4 +63,3 @@ repl_data(ReplData) ->
 	    ?LOG_SYS("~p", [_R]),
 	    {error, failed}
     end.
-	    
