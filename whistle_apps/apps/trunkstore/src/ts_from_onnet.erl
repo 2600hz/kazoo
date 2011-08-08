@@ -82,8 +82,7 @@ onnet_data(State) ->
                        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
                        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
                        ,{<<"SIP-Headers">>, SIPHeaders}
-                       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Account-ID">>, AcctID}
-							      ,{<<"Inception">>, <<"on-net">>}
+                       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Inception">>, <<"on-net">>}
 							      | RateData]}}
                        | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
                       ],

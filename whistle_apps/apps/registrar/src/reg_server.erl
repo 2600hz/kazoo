@@ -21,6 +21,9 @@
 
 -define(SERVER, ?MODULE).
 -define(REG_QUEUE_NAME, <<"registrar.queue">>).
+-define(CACHE_REG_KEY(Id), {?MODULE, registration, Id}).
+-define(CACHE_USER_TO_REG_KEY(Realm, User), {?MODULE, registration, Realm, User}).
+-define(CACHE_USER_KEY(Realm, User), {?MODULE, sip_credentials, Realm, User}).
 
 -record(state, {
 	   amqp_q = <<>> :: binary()
@@ -254,27 +257,33 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
     ?LOG_START("received SIP authentication request"),
 
     AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
-    AuthR = wh_json:get_value(<<"Auth-Domain">>, JObj),
+    AuthR = wh_json:get_value(<<"Auth-Realm">>, JObj),
 
     %% crashes if not found, no return necessary
     {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, Cache),
 
-    AccountId = whapps_util:get_db_name(wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj), raw),
-    AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj, <<>>),
+    AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj),
+    AccountId = case wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj) of
+		    undefined -> undefined;
+		    AcctId -> whapps_util:get_db_name(AcctId, raw)
+		end,
+
+    CCVs = [CCV || CCV <- [{<<"Username">>, AuthU}
+			   ,{<<"Realm">>, AuthR}
+			   ,{<<"Account-ID">>, AccountId}
+			   ,{<<"Inception">>, <<"on-net">>}
+			   ,{<<"Authorizing-ID">>, AuthId}
+			  ],
+		   CCV =/= undefined],
 
     Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-		,{<<"Custom-Channel-Vars">>, {struct, [{<<"Username">>, AuthU}
-						       ,{<<"Realm">>, AuthR}
-						       ,{<<"Account-ID">>, AccountId}
-						       ,{<<"Inception">>, <<"on-net">>}
-						       ,{<<"Authorizing-ID">>, AuthId}
-						      ]
-					     }}
+		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
 		| whistle_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
 					      ,wh_json:get_value(<<"Event-Category">>, JObj)
 					      ,<<"authn_resp">>
 					      ,?APP_NAME
 					      ,?APP_VERSION)],
+
     {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     send_resp(Payload, RespQ);
@@ -288,8 +297,10 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
     AfterUnquoted = whistle_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
 
+    JObj1 = wh_json:set_value(<<"Contact">>, Contact1, JObj),
+
     Id = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Contact1))),
-    CacheKey = {?MODULE, Id},
+    CacheKey = ?CACHE_REG_KEY(Id),
     Expires = whistle_util:current_tstamp() + whistle_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
 
     Username = wh_json:get_value(<<"Username">>, JObj),
@@ -304,28 +315,17 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 
 	    ?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
 
-	    wh_cache:store_local(Cache, CacheKey, JObj, Expires),
-	    wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
+	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
+	    wh_cache:store_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username), CacheKey),
 
-	    {ok, _} = store_reg(JObj, Id, Contact1),
+	    {ok, _} = store_reg(JObj1, Id, Contact1),
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
+	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
+	    wh_cache:store_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username), CacheKey),
+
 	    ?LOG_END("not verifying with DB, assuming cached JSON is valid")
-	    %% wh_cache:store_local(Cache, CacheKey, JObj, Expires),
-	    %% wh_cache:store_local(Cache, {?MODULE, registration, Realm, Username}, CacheKey),
-	    %% case couch_mgr:lookup_doc_rev(<<"registrations">>, Id) of
-	    %% 	{ok, _} ->
-	    %% 	    ?LOG_END("contact hash ~s requires no update", [Id]);
-	    %% 	{error, _} ->
-	    %% 	    ?LOG("contact hash missing in db"),
-
-	    %% 	    remove_old_regs(User, Realm, Cache),
-	    %% 	    ?LOG("flushed users registrations, to be safe"),
-
-	    %% 	    {ok, _} = store_reg(JObj, CacheKey, Contact1),
-	    %% 	    ?LOG_END("added contact hash ~s to db", [Id])
-	    %% end
     end;
 
 process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, cache=Cache}) ->
@@ -335,6 +335,7 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
     Username = wh_json:get_value(<<"Username">>, ApiJObj),
 
+    %% only send data if a registration is found
     {ok, RegJObj} = lookup_registration(Realm, Username, Cache),
 
     RespFields = case wh_json:get_value(<<"Fields">>, ApiJObj) of
@@ -364,27 +365,8 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
       Username :: binary(),
       Cache :: pid().
 lookup_registration(Realm, Username, Cache) ->
-    case wh_cache:fetch_local(Cache, {?MODULE, registration, Realm, Username}) of
-	{ok, CacheKey} ->
-	    {ok, CachedJObj} = wh_cache:fetch_local(Cache, CacheKey),
-	    ?LOG_SYS("Found cached registration"),
-	    CachedJObj;
-	{error, not_found} ->
-	    case couch_mgr:get_results("registrations"
-				       ,<<"registrations/newest">>
-				       ,[{<<"startkey">>, [Realm, Username,?EMPTY_JSON_OBJECT]}
-					 ,{<<"endkey">>, [Realm, Username, 0]}
-					 ,{<<"descending">>, true}
-					]) of
-		{ok, []} ->
-		    ?LOG_END("contact for ~s@~s not found", [Username, Realm]),
-		    {error, not_found};
-		{ok, [ViewRes | _]} ->
-		    DocId = wh_json:get_value(<<"id">>, ViewRes),
-		    ?LOG_SYS("Found registration in DB: ~s", [DocId]),
-		    couch_mgr:open_doc(?REG_DB, DocId)
-	    end
-    end.
+    {ok, CacheKey} = wh_cache:fetch_local(Cache, ?CACHE_USER_TO_REG_KEY(Realm, Username)),
+    wh_cache:fetch_local(Cache, CacheKey).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -392,13 +374,13 @@ lookup_registration(Realm, Username, Cache) ->
 %% store a sucessful registration in the database
 %% @end
 %%-----------------------------------------------------------------------------
--spec store_reg/3 :: (JObj, Id, Contact) -> {ok, json_object() | json_objects()} when
+-spec store_reg/3 :: (JObj, Id, Contact) -> {ok, json_object()} when
       JObj :: json_object(),
       Id :: binary(),
       Contact :: binary().
 store_reg(JObj, Id, Contact) ->
     RegDoc = wh_json:set_value(<<"_id">>, Id, wh_json:set_value(<<"Contact">>, Contact, JObj)),
-    couch_mgr:ensure_saved(?REG_DB, RegDoc).
+    {ok, {struct, _}} = couch_mgr:ensure_saved(?REG_DB, RegDoc).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -413,11 +395,16 @@ store_reg(JObj, Id, Contact) ->
 remove_old_regs(User, Realm, Cache) ->
     case couch_mgr:get_results(<<"registrations">>, <<"registrations/newest">>,
 			       [{<<"startkey">>, [Realm, User, 0]}, {<<"endkey">>, [Realm, User, ?EMPTY_JSON_OBJECT]}]) of
+	{ok, [OldDoc]} ->
+	    ID = wh_json:get_value(<<"id">>, OldDoc),
+	    wh_cache:erase_local(Cache, ?CACHE_REG_KEY(ID)),
+	    {ok, Rev} = couch_mgr:lookup_doc_rev(?REG_DB, ID),
+	    couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]});
 	{ok, OldDocs} ->
 	    spawn(fun() ->
 			  DelDocs = [ begin
 					  ID = wh_json:get_value(<<"id">>, Doc),
-					  wh_cache:erase_local(Cache, ID),
+					  wh_cache:erase_local(Cache, ?CACHE_REG_KEY(ID)),
 					  case couch_mgr:lookup_doc_rev(<<"registrations">>, ID) of
 					      {ok, Rev} -> {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]};
 					      _ -> ?EMPTY_JSON_OBJECT
@@ -440,7 +427,7 @@ remove_old_regs(User, Realm, Cache) ->
       Cache :: pid().
 lookup_auth_user(Name, Realm, Cache) ->
     ?LOG("looking up ~s@~s", [Name, Realm]),
-    CacheKey = {?MODULE, Realm, Name},
+    CacheKey = ?CACHE_USER_KEY(Realm, Name),
     case wh_cache:fetch_local(Cache, CacheKey) of
 	{error, not_found} ->
 	    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
@@ -451,10 +438,13 @@ lookup_auth_user(Name, Realm, Cache) ->
 		    ?LOG("~s@~s not found", [Name, Realm]),
 		    {error, no_user_found};
 		{ok, [User|_]} ->
+		    ?LOG("Storing ~s@~s in cache", [Name, Realm]),
 		    wh_cache:store_local(Cache, CacheKey, User),
 		    {ok, User}
 	    end;
-	{ok, _}=OK -> OK
+	{ok, _}=OK ->
+	    ?LOG("Pulling auth user from cache"),
+	    OK
     end.
 
 %%-----------------------------------------------------------------------------
@@ -509,7 +499,11 @@ send_resp(Payload, RespQ) ->
       Pid :: pid().
 prime_cache(Pid) when is_pid(Pid) ->
     ?LOG_SYS("priming registrar cache"),
-    {ok, Docs} = couch_mgr:all_docs(?REG_DB),
-    Expires = whistle_util:current_tstamp() + 3600,
-    _ = [ wh_cache:store_local(Pid, wh_json:get_value(<<"id">>, View), Expires) || View <- Docs ],
+    {ok, Docs} = couch_mgr:get_results(?REG_DB, <<"_all_docs">>, [{include_docs, true}]),
+    _ = [ prime_cache(Pid, View) || View <- Docs ],
     ok.
+
+prime_cache(Pid, ViewResult) ->
+    JObj = wh_json:get_value(<<"value">>, ViewResult),
+    Expires = whistle_util:current_tstamp() + wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
+    wh_cache:store_local(Pid, ?CACHE_REG_KEY(wh_json:get_value(<<"id">>, ViewResult)), JObj, Expires).

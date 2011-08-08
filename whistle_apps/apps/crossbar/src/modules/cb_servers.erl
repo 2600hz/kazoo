@@ -34,7 +34,9 @@
 
 -record(state, {data_bag_tmpl=undefined
                 ,role_tmpl=undefined
-                ,deploy_tmpl=undefined
+                ,prod_deploy_tmpl=undefined
+                ,dev_deploy_tmpl=undefined
+                ,dev_role = <<"all_in_one">>
                 ,role_path_tmpl=undefined
                 ,databag_path_tmpl=undefined
                 ,databag_mapping=undefined}).
@@ -228,8 +230,12 @@ handle_info(timeout, _) ->
                                compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
                            ,role_path_tmpl =
                                compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
-                           ,deploy_tmpl =
-                               compile_template(props:get_value(deploy_tmpl, Terms), cb_servers_deploy_tmpl)
+                           ,prod_deploy_tmpl =
+                               compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
+                           ,dev_deploy_tmpl =
+                               compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
+                           ,dev_role =
+                               whistle_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
                           };
                 {error, _} ->
                     ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
@@ -460,11 +466,16 @@ is_valid_doc(JObj) ->
 -spec execute_deploy_command/2 :: (Context, State) -> #cb_context{} when
       Context :: #cb_context{},
       State :: #state{}.
-execute_deploy_command(Context, #state{deploy_tmpl=undefined}) ->
+execute_deploy_command(Context, #state{dev_deploy_tmpl=undefined}) ->
+    ?LOG("no development deploy template defined"),
     crossbar_util:response(error, <<"failed to start deployment">>, Context);
-execute_deploy_command(#cb_context{db_name=Db, doc=JObj}=Context, #state{deploy_tmpl=CmdTmpl}=State) ->
+execute_deploy_command(Context, #state{prod_deploy_tmpl=undefined}) ->
+    ?LOG("no production deploy template defined"),
+    crossbar_util:response(error, <<"failed to start deployment">>, Context);
+execute_deploy_command(#cb_context{db_name=Db, doc=JObj}=Context, State) ->
     ServerId = wh_json:get_value(<<"_id">>, JObj),
     Props = template_props(Context, State),
+    CmdTmpl = get_command_tmpl(Context, State),
     {ok, C} = CmdTmpl:render(Props),
     Cmd = binary_to_list(iolist_to_binary(C)),
     case mark_deploy_running(Db, ServerId) of
@@ -478,6 +489,18 @@ execute_deploy_command(#cb_context{db_name=Db, doc=JObj}=Context, #state{deploy_
             crossbar_util:response([], Context);
         {error, _} ->
             crossbar_util:response(error, <<"could not lock deployment">>, Context)
+    end.
+
+
+get_command_tmpl(#cb_context{doc=JObj}, #state{dev_role=DevRole}=State) ->
+    Roles = wh_json:get_value(<<"roles">>, JObj, []),
+    case lists:member(DevRole, Roles) of
+        true ->
+            ?LOG("use development template"),
+            State#state.dev_deploy_tmpl;
+        false ->
+            ?LOG("use production template"),
+            State#state.prod_deploy_tmpl
     end.
 
 %%--------------------------------------------------------------------
@@ -653,9 +676,14 @@ write_role(Account, Server, JObj, #state{role_path_tmpl=PathTmpl}) ->
       ServerId :: binary().
 mark_deploy_running(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
-    Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"running">>, Obj) end,
-            fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end],
-    couch_mgr:save_doc(Db, lists:foldl(fun(Fun, Obj) -> Fun(Obj) end, JObj, Funs)).
+    case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
+        <<"running">> ->
+            {error, already_running};
+        _ ->
+            Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"running">>, Obj) end,
+                    fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end],
+            couch_mgr:save_doc(Db, lists:foldl(fun(Fun, Obj) -> Fun(Obj) end, JObj, Funs))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

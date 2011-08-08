@@ -232,6 +232,7 @@ finish_request(RD, #cb_context{start=T1, session=undefined}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    ?LOG("response body: ~s", [wrq:resp_body(RD1)]),
     ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
     {true, set_req_header(RD1, Context1), Context1};
@@ -239,6 +240,7 @@ finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    ?LOG("response body: ~s", [wrq:resp_body(RD1)]),
     ?LOG_END("fulfilled in ~p ms, finish session", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
     {true, crossbar_session:finish_session(S, set_req_header(RD1, Context1))

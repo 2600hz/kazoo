@@ -8,7 +8,7 @@
 %%%-----------------------------------------------------------------------------
 -module(couch_util).
 
--export([get_new_connection/4, get_db/2]).
+-export([get_new_connection/4, get_db/2, server_url/1, db_url/2]).
 
 %% DB operations
 -export([db_compact/2, db_create/2, db_create/3, db_delete/2
@@ -59,6 +59,28 @@ get_new_conn(Host, Port, Opts) ->
     ?LOG_SYS("Connected successfully to ~s: ~p", [Host, _Version]),
     Conn.
 
+-spec server_url/1 :: (Conn) -> binary() when
+      Conn :: #server{}.
+server_url(#server{host=Host, port=Port, options=Options}) ->
+    UserPass = case props:get_value(basic_auth, Options) of
+		   undefined -> <<>>;
+		   {U, P} -> list_to_binary([U, <<":">>, P])
+	       end,
+    Protocol = case whistle_util:is_true(props:get_value(is_ssl, Options)) of
+		   false -> <<"http">>;
+		   true -> <<"https">>
+	       end,
+    
+    <<Protocol/binary, "://", UserPass/binary
+      ,$@, (whistle_util:to_binary(Host))/binary, $:, (whistle_util:to_binary(Port))/binary, $/>>.
+
+-spec db_url/2 :: (Conn, DbName) -> binary() when
+      Conn :: #server{},
+      DbName :: binary().
+db_url(#server{}=Conn, DbName) ->
+    Server = server_url(Conn),
+    <<Server/binary, DbName/binary>>.
+
 %%% DB-related functions ---------------------------------------------
 -spec db_compact/2 :: (Conn, DbName) -> boolean() when
       Conn :: #server{},
@@ -92,11 +114,13 @@ db_delete(#server{}=Conn, DbName) ->
 	{ok, _} -> true
     end.
 
--spec db_replicate/2 :: (Conn, JSON) -> tuple(ok, json_object()) | tuple(error, term()) when
+-spec db_replicate/2 :: (Conn, JSON) -> {ok, json_object()} | {error, term()} when
       Conn :: #server{},
-      JSON :: json_object().
-db_replicate(#server{}=Conn, JSON) ->
-    couchbeam:replicate(Conn, JSON).
+      JSON :: json_object() | proplist().
+db_replicate(#server{}=Conn, {struct, _}=JSON) ->
+    couchbeam:replicate(Conn, JSON);
+db_replicate(#server{}=Conn, [_|_]=Prop) ->
+    couchbeam:replicate(Conn, {struct, Prop}).
 
 -spec db_view_cleanup/2 :: (Conn, DbName) -> boolean() when
       Conn :: #server{},
