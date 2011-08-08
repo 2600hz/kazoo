@@ -609,7 +609,7 @@ get_node_cookie() ->
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     wh_cache:store_local(get_cache_pid(), bigcouch_cookie, Cookie, 24 * 3600).
 
--spec(get_url/0 :: () -> binary()).
+-spec get_url/0 :: () -> binary().
 get_url() ->
     case {whistle_util:to_binary(get_host()), get_creds(), get_port()} of
         {<<"">>, _, _} ->

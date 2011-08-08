@@ -18,6 +18,8 @@
 
 -export([req_by_uri/3, req_by_uri/4]).
 
+-export([req_by_http/3]).
+
 -export([discard_until/2, discard_until/3]).
 
 -include_lib("wh_couch.hrl").
@@ -107,32 +109,30 @@ req_time_elapsed(#log_data{by_date=ByDate}) ->
 req_by_date(LD) ->
     req_by_date(LD, raw).
 
-req_by_date(#log_data{by_date=ByDate}, raw) ->
-    orddict:fold(fun count_entries/3, [], ByDate);
-req_by_date(#log_data{by_date=ByDate}, asc) ->
-    lists:keysort(2, orddict:fold(fun count_entries/3, [], ByDate));
-req_by_date(#log_data{by_date=ByDate}, desc) ->
-    lists:reverse(lists:keysort(2, orddict:fold(fun count_entries/3, [], ByDate))).
+req_by_date(#log_data{by_date=ByDate}, Type) ->
+    sort_list(orddict:fold(fun count_entries/3, [], ByDate), Type).
 
 req_by_http(LD) ->
     req_by_http(LD, raw).
 
-req_by_http(#log_data{by_http=ByHttp}, raw) ->
-    dict:fold(fun count_entries/3, [], ByHttp);
-req_by_http(#log_data{by_http=ByHttp}, asc) ->
-    lists:keysort(2, dict:fold(fun count_entries/3, [], ByHttp));
-req_by_http(#log_data{by_http=ByHttp}, desc) ->
-    lists:reverse(lists:keysort(2, dict:fold(fun count_entries/3, [], ByHttp))).
+req_by_http(LogData, uri) ->
+    req_by_http(LogData, raw, uri);
+req_by_http(#log_data{by_http=ByHttp}, Type) ->
+    sort_list(dict:fold(fun count_entries/3, [], ByHttp), Type).
+
+req_by_http(#log_data{by_http=ByHttp}, Type, uri) ->
+    sort_list(dict:fold(fun(Method, LogLineHttps, Acc) ->
+				UriCounts = lists:foldl(fun(#log_line_http{uri=Uri}, Dict0) ->
+								dict:update_counter(Uri, 1, Dict0)
+							end, dict:new(), LogLineHttps),
+				[ {Method, [ {total, length(LogLineHttps)} | sort_list(dict:to_list(UriCounts), Type)]} | Acc]
+			end, [], ByHttp), Type).
 
 req_by_uri(LD) ->
     req_by_uri(LD, raw).
 
-req_by_uri(#log_data{by_uri=ByUri}, raw) ->
-    dict:fold(fun count_entries/3, [], ByUri);
-req_by_uri(#log_data{by_uri=ByUri}, asc) ->
-    lists:keysort(2, dict:fold(fun count_entries/3, [], ByUri));
-req_by_uri(#log_data{by_uri=ByUri}, desc) ->
-    lists:reverse(lists:keysort(2, dict:fold(fun count_entries/3, [], ByUri))).
+req_by_uri(#log_data{by_uri=ByUri}, Type) ->
+    sort_list(dict:fold(fun count_entries/3, [], ByUri), Type).
 
 req_by_uri(LogData, {_,_}=Start, {_,_}=Finish) ->
     req_by_uri(LogData, raw, Start, Finish).
@@ -144,17 +144,20 @@ req_by_uri(#log_data{by_uri=ByUri}, Sort, Start, Finish) when Start =< Finish ->
 req_by_statuscode(LD) ->
     req_by_statuscode(LD, raw).
 
-req_by_statuscode(#log_data{by_statuscode=ByStatus}, raw) ->
-    dict:fold(fun count_entries/3, [], ByStatus);
-req_by_statuscode(#log_data{by_statuscode=ByStatus}, asc) ->
-    lists:keysort(2, dict:fold(fun count_entries/3, [], ByStatus));
-req_by_statuscode(#log_data{by_statuscode=ByStatus}, desc) ->
-    lists:reverse(lists:keysort(2, dict:fold(fun count_entries/3, [], ByStatus))).
+req_by_statuscode(#log_data{by_statuscode=ByStatus}, Type) ->
+    sort_list(dict:fold(fun count_entries/3, [], ByStatus), Type).
 
 count_entries(K, V, A) when is_list(V) ->
     [{K, length(V)} | A];
 count_entries(K, V, A) when is_integer(V) ->
     [{K, V} | A].
+
+sort_list(L, raw) ->
+    L;
+sort_list(L, asc) ->
+    lists:keysort(2, L);
+sort_list(L, desc) ->
+    lists:reverse(sort_list(L, asc)).
 
 has_more(#log_data{io_device=undefined}) ->
     false;
@@ -242,6 +245,7 @@ analyze_data(#log_data{by_date = ByDate}=LogData, LineData, Filter) ->
       ReqID :: binary(),
       DateStamp :: wh_datetime().
 analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) ->
+    ?LOG_SYS("Req Data: ~s", [ReqData]),
     case binary:split(ReqData, <<" ">>, [global]) of
 	[_, <<"-">>, <<"-">>, Verb, Uri, SC] ->
 	    #log_data{by_http=ByHttp, by_uri=ByUri, by_statuscode=ByStatus} = LogData,
@@ -268,6 +272,10 @@ analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) 
 			     ,by_statuscode=dict:append_list(StatusCode, HTTP, ByStatus)
 			    };
 	[<<"Uncaught">> | _] -> LogData; %% Skip errors in HTTP request
+	[<<"could">>, <<"not">> | _] -> LogData; %% Skip errors
+	[<<"Apache">>, <<"CouchDB">> | _] -> LogData; %% Skip restarts
+	[<<"**">>, <<"Generic">> | _] -> LogData; %% Skip gen_server terminating
+	[<<"config_event">> | _] -> LogData; %% Skip config event handler terminating
 	[<<"Shutting">> | _] ->
 	    %% Skip group servers being shut down, but forward the IODev
 	    _ = file:read_file(IODev),
