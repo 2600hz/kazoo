@@ -465,7 +465,7 @@ get_media_binary(MediaId, #cb_context{db_name=Db}=Context) ->
     {Filename, Metadata} = get_attachment_data(Db, MediaId, first),
     Ctx = crossbar_doc:load_attachment(MediaId, Filename, Context),
     Ctx#cb_context{resp_headers = [
-       {<<"Content-Type">>, wh_json:get_value(<<"content-type">>, Metadata)},
+       {<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Metadata)},
        {<<"Content-Disposition">>, <<"Content-Disposition: attachment; filename=", Filename/binary>>},
        {<<"Content-Length">> ,whistle_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
        | Context#cb_context.resp_headers]}.
@@ -574,3 +574,17 @@ get_attachment_data(Db, MediaId, first) ->
         _->
             not_found
     end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% generate a media name based on CallerID and creation date
+%% CallerID_YYYY-MM-DD_HH-MM-SS
+%% @end
+%%--------------------------------------------------------------------
+-spec(generate_media_name/2 :: (binary(), binary()) -> binary()).
+generate_media_name(CallerId, GregorianSeconds) ->
+    {{Y,Mo,D}, {H, Mi, S}}  = calendar:gregorian_seconds_to_datetime(GregorianSeconds),
+    Date = list_to_binary([$_, Y, $-, Mo, $-,  D, $- , H, $-, Mi, $-, S]),
+    <<CallerId/binary, Date/binary>>.
