@@ -429,7 +429,7 @@ lookup_auth_user(Name, Realm, Cache) ->
     ?LOG("looking up ~s@~s", [Name, Realm]),
     CacheKey = ?CACHE_USER_KEY(Realm, Name),
     case wh_cache:fetch_local(Cache, CacheKey) of
-	{error, no_user_found} ->
+	{error, not_found} ->
 	    {ok, UserJObj} = lookup_auth_user(Name, Realm),
 	    ?LOG("Storing ~s@~s in cache", [Name, Realm]),
 	    wh_cache:store_local(Cache, CacheKey, UserJObj),
@@ -450,8 +450,7 @@ lookup_auth_user(Name, Realm) ->
 	{ok, []} ->
 	    ?LOG("Failed to find realm ~s in accounts", [Realm]),
 	    lookup_auth_user_in_agg(Name, Realm);
-	{ok, [Account|_]} ->
-	    AccountDB = wh_json:get_value([<<"value">>, <<"account_db">>], Account),
+	{ok, AccountDB} ->
 	    lookup_auth_user_in_account(Name, Realm, AccountDB)
     end.
 
@@ -467,6 +466,7 @@ lookup_auth_user_in_agg(Name, Realm) ->
 	    ?LOG("~s@~s not found in aggregate", [Name, Realm]),
 	    {error, no_user_found};
 	{ok, [User|_]} ->
+	    ?LOG("~s@~s found in aggregate", [Name, Realm]),
 	    {ok, User}
     end.
 
@@ -483,6 +483,7 @@ lookup_auth_user_in_account(Name, Realm, AccountDB) ->
 	    ?LOG("~s@~s not found in ~s", [Name, Realm, AccountDB]),
 	    lookup_auth_user_in_agg(Name, Realm);
 	{ok, [User|_]} ->
+	    ?LOG("~s@~s found in account db: ~s", [Name, Realm, AccountDB]),
 	    {ok, User}
     end.
 
