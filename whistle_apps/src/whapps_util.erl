@@ -162,7 +162,8 @@ get_all_accounts(Encoding) ->
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec(get_account_by_realm/1 :: (Realm :: binary()) -> tuple(ok, binary()) | tuple(error, not_found)).
+-spec get_account_by_realm/1 :: (Realm) -> {ok, binary()}| {error, not_found} when
+      Realm :: binary().
 get_account_by_realm(Realm) ->
     case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
 	{ok, [{struct, _}=V]} ->
