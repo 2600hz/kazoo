@@ -231,7 +231,6 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec(display_version/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 display_version(Context) ->
-    CbVsn = wh_json:set_value(<<"whistle_version">>, <<"1.2.3">>, ?EMPTY_JSON_OBJECT),
-    WhVsn = wh_json:set_value(<<"crossbar_version">>, <<"3.4a">>, CbVsn),
+    WhVsn = wh_json:set_value(<<"whistle_version">>, whistle_util:whistle_version(), ?EMPTY_JSON_OBJECT),
 
     crossbar_util:response(WhVsn, Context).
