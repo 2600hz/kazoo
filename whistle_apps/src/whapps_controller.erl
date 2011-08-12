@@ -61,10 +61,10 @@ restart_app(App) when is_atom(App) ->
     whapps_sup:restart_app(App).
 
 set_amqp_host(H) ->
-    amqp_manager:set_host(H).
+    amqp_mgr:set_host(H).
 
 get_amqp_host() ->
-    amqp_manager:get_host().
+    amqp_mgr:get_host().
 
 set_couch_host(H) ->
     set_couch_host(H, "", "").
