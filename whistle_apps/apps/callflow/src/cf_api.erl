@@ -2,7 +2,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Builder and validator, much like whistle_api.erl, of the AMQP APIs
+%%% Builder and validator, much like wh_api.erl, of the AMQP APIs
 %%% exposed by this WhApp
 %%% @end
 %%% Created :  7 May 2011 by James Aimonetti <james@2600hz.org>

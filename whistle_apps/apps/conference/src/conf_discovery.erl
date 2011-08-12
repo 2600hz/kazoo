@@ -273,7 +273,7 @@ send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ct
               ,{<<"Moderator">>, Moderator}
                | wh_api:default_headers(Q, <<"conference">>, <<"add_caller">>, ?APP_NAME, ?APP_VERSION)
               ],
-    %% TODO: Add this to the whistle_api once finalized
+    %% TODO: Add this to the wh_api once finalized
     Payload = wh_util:to_binary(mochijson2:encode({struct, Caller})),
     amqp_util:conference_publish(Payload, service, ConfId, [{immediate, true}]),
 

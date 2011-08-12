@@ -17,7 +17,7 @@
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to retrieve a list of
+%% Produces the low level wh_api request to retrieve a list of
 %% conference memebers
 %% @end
 %%--------------------------------------------------------------------
@@ -36,7 +36,7 @@ participants(#conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to play audio to all
+%% Produces the low level wh_api request to play audio to all
 %% participants of a conference
 %% @end
 %%--------------------------------------------------------------------
@@ -74,7 +74,7 @@ play(Media, ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to mute a participant of
+%% Produces the low level wh_api request to mute a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
@@ -95,7 +95,7 @@ mute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to unmute a participant of
+%% Produces the low level wh_api request to unmute a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
@@ -116,7 +116,7 @@ unmute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to deaf a participant of
+%% Produces the low level wh_api request to deaf a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
@@ -137,7 +137,7 @@ deaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to undeaf a participant of
+%% Produces the low level wh_api request to undeaf a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
