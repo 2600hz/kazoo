@@ -280,7 +280,7 @@ carrier_to_routes({_CarrierName, CarrierData}, {Routes, User, CallerID, ChannelV
 -type g2r_acc() :: tuple(routes(), binary(), proplist(), proplist()).
 -spec(gateway_to_route/2 :: (Gateway :: proplist(), Acc :: g2r_acc()) -> g2r_acc()).
 gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
-    case whistle_util:to_binary(props:get_value(<<"enabled">>, Gateway, <<"0">>)) of
+    case wh_util:to_binary(props:get_value(<<"enabled">>, Gateway, <<"0">>)) of
 	<<"1">> ->
 	    Dialstring = list_to_binary([<<"sip:">>
 					 ,props:get_value(<<"prefix">>, Gateway)
@@ -298,7 +298,7 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 		 ,{<<"Progress-Timeout">>,props:get_value(<<"progress_timeout">>, Gateway, ?DEFAULT_PROGRESS_TIMEOUT)}
 		 ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Carrier-Route">>, Dialstring} | ChannelVars]}}
 		 | BaseRouteData ],
-	    case whistle_api:route_resp_route_v(R) of
+	    case wh_api:route_resp_route_v(R) of
 		true -> {[{struct, R} | CRs], Regexed, BaseRouteData, ChannelVars};
 		false -> Acc
 	    end;

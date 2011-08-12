@@ -64,10 +64,10 @@ send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
     JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                        ,{<<"Routes">>, []}
                        ,{<<"Method">>, <<"park">>}
-		       | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
+		       | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
 	    },
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    {ok, JSON} = whistle_api:route_resp(JObj1),
+    {ok, JSON} = wh_api:route_resp(JObj1),
     ?LOG("Sending park to ~s: ~s", [RespQ, JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>),
 
@@ -85,7 +85,7 @@ wait_for_win(#state{aleg_callid=CallID}=State) ->
 	%% call events come from callevt exchange, ignore for now
 	{#'basic.deliver'{exchange = <<"targeted">>}, #amqp_msg{payload=Payload}} ->
 	    WinJObj = mochijson2:decode(Payload),
-	    true = whistle_api:route_win_v(WinJObj),
+	    true = wh_api:route_win_v(WinJObj),
 	    CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
 
 	    CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
@@ -177,7 +177,7 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 	    ?LOG("Failure code: ~s", [Code]),
 
 	    %% send failure code to Call
-	    whistle_util:call_response(ALeg, CtlQ, Code, Message),
+	    wh_util:call_response(ALeg, CtlQ, Code, Message),
 
 	    {hangup, State};
 	_Unhandled ->
@@ -221,7 +221,7 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 	    {hangup, State};
 
 	{ <<"call_detail">>, <<"cdr">> } ->
-	    true = whistle_api:call_cdr_v(JObj),
+	    true = wh_api:call_cdr_v(JObj),
 	    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
 	    Duration = ts_util:get_call_duration(JObj),
 
@@ -255,9 +255,9 @@ send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
     Command = [
 	       {<<"Application-Name">>, <<"hangup">>}
 	       ,{<<"Call-ID">>, CallID}
-	       | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, JSON} = whistle_api:hangup_req(Command),
+    {ok, JSON} = wh_api:hangup_req(Command),
     ?LOG("Sending hangup to ~s: ~s", [CtlQ, JSON]),
     amqp_util:targeted_publish(CtlQ, JSON, <<"application/json">>).
 

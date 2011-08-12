@@ -203,7 +203,7 @@ start_amqp() ->
 handle_amqp_msg(Url, Payload, _WsdlModel) ->
     JObj = mochijson2:decode(Payload),
 
-    true = whistle_api:call_cdr_v(JObj),
+    true = wh_api:call_cdr_v(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
     ?LOG_SYS(CallID, "Valid call cdr", []),
@@ -211,14 +211,14 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 
     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-    Timestamp = whistle_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, whistle_util:current_tstamp())),
-    BillingSec = whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+    Timestamp = wh_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())),
+    BillingSec = wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
     ?LOG(CallID, "Recv CDR: ~s", [Payload]),
     DateTime = now_to_datetime(Timestamp - BillingSec),
 
-    ToE164 = whistle_util:to_e164(get_to_user(JObj)),
-    FromE164 = whistle_util:to_e164(get_from_user(JObj)),
+    ToE164 = wh_util:to_e164(get_to_user(JObj)),
+    FromE164 = wh_util:to_e164(get_from_user(JObj)),
 
     AccountCode = get_account_code(JObj),
 
@@ -229,7 +229,7 @@ handle_amqp_msg(Url, Payload, _WsdlModel) ->
 					   ,FromE164
 					   ,ToE164
 					   ,DateTime
-					   ,whistle_util:to_binary(BillingSec)
+					   ,wh_util:to_binary(BillingSec)
 					   ,CallID
 					   ,?DTH_CALL_TYPE_OTHER
 					  ])),

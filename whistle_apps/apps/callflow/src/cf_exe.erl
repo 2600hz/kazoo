@@ -63,7 +63,7 @@ next(Call, Flow) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
     try
-        CF_Module = whistle_util:to_atom(Module, true),
+        CF_Module = wh_util:to_atom(Module, true),
         Pid = spawn_link(CF_Module, handle, [Data, Call]),
         ?LOG("moving to action ~s", [Module]),
         _ = wait(Call#cf_call{last_action=CF_Module}, Flow, Pid)

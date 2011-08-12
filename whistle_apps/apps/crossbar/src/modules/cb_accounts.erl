@@ -620,7 +620,7 @@ add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj).
 
 add_pvt_api_key(JObj, _) ->
-    wh_json:set_value(<<"pvt_api_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))), JObj).
+    wh_json:set_value(<<"pvt_api_key">>, wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))), JObj).
 
 add_pvt_tree(JObj, #cb_context{auth_doc=undefined}) ->
     wh_json:set_value(<<"pvt_tree">>, [], JObj);

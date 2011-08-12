@@ -28,9 +28,9 @@ participants(#conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                 {<<"Application-Name">>, <<"participants">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_participants_req(Command),
+    {ok, Payload} = wh_api:conference_participants_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
@@ -54,9 +54,9 @@ play(Media, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Media-Name">>, Media}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_play_req(Command),
+    {ok, Payload} = wh_api:conference_play_req(Command),
     send_command(Payload, Conf).
 
 play(Media, ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
@@ -66,9 +66,9 @@ play(Media, ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
                ,{<<"Media-Name">>, Media}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_play_req(Command),
+    {ok, Payload} = wh_api:conference_play_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
@@ -87,9 +87,9 @@ mute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_mute_req(Command),
+    {ok, Payload} = wh_api:conference_mute_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
@@ -108,9 +108,9 @@ unmute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_unmute_req(Command),
+    {ok, Payload} = wh_api:conference_unmute_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
@@ -129,9 +129,9 @@ deaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_deaf_req(Command),
+    {ok, Payload} = wh_api:conference_deaf_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
@@ -150,9 +150,9 @@ undeaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_undeaf_req(Command),
+    {ok, Payload} = wh_api:conference_undeaf_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------

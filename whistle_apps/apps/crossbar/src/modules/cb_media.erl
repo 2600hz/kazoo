@@ -151,7 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Conte
 			  Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>
 									     ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
 									,{<<"Content-Length">>
-									      ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
+									      ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
 									| Context#cb_context.resp_headers]},
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end);
@@ -415,14 +415,14 @@ create_media_meta(Data, Context) ->
     Doc1 = lists:foldr(fun(Meta, DocAcc) ->
 			       case wh_json:get_value(Meta, Data) of
 				   undefined -> [{Meta, <<>>} | DocAcc];
-				   V -> [{Meta, whistle_util:to_binary(V)} | DocAcc]
+				   V -> [{Meta, wh_util:to_binary(V)} | DocAcc]
 			       end
 		       end, [], ?METADATA_FIELDS),
     crossbar_doc:save(Context#cb_context{doc={struct, [{<<"pvt_type">>, <<"media">>} | Doc1]}}).
 
 update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    Opts = [{headers, [{content_type, whistle_util:to_list(CT)}]}],
+    Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
 
     ?LOG("Setting Content-Type to ~s", [CT]),
 

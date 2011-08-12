@@ -80,4 +80,4 @@ ignore_early_media(Endpoints) ->
                                  wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
                                      or Acc
                          end, false, Endpoints),
-    whistle_util:to_binary(Ignore).
+    wh_util:to_binary(Ignore).

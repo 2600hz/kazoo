@@ -338,7 +338,7 @@ validate([], #cb_context{req_verb = <<"delete">>, session=Session, req_data=Data
     {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
 		   {ok, SubPid} ->
 		       Flush = wh_json:get_value(<<"flush">>, Data, false),
-		       rm_stream(SubPid, all, whistle_util:to_boolean(Flush));
+		       rm_stream(SubPid, all, wh_util:to_boolean(Flush));
 		   {error, undefined} ->
 		       start_subscription_handler(Session),
 		       {[], ?EMPTY_EVENTS}
@@ -372,7 +372,7 @@ validate([Stream], #cb_context{req_verb = <<"delete">>, session=Session, req_dat
     {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
 		   {ok, SubPid} ->
 		       Flush = wh_json:get_value(<<"flush">>, Data, false),
-		       rm_stream(SubPid, Stream, whistle_util:to_boolean(Flush));
+		       rm_stream(SubPid, Stream, wh_util:to_boolean(Flush));
 		   {error, undefined} ->
 		       start_subscription_handler(Session),
 		       {[], []}
@@ -612,17 +612,17 @@ bind_to_exchange(<<"cdr.", CallID/binary>>, Q) ->
 
 -spec(validate_amqp/3 :: (Category :: binary(), Name :: binary(), Prop :: json_object()) -> boolean()).
 validate_amqp(<<"directory">>, <<"authn_req">>, Prop) ->
-    whistle_api:authn_req_v(Prop);
+    wh_api:authn_req_v(Prop);
 validate_amqp(<<"dialplan">>, <<"route_req">>, Prop) ->
-    whistle_api:route_req_v(Prop);
+    wh_api:route_req_v(Prop);
 validate_amqp(<<"call_event">>, _, Prop) ->
-    whistle_api:call_event_v(Prop);
+    wh_api:call_event_v(Prop);
 validate_amqp(_Cat, _Name, _Prop) ->
     false.
 
 -spec(constrain_max_events/1 :: (MaxEvents :: binary() | integer()) -> integer()).
 constrain_max_events(X) when not is_integer(X) ->
-    constrain_max_events(whistle_util:to_integer(X));
+    constrain_max_events(wh_util:to_integer(X));
 constrain_max_events(Max) when Max > ?MAX_STREAM_EVENTS -> ?MAX_STREAM_EVENTS;
 constrain_max_events(Min) when Min < 1 -> 1;
-constrain_max_events(Okay) -> whistle_util:to_integer(Okay).
+constrain_max_events(Okay) -> wh_util:to_integer(Okay).

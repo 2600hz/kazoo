@@ -333,7 +333,7 @@ get_attachment_path(MediaName, #menu{menu_id=Id}, #cf_call{account_db=Db}) ->
 %%--------------------------------------------------------------------
 -spec(tmp_file/0 :: () -> binary()).
 tmp_file() ->
-     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -363,13 +363,13 @@ get_menu_profile(Data, Db) ->
             Default=#menu{},
             #menu{menu_id = Id
                   ,retries =
-                      whistle_util:to_integer(wh_json:get_value(<<"retries">>, JObj, Default#menu.retries))
+                      wh_util:to_integer(wh_json:get_value(<<"retries">>, JObj, Default#menu.retries))
                   ,timeout =
                       wh_json:get_binary_value(<<"timeout">>, JObj, Default#menu.timeout)
                   ,max_length =
                       wh_json:get_binary_value(<<"max_extension_length">>, JObj, Default#menu.max_length)
                   ,hunt =
-                      whistle_util:is_true(wh_json:get_value(<<"hunt">>, JObj, Default#menu.hunt))
+                      wh_util:is_true(wh_json:get_value(<<"hunt">>, JObj, Default#menu.hunt))
                   ,hunt_deny =
                       wh_json:get_value(<<"hunt_deny">>, JObj, Default#menu.hunt_deny)
                   ,hunt_allow =

@@ -12,7 +12,7 @@
 -export([test/0]).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 -include("fixtures.hrl").
 
 test() ->
@@ -54,20 +54,20 @@ create_account(Url) ->
 get_account(Url, {struct, _}=AcctJObj) ->
     get_account(Url, wh_json:get_value(<<"id">>, AcctJObj));
 get_account(Url, Id) when is_binary(Id) ->
-    Url1 = whistle_util:to_list(list_to_binary([Url, "/", Id])),
+    Url1 = wh_util:to_list(list_to_binary([Url, "/", Id])),
     {_,"200",_,JSON} = ibrowse:send_req(Url1, ?IBROWSE_HEADERS, get),
     extract_data(JSON).
 
 -spec(edit_account/2 :: (Url :: string(), AcctJObj :: json_object()) -> json_object()).
 edit_account(Url, AcctJObj) ->
     AcctJObj1 = wh_json:set_value(<<"name">>, <<"fixture account edited">>, AcctJObj),
-    Url1 = whistle_util:to_list(list_to_binary([Url, "/", wh_json:get_value(<<"id">>, AcctJObj)])),
+    Url1 = wh_util:to_list(list_to_binary([Url, "/", wh_json:get_value(<<"id">>, AcctJObj)])),
     {ok,"200",_,JSON} = ibrowse:send_req(Url1, ?IBROWSE_HEADERS, post, create_json(AcctJObj1)),
     extract_data(JSON).
 
 -spec(delete_account/2 :: (Url :: string(), AcctJObj :: json_object()) -> json_object() | undefined).
 delete_account(Url, AcctJObj) ->
-    Url1 = whistle_util:to_list(list_to_binary([Url, "/", wh_json:get_value(<<"id">>, AcctJObj)])),
+    Url1 = wh_util:to_list(list_to_binary([Url, "/", wh_json:get_value(<<"id">>, AcctJObj)])),
     {ok,"200",_,JSON} = ibrowse:send_req(Url1, ?IBROWSE_HEADERS, delete),
     extract_data(JSON).
 

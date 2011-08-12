@@ -80,9 +80,9 @@ originate_call(AHost, ServerID, Route, MsgId) ->
                ,{<<"Caller-ID-Name">>, <<"2600hz Monitoring">>}
                ,{<<"Caller-ID-Number">>, <<"4158867900">>}
                ,{<<"Route">>, Route}           
-               | whistle_api:default_headers(ServerID, <<"originate">>, <<"resource_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(ServerID, <<"originate">>, <<"resource_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Json} = whistle_api:resource_req(Command),
+    {ok, Json} = wh_api:resource_req(Command),
     amqp_util:callmgr_publish(AHost, Json, <<"application/json">>, ?KEY_RESOURCE_REQ).
 
 %%--------------------------------------------------------------------
@@ -145,9 +145,9 @@ arm_tone_detector(AHost, CtrlQ, CallId) ->
                ,{<<"Frequencies">>, [?FREQ]}
                ,{<<"Sniff-Direction">>, <<"read">>}
                ,{<<"Timeout">>, <<"0">>}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    {ok, Json} = whistle_api:tone_detect_req(Command),
+    {ok, Json} = wh_api:tone_detect_req(Command),
     send_callctrl(Json, AHost, CtrlQ).
 
 %%--------------------------------------------------------------------
@@ -168,9 +168,9 @@ generate_tones(AHost, CtrlQ, CallId) ->
                                         ]}
                           ]
                 }
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    {ok, Json} = whistle_api:tones_req(Command),
+    {ok, Json} = wh_api:tones_req(Command),
     send_callctrl(Json, AHost, CtrlQ).
 
 %%--------------------------------------------------------------------
@@ -183,8 +183,8 @@ determine_results() ->
     try
         {ok, StartMsg} = wait_for_call_event(<<"CHANNEL_EXECUTE">>, <<"play">>, 5000),
         {ok, EndMsg} = wait_for_call_event(<<"CHANNEL_EXECUTE">>, <<"park">>, 5000),
-        Delay = whistle_util:to_integer(get_value(<<"Timestamp">>, EndMsg)) 
-            - whistle_util:to_integer(get_value(<<"Timestamp">>, StartMsg)),
+        Delay = wh_util:to_integer(get_value(<<"Timestamp">>, EndMsg)) 
+            - wh_util:to_integer(get_value(<<"Timestamp">>, StartMsg)),
         {ok, [{<<"Delay">>, Delay}, {<<"Success">>, <<"true">>}]}
     catch
         _:{_, {error, E}} ->
@@ -204,9 +204,9 @@ hangup_call(AHost, CtrlQ, CallId) ->
                 {<<"Call-ID">>, CallId}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Application-Name">>, <<"hangup">>}
-               | whistle_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(CallId, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],    
-    {ok, Json} = whistle_api:hangup_req(Command),
+    {ok, Json} = wh_api:hangup_req(Command),
     send_callctrl(Json, AHost, CtrlQ).
 
 %%--------------------------------------------------------------------

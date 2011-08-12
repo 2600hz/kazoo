@@ -55,7 +55,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, Doc} ->
 	    ?LOG("loaded doc ~s from ~s", [DocId, DB]),
-            case whistle_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
+            case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
                 true ->
                     crossbar_util:response_bad_identifier(DocId, Context);
                 false ->
@@ -439,7 +439,7 @@ rev_to_etag({struct, Props}) ->
     end;
 rev_to_etag([]) -> undefined;
 rev_to_etag(Rev) when is_binary(Rev) ->
-    rev_to_etag(whistle_util:to_list(Rev));
+    rev_to_etag(wh_util:to_list(Rev));
 rev_to_etag(ETag) when is_list(ETag) ->
     ?LOG("Etag in rev to etag: ~p", [ETag]),
     string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
@@ -489,10 +489,10 @@ add_pvt_modified(JObj, _) ->
 %%--------------------------------------------------------------------
 -spec(view_name_to_binary/1 :: (View :: tuple(binary() | string(), binary() | string()) | binary() | string()) -> binary()).
 view_name_to_binary({Cat, View}) ->
-    <<(whistle_util:to_binary(Cat))/binary, "/", (whistle_util:to_binary(View))/binary>>;
+    <<(wh_util:to_binary(Cat))/binary, "/", (wh_util:to_binary(View))/binary>>;
 view_name_to_binary(View) when is_binary(View) ->
     View;
 view_name_to_binary(View) ->
-    whistle_util:to_binary(View).
+    wh_util:to_binary(View).
 
 %% ADD Unit Tests for private/public field filtering and merging

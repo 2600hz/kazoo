@@ -278,7 +278,7 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
 
     Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
-		| whistle_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
+		| wh_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
 					      ,wh_json:get_value(<<"Event-Category">>, JObj)
 					      ,<<"authn_resp">>
 					      ,?APP_NAME
@@ -290,18 +290,18 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
 
 process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
     ?LOG_START("received registration success"),
-    true = whistle_api:reg_success_v(JObj),
+    true = wh_api:reg_success_v(JObj),
 
     [User, AfterAt] = binary:split(wh_json:get_value(<<"Contact">>, JObj), <<"@">>), % only one @ allowed
 
-    AfterUnquoted = whistle_util:to_binary(mochiweb_util:unquote(AfterAt)),
+    AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
 
     JObj1 = wh_json:set_value(<<"Contact">>, Contact1, JObj),
 
-    Id = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Contact1))),
+    Id = wh_util:to_binary(wh_util:to_hex(erlang:md5(Contact1))),
     CacheKey = ?CACHE_REG_KEY(Id),
-    Expires = whistle_util:current_tstamp() + whistle_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
+    Expires = wh_util:current_tstamp() + wh_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
 
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
@@ -330,7 +330,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 
 process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, cache=Cache}) ->
     ?LOG_START("received registration query"),
-    true = whistle_api:reg_query_v(ApiJObj),
+    true = wh_api:reg_query_v(ApiJObj),
 
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
     Username = wh_json:get_value(<<"Username">>, ApiJObj),
@@ -347,8 +347,8 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
 					      end, [], Fields)}
 		 end,
 
-    {ok, Payload} = whistle_api:reg_query_resp([ {<<"Fields">>, RespFields}
-						 | whistle_api:default_headers(Queue
+    {ok, Payload} = wh_api:reg_query_resp([ {<<"Fields">>, RespFields}
+						 | wh_api:default_headers(Queue
 									       ,<<"directory">>
 									       ,<<"reg_query_resp">>
 									       ,?APP_NAME
@@ -502,7 +502,7 @@ authn_response(?EMPTY_JSON_OBJECT, _) ->
 authn_response(AuthInfo, Prop) ->
     Data = lists:umerge(auth_specific_response(AuthInfo), Prop),
     ?LOG_END("sending SIP authentication reply, with credentials"),
-    whistle_api:authn_resp(Data).
+    wh_api:authn_resp(Data).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -546,5 +546,5 @@ prime_cache(Pid) when is_pid(Pid) ->
 
 prime_cache(Pid, ViewResult) ->
     JObj = wh_json:get_value(<<"value">>, ViewResult),
-    Expires = whistle_util:current_tstamp() + wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
+    Expires = wh_util:current_tstamp() + wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
     wh_cache:store_local(Pid, ?CACHE_REG_KEY(wh_json:get_value(<<"id">>, ViewResult)), JObj, Expires).

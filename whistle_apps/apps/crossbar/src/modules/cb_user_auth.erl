@@ -333,15 +333,15 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
                       ,{<<"owner_id">>, OwnerId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"method">>, whistle_util:to_binary(?MODULE)}
-                      ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user_agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                      ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept_charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept_endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept_language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                      ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep_alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                      ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                      ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                      ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                      ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                      ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                      ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                      ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                      ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
                      ]},
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->

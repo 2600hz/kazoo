@@ -435,7 +435,7 @@ validate_user(User, Context) ->
 %%--------------------------------------------------------------------
 -spec create_activation_key/0 :: () -> binary().
 create_activation_key() ->
-     whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))).
+     wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -566,7 +566,7 @@ send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{ac
     From = case FromTmpl:render(Props) of
                {ok, F} -> F;
                _ ->
-                   <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>
+                   <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>
            end,
     Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
 		 ,[ %% Headers
@@ -631,7 +631,7 @@ create_body(_, _, Body) ->
 template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     Port = case wrq:port(RD) of
 	       80 -> "";
-	       P -> [":", whistle_util:to_list(P)]
+	       P -> [":", wh_util:to_list(P)]
 	   end,
     ApiHost = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
     %% remove the redundant request data
@@ -641,9 +641,9 @@ template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     [{<<"account">>, wh_json:to_proplist(<<"pvt_account">>, JObj)}
      ,{<<"user">>, wh_json:to_proplist(<<"pvt_user">>, JObj)}
      ,{<<"request">>, wh_json:to_proplist(Req2)}
-     ,{<<"api_url">>, [{<<"host">>, whistle_util:to_binary(ApiHost)}
+     ,{<<"api_url">>, [{<<"host">>, wh_util:to_binary(ApiHost)}
                        ,{<<"path">>, <<"v1/signup/">>}]}
-     ,{<<"host">>, whistle_util:to_binary(net_adm:localhost())}
+     ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
      ,{<<"activation_key">>, wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
     ].
 

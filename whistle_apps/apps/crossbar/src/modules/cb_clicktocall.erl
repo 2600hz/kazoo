@@ -347,8 +347,8 @@ update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
 establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId}=Context) ->
     #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
 
-    Caller = whistle_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
-    Callee = whistle_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
+    Caller = wh_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
+    Callee = wh_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
     C2CName = wh_json:get_value(<<"name">>, C2C),
 
     Status = originate_call(Caller, Callee, C2CName, AccountId),
@@ -374,7 +374,7 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
     end.
 
 create_c2c_history_item(Req, CallID, CdrID) ->
-    Now = whistle_util:current_tstamp(),
+    Now = wh_util:current_tstamp(),
     {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)},
 	       {<<"timestamp">>, Now},
 	       {<<"call_id">>, CallID},
@@ -404,17 +404,17 @@ originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
     OrigStringPart = <<"{ecallmgr_Account-ID=",AccountId/binary, CallInfo/binary, "}loopback/", CallerNumber/binary, "/context_2">>,
 
     JObjReq = [
-	       {<<"Msg-ID">>, whistle_util:current_tstamp()}
+	       {<<"Msg-ID">>, wh_util:current_tstamp()}
                ,{<<"Resource-Type">>, <<"audio">>}
                ,{<<"Invite-Format">>, <<"route">>}
 	       ,{<<"Route">>, OrigStringPart}
 	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Account-ID">>, AccountId}] } }
                ,{<<"Application-Name">>, <<"transfer">>}
 	       ,{<<"Application-Data">>, {struct, [{<<"Route">>, CalleeExtension}]} }
-               | whistle_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
+               | wh_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
               ],
 
-    {ok, Json} = whistle_api:resource_req({struct, JObjReq}),
+    {ok, Json} = wh_api:resource_req({struct, JObjReq}),
     amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ),
 
     receive

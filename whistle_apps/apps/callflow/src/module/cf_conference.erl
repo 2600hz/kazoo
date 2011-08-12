@@ -28,9 +28,9 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ, account_id=Acc
                ,{<<"Control-Queue">>, CtrlQ}
                ,{<<"Conference-ID">>, wh_json:get_value(<<"id">>, Data)}
                ,{<<"Moderator">>, wh_json:get_binary_boolean(<<"moderator">>, Data)}
-               | whistle_api:default_headers(AmqpQ, <<"conference">>, <<"discovery">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"conference">>, <<"discovery">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_discovery_req(Command),
+    {ok, Payload} = wh_api:conference_discovery_req(Command),
     amqp_util:conference_publish(Payload, discovery),
     cf_call_command:wait_for_hangup(),
     CFPid ! {stop}.

@@ -209,7 +209,7 @@ get_msg_type(JObj) ->
       ApiJObj :: json_object().
 process_req({<<"dialplan">>,<<"route_req">>}, ApiJObj) ->
     try
-        true = whistle_api:route_req_v(ApiJObj),
+        true = wh_api:route_req_v(ApiJObj),
         CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
         case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj), wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)} of
             {AcctID, undefined} when is_binary(AcctID) ->

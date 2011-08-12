@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(notify).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0]).
@@ -56,7 +56,7 @@ start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     ensure_started(sasl), % logging
     ensure_started(crypto), % random
-    ensure_started(whistle_amqp), % amqp wrapper
+    ensure_started(wh_amqp), % amqp wrapper
     ensure_started(whistle_couch). % couch wrapper
 
 %%--------------------------------------------------------------------

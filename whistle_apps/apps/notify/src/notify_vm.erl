@@ -256,7 +256,7 @@ send_vm_to_email(To, Tmpl, JObj) ->
     Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     AttachmentId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
 
-    From = <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>,
+    From = <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>,
 
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
 
@@ -295,8 +295,8 @@ send_vm_to_email(To, Tmpl, JObj) ->
 format_plaintext(JObj, Tmpl) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    ToE164 = whistle_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
-    DateCalled = whistle_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
+    ToE164 = wh_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
+    DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
 
     Tmpl:render([{caller_id_number, pretty_print_did(CIDNum)}
 		 ,{caller_id_name, CIDName}

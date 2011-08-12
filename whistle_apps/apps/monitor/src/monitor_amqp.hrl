@@ -6,8 +6,8 @@
 %%% Created :  12 Nov 2010 by Karl Monitor <karl@2600hz.org>
 
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
--include_lib("whistle/include/whistle_types.hrl").
--include_lib("whistle/include/whistle_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 
 %-define(AMQP_HOST, "whistle-apps001-fmt.2600hz.org").
 -define(AMQP_HOST, "localhost").

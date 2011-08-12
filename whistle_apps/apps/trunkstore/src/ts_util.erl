@@ -51,13 +51,13 @@ find_ip(Domain) when is_list(Domain) ->
     end.
 
 is_ipv4(Address) ->
-    case inet_parse:ipv4_address(whistle_util:to_list(Address)) of
+    case inet_parse:ipv4_address(wh_util:to_list(Address)) of
 	{ok, _} -> true;
 	{error, _} -> false
     end.
 
 is_ipv6(Address) ->
-    case inet_parse:ipv6_address(whistle_util:to_list(Address)) of
+    case inet_parse:ipv6_address(wh_util:to_list(Address)) of
 	{ok, _} -> true;
 	{error, _} -> false
     end.
@@ -84,17 +84,17 @@ get_media_handling(L) ->
 
 -spec(constrain_weight/1 :: (W :: binary() | integer()) -> integer()).
 constrain_weight(W) when not is_integer(W) ->
-    constrain_weight(whistle_util:to_integer(W));
+    constrain_weight(wh_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
 
 %% return rate information as channel vars
 get_base_channel_vars(#route_flags{}=Flags) ->
-    ChannelVars0 = [{<<"Rate">>, whistle_util:to_binary(Flags#route_flags.rate)}
-		    ,{<<"Rate-Increment">>, whistle_util:to_binary(Flags#route_flags.rate_increment)}
-		    ,{<<"Rate-Minimum">>, whistle_util:to_binary(Flags#route_flags.rate_minimum)}
-		    ,{<<"Surcharge">>, whistle_util:to_binary(Flags#route_flags.surcharge)}
+    ChannelVars0 = [{<<"Rate">>, wh_util:to_binary(Flags#route_flags.rate)}
+		    ,{<<"Rate-Increment">>, wh_util:to_binary(Flags#route_flags.rate_increment)}
+		    ,{<<"Rate-Minimum">>, wh_util:to_binary(Flags#route_flags.rate_minimum)}
+		    ,{<<"Surcharge">>, wh_util:to_binary(Flags#route_flags.surcharge)}
 		   ],
 
     case binary:longest_common_suffix([Flags#route_flags.callid, <<"-failover">>]) of
@@ -106,7 +106,7 @@ get_base_channel_vars(#route_flags{}=Flags) ->
 -spec(todays_db_name/1 :: (Prefix :: string() | binary()) -> binary()).
 todays_db_name(Prefix) ->
     {{Y,M,D}, _} = calendar:universal_time(),
-    whistle_util:to_binary(io_lib:format(whistle_util:to_list(Prefix) ++ "%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
+    wh_util:to_binary(io_lib:format(wh_util:to_list(Prefix) ++ "%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
@@ -119,7 +119,7 @@ calculate_cost(R, 0, RM, Sur, Secs) -> calculate_cost(R, 60, RM, Sur, Secs);
 calculate_cost(R, RI, RM, Sur, Secs) ->
     case Secs =< RM of
 	true -> Sur + ((RM / 60) * R);
-	false -> Sur + ((RM / 60) * R) + ( whistle_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
+	false -> Sur + ((RM / 60) * R) + ( wh_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
 
 -spec(lookup_did/1 :: (DID :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
@@ -170,30 +170,30 @@ lookup_user_flags(Name, Realm) ->
 
 -spec(get_call_duration/1 :: (JObj :: json_object()) -> integer()).
 get_call_duration(JObj) ->
-    whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)).
+    wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)).
 
 -spec(get_rate_factors/1 :: (JObj :: json_object()) -> tuple(float(), pos_integer(), pos_integer(), float())).
 get_rate_factors(JObj) ->
     CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    { whistle_util:to_float(wh_json:get_value(<<"Rate">>, CCV, 0.0))
-      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Increment">>, CCV, 60))
-      ,whistle_util:to_integer(wh_json:get_value(<<"Rate-Minimum">>, CCV, 60))
-      ,whistle_util:to_float(wh_json:get_value(<<"Surcharge">>, CCV, 0.0))
+    { wh_util:to_float(wh_json:get_value(<<"Rate">>, CCV, 0.0))
+      ,wh_util:to_integer(wh_json:get_value(<<"Rate-Increment">>, CCV, 60))
+      ,wh_util:to_integer(wh_json:get_value(<<"Rate-Minimum">>, CCV, 60))
+      ,wh_util:to_float(wh_json:get_value(<<"Surcharge">>, CCV, 0.0))
     }.
 
 -spec(invite_format/2 :: (Format :: binary(), To :: binary()) -> proplist()).
 invite_format(<<"e.164">>, To) ->
-    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wh_util:to_e164(To)}];
 invite_format(<<"e164">>, To) ->
-    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, whistle_util:to_e164(To)}];
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wh_util:to_e164(To)}];
 invite_format(<<"1npanxxxxxx">>, To) ->
-    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wh_util:to_1npan(To)}];
 invite_format(<<"1npan">>, To) ->
-    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, whistle_util:to_1npan(To)}];
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wh_util:to_1npan(To)}];
 invite_format(<<"npanxxxxxx">>, To) ->
-    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, wh_util:to_npan(To)}];
 invite_format(<<"npan">>, To) ->
-    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, whistle_util:to_npan(To)}];
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, wh_util:to_npan(To)}];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 

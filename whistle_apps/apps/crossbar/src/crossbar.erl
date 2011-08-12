@@ -30,7 +30,7 @@ start_deps() ->
     ensure_started(mochiweb),
     application:set_env(webmachine, webmachine_logger_module, webmachine_logger),
     ensure_started(webmachine),
-    ensure_started(whistle_amqp), % amqp wrapper
+    ensure_started(wh_amqp), % amqp wrapper
     ensure_started(whistle_couch). % couch wrapper
 
 %% @spec stop() -> ok
