@@ -110,7 +110,7 @@ flush_dtmf(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to set channel/call vars
+%% Produces the low level wh_api request to set channel/call vars
 %% NOTICE: These are 'custom' channel vars for state info only, and
 %%   can not be used to set system settings
 %% @end
@@ -140,7 +140,7 @@ set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to fetch channe vars
+%% Produces the low level wh_api request to fetch channe vars
 %% NOTICE: These are 'custom' channel vars for state info only, and
 %%   can not the switch vars
 %% @end
@@ -183,7 +183,7 @@ b_fetch(FromOtherLeg, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to answer the channel
+%% Produces the low level wh_api request to answer the channel
 %% @end
 %%--------------------------------------------------------------------
 -spec answer/1 :: (Call) -> ok when
@@ -206,7 +206,7 @@ b_answer(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to hangup the channel.
+%% Produces the low level wh_api request to hangup the channel.
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
@@ -231,7 +231,7 @@ b_hangup(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to bridge the call
+%% Produces the low level wh_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
 -type cf_cid_types() :: binary() | undefined.
@@ -296,7 +296,7 @@ b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to play media to the
+%% Produces the low level wh_api request to play media to the
 %% caller.  A list of terminators can be provided that the caller
 %% can use to skip playback.
 %% @end
@@ -349,7 +349,7 @@ play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to record a file.
+%% Produces the low level wh_api request to record a file.
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
 %%--------------------------------------------------------------------
@@ -401,7 +401,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to store the file
+%% Produces the low level wh_api request to store the file
 %% @end
 %%--------------------------------------------------------------------
 -spec store/3 :: (MediaName, Transfer, Call) -> ok when
@@ -464,7 +464,7 @@ b_store(MediaName, Transfer, Method, Headers, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to play tones to the
+%% Produces the low level wh_api request to play tones to the
 %% caller
 %% @end
 %%--------------------------------------------------------------------
@@ -492,7 +492,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to play media to a
+%% Produces the low level wh_api request to play media to a
 %% caller, and collect a number of DTMF events.
 %% @end
 %%--------------------------------------------------------------------
@@ -676,7 +676,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to say text to a caller
+%% Produces the low level wh_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
 -spec say/2 :: (Say, Call) -> ok when
@@ -757,7 +757,7 @@ b_say(Say, Type, Method, Language, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to bridge a caller
+%% Produces the low level wh_api request to bridge a caller
 %% with a conference, with optional entry flags
 %% @end
 %%--------------------------------------------------------------------
@@ -830,7 +830,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to preform a noop
+%% Produces the low level wh_api request to preform a noop
 %% @end
 %%--------------------------------------------------------------------
 -spec noop/1 :: (Call) -> binary() when
@@ -855,7 +855,7 @@ b_noop(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to flush the command
+%% Produces the low level wh_api request to flush the command
 %% queue
 %% @end
 %%--------------------------------------------------------------------
