@@ -158,13 +158,13 @@ start_amqp() ->
 -spec(handle_resource_req/1 :: (Payload :: binary()) -> no_return()).
 handle_resource_req(Payload) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
-    case whistle_api:resource_req_v(JObj) of
+    case wh_api:resource_req_v(JObj) of
 	true ->
 	    Options = get_request_options(JObj),
 	    Nodes = get_resources(request_type(JObj), Options),
 
-	    Min = whistle_util:to_integer(props:get_value(min_channels_requested, Options)),
-	    Max = whistle_util:to_integer(props:get_value(max_channels_requested, Options)),
+	    Min = wh_util:to_integer(props:get_value(min_channels_requested, Options)),
+	    Max = wh_util:to_integer(props:get_value(max_channels_requested, Options)),
 
 	    {struct, Prop} = JObj,
 	    Route = ecallmgr_fs_xml:build_route([{<<"Realm">>, ?DEFAULT_DOMAIN} | Prop], wh_json:get_value(<<"Invite-Format">>, JObj)),
@@ -194,9 +194,9 @@ request_type(JObj) ->
 
 -spec(get_request_options/1 :: (JObj :: json_object()) -> proplist()).
 get_request_options(JObj) ->
-    Min = whistle_util:to_integer(wh_json:get_value(<<"Resource-Minimum">>, JObj, 1)),
+    Min = wh_util:to_integer(wh_json:get_value(<<"Resource-Minimum">>, JObj, 1)),
     [{min_channels_requested, Min}
-     ,{max_channels_requested, whistle_util:to_integer(wh_json:get_value(<<"Resource-Maximum">>, JObj, Min))}
+     ,{max_channels_requested, wh_util:to_integer(wh_json:get_value(<<"Resource-Maximum">>, JObj, Min))}
     ].
 
 -spec(start_channels/5 :: (Nodes :: list(), JObj :: json_object(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> tuple(error, failed_starting, integer()) | ok).
@@ -237,8 +237,8 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 	       ,{<<"Call-ID">>, UUID}
 	       ,{<<"Control-Queue">>, CtlQ}
-		| whistle_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = whistle_api:resource_resp(RespProp),
+		| wh_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, JSON} = wh_api:resource_resp(RespProp),
     ?LOG("sending ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
@@ -249,8 +249,8 @@ send_failed_req(JObj, Failed) ->
 
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Attempts">>, Failed}
-		| whistle_api:default_headers(<<>>, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = whistle_api:resource_error(RespProp),
+		| wh_api:default_headers(<<>>, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, JSON} = wh_api:resource_error(RespProp),
     ?LOG("sending resource error ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 
@@ -261,9 +261,9 @@ send_failed_consume(Route, JObj, E) ->
 
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Route">>, Route}
-		,{<<"Failure-Message">>, whistle_util:to_binary(E)}
-		| whistle_api:default_headers(<<>>, <<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = whistle_api:resource_error(RespProp),
+		,{<<"Failure-Message">>, wh_util:to_binary(E)}
+		| wh_api:default_headers(<<>>, <<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, JSON} = wh_api:resource_error(RespProp),
     ?LOG("sending originate error ~s", [JSON]),
     amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
 

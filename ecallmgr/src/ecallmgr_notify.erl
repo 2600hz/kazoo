@@ -44,11 +44,11 @@ start_link() ->
       New :: integer() | binary(),
       Saved :: integer() | binary().
 send_mwi(User, Realm, New, Saved) ->
-    JObj = {struct, [{<<"Notify-User">>, whistle_util:to_binary(User)}
-                    ,{<<"Notify-Realm">>, whistle_util:to_binary(Realm)}
-                    ,{<<"Messages-New">>, whistle_util:to_binary(New)}
-                    ,{<<"Messages-Saved">>, whistle_util:to_binary(Saved)}
-                    | whistle_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+    JObj = {struct, [{<<"Notify-User">>, wh_util:to_binary(User)}
+                    ,{<<"Notify-Realm">>, wh_util:to_binary(Realm)}
+                    ,{<<"Messages-New">>, wh_util:to_binary(New)}
+                    ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
+                    | wh_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
                    ]},
     process_req({<<"notify">>, <<"mwi">>}, JObj, #state{}).
 
@@ -217,7 +217,7 @@ get_event_type(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to retrieve a list of
+%% Produces the low level wh_api request to retrieve a list of
 %% conference memebers
 %% @end
 %%--------------------------------------------------------------------
@@ -227,7 +227,7 @@ get_event_type(JObj) ->
       State :: #state{}.
 process_req({<<"notify">>, <<"mwi">>}, JObj, _) ->
     ?LOG_START("received notify mwi request"),
-    true = whistle_api:mwi_update_v(JObj),
+    true = wh_api:mwi_update_v(JObj),
     User = wh_json:get_value(<<"Notify-User">>, JObj),
     Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
     case get_endpoint(User, Realm) of
@@ -248,7 +248,7 @@ process_req({<<"notify">>, <<"mwi">>}, JObj, _) ->
                        ,{"from-uri", "sip:2600hz@2600hz.com"}
                        ,{"event-str", "message-summary"}
                        ,{"content-type", "application/simple-message-summary"}
-                       ,{"content-length", whistle_util:to_list(length(Body))}
+                       ,{"content-length", wh_util:to_list(length(Body))}
                        ,{"body", lists:flatten(Body)}
                       ],
             {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
@@ -273,7 +273,7 @@ get_endpoint(User, Realm) ->
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
         [{<<"Contact">>, Contact}] ->
             RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
-            whistle_util:to_list(<<"sip:", (RURI)/binary>>);
+            wh_util:to_list(<<"sip:", (RURI)/binary>>);
         {error, timeout}=E ->
             E
     end.

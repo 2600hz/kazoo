@@ -240,14 +240,14 @@ lookup_user(Node, ID, Data) ->
                                         ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
 					,{<<"Auth-User">>, AuthUser}
 					,{<<"Auth-Realm">>, AuthRealm}
-					| whistle_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, ?APP_NAME, ?APP_VERSION)],
+					| wh_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, ?APP_NAME, ?APP_VERSION)],
 
 			     ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
 
                              try
                                  {ok, AuthResp} = ecallmgr_amqp_pool:authn_req(AuthReq),
 
-                                 true = whistle_api:authn_resp_v(AuthResp),
+                                 true = wh_api:authn_resp_v(AuthResp),
                                  ?LOG(ID, "received authn_resp", []),
                                  {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
 					       wh_json:set_value(<<"Auth-Realm">>, AuthRealm

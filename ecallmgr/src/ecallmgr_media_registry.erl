@@ -221,7 +221,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 generate_local_path(MediaName) ->
-    M = whistle_util:to_binary(MediaName),
+    M = wh_util:to_binary(MediaName),
     <<?LOCAL_MEDIA_PATH, M/binary>>.
 
 -spec request_media/3 :: (MediaName, Type, CallID) -> tuple(ok, binary()) | tuple(error, not_local) when
@@ -243,7 +243,7 @@ lookup_remote(MediaName, extant, CallID) ->
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"extant">>}
 	       ,{<<"Call-ID">>, CallID}
-               | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request);
 lookup_remote(MediaName, new, CallID) ->
@@ -251,7 +251,7 @@ lookup_remote(MediaName, new, CallID) ->
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"new">>}
 	       ,{<<"Call-ID">>, CallID}
-               | whistle_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request).
 
@@ -259,7 +259,7 @@ lookup_remote(MediaName, new, CallID) ->
 lookup_remote(MediaName, Request) ->
     try
 	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
-	true = whistle_api:media_resp_v(MediaResp),
+	true = wh_api:media_resp_v(MediaResp),
 	MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
 
 	{ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}

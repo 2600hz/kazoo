@@ -17,7 +17,7 @@ exec_cmd(Node, UUID, JObj) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
 	true ->
-	    true = whistle_api:fs_req_v(JObj),
+	    true = wh_api:fs_req_v(JObj),
 	    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
 	    AppArgs = wh_json:get_value(<<"Args">>, JObj),
 	    {ok, _} = freeswitch:api(Node, AppName, AppArgs),
