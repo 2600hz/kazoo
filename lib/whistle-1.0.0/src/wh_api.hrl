@@ -1,5 +1,5 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
--include("whistle_types.hrl").
+-include("wh_types.hrl").
 -endif.
 
 %% We pass Application custom channel variables with our own prefix
@@ -428,11 +428,11 @@
 				]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
 				,{<<"Timeout">>, fun(<<"+", T/binary>>) ->
-							 try whistle_util:to_integer(T), true
+							 try wh_util:to_integer(T), true
 							 catch _:_ -> false
 							 end;
 						    (T) ->
-							 try whistle_util:to_integer(T), true
+							 try wh_util:to_integer(T), true
 							 catch _:_ -> false
 							 end
 						 end}
@@ -817,10 +817,10 @@
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notify">>}
 			 ,{<<"Event-Name">>, <<"mwi">>}
                         ]).
--define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
-			,{<<"Messages-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
-			,{<<"Messages-Urgent">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
-			,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(whistle_util:to_integer(I)) end}
+-define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
+			,{<<"Messages-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
+			,{<<"Messages-Urgent">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
+			,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
 		       ]).
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
@@ -874,23 +874,23 @@
 
 %% List of tuples: {dialplan application-name, validation_fun}
 -define(DIALPLAN_APPLICATIONS, [
-				{<<"queue">>, fun whistle_api:queue_req_v/1}
-				,{<<"bridge">>, fun whistle_api:bridge_req_v/1}
-				,{<<"answer">>, fun whistle_api:answer_req_v/1}
-				,{<<"play">>, fun whistle_api:play_req_v/1}
-				,{<<"record">>, fun whistle_api:record_req_v/1}
-				,{<<"store">>, fun whistle_api:store_req_v/1}
-				,{<<"play_and_collect_digits">>, fun whistle_api:play_collect_digits_req_v/1}
-				,{<<"tones">>, fun whistle_api:tones_req_v/1}
-				,{<<"tone_detect">>, fun whistle_api:tone_detect_req_v/1}
-				,{<<"park">>, fun whistle_api:park_req_v/1}
-				,{<<"call_pickup">>, fun whistle_api:call_pickup_req_v/1}
-				,{<<"hangup">>, fun whistle_api:hangup_req_v/1}
-				,{<<"say">>, fun whistle_api:say_req_v/1}
-				,{<<"sleep">>, fun whistle_api:sleep_req_v/1}
-				,{<<"respond">>, fun whistle_api:respond_req_v/1}
-				,{<<"progress">>, fun whistle_api:progress_req_v/1}
-				,{<<"set">>, fun whistle_api:set_req_v/1}
-				,{<<"conference">>, fun whistle_api:conference_req_v/1}
-				,{<<"noop">>, fun whistle_api:noop_req_v/1}
+				{<<"queue">>, fun wh_api:queue_req_v/1}
+				,{<<"bridge">>, fun wh_api:bridge_req_v/1}
+				,{<<"answer">>, fun wh_api:answer_req_v/1}
+				,{<<"play">>, fun wh_api:play_req_v/1}
+				,{<<"record">>, fun wh_api:record_req_v/1}
+				,{<<"store">>, fun wh_api:store_req_v/1}
+				,{<<"play_and_collect_digits">>, fun wh_api:play_collect_digits_req_v/1}
+				,{<<"tones">>, fun wh_api:tones_req_v/1}
+				,{<<"tone_detect">>, fun wh_api:tone_detect_req_v/1}
+				,{<<"park">>, fun wh_api:park_req_v/1}
+				,{<<"call_pickup">>, fun wh_api:call_pickup_req_v/1}
+				,{<<"hangup">>, fun wh_api:hangup_req_v/1}
+				,{<<"say">>, fun wh_api:say_req_v/1}
+				,{<<"sleep">>, fun wh_api:sleep_req_v/1}
+				,{<<"respond">>, fun wh_api:respond_req_v/1}
+				,{<<"progress">>, fun wh_api:progress_req_v/1}
+				,{<<"set">>, fun wh_api:set_req_v/1}
+				,{<<"conference">>, fun wh_api:conference_req_v/1}
+				,{<<"noop">>, fun wh_api:noop_req_v/1}
 			       ]).
