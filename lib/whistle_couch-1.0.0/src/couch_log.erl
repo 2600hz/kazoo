@@ -251,7 +251,7 @@ analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) 
 	    #log_data{by_http=ByHttp, by_uri=ByUri, by_statuscode=ByStatus} = LogData,
 
 	    HttpVerb = get_verb(Verb),
-	    StatusCode = whistle_util:to_integer(binary:replace(SC, <<"\n">>, <<>>)),
+	    StatusCode = wh_util:to_integer(binary:replace(SC, <<"\n">>, <<>>)),
 
 	    {U, QS} = case binary:split(Uri, <<"?">>) of
 			  [U1, QS1] -> {U1, QS1};
@@ -286,7 +286,7 @@ analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) 
 	    #log_data{by_http=ByHttp, by_uri=ByUri, by_statuscode=ByStatus} = LogData,
 
 	    HttpVerb = get_verb(Verb),
-	    StatusCode = whistle_util:to_integer(SC),
+	    StatusCode = wh_util:to_integer(SC),
 
 	    {U, QS} = case binary:split(Uri, <<"?">>) of
 			  [U1, QS1] -> {U1, QS1};
@@ -298,7 +298,7 @@ analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) 
 	      ,qs = mochiweb_util:parse_qs(QS)
 	      ,status_code = StatusCode
 	      ,method = HttpVerb
-	      ,time_elapsed = whistle_util:to_integer(binary:replace(Time, <<"\n">>, <<>>))
+	      ,time_elapsed = wh_util:to_integer(binary:replace(Time, <<"\n">>, <<>>))
 	     },
 	    AppendFun = fun(Old) -> [HTTP | Old] end,
 
@@ -329,7 +329,7 @@ get_verb(V) ->
     binary:replace(V, <<"'">>, <<>>, [global]).
 
 convert_datestamp(DS) ->
-    httpd_util:convert_request_date(whistle_util:to_list(DS)).
+    httpd_util:convert_request_date(wh_util:to_list(DS)).
 
 %% [Wed, 27 Jul 2011 16:55:21 GMT] [error] [<0.21421.543>] [--------] {error_report,<0.146.0>,
 %%     {<0.21421.543>,crash_report,

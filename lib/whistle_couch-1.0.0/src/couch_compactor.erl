@@ -254,8 +254,8 @@ sort_report_data(#db_data{disk_size=DiskA}, #db_data{disk_size=DiskB}) ->
 get_node_data(NodeBin, Thresholds) ->
     put(callid, NodeBin),
     [_Name, H] = binary:split(NodeBin, <<"@">>),
-    Host = whistle_util:to_list(H),
-    Node = whistle_util:to_atom(NodeBin, true),
+    Host = wh_util:to_list(H),
+    Node = wh_util:to_atom(NodeBin, true),
     ?LOG_SYS("Trying to contact host ~s (node ~s)", [Host, _Name]),
 
     {User,Pass} = couch_mgr:get_creds(),
@@ -296,7 +296,7 @@ get_ports(Node, pong) ->
 		   couch_mgr:get_port();
 	       P ->
 		   ?LOG_SYS("Got port ~s", [P]),
-		   whistle_util:to_integer(P)
+		   wh_util:to_integer(P)
 	   end,
     AdminPort = case rpc:call(Node, couch_config, get, ["httpd", "port"]) of
 		    {badrpc, _} ->
@@ -304,7 +304,7 @@ get_ports(Node, pong) ->
 			couch_mgr:get_admin_port();
 		    AP ->
 			?LOG_SYS("Got admin port ~s", [AP]),
-			whistle_util:to_integer(AP)
+			wh_util:to_integer(AP)
 		end,
     {Port, AdminPort};
 get_ports(_Node, pang) ->
@@ -357,9 +357,9 @@ create_db_data(Node, Conn, AdminConn, DBName, Thresholds) ->
 	?LOG_SYS("Create db data for ~s" , [DBName]),
 	{ok, DBData} = get_db_data(AdminConn, DBName),
 
-	DiskSize = whistle_util:to_integer(wh_json:get_value(<<"disk_size">>, DBData, -1)),
-	DataSize = whistle_util:to_integer(wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)),
-	CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+	DiskSize = wh_util:to_integer(wh_json:get_value(<<"disk_size">>, DBData, -1)),
+	DataSize = wh_util:to_integer(wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)),
+	CompactIsRunning = wh_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 	{_MDS, Ratio} = orddict:fold(fun(K, V, Acc) -> filter_thresholds(K, V, Acc, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
 
@@ -402,9 +402,9 @@ get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
 			    {error, failed} ->
 				?LOG_SYS("Failed to get design data for ~s / ~s", [DBName, DesignID]), Acc;
 			    {ok, DDocData} ->
-				DataSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
-				DiskSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
-				CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+				DataSize = wh_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
+				DiskSize = wh_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
+				CompactIsRunning = wh_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 				?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, DBName, DataSize, DiskSize]),
 				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),

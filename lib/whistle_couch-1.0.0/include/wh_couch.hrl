@@ -1,4 +1,4 @@
--include_lib("whistle/include/whistle_types.hrl"). % get the whistle types
+-include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 -include_lib("couchbeam/include/couchbeam.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 

@@ -10,7 +10,7 @@
 
 -include("wh_couch.hrl").
 
--include_lib("whistle/include/whistle_types.hrl"). % get the whistle types
+-include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3, public_fields/1, private_fields/1]).
 -export([update_pvt_modified/1]).
