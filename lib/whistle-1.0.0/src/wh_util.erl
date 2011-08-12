@@ -1,4 +1,4 @@
--module(whistle_util).
+-module(wh_util).
 
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
@@ -46,8 +46,8 @@ call_response1(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
-               | whistle_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {ok, Payload} = whistle_api:queue_req(Command),
+               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
+    {ok, Payload} = wh_api:queue_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %% must be a term that can be changed to a list

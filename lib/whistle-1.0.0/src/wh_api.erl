@@ -17,7 +17,7 @@
 %%% @end
 %%% Created : 19 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(whistle_api).
+-module(wh_api).
 
 %% API
 -export([default_headers/5, extract_defaults/1]).
@@ -82,7 +82,7 @@
 -import(props, [get_value/2, get_value/3]).
 -import(proplists, [is_defined/2]).
 
--include("whistle_api.hrl").
+-include("wh_api.hrl").
 
 %%%===================================================================
 %%% API
