@@ -1,7 +1,7 @@
 {application,crossbar,
              [{description,"Crossbar - REST Interface to the stars"},
               {vsn,"0.3.5"},
-              {modules,[cb_accounts,cb_api_auth,cb_callflows,cb_cdr,
+              {modules,[cb_about,cb_accounts,cb_api_auth,cb_callflows,cb_cdr,
                         cb_clicktocall,cb_conferences,cb_devices,cb_evtsub,
                         cb_media,cb_menus,cb_noauthn,cb_noauthz,
                         cb_openid_auth,cb_registrations,cb_resources,
