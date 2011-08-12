@@ -102,7 +102,8 @@ get_db_report() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("Started compactor"),
-    {ok, ?DEFAULT_THRESHOLDS, ?TIMEOUT}.
+    {ok, ?DEFAULT_THRESHOLDS}.
+%{ok, ?DEFAULT_THRESHOLDS, ?TIMEOUT}.
 
 handle_call(get_thresholds, _From, Thresholds) ->
     {reply, orddict:to_list(Thresholds), Thresholds};
@@ -555,3 +556,8 @@ is_the_db(_,_) ->
 filter_thresholds(K, V, {AccK, _}, DiskSize) when K > DiskSize andalso K < AccK ->
     {K,V};
 filter_thresholds(_, _, Acc, _) -> Acc.
+
+%% release file descriptors so disk usage is reported more accurately
+%% replace inner bit with couch_file:close(Pid)
+
+%%  lists:foreach(fun(Pid) -> case erlang:process_info(Pid, dictionary) of {dictionary, D} -> case couch_util:get_value('$initial_call', D) of {couch_file,init,1} -> io:format("~p ~p~n", [Pid, couch_file:bytes(Pid)]); _ -> false end; _ -> false end end, processes()).
