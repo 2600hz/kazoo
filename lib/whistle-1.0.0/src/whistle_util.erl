@@ -8,6 +8,7 @@
 -export([current_tstamp/0]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
 -export([microseconds_to_seconds/1]).
+-export([whistle_version/0]).
 
 -include_lib("proper/include/proper.hrl").
 
@@ -218,7 +219,21 @@ ceiling(X) ->
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
-%% there are 719528 days between Jan 1, 0 and Jan 1, 1970.
+%% fetch and cache the whistle version from the VERSION file in whistle's root folder
+-spec(whistle_version/0 :: () -> binary()).
+whistle_version() ->
+    whistle_version(<<"/opt/whistle/whistle/VERSION">>).
+
+-spec(whistle_version/1 :: (binary()) -> binary()).
+whistle_version(FileName) ->
+    case file:open(FileName, [read]) of
+	{ok, Device} -> case io:get_line(Device, "") of
+			    eof  -> file:close(Device), <<"not available">>;
+			    Line -> file:close(Device), list_to_binary(string:strip(Line, right, $\n))
+			end;
+	_ ->  <<"not available">>
+    end.
+
 %% there are 86400 seconds in a day
 %% there are 62167219200 seconds between Jan 1, 0 and Jan 1, 1970
 -define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
@@ -334,4 +349,8 @@ microsecs_to_secs_test() ->
     Microsecs = 1310157838405890,
     Secs = 1310157838,
     ?assertEqual(Secs, microseconds_to_seconds(Microsecs)).
+
+no_whistle_version_test() ->
+    ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
+
 -endif.
