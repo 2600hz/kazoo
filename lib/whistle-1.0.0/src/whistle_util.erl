@@ -222,10 +222,10 @@ current_tstamp() ->
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec(whistle_version/0 :: () -> binary()).
 whistle_version() ->
-    case wh_cache:fetch_local(self(), whistle_version) of
+    case wh_cache:fetch({whistle_util, whistle_version}) of
 	{ok, V}    ->  V;
 	{error, _} ->
-	    wh_cache:store_local(self(), whistle_version, whistle_version(<<"/opt/whistle/whistle/VERSION">>)),
+	    wh_cache:store({whistle_util, whistle_version}, whistle_version(<<"/opt/whistle/whistle/VERSION">>)),
 	    whistle_version()
     end.
 
