@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : amqp_manager.erl
+%%% File    : amqp_mgr.erl
 %%% Authors  : K Anderson
 %%%          : James Aimonetti
 %%% Description : The AMQP connection manager.
 %%%
 %%% Created :  March 24 2010
 %%%-------------------------------------------------------------------
--module(amqp_manager).
+-module(amqp_mgr).
 
 -behaviour(gen_server).
 
