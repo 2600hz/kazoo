@@ -235,7 +235,7 @@ handle_info(timeout, _) ->
                            ,dev_deploy_tmpl =
                                compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
                            ,dev_role =
-                               whistle_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
+                               wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
                           };
                 {error, _} ->
                     ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
@@ -547,7 +547,7 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context, State) 
      ,{<<"request">>, wh_json:to_proplist(Data)}
      ,{<<"servers">>, Servers}
      ,{<<"server">>, Server}
-     ,{<<"host">>, whistle_util:to_binary(net_adm:localhost())}
+     ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
     ].
 
 %%--------------------------------------------------------------------
@@ -565,18 +565,18 @@ create_role(_, _, #state{role_tmpl=undefined}) ->
 create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
     try
         Props = [{<<"account">>, Account}
-                 ,{<<"host">>, whistle_util:to_binary(net_adm:localhost())}
+                 ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
                  %% The list index syntax of erlydtl doesnt seem to compile
-                 ,{<<"rand_small_1">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_2">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_3">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_4">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_5">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_large_1">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_2">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_3">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_4">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_5">>, whistle_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_small_1">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_2">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_3">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_4">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_5">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_large_1">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_2">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_3">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_4">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_5">>, wh_util:to_hex(crypto:rand_bytes(24))}
                 ],
         {ok, Role} = RoleTmpl:render(Props),
         JObj = mochijson2:decode(binary_to_list(iolist_to_binary(Role))),

@@ -55,13 +55,13 @@ filter_doc(Doc, Props) ->
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
     wh_json:get_value(Key, Doc) == Val;
 filter_prop(Doc, <<"created_from">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
 filter_prop(Doc, <<"created_to">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) =< whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) =< wh_util:to_integer(Val);
 filter_prop(Doc, <<"modified_from">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) >= whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) >= wh_util:to_integer(Val);
 filter_prop(Doc, <<"modified_to">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< wh_util:to_integer(Val);
 filter_prop(_, _, _) ->
     true.
 

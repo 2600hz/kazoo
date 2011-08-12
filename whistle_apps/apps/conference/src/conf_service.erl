@@ -565,20 +565,20 @@ join_local_conference(CallId, CtrlQ, #conf{conf_id=ConfId, amqp_q=Q}) ->
     ?LOG("attempting to have ~s join the conference locally via ~p", [CallId, CtrlQ]),
     Answer = [{<<"Application-Name">>, <<"answer">>}
               ,{<<"Call-ID">>, CallId}
-              | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
              ],
     Conference = [{<<"Application-Name">>, <<"conference">>}
                   ,{<<"Conference-ID">>, ConfId}
                   ,{<<"Moderator">>, <<"false">>}
                   ,{<<"Call-ID">>, CallId}
-                  | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                  | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                  ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, [{struct, Conference}, {struct, Answer}]}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:queue_req(Command),
+    {ok, Payload} = wh_api:queue_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
@@ -618,9 +618,9 @@ bridge_to_conference(CallId, CtrlQ, #conf{amqp_q=Q, route=Route, auth_pwd=AuthPw
                ,{<<"Media">>, <<"bypass">>}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:bridge_req(Command),
+    {ok, Payload} = wh_api:bridge_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
@@ -810,9 +810,9 @@ find_conference_route(CallId, Q) ->
 request_call_status(CallId, Q) ->
     ?LOG("requesting the status of participant ~s", [CallId]),
     Command = [{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:call_status_req({struct, Command}),
+    {ok, Payload} = wh_api:call_status_req({struct, Command}),
     amqp_util:callevt_publish(CallId, Payload, status_req).
 
 %%--------------------------------------------------------------------
@@ -830,8 +830,8 @@ added_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     ?LOG("sending event that ~s (~s) has been added to ~s", [Id, CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, Id}
-               ,{<<"Moderator">>, whistle_util:to_binary(Moderator)}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"added_participant">>, ?APP_NAME, ?APP_VERSION)
+               ,{<<"Moderator">>, wh_util:to_binary(Moderator)}
+               | wh_api:default_headers(Q, <<"conference">>, <<"added_participant">>, ?APP_NAME, ?APP_VERSION)
               ],
     Payload = mochijson2:encode({struct, Command}),
     amqp_util:conference_publish(Payload, events, ConfId).
@@ -851,8 +851,8 @@ remove_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     ?LOG("sending event that ~s (~s) has been removed from ~s", [Id, CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, Id}
-               ,{<<"Moderator">>, whistle_util:to_binary(Moderator)}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"removed_participant">>, ?APP_NAME, ?APP_VERSION)
+               ,{<<"Moderator">>, wh_util:to_binary(Moderator)}
+               | wh_api:default_headers(Q, <<"conference">>, <<"removed_participant">>, ?APP_NAME, ?APP_VERSION)
               ],
     Payload = mochijson2:encode({struct, Command}),
     amqp_util:conference_publish(Payload, events, ConfId).
@@ -872,9 +872,9 @@ send_route_response(JObj, Q) ->
                 ,{<<"Routes">>, []}
                 ,{<<"Method">>, <<"park">>}
                 ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)}
-                | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+                | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
                ],
-    {ok, Payload} = whistle_api:route_resp(Response),
+    {ok, Payload} = wh_api:route_resp(Response),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
@@ -898,7 +898,7 @@ send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q) ->
                                                        ,{<<"Realm">>, wh_json:get_value(<<"Auth-Realm">>, JObj)}
                                                        ,{<<"Authorizing-ID">>, ConfId}
                                                        ,{<<"Conference-ID">>, ConfId}]}}
-                | whistle_api:default_headers(Q, <<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
+                | wh_api:default_headers(Q, <<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
                ],
-    {ok, Payload} = whistle_api:authn_resp(Response),
+    {ok, Payload} = wh_api:authn_resp(Response),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).

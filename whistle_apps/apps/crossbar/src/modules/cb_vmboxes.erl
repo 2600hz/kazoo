@@ -467,7 +467,7 @@ get_media_binary(MediaId, #cb_context{db_name=Db}=Context) ->
     Ctx#cb_context{resp_headers = [
        {<<"Content-Type">>, wh_json:get_value(<<"content-type">>, Metadata)},
        {<<"Content-Disposition">>, <<"Content-Disposition: attachment; filename=", Filename/binary>>},
-       {<<"Content-Length">> ,whistle_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
+       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
        | Context#cb_context.resp_headers]}.
 
 %%--------------------------------------------------------------------

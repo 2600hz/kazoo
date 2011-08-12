@@ -132,7 +132,7 @@ find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
 %%--------------------------------------------------------------------
 -spec(get_caller_id_type/2 :: (Resource :: json_object(), Call :: #cf_call{}) -> raw | binary()).
 get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
-    case whistle_util:is_true(wh_json:get_value(<<"CF-Keep-Caller-ID">>, CVs)) of
+    case wh_util:is_true(wh_json:get_value(<<"CF-Keep-Caller-ID">>, CVs)) of
         false -> wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>);
         true -> raw
     end.

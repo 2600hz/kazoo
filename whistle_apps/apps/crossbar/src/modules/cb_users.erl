@@ -380,8 +380,8 @@ hash_password(#cb_context{doc=JObj}=Context) ->
             Context;
         Password ->
             Creds = <<(wh_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
-            SHA1 = whistle_util:to_binary(whistle_util:to_hex(crypto:sha(Creds))),
-            MD5 = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Creds))),
+            SHA1 = wh_util:to_binary(wh_util:to_hex(crypto:sha(Creds))),
+            MD5 = wh_util:to_binary(wh_util:to_hex(erlang:md5(Creds))),
             JObj1 = wh_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
             {struct, Props} = wh_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
             Context#cb_context{doc={struct, props:delete(<<"password">>, Props)}}

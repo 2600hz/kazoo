@@ -206,7 +206,7 @@ basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payloa
       ,props=#'P_basic'{content_type=ContentType}
      },
 
-    amqp_manager:publish(BP, AM).
+    amqp_mgr:publish(BP, AM).
 
 
 %%------------------------------------------------------------------------------
@@ -258,7 +258,7 @@ new_exchange(Exchange, Type, _Options) ->
       exchange = Exchange
       ,type = Type
      },
-    amqp_manager:misc_req(ED).
+    amqp_mgr:misc_req(ED).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -266,51 +266,61 @@ new_exchange(Exchange, Type, _Options) ->
 %% Create AMQP queues
 %% @end
 %%------------------------------------------------------------------------------
--spec(new_targeted_queue/0 :: () -> binary() | tuple(error, amqp_error)).
--spec(new_targeted_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec new_targeted_queue/0 :: () -> binary() | {error, amqp_error}.
+-spec new_targeted_queue/1 :: (Queue) -> binary() | {error, amqp_error} when
+      Queue :: binary().
 new_targeted_queue() ->
     new_targeted_queue(<<>>).
 
 new_targeted_queue(Queue) ->
     new_queue(Queue, [{nowait, false}]).
 
--spec(new_callevt_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec new_callevt_queue/1 :: (CallID) -> binary() | {error, amqp_error} when
+      CallID :: binary().
 new_callevt_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callevt_queue(CallID) ->
     new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", CallID])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
--spec(new_callctl_queue/1 :: (CallID :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec new_callctl_queue/1 :: (CallID) -> binary() | {error, amqp_error} when
+      CallID :: binary().
 new_callctl_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(CallID) ->
     new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", CallID])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
--spec(new_resource_queue/0 :: () -> binary() | tuple(error, amqp_error)).
--spec(new_resource_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec new_resource_queue/0 :: () -> binary() | {error, amqp_error}.
+-spec new_resource_queue/1 :: (Queue) -> binary() | {error, amqp_error} when
+      Queue :: binary().
 new_resource_queue() ->
     new_resource_queue(?RESOURCE_QUEUE_NAME).
 new_resource_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
--spec(new_callmgr_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
--spec(new_callmgr_queue/2 :: (Queue :: binary(), Opts :: proplist()) -> binary() | tuple(error, amqp_error)).
+-spec new_callmgr_queue/1 :: (Queue) -> binary() | {error, amqp_error} when
+      Queue :: binary().
+-spec new_callmgr_queue/2 :: (Queue, Options) -> binary() | {error, amqp_error} when
+      Queue :: binary(),
+      Options :: proplist().
 new_callmgr_queue(Queue) ->
     new_callmgr_queue(Queue, []).
 new_callmgr_queue(Queue, Opts) ->
     new_queue(Queue, Opts).
 
--spec(new_monitor_queue/0 :: () -> binary() | tuple(error, amqp_error)).
--spec(new_monitor_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
+-spec new_monitor_queue/0 :: () -> binary() | {error, amqp_error}.
+-spec new_monitor_queue/1 :: (Queue :: binary()) -> binary() | {error, amqp_error}.
 new_monitor_queue() ->
     new_monitor_queue(<<>>).
 new_monitor_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}]).
 
--spec(new_conference_queue/1 :: (Queue :: discovery | binary()) -> binary() | tuple(error, amqp_error)).
--spec(new_conference_queue/2 :: (Queue :: discovery | binary(), Options :: proplist()) -> binary() | tuple(error, amqp_error)).
+-spec new_conference_queue/1 :: (Queue) -> binary() | {error, amqp_error} when
+      Queue :: discovery | binary().
+-spec new_conference_queue/2 :: (Queue, Options) -> binary() | {error, amqp_error} when
+      Queue :: discovery | binary(),
+      Options :: proplist().
 new_conference_queue(discovery) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_conference_queue(ConfId) ->
@@ -322,9 +332,12 @@ new_conference_queue(ConfId, Options) ->
     new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Options).
 
 %% Declare a queue and returns the queue Name
--spec(new_queue/0 :: () -> binary() | tuple(error, amqp_error)).
--spec(new_queue/1 :: (Queue :: binary()) -> binary() | tuple(error, amqp_error)).
--spec(new_queue/2 :: (Queue :: binary(), Opts :: proplist()) -> binary() | tuple(error, amqp_error)).
+-spec new_queue/0 :: () -> binary() | {error, amqp_error}.
+-spec new_queue/1 :: (Queue) -> binary() | {error, amqp_error} when
+      Queue :: binary().
+-spec new_queue/2 :: (Queue, Options) -> binary() | {error, amqp_error} when
+      Queue :: binary(),
+      Options :: proplist().
 new_queue() ->
     new_queue(<<>>). % let's the client lib create a random queue name
 new_queue(Queue) ->
@@ -339,7 +352,7 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = props:get_value(arguments, Options, [])
      },
-    case amqp_manager:consume(QD) of
+    case amqp_mgr:consume(QD) of
 	ok -> Queue;
 	#'queue.declare_ok'{queue=Q} -> Q;
 	_Other ->
@@ -378,7 +391,7 @@ queue_delete(Queue, Prop) ->
       ,if_empty = props:get_value(if_empty, Prop, false)
       ,nowait = props:get_value(nowait, Prop, true)
      },
-    amqp_manager:consume(QD).
+    amqp_mgr:consume(QD).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -487,7 +500,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       ,nowait = props:get_value(nowait, Options, true)
       ,arguments = []
      },
-    case amqp_manager:consume(QB) of
+    case amqp_mgr:consume(QB) of
         {'queue.bind_ok'} -> ok;
         Else -> Else
     end.
@@ -538,7 +551,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
       ,routing_key = Routing
       ,arguments = []
      },
-    amqp_manager:consume(QU).
+    amqp_mgr:consume(QU).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -564,7 +577,7 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    case amqp_manager:consume(BC) of
+    case amqp_mgr:consume(BC) of
         {_Pid, {'basic.consume_ok', _}} ->
             %% link(C),
             ok;
@@ -583,7 +596,7 @@ basic_cancel(Queue) ->
     BC = #'basic.cancel'{
       consumer_tag = Queue
      },
-    amqp_manager:consume(BC).
+    amqp_mgr:consume(BC).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -620,7 +633,7 @@ is_json(Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 basic_ack(DTag) ->
-    amqp_manager:consume(#'basic.ack'{delivery_tag=DTag}).
+    amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -630,7 +643,7 @@ basic_ack(DTag) ->
 %% @end
 %%------------------------------------------------------------------------------
 basic_nack(DTag) ->
-    amqp_manager:consume(#'basic.nack'{delivery_tag=DTag}).
+    amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -638,9 +651,9 @@ basic_nack(DTag) ->
 %% Determine if the AMQP host is currently reachable
 %% @end
 %%------------------------------------------------------------------------------
--spec(is_host_available/0 :: () -> boolean()).
+-spec is_host_available/0 :: () -> boolean().
 is_host_available() ->
-    amqp_manager:is_available().
+    amqp_mgr:is_available().
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -648,9 +661,10 @@ is_host_available() ->
 %% Specify quality of service
 %% @end
 %%------------------------------------------------------------------------------
--spec(basic_qos/1 :: (PreFetch :: non_neg_integer()) -> ok).
+-spec basic_qos/1 :: (PreFetch) -> ok when
+      PreFetch :: non_neg_integer().
 basic_qos(PreFetch) when is_integer(PreFetch) ->
-    amqp_manager:consume(#'basic.qos'{prefetch_count = PreFetch}).
+    amqp_mgr:consume(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -659,6 +673,6 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 %% the immediate or mandatory flags is returned
 %% @end
 %%------------------------------------------------------------------------------
--spec(register_return_handler/0 :: () -> ok).
+-spec register_return_handler/0 :: () -> ok.
 register_return_handler() ->
-    amqp_manager:register_return_handler().
+    amqp_mgr:register_return_handler().

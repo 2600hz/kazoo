@@ -37,10 +37,10 @@ start_link() ->
       Direction :: inbound | outbound,
       RouteOptions :: [binary(),...] | [].
 reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
-    <<Start:1/binary, _/binary>> = Number = whistle_util:to_1npan(ToDID),
+    <<Start:1/binary, _/binary>> = Number = wh_util:to_1npan(ToDID),
     ?LOG("searching for rates in the range ~s to ~s", [Start, Number]),
-    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, whistle_util:to_integer(Start)}
-									    ,{<<"endkey">>, whistle_util:to_integer(Number)}]) of
+    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, wh_util:to_integer(Start)}
+									    ,{<<"endkey">>, wh_util:to_integer(Number)}]) of
 	{ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
 	{error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
 	{ok, Rates} ->
@@ -52,17 +52,17 @@ reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
 		    %% wh_timer:tick("post usort data found"),
 		    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
-		    BaseCost = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
-			+ whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
+		    BaseCost = wh_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * wh_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
+			+ wh_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
 
 		    _ = ts_acctmgr:reserve_trunk(AcctID, CallID, BaseCost, ts_util:is_flat_rate_eligible(ToDID)),
 
-		    {ok, [{<<"Rate">>, whistle_util:to_binary(wh_json:get_value(<<"rate_cost">>, Rate))}
-			  ,{<<"Rate-Increment">>, whistle_util:to_binary(wh_json:get_value(<<"rate_increment">>, Rate))}
-			  ,{<<"Rate-Minimum">>, whistle_util:to_binary(wh_json:get_value(<<"rate_minimum">>, Rate))}
-			  ,{<<"Surcharge">>, whistle_util:to_binary(wh_json:get_value(<<"rate_surcharge">>, Rate, 0))}
-			  ,{<<"Rate-Name">>, whistle_util:to_binary(wh_json:get_value(<<"rate_name">>, Rate))}
-			  ,{<<"Base-Cost">>, whistle_util:to_binary(BaseCost)}
+		    {ok, [{<<"Rate">>, wh_util:to_binary(wh_json:get_value(<<"rate_cost">>, Rate))}
+			  ,{<<"Rate-Increment">>, wh_util:to_binary(wh_json:get_value(<<"rate_increment">>, Rate))}
+			  ,{<<"Rate-Minimum">>, wh_util:to_binary(wh_json:get_value(<<"rate_minimum">>, Rate))}
+			  ,{<<"Surcharge">>, wh_util:to_binary(wh_json:get_value(<<"rate_surcharge">>, Rate, 0))}
+			  ,{<<"Rate-Name">>, wh_util:to_binary(wh_json:get_value(<<"rate_name">>, Rate))}
+			  ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
 			 ]}
 	    end
     end.

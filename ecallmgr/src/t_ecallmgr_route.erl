@@ -34,7 +34,7 @@ wait(Msgs, Left, Failed, Micro) ->
 
 send_prop(Prop, Parent) ->
     Start = erlang:now(),
-    CallID = list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))),
+    CallID = list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))),
     {ok, _Resp} = ecallmgr_amqp_pool:route_req([{<<"Call-ID">>,CallID} | Prop]),
     Parent ! {done, self(), timer:now_diff(erlang:now(), Start)}.
 

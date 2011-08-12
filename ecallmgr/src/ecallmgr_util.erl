@@ -65,8 +65,8 @@ eventstr_to_proplist(EvtStr) ->
     [begin
 	 [K, V] = string:tokens(X, ": "),
 	 [{V1,[]}] = mochiweb_util:parse_qs(V),
-	 {whistle_util:to_binary(K), whistle_util:to_binary(V1)}
-     end || X <- string:tokens(whistle_util:to_list(EvtStr), "\n")].
+	 {wh_util:to_binary(K), wh_util:to_binary(V1)}
+     end || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
 
 -spec get_setting/1 :: (Setting) -> {ok, term()} when
       Setting :: atom().

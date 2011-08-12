@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 %% API
 -export([start_link/0]).

@@ -262,9 +262,9 @@ code_change(_OldVsn, State, _Extra) ->
 send_media_resp(MediaName, Url, To) ->
     Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Stream-URL">>, Url}
-	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
+	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
 
-    {ok, JSON} = whistle_api:media_resp(Prop),
+    {ok, JSON} = wh_api:media_resp(Prop),
     ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
     amqp_util:targeted_publish(To, JSON).
 
@@ -350,6 +350,6 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
 get_http_response_headers(CT, CL) ->
     ["HTTP/1.1 200 OK\r\n"
      ,"Server: ", ?APP_NAME, "/", ?APP_VERSION, "\r\n"
-     ,"Content-Type: ", whistle_util:to_list(CT), "\r\n"
+     ,"Content-Type: ", wh_util:to_list(CT), "\r\n"
      ,"Content-Disposition: identity\r\n"
-     ,"Content-Length: ", whistle_util:to_list(CL), "\r\n\r\n"].
+     ,"Content-Length: ", wh_util:to_list(CL), "\r\n\r\n"].

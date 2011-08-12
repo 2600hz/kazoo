@@ -66,13 +66,13 @@ server_url(#server{host=Host, port=Port, options=Options}) ->
 		   undefined -> <<>>;
 		   {U, P} -> list_to_binary([U, <<":">>, P])
 	       end,
-    Protocol = case whistle_util:is_true(props:get_value(is_ssl, Options)) of
+    Protocol = case wh_util:is_true(props:get_value(is_ssl, Options)) of
 		   false -> <<"http">>;
 		   true -> <<"https">>
 	       end,
     
     <<Protocol/binary, "://", UserPass/binary
-      ,$@, (whistle_util:to_binary(Host))/binary, $:, (whistle_util:to_binary(Port))/binary, $/>>.
+      ,$@, (wh_util:to_binary(Host))/binary, $:, (wh_util:to_binary(Port))/binary, $/>>.
 
 -spec db_url/2 :: (Conn, DbName) -> binary() when
       Conn :: #server{},
@@ -100,7 +100,7 @@ db_create(#server{}=Conn, DbName) ->
       DbName :: binary(),
       Options :: [{q,integer()} | {n,integer()},...] | [].
 db_create(#server{}=Conn, DbName, Options) ->
-    case couchbeam:create_db(Conn, whistle_util:to_list(DbName), [], Options) of
+    case couchbeam:create_db(Conn, wh_util:to_list(DbName), [], Options) of
 	{error, _} -> false;
 	{ok, _} -> true
     end.
@@ -109,7 +109,7 @@ db_create(#server{}=Conn, DbName, Options) ->
       Conn :: #server{},
       DbName :: binary().
 db_delete(#server{}=Conn, DbName) ->
-    case couchbeam:delete_db(Conn, whistle_util:to_list(DbName)) of
+    case couchbeam:delete_db(Conn, wh_util:to_list(DbName)) of
 	{error, _} -> false;
 	{ok, _} -> true
     end.
@@ -144,7 +144,7 @@ db_info(#server{}=Conn, DbName) ->
       Conn :: #server{},
       DbName :: binary().
 db_exists(#server{}=Conn, DbName) ->
-    couchbeam:db_exists(Conn, whistle_util:to_list(DbName)).
+    couchbeam:db_exists(Conn, wh_util:to_list(DbName)).
 
 %% Internal DB-related functions -----------------------------------------------
 
@@ -152,13 +152,13 @@ db_exists(#server{}=Conn, DbName) ->
       Db :: #db{}.
 do_db_compact(#db{}=Db) ->
     {ok, B} = retry504s(fun() -> couchbeam:compact(Db) end),
-    whistle_util:is_true(B).
+    wh_util:is_true(B).
 
 -spec do_db_view_cleanup/1 :: (Db) -> boolean() when
       Db :: #db{}.
 do_db_view_cleanup(#db{}=Db) ->
     {ok, B} = retry504s(fun() -> couchbeam:view_cleanup(Db) end),
-    whistle_util:is_true(B).
+    wh_util:is_true(B).
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact/3 :: (Conn, DbName, Design) -> boolean() when

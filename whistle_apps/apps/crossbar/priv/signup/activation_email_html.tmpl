@@ -1,36 +1,19 @@
 <html>
 <body>
-<h1>Welcome!</h1>
+<h1>Welcome {{user.first_name}} {{user.last_name}}</h1>
 
 <p>
-<h2>USER</h2>
-<div>First name: {{user.first_name}}</div>
-<div>Last name: {{user.last_name}}</div>
-<div>Email: {{user.email}}</div>
-<div>Username: {{user.username}}</div>
+Welcome to 2600hz!
 </p>
 
 <p>
-<h2>ACCOUNT</h2>
-<div>Realm: {{account.realm}}</div>
-<div>API key: {{account.pvt_api_key}}</div>
-<div>Tree: {{account.pvt_tree}}</div>
+You are one step away from completing your registration, <a href="{{account.app_url}}?activation_key={{activation_key}}">click on this link</a> to activate your account.
 </p>
 
 <p>
-<h2>REQUEST</h2>
-<div>App URL: {{request.app_url}}</div>
-</p>
+If you have any issues with this link, please copy and paste the URL below in your web browser to activate the account:
 
-<p>
-<h2>API</h2>
-<div>Host: {{api_url.host}}</div>
-<div>Path: {{api_url.path}}</div>
-</p>
-
-<p>
-<h2>Activation</h2>
-<div>Key: {{activation_key}}</div>
+{{account.app_url}}?activation_key={{activation_key}}
 </p>
 
 </body>

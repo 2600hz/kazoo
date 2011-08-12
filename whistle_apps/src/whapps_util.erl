@@ -17,7 +17,7 @@
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(REPLICATE_ENCODING, encoded).
@@ -41,7 +41,7 @@ get_db_name({struct, _}=Doc, Encoding) ->
 get_db_name([AccountId], Encoding) ->
     get_db_name(AccountId, Encoding);
 get_db_name(AccountId, Encoding) when not is_binary(AccountId) ->
-    get_db_name(whistle_util:to_binary(AccountId), Encoding);
+    get_db_name(wh_util:to_binary(AccountId), Encoding);
 get_db_name(<<"accounts">>, _) ->
     <<"accounts">>;
 %% unencode the account db name
@@ -50,16 +50,16 @@ get_db_name(<<"account/", _/binary>>=DbName, unencoded) ->
 get_db_name(<<"account%2F", _/binary>>=DbName, unencoded) ->
     binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
 get_db_name(AccountId, unencoded) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(AccountId),
-    whistle_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
 %% encode the account db name
 get_db_name(<<"account%2F", _/binary>>=DbName, encoded) ->
     DbName;
 get_db_name(<<"account/", _/binary>>=DbName, encoded) ->
     binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
 get_db_name(AccountId, encoded) when is_binary(AccountId) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(AccountId),
-    whistle_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 %% get just the account ID from the account db name
 get_db_name(<<"account%2F", AccountId/binary>>, raw) ->
     binary:replace(AccountId, <<"%2F">>, <<>>, [global]);

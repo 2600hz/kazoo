@@ -171,33 +171,33 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                   true = is_list(ProviderUrl = get_provider_url(Provider)),
 
                   %% if this is a popup then we will not do redirects
-                  Popup = whistle_util:is_popup(wrq:get_qs_value("popup", RD)),
+                  Popup = wh_util:is_popup(wrq:get_qs_value("popup", RD)),
 
                   %% we cant just put the UUID on the url, that would defeat the purpose
-                  CacheKey = whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(16))),
-                  Seed = whistle_util:to_hex(crypto:rand_bytes(32)),
+                  CacheKey = wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(16))),
+                  Seed = wh_util:to_hex(crypto:rand_bytes(32)),
                   wh_cache:store(CacheKey, {Seed, Provider, Popup}, 60),
 
                   %% build up our URL
-                  Return = lists:flatten([Realm, "/openid_auth/checkauth/", whistle_util:to_list(CacheKey)]),
+                  Return = lists:flatten([Realm, "/openid_auth/checkauth/", wh_util:to_list(CacheKey)]),
 
                   %% HELO IdP
                   case gen_server:call(openid_auth_srv, {prepare, Seed, ProviderUrl}) of
                       %% Yay! Its friendly.. redirect the user to it
                       {ok, AuthReq} when Popup ->
-                          Location = whistle_util:to_binary(openid:authentication_url(AuthReq, Return, Realm)),
+                          Location = wh_util:to_binary(openid:authentication_url(AuthReq, Return, Realm)),
                           ?LOG("providing redirect location ~s as openid auth ~s", [Location, Seed]),
                           Context1 = Context#cb_context{resp_data={struct, [{"location", Location}]}
                                                         ,resp_status=success},
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       {ok, AuthReq} ->
-                          Location = whistle_util:to_list(openid:authentication_url(AuthReq, Return, Realm)),
+                          Location = wh_util:to_list(openid:authentication_url(AuthReq, Return, Realm)),
                           ?LOG("redirecting client to ~s as openid auth ~s", [Location, Seed]),
                           Pid ! redirect_client(Location, RD, Context, Params);
                       %% Must be grumpy today
                       {error, Error} ->
                           ?LOG("openid auth srv prepare: ~p", [Error]),
-                          E = whistle_util:to_binary(Error),
+                          E = wh_util:to_binary(Error),
                           Pid ! {binding_result, true, [RD, crossbar_util:response(fatal, E, Context), Params]}
                   end
 	 end),
@@ -216,7 +216,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                   {ok, {Seed, Provider, Popup}} = wh_cache:fetch(CacheKey),
 
                   %% determine the return URL we used
-                  Return = lists:flatten([Realm, "/openid_auth/checkauth/", whistle_util:to_list(CacheKey)]),
+                  Return = lists:flatten([Realm, "/openid_auth/checkauth/", wh_util:to_list(CacheKey)]),
 
                   %% checkid_setup with the IdP
                   case gen_server:call(openid_auth_srv, {verify, Seed, Return, QS}) of
@@ -253,7 +253,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                       %% bugger
                       {error, Error} ->
                           ?LOG("openid auth srv verify error: ~p", [Error]),
-                          E = whistle_util:to_binary(Error),
+                          E = wh_util:to_binary(Error),
                           Pid ! {binding_result, true, [RD, crossbar_util:response(error, E, 400, Context), Params]}
                   end
 	 end),
@@ -402,7 +402,7 @@ get_provider_url(_) ->
       QS :: proplist().
 get_identity(IdentityUrl, <<"google">>, _QS) ->
     {_, _, _, IdentityQS, _} = mochiweb_util:urlsplit(IdentityUrl),
-    whistle_util:to_binary(props:get_value("id", mochiweb_util:parse_qs(IdentityQS))).
+    wh_util:to_binary(props:get_value("id", mochiweb_util:parse_qs(IdentityQS))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -442,17 +442,17 @@ create_token(IdentityUrl, AccountId, RD, Context) ->
 %%                      ,{<<"owner_id">>, OwnerId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"method">>, whistle_util:to_binary(?MODULE)}
-                      ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user_agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                      ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept_charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept_endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept_language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                      ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep_alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-                      ,{<<"openid_identity_url">>, whistle_util:to_binary(IdentityUrl)}
-%%                      ,{<<"openid_provider">>, whistle_util:to_binary(IdentityUrl)}
+                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                      ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                      ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                      ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                      ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                      ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                      ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                      ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                      ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                      ,{<<"openid_identity_url">>, wh_util:to_binary(IdentityUrl)}
+%%                      ,{<<"openid_provider">>, wh_util:to_binary(IdentityUrl)}
                      ]},
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
@@ -507,7 +507,7 @@ extract_attribute(Attributes, QS, [{K, V}|T], Acc) ->
             %% heavy handed approach to namespace, should only operate in "http://openid.net/srv/ax/1.0"
             %% ...getting it done fast
             VKey = re:replace(K, "\\.type\\.", ".value.", [{return, list}]),
-            Value = whistle_util:to_binary(props:get_value(VKey, QS, <<>>)),
+            Value = wh_util:to_binary(props:get_value(VKey, QS, <<>>)),
             extract_attribute(Attributes, QS, T, [{NormalizedName, Value}|Acc])
     end.
 

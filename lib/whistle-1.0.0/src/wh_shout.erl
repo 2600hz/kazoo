@@ -65,19 +65,19 @@ play_chunk(#media_file{contents=Contents, chunk_size=ChunkSize, pad_response=ToP
 			 iolist()).
 get_shout_srv_response(SrvName, MediaName, ChunkSize, Url, CT) ->
     ["ICY 200 OK\r\n",
-     "icy-notice1: ", whistle_util:to_list(SrvName), "<BR>\r\n",
-     "icy-name: ", whistle_util:to_list(MediaName), "\r\n",
+     "icy-notice1: ", wh_util:to_list(SrvName), "<BR>\r\n",
+     "icy-name: ", wh_util:to_list(MediaName), "\r\n",
      "icy-genre: Whistle Media\r\n",
-     "icy-url: ", whistle_util:to_list(Url) ,"\r\n",
-     "content-type: ", whistle_util:to_list(CT), "\r\n",
+     "icy-url: ", wh_util:to_list(Url) ,"\r\n",
+     "content-type: ", wh_util:to_list(CT), "\r\n",
      "icy-pub: 1\r\n",
      "icy-metaint: ",integer_to_list(ChunkSize),"\r\n",
      "icy-br: 8\r\n\r\n"].
 
 -spec(get_shout_header/2 :: (MediaName :: string() | binary(), Url :: string() | binary()) -> binary()).
 get_shout_header(MediaName, Url) ->
-    Bin = list_to_binary(["StreamTitle='",whistle_util:to_list(MediaName)
-			  ,"';StreamUrl='",whistle_util:to_list(Url) ,"';"]),
+    Bin = list_to_binary(["StreamTitle='",wh_util:to_list(MediaName)
+			  ,"';StreamUrl='",wh_util:to_list(Url) ,"';"]),
     Nblocks = ((byte_size(Bin) - 1) div 16) + 1,
     NPad = Nblocks*16 - byte_size(Bin),
     Extra = lists:duplicate(NPad, 0),

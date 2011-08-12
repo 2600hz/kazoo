@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : amqp_manager.erl
+%%% File    : amqp_mgr.erl
 %%% Authors  : K Anderson
 %%%          : James Aimonetti
 %%% Description : The AMQP connection manager.
 %%%
 %%% Created :  March 24 2010
 %%%-------------------------------------------------------------------
--module(amqp_manager).
+-module(amqp_mgr).
 
 -behaviour(gen_server).
 
@@ -81,7 +81,7 @@ register_return_handler() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
--spec init/1 :: ([]) -> tuple(ok, #state{}, 0).
+-spec init/1 :: ([]) -> {ok, #state{}, 0}.
 init([]) ->
     %% Start a connection to the AMQP broker server
     ?LOG_SYS("starting amqp manager server"),
@@ -305,7 +305,7 @@ stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     ok = amqp_host:stop(HPid).
 
 start_amqp_host("localhost", State) ->
-    [_, Host] = string:tokens(whistle_util:to_list(node()), "@"),
+    [_, Host] = string:tokens(wh_util:to_list(node()), "@"),
     ?LOG_SYS("Instead of localhost, use ~s", [Host]),
     start_amqp_host(Host, State);
 start_amqp_host({Host,Port}, State) ->
@@ -337,7 +337,8 @@ get_config() ->
             []
     end.
 
--spec(save_config/1 :: (Prop :: proplist()) -> no_return()).
+-spec save_config/1 :: (Prop) -> no_return() when
+      Prop :: proplist().
 save_config(Prop) ->
     ?LOG_SYS("updating config ~s", [?STARTUP_FILE]),
     file:write_file(?STARTUP_FILE

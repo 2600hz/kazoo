@@ -62,7 +62,7 @@ call_forward(DeviceId, #cf_call{account_db=Db}=Call) ->
 caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num, cid_name=Name, channel_vars=CCVs}=Call) ->
     Ids = [begin ?LOG("looking for caller id type ~s on doc ~s", [CIDType, Id]), Id end
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
-    case whistle_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
+    case wh_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
         true ->
             {Num, Name};
         false ->
@@ -127,7 +127,7 @@ caller_id_options(Option, DeviceId, OwnerId, #cf_call{account_id=AccountId}=Call
 owner_id(undefined, _) ->
     undefined;
 owner_id(ObjectId, #cf_call{account_db=Db})->
-    Id = whistle_util:to_binary(ObjectId),
+    Id = wh_util:to_binary(ObjectId),
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owner">>}, [{<<"key">>, Id}]) of
         {ok, []} ->
             undefined;
@@ -208,4 +208,4 @@ fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
 -spec get_view/1 :: (Attribute) -> tuple(binary(), binary()) when
       Attribute :: atom().
 get_view(Attribute) ->
-    {<<"cf_attributes">>, whistle_util:to_binary(Attribute)}.
+    {<<"cf_attributes">>, wh_util:to_binary(Attribute)}.

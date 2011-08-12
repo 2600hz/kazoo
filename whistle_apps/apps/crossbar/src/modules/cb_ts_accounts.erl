@@ -360,7 +360,7 @@ check_ts_account(TSAccountId, #cb_context{db_name=Db}=Context) ->
         {ok, Rev} ->
             Context#cb_context{resp_status=success
                                ,resp_data=[]
-                               ,resp_etag=whistle_util:to_list(Rev)};
+                               ,resp_etag=wh_util:to_list(Rev)};
         {error, _} ->
             crossbar_util:response_bad_identifier(TSAccountId, Context)
     end.

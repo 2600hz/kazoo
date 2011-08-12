@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -export([start/0, start_link/0, stop/0]).
 
@@ -55,7 +55,7 @@ start_deps() ->
     whistle_apps_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
-    ensure_started(whistle_amqp),
+    ensure_started(wh_amqp),
     ensure_started(couchbeam),
     ensure_started(whistle_couch).
 

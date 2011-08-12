@@ -223,9 +223,9 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
 
     Command = [{<<"Application-Name">>, <<"answer">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:answer_req(Command),
+    {ok, Payload} = wh_api:answer_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload),
 
     {ok, _} = play_greeting(S1),
@@ -271,10 +271,10 @@ send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ct
               ,{<<"Call-ID">>, CallId}
               ,{<<"Control-Queue">>, CtrlQ}
               ,{<<"Moderator">>, Moderator}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"add_caller">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"add_caller">>, ?APP_NAME, ?APP_VERSION)
               ],
-    %% TODO: Add this to the whistle_api once finalized
-    Payload = whistle_util:to_binary(mochijson2:encode({struct, Caller})),
+    %% TODO: Add this to the wh_api once finalized
+    Payload = wh_util:to_binary(mochijson2:encode({struct, Caller})),
     amqp_util:conference_publish(Payload, service, ConfId, [{immediate, true}]),
 
     case wait_for_handoff(AccountId, ConfId, Caller) of
@@ -309,7 +309,7 @@ send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ct
       ConfId :: binary(),
       Caller :: proplist().
 wait_for_handoff(AccountId, ConfId, Caller) ->
-    AddCallerPayload = whistle_util:to_binary(mochijson2:encode({struct, Caller})),
+    AddCallerPayload = wh_util:to_binary(mochijson2:encode({struct, Caller})),
     receive
         {#'basic.return'{}, #amqp_msg{payload=AddCallerPayload}} ->
             ?LOG("no conference service is running, starting new"),
@@ -381,7 +381,7 @@ validate_conference_id(#search{conf_id=undefined, prompts=Prompts, account_id=Ac
                           <<"unknown">>;
                       Moderator ->
                           ?LOG("identified conference number ~s as conference ~s", [ConfNum, ConfId]),
-                          whistle_util:to_binary(whistle_util:is_true(Moderator))
+                          wh_util:to_binary(wh_util:is_true(Moderator))
                   end,
             {ok, Search#search{conf_id=ConfId
                                ,moderator=Mod
@@ -487,9 +487,9 @@ play(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
                ,{<<"Media-Name">>, Media}
                ,{<<"Terminators">>, []}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_req(Command),
+    {ok, Payload} = wh_api:play_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload),
     wait_for_command(<<"play">>).
 
@@ -514,9 +514,9 @@ play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) 
                ,{<<"Failed-Media-Name">>, <<"silence_stream://50">>}
                ,{<<"Digits-Regex">>, <<"\\d+">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_collect_digits_req(Command),
+    {ok, Payload} = wh_api:play_collect_digits_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload),
     wait_for_command(<<"play_and_collect_digits">>).
 

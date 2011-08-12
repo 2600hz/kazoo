@@ -17,7 +17,7 @@
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to retrieve a list of
+%% Produces the low level wh_api request to retrieve a list of
 %% conference memebers
 %% @end
 %%--------------------------------------------------------------------
@@ -28,15 +28,15 @@ participants(#conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                 {<<"Application-Name">>, <<"participants">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_participants_req(Command),
+    {ok, Payload} = wh_api:conference_participants_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to play audio to all
+%% Produces the low level wh_api request to play audio to all
 %% participants of a conference
 %% @end
 %%--------------------------------------------------------------------
@@ -54,9 +54,9 @@ play(Media, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Media-Name">>, Media}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_play_req(Command),
+    {ok, Payload} = wh_api:conference_play_req(Command),
     send_command(Payload, Conf).
 
 play(Media, ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
@@ -66,15 +66,15 @@ play(Media, ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
                ,{<<"Media-Name">>, Media}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_play_req(Command),
+    {ok, Payload} = wh_api:conference_play_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to mute a participant of
+%% Produces the low level wh_api request to mute a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
@@ -87,15 +87,15 @@ mute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_mute_req(Command),
+    {ok, Payload} = wh_api:conference_mute_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to unmute a participant of
+%% Produces the low level wh_api request to unmute a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
@@ -108,15 +108,15 @@ unmute(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_unmute_req(Command),
+    {ok, Payload} = wh_api:conference_unmute_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to deaf a participant of
+%% Produces the low level wh_api request to deaf a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
@@ -129,15 +129,15 @@ deaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_deaf_req(Command),
+    {ok, Payload} = wh_api:conference_deaf_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Produces the low level whistle_api request to undeaf a participant of
+%% Produces the low level wh_api request to undeaf a participant of
 %% the conference
 %% @end
 %%--------------------------------------------------------------------
@@ -150,9 +150,9 @@ undeaf(ParticipantId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Participant-ID">>, ParticipantId}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"conference">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_undeaf_req(Command),
+    {ok, Payload} = wh_api:conference_undeaf_req(Command),
     send_command(Payload, Conf).
 
 %%--------------------------------------------------------------------

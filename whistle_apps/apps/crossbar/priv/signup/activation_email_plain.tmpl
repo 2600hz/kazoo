@@ -1,20 +1,9 @@
-USER
-First name: {{user.first_name}}
-Last name: {{user.last_name}}
-Email: {{user.email}}
-Username: {{user.username}}
+Welcome {{user.first_name}} {{user.last_name}}
 
-ACCOUNT
-Realm: {{account.realm}}
-API key: {{account.pvt_api_key}}
-Tree: {{account.pvt_tree}}
+Welcome to 2600hz!
 
-API
-Host: {{api_url.host}}
-Path: {{api_url.path}}
+You are one step away from completing your registration, and activating your account.
 
-Activation
-Key: {{activation_key}}
+Please copy and paste the URL below in your web browser:
 
-REQUEST
-App URL: {{request.app_url}}
+{{account.app_url}}?activation_key={{activation_key}}

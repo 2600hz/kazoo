@@ -287,7 +287,7 @@ to_doc(#session{created=Created}=S) -> to_doc(S, Created).
       S :: #session{},
       Now :: integer().
 to_doc(#session{'_id'=Id, '_rev'=undefined}=S, Now) ->
-    SessionTuple = tuple_to_list(S#session{created=whistle_util:to_integer(Now)
+    SessionTuple = tuple_to_list(S#session{created=wh_util:to_integer(Now)
 					   ,expires=?MAX_AGE
 					  }),
 
@@ -297,7 +297,7 @@ to_doc(#session{'_id'=Id, '_rev'=undefined}=S, Now) ->
 		  ,{<<"session">>, SessionTuple}
 		 ]);
 to_doc(#session{'_id'=Id, '_rev'=Rev}=S, Now) ->
-    SessionTuple = tuple_to_list(S#session{created = whistle_util:to_integer(Now)
+    SessionTuple = tuple_to_list(S#session{created = wh_util:to_integer(Now)
 					   ,expires = ?MAX_AGE
 					  }),
 
@@ -315,15 +315,15 @@ from_doc(JObj) ->
     Rev = wh_json:get_value(<<"_rev">>, JObj),
     #session{created=Created, expires=Expires}=S = setelement(1, list_to_tuple(wh_json:get_value(<<"session">>, JObj)), session),
     S#session{'_id'=Id, '_rev'=Rev
-	      ,created=whistle_util:to_integer(Created)
-	      ,expires=whistle_util:to_integer(Expires)
+	      ,created=wh_util:to_integer(Created)
+	      ,expires=wh_util:to_integer(Expires)
 	     }.
 
 %% create a new session record
 -spec new/1 :: (Id) -> #session{} when
       Id :: binary().
 new(Id) ->
-    Now = whistle_util:current_tstamp(),
+    Now = wh_util:current_tstamp(),
     #session{created=Now, expires=?MAX_AGE, '_id'=Id}.
 
 -spec set_cookie_header/4 :: (RD, Session, DateTime, MaxAge) -> #wm_reqdata{} when
@@ -342,7 +342,7 @@ set_cookie_header(RD, #session{'_id'=Id}, DateTime, MaxAge) ->
 -spec clean_expired/0 :: () -> ok.
 clean_expired() ->
     case couch_mgr:get_results(?SESSION_DB, ?SESSION_EXPIRED, [{<<"startkey">>, 0},
-							       {<<"endkey">>, whistle_util:current_tstamp()}
+							       {<<"endkey">>, wh_util:current_tstamp()}
 							      ]) of
 	{error, _} -> ok;
 	{ok, Sessions} ->
@@ -364,7 +364,7 @@ clean_expired_(_) -> false.
 -spec has_expired/1 :: (E) -> boolean() when
       E :: integer().
 has_expired(E) ->
-    has_expired(E, whistle_util:current_tstamp()).
+    has_expired(E, wh_util:current_tstamp()).
 
 -spec has_expired/2 :: (E, Now) -> boolean() when
       E :: integer(),
