@@ -378,6 +378,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}, return_handlers=RHDict}=State) ->
+    ?LOG_SYS("recieved notification our connection to the amqp broker died: ~p", [Reason]),
+    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}};
+
+handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict}=State) ->
+    ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
+    erlang:demonitor(Ref, [flush]),
+    {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)})};
+
 handle_info(timeout, {Host, Conn}) ->
     Ref = erlang:monitor(process, Conn),
     case start_channel(Conn) of
@@ -389,7 +399,7 @@ handle_info(timeout, {Host, Conn}) ->
 	       ,publish_channel = PubChan
 	       ,misc_channel = start_channel(Conn)
 	       ,consumers = dict:new()
-	       ,manager = whereis(amqp_manager)
+	       ,manager = whereis(amqp_mgr)
                ,amqp_h = Host
 	      }
 	    };
@@ -405,15 +415,6 @@ handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, #state{return_handlers=R
                   dict:map(fun(_, Pid) -> Pid ! ReturnMsg end, RHDict)
           end),
     {noreply, State};
-
-handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}, return_handlers=RHDict}=State) ->
-    ?LOG_SYS("recieved notification our connection to the amqp broker died: ~p", [Reason]),
-    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}};
-
-handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict}=State) ->
-    ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
-    erlang:demonitor(Ref, [flush]),
-    {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)})};
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
@@ -486,6 +487,9 @@ start_channel(Connection, Pid) ->
             E
     end.
 
+-spec load_exchanges/2 :: (Channel, Ticket) -> ok when
+      Channel :: pid(),
+      Ticket :: integer().
 load_exchanges(Channel, Ticket) ->
     lists:foreach(fun({Ex, Type}) ->
 			  ED = #'exchange.declare'{
@@ -496,7 +500,9 @@ load_exchanges(Channel, Ticket) ->
 			  #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED)
 		  end, ?KNOWN_EXCHANGES).
 
--spec(remove_ref/2 :: (Ref :: reference(), State :: #state{}) -> #state{}).
+-spec remove_ref/2 :: (Ref, State) -> #state{} when
+      Ref :: reference(),
+      State :: #state{}.
 remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref,_}}=State) ->
     ?LOG_SYS("reference was for publish channel ~p, restarting", [C]),
     State#state{publish_channel=start_channel(Conn)};

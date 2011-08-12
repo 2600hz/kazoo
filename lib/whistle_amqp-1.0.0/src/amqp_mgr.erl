@@ -81,7 +81,7 @@ register_return_handler() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
--spec init/1 :: ([]) -> tuple(ok, #state{}, 0).
+-spec init/1 :: ([]) -> {ok, #state{}, 0}.
 init([]) ->
     %% Start a connection to the AMQP broker server
     ?LOG_SYS("starting amqp manager server"),
@@ -337,7 +337,8 @@ get_config() ->
             []
     end.
 
--spec(save_config/1 :: (Prop :: proplist()) -> no_return()).
+-spec save_config/1 :: (Prop) -> no_return() when
+      Prop :: proplist().
 save_config(Prop) ->
     ?LOG_SYS("updating config ~s", [?STARTUP_FILE]),
     file:write_file(?STARTUP_FILE
