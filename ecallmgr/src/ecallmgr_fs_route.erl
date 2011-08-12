@@ -191,7 +191,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     ActiveLUs = [ [{fs_route_id, ID}, {started, Started}] || {_, ID, Started} <- LUs],
     Resp = [{active_lookups, ActiveLUs}
-	    ,{amqp_host, amqp_manager:get_host()}
+	    ,{amqp_host, amqp_mgr:get_host()}
 	    | ecallmgr_diagnostics:get_diagnostics(Stats) ],
     Pid ! Resp,
     {noreply, State};

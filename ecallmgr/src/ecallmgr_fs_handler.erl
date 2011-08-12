@@ -158,7 +158,7 @@ handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
 			  ,{known_fs_nodes, KnownNodes}
 			  ,{handler_diagnostics, HandlerD}
 			  ,{recorded, erlang:now()}
-			  ,{amqp_host, amqp_manager:get_host()}
+			  ,{amqp_host, amqp_mgr:get_host()}
 			 ],
 		  gen_server:reply(From, Resp)
 	  end),
