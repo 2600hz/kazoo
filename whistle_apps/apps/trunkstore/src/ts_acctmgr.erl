@@ -580,12 +580,12 @@ load_account(AcctId, DB, Srv) ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
 		{error, not_found} -> ok;
 		{ok, JObj} ->
-		    Balance = ?DOLLARS_TO_UNITS(wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], JObj, 0.0)),
-		    Trunks = wh_util:to_integer(wh_json:get_value([<<"account">>, <<"trunks">>], JObj, 0)),
+		    Balance = ?DOLLARS_TO_UNITS(wh_json:get_float_value([<<"account">>, <<"credits">>, <<"prepay">>], JObj, 0.0)),
+		    Trunks = wh_json:get_integer_value([<<"account">>, <<"trunks">>], JObj, 0),
 
 		    _ = couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
 		    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
-		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5),
+		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 60),
 		    build_view(DB, AcctId) %% force the view to refresh
 	    end
     end.
