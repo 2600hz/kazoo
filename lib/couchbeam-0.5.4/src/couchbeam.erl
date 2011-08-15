@@ -515,7 +515,7 @@ lookup_doc_rev(#db{server=Server, options=IbrowseOpts}=Db, DocId, Params) ->
     Url = make_url(Server, doc_url(Db, DocId1), Params),
     case db_request(head, Url, ["200"], IbrowseOpts) of
 	{ok, _, Headers, _} ->
-	    {ok, binary:replace(whistle_util:to_binary(couchbeam_util:get_value("Etag", Headers)), <<"\"">>, <<>>, [global])};
+	    {ok, binary:replace(wh_util:to_binary(couchbeam_util:get_value("Etag", Headers)), <<"\"">>, <<>>, [global])};
 	Error ->
 	    Error
     end.
