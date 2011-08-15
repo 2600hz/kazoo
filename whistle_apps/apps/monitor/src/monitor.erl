@@ -29,7 +29,7 @@ start_deps() ->
     monitor_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
-    ensure_started(wh_amqp),
+    ensure_started(whistle_amqp),
     ensure_started(couchbeam),
     ensure_started(whistle_couch).
 
