@@ -279,9 +279,8 @@ send_vm_to_email(To, Tmpl, JObj) ->
 	      ]
 	    },
     Encoded = mimemail:encode(Email),
-    SmartHost = smtp_util:guess_FQDN(),
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
-			 ,fun(X) -> ?LOG("Sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
+			 ,fun(X) -> ?LOG("Sending email to ~s resulted in ~p", [To, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
