@@ -1,5 +1,5 @@
 %% Route used to publish new voicemail alerts
--define(RATING_REQ, <<"call.rating">>). %% Routing key to bind with in AMQP
+-define(KEY_RATING_REQ, <<"call.rating">>). %% Routing key to bind with in AMQP
 
 %% AMQP fields for Rating Request
 -define(RATING_REQ_HEADERS, [<<"To-DID">>, <<"From-DID">>, <<"Rate-Options">>, <<"Direction">>]).
