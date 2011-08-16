@@ -782,9 +782,9 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                      ,check_if_owner =
                          wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
                      ,unavailable_media_id =
-                         wh_json:get_value(<<"unavailable_media_id">>, JObj)
+                         wh_json:get_value([<<"media">>, <<"unavailable_greeting">>], JObj)
                      ,name_media_id =
-                         wh_json:get_value(<<"name_media_id">>, JObj)
+                         wh_json:get_value([<<"media">>, <<"name_recording">>], JObj)
                      ,owner_id =
                          wh_json:get_value(<<"owner_id">>, JObj)
                      ,is_setup =
