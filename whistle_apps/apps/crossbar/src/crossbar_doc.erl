@@ -459,7 +459,12 @@ update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName) end, JObj0, ?PVT_FUNS).
 
 add_pvt_vsn(JObj, _) ->
-    wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj).
+    case wh_json:get_value(<<"pvt_vsn">>, JObj) of
+        undefined ->
+            wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj);
+        _ ->
+            JObj
+    end.
 
 add_pvt_account_db(JObj, DBName) ->
     wh_json:set_value(<<"pvt_account_db">>, DBName, JObj).
