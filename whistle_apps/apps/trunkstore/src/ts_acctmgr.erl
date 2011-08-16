@@ -248,7 +248,7 @@ handle_cast({release_trunk, AcctID, [CallID,Amt]}, #state{current_write_db=WDB, 
 		  case trunk_type(RDB, AcctID, CallID) of
 		      non_existant ->
 			  case trunk_type(WDB, AcctID, CallID) of
-			      non_existant -> ?LOG(CallID, "Trunk not found for release for ~s", []);
+			      non_existant -> ?LOG(CallID, "Trunk not found for release for ~s", [AcctID]);
 			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
 			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
 			  end;
