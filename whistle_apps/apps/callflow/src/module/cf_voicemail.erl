@@ -501,7 +501,7 @@ play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
         {error, _} ->
             ok
     end;
-play_messages(_, _, _, _) ->
+play_messages([], _, _, _) ->
     ok.
 
 %%--------------------------------------------------------------------
