@@ -13,7 +13,7 @@
 -export([init/1]).
 -export([to_json/2, to_xml/2, to_binary/2]).
 -export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
--export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
+-export([encodings_provided/2, finish_request/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([allow_missing_post/2, post_is_create/2, create_path/2, options/2]).
 -export([expires/2, generate_etag/2]).
@@ -111,14 +111,6 @@ malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     ?LOG("request is using auth token ~s", [Auth]),
     ?TIMER_TICK("v1.malformed_request end"),
     {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
-
-is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
-    ?TIMER_TICK("v1.is_authorized start"),
-    S0 = crossbar_session:start_session(AuthToken),
-    Event = <<"v1_resource.start_session">>,
-    S = crossbar_bindings:fold(Event, S0),
-    ?TIMER_TICK("v1.is_authorized end"),
-    {true, RD, Context#cb_context{session=S}}.
 
 forbidden(RD, Context) ->
     ?TIMER_TICK("v1.forbidden start"),
@@ -228,23 +220,14 @@ delete_resource(RD, Context) ->
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
-finish_request(RD, #cb_context{start=T1, session=undefined}=Context) ->
+finish_request(RD, #cb_context{start=T1}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
     ?LOG("response body: ~s", [wrq:resp_body(RD1)]),
     ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
-    {true, set_req_header(RD1, Context1), Context1};
-finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
-    ?TIMER_TICK("v1.finish_request start"),
-    Event = <<"v1_resource.finish_request">>,
-    {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
-    ?LOG("response body: ~s", [wrq:resp_body(RD1)]),
-    ?LOG_END("fulfilled in ~p ms, finish session", [timer:now_diff(now(), T1)*0.001]),
-    ?TIMER_STOP("v1.finish_request end"),
-    {true, crossbar_session:finish_session(S, set_req_header(RD1, Context1))
-     ,Context1#cb_context{session=undefined}}.
+    {true, set_req_header(RD1, Context1), Context1}.
 
 %%%===================================================================
 %%% Content Acceptors

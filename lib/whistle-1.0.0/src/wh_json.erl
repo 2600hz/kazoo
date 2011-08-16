@@ -11,6 +11,7 @@
 -export([to_proplist/1, to_proplist/2]).
 -export([get_binary_boolean/2, get_binary_boolean/3]).
 -export([get_integer_value/2, get_integer_value/3]).
+-export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
@@ -88,6 +89,25 @@ get_integer_value(Key, JObj, Default) when is_integer(Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_integer(Value)
+    end.
+
+-spec get_float_value/2 :: (Key, JObj) -> undefined | float() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+get_float_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> wh_util:to_float(Value)
+    end.
+
+-spec get_float_value/3 :: (Key, JObj, Default) -> float() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: float().
+get_float_value(Key, JObj, Default) when is_float(Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> wh_util:to_float(Value)
     end.
 
 -spec is_false/2 :: (Key, JObj) -> boolean() when
