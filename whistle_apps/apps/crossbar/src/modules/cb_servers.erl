@@ -191,10 +191,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
+                  Id = wh_util:to_binary(wh_util:to_hex(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)]))),
+                  Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, Id, Doc)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -202,7 +203,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
+                  Context1 = crossbar_doc:delete(Context, permanent),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};

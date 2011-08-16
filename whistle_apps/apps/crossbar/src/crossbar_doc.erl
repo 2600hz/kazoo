@@ -9,7 +9,7 @@
 -module(crossbar_doc).
 
 -export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3]).
--export([save/1, delete/1, save_attachment/4, save_attachment/5, delete_attachment/3]).
+-export([save/1, delete/1, delete/2, save_attachment/4, save_attachment/5, delete_attachment/3]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1, current_doc_vsn/0]).
 
@@ -313,7 +313,12 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(delete/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec delete/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+-spec delete/2 :: (Context, Switch) -> #cb_context{} when
+      Context :: #cb_context{},
+      Switch :: permanent.
+
 delete(#cb_context{db_name = <<>>, doc=JObj}=Context) ->
     ?LOG("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_util:response_db_missing(Context);
@@ -333,6 +338,26 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
 	     };
         _Else ->
 	    ?LOG("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
+            Context
+    end.
+
+delete(#cb_context{db_name = <<>>, doc=JObj}=Context, permanent) ->
+    ?LOG("permanent deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
+    crossbar_util:response_db_missing(Context);
+delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
+    case couch_mgr:del_doc(DB, JObj) of
+        {error, db_not_reachable} ->
+	    ?LOG("permanent deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            crossbar_util:response_datastore_timeout(Context);
+	{ok, _Doc} ->
+	    ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            Context#cb_context{
+	       doc = ?EMPTY_JSON_OBJECT
+	      ,resp_status=success
+	      ,resp_data=[]
+	     };
+        _Else ->
+	    ?LOG("permanently deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
             Context
     end.
 

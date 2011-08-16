@@ -263,18 +263,23 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
     {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, Cache),
 
     AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj),
-    AccountId = case wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj) of
-		    undefined -> undefined;
-		    AcctId -> whapps_util:get_db_name(AcctId, raw)
+
+    AccountId = case wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], AuthJObj) of
+		    undefined ->
+                        case wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj) of
+                            undefined -> undefined;
+                            AcctDb -> whapps_util:get_db_name(AcctDb, raw)
+                        end;
+                    AcctId -> AcctId
 		end,
 
-    CCVs = [CCV || CCV <- [{<<"Username">>, AuthU}
-			   ,{<<"Realm">>, AuthR}
-			   ,{<<"Account-ID">>, AccountId}
-			   ,{<<"Inception">>, <<"on-net">>}
-			   ,{<<"Authorizing-ID">>, AuthId}
-			  ],
-		   CCV =/= undefined],
+    CCVs = [CCV || {_, V}=CCV <- [{<<"Username">>, AuthU}
+                                  ,{<<"Realm">>, AuthR}
+                                  ,{<<"Account-ID">>, AccountId}
+                                  ,{<<"Inception">>, <<"on-net">>}
+                                  ,{<<"Authorizing-ID">>, AuthId}
+                                 ],
+		   V =/= undefined],
 
     Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}

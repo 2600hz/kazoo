@@ -270,7 +270,8 @@ transfer_auth() ->
       AuthJObj :: json_object().
 transfer_auth(AuthJObj) ->
     ID = wh_json:get_value(<<"id">>, AuthJObj),
-    AuthData = wh_json:get_value(<<"value">>, AuthJObj),
+    AuthData = {struct, AuthProps}
+        = wh_json:get_value(<<"value">>, AuthJObj, ?EMPTY_JSON_OBJECT),
 
     SipAuthDoc = {struct, [{<<"_id">>, ID}
 			   ,{<<"sip">>, {struct, [
@@ -280,4 +281,11 @@ transfer_auth(AuthJObj) ->
 						  ,{<<"password">>, wh_json:get_value(<<"auth_password">>, AuthData, <<"">>)}
 					]}
 			    }]},
-    couch_mgr:ensure_saved(<<"sip_auth">>, SipAuthDoc).
+    SAD1 = lists:foldl(fun({K, V}, JObj) ->
+                              wh_json:set_value(K, V, JObj)
+                      end, SipAuthDoc, [Pvt || {K, _}=Pvt <- AuthProps
+                                                   ,binary:match(K, <<"pvt_">>) =/= nomatch]),
+    %% trunkstore just has to be different, or are we all different and trunkstore normal...
+    %% after all it was first ;)
+    SAD2 = wh_json:set_value(<<"pvt_account_id">>, ID, SAD1),
+    couch_mgr:ensure_saved(<<"sip_auth">>, SAD2).

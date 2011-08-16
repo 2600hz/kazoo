@@ -77,13 +77,39 @@ matching_rate(To, Direction, RouteOptions, Rate) ->
     %% need to match direction and options at some point too
     Routes = wh_json:get_value([<<"value">>, <<"routes">>], Rate),
 
-    lists:member(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
+    direction_match(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
 	options_match(RouteOptions, wh_json:get_value([<<"value">>, <<"options">>], Rate, [])) andalso
-	lists:any(fun(Regex) -> re:run(To, Regex) =/= nomatch end, Routes).
+        routes_match(To, Routes).
 
 %% Return true of RateA has higher weight than RateB
 sort_rates(RateA, RateB) ->
     ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateA, 1)) >= ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateB, 1)).
+
+-spec routes_match/2 :: (To, Routes) -> boolean() when
+      To :: binary(),
+      Routes :: list().
+routes_match(To, Routes) ->
+    case lists:any(fun(Regex) ->
+                            re:run(To, Regex) =/= nomatch
+                   end, Routes) of
+        true ->
+            ?LOG("rate has a matching route"), true;
+        false ->
+            ?LOG("rate has no matching routes"), false
+    end.
+
+-spec direction_match/2 :: (Direction, RateDirections) -> boolean() when
+      Direction :: binary() | atom(),
+      RateDirections :: list().
+direction_match(Direction, RateDirections) when not is_binary(Direction) ->
+    direction_match(wh_util:to_binary(Direction), RateDirections);
+direction_match(Direction, RateDirections) ->
+    case lists:member(Direction, RateDirections) of
+        true ->
+            ?LOG("rate is valid for ~s calls", [Direction]), true;
+         false ->
+            ?LOG("rate is not valid for ~s calls", [Direction]), false
+    end.
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
@@ -96,8 +122,15 @@ options_match(RouteOptions, {struct, RateOptions}) ->
 options_match({struct, RouteOptions}, RateOptions) ->
     options_match(RouteOptions, RateOptions);
 options_match([], []) ->
+    ?LOG("both options are empty, continue"),
     true;
 options_match([], _) ->
+    ?LOG("route does not require options, continue"),
     true;
 options_match(RouteOptions, RateOptions) ->
-    lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
+    case lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions) of
+        true ->
+            ?LOG("all route options present on rate"), true;
+        false ->
+            ?LOG("route options defines options that are not on rate"), false
+    end.
