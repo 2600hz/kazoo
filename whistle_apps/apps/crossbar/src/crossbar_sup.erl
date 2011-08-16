@@ -76,11 +76,9 @@ init([]) ->
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
     ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
     BindingServer = ?CHILD(crossbar_bindings, worker),
-    SessionServer = ?CHILD(crossbar_session, worker),
     Processes = [
 		 Web
 		 ,BindingServer
-		 ,SessionServer
 		 ,ModuleSup
 		], %% Put list of ?CHILD(crossbar_server, worker) or ?CHILD(crossbar_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.

@@ -31,7 +31,7 @@ start_deps() ->
     ensure_started(ibrowse),
     ensure_started(riak_err),
     ensure_started(couchbeam),
-    ensure_started(wh_amqp),
+    ensure_started(whistle_amqp),
     ensure_started(whistle_couch).
 
 %% @spec stop() -> ok

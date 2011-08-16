@@ -105,10 +105,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_contex
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  case authenticate_token(AuthToken) of
+                  case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
                       {ok, JObj} ->
                           ?LOG("authenticating request"),
-                          update_token_doc(JObj, RD),
                           Pid ! {binding_result, true, {RD, Context#cb_context{auth_doc=JObj}}};
                       {error, _} ->
                           Pid ! {binding_result, false, {RD, Context}}
@@ -159,44 +158,3 @@ code_change(_OldVsn, State, _Extra) ->
 -spec bind_to_crossbar/0 :: () -> no_return().
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.authenticate">>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec authenticate_token/1 :: (AuthToken) -> tuple(ok, json_object()) | tuple(error, atom()) when
-      AuthToken :: binary().
-authenticate_token(AuthToken) ->
-    case couch_mgr:lookup_doc_rev(?TOKEN_DB, AuthToken) of
-        {ok, <<"undefined">>} ->
-            {error, bad_token};
-        {ok, _} ->
-            couch_mgr:open_doc(?TOKEN_DB, AuthToken);
-        {error, _}=E ->
-            E
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update the token doc timestamp
-%%
-%% TODO:
-%%    Record the URL and verb in token 'history'
-%% @end
-%%--------------------------------------------------------------------
--spec update_token_doc/2 :: (JObj, RD) -> no_return() when
-      JObj :: json_object(),
-      RD :: #wm_reqdata{}.
-update_token_doc(JObj, _) ->
-    spawn(fun() ->
-                  Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-                  couch_mgr:save_doc(?TOKEN_DB,  wh_json:set_value(<<"modified">>, Now, JObj))
-          end).
-
-%% TODO:
-%%   - Create a map reduce on the peer and implement as a limit
-%%   - Create spawn to clean expired docs
-%%   - Use revision id as hash/seq ?

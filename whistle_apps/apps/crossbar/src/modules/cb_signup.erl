@@ -435,7 +435,10 @@ validate_user(User, Context) ->
 %%--------------------------------------------------------------------
 -spec create_activation_key/0 :: () -> binary().
 create_activation_key() ->
-     wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))).
+    ActivationKey =
+        wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))),
+    ?LOG("created new activation key ~s", [ActivationKey]),
+    ActivationKey.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -578,10 +581,9 @@ send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{ac
              ,create_body(State, Props, [])
 	    },
     Encoded = mimemail:encode(Email),
-    SmartHost = smtp_util:guess_FQDN(),
     ?LOG("sending activation email to ~s", [To]),
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
-			 ,fun(X) -> ?LOG(ReqId, "sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
+			 ,fun(X) -> ?LOG(ReqId, "sending email to ~s resulted in ~p", [To, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
