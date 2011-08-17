@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -export([start/0, start_link/0, stop/0]).
 

@@ -39,7 +39,7 @@ build(EndpointId, Call) ->
 build(EndpointId, undefined, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call);
 build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
-    case whistle_util:is_false(wh_json:get_value(<<"can_call_self">>, Properties, false))
+    case wh_util:is_false(wh_json:get_value(<<"can_call_self">>, Properties, false))
         andalso (is_binary(AuthId) andalso EndpointId =:= AuthId) of
         true ->
             ?LOG("call is from endpoint ~s, skipping", [EndpointId]),
@@ -161,7 +161,7 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=Re
     SIP = wh_json:get_value(<<"sip">>, Endpoint, ?EMPTY_JSON_OBJECT),
     Media = wh_json:get_value(<<"media">>, Endpoint, ?EMPTY_JSON_OBJECT),
 
-    CCV1 = case whistle_util:is_true(wh_json:get_value(<<"keep_caller_id">>, CallFwd)) of
+    CCV1 = case wh_util:is_true(wh_json:get_value(<<"keep_caller_id">>, CallFwd)) of
                true ->
                    ?LOG("call forwarding configured to keep the caller id"),
                    [{<<"Call-Forward">>, <<"true">>}
@@ -171,7 +171,7 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=Re
                    [{<<"Call-Forward">>, <<"true">>}]
            end,
 
-    CCV2 = case whistle_util:is_true(wh_json:get_value(<<"require_keypress">>, CallFwd)) of
+    CCV2 = case wh_util:is_true(wh_json:get_value(<<"require_keypress">>, CallFwd)) of
                true ->
                    ?LOG("call forwarding configured to require key press"),
                    IgnoreEarlyMedia = <<"true">>,

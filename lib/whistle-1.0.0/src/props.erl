@@ -9,15 +9,20 @@
 %%%-------------------------------------------------------------------
 -module(props).
 
--export([get_value/2, get_value/3, delete/2]).
+-export([get_value/2, get_value/3, delete/2, is_defined/2]).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
--spec(get_value/2 :: (Key :: term(), Prop :: [term()] ) -> term()).
+-spec get_value/2 :: (Key, Prop) -> term() when
+      Key :: binary() | atom(),
+      Prop :: proplist().
+-spec get_value/3 :: (Key, Prop, Default) -> term() when
+      Key :: binary() | atom(),
+      Prop :: proplist(),
+      Default :: term().
 get_value(Key, Prop) ->
     get_value(Key, Prop, undefined).
 
--spec(get_value/3 :: (Key :: term(), Prop :: [term()], Default :: term() ) -> term()).
 get_value(_Key, [], Def) -> Def;
 get_value(Key, {struct, Prop}, Def) ->
     get_value(Key, Prop, Def);
@@ -34,6 +39,17 @@ get_value(Key, Prop, Default) ->
 	    Default
     end.
 
--spec(delete/2 :: (K :: term(), Prop :: proplist()) -> proplist()).
+-spec delete/2 :: (Key, Prop) -> proplist() when
+      Key :: binary() | atom(),
+      Prop :: proplist().
 delete(K, Prop) ->
     lists:keydelete(K, 1, Prop).
+
+-spec is_defined/2 :: (Key, Prop) -> boolean() when
+      Key :: term(),
+      Prop :: proplist().
+is_defined(Key, Prop) ->
+    case lists:keyfind(Key, 1, Prop) of
+	{Key,_} -> true;
+	_ -> false
+    end.

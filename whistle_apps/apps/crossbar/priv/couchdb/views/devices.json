@@ -5,8 +5,8 @@
         "crossbar_listing": {
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'owner_id': doc.owner_id}); }"
         }
-        ,"sip_credentials": {
-            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit([doc.sip.realm, doc.sip.username], doc.sip); }"
+       ,"sip_credentials":{
+            "map": "function(doc) { if (typeof doc.sip == 'undefined' || doc.pvt_deleted) return; var sip = JSON.parse(JSON.stringify(doc.sip)); sip.authorizing_id = doc._id; if(typeof(sip.realm) == 'string') { emit([sip.realm, sip.username], sip); } else { for (var i in sip.realm) emit([sip.realm[i], sip.username], sip); } }"
         }
     }
     ,"filters": {

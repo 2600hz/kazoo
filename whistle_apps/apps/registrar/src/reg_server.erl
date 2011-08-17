@@ -263,22 +263,27 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
     {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, Cache),
 
     AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj),
-    AccountId = case wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj) of
-		    undefined -> undefined;
-		    AcctId -> whapps_util:get_db_name(AcctId, raw)
+
+    AccountId = case wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], AuthJObj) of
+		    undefined ->
+                        case wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj) of
+                            undefined -> undefined;
+                            AcctDb -> whapps_util:get_db_name(AcctDb, raw)
+                        end;
+                    AcctId -> AcctId
 		end,
 
-    CCVs = [CCV || CCV <- [{<<"Username">>, AuthU}
-			   ,{<<"Realm">>, AuthR}
-			   ,{<<"Account-ID">>, AccountId}
-			   ,{<<"Inception">>, <<"on-net">>}
-			   ,{<<"Authorizing-ID">>, AuthId}
-			  ],
-		   CCV =/= undefined],
+    CCVs = [CCV || {_, V}=CCV <- [{<<"Username">>, AuthU}
+                                  ,{<<"Realm">>, AuthR}
+                                  ,{<<"Account-ID">>, AccountId}
+                                  ,{<<"Inception">>, <<"on-net">>}
+                                  ,{<<"Authorizing-ID">>, AuthId}
+                                 ],
+		   V =/= undefined],
 
     Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
-		| whistle_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
+		| wh_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
 					      ,wh_json:get_value(<<"Event-Category">>, JObj)
 					      ,<<"authn_resp">>
 					      ,?APP_NAME
@@ -290,18 +295,18 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
 
 process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
     ?LOG_START("received registration success"),
-    true = whistle_api:reg_success_v(JObj),
+    true = wh_api:reg_success_v(JObj),
 
     [User, AfterAt] = binary:split(wh_json:get_value(<<"Contact">>, JObj), <<"@">>), % only one @ allowed
 
-    AfterUnquoted = whistle_util:to_binary(mochiweb_util:unquote(AfterAt)),
+    AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
 
     JObj1 = wh_json:set_value(<<"Contact">>, Contact1, JObj),
 
-    Id = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Contact1))),
+    Id = wh_util:to_binary(wh_util:to_hex(erlang:md5(Contact1))),
     CacheKey = ?CACHE_REG_KEY(Id),
-    Expires = whistle_util:current_tstamp() + whistle_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
+    Expires = wh_util:current_tstamp() + wh_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
 
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
@@ -330,7 +335,7 @@ process_req({<<"directory">>, <<"reg_success">>}, JObj, #state{cache=Cache}) ->
 
 process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, cache=Cache}) ->
     ?LOG_START("received registration query"),
-    true = whistle_api:reg_query_v(ApiJObj),
+    true = wh_api:reg_query_v(ApiJObj),
 
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
     Username = wh_json:get_value(<<"Username">>, ApiJObj),
@@ -347,8 +352,8 @@ process_req({<<"directory">>, <<"reg_query">>}, ApiJObj, #state{amqp_q=Queue, ca
 					      end, [], Fields)}
 		 end,
 
-    {ok, Payload} = whistle_api:reg_query_resp([ {<<"Fields">>, RespFields}
-						 | whistle_api:default_headers(Queue
+    {ok, Payload} = wh_api:reg_query_resp([ {<<"Fields">>, RespFields}
+						 | wh_api:default_headers(Queue
 									       ,<<"directory">>
 									       ,<<"reg_query_resp">>
 									       ,?APP_NAME
@@ -421,7 +426,7 @@ remove_old_regs(User, Realm, Cache) ->
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user/3 :: (Name, Realm, Cache) -> {ok, json_object()} | {error, no_user_found} when
+-spec lookup_auth_user/3 :: (Name, Realm, Cache) -> {ok, json_object()} when
       Name :: binary(),
       Realm :: binary(),
       Cache :: pid().
@@ -430,22 +435,63 @@ lookup_auth_user(Name, Realm, Cache) ->
     CacheKey = ?CACHE_USER_KEY(Realm, Name),
     case wh_cache:fetch_local(Cache, CacheKey) of
 	{error, not_found} ->
-	    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
-		{error, R} ->
-		    ?LOG_END("failed to look up SIP credentials ~p", [R]),
-		    {error, no_user_found};
-		{ok, []} ->
-		    ?LOG("~s@~s not found", [Name, Realm]),
-		    {error, no_user_found};
-		{ok, [User|_]} ->
-		    ?LOG("Storing ~s@~s in cache", [Name, Realm]),
-		    wh_cache:store_local(Cache, CacheKey, User),
-		    {ok, User}
-	    end;
+	    {ok, UserJObj} = lookup_auth_user(Name, Realm),
+	    ?LOG("Storing ~s@~s in cache", [Name, Realm]),
+	    wh_cache:store_local(Cache, CacheKey, UserJObj),
+	    {ok, UserJObj};
 	{ok, _}=OK ->
 	    ?LOG("Pulling auth user from cache"),
 	    OK
     end.
+
+-spec lookup_auth_user/2 :: (Name, Realm) -> {ok, json_object()} | {error, no_user_found} when
+      Name :: binary(),
+      Realm :: binary().
+lookup_auth_user(Name, Realm) ->
+    case whapps_util:get_account_by_realm(Realm) of
+	{error, E} ->
+	    ?LOG("Failed to lookup realm ~s in accounts: ~p", [Realm, E]),
+	    lookup_auth_user_in_agg(Name, Realm);
+	{ok, []} ->
+	    ?LOG("Failed to find realm ~s in accounts", [Realm]),
+	    lookup_auth_user_in_agg(Name, Realm);
+	{ok, AccountDB} ->
+	    lookup_auth_user_in_account(Name, Realm, AccountDB)
+    end.
+
+-spec lookup_auth_user_in_agg/2 :: (Name, Realm) -> {ok, json_object()} | {error, no_user_found} when
+      Name :: binary(),
+      Realm :: binary().
+lookup_auth_user_in_agg(Name, Realm) ->
+    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
+	{error, R} ->
+	    ?LOG_END("failed to look up SIP credentials ~p in aggregate", [R]),
+	    {error, no_user_found};
+	{ok, []} ->
+	    ?LOG("~s@~s not found in aggregate", [Name, Realm]),
+	    {error, no_user_found};
+	{ok, [User|_]} ->
+	    ?LOG("~s@~s found in aggregate", [Name, Realm]),
+	    {ok, User}
+    end.
+
+-spec lookup_auth_user_in_account/3 :: (Name, Realm, AccountDB) -> {ok, json_object()} | {error, no_user_found} when
+      Name :: binary(),
+      Realm :: binary(),
+      AccountDB :: binary().
+lookup_auth_user_in_account(Name, Realm, AccountDB) ->
+    case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
+	{error, R} ->
+	    ?LOG("failed to look up SIP credentials in ~s: ~p", [AccountDB, R]),
+	    lookup_auth_user_in_agg(Name, Realm);
+	{ok, []} ->
+	    ?LOG("~s@~s not found in ~s", [Name, Realm, AccountDB]),
+	    lookup_auth_user_in_agg(Name, Realm);
+	{ok, [User|_]} ->
+	    ?LOG("~s@~s found in account db: ~s", [Name, Realm, AccountDB]),
+	    {ok, User}
+    end.
+
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -461,7 +507,7 @@ authn_response(?EMPTY_JSON_OBJECT, _) ->
 authn_response(AuthInfo, Prop) ->
     Data = lists:umerge(auth_specific_response(AuthInfo), Prop),
     ?LOG_END("sending SIP authentication reply, with credentials"),
-    whistle_api:authn_resp(Data).
+    wh_api:authn_resp(Data).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -505,5 +551,5 @@ prime_cache(Pid) when is_pid(Pid) ->
 
 prime_cache(Pid, ViewResult) ->
     JObj = wh_json:get_value(<<"value">>, ViewResult),
-    Expires = whistle_util:current_tstamp() + wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
+    Expires = wh_util:current_tstamp() + wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
     wh_cache:store_local(Pid, ?CACHE_REG_KEY(wh_json:get_value(<<"id">>, ViewResult)), JObj, Expires).

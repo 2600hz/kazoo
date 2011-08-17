@@ -29,7 +29,7 @@
 %%     AcctJObj = mochijson2:decode(JSON),
 %%     AcctId = wh_json:get_value([<<"data">>, 1, <<"id">>], AcctJObj),
 
-%%     UrlEvtBase = lists:flatten([UrlBase, "/", whistle_util:to_list(AcctId), "/evtsub/"]),
+%%     UrlEvtBase = lists:flatten([UrlBase, "/", wh_util:to_list(AcctId), "/evtsub/"]),
 
 %%     try
 %% 	logger:format_log(info, "DELETE ~s ~s~n", [UrlEvtBase, DeleteJSON]),

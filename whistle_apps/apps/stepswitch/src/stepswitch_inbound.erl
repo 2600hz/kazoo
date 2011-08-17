@@ -77,7 +77,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({lookup_number, Number}, From, State) ->
     spawn(fun() ->
-                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
                   case lookup_account_by_number(Num) of
                       {ok, AccountId, _}=Ok ->
                           ?LOG("found number is associated to account ~s", [AccountId]),
@@ -276,7 +276,7 @@ get_dest_number(JObj) ->
                [ToUser, _] ->
                    ToUser
            end,
-    whistle_util:to_e164(User).
+    wh_util:to_e164(User).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -300,13 +300,13 @@ lookup_account_by_number(Number) ->
 		    {error, not_found};
 		{ok, [{struct, _}=JObj]} ->
                     AccountId = wh_json:get_value(<<"id">>, JObj),
-                    ForceOut = whistle_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
+                    ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
                     wh_cache:store({stepswitch_number, Number}, {AccountId, ForceOut}),
 		    {ok, AccountId, ForceOut};
 		{ok, [{struct, _}=JObj | _Rest]} ->
 		    ?LOG("number lookup resulted in more than one result, using the first"),
                     AccountId = wh_json:get_value(<<"id">>, JObj),
-                    ForceOut = whistle_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
+                    ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
                     wh_cache:store({stepswitch_number, Number}, {AccountId, ForceOut}),
 		    {ok, AccountId, ForceOut}
 	    end
@@ -344,6 +344,6 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 -spec relay_route_req/1 :: (JObj) -> no_return() when
       JObj :: json_object().
 relay_route_req(JObj) ->
-    {ok, Payload} = whistle_api:route_req(JObj),
+    {ok, Payload} = wh_api:route_req(JObj),
     amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_ROUTE_REQ),
     ?LOG_END("relayed route request").

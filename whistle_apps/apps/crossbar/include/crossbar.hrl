@@ -1,6 +1,6 @@
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
--include_lib("whistle/include/whistle_types.hrl").
--include_lib("whistle/include/whistle_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include("crossbar_types.hrl").
 
@@ -25,21 +25,11 @@
                           ,'HEAD'
 			 ]).
 
--record(session, {
-          '_id' = undefined :: binary() | undefined
-	  ,'_rev' = undefined :: binary() | undefined
-          ,account_id = <<>> :: binary()
-          ,expires = 0 :: integer() % secs
-          ,created = wh_util:current_tstamp() :: non_neg_integer() % timestamp
-          ,storage = ?EMPTY_JSON_OBJECT :: json_object()
-         }).
-
 -record(cb_context, {
            content_types_provided = ?CONTENT_PROVIDED :: list(crossbar_content_handler()) | []
           ,content_types_accepted = ?CONTENT_ACCEPTED :: list(crossbar_content_handler()) | []
 	  ,allowed_methods = ?ALLOWED_METHODS :: list(atom()) | []
           ,allow_methods = ?ALLOWED_METHODS :: list(atom()) | []
-	  ,session = undefined :: undefined | #session{}
           ,auth_token = <<>> :: binary()
           ,auth_doc = undefined :: json_object() | undefined
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>

@@ -248,24 +248,24 @@ start_amqp() ->
 send_error_resp(JObj, ErrCode, <<>>) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     Prop = [{<<"Media-Name">>, MediaName}
-	    ,{<<"Error-Code">>, whistle_util:to_binary(ErrCode)}
-	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, Payload} = whistle_api:media_error(Prop),
+	    ,{<<"Error-Code">>, wh_util:to_binary(ErrCode)}
+	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, Payload} = wh_api:media_error(Prop),
     ?LOG_END("sending error reply ~s for ~s", [ErrCode, MediaName]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
 send_error_resp(JObj, _ErrCode, ErrMsg) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Error-Code">>, <<"other">>}
-	    ,{<<"Error-Msg">>, whistle_util:to_binary(ErrMsg)}
-	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, Payload} = whistle_api:media_error(Prop),
+	    ,{<<"Error-Msg">>, wh_util:to_binary(ErrMsg)}
+	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, Payload} = wh_api:media_error(Prop),
     ?LOG_END("sending error reply ~s for ~s", [_ErrCode, MediaName]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 -spec(handle_req/3 :: (JObj :: json_object(), Port :: port(), Streams :: list()) -> no_return()).
 handle_req(JObj, Port, Streams) ->
-    true = whistle_api:media_req_v(JObj),
+    true = wh_api:media_req_v(JObj),
     case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
         not_found ->
             send_error_resp(JObj, <<"not_found">>, <<>>);
@@ -339,7 +339,7 @@ get_content_type(JObj, MetaData) ->
 
 -spec(is_streamable/1 :: (JObj :: json_object()) -> boolean()).
 is_streamable(JObj) ->
-    whistle_util:is_true(wh_json:get_value(<<"streamable">>, JObj, true)).
+    wh_util:is_true(wh_json:get_value(<<"streamable">>, JObj, true)).
 
 -spec start_stream/6 :: (JObj, Db, Doc, Attachment, CType, Port) -> no_return() when
       JObj :: json_object(),

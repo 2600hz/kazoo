@@ -1,4 +1,4 @@
--module(whistle_util).
+-module(wh_util).
 
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
@@ -8,6 +8,7 @@
 -export([current_tstamp/0]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
 -export([microseconds_to_seconds/1]).
+-export([whistle_version/0]).
 
 -include_lib("proper/include/proper.hrl").
 
@@ -46,8 +47,8 @@ call_response1(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
-               | whistle_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {ok, Payload} = whistle_api:queue_req(Command),
+               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
+    {ok, Payload} = wh_api:queue_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %% must be a term that can be changed to a list
@@ -218,7 +219,26 @@ ceiling(X) ->
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
-%% there are 719528 days between Jan 1, 0 and Jan 1, 1970.
+%% fetch and cache the whistle version from the VERSION file in whistle's root folder
+-spec(whistle_version/0 :: () -> binary()).
+whistle_version() ->
+    case wh_cache:fetch({whistle_util, whistle_version}) of
+	{ok, V}    ->  V;
+	{error, _} ->
+	    wh_cache:store({whistle_util, whistle_version}, whistle_version(<<"/opt/whistle/whistle/VERSION">>)),
+	    whistle_version()
+    end.
+
+-spec(whistle_version/1 :: (binary()) -> binary()).
+whistle_version(FileName) ->
+    case file:open(FileName, [read]) of
+	{ok, Device} -> case io:get_line(Device, "") of
+			    eof  -> file:close(Device), <<"not available">>;
+			    Line -> file:close(Device), list_to_binary(string:strip(Line, right, $\n))
+			end;
+	_ ->  <<"not available">>
+    end.
+
 %% there are 86400 seconds in a day
 %% there are 62167219200 seconds between Jan 1, 0 and Jan 1, 1970
 -define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
@@ -334,4 +354,8 @@ microsecs_to_secs_test() ->
     Microsecs = 1310157838405890,
     Secs = 1310157838,
     ?assertEqual(Secs, microseconds_to_seconds(Microsecs)).
+
+no_whistle_version_test() ->
+    ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
+
 -endif.

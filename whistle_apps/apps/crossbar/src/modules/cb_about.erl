@@ -1,16 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
+%%% @author Edouard Swiac <edouard@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Token auth module
+%%% Display various informations
 %%%
-%%% This is a simple auth mechanism, once the user has aquired an
-%%% auth token this module will allow access.  This module should be
-%%% updated to be FAR more robust.
 %%% @end
-%%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 30 Jul 2011 Edouard Swiac <edouard@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_token_auth).
+-module(cb_about).
 
 -behaviour(gen_server).
 
@@ -21,12 +18,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
-
+-include_lib("crossbar.hrl").
 -define(SERVER, ?MODULE).
-
--define(TOKEN_DB, <<"token_auth">>).
 
 %%%===================================================================
 %%% API
@@ -57,7 +50,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init(_) ->
     {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
@@ -75,8 +68,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,30 +93,47 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{auth_token=AuthToken}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.about">>, Payload}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
-                      {ok, JObj} ->
-                          ?LOG("authenticating request"),
-                          Pid ! {binding_result, true, {RD, Context#cb_context{auth_doc=JObj}}};
-                      {error, _} ->
-                          Pid ! {binding_result, false, {RD, Context}}
-                  end
-          end),
+		  {Result, Payload1} = allowed_methods(Payload),
+                  Pid ! {binding_result, Result, Payload1}
+	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, _, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.about">>, Payload}, State) ->
+    spawn(fun() ->
+		  {Result, Payload1} = resource_exists(Payload),
+                  Pid ! {binding_result, Result, Payload1}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.validate.about">>, [RD, Context | Params]}, State) ->
+    spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
+		  Context1 = validate(Params, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.about">>, [RD, Context | Params]}, State) ->
+    spawn(fun() ->
+		  Pid ! {binding_result, true, [RD, Context, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
+    Pid ! {binding_result, true, []},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, _B, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?TOKEN_DB),
     {noreply, State};
 
-handle_info(_, State) ->
+handle_info(_Info, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -155,6 +164,73 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec bind_to_crossbar/0 :: () -> no_return().
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function binds this server to the crossbar bindings server,
+%% for the keys we need to consume.
+%% @end
+%%--------------------------------------------------------------------
+-spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    crossbar_bindings:bind(<<"v1_resource.authenticate">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.about">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.about">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.about">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.about">>),
+    crossbar_bindings:bind(<<"account.created">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines the verbs that are appropriate for the
+%%
+%% Failure here returns 405
+%% @end
+%%--------------------------------------------------------------------
+-spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+allowed_methods([]) ->
+    {true, ['GET']};
+allowed_methods(_) ->
+    {false, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines if the provided list of Nouns are valid.
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+resource_exists([]) ->
+    {true, []};
+resource_exists(_) ->
+    {false, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines if the parameters and content are correct
+%% for this request
+%%
+%% Failure here returns 400
+%% @end
+%%--------------------------------------------------------------------
+-spec(validate/2 :: (Params :: list(),  Context :: #cb_context{}) -> #cb_context{}).
+validate([],  #cb_context{req_verb = <<"get">>}=Context) ->
+    display_version(Context);
+validate(_, Context) ->
+    crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% Display the current version of whistle
+%% @end
+%%--------------------------------------------------------------------
+-spec(display_version/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+display_version(Context) ->
+    WhVsn = wh_json:set_value(<<"whistle_version">>, wh_util:whistle_version(), ?EMPTY_JSON_OBJECT),
+
+    crossbar_util:response(WhVsn, Context).

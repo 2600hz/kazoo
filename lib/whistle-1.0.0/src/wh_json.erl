@@ -11,6 +11,7 @@
 -export([to_proplist/1, to_proplist/2]).
 -export([get_binary_boolean/2, get_binary_boolean/3]).
 -export([get_integer_value/2, get_integer_value/3]).
+-export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
@@ -23,7 +24,7 @@
 %% not for public use
 -export([prune/2, no_prune/2]).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -spec to_proplist/1 :: (JObj) -> proplist() when
       JObj :: json_object().
@@ -52,66 +53,115 @@ to_proplist(Prop) ->
 to_proplist(Key, JObj) ->
     to_proplist(get_value(Key, JObj, ?EMPTY_JSON_OBJECT)).
 
--spec(get_binary_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+-spec get_binary_value/2 :: (Key, JObj) -> undefined | binary() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
 get_binary_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
-        Value -> whistle_util:to_binary(Value)
+        Value -> wh_util:to_binary(Value)
     end.
 
--spec(get_binary_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: binary()) -> binary()).
-get_binary_value(Key, JObj, Default) ->
+-spec get_binary_value/3 :: (Key, JObj, Default) -> binary() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: binary().
+get_binary_value(Key, JObj, Default) when is_binary(Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
-        Value -> whistle_util:to_binary(Value)
+        Value -> wh_util:to_binary(Value)
     end.
 
--spec(get_integer_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | integer()).
+-spec get_integer_value/2 :: (Key, JObj) -> undefined | integer() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
 get_integer_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
-        Value -> whistle_util:to_integer(Value)
+        Value -> wh_util:to_integer(Value)
     end.
 
--spec(get_integer_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: integer()) -> integer()).
-get_integer_value(Key, JObj, Default) ->
+-spec get_integer_value/3 :: (Key, JObj, Default) -> integer() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: integer().
+get_integer_value(Key, JObj, Default) when is_integer(Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
-        Value -> whistle_util:to_integer(Value)
+        Value -> wh_util:to_integer(Value)
     end.
 
--spec(is_false/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+-spec get_float_value/2 :: (Key, JObj) -> undefined | float() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+get_float_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> wh_util:to_float(Value)
+    end.
+
+-spec get_float_value/3 :: (Key, JObj, Default) -> float() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: float().
+get_float_value(Key, JObj, Default) when is_float(Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> wh_util:to_float(Value)
+    end.
+
+-spec is_false/2 :: (Key, JObj) -> boolean() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+-spec is_false/3 :: (Key, JObj, Default) -> boolean() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: boolean().
 is_false(Key, JObj) ->
     is_false(Key, JObj, true).
 
--spec(is_false/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
-is_false(Key, JObj, Default) ->
-    whistle_util:is_false(wh_json:get_value(Key, JObj, Default)).
+is_false(Key, JObj, Default) when is_boolean(Default) ->
+    wh_util:is_false(wh_json:get_value(Key, JObj, Default)).
 
--spec(is_true/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> boolean()).
+-spec is_true/2 :: (Key, JObj) -> boolean() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+-spec is_true/3 :: (Key, JObj, Default) -> boolean() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: boolean().
 is_true(Key, JObj) ->
     is_true(Key, JObj, false).
 
--spec(is_true/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: boolean()) -> boolean()).
 is_true(Key, JObj, Default) ->
-    whistle_util:is_true(wh_json:get_value(Key, JObj, Default)).
+    wh_util:is_true(wh_json:get_value(Key, JObj, Default)).
 
--spec(get_binary_boolean/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | binary()).
+-spec get_binary_boolean/2 :: (Key, JObj) -> undefined | binary() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+-spec get_binary_boolean/3 :: (Key, JObj, Default) -> binary() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: term().
 get_binary_boolean(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
-        Value -> whistle_util:to_binary(whistle_util:is_true(Value))
+        Value -> wh_util:to_binary(wh_util:is_true(Value))
     end.
 
--spec(get_binary_boolean/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> binary()).
 get_binary_boolean(Key, JObj, Default) ->
-    whistle_util:to_binary(is_true(Key, JObj, Default)).
+    wh_util:to_binary(is_true(Key, JObj, Default)).
 
--spec(get_value/2 :: (Key :: term(), Doc :: json_object() | json_objects()) -> undefined | term()).
-get_value(Key, Doc) ->
-    get_value(Key, Doc, undefined).
+-spec get_value/2 :: (Key, JObj) -> term() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+-spec get_value/3 :: (Key, JObj, Default) -> term() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: term().
+get_value(Key, JObj) ->
+    get_value(Key, JObj, undefined).
 
--spec(get_value/3 :: (Key :: term(), Doc :: json_object() | json_objects(), Default :: term()) -> term()).
 get_value([Key|Ks], [{struct, _}|_]=L, Default) ->
     try
 	get_value1(Ks, lists:nth(Key, L), Default)
@@ -123,44 +173,53 @@ get_value(Key, L, Default) when is_list(L) ->
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec(get_value1/3 :: (Key :: term(), Doc :: json_object(), Default :: term()) -> term()).
-get_value1([], Doc, _Default) -> Doc;
-get_value1(Key, Doc, Default) when not is_list(Key)->
-    get_value1([Key], Doc, Default);
+-spec get_value1/3 :: (Key, JObj, Default) -> term() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: term().
+get_value1([], JObj, _Default) -> JObj;
+get_value1(Key, JObj, Default) when not is_list(Key)->
+    get_value1([Key], JObj, Default);
 get_value1([K|Ks], {struct, Props}, Default) ->
-    get_value1(Ks, props:get_value(whistle_util:to_binary(K), Props, Default), Default);
-get_value1([K|Ks], Doc, Default) when is_list(Doc) ->
-    case try lists:nth(whistle_util:to_integer(K), Doc) catch _:_ -> undefined end of
+    get_value1(Ks, props:get_value(wh_util:to_binary(K), Props, Default), Default);
+get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
+    case try lists:nth(wh_util:to_integer(K), JObjs) catch _:_ -> undefined end of
 	undefined -> Default;
-	Doc1 -> get_value1(Ks, Doc1, Default)
+	JObj1 -> get_value1(Ks, JObj1, Default)
     end;
 get_value1(_, _, Default) -> Default.
 
 %% Figure out how to set the current key among a list of objects
 
--spec(set_value/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object() | json_objects()).
-set_value(Key, Value, {struct, _}=Doc) ->
-    set_value1(Key, Value, Doc);
-set_value(Key, Value, [{struct, _} | _]=Docs) ->
-    set_value1(Key, Value, Docs).
+-spec set_value/3 :: (Key, Value, JObj) -> json_object() | json_objects() when
+      Key :: term(),
+      Value :: term(),
+      JObj :: json_object() | json_objects().
+set_value(Key, Value, {struct, _}=JObj) ->
+    set_value1(Key, Value, JObj);
+set_value(Key, Value, [{struct, _} | _]=JObjs) ->
+    set_value1(Key, Value, JObjs).
 
--spec(set_value1/3 :: (Key :: term(), Value :: term(), Doc :: json_object() | json_objects()) -> json_object() | json_objects()).
-set_value1(Key, Value, Doc) when not is_list(Key) ->
-    set_value1([Key], Value, Doc);
-set_value1([Key|T], Value, [{struct, _}|_]=Doc) ->
-    Key1 = whistle_util:to_integer(Key),
-    case Key1 > length(Doc) of
+-spec set_value1/3 :: (Key, Value, JObj) -> json_object() | json_objects() when
+      Key :: term(),
+      Value :: term(),
+      JObj :: json_object() | json_objects().
+set_value1(Key, Value, JObj) when not is_list(Key) ->
+    set_value1([Key], Value, JObj);
+set_value1([Key|T], Value, [{struct, _}|_]=JObjs) ->
+    Key1 = wh_util:to_integer(Key),
+    case Key1 > length(JObjs) of
         %% The object index does not exist so try to add a new one to the list
         true ->
             try
                 %% Create a new object with the next key as a property
-                NxtKey = whistle_util:to_binary(hd(T)),
-                Doc ++ [set_value1(T, Value, {struct, [{NxtKey, []}]})]
+                NxtKey = wh_util:to_binary(hd(T)),
+                JObjs ++ [set_value1(T, Value, {struct, [{NxtKey, []}]})]
             catch
                 %% There are no more keys in the list, add it unless not an object
                 error:badarg ->
                     V = try {struct, _} = Value catch _:_ -> erlang:error(badarg) end,
-                    Doc ++ [V]
+                    JObjs ++ [V]
             end;
         %% The object index exists so iterate into the object and updat it
         false ->
@@ -168,11 +227,11 @@ set_value1([Key|T], Value, [{struct, _}|_]=Doc) ->
                                              {set_value1(T, Value, E), {Pos + 1, Pos}};
                                          (E, {Pos, Idx}) ->
                                              {E, {Pos + 1, Idx}}
-                                      end, {1, Key1}, Doc))
+                                      end, {1, Key1}, JObjs))
     end;
 %% Figure out how to set the current key in an existing object
 set_value1([Key|T], Value, {struct, Props}) ->
-    Key1 = whistle_util:to_binary(Key),
+    Key1 = wh_util:to_binary(Key),
     case lists:keyfind(Key1, 1, Props) of
         {Key1, {struct, _}=V1} ->
             %% Replace or add a property in an object in the object at this key
@@ -197,12 +256,18 @@ set_value1([Key|T], Value, {struct, Props}) ->
             {struct, Props ++ [{Key1, set_value1(T, Value, ?EMPTY_JSON_OBJECT)}]}
     end;
 %% There are no more keys to iterate through! Override the value here...
-set_value1([], Value, _Doc) -> Value.
+set_value1([], Value, _JObj) -> Value.
 
 %% delete_key(foo, {struct, [{foo, bar}, {baz, biz}]}) -> {struct, [{baz, biz}]}
 %% delete_key([foo, far], {struct, [{foo, {struct, [{far, away}]}}, {baz, biz}]}) -> {struct, [{foo, {struct, []}}, {baz, biz}]}
 
--spec(delete_key/2 :: (Key :: list() | binary(), JObj :: json_object() | json_objects()) -> json_object() | json_objects()).
+-spec delete_key/2 :: (Key, JObj) -> json_object() | json_objects() when
+      Key :: list() | binary(),
+      JObj :: json_object() | json_objects().
+-spec delete_key/3 :: (Key, JObj, PruneOpt) -> json_object() | json_objects() when
+      Key :: list() | binary(),
+      JObj :: json_object() | json_objects(),
+      PruneOpt :: prune | no_prune.
 delete_key(Key, JObj) when not is_list(Key) ->
     delete_key([Key], JObj, no_prune);
 delete_key(Keys, JObj) ->
@@ -212,7 +277,6 @@ delete_key(Keys, JObj) ->
 %% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in
 %%   no_prune -> {struct, [{<<"k1">>, []}]}
 %%   prune -> {struct, []}
--spec(delete_key/3 :: (Keys :: list() | binary(), JObj :: json_object() | json_objects(), PruneOpt :: prune | no_prune) -> json_object() | json_objects()).
 delete_key(Key, JObj, PruneOpt) when not is_list(Key) ->
     (?MODULE):PruneOpt([Key], JObj);
 delete_key(Keys, JObj, PruneOpt) ->

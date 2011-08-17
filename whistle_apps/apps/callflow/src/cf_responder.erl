@@ -226,7 +226,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
                             ,cid_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj)
                             ,cid_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj)
                             ,request = Request
-                            ,request_user = whistle_util:to_e164(RequestUser)
+                            ,request_user = wh_util:to_e164(RequestUser)
                             ,request_realm = RequestRealm
                             ,from = From
                             ,from_user = FromUser
@@ -334,8 +334,8 @@ send_route_response(#cf_call{channel_vars=CVs, bdst_q=Q}, JObj) ->
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             ,{<<"channel_vars">>, CVs}
-            | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+            | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
-    {ok, Payload} = whistle_api:route_resp(Resp),
+    {ok, Payload} = wh_api:route_resp(Resp),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload),
     ?LOG_END("replied to route request").

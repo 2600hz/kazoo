@@ -28,7 +28,7 @@
 -define(EMPTY_STREAMS, []).
 -define(EMPTY_EVENTS, ?EMPTY_JSON_OBJECT).
 
-%% {SessionId, PidToQueueHandlingProc}
+%% {AuthToken, PidToQueueHandlingProc}
 -type evtsub_subscriber() :: tuple( binary(), pid()).
 -type evtsub_subscriber_list() :: list(evtsub_subscriber()) | [].
 
@@ -66,15 +66,21 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec(get_subscriber_pid/1 :: (SessionID :: binary()) -> tuple(ok, pid()) | tuple(error, undefined)).
-get_subscriber_pid(SessionID) ->
-    gen_server:call(?SERVER, {get_subscriber_pid, SessionID}).
+-spec get_subscriber_pid/1 :: (AuthToken) -> tuple(ok, pid()) | tuple(error, undefined) when
+      AuthToken :: binary().
+get_subscriber_pid(AuthToken) ->
+    gen_server:call(?SERVER, {get_subscriber_pid, AuthToken}).
 
-add_subscriber_pid(SessionID, Pid) ->
-    gen_server:cast(?SERVER, {add_subscriber_pid, SessionID, Pid}).
+-spec add_subscriber_pid/2 :: (AuthToken, Pid) -> ok when
+      AuthToken :: binary(),
+      Pid :: pid().
+add_subscriber_pid(AuthToken, Pid) ->
+    gen_server:cast(?SERVER, {add_subscriber_pid, AuthToken, Pid}).
 
-rm_subscriber_pid(SessionID) ->
-    gen_server:cast(?SERVER, {rm_subscriber_pid, SessionID}).
+-spec rm_subscriber_pid/1 :: (AuthToken) -> ok when
+      AuthToken :: binary().
+rm_subscriber_pid(AuthToken) ->
+    gen_server:cast(?SERVER, {rm_subscriber_pid, AuthToken}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -108,8 +114,8 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({get_subscriber_pid, SessionId}, _, #state{subscriber_list=Ss}=State) ->
-    Resp = case lists:keyfind(SessionId, 1, Ss) of
+handle_call({get_subscriber_pid, AuthToken}, _, #state{subscriber_list=Ss}=State) ->
+    Resp = case lists:keyfind(AuthToken, 1, Ss) of
 	       false -> {error, undefined};
 	       {_, Pid} when is_pid(Pid) -> {ok, Pid}
 	   end,
@@ -125,16 +131,16 @@ handle_call({get_subscriber_pid, SessionId}, _, #state{subscriber_list=Ss}=State
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add_subscriber_pid, SessionID, Pid}, #state{subscriber_list=Ss}=State) ->
-    case lists:keyfind(SessionID, 1, Ss) of
+handle_cast({add_subscriber_pid, AuthToken, Pid}, #state{subscriber_list=Ss}=State) ->
+    case lists:keyfind(AuthToken, 1, Ss) of
 	false ->
 	    link(Pid),
-	    {noreply, State#state{subscriber_list=[{SessionID, Pid} | Ss]}};
+	    {noreply, State#state{subscriber_list=[{AuthToken, Pid} | Ss]}};
 	_ ->
 	    {noreply, State}
     end;
-handle_cast({rm_subscriber_pid, SessionID}, #state{subscriber_list=Ss}=State) ->
-    case lists:keyfind(SessionID, 1, Ss) of
+handle_cast({rm_subscriber_pid, AuthToken}, #state{subscriber_list=Ss}=State) ->
+    case lists:keyfind(AuthToken, 1, Ss) of
 	{_, Pid} ->
 	    case erlang:is_process_alive(Pid) of
 		true ->
@@ -143,7 +149,7 @@ handle_cast({rm_subscriber_pid, SessionID}, #state{subscriber_list=Ss}=State) ->
 	       false ->
 		    ok
 	    end,
-	    {noreply, State#state{subscriber_list=lists:keydelete(SessionID, 1, Ss)}};
+	    {noreply, State#state{subscriber_list=lists:keydelete(AuthToken, 1, Ss)}};
 	false ->
 	    {noreply, State}
     end.
@@ -214,7 +220,6 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "EVTSUB(~p): unhandled info ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -305,22 +310,24 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>, session=Session}=Context) ->
+validate([], #cb_context{req_verb = <<"get">>, auth_token=AuthToken}=Context) ->
     %% get list of subscriptions and events, if any
-    case ?MODULE:get_subscriber_pid(Session#session.'_id') of
+    case ?MODULE:get_subscriber_pid(AuthToken) of
 	{ok, SubPid} ->
 	    Streams = get_streams(SubPid),
 	    Events = flush_events(SubPid),
 	    crossbar_util:response({struct, [{<<"streams">>, Streams}, {<<"events">>, Events}]}, Context);
 	{error, undefined} ->
-	    start_subscription_handler(Session),
+	    start_subscription_handler(AuthToken),
 	    crossbar_util:response({struct, [{<<"streams">>, []}, {<<"events">>, ?EMPTY_EVENTS}]}, Context)
     end;
-validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data, resp_headers=RHs}=Context) ->
+validate([], #cb_context{req_verb = <<"put">>, auth_token=AuthToken, req_data=Data, resp_headers=RHs}=Context) ->
     %% create a queue bound to the event stream
-    SubPid = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
-		 {ok, P} -> P;
-		 {error, undefined} -> start_subscription_handler(Session)
+    SubPid = case ?MODULE:get_subscriber_pid(AuthToken) of
+		 {ok, P} ->
+                     P;
+		 {error, undefined} ->
+                     start_subscription_handler(AuthToken)
 	     end,
 
     Stream = wh_json:get_value(<<"stream">>, Data),
@@ -334,52 +341,53 @@ validate([], #cb_context{req_verb = <<"put">>, session=Session, req_data=Data, r
 	    crossbar_util:response({struct, [{<<"streams">>, Streams}]}
 				   ,Context#cb_context{resp_headers=[ {"Location", Stream} | RHs ]})
     end;
-validate([], #cb_context{req_verb = <<"delete">>, session=Session, req_data=Data}=Context) ->
-    {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
+validate([], #cb_context{req_verb = <<"delete">>, auth_token=AuthToken, req_data=Data}=Context) ->
+    {Ss, Es} = case ?MODULE:get_subscriber_pid(AuthToken) of
 		   {ok, SubPid} ->
 		       Flush = wh_json:get_value(<<"flush">>, Data, false),
-		       rm_stream(SubPid, all, whistle_util:to_boolean(Flush));
+		       rm_stream(SubPid, all, wh_util:to_boolean(Flush));
 		   {error, undefined} ->
-		       start_subscription_handler(Session),
+		       start_subscription_handler(AuthToken),
 		       {[], ?EMPTY_EVENTS}
 	       end,
     crossbar_util:response({struct, [{<<"streams">>, Ss}, {<<"events">>, Es}]}, Context);
-validate([Stream], #cb_context{req_verb = <<"get">>, session=Session}=Context) ->
+validate([Stream], #cb_context{req_verb = <<"get">>, auth_token=AuthToken}=Context) ->
     %% get list of events, if any
-    case ?MODULE:get_subscriber_pid(Session#session.'_id') of
+    case ?MODULE:get_subscriber_pid(AuthToken) of
 	{ok, SubPid} ->
 	    Events = flush_events(SubPid, Stream),
 	    crossbar_util:response({struct, [{<<"events">>, Events}]}, Context);
 	{error, undefined} ->
-	    start_subscription_handler(Session),
+	    start_subscription_handler(AuthToken),
 	    crossbar_util:response({struct, [{<<"events">>, ?EMPTY_EVENTS}]}, Context)
     end;
-validate([Stream], #cb_context{req_verb = <<"post">>, session=Session, req_data=Data}=Context) ->
+validate([Stream], #cb_context{req_verb = <<"post">>, auth_token=AuthToken, req_data=Data}=Context) ->
     %% create a queue bound to the event stream
-    SubPid = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
-		 {ok, P} -> P;
-		 {error, undefined} -> start_subscription_handler(Session)
+    SubPid = case ?MODULE:get_subscriber_pid(AuthToken) of
+		 {ok, P} ->
+                     P;
+		 {error, undefined} ->
+                     start_subscription_handler(AuthToken)
 	     end,
 
     MaxEvents = constrain_max_events(wh_json:get_value(<<"max_events">>, Data, ?MAX_STREAM_EVENTS)),
 
-    logger:format_log(info, "Attempting to update ~p(~p) to ~p~n", [Stream, MaxEvents, SubPid]),
+    ?LOG("attempting to update ~p(~p) to ~p", [Stream, MaxEvents, SubPid]),
     update_stream(SubPid, Stream, MaxEvents),
     Streams = get_streams(SubPid),
     crossbar_util:response({struct, [{<<"streams">>, Streams}]}, Context);
-validate([Stream], #cb_context{req_verb = <<"delete">>, session=Session, req_data=Data}=Context) ->
+validate([Stream], #cb_context{req_verb = <<"delete">>, auth_token=AuthToken, req_data=Data}=Context) ->
     %% remove stream from subscriber
-    {Ss, Es} = case ?MODULE:get_subscriber_pid(Session#session.'_id') of
+    {Ss, Es} = case ?MODULE:get_subscriber_pid(AuthToken) of
 		   {ok, SubPid} ->
 		       Flush = wh_json:get_value(<<"flush">>, Data, false),
-		       rm_stream(SubPid, Stream, whistle_util:to_boolean(Flush));
+		       rm_stream(SubPid, Stream, wh_util:to_boolean(Flush));
 		   {error, undefined} ->
-		       start_subscription_handler(Session),
+		       start_subscription_handler(AuthToken),
 		       {[], []}
 	       end,
     crossbar_util:response({struct, [{<<"streams">>, Ss}, {<<"events">>, Es}]}, Context);
-validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
-    logger:format_log(info, "EvtSub.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
+validate(_Params, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %% Subscriber-related functions
@@ -431,30 +439,31 @@ rm_stream(SubPid, Stream, false) ->
     end.
 
 %% start the loop for a subscriber
--spec(start_subscription_handler/1 :: (Session :: #session{}) -> pid()).
-start_subscription_handler(Session) ->
+-spec start_subscription_handler/1 :: (AuthToken) -> pid() when
+      AuthToken :: binary().
+start_subscription_handler(AuthToken) ->
     Pid = spawn(fun() -> process_flag(trap_exit, true), subscriber_loop([]) end),
-    ?MODULE:add_subscriber_pid(Session#session.'_id', Pid),
-    logger:format_log(info, "Subscriber(~p): Started for ~p~n", [Pid, Session#session.'_id']),
+    ?MODULE:add_subscriber_pid(AuthToken, Pid),
+    ?LOG("subscriber(~p): started for ~s", [Pid, AuthToken]),
     Pid.
 
 -spec(subscriber_loop/1 :: (Streams :: subscriber_stream_list()) -> no_return()).
 subscriber_loop(Streams) ->
     receive
 	{add_stream, Stream, MaxEvents}=_Recv ->
-	    logger:format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    ?LOG("recv ~p", [_Recv]),
 	    case lists:keyfind(Stream, 1, Streams) of
 		{_, _Pid} ->
-		    logger:format_log(info, "Subscriber(~p): Already have stream ~p~n", [self(), Stream]),
+		    ?LOG("already have stream ~p~n", [Stream]),
 		    subscriber_loop(Streams);
 		false ->
 		    Pid = spawn(fun() -> stream_loop(start_amqp(#stream_state{max_events=MaxEvents, stream=Stream})) end),
 		    link(Pid),
-		    logger:format_log(info, "Subscriber(~p): Adding stream ~p: ~p~n", [self(), Stream, Pid]),
+		    ?LOG("adding stream ~p: ~p", [Stream, Pid]),
 		    subscriber_loop([ {Stream, Pid} | Streams])
 	    end;
 	{update_stream, Stream, MaxEvents}=_Recv ->
-	    logger:format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    ?LOG("recv ~p", [_Recv]),
 	    _ = case lists:keyfind(Stream, 1, Streams) of
 		    {_, SPid} ->
 			SPid ! {set_max_events, MaxEvents};
@@ -462,12 +471,12 @@ subscriber_loop(Streams) ->
 		end,
 	    subscriber_loop(Streams);
 	{rm_stream, RespPid, all}=_Recv ->
-	    logger:format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+	    ?LOG("recv ~p", [_Recv]),
 	    lists:foreach(fun({_, SPid}) -> SPid ! shutdown end, Streams),
 	    RespPid ! {streams, []},
 	    subscriber_loop([]);
 	{rm_stream, RespPid, Stream}=_Recv ->
-	    logger:format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+            ?LOG("recv ~p", [_Recv]),
 	    case lists:keyfind(Stream, 1, Streams) of
 		{_, Pid} ->
 		    unlink(Pid),
@@ -480,7 +489,7 @@ subscriber_loop(Streams) ->
 		    subscriber_loop(Streams)
 	    end;
 	{get_events, RespPid, ReqStream}=_Recv ->
-	    logger:format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+            ?LOG("recv ~p", [_Recv]),
 	    Evts = lists:foldl(fun({Stream, Pid}, Acc) when ReqStream =:= all orelse ReqStream =:= Stream ->
 				       Pid ! {get_events, self()},
 				       receive
@@ -495,24 +504,24 @@ subscriber_loop(Streams) ->
 	    RespPid ! {events, {struct, Evts}},
 	    subscriber_loop(Streams);
 	{get_streams, RespPid}=_Recv ->
-	    logger:format_log(info, "Subscriber(~p): recv ~p: ~p~n", [self(), _Recv, Streams]),
+            ?LOG("recv ~p", [_Recv]),
 	    RespPid ! {streams, [ S || {S, SPid} <- Streams,
 				       erlang:is_process_alive(SPid)
 				]},
 	    subscriber_loop(Streams);
 	shutdown=_Recv ->
-	    logger:format_log(info, "Subscriber(~p): recv ~p~n", [self(), _Recv]),
+            ?LOG("recv ~p", [_Recv]),
 	    lists:foreach(fun({_, Pid}) -> Pid ! shutdown end, Streams),
 	    ok;
 	{'EXIT', StreamPid, _Reason} ->
 	    case lists:keyfind(StreamPid, 2, Streams) of
 		false -> subscriber_loop(Streams);
 		{Stream, _} ->
-		    logger:format_log(error, "Subscriber(~p): ~p(~p) went down: ~p~n", [self(), Stream, StreamPid, _Reason]),
+		    ?LOG("~p(~p) went down: ~p", [Stream, StreamPid, _Reason]),
 		    subscriber_loop(lists:keydelete(Stream,1, Streams))
 	    end;
 	_Other ->
-	    logger:format_log(info, "Subscriber(~p): Recv ~p~n", [self(), _Other]),
+            ?LOG("recv ~p", [_Other]),
 	    subscriber_loop(Streams)
     after 5000 ->
 	    subscriber_loop([ {S, SPid} || {S, SPid} <- Streams,
@@ -543,7 +552,7 @@ try
 	    {struct, Prop} = JObj = mochijson2:decode(Payload),
 	    true = validate_amqp(props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop), Prop),
 
-	    logger:format_log(info, "Stream(~p): EC: ~p OC: ~p ME: ~p~n", [self(), EventCount, OverflowCount, MaxEvents]),
+	    ?LOG("EC: ~p OC: ~p ME: ~p~n", [EventCount, OverflowCount, MaxEvents]),
 
 	    case EventCount of
 		MaxEvents ->
@@ -570,18 +579,17 @@ try
 	    stop_consuming(Q),
 	    ok;
 	_Other ->
-	    logger:format_log(error, "Stream(~p): Unknown msg: ~p~n", [self(), _Other]),
 	    stream_loop(StreamState)
     end
 catch
   A:B ->
-	logger:format_log(error, "Stream(~p).catch: ~p: ~p~n~p~n", [self(), A, B, erlang:get_stacktrace()]),
+        ?LOG("catch: ~p: ~p ~p", [A, B, erlang:get_stacktrace()]),
 	stream_loop(StreamState)
 end.
 
 %% loop a couple times to try to re-establish conn to amqp
 stream_amqp_loop(#stream_state{amqp_queue={error, _}, stream=Stream}, ?MAX_AMQP_RETRIES) ->
-    logger:format_log(error, "Stream ~s going down after too many amqp restart attempts~n", [Stream]);
+    ?LOG("stream ~s going down after too many amqp restart attempts~n", [Stream]);
 stream_amqp_loop(#stream_state{amqp_queue={error, _}}=StreamState, N) ->
     timer:sleep(500 * N), % wait progressively longer to reconnect
     stream_amqp_loop(start_amqp(StreamState), N+1);
@@ -612,17 +620,17 @@ bind_to_exchange(<<"cdr.", CallID/binary>>, Q) ->
 
 -spec(validate_amqp/3 :: (Category :: binary(), Name :: binary(), Prop :: json_object()) -> boolean()).
 validate_amqp(<<"directory">>, <<"authn_req">>, Prop) ->
-    whistle_api:authn_req_v(Prop);
+    wh_api:authn_req_v(Prop);
 validate_amqp(<<"dialplan">>, <<"route_req">>, Prop) ->
-    whistle_api:route_req_v(Prop);
+    wh_api:route_req_v(Prop);
 validate_amqp(<<"call_event">>, _, Prop) ->
-    whistle_api:call_event_v(Prop);
+    wh_api:call_event_v(Prop);
 validate_amqp(_Cat, _Name, _Prop) ->
     false.
 
 -spec(constrain_max_events/1 :: (MaxEvents :: binary() | integer()) -> integer()).
 constrain_max_events(X) when not is_integer(X) ->
-    constrain_max_events(whistle_util:to_integer(X));
+    constrain_max_events(wh_util:to_integer(X));
 constrain_max_events(Max) when Max > ?MAX_STREAM_EVENTS -> ?MAX_STREAM_EVENTS;
 constrain_max_events(Min) when Min < 1 -> 1;
-constrain_max_events(Okay) -> whistle_util:to_integer(Okay).
+constrain_max_events(Okay) -> wh_util:to_integer(Okay).

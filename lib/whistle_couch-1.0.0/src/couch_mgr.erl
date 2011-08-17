@@ -69,7 +69,7 @@
       App :: atom(),
       File :: list() | binary().
 load_doc_from_file(DbName, App, File) ->
-    Path = list_to_binary([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     ?LOG_SYS("Read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
@@ -611,30 +611,30 @@ set_node_cookie(Cookie) when is_atom(Cookie) ->
 
 -spec get_url/0 :: () -> binary().
 get_url() ->
-    case {whistle_util:to_binary(get_host()), get_creds(), get_port()} of
+    case {wh_util:to_binary(get_host()), get_creds(), get_port()} of
         {<<"">>, _, _} ->
             undefined;
         {H, {[], []}, P} ->
-            <<"http://", H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>;
+            <<"http://", H/binary, ":", (wh_util:to_binary(P))/binary, $/>>;
         {H, {User, Pwd}, P} ->
             <<"http://"
-              ,(whistle_util:to_binary(User))/binary, $: ,(whistle_util:to_binary(Pwd))/binary
+              ,(wh_util:to_binary(User))/binary, $: ,(wh_util:to_binary(Pwd))/binary
               ,$@, H/binary
-              ,":", (whistle_util:to_binary(P))/binary, $/>>
+              ,":", (wh_util:to_binary(P))/binary, $/>>
     end.
 
 -spec(get_admin_url/0 :: () -> binary()).
 get_admin_url() ->
-    case {whistle_util:to_binary(get_host()), get_creds(), get_admin_port()} of
+    case {wh_util:to_binary(get_host()), get_creds(), get_admin_port()} of
         {<<"">>, _, _} ->
             undefined;
         {H, {[], []}, P} ->
-            <<"http://", H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>;
+            <<"http://", H/binary, ":", (wh_util:to_binary(P))/binary, $/>>;
         {H, {User, Pwd}, P} ->
             <<"http://"
-              ,(whistle_util:to_binary(User))/binary, $: ,(whistle_util:to_binary(Pwd))/binary
+              ,(wh_util:to_binary(User))/binary, $: ,(wh_util:to_binary(Pwd))/binary
               ,$@, H/binary
-              ,":", (whistle_util:to_binary(P))/binary, $/>>
+              ,":", (wh_util:to_binary(P))/binary, $/>>
     end.
 
 -spec get_cache_pid/0 :: () -> pid() | undefined.
@@ -643,15 +643,15 @@ get_cache_pid() ->
 
 add_change_handler(DBName, DocID) ->
     ?LOG_SYS("Add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
-    gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
+    gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), self()}).
 
 add_change_handler(DBName, DocID, Pid) ->
     ?LOG_SYS("Add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
-    gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
+    gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
     ?LOG_SYS("RM change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
-    gen_server:call(?SERVER, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
+    gen_server:call(?SERVER, {rm_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -840,8 +840,8 @@ init_state() ->
 								   {couch_host,H,Port,U,Pass} -> {ok, H, Port, U, Pass, ?DEFAULT_ADMIN_PORT};
 								   {couch_host,H,Port,U,Pass,AdminP} -> {ok, H, Port, U, Pass, AdminP}
 							       end,
-	    Conn = couch_util:get_new_connection(Host, whistle_util:to_integer(NormalPort), User, Password),
-	    AdminConn = couch_util:get_new_connection(Host, whistle_util:to_integer(AdminPort), User, Password),
+	    Conn = couch_util:get_new_connection(Host, wh_util:to_integer(NormalPort), User, Password),
+	    AdminConn = couch_util:get_new_connection(Host, wh_util:to_integer(AdminPort), User, Password),
 
 	    Cookie = case lists:keyfind(bigcouch_cookie, 1, Ts) of
 			 false -> monster;
@@ -851,7 +851,7 @@ init_state() ->
 
 	    #state{connection=Conn
 		   ,admin_connection=AdminConn
-		   ,host={Host, whistle_util:to_integer(NormalPort), whistle_util:to_integer(AdminPort)}
+		   ,host={Host, wh_util:to_integer(NormalPort), wh_util:to_integer(AdminPort)}
 		   ,creds={User, Password}
 		   ,cache=Pid
 		  };

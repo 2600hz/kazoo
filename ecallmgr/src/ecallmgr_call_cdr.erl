@@ -51,13 +51,13 @@ new_cdr(UUID, EvtProp) ->
 -spec create_cdr/1 :: (EvtProp) -> iolist() when
       EvtProp :: proplist().
 create_cdr(EvtProp) ->
-    DefProp = whistle_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APP_NAME, ?APP_VERSION),
+    DefProp = wh_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APP_NAME, ?APP_VERSION),
     ApiProp0 = add_values(?FS_TO_WHISTLE_MAP, DefProp, EvtProp),
     ApiProp1 = case props:get_value(<<"direction">>, ApiProp0) of
 		   <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);
 		   _ -> ApiProp0
 	       end,
-    {ok, JSON} = whistle_api:call_cdr(ApiProp1),
+    {ok, JSON} = wh_api:call_cdr(ApiProp1),
     JSON.
 
 -spec add_values/3 :: (Mappings, BaseProp, ChannelProp) -> proplist() when
@@ -70,12 +70,12 @@ add_values(Mappings, BaseProp, ChannelProp) ->
                    ({<<"Event-Date-Timestamp">>=FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;
-                            V -> VUnix =  whistle_util:unix_seconds_to_gregorian_seconds(whistle_util:microseconds_to_seconds(V)),
-                                 [{WK, whistle_util:to_binary(VUnix)} | WApi]
+                            V -> VUnix =  wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)),
+                                 [{WK, wh_util:to_binary(VUnix)} | WApi]
                         end;
                    ({FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;
-                            V -> [{WK, whistle_util:to_binary(V)} | WApi]
+                            V -> [{WK, wh_util:to_binary(V)} | WApi]
                         end
                 end, BaseProp, Mappings).

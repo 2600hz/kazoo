@@ -77,9 +77,9 @@ audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Prompts }
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:queue_req(Command),
+    {ok, Payload} = wh_api:queue_req(Command),
     send_callctrl(Payload, Call),
     NoopId;
 audio_macro([{play, MediaName}|T], Call, Queue) ->
@@ -110,7 +110,7 @@ flush_dtmf(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to set channel/call vars
+%% Produces the low level wh_api request to set channel/call vars
 %% NOTICE: These are 'custom' channel vars for state info only, and
 %%   can not be used to set system settings
 %% @end
@@ -132,15 +132,15 @@ set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Custom-Channel-Vars">>, ChannelVars}
                ,{<<"Custom-Call-Vars">>, CallVars}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:set_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:set_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to fetch channe vars
+%% Produces the low level wh_api request to fetch channe vars
 %% NOTICE: These are 'custom' channel vars for state info only, and
 %%   can not the switch vars
 %% @end
@@ -164,9 +164,9 @@ fetch(FromOtherLeg, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"From-Other-Leg">>, FromOtherLeg}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:fetch_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:fetch_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_fetch(Call) ->
@@ -183,7 +183,7 @@ b_fetch(FromOtherLeg, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to answer the channel
+%% Produces the low level wh_api request to answer the channel
 %% @end
 %%--------------------------------------------------------------------
 -spec answer/1 :: (Call) -> ok when
@@ -194,9 +194,9 @@ b_fetch(FromOtherLeg, Call) ->
 answer(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [{<<"Application-Name">>, <<"answer">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:answer_req(Command),
+    {ok, Payload} = wh_api:answer_req(Command),
     send_callctrl(Payload, Call).
 
 b_answer(Call) ->
@@ -206,7 +206,7 @@ b_answer(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to hangup the channel.
+%% Produces the low level wh_api request to hangup the channel.
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
@@ -219,9 +219,9 @@ hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:hangup_req(Command),
+    {ok, Payload} = wh_api:hangup_req(Command),
     send_callctrl(Payload, Call).
 
 b_hangup(Call) ->
@@ -231,7 +231,7 @@ b_hangup(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to bridge the call
+%% Produces the low level wh_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
 -type cf_cid_types() :: binary() | undefined.
@@ -274,9 +274,9 @@ bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
                ,{<<"Dial-Endpoint-Method">>, Strategy}
                ,{<<"Custom-Channel-Vars">>, CCVs}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -291,12 +291,12 @@ b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
     b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, undefined, Call).
 b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call),
-    wait_for_bridge((whistle_util:to_integer(Timeout)*1000) + 10000).
+    wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to play media to the
+%% Produces the low level wh_api request to play media to the
 %% caller.  A list of terminators can be provided that the caller
 %% can use to skip playback.
 %% @end
@@ -324,9 +324,9 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Media-Name">>, Media}
                ,{<<"Terminators">>, Terminators}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:play_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
@@ -349,7 +349,7 @@ play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to record a file.
+%% Produces the low level wh_api request to record a file.
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
 %%--------------------------------------------------------------------
@@ -381,9 +381,9 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
                ,{<<"Silence-Threshold">>, SilenceThreshold}
                ,{<<"Silence-Hits">>, SilenceHits}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:record_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:record_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_record(MediaName, Call) ->
@@ -401,7 +401,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to store the file
+%% Produces the low level wh_api request to store the file
 %% @end
 %%--------------------------------------------------------------------
 -spec store/3 :: (MediaName, Transfer, Call) -> ok when
@@ -448,9 +448,9 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
                ,{<<"Additional-Headers">>, Headers}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:store_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:store_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_store(MediaName, Transfer, Call) ->
@@ -464,7 +464,7 @@ b_store(MediaName, Transfer, Method, Headers, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to play tones to the
+%% Produces the low level wh_api request to play tones to the
 %% caller
 %% @end
 %%--------------------------------------------------------------------
@@ -475,9 +475,9 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     Command = [{<<"Application-Name">>, <<"tones">>}
                ,{<<"Tones">>, Tones}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:tones_req(Command),
+    {ok, Payload} = wh_api:tones_req(Command),
     send_callctrl(Payload, Call).
 
 -spec tones_command/2 :: (Tones, Call) -> json_object() when
@@ -492,7 +492,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to play media to a
+%% Produces the low level wh_api request to play media to a
 %% caller, and collect a number of DTMF events.
 %% @end
 %%--------------------------------------------------------------------
@@ -617,9 +617,9 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Failed-Media-Name">>, MediaInvalid}
                ,{<<"Digits-Regex">>, Regex}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:play_collect_digits_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:play_collect_digits_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play_and_collect_digit(Media, Call) ->
@@ -645,28 +645,28 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
     Commands = [{struct, [{<<"Application-Name">>, <<"noop">>}
                           ,{<<"Call-ID">>, CallId}
                           ,{<<"Msg-ID">>, NoopId}
-                          | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)]}
+                          | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)]}
                 ,{struct, [{<<"Application-Name">>, <<"play">>}
                            ,{<<"Media-Name">>, Media}
                            ,{<<"Terminators">>, Terminators}
                            ,{<<"Call-ID">>, CallId}
-                           | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)]}
+                           | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)]}
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:queue_req(Command),
+    {ok, Payload} = wh_api:queue_req(Command),
     send_callctrl(Payload, Call),
     case collect_digits(MaxDigits, Timeout, <<"2000">>, NoopId, Call) of
         {ok, Digits} ->
-            MinSize = whistle_util:to_integer(MinDigits),
+            MinSize = wh_util:to_integer(MinDigits),
             case re:run(Digits, Regex) of
                 {match, _} when size(Digits) >= MinSize ->
                     {ok, Digits};
                 _ ->
-                    RemainingTries = whistle_util:to_binary(whistle_util:to_integer(Tries) - 1),
+                    RemainingTries = wh_util:to_binary(wh_util:to_integer(Tries) - 1),
                     b_play_and_collect_digits(MinDigits, MaxDigits, Media, RemainingTries
                                               ,Timeout, MediaInvalid, Regex, Terminators, Call)
             end;
@@ -676,7 +676,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to say text to a caller
+%% Produces the low level wh_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
 -spec say/2 :: (Say, Call) -> ok when
@@ -730,9 +730,9 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Method">>, Method}
                ,{<<"Language">>, Language}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:say_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:say_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
@@ -757,7 +757,7 @@ b_say(Say, Type, Method, Language, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to bridge a caller
+%% Produces the low level wh_api request to bridge a caller
 %% with a conference, with optional entry flags
 %% @end
 %%--------------------------------------------------------------------
@@ -812,9 +812,9 @@ conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ}
                ,{<<"Deaf">>, Deaf}
                ,{<<"Moderator">>, Moderator}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:conference_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:conference_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_conference(ConfId, Call) ->
@@ -830,7 +830,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to preform a noop
+%% Produces the low level wh_api request to preform a noop
 %% @end
 %%--------------------------------------------------------------------
 -spec noop/1 :: (Call) -> binary() when
@@ -843,9 +843,9 @@ noop(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [{<<"Application-Name">>, <<"noop">>}
                ,{<<"Msg-ID">>, NoopId}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:noop_req(Command),
+    {ok, Payload} = wh_api:noop_req(Command),
     send_callctrl(Payload, Call),
     NoopId.
 
@@ -855,7 +855,7 @@ b_noop(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level whistle_api request to flush the command
+%% Produces the low level wh_api request to flush the command
 %% queue
 %% @end
 %%--------------------------------------------------------------------
@@ -870,9 +870,9 @@ flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Msg-ID">>, NoopId}
                ,{<<"Insert-At">>, <<"flush">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:noop_req(Command),
+    {ok, Payload} = wh_api:noop_req(Command),
     send_callctrl(Payload, Call),
     NoopId.
 
@@ -935,11 +935,11 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, [<<"#">>], Call).
 
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when is_binary(MaxDigits) ->
-    collect_digits(whistle_util:to_integer(MaxDigits), Timeout, Interdigit, NoopId, Terminators, Call);
+    collect_digits(wh_util:to_integer(MaxDigits), Timeout, Interdigit, NoopId, Terminators, Call);
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when is_binary(Timeout) ->
-    collect_digits(MaxDigits, whistle_util:to_integer(Timeout), Interdigit, NoopId, Terminators, Call);
+    collect_digits(MaxDigits, wh_util:to_integer(Timeout), Interdigit, NoopId, Terminators, Call);
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when is_binary(Interdigit) ->
-    collect_digits(MaxDigits, Timeout, whistle_util:to_integer(Interdigit), NoopId, Terminators, Call);
+    collect_digits(MaxDigits, Timeout, wh_util:to_integer(Interdigit), NoopId, Terminators, Call);
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, <<>>, infinity).
 
