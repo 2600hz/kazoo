@@ -778,7 +778,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                      ,mailbox_number =
                          wh_json:get_binary_value(<<"mailbox">>, JObj, ReqUser)
                      ,require_pin =
-                         wh_json:get_binary_value(<<"require_pin">>, JObj, false)
+                         wh_json:is_true(<<"require_pin">>, JObj)
                      ,check_if_owner =
                          wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
                      ,unavailable_media_id =
