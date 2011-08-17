@@ -66,7 +66,7 @@ to_couch(Dir, Db) ->
 -spec(import_file/2 :: (Path :: string(), Db :: string()) -> no_return()).
 import_file(Path, Db) ->
     io:format("Import file ~p . . . ", [Path]),
-    {File, Id} = parse_path(whistle_util:to_binary(Path)),
+    {File, Id} = parse_path(wh_util:to_binary(Path)),
     case couch_mgr:lookup_doc_rev(Db, Id) of
         {ok, Rev} ->
             {ok, Content} = file:read_file(Path),                 

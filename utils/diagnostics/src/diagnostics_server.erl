@@ -280,9 +280,9 @@ show_line(node_handler=Handler, {ok, Data}) ->
     io:format("~n", []),
     io:format(?NODE_LINE_HEADER, []),
     Type = lists:takewhile(fun(C) -> C =/= $_ end, atom_to_list(Handler)),
-    R = whistle_util:to_list(get_value(created_channels, Data, 0)),
-    S = whistle_util:to_list(get_value(destroyed_channels, Data, 0)),
-    A = whistle_util:to_list(get_value(active_channels, Data, 0)),
+    R = wh_util:to_list(get_value(created_channels, Data, 0)),
+    S = wh_util:to_list(get_value(destroyed_channels, Data, 0)),
+    A = wh_util:to_list(get_value(active_channels, Data, 0)),
     U = get_uptime(get_value(uptime, Data, 0)),
     io:format(?NODE_LINE, [Type, R, S, A, U]);
 show_line(Handler, {ok, Data}) when is_list(Data) ->
