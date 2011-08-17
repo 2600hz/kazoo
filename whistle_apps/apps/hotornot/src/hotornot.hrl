@@ -5,5 +5,5 @@
 -include_lib("hotornot/include/hon_amqp.hrl").
 
 -define(APP_NAME, <<"hotornot">>).
--define(APP_VSN, <<"0.1.0">>).
+-define(APP_VERSION, <<"0.1.0">>).
 -define(RATES_DB, <<"ratedeck">>).

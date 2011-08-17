@@ -80,6 +80,7 @@ rm_responder(Responder, Keys) ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting hotornot process"),
+    process_flag(trap_exit, true),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -126,16 +127,21 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
 %%--------------------------------------------------------------------
 handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type = <<"application/json">>}, payload = Payload}}
 	    ,#state{responders=Ns}=State) ->
-    spawn(fun() ->
-                  JObj = mochijson2:decode(Payload),
-                  whapps_util:put_callid(JObj),
-                  _ = process_req(Ns, JObj)
-          end),
+    spawn_link(fun() ->
+		       JObj = mochijson2:decode(Payload),
+		       whapps_util:put_callid(JObj),
+		       ?LOG_START("JSON received: ~s", [Payload]),
+		       _ = process_req(Ns, JObj)
+	       end),
+    {noreply, State};
+
+handle_info({'EXIT', _Pid, _Reason}, State) ->
+    ?LOG_SYS("~p exited with ~p", [_Pid, _Reason]),
     {noreply, State};
 
 handle_info(timeout, State) ->
     %% cast shouldn't block
-    spawn(fun() -> [listener_utils:add_responder(Module, Evts) || {Module, Evts} <- ?RESPONDERS] end),
+    spawn(fun() -> [?MODULE:add_responder(Module, Evts) || {Module, Evts} <- ?RESPONDERS] end),
     case start_amqp() of
 	{ok, _} -> {noreply, State};
 	_ -> {noreply, State, 1000}
@@ -144,6 +150,9 @@ handle_info(timeout, State) ->
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
     {noreply, State, 1000};
+
+handle_info(#'basic.consume_ok'{}, State) ->
+    {noreply, State};
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
