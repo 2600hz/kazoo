@@ -1,9 +1,12 @@
 {
     "_id": "_design/callflow"
     ,"language": "javascript"
-    ,"views": {       
+    ,"views": {
         "listing_by_number": {
             "map": "function(doc) { if (doc.pvt_type != 'callflow' || doc.pvt_deleted) return; for (var i in doc.numbers) emit(doc.numbers[i], null); }"
-        }
+        },
+       "listing_by_hotdesk" : {
+           "map": "function(doc) { if (doc.pvt_deleted || !doc.hotdesk) return; emit(doc._id, {'id': doc.hotdesk.id, 'pin': doc.hotdesk.pin, 'require_pin': doc.hotdesk.require_pin , 'keep_logged_elsewhere': doc.hotdesk.keep_logged_elsewhere}); }"
+       }
     }
 }
