@@ -6,3 +6,4 @@
 
 -define(APP_NAME, <<"hotornot">>).
 -define(APP_VSN, <<"0.1.0">>).
+-define(RATES_DB, <<"ratedeck">>).

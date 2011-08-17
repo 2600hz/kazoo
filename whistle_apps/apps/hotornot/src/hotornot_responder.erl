@@ -21,12 +21,11 @@
 
 -define(SERVER, ?MODULE).
 -define(RESPONDERS, [
-		    {rating_req, [{<<"call">>, <<"rating_req">>}]}
-		   ]).
+		     {hon_rater, [{<<"call">>, <<"rating_req">>}]}
+		    ]).
 
--type responder() :: {{binary(), binary()}, atom()}.
 -record(state, {
-	  responsers = [] :: [responder(),...] | [] %% { {EvtCat, EvtName}, Module }
+	  responders = [] :: [listener_utils:responder(),...] | [] %% { {EvtCat, EvtName}, Module }
 	 }).
 
 %%%===================================================================
@@ -40,6 +39,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
@@ -79,7 +79,7 @@ rm_responder(Responder, Keys) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new vm hotornot process"),
+    ?LOG_SYS("starting hotornot process"),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -109,10 +109,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add_responder, Responder, Keys}, #state{responsers=Responsers}=State) ->
-    {noreply, State#state{responsers=add_responder(Responsers, Responder, Keys)}};
-handle_cast({rm_responder, Responder, Keys}, #state{responsers=Responsers}=State) ->
-    {noreply, State#state{responsers=rm_responder(Responsers, Responder, Keys)}}.
+handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=State) ->
+    {noreply, State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}};
+handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State) ->
+    {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,7 +125,7 @@ handle_cast({rm_responder, Responder, Keys}, #state{responsers=Responsers}=State
 %% @end
 %%--------------------------------------------------------------------
 handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type = <<"application/json">>}, payload = Payload}}
-	    ,#state{responsers=Ns}=State) ->
+	    ,#state{responders=Ns}=State) ->
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
                   whapps_util:put_callid(JObj),
@@ -135,7 +135,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type = <<"
 
 handle_info(timeout, State) ->
     %% cast shouldn't block
-    spawn(fun() -> [?MODULE:add_responder(Module, Evts) || {Module, Evts} <- ?RESPONDERS] end),
+    spawn(fun() -> [listener_utils:add_responder(Module, Evts) || {Module, Evts} <- ?RESPONDERS] end),
     case start_amqp() of
 	{ok, _} -> {noreply, State};
 	_ -> {noreply, State, 1000}
@@ -202,37 +202,9 @@ start_amqp() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_req/2 :: (Ns, JObj) -> ok when
-      Ns :: [responder(),...] | [],
+      Ns :: [listener_utils:responder(),...] | [],
       JObj :: json_object().
-process_req([], _JObj) ->
-    ok;
 process_req(Ns, JObj) ->
     Key = whapps_util:get_event_type(JObj),
     _ = [ catch(Module:handle_req(JObj)) || {Evt, Module} <- Ns, Key =:= Evt ],
     ok.
-
--spec add_responder/3 :: (Responsers, Responder, Keys) -> [responder(),...] when
-      Responsers :: [responder(),...] | [],
-      Responder :: atom(),
-      Keys :: [{binary(), binary()},...].
-add_responder(Responsers, Responder, Keys) ->
-    lists:foldr(fun(Evt, Acc) ->
-			case lists:member({Evt, Responder}, Responsers) of
-			    true ->
-				Acc;
-			    false ->
-				[{Evt, Responder} | Acc]
-			end
-		end, Responsers, Keys).
-
--spec rm_responder/3 :: (Responsers, Responder, Keys) -> [responder(),...] when
-      Responsers :: [responder(),...] | [],
-      Responder :: atom(),
-      Keys :: [{binary(), binary()},...] | [].
-%% remove all events for responder
-rm_responder(Responsers, Responder, []) ->
-    [ N || {_, Module}=N <- Responsers, Module =/= Responder];
-%% remove events in Keys for module Responder
-rm_responder(Responsers, Responder, Keys) ->
-    %% if Evt is in the list of Keys and Module =:= Responder, remove it from the list of Responsers
-    [ N || {Evt, Module}=N <- Responsers, (not (Module =:= Responder andalso lists:member(Evt, Keys))) ].
