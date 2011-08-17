@@ -13,7 +13,7 @@
 -export([caller_id/4]).
 -export([callee_id/4]).
 -export([caller_id_options/4]).
--export([owner_id/2]).
+-export([owner_id/2, owned_by/2, owned_by/3]).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -129,6 +129,49 @@ owner_id(undefined, _) ->
 owner_id(ObjectId, #cf_call{account_db=Db})->
     Id = whistle_util:to_binary(ObjectId),
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owner">>}, [{<<"key">>, Id}]) of
+        {ok, []} ->
+            undefined;
+        {ok, JObj} ->
+            wh_json:get_value(<<"value">>, hd(JObj));
+        {error, _} ->
+            undefined
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owned_by/2 :: (OwnerId, Call) -> undefined | json_object() when
+      OwnerId :: undefined | binary(),
+      Call :: #cf_call{}.
+owned_by(undefined, _) ->
+    undefined;
+owned_by(OwnerId, #cf_call{account_db=Db})->
+    Id = whistle_util:to_binary(OwnerId),
+    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owned">>}, [{<<"start_key">>, [Id, [], []]}, {<<"endkey">>, [ Id, [], []]} ]) of
+        {ok, []} ->
+            undefined;
+        {ok, JObj} ->
+            wh_json:get_value(<<"value">>, hd(JObj));
+        {error, _} ->
+            undefined
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owned_by/3 :: (OwnerId, Call, Type) -> undefined | json_object() when
+      OwnerId :: undefined | binary(),
+      Call :: #cf_call{},
+      Type :: atom().
+owned_by(undefined, _, _) ->
+    undefined;
+owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
+    Id = whistle_util:to_binary(OwnerId),
+    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owned">>}, [{<<"start_key">>, [Id, Type, []]}, {<<"endkey">>, [ Id, Type, []]} ]) of
         {ok, []} ->
             undefined;
         {ok, JObj} ->
