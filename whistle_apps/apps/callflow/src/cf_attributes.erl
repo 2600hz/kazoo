@@ -148,7 +148,7 @@ owner_id(ObjectId, #cf_call{account_db=Db})->
 owned_by(undefined, _) ->
     undefined;
 owned_by(OwnerId, #cf_call{account_db=Db})->
-    Id = whistle_util:to_binary(OwnerId),
+    Id = wh_util:to_binary(OwnerId),
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owned">>}, [{<<"start_key">>, [Id, [], []]}, {<<"endkey">>, [ Id, [], []]} ]) of
         {ok, []} ->
             undefined;
@@ -170,7 +170,7 @@ owned_by(OwnerId, #cf_call{account_db=Db})->
 owned_by(undefined, _, _) ->
     undefined;
 owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
-    Id = whistle_util:to_binary(OwnerId),
+    Id = wh_util:to_binary(OwnerId),
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owned">>}, [{<<"start_key">>, [Id, Type, []]}, {<<"endkey">>, [ Id, Type, []]} ]) of
         {ok, []} ->
             undefined;
