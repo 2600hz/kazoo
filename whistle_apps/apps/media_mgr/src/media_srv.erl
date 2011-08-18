@@ -329,7 +329,17 @@ find_attachment([Db, Doc, Attachment]) ->
       JObj :: json_object(),
       MetaData :: json_object().
 get_content_type(JObj, MetaData) ->
-    case wh_json:get_value(<<"content_type">>, MetaData, wh_json:get_value(<<"content_type">>, JObj)) of
+    case valid_content_type(JObj) of
+        undefined ->
+            valid_content_type(MetaData);
+        ContentType ->
+            ContentType
+    end.
+
+-spec valid_content_type/1 :: (JObj) -> undefined | binary() when
+      JObj :: json_object().
+valid_content_type(JObj) ->
+    case wh_json:get_value(<<"content_type">>, JObj) of
         <<"audio/mp3">> -> <<"mp3">>; %% Jon's computer uses this, is this legit?
         <<"audio/mpeg">> -> <<"mp3">>;
         <<"audio/x-wav">> -> <<"wav">>;
