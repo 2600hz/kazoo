@@ -778,7 +778,7 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                      ,mailbox_number =
                          wh_json:get_binary_value(<<"mailbox">>, JObj, ReqUser)
                      ,require_pin =
-                         wh_json:get_binary_value(<<"require_pin">>, JObj, false)
+                         wh_json:is_true(<<"require_pin">>, JObj)
                      ,check_if_owner =
                          wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
                      ,unavailable_media_id =
@@ -896,8 +896,10 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
              ,(wh_util:to_binary(M))/binary, $-, (wh_util:to_binary(D))/binary, $-, (wh_util:to_binary(Y))/binary
              ,$ , (wh_util:to_binary(H))/binary, $:, (wh_util:to_binary(I))/binary, $:, (wh_util:to_binary(S))/binary>>,
     Props = [{<<"name">>, Name}
-             ,{<<"description">>, Id}
-             ,{<<"media_type">>, <<"mp3">>}
+             ,{<<"description">>, <<"voicemail message media">>}
+             ,{<<"source_type">>, <<"voicemail">>}
+             ,{<<"source_id">>, Id}
+             ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"private_media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),
@@ -916,8 +918,10 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
 recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #cf_call{account_db=Db}) ->
     Name = <<"mailbox ", BoxNum/binary, $ , Recording/binary>>,
     Props = [{<<"name">>, Name}
-             ,{<<"description">>, Id}
-             ,{<<"media_type">>, <<"mp3">>}
+             ,{<<"description">>, <<"voicemail recorded/prompt media">>}
+             ,{<<"source_type">>, <<"voicemail">>}
+             ,{<<"source_id">>, Id}
+             ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),

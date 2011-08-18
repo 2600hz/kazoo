@@ -54,7 +54,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
       Call :: #cf_call{}.
 bridge_to_endpoints(Endpoints, Timeout, Call) ->
     IgnoreEarlyMedia = ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"single">>, IgnoreEarlyMedia, Call) of
+    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("bridged to endpoint"),
             wait_for_unbridge();

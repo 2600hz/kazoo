@@ -1,0 +1,14 @@
+{application, hotornot,
+ [
+  {description, "HotOrNot - Rate calls based on prefix"}
+  ,{vsn, "0.0.1"}
+  ,{modules, []}
+  ,{registered, []}
+  ,{applications, [
+		   kernel
+		   ,stdlib
+		   ,crypto
+		  ]}
+  ,{mod, { hotornot_app, []} }
+  ,{env, []}
+ ]}.
