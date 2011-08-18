@@ -22,12 +22,15 @@
                           ,audio_macro/2, flush_dtmf/1
 			 ]).
 
--record(hotdesking_profile , {
-          hotdesking_id = undefined :: undefined | binary()
+-import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
+
+-record(hotdesk, {
+          hotdesk_id = undefined :: undefined | binary()
 	  ,pin = undefined :: binary()
 	  ,max_login_attempts = 3 :: non_neg_integer()
 	  ,require_pin = false :: boolean()
 	  ,check_if_owner = true :: boolean()
+	  ,keep_logged_elsewhere = false :: boolean()
 	  ,owner_id = <<>> :: binary()
           ,prompts = #prompts{}
 	 }).
@@ -40,13 +43,30 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    answer(Call),
-    _ = flush_dtmf(Call),
-    P = get_hotdesking_profile(Data, Call),
-    ?LOG(" +++ ~p~n", [P]),
-    b_play(P#prompts.good_morning, Call),
-    CFPid ! {stop}.
+    H = get_hotdesk_profile(Data, Call),
+    Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
+    Endpoints = lists:foldl(fun(Device) -> cf_endpoint:build(Device, Call) end, [], Devices),
 
+    Bridge = bridge_to_endpoints(Endpoints, 2000, Call),
+    %wait_for_unbridge(),
+    case wh_json:get_value(<<"action">>, Data) of
+	<<"bridge">> ->
+
+        <<"login">> ->
+            answer(Call),
+            CFPid ! {stop};
+        <<"logout">> ->
+            answer(Call),
+            CFPid ! {stop};
+        _ ->
+            CFPid ! {continue}
+    end.
+
+login(Data, Call) ->
+    ok.
+
+logout(Data, Call) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -55,26 +75,63 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec(get_hotdesking_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #hotdesking_profile{}).
-get_hotdesking_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
+-spec(get_hotdesk_profile/2 :: (Data :: json_object(), Call :: #cf_call{}) -> #hotdesk_profile{}).
+get_hotdesk_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
     Id = wh_json:get_value(<<"id">>, Data, <<"undefined">>),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             ?LOG("loaded hotdesking profile ~s", [Id]),
-            Default = #hotdesking_profile{},
             CheckIfOwner = ((undefined =:= LastAct) orelse (cf_device =:= LastAct)),
-            #hotdesking_profile{hotdesking_id = Id
-                     ,pin =
-                         whistle_util:to_binary(wh_json:get_value(<<"pin">>, JObj, <<>>))
-                     ,require_pin =
-                         whistle_util:is_true(wh_json:get_value(<<"require_pin">>, JObj, false))
-                     ,check_if_owner =
-                         whistle_util:is_true(wh_json:get_value(<<"check_if_owner">>, JObj, CheckIfOwner))
-                     ,owner_id =
-                         wh_json:get_value(<<"owner_id">>, JObj)
+            #hotdesking_profile{
+                     hotdesk_id = wh_util:to_binary(wh_json:get_value(<<"id">>, JObj, <<>>))
+                     ,pin = wh_util:to_binary(wh_json:get_value(<<"pin">>, JObj, <<>>))
+                     ,require_pin = wh_util:is_true(wh_json:get_value(<<"require_pin">>, JObj, false))
+                     ,check_if_owner = wh_util:is_true(wh_json:get_value(<<"check_if_owner">>, JObj, CheckIfOwner))
+                     ,owner_id = ReqUser
+                     ,keep_logged_elsewhere = wh_util:to_binary(wh_json:get_value(<<"keep_logged_elsewhere">>, JObj, <<>>))
                     };
         {error, R} ->
             ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
             #hotdesking_profile{}
     end.
 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempts to bridge to the endpoints created to reach this device
+%% @end
+%%--------------------------------------------------------------------
+-spec bridge_to_endpoints/3 :: (Endpoints, Timeout, Call) -> cf_api_bridge_return() when
+      Endpoints :: json_objects(),
+      Timeout :: binary(),
+      Call :: #cf_call{}.
+bridge_to_endpoints(Endpoints, Timeout, Call) ->
+    IgnoreEarlyMedia = ignore_early_media(Endpoints),
+    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"single">>, IgnoreEarlyMedia, Call) of
+        {ok, _} ->
+            ?LOG("bridged to endpoint"),
+            wait_for_unbridge();
+        {fail, Reason}=Fail ->
+            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
+            Fail;
+        {error, R}=Error ->
+            ?LOG("failed to bridge to endpoint ~w", [R]),
+            Error
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine if we should ignore early media
+%% @end
+%%--------------------------------------------------------------------
+-spec ignore_early_media/1 :: (Endpoints) -> binary() when
+      Endpoints :: json_objects().
+ignore_early_media(Endpoints) ->
+    Ignore = lists:foldr(fun(Endpoint, Acc) ->
+                                 wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
+                                     or Acc
+                         end, false, Endpoints),
+    wh_util:to_binary(Ignore).
