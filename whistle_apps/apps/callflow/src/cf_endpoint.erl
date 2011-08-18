@@ -123,7 +123,9 @@ create_endpoint(Endpoint, Properties, #cf_call{request_user=ReqUser, inception=I
             ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Media)}
             ,{<<"SIP-Headers">>, SIPHeaders}
-            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Endpoint-ID">>, EndpointId}]}}
+            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Endpoint-ID">>, EndpointId}
+						   ,{<<"Owner-ID">>, OwnerId}
+						  ]}}
            ],
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined ]}.
 
