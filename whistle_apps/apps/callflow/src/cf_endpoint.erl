@@ -59,13 +59,22 @@ build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
       Properties :: json_object(),
       Call :: #cf_call{}.
 get_endpoints(EndpointId, Properties, #cf_call{account_db=Db}=Call) ->
+    Fwd = cf_attributes:call_forward(EndpointId, Call),
     case couch_mgr:open_doc(Db, EndpointId) of
         {ok, Endpoint} ->
-            case cf_attributes:call_forward(EndpointId, Call) of
-                undefined ->
+            case {Fwd, wh_json:is_false(<<"substitute">>, Fwd)} of
+                %% if the call forward object is undefined then there is no fwd'n
+                {undefined, _} ->
                     {ok, [create_endpoint(Endpoint, Properties, Call)]};
-                Fwd ->
-                    {ok, [create_call_fwd_endpoint(Endpoint, Fwd, Properties, Call)]}
+                %% if the call forwarding was not undefined (see above) and substitute is
+                %% not explicitly set to false then only ring the fwd'd number
+                {_, false} ->
+                    {ok, [create_call_fwd_endpoint(Endpoint, Fwd, Properties, Call)]};
+                %% if the call forwarding was not undefined (see above) and substitute is
+                %% explicitly set to false then ring the fwd'd number and the device
+                {_, true} ->
+                    {ok, [create_call_fwd_endpoint(Endpoint, Fwd, Properties, Call)
+                          ,create_endpoint(Endpoint, Properties, Call)]}
             end;
         {error, Reason}=E ->
             ?LOG("failed to load endpoint ~s, ~w", [EndpointId, Reason]),
