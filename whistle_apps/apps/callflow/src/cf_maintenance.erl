@@ -218,8 +218,10 @@ try_move_vm_attachment(Attachment, Msg, Box, Db) ->
              ,(wh_util:to_binary(M))/binary, $-, (wh_util:to_binary(D))/binary, $-, (wh_util:to_binary(Y))/binary
              ,$ , (wh_util:to_binary(H))/binary, $:, (wh_util:to_binary(I))/binary, $:, (wh_util:to_binary(S))/binary>>,
     Props = [{<<"name">>, Name}
-             ,{<<"description">>, Id}
-             ,{<<"media_type">>, <<"mp3">>}
+             ,{<<"description">>, <<"voicemail message media">>}
+             ,{<<"source_type">>, <<"voicemail">>}
+             ,{<<"source_id">>, Id}
+             ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"private_media">>}]),
     {ok, Media} = couch_mgr:save_doc(Db, Doc),
