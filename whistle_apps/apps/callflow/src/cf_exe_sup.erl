@@ -41,6 +41,7 @@ start_link() ->
       Call :: #cf_call{},
       Flow :: json_object().
 start_proc(Call, Flow) ->
+    io:format("start new process ~p~n", [Call]),
     supervisor:start_child(?MODULE, [Call, Flow]).
 
 %% ===================================================================
