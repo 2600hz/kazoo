@@ -21,14 +21,12 @@
 %% the latest version.
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_voicemail/0:: () -> done | error.
+-spec migrate_voicemail/0:: () -> [done | error,...].
 -spec migrate_voicemail/1 :: (Account) -> done | error when
       Account :: binary().
 
 migrate_voicemail() ->
-    lists:foreach(fun(Account) ->
-                          migrate_voicemail(Account)
-                  end, whapps_util:get_all_accounts(raw)).
+    [ migrate_voicemail(Account) || Account <- whapps_util:get_all_accounts(raw) ].
 
 migrate_voicemail(Account) ->
     Db = whapps_util:get_db_name(Account, encoded),
