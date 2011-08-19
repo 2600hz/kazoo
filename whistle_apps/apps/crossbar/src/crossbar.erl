@@ -12,7 +12,7 @@
 
 -export([start_link/0, stop/0]).
 
--export([refresh/0]).
+-export([refresh/0, refresh/1]).
 
 -define(ACCOUNT_AGG_DB, <<"accounts">>).
 -define(ACCOUNT_AGG_VIEW_FILE, <<"views/accounts.json">>).
@@ -83,6 +83,9 @@ ensure_started(App) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> started.
+-spec refresh/1 :: (Account) -> ok when
+      Account :: binary() | string().
+
 refresh() ->
     spawn(fun() ->
                   couch_mgr:db_create(?SIP_AGG_DB),
@@ -90,9 +93,14 @@ refresh() ->
                   couch_mgr:revise_doc_from_file(?ACCOUNT_AGG_DB, crossbar, ?ACCOUNT_AGG_VIEW_FILE),
                   lists:foreach(fun(AccountDb) ->
                                         timer:sleep(2000),
-                                        couch_mgr:revise_docs_from_folder(AccountDb, crossbar, "account"),
-                                        whapps_util:replicate_from_account(AccountDb, ?ACCOUNT_AGG_DB, ?ACCOUNT_AGG_FILTER),
-                                        whapps_util:replicate_from_account(AccountDb, ?SIP_AGG_DB, ?SIP_AGG_FILTER)
+                                        refresh(AccountDb)
                                 end, whapps_util:get_all_accounts())
           end),
     started.
+
+refresh(Account) ->
+    AccountDb = whapps_util:get_db_name(Account, encoded),
+    couch_mgr:revise_docs_from_folder(AccountDb, crossbar, "account"),
+    whapps_util:replicate_from_account(AccountDb, ?ACCOUNT_AGG_DB, ?ACCOUNT_AGG_FILTER),
+    whapps_util:replicate_from_account(AccountDb, ?SIP_AGG_DB, ?SIP_AGG_FILTER),
+    ok.
