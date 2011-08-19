@@ -58,7 +58,7 @@ start_link() ->
 init([]) ->
     ?LOG_SYS("starting new callflow responder"),
     ?LOG("ensuring callflow views exist in all accounts"),
-    whapps_util:revise_whapp_views_in_accounts(callflow),
+    spawn(fun() -> whapps_util:revise_whapp_views_in_accounts(callflow) end),
     {ok, #state{self=self()}, 0}.
 
 %%------------------------------------------------------------------------------

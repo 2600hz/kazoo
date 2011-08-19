@@ -37,13 +37,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    case supervisor:start_link({local, ?MODULE}, ?MODULE, []) of
-        {ok, _}=Ok ->
-            crossbar:refresh(),
-            Ok;
-        Else ->
-            Else
-    end.
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %%--------------------------------------------------------------------
 %% @public
