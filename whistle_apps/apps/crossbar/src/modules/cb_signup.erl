@@ -221,7 +221,37 @@ handle_info(cleanup, State) ->
     cleanup_signups(State),
     {noreply, State};
 
-handle_info(timeout, #state{cleanup_timer=CurTRef}) ->
+handle_info(timeout, S) ->
+    {ok, State} = code_change(0, S, []),
+    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
+    {noreply, State#state{cleanup_timer=TRef}};
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
     timer:cancel(CurTRef),
     bind_to_crossbar(),
     couch_mgr:db_create(?SIGNUP_DB),
@@ -253,35 +283,6 @@ handle_info(timeout, #state{cleanup_timer=CurTRef}) ->
                     ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
                     #state{}
             end,
-    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
-    {noreply, State#state{cleanup_timer=TRef}};
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%%===================================================================

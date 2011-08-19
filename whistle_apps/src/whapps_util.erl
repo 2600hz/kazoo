@@ -79,6 +79,7 @@ get_db_name(AccountId, raw) ->
 -spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
                           couch_mgr:revise_doc_from_file(AccountDb, crossbar, File)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
@@ -92,6 +93,7 @@ update_all_accounts(File) ->
 -spec(revise_whapp_views_in_accounts/1 :: (App :: atom()) -> no_return()).
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
                           couch_mgr:revise_views_from_folder(AccountDb, App)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
@@ -104,14 +106,9 @@ revise_whapp_views_in_accounts(App) ->
 %%--------------------------------------------------------------------
 -spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
-    BaseReplicate = [{<<"target">>, TargetDb}
-                     ,{<<"filter">>, FilterDoc}
-                    ],
-    couch_mgr:db_create(TargetDb),
-    lists:foreach(fun(AccountDb) when TargetDb =/= AccountDb ->
-                          R = couch_mgr:db_replicate([{<<"source">>, AccountDb} | BaseReplicate]),
-                          ?LOG_SYS("replicate ~s to ~s using filter ~s returned ~s", [AccountDb, TargetDb, FilterDoc, element(1, R)]);
-		     (_) -> ok
+    lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
+                          replicate_from_account(AccountDb, TargetDb, FilterDoc)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
@@ -122,19 +119,26 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(replicate_from_account/3 :: (AccountDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
-replicate_from_account(AccountDb, TargetDb, FilterDoc) when AccountDb =/= TargetDb ->
-    BaseReplicate = [{<<"source">>, get_db_name(AccountDb, ?REPLICATE_ENCODING)}
-                     ,{<<"target">>, TargetDb}
-                     ,{<<"filter">>, FilterDoc}
-                    ],
-    couch_mgr:db_create(TargetDb),
-    ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(AccountDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
-    case couch_mgr:db_replicate(BaseReplicate) of
-	{ok, _}=OK -> ?LOG_SYS("replication succeeded"), OK;
-	{error, E}=Err -> ?LOG_SYS("replication failed with ~p", [E]), Err
-    end;
-replicate_from_account(_,_,_) -> {error, matching_dbs}.
-
+replicate_from_account(AccountDb, AccountDb, _) ->
+    ?LOG_SYS("requested to replicate from db ~s to self, skipping", [AccountDb]),
+    {error, matching_dbs};
+replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
+    ReplicateProps = [{<<"source">>, get_db_name(AccountDb, ?REPLICATE_ENCODING)}
+                      ,{<<"target">>, TargetDb}
+                      ,{<<"filter">>, FilterDoc}
+                      ,{<<"create_target">>, true}
+                     ],
+    try
+        case couch_mgr:db_replicate(ReplicateProps) of
+            {ok, _} ->
+                ?LOG_SYS("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
+            {error, _} ->
+                ?LOG_SYS("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
+        end
+    catch
+        _:_ ->
+            ?LOG_SYS("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

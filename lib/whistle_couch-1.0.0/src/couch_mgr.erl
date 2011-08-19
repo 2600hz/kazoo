@@ -166,13 +166,23 @@ revise_docs_from_folder(DbName, App, Folder) ->
 do_revise_docs_from_folder(_, []) ->
     ok;
 do_revise_docs_from_folder(DbName, [H|T]) ->
-    {ok, Bin} = file:read_file(H),
-    case ?MODULE:ensure_saved(DbName, mochijson2:decode(Bin)) of
-        {ok, _} ->
-            ?LOG_SYS("loaded view ~s into ~s", [H, DbName]),
-            do_revise_docs_from_folder(DbName, T);
-        {error, Reason} ->
-            ?LOG_SYS("failed to load view ~s into ~s, ~w", [H, DbName, Reason]),
+    try
+        {ok, Bin} = file:read_file(H),
+        JObj = mochijson2:decode(Bin),
+        timer:sleep(250),
+        case lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)) of
+            {ok, Rev} ->
+                ?LOG_SYS("update doc from file ~s in ~s", [H, DbName]),
+                save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj));
+            {error, not_found} ->
+                ?LOG_SYS("import doc from file ~s in ~s", [H, DbName]),
+                save_doc(DbName, JObj);
+            {error, Reason} ->
+                ?LOG_SYS("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
+        end,
+        do_revise_docs_from_folder(DbName, T)
+    catch
+        _:_ ->
             do_revise_docs_from_folder(DbName, T)
     end.
 
