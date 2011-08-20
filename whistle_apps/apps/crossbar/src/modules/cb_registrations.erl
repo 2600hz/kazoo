@@ -25,6 +25,7 @@
 -define(REG_VIEW_FILE, <<"views/registrations.json">>).
 -define(LOOKUP_ACCOUNT_REGS, <<"reg_doc/lookup_realm_user">>).
 -define(LOOKUP_ACCOUNT_USER_REALM, <<"reg_doc/realm_and_username">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -155,17 +156,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>,
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?REG_VIEW_FILE},
-    {noreply, State};
-
 handle_info(timeout, State) ->
     setup_couch(),
     bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "CB_REG(~p): Unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -210,8 +206,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.registrations">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.registrations">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.registrations">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.registrations">>).
 
 %%--------------------------------------------------------------------
 %% @private

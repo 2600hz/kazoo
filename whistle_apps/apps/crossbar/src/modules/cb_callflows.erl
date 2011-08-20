@@ -21,16 +21,10 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/callflows.json">>).
-
 -define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
 -define(FIXTURE_LIST, [<<"611.callflow.json">>]).
 
--define(AGG_DB, <<"callflows">>).
--define(AGG_FILTER, <<"callflows/export">>).
-
 -define(CB_LIST, <<"callflows/crossbar_listing">>).
-
 
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
@@ -149,9 +143,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD
 handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
     spawn(fun() ->
                   couch_mgr:revise_views_from_folder(DBName, callflow),
-                  import_fixtures(?FIXTURE_LIST, DBName)
+                  Pid ! {binding_result, true, []}
           end),
-    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -160,7 +153,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info (_Info, State) ->
@@ -430,46 +422,3 @@ create_metadata(Doc) ->
     lists:foldl(fun(Fun, JObj) ->
                          Fun(Doc, JObj)
                 end, ?EMPTY_JSON_OBJECT, Funs).
-
--spec import_fixtures/2 :: (Fixtures, DBName) -> [#cb_context{} | {error, no_file},...] when
-      Fixtures :: [binary(),...],
-      DBName :: binary().
-import_fixtures(Fixtures, DBName) ->
-    ?LOG_SYS("Importing fixtures into ~s", [DBName]),
-    Context = #cb_context{db_name=DBName},
-    [ import_fixture(Fixture, Context) || Fixture <- Fixtures].
-
--spec import_fixture/2 :: (Fixture, Context) -> #cb_context{} | {error, no_file} when
-      Fixture :: <<_:136>>, %% binary(), but with one fixture, this is to quiet Dialyzer.
-      Context :: #cb_context{}.
-import_fixture(Fixture, #cb_context{db_name=DBName}=Context) ->
-    Path = [code:priv_dir(crossbar), <<"/couchdb/fixtures/">>],
-    ?LOG_SYS("Read from ~s", [[Path, Fixture]]),
-    FixFile = list_to_binary([Path, Fixture]),
-    case filelib:is_regular(FixFile) of
-	true ->
-	    {ok, FixStr} = file:read_file(FixFile),
-	    ?LOG_SYS("Loaded fixture ~s", [FixStr]),
-	    JObj = mochijson2:decode(FixStr),
-
-	    DeviceFile = list_to_binary([Path, binary:replace(Fixture, <<"callflow">>, <<"device">>)]),
-	    ?LOG_SYS("Trying device file ~s", [DeviceFile]),
-	    JObj1 = case file:read_file(DeviceFile) of
-			{ok, Device} ->
-			    DevJObj = mochijson2:decode(Device),
-			    ?LOG_SYS("Set device id to ~s", [wh_json:get_value(<<"_id">>, DevJObj)]),
-			    wh_json:set_value([<<"flow">>, <<"data">>, <<"id">>], wh_json:get_value(<<"_id">>, DevJObj), JObj);
-			{error, _E} ->
-			    ?LOG_SYS("No corresponding device(~p), just update the realms", [_E]),
-			    JObj
-		    end,
-
-	    {ok, Realm} = whapps_util:get_realm_from_db(DBName),
-	    JObj2 = wh_json:set_value([<<"realms">>], [Realm], JObj1),
-	    ?LOG_SYS("Set realms to [~s]", [Realm]),
-
-	    crossbar_doc:save(Context#cb_context{doc=JObj2});
-	false ->
-	    ?LOG_SYS("File path doesn't point to a file"),
-	    {error, no_file}
-    end.

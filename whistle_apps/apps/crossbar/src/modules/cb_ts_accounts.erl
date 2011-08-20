@@ -24,10 +24,9 @@
 
 -define(SERVER, ?MODULE).
 
+-define(TS_DB, <<"ts">>).
 -define(VIEW_FILE, <<"views/ts_accounts.json">>).
 -define(CB_LIST, <<"ts_accounts/crossbar_listing">>).
-
--define(TS_DB, <<"ts">>).
 
 %%%===================================================================
 %%% API
