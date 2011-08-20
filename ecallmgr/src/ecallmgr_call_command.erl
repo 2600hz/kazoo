@@ -321,10 +321,15 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
       UUID :: binary(),
       AppName :: binary() | string(),
       Args :: binary() | string().
+send_cmd(Node, UUID, <<"hangup">>, _) ->
+    ?LOG("terminate call on node: ~p", [Node]),
+    freeswitch:api(Node, log, lists:flatten(io_lib:format("Notice log|~s|whistle terminating call", [UUID]))),
+    freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
 send_cmd(Node, UUID, AppName, Args) ->
     ?LOG("SendMsg: Node: ~p", [Node]),
     ?LOG("SendMsg: App: ~s", [AppName]),
     ?LOG("SendMsg: Args: ~s", [Args]),
+    freeswitch:api(Node, log, lists:flatten(io_lib:format("Notice log|~s|whistle executing ~s(~s)", [UUID, AppName, Args]))),
     freeswitch:sendmsg(Node, UUID, [
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", wh_util:to_list(AppName)}
