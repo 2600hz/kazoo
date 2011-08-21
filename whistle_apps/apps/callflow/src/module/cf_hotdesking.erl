@@ -186,15 +186,15 @@ do_login(Devices, #hotdesk{keep_logged_elsewhere=false, owner_id=OwnerId, prompt
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
-logout(_, #hotdesk{keep_logged_elsewhere=true}, #cf_call{authorizing_id=AId, account_db=Db}) ->
+logout(_, #hotdesk{keep_logged_elsewhere=true, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, AId) of
 	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, JObj));
 	{error, _} -> error
     end,
-    inform_user;
-logout(Devices, #hotdesk{keep_logged_elsewhere=false}, #cf_call{account_db=Db}) ->
+    b_play(Bye, Call);
+logout(Devices, #hotdesk{keep_logged_elsewhere=false, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
     lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, D)) end, Devices),
-    inform_user.
+    b_play(Bye, Call).
 
 %%--------------------------------------------------------------------
 %% @private
