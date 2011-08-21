@@ -207,7 +207,9 @@ create_call_fwd_endpoint(Endpoint, CallFwd, Properties, #cf_call{request_user=Re
             ,{<<"Endpoint-Leg-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Leg-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, SIP)}
-            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Authorizing-ID">>, EndpointId}] ++ CCV2}}
+            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Authorizing-ID">>, EndpointId}
+						   ,{<<"Owner-ID">>, OwnerId}
+						   | CCV2]}}
            ],
     {struct, [ KV || {_, V}=KV <- Prop, V =/= undefined ]}.
 
@@ -227,5 +229,5 @@ merge_sip_headers(AlertInfo, undefined) ->
     {struct, [{<<"Alert-Info">>, AlertInfo}]};
 merge_sip_headers(undefined, CustomHeaders) ->
     CustomHeaders;
-merge_sip_headers(AlertInfo, {struct, Params}) ->
-    {struct, Params ++ [{<<"Alert-Info">>, AlertInfo}]}.
+merge_sip_headers(AlertInfo, JObj) ->
+    wh_json:set_value(<<"Alert-Info">>, AlertInfo, JObj).

@@ -29,7 +29,6 @@
 
 -define(SERVER_CONF, [code:lib_dir(crossbar, priv), "/servers/servers.conf"]).
 
--define(VIEW_FILE, <<"views/servers.json">>).
 -define(CB_LIST, <<"servers/crossbar_listing">>).
 -define(VIEW_DEPLOY_ROLES, <<"servers/list_deployment_roles">>).
 
@@ -40,7 +39,8 @@
                 ,dev_role = <<"all_in_one">>
                 ,role_path_tmpl=undefined
                 ,databag_path_tmpl=undefined
-                ,databag_mapping=undefined}).
+                ,databag_mapping=undefined
+                ,delete_tmpl=undefined}).
 
 %%%===================================================================
 %%% API
@@ -203,13 +203,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context, permanent),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
+                  case crossbar_doc:delete(Context, permanent) of
+                      #cb_context{resp_status=success}=Context1 ->
+                          execute_delete_command(Context1, State),
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -217,32 +219,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, _) ->
-    bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
-    State = case file:consult(?SERVER_CONF) of
-                {ok, Terms} ->
-                    ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
-                    #state{data_bag_tmpl =
-                               compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
-                           ,databag_mapping =
-                               props:get_value(databag_mapping, Terms, [])
-                           ,databag_path_tmpl =
-                               compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
-                           ,role_tmpl =
-                               compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
-                           ,role_path_tmpl =
-                               compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
-                           ,prod_deploy_tmpl =
-                               compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
-                           ,dev_deploy_tmpl =
-                               compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
-                           ,dev_role =
-                               wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
-                          };
-                {error, _} ->
-                    ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
-                    #state{}
-            end,
+    {ok, State} = code_change(0, undefined, []),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -270,8 +247,34 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
+code_change(_OldVsn, _State, _Extra) ->
     bind_to_crossbar(),
+    State = case file:consult(?SERVER_CONF) of
+                {ok, Terms} ->
+                    ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
+                    #state{data_bag_tmpl =
+                               compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
+                           ,databag_mapping =
+                               props:get_value(databag_mapping, Terms, [])
+                           ,databag_path_tmpl =
+                               compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
+                           ,role_tmpl =
+                               compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
+                           ,role_path_tmpl =
+                               compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
+                           ,prod_deploy_tmpl =
+                               compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
+                           ,dev_deploy_tmpl =
+                               compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
+                           ,dev_role =
+                               wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
+                           ,delete_tmpl =
+                               compile_template(props:get_value(delete_tmpl, Terms), cb_server_delete_tmpl)
+                          };
+                {error, _} ->
+                    ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
+                    #state{}
+            end,
     {ok, State}.
 
 %%%===================================================================
@@ -291,8 +294,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.servers">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.servers">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.servers">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -460,6 +462,27 @@ normalize_view_results(JObj, Acc) ->
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
 is_valid_doc(JObj) ->
     {(wh_json:get_value(<<"hostname">>, JObj) =/= undefined), [<<"hostname">>]}.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Optional command template to execute on the deletion of a server
+%% @end
+%%--------------------------------------------------------------------
+-spec execute_delete_command/2 :: (Context, State) -> ok when
+      Context :: #cb_context{},
+      State :: #state{}.
+execute_delete_command(_, #state{delete_tmpl=undefined}) ->
+    ?LOG("no delete template defined"),
+    ok;
+execute_delete_command(Context, #state{delete_tmpl=DeleteTmpl}=State) ->
+    Props = template_props(Context, State),
+    {ok, C} = DeleteTmpl:render(Props),
+    Cmd = binary_to_list(iolist_to_binary(C)),
+    ?LOG("executing delete template: ~s", [Cmd]),
+    os:cmd(Cmd),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private

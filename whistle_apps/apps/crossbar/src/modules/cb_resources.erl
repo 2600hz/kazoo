@@ -23,8 +23,6 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(VIEW_FILE, <<"views/resources.json">>).
 -define(CB_LIST, <<"resources/crossbar_listing">>).
 
 %%%===================================================================
@@ -147,9 +145,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
-    {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
@@ -157,7 +152,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -203,8 +197,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.resources">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.resources">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.resources">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.resources">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.resources">>).
 
 %%--------------------------------------------------------------------
 %% @private

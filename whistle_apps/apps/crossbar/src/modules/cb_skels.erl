@@ -24,7 +24,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/skels.json">>).
 -define(CB_LIST, <<"skels/crossbar_listing">>).
 -define(GROUP_BY_SKELNAME, <<"skels/group_by_skelname">>).
 
@@ -144,17 +143,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.skels">>, [RD, Co
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
-    {noreply, State};
-
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -200,8 +194,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.skels">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.skels">>).
 
 %%--------------------------------------------------------------------
 %% @private

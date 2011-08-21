@@ -24,7 +24,6 @@
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
--define(VIEW_FILE, <<"views/media.json">>).
 
 -define(MEDIA_MIME_TYPES, ["audio/x-wav", "audio/mpeg", "application/octet-stream"]).
 
@@ -227,22 +226,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
     end,
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
-    whapps_util:replicate_from_accounts(<<"media_files">>, <<"media/export">>),
-    {noreply, State};
-
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
-    whapps_util:update_all_accounts(?VIEW_FILE),
     bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -287,8 +279,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.media">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.media">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.media">>).
 
 %%--------------------------------------------------------------------
 %% @private

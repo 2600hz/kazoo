@@ -25,8 +25,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/devices.json">>).
-
 -define(DEVICES_LIST, <<"devices/listing_by_id">>).
 -define(FIXTURE_LIST, [<<"611.device.json">>]). %% fixtures to load into each account DB
 
@@ -157,20 +155,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, 
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() -> import_fixtures(?FIXTURE_LIST, DBName) end),
-    Pid ! {binding_result, true, ?VIEW_FILE},
-    {noreply, State};
-
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?AGG_DB),
-    whapps_util:update_all_accounts(?VIEW_FILE),
-    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -216,8 +206,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.devices">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.devices">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -353,28 +342,3 @@ normalize_view_results(JObj, Acc) ->
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
-
--spec import_fixtures/2 :: (Fixtures, DBName) -> list(#cb_context{} | tuple(error, no_file)) when
-      Fixtures :: [<<_:120>>,...],
-      DBName :: binary().
-import_fixtures(Fixtures, DBName) ->
-    ?LOG_SYS("Importing fixtures into ~s", [DBName]),
-    Context = #cb_context{db_name=DBName},
-    [ import_fixture(Fixture, Context) || Fixture <- Fixtures].
-
--spec import_fixture/2 :: (Fixture, Context) -> #cb_context{} | tuple(error, no_file) when
-      Fixture :: <<_:120>>,
-      Context :: #cb_context{}.
-import_fixture(Fixture, Context) ->
-    Path = list_to_binary([code:priv_dir(crossbar), <<"/couchdb/fixtures/">>, Fixture]),
-    ?LOG_SYS("Read from ~s", [Path]),
-    case filelib:is_regular(Path) of
-	true ->
-	    {ok, FixStr} = file:read_file(Path),
-	    ?LOG_SYS("Saving fixture from ~s: ~s", [Path, FixStr]),
-	    JObj = mochijson2:decode(FixStr),
-	    crossbar_doc:save(Context#cb_context{doc=JObj});
-	false ->
-	    ?LOG_SYS("File path doesn't point to a file"),
-	    {error, no_file}
-    end.

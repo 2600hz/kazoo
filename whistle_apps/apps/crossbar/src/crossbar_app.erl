@@ -1,21 +1,29 @@
+%%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010 James Aimonetti
 %%% @doc
-%%% 
+%%%
 %%% @end
-%%% Created :  Tue, 07 Dec 2010 19:26:22 GMT: James Aimonetti <james@2600hz.org>
+%%% Created :  7 Dec 2011 by James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 -module(crossbar_app).
 
 -behaviour(application).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 %% Application callbacks
 -export([start/2, stop/1]).
 
-%% ===================================================================
-%% Application callbacks
-%% ===================================================================
-
--spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec start/2 :: (StartType, StartArgs) -> tuple(ok, pid()) | tuple(error, startlink_err()) when
+      StartType :: term(),
+      StartArgs :: term().
 start(_StartType, _StartArgs) ->
     case crossbar:start_link() of
 	{ok, P} -> {ok, P};
@@ -23,5 +31,13 @@ start(_StartType, _StartArgs) ->
 	{error, _}=E -> E
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application stop behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec stop/1 :: (State) -> ok when
+      State :: term().
 stop(_State) ->
     ok.
