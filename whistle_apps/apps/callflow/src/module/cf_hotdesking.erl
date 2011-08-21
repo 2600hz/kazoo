@@ -13,7 +13,10 @@
 -export([handle/2]).
 
 -record(prompts, {
-	  good_morning = <<"/system_media/ivr-good_morning">>
+          enter_password = <<"/system_media/vm-enter_pass">>
+          ,invalid_login = <<"/system_media/vm-fail_auth">>
+          ,abort_login = <<"/system_media/vm-abort">>
+          ,enter_hotdesk = <<"/system_media/vm-enter_id">>
 	 }).
 
 -import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
@@ -95,20 +98,13 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% 3) Is the pin required?
 %% 3y) Is the pin valid?
 %% 3n) Login
-%%
-%% Do Login process
-%% 1) Should the user remain logged in elsewhere?
-%% 2y) Change the owner_id of the authorizing object
-%% 2n) Remove this owner_id from any devices, then set the auth'n object
-%% 3) Infrom the user
-%% @end
 %%--------------------------------------------------------------------
 
 -spec login/3 :: (Devices, H, Call) -> no_return() when
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
--spec login/4 :: (Devices, H, Call) -> no_return() when
+-spec login/4 :: (Devices, H, Call, Loop) -> no_return() when
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{},
@@ -128,9 +124,10 @@ login(Devices, #hotdesk{hotdesk_id=undefined, prompts=#prompts{enter_hotdesk=Ent
     %% if the callflow did not define the owner_id, ask for hotdesk id and load hotdesk profile from hotdesk_id
     ?LOG("requesting hotdesk id"),
     {ok, HId} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterHId, <<"1">>, Call),
-    H#hotdesk.hotdesk_id = HId,
-    login(Devices, H, Call, Loop);
-login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompt=#prompt{enter_password=EnterPass}=H}, Call, Loop) ->
+    NewH = H#hotdesk{hotdesk_id = HId},
+    login(Devices, NewH, Call, Loop);
+login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}=H}, Call, Loop) 
+  when HId =/= undefined orelse HId =/= <<>> ->
     try
         %% Request the pin number from the caller but crash if it doesnt match
 	?LOG("Matching PIN for this hotdesk_id as required"),
@@ -141,29 +138,36 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompt=#promp
             ?LOG("invalid mailbox login ~w", [R]),
             {ok, _} = b_play(InvalidLogin, Call),
             login(Devices, H, Call, Loop+1)
-    end.
-login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, Loop) ->
-    ?LOG("caller is the owner of this mailbox, and requires no pin"),
+    end;
+login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
+  when HId =/= undefined orelse HId =/= <<>> ->
     do_login(Devices, H, Call).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Do Login process
+%% 1) Should the user remain logged in elsewhere?
+%% 2y) Change the owner_id of the authorizing object
+%% 2n) Remove this owner_id from any devices, then set the auth'n object
+%% 3) Infrom the user
+%% @end
+%%--------------------------------------------------------------------
+-spec do_login/3 :: (Devices, H, Call) -> no_return() when
+      Devices :: list(),
+      H :: #hotdesk{},
+      Call :: #cf_call{}.
+do_login(_, #hotdesk{keep_logged_elsewhere=true, owner_id=OwnerId}, #cf_call{authorizing_id=AId, account_db=Db}) ->
+    case couch_mgr:open_doc(Db, AId) of
+	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
+	{error, _} -> error
+    end,
+    inform_user;
+do_login(Devices, #hotdesk{keep_logged_elsewhere=false, owner_id=OwnerId}, #cf_call{account_db=Db}) ->
+    lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, D)) end, Devices),
+    inform_user.
 
-check_mailbox(#mailbox{exists=false}=Box, Call, Loop) ->
-    %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
-    find_mailbox(Box, Call, Loop);
-check_mailbox(#mailbox{require_pin=false, owner_id=OwnerId}=Box, #cf_call{owner_id=OwnerId}=Call, _) when
-      is_binary(OwnerId), OwnerId =/= <<>> ->
-    %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
-    %% right to the main menu
-    ?LOG("caller is the owner of this mailbox, and requires no pin"),
-    main_menu(Box, Call);
-check_mailbox(#mailbox{prompts=Prompts, pin = <<>>, exists=true}, Call, _) ->
-    %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
-    %% then terminate this call.
-    ?LOG("attempted to sign into a mailbox with no pin"),
-    b_play(Prompts#prompts.no_access, Call);
-check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
-		       ,pin=Pin}=Box, Call, Loop) ->
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -181,8 +185,15 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
-logout(Devices, H, Call) ->
-    ok.
+logout(_, #hotdesk{keep_logged_elsewhere=true}, #cf_call{authorizing_id=AId, account_db=Db}) ->
+    case couch_mgr:open_doc(Db, AId) of
+	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, JObj));
+	{error, _} -> error
+    end,
+    inform_user;
+logout(Devices, #hotdesk{keep_logged_elsewhere=false}, #cf_call{account_db=Db}) ->
+    lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, D)) end, Devices),
+    inform_user.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,41 +221,10 @@ get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
         {error, R} ->
             ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
             #hotdesk{}
-    end.
+    end;
 get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}) ->
     #hotdesk{}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Find user from its hotdesk ID
-%% @end
-%%--------------------------------------------------------------------
--spec find_user/4 :: (Devices, H, Call, Loop) -> no_return() when
-      Devices :: list(),
-      H :: #hotdesk{},
-      Call :: #cf_call{},
-      Loop :: non_neg_integer().
-find_user(Devices, #hotdesk{prompts=#prompts{enter_hotdesk=EnterH, enter_password=EnterPwd, invalid_login=Invalid}}=Box
-             ,#cf_call{account_db=Db}=Call, Loop) ->
-    ?LOG("requesting mailbox number to check"),
-    {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, Call),
-    BoxNum = try wh_util:to_integer(Mailbox) catch _:_ -> 0 end,
-
-    %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
-    %% caller is the owner, and the pin is not required then we skip requesting the pin
-    case couch_mgr:get_results(Db, {<<"vmboxes">>, <<"listing_by_mailbox">>}, [{<<"key">>, BoxNum}]) of
-        {ok, [JObj]} ->
-            ReqBox = get_mailbox_profile({struct, [{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]}, Call),
-            check_mailbox(ReqBox, Call, Loop);
-        _ ->
-            %% we dont want to alert the caller that the mailbox number doesnt match or people could use
-            %% that to determine the mailboxs on this system then try brute force to guess the pwd.
-            ?LOG("invalid mailbox ~s, faking user out...", [Mailbox]),
-            b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPwd, <<"1">>, Call),
-            _ = b_play(Invalid, Call),
-            check_mailbox(Box, Call, Loop + 1)
-    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
