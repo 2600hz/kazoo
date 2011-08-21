@@ -59,25 +59,26 @@ init(Parent, #cf_call{authorizing_id=AuthId}=Call, Flow) ->
 -spec next/2 :: (Call, Flow) -> no_return() when
       Call :: #cf_call{},
       Flow :: json_object().
-next(Call, Flow) ->
+next(#cf_call{last_action=LastAction}=Call, Flow) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
-    try
-        CF_Module = wh_util:to_atom(Module, true),
-        Pid = spawn_link(CF_Module, handle, [Data, Call]),
-        ?LOG("moving to action ~s", [Module]),
-        _ = wait(Call#cf_call{last_action=CF_Module}, Flow, Pid)
-    catch
-        _:_ ->
-            ?LOG("unknown action ~s, skipping", [Module]),
-            self() ! {continue, <<"_">>},
-            _ = wait(Call, Flow, undefined)
-    end.
+    {Pid, Action} =
+        try
+            CF_Module = wh_util:to_atom(Module, true),
+            ?LOG("moving to action ~s", [Module]),
+            {spawn_link(CF_Module, handle, [Data, Call]), CF_Module}
+        catch
+            _:_ ->
+                ?LOG("unknown action ~s, skipping", [Module]),
+                self() ! {continue, <<"_">>},
+                {undefined, LastAction}
+        end,
+    wait(Call#cf_call{last_action=Action}, Flow, Pid).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Waits for the module handling the current call flow node to  reply,
+%% Waits for the module handling the current call flow node to reply,
 %% unexpectly die, or timeout and advance the call flow accordingly
 %% @end
 %%--------------------------------------------------------------------
@@ -86,78 +87,103 @@ next(Call, Flow) ->
       Flow :: json_object(),
       Pid :: undefined | pid().
 wait(Call, Flow, Pid) ->
-   receive
-       {'EXIT', Pid, Reason} when Reason =/= normal ->
-           ?LOG("action ~w died unexpectedly, ~p", [Pid, Reason]),
-           self() ! {continue, <<"_">>},
-           wait(Call, Flow, Pid);
-       {continue} ->
-           self() ! {continue, <<"_">>},
-           wait(Call, Flow, Pid);
-       {continue, Key} ->
-           ?LOG("continuing to child ~s", [Key]),
-           case wh_json:get_value([<<"children">>, Key], Flow) of
-               undefined when Key =:= <<"_">> ->
-                   ?LOG_END("wild card child node doesn't exist, we are lost.."),
-                   cf_call_command:hangup(Call);
-               undefined ->
-                   ?LOG("requested child does not exist, trying wild card", [Key]),
-                   self() ! {continue},
-                   wait(Call, Flow, Pid);
-               ?EMPTY_JSON_OBJECT ->
-                   ?LOG_END("unexpected end of callflow"),
-                   cf_call_command:hangup(Call);
-               NewFlow ->
-                   next(Call, NewFlow)
-           end;
-       {get_branch_keys} ->
-           {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
-           Pid ! {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
-           wait(Call, Flow, Pid);
-       {get_branch_keys, all} ->
-           {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
-           Pid ! {branch_keys, proplists:get_keys(Children)},
-           wait(Call, Flow, Pid);
-       {attempt} when not is_pid(Pid) ->
-           self() ! {continue, <<"_">>},
-           wait(Call, Flow, Pid);
-       {attempt, Key} when not is_pid(Pid) ->
-           self() ! {continue, Key},
-           wait(Call, Flow, Pid);
-       {attempt} ->
-           self() ! {attempt, <<"_">>},
-           wait(Call, Flow, Pid);
-       {attempt, Key} ->
-           ?LOG("attempting child ~s", [Key]),
-           case wh_json:get_value([<<"children">>, Key], Flow) of
-               undefined ->
-                   Pid ! {attempt_resp, {error, undefined}},
-                   wait(Call, Flow, Pid);
-               ?EMPTY_JSON_OBJECT ->
-                   Pid ! {attempt_resp, {error, empty}},
-                   wait(Call, Flow, Pid);
-               NewFlow ->
-                   Pid ! {attempt_resp, ok},
-                   next(Call, NewFlow)
-           end;
-       {branch, NewFlow} ->
-           ?LOG("callflow has been branched"),
-           next(Call, NewFlow);
-       {stop} ->
-           ?LOG_END("execution has been stopped");
-       {_, #amqp_msg{props = Props, payload = Payload}} when
-             Props#'P_basic'.content_type == <<"application/json">> ->
-           JObj = mochijson2:decode(Payload),
-           is_pid(Pid) andalso Pid ! {amqp_msg, JObj},
-           wait(Call, Flow, Pid);
-       _Msg ->
-           %% dont let the mailbox grow unbounded if
-           %%   this process hangs around...
-           wait(Call, Flow, Pid)
-   after
-       360000 ->
-           ?LOG_SYS("no call events received after 3600 seconds, shuting down")
-   end.
+    receive
+        {'EXIT', Pid, Reason} when Reason =/= normal ->
+            ?LOG("action ~w died unexpectedly, ~p", [Pid, Reason]),
+            self() ! {continue, <<"_">>},
+            wait(Call, Flow, Pid);
+        {continue} ->
+            self() ! {continue, <<"_">>},
+            wait(Call, Flow, Pid);
+        {continue, Key} ->
+            ?LOG("continuing to child ~s", [Key]),
+            case wh_json:get_value([<<"children">>, Key], Flow) of
+                undefined when Key =:= <<"_">> ->
+                    ?LOG_END("wild card child node doesn't exist, we are lost.."),
+                    cf_call_command:hangup(Call);
+                undefined ->
+                    ?LOG("requested child does not exist, trying wild card", [Key]),
+                    self() ! {continue},
+                    wait(Call, Flow, Pid);
+                ?EMPTY_JSON_OBJECT ->
+                    ?LOG_END("unexpected end of callflow"),
+                    cf_call_command:hangup(Call);
+                NewFlow ->
+                    next(Call, NewFlow)
+            end;
+        {get_branch_keys} ->
+            {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
+            Pid ! {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
+            wait(Call, Flow, Pid);
+        {get_branch_keys, all} ->
+            {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
+            Pid ! {branch_keys, proplists:get_keys(Children)},
+            wait(Call, Flow, Pid);
+        {attempt} when not is_pid(Pid) ->
+            self() ! {continue, <<"_">>},
+            wait(Call, Flow, Pid);
+        {attempt, Key} when not is_pid(Pid) ->
+            self() ! {continue, Key},
+            wait(Call, Flow, Pid);
+        {attempt} ->
+            self() ! {attempt, <<"_">>},
+            wait(Call, Flow, Pid);
+        {attempt, Key} ->
+            ?LOG("attempting child ~s", [Key]),
+            case wh_json:get_value([<<"children">>, Key], Flow) of
+                undefined ->
+                    Pid ! {attempt_resp, {error, undefined}},
+                    wait(Call, Flow, Pid);
+                ?EMPTY_JSON_OBJECT ->
+                    Pid ! {attempt_resp, {error, empty}},
+                    wait(Call, Flow, Pid);
+                NewFlow ->
+                    Pid ! {attempt_resp, ok},
+                    next(Call, NewFlow)
+            end;
+        {branch, NewFlow} ->
+            ?LOG("callflow has been branched"),
+            next(Call, NewFlow);
+        {stop} ->
+            ?LOG_END("execution has been stopped"),
+            wait(Call, Flow, Pid);
+        %%           cf_call_command:hangup(Call)
+        {_, #amqp_msg{props = Props, payload = Payload}} when
+              Props#'P_basic'.content_type == <<"application/json">> ->
+            JObj = mochijson2:decode(Payload),
+            case whapps_util:get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
+                    io:format("~p~n", [io_lib:format("/tmp/~s.log", [get(callid)])]),
+                    R = file:write_file(io_lib:format("/tmp/~s.log", [get(callid)]),
+                               io_lib:fwrite("~p~n~n", [JObj]), [append]),
+                    io:format("~p~n", [R]);
+                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
+                    io:format("~p~n", [io_lib:format("/tmp/~s.log", [get(callid)])]),
+                    file:write_file(io_lib:format("/tmp/~s.log", [get(callid)]),
+                                    io_lib:fwrite("~p~n~n", [JObj]), [append]);
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">> } ->
+                    case wh_json:get_value(<<"Application-Name">>, JObj) of
+                        <<"bridge">> ->
+                            file:write_file(io_lib:format("/tmp/~s.log", [get(callid)]),
+                                            io_lib:fwrite("~p~n~n", [JObj]), [append]);
+                        _ ->
+                            ok
+                    end;
+                _ ->
+                    ok
+            end,
+            is_pid(Pid) andalso Pid ! {amqp_msg, JObj},
+            wait(Call, Flow, Pid);
+        _Msg ->
+            %% dont let the mailbox grow unbounded if
+            %%   this process hangs around...
+            wait(Call, Flow, Pid)
+    after
+        60000 ->
+            io:format("terminating exec ~s~n", [self()]),
+            ?LOG_SYS("no call events received after 3600 seconds, shuting down")
+%%            cf_call_command:hangup(Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -187,6 +213,7 @@ call_info(#cf_call{flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=
                ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
     put(callid, CallId),
     ?LOG_START("executing callflow ~s", [FlowId]),
+    io:format("started exec ~p fpr ~s~n", [self(), Request]),
     ?LOG("request ~s", [Request]),
     ?LOG("to ~s", [To]),
     ?LOG("from ~s", [From]),

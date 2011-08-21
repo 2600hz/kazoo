@@ -323,6 +323,7 @@ send_ctl_event(_, _, _, _) -> ok.
 publish_msg(_, _, []) -> ok;
 publish_msg(Node, UUID, Prop) when is_list(Prop) ->
     EvtName = props:get_value(<<"Event-Name">>, Prop),
+    CallState = props:get_value(<<"Channel-State">>, Prop),
 
     ok = case EvtName =:= ?HANGUP_EVENT_NAME of
 	     true -> spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Prop) end), ok;
@@ -333,7 +334,7 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
              | props:delete(<<"Application-Response">>, Prop)],
 
     case lists:member(EvtName, ?FS_EVENTS) of
-	true ->
+	true when CallState =/= <<"CS_RESET">> ->
             AppName = props:get_value(<<"Application">>, Prop),
             ?LOG("published ~s call event for ~s", [EvtName, AppName]),
 
@@ -351,8 +352,8 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
 
 	    {ok, JSON} = wh_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(UUID, JSON, event);
-	false ->
-	    ?LOG("skipped event ~s", [EvtName])
+	_ ->
+	    ?LOG("skipped event ~s in state ~s", [EvtName, CallState])
     end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
