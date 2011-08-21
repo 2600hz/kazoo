@@ -17,6 +17,7 @@
           ,invalid_login = <<"/system_media/vm-fail_auth">>
           ,abort_login = <<"/system_media/vm-abort">>
           ,enter_hotdesk = <<"/system_media/vm-enter_id">>
+	  ,goodbye = <<"/system_media/vm-goodbye">>
 	 }).
 
 -import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
@@ -157,15 +158,15 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
-do_login(_, #hotdesk{keep_logged_elsewhere=true, owner_id=OwnerId}, #cf_call{authorizing_id=AId, account_db=Db}) ->
+do_login(_, #hotdesk{keep_logged_elsewhere=true, owner_id=OwnerId,prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, AId) of
 	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
 	{error, _} -> error
     end,
-    inform_user;
-do_login(Devices, #hotdesk{keep_logged_elsewhere=false, owner_id=OwnerId}, #cf_call{account_db=Db}) ->
+    b_play(Bye, Call);
+do_login(Devices, #hotdesk{keep_logged_elsewhere=false, owner_id=OwnerId, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
     lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, D)) end, Devices),
-    inform_user.
+    b_play(Bye, Call).
 
 
 %%--------------------------------------------------------------------
@@ -223,6 +224,7 @@ get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
             #hotdesk{}
     end;
 get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}) ->
+    %% get user id from hotdesk id
     #hotdesk{}.
 
 %%--------------------------------------------------------------------
