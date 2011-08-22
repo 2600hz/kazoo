@@ -622,7 +622,9 @@ build_loopback_request(JObj, Number, Q) ->
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               %% TODO: Do not enable this feature until WHISTLE-408 is completed
+               %% ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
@@ -654,7 +656,9 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               %% TODO: Do not enable this feature until WHISTLE-408 is completed
+               %% ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, CCVs}
