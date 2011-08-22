@@ -32,6 +32,7 @@
 -define(SERVER, ?MODULE).
 -define(REG_QUEUE_NAME, <<"registrar.queue">>).
 -define(REG_QUEUE_OPTIONS, [{exclusive, false}]).
+-define(REG_CONSUME_OPTIONS, [{exclusive, false}]).
 
 -record(state, {
 	   amqp_q = <<>> :: binary()
@@ -54,6 +55,7 @@ start_link() ->
 				      ,{bindings, ?BINDINGS}
 				      ,{queue_name, ?REG_QUEUE_NAME}
 				      ,{queue_options, ?REG_QUEUE_OPTIONS}
+				      ,{consume_options, ?REG_CONSUME_OPTIONS}
 				     ], []).
 
 -spec lookup/3 :: (Srv, Realm, Username) -> {'ok', json_object()} | {'error', 'not_found'} when
