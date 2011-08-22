@@ -16,9 +16,6 @@
 -define(FOLDER_SAVED, <<"saved">>).
 -define(FOLDER_DELETED, <<"deleted">>).
 
--define(UNAVAILABLE_GREETING, <<"unavailable_greeting.mp3">>).
--define(NAME_RECORDING, <<"name_recording.mp3">>).
-
 -import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
                           ,noop/1, b_flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
@@ -102,8 +99,7 @@
          }).
 
 -record(mailbox, {
-           has_unavailable_greeting = false :: boolean()
-          ,mailbox_id = undefined :: undefined | binary()
+           mailbox_id = undefined :: undefined | binary()
           ,mailbox_number = <<>> :: binary()
           ,exists = false :: boolean()
           ,skip_instructions = false :: boolean()
@@ -590,7 +586,7 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName
       Call :: #cf_call{}.
 record_unavailable_greeting(RecordingName, #mailbox{unavailable_media_id=undefined}=Box, Call) ->
     MediaId = recording_media_doc(<<"unavailable greeting">>, Box, Call),
-    ok = update_doc([<<"media">>, <<"unavailable_greeting">>], MediaId, Box, Call),
+    ok = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
     record_unavailable_greeting(RecordingName, Box#mailbox{unavailable_media_id=MediaId}, Call);
 record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting
                                                                      ,tone_spec=ToneSpec, saved=Saved, deleted=Deleted}
@@ -624,7 +620,7 @@ record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unav
       Call :: #cf_call{}.
 record_name(RecordingName, #mailbox{name_media_id=undefined}=Box, Call) ->
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
-    ok = update_doc([<<"media">>, <<"name_recording">>], MediaId, Box, Call),
+    ok = update_doc([<<"media">>, <<"name">>], MediaId, Box, Call),
     record_name(RecordingName, Box#mailbox{name_media_id=MediaId}, Call);
 record_name(RecordingName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec
                                                  ,saved=Saved, deleted=Deleted}
@@ -768,8 +764,6 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          wh_json:is_true(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
                      ,skip_greeting =
                          wh_json:is_true(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
-                     ,has_unavailable_greeting =
-                         wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                      ,pin =
                          wh_json:get_binary_value(<<"pin">>, JObj, <<>>)
                      ,timezone =
@@ -781,9 +775,9 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                      ,check_if_owner =
                          wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
                      ,unavailable_media_id =
-                         wh_json:get_value([<<"media">>, <<"unavailable_greeting">>], JObj)
+                         wh_json:get_value([<<"media">>, <<"unavailable">>], JObj)
                      ,name_media_id =
-                         wh_json:get_value([<<"media">>, <<"name_recording">>], JObj)
+                         wh_json:get_value([<<"media">>, <<"name">>], JObj)
                      ,owner_id =
                          wh_json:get_value(<<"owner_id">>, JObj)
                      ,is_setup =
