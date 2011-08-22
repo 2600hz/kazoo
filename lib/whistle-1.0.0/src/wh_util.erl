@@ -260,8 +260,8 @@ microseconds_to_seconds(Microseconds) ->
       Address :: string() | binary().
 is_ipv4(Address) when is_binary(Address) ->
     is_ipv4(to_list(Address));
-is_ipv4(Address) ->
-    case inet_parse:ipv4_address(to_list(Address)) of
+is_ipv4(Address) when is_list(Address) ->
+    case inet_parse:ipv4_address(Address) of
         {ok, _} ->
             true;
         {error, _} -> false
@@ -271,7 +271,7 @@ is_ipv4(Address) ->
       Address :: string() | binary().
 is_ipv6(Address) when is_binary(Address) ->
     is_ipv6(to_list(Address));
-is_ipv6(Address) ->
+is_ipv6(Address) when is_list(Address) ->
     case inet_parse:ipv6_address(Address) of
         {ok, _} -> true;
         {error, _} -> false
