@@ -15,6 +15,9 @@
 init() ->
     ok.
 
+-spec handle_req/2 :: (JObj, Props) -> no_return() when
+      JObj :: json_object(),
+      Props :: proplist().
 handle_req(JObj, Props) ->
     Cache = props:get_value(cache, Props),
 

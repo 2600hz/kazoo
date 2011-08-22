@@ -55,6 +55,12 @@ behaviour_info(_) ->
 
 -type responders() :: [listener_utils:responder(),...] | [].
 -type bindings() :: [{atom(), proplist()},...] | [].
+-type start_params() :: [{responders, responders()} |
+			 {bindings, bindings()} |
+			 {queue_name, binary()} |
+			 {queue_options, proplist()} |
+			 {consume_options, proplist()}
+			 ,...] | [].
 
 -record(state, {
 	  queue = <<>> :: binary()
@@ -95,7 +101,7 @@ reply(From, Msg) ->
 %% Starting the gen_server
 -spec start_link/3 :: (Module, Params, InitArgs) -> startlink_ret() when
       Module :: atom(),
-      Params :: [{responders, responders()} | {bindings, bindings()},...],
+      Params :: start_params(),
       InitArgs :: term().
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
@@ -142,7 +148,7 @@ rm_binding(Srv, Binding) ->
 %%% gen_server callbacks
 %%%===================================================================
 -spec init/1 :: (Args) -> {ok, #state{}, hibernate} when
-      Args :: list().
+      Args :: [atom() | proplist(),...].
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
     ModState = case Module:init(InitArgs) of
@@ -273,7 +279,7 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
     ok.
 
--spec handle_event/3 :: (Payload, ContentType, State) -> [pid(),...] when
+-spec handle_event/3 :: (Payload, ContentType, State) -> no_return() when
       Payload :: binary(),
       ContentType :: binary(),
       State :: #state{}.
@@ -284,7 +290,7 @@ handle_event(Payload, <<"application/erlang">>, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj).
 
--spec process_req/2 :: (State, JObj) -> [pid(),...] when
+-spec process_req/2 :: (State, JObj) -> no_return() when
       State :: #state{},
       JObj :: json_object().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
@@ -292,7 +298,7 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
     {reply, Props} = Module:handle_event(JObj, ModState),
     Props1 = [{queue, Queue} | Props],
     Key = whapps_util:get_event_type(JObj),
-    Handlers = [ spawn_monitor(fun() -> Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt ],
+    Handlers = [spawn_monitor(fun() -> Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt],
     wait_for_handlers(Handlers).
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
