@@ -33,7 +33,7 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
 				  ?CACHE(reg_cache)
-				  ,?CHILD(reg_server, worker)
+				  ,?CHILD(registrar_listener, worker)
 				  %% Put list of ?CHILD(registration_server, worker) or ?CHILD(registration_other_sup, supervisor)
 				 ]} }.
 
