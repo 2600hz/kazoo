@@ -56,6 +56,6 @@ maybe_add_mapping(Mapping, Acc) ->
       Responder :: atom(),
       DoInit :: boolean().
 maybe_init_responder(Responder, true) when is_atom(Responder) ->
-    Responder:init(), ok;
+    catch(Responder:init()), ok;
 maybe_init_responder(_,_) ->
     ok.

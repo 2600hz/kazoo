@@ -270,16 +270,26 @@ simple_extract([]) ->
 -spec is_flat_rate_eligible/1 :: (E164) -> boolean() when
       E164 :: binary().
 is_flat_rate_eligible(E164) ->
-    {White, Black} = case wh_cache:fetch({?MODULE, flat_rate_regexes}) of
+    {Black, White} = case wh_cache:fetch({?MODULE, flat_rate_regexes}) of
 			 {error, not_found} ->
 			     load_flat_rate_regexes();
 			 {ok, Regexes} -> Regexes
 		     end,
     case lists:any(fun(Regex) -> re:run(E164, Regex) =/= nomatch end, Black) of
-	true -> false; %% if a black list regex matches
+        %% if a black list regex matches
+	true ->
+            ?LOG("the number ~s can not be a flat rate", [E164]),
+            false;
+        %% If any white-list regex matches
 	false ->
-	    %% If any white-list regex matches
-	    lists:any(fun(Regex) -> re:run(E164, Regex) =/= nomatch end, White)
+	    case lists:any(fun(Regex) -> re:run(E164, Regex) =/= nomatch end, White) of
+                true ->
+                    ?LOG("the number ~s is eligible for flat rate", [E164]),
+                    true;
+                false ->
+                    ?LOG("the number ~s is not eligible for flat rate", [E164]),
+                    false
+            end
     end.
 
 -spec load_flat_rate_regexes/0 :: () -> {[re:mp(),...] | [], [re:mp(),...] | []}.

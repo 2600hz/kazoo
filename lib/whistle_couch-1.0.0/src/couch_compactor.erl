@@ -135,7 +135,7 @@ handle_cast({add_threshold, MDS, Ratio}, Thresholds) ->
 handle_cast({rm_threshold, MDS}, Thresholds) ->
     {noreply, orddict:erase(MDS, Thresholds)};
 handle_cast({force_compaction, MDS, CT}, Thresholds) ->
-    spawn_link((fun compact_nodes/1)(orddict:from_list([{MDS, CT}]))),
+    spawn_link(fun() -> compact_nodes(orddict:from_list([{MDS, CT}])) end),
     {noreply, Thresholds};
 handle_cast({compact_db, DBName}, Thresholds) ->
     spawn_link((fun compact_a_db/1)(DBName)),

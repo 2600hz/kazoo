@@ -9,6 +9,7 @@
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
 -export([microseconds_to_seconds/1]).
 -export([whistle_version/0]).
+-export([is_ipv4/1, is_ipv6/1]).
 
 -include_lib("proper/include/proper.hrl").
 
@@ -254,6 +255,27 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 -spec(microseconds_to_seconds/1 :: (Microseconds :: integer() | string() | binary()) -> non_neg_integer()).
 microseconds_to_seconds(Microseconds) ->
     erlang:trunc(to_integer(Microseconds) * math:pow(10, -6)).
+
+-spec is_ipv4/1 :: (Address) -> boolean() when
+      Address :: string() | binary().
+is_ipv4(Address) when is_binary(Address) ->
+    is_ipv4(to_list(Address));
+is_ipv4(Address) when is_list(Address) ->
+    case inet_parse:ipv4_address(Address) of
+        {ok, _} ->
+            true;
+        {error, _} -> false
+    end.
+
+-spec is_ipv6/1 :: (Address) -> boolean() when
+      Address :: string() | binary().
+is_ipv6(Address) when is_binary(Address) ->
+    is_ipv6(to_list(Address));
+is_ipv6(Address) when is_list(Address) ->
+    case inet_parse:ipv6_address(Address) of
+        {ok, _} -> true;
+        {error, _} -> false
+    end.
 
 %% PROPER TESTING
 prop_to_integer() ->
