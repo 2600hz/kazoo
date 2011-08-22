@@ -36,7 +36,7 @@
 	]).
 
 %% gen_server API
--export([call/2, call/3, cast/2]).
+-export([call/2, call/3, cast/2, reply/2]).
 
 %% gen_listener API
 -export([add_responder/3, rm_responder/2, rm_responder/3]).
@@ -44,7 +44,7 @@
 
 behaviour_info(callbacks) ->
     [{init, 1}
-     ,{handle_event, 2}
+     ,{handle_event, 2} %% Module passes back {reply, Proplist}, passed as 2nd param to Responder:handle_req/2
      ,{handle_call, 3}
      ,{handle_cast, 2}
      ,{handle_info, 2}
@@ -63,9 +63,10 @@ behaviour_info(_) ->
          ,params = [] :: proplist()
 	 ,module = undefined :: atom()
          ,module_state = undefined :: term()
+         ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
 	 }).
 
-%% API functions that mirror gen_server:call,cast
+%% API functions that mirror gen_server:call,cast,reply
 -spec call/2 :: (Name, Request) -> term() when
       Name :: atom() | pid(),
       Request :: term().
@@ -84,6 +85,12 @@ call(Name, Request, Timeout) ->
       Request :: term().
 cast(Name, Request) ->
     gen_server:cast(Name, Request).
+
+-spec reply/2 :: (From, Msg) -> no_return() when
+      From :: {pid(), reference()},
+      Msg :: term().
+reply(From, Msg) ->
+    gen_server:reply(From, Msg).
 
 %% Starting the gen_server
 -spec start_link/3 :: (Module, Params, InitArgs) -> startlink_ret() when
@@ -186,8 +193,15 @@ handle_call(Request, From, #state{module=Module, module_state=ModState}=State) -
 -spec handle_cast/2 :: (Request, State) -> handle_cast_ret() when
       Request :: term(),
       State :: #state{}.
-handle_cast(stop, State) ->
+handle_cast(stop, #state{active_responders=[]}=State) ->
     {stop, normal, State};
+handle_cast(stop, #state{queue = <<>>}=State) ->
+    self() ! stop, % put a message in the queue to check length again
+    {noreply, State, 50};
+handle_cast(stop, #state{queue=Q, bindings=Bindings}=State) ->
+    self() ! stop, % put a message in the queue to check length again
+    stop_amqp(Q, Bindings), % make sure we're not accepting new requests
+    {noreply, State#state{queue = <<>>}, 0};
 
 handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=State) ->
     {noreply, State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}};
@@ -216,9 +230,15 @@ handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
 -spec handle_info/2 :: (Request, State) -> handle_info_ret() when
       Request :: term(),
       State :: #state{}.
-handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, State) ->
-    spawn(handle_event(Payload, CT, State)),
-    {noreply, State};
+handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
+    Pid = spawn_link(fun() -> handle_event(Payload, CT, State) end),
+    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
+
+handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State) ->
+    case lists:member(Pid, ARs) of
+	true -> {noreply, State#state{active_responders=lists:delete(Pid, ARs)}};
+	false -> handle_callback_info(Message, State)
+    end;
 
 handle_info({amqp_host_down, _}=Down, #state{bindings=Bindings, params=Params}=State) ->
     try
@@ -253,7 +273,7 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
     ok.
 
--spec handle_event/3 :: (Payload, ContentType, State) -> fun() when
+-spec handle_event/3 :: (Payload, ContentType, State) -> [pid(),...] when
       Payload :: binary(),
       ContentType :: binary(),
       State :: #state{}.
@@ -264,7 +284,7 @@ handle_event(Payload, <<"application/erlang">>, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj).
 
--spec process_req/2 :: (State, JObj) -> fun() when
+-spec process_req/2 :: (State, JObj) -> [pid(),...] when
       State :: #state{},
       JObj :: json_object().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
@@ -272,7 +292,19 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
     {reply, Props} = Module:handle_event(JObj, ModState),
     Props1 = [{queue, Queue} | Props],
     Key = whapps_util:get_event_type(JObj),
-    fun() -> [ catch(Responder:handle_req(JObj, Props1)) || {Evt, Responder} <- Responders, Key =:= Evt ] end.
+    Handlers = [ spawn_monitor(fun() -> Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt ],
+    wait_for_handlers(Handlers).
+
+%% Collect the spawned handlers going down so the main process_req proc doesn't end until all
+%% handlers have completed (for graceful stopping).
+-spec wait_for_handlers/1 :: (Handlers) -> 'ok' when
+      Handlers :: [{pid(), reference()},...] | [].
+wait_for_handlers([{Pid, Ref} | Hs]) ->
+    receive
+	{'DOWN', Ref, process, Pid, _Reason} ->
+	    wait_for_handlers(Hs)
+    end;
+wait_for_handlers([]) -> ok.
 
 -spec start_amqp/2 :: (Bindings, Props) -> {ok, binary()} when
       Bindings :: bindings(),
@@ -289,6 +321,13 @@ start_amqp(Bindings, Props) ->
     amqp_util:basic_consume(Q, ConsumeProps),
     {ok, Q}.
 
+-spec stop_amqp/2 :: (Q, Bindings) -> ok when
+      Q :: binary(),
+      Bindings :: bindings().
+stop_amqp(<<>>, _) -> ok;
+stop_amqp(Q, Bindings) ->
+    _ = [ rm_binding_from_q(Q, Type) || {Type, _} <- Bindings],
+    amqp_util:queue_delete(Q).
 
 -type bind_types() :: authentication | registrations.
 

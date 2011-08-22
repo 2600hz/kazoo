@@ -16,7 +16,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(SERVER, ?MODULE).
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILD(I, Type), {I, {I, start_link, []}, transient, 5000, Type, [I]}).
 -define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %% ===================================================================

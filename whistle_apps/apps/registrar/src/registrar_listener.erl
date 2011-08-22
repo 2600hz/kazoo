@@ -11,9 +11,9 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, lookup/2]).
+-export([start_link/0, lookup/3, stop/1]).
 
-%% gen_server callbacks
+%% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
 	 ,terminate/2, code_change/3]).
 
@@ -54,11 +54,18 @@ start_link() ->
 				      ,{queue_name, ?REG_QUEUE_NAME}
 				     ], []).
 
-lookup(Realm, Username) ->
-    gen_server:call(?SERVER, {lookup, Realm, Username}).
+-spec lookup/3 :: (Srv, Realm, Username) -> {'ok', json_object()} | {'error', 'not_found'} when
+      Srv :: pid() | atom(),
+      Realm :: binary(),
+      Username :: binary().
+lookup(Srv, Realm, Username) when is_pid(Srv) orelse is_atom(Srv) ->
+    gen_listener:call(Srv, {lookup, Realm, Username}).
+
+stop(Srv) ->
+    gen_listener:stop(Srv).
 
 %%%===================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -105,7 +112,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({lookup, Realm, Username}, From, #state{cache=Cache}=State) ->
-    spawn(fun() -> gen_server:reply(From, reg_util:lookup_registration(Realm, Username, Cache)) end),
+    spawn(fun() -> gen_listener:reply(From, reg_util:lookup_registration(Realm, Username, Cache)) end),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -137,7 +144,7 @@ handle_info(timeout, #state{cache=undefined}=State) ->
         Pid when is_pid(Pid) ->
             _ = prime_cache(Pid),
             erlang:monitor(process, Pid),
-            {noreply, State#state{cache=Pid}, 0};
+            {noreply, State#state{cache=Pid}};
         _ ->
             ?LOG_SYS("could not locate cache, trying again in 1000 msec"),
             {noreply, State, 1000}
@@ -150,7 +157,7 @@ handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) 
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
-    {noreply, State, 1000}.
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -166,9 +173,9 @@ handle_event(_JObj, #state{cache=Cache}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_server when it is about to
+%% This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
