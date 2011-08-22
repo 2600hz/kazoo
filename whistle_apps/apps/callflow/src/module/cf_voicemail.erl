@@ -899,6 +899,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
+             ,{<<"media_type">>, <<"mp3">>}
              ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"private_media">>}]),
@@ -921,6 +922,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #
              ,{<<"description">>, <<"voicemail recorded/prompt media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
+             ,{<<"media_type">>, <<"mp3">>}
              ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"media">>}]),
