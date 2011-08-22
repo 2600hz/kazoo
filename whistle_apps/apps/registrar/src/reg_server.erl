@@ -257,7 +257,16 @@ process_req({<<"directory">>, <<"authn_req">>}, JObj, #state{amqp_q=Queue, cache
     ?LOG_START("received SIP authentication request"),
 
     AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
-    AuthR = wh_json:get_value(<<"Auth-Realm">>, JObj),
+    AuthR0 = wh_json:get_value(<<"Auth-Realm">>, JObj),
+
+    AuthR = case wh_util:is_ipv4(AuthR0) orelse wh_util:is_ipv6(AuthR0) of
+                true ->
+                    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+                    ?LOG("auth-realm (~s) not a hostname, trying To-domain (~s)", [AuthR0, ToDomain]),
+                    ToDomain;
+                false ->
+                    AuthR0
+            end,
 
     %% crashes if not found, no return necessary
     {ok, AuthJObj} = lookup_auth_user(AuthU, AuthR, Cache),
