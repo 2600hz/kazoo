@@ -26,8 +26,6 @@
 -define(SERVER, ?MODULE).
 
 -define(VIEW_FILE, <<"views/hotdesks.json">>).
-
-
 -define(CB_LIST, <<"hotdesks/crossbar_listing">>).
 
 %%%===================================================================
@@ -103,7 +101,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.devices">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.hotdesks">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
@@ -121,7 +119,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.hotdesks">>, [RD, Conte
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, RD, Context),
+                  Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
@@ -130,8 +128,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.hotdesks">>, [RD, C
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -139,22 +136,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.hotdesks">>, [RD, Co
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.hotdesks">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
+                  Context1 = crossbar_doc:save(Context), %% save because only user.hotdesk change, not the whole doc
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() -> import_fixtures(?FIXTURE_LIST, DBName) end),
-    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -163,9 +154,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?AGG_DB),
-    whapps_util:update_all_accounts(?VIEW_FILE),
-    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -225,9 +213,7 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
-allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['GET', 'PUT', 'POST', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -242,8 +228,6 @@ allowed_methods(_) ->
 -spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
 resource_exists([]) ->
     {true, []};
-resource_exists([_]) ->
-    {true, []};
 resource_exists(_) ->
     {false, []}.
 
@@ -256,88 +240,67 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device_summary(Context, QueryString);
-validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
-    create_device(Context);
-validate([DocId], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device(DocId, Context);
-validate([DocId], _, #cb_context{req_verb = <<"post">>}=Context) ->
-    update_device(DocId, Context);
-validate([DocId], _, #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_device(DocId, Context);
-validate(_, _, Context) ->
+-spec(validate/2 :: (Params :: list(),  Context :: #cb_context{}) -> #cb_context{}).
+validate([], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_hotdesk(Context);
+validate([], #cb_context{req_verb = <<"post">>}=Context) ->
+    set_hotdesk(Context);
+validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+    set_hotdesk(Context);
+validate([], #cb_context{req_verb = <<"delete">>}=Context) ->
+    delete_hotdesk(Context);
+validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
+%% Attemp to load the hotdesk profile associated with the authenticated user
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      QueryParams :: list(),
+-spec load_hotdesk/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
-load_device_summary(Context, []) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
-    Context#cb_context{resp_data=Result, resp_status=success}.
+load_hotdesk(#cb_context{auth_doc=AuthDoc}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+    crossbar_doc:load_view(<<"hotdesks/crossbar_listing">>, [{<<"key">>, UserId}], Context, fun normalize_view_results/2).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new device document with the data provided, if it is valid
+%% Set a new hotdesk to a document, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_device/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_device(#cb_context{req_data=JObj}=Context) ->
+-spec set_hotdesk/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
     case is_valid_doc(JObj) of
         %% {false, Fields} ->
         %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
-                ,resp_status=success
-            }
+	    UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
+	    case couch_mgr:load_doc(Db, UserId) of
+		{ok, Doc} ->
+		    Context#cb_context{doc=wh_json:set_value(<<"hotdesk">>, JObj,Doc)};
+		{error, _} -> crossbar_util:response_bad_identifier(UserId, Context)
+	    end
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a device document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec(load_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_device(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing device document with the data provided, if it is
+%% Remove a hotdesk profile from a doc, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_device(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
+-spec delete_hotdesk/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+delete_hotdesk(#cb_context{auth_doc=AuthDoc, db_name=Db}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
+    case couch_mgr:load_doc(Db, UserId) of
+	{ok, Doc} ->
+	    Context#cb_context{doc=wh_json:delete_key(<<"hotdesk">>, Doc)};
+	{error, _} -> crossbar_util:response_bad_identifier(UserId, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -345,31 +308,19 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
+-spec is_valid_doc/1 :: (JObj) -> tuple(true, json_objects()) when
+      JObj :: json_object().
 is_valid_doc(_JObj) ->
     {true, []}.
 
--spec import_fixtures/2 :: (Fixtures, DBName) -> list(#cb_context{} | tuple(error, no_file)) when
-      Fixtures :: [<<_:120>>,...],
-      DBName :: binary().
-import_fixtures(Fixtures, DBName) ->
-    ?LOG_SYS("Importing fixtures into ~s", [DBName]),
-    Context = #cb_context{db_name=DBName},
-    [ import_fixture(Fixture, Context) || Fixture <- Fixtures].
-
--spec import_fixture/2 :: (Fixture, Context) -> #cb_context{} | tuple(error, no_file) when
-      Fixture :: <<_:120>>,
-      Context :: #cb_context{}.
-import_fixture(Fixture, Context) ->
-    Path = list_to_binary([code:priv_dir(crossbar), <<"/couchdb/fixtures/">>, Fixture]),
-    ?LOG_SYS("Read from ~s", [Path]),
-    case filelib:is_regular(Path) of
-	true ->
-	    {ok, FixStr} = file:read_file(Path),
-	    ?LOG_SYS("Saving fixture from ~s: ~s", [Path, FixStr]),
-	    JObj = mochijson2:decode(FixStr),
-	    crossbar_doc:save(Context#cb_context{doc=JObj});
-	false ->
-	    ?LOG_SYS("File path doesn't point to a file"),
-	    {error, no_file}
-    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
+      JObj :: json_object(),
+      Acc :: json_objects().
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
